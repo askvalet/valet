@@ -190,7 +190,7 @@ export const PICKS: { id: string; name: string; light?: string; note?: string; a
   { id: 'strip', name: 'Case light', note: 'Set by the case itself, not something software can change.', at: [560, 260, 300, 1.5] },
 ];
 
-const W = 720, H = 640;   // the world's box; scaled to fit its container
+const W = 720, H = 680;   // the world's box; scaled to fit its container
 const isFanUnit = (id: string) => id === 'coolerfans' || /^fans\d$/.test(id);
 /** the fan group drawn on the radiator */
 export const topFans = (d: ModelData) => d.parts.find(p => isFanUnit(p.id) && (d.layout?.[p.id] ?? (p.id === 'fans0' ? 'top' : '')) === 'top')?.id ?? 'fans0';
@@ -214,7 +214,7 @@ export function createViewer(box: HTMLElement, opts: ViewerOptions = {}) {
     const c = world.querySelector<HTMLElement>('.cam'); if (!c) return;
     const [x, y, z, k] = cam.at;
     c.style.transition = animate ? 'transform .9s cubic-bezier(.2, .8, .2, 1)' : 'none';
-    c.style.transform = `translateY(18px) scale(${0.94 * k}) rotateX(${cam.rx}deg) rotateY(${cam.ry}deg) translate3d(${CW / 2 - x}px, ${CH / 2 - y}px, ${CD / 2 - z}px)`;
+    c.style.transform = `translateY(-4px) scale(${0.9 * k}) rotateX(${cam.rx}deg) rotateY(${cam.ry}deg) translate3d(${CW / 2 - x}px, ${CH / 2 - y}px, ${CD / 2 - z}px)`;
   };
   const dim = () => {
     world.classList.toggle('picking', !!sel);

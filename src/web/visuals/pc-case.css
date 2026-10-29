@@ -1,5 +1,5 @@
 /* The 3D case. Scoped under .pcx. Surfaces are matte black steel; light comes only from the parts that are lit. */
-.pcx .world { position: absolute; left: 0; top: 0; width: 720px; height: 640px; transform-origin: 0 0; perspective: 1300px; perspective-origin: 50% 46%; }
+.pcx .world { position: absolute; left: 0; top: 0; width: 720px; height: 680px; transform-origin: 0 0; perspective: 1300px; perspective-origin: 50% 50%; }
 .pcx .cam { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-style: preserve-3d; }
 .pcx .f { position: absolute; transform-style: preserve-3d; }
 .pcx .f > i, .pcx .f > b, .pcx .f > span, .pcx .f > div, .pcx .f > svg, .pcx .part > i { position: absolute; display: block; }

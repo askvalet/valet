@@ -81,7 +81,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
   };
 
   return (
-    <div className="grid items-center gap-x-6 gap-y-4 @xl/card:grid-cols-[minmax(0,1fr)_220px]">
+    <div className="grid items-center gap-x-6 gap-y-4 @xl/card:grid-cols-[minmax(0,1fr)_244px]">
       <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-xl" aria-label="3D model of the PC. Select a part to see it and change its lighting." role="img" />
       <div className="min-w-0 self-stretch">
         {!pick ? (
