@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import type { StatusCard, WidgetState } from '../shared/cards.ts';
+import type { ForecastCard, StatusCard, WidgetState } from '../shared/cards.ts';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Icon, isEmpty, MiniRing, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
@@ -161,7 +161,7 @@ export function App() {
           </div>
         )}
         <div className="glass-bar relative hidden items-center gap-4 rounded-full border py-1.5 pr-5 pl-2 sm:flex">
-          {page?.weather && state[page.weather]?.card?.summary && <WeatherRing s={state[page.weather]!.card!.summary!} />}
+          {page?.weather && state[page.weather]?.card?.type === 'forecast' && <WeatherRing card={state[page.weather]!.card as ForecastCard} />}
           <div className="text-right leading-tight">
           <div className="text-sm font-semibold tabular">{now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</div>
           <div className="text-xs text-muted-foreground">{now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>

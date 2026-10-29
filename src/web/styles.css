@@ -182,8 +182,9 @@
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .1), 0 10px 30px -12px rgb(0 0 0 / .6); }
 .glass-bar::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--bar-bg);
   backdrop-filter: var(--bar-blur); }
-.glass-pop { --pop-blur: blur(60px) saturate(1.8); }
-.glass-pop [data-slot="card"] { background: rgb(24 24 28 / .8) !important; backdrop-filter: var(--pop-blur) !important; }
+.glass-pop { --pop-blur: blur(60px) saturate(1.8); border-radius: calc(var(--radius) * 1.4); background: rgb(24 24 28 / .78);
+  backdrop-filter: var(--pop-blur); box-shadow: 0 24px 60px -20px rgb(0 0 0 / .7); }
+.glass-pop [data-slot="card"] { background: transparent !important; backdrop-filter: none !important; }
 :root { --round-blur: blur(40px) saturate(1.7); }
 .has-wallpaper .glass-round { background: rgb(40 40 46 / .5); backdrop-filter: var(--round-blur); }
 .has-wallpaper .wall-text { text-shadow: 0 1px 12px rgb(0 0 0 / 0.35); }

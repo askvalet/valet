@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import type { Card as CardT, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
+import type { Card as CardT, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
 const ICONS: Record<string, LucideIcon> = {
   cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
@@ -299,13 +299,15 @@ function Controls({ card, run }: { card: ControlsCard; run?: RunAction }) {
 
 /** The body of a card, without its frame. */
 // Showcase visuals load on demand, so a page without them never downloads them.
-const VISUALS: Record<string, React.LazyExoticComponent<(p: { data: any }) => ReactNode>> = {
+const VISUALS: Record<string, React.LazyExoticComponent<(p: { data: any; run?: RunAction }) => ReactNode>> = {
   'pc-case': lazy(() => import('./visuals/pc-case.tsx')),
 };
 
 /** The visual on the left, its numbers stacked on the right: big values, quiet labels, nothing else. */
-function Showcase({ card }: { card: ShowcaseCard }) {
+function Showcase({ card, run }: { card: ShowcaseCard; run?: RunAction }) {
   const V = VISUALS[card.visual.kind];
+  // an interactive visual with no numbers of its own beside it lays itself out
+  if (V && !card.items.length) return <Suspense fallback={<Skeleton className="aspect-[4/3] w-full rounded-xl" />}><V data={card.visual.data} run={run} /></Suspense>;
   return (
     <div className="grid items-center gap-x-6 gap-y-4 @md/card:grid-cols-[minmax(0,1fr)_150px]">
       <div className="min-w-0">
@@ -330,7 +332,8 @@ function Showcase({ card }: { card: ShowcaseCard }) {
 
 export function CardBody({ card, run }: { card: CardT; run?: RunAction }): ReactNode {
   switch (card.type) {
-    case 'showcase': return <Showcase card={card} />;
+    case 'showcase': return <Showcase card={card} run={run} />;
+    case 'forecast': return <Forecast card={card} />;
     case 'stats': return <Stats card={card} />;
     case 'list': return <List card={card} />;
     case 'status': return <Status card={card} />;
@@ -470,6 +473,22 @@ export function Ring({ s }: { s: Summary }) {
   );
 }
 
+/** A hover/focus popover under a menubar item. The frost sits on the element that fades: a parent fading its
+ *  opacity would stop Chrome blurring anything inside it until the fade ends (the flicker). */
+function Popover({ group, className, children }: { group: 'ring' | 'wx'; className?: string; children: ReactNode }) {
+  const show = group === 'ring'
+    ? 'group-hover/ring:visible group-focus-visible/ring:visible'
+    : 'group-hover/wx:visible group-focus-visible/wx:visible';
+  const pop = group === 'ring'
+    ? 'group-hover/ring:opacity-100 group-hover/ring:translate-y-0 group-hover/ring:scale-100 group-focus-visible/ring:opacity-100 group-focus-visible/ring:translate-y-0 group-focus-visible/ring:scale-100'
+    : 'group-hover/wx:opacity-100 group-hover/wx:translate-y-0 group-hover/wx:scale-100 group-focus-visible/wx:opacity-100 group-focus-visible/wx:translate-y-0 group-focus-visible/wx:scale-100';
+  return (
+    <div className={cn('invisible absolute top-full z-30 pt-3 transition-[visibility] duration-300', show, className)}>
+      <div className={cn('glass-pop origin-top -translate-y-1 scale-95 opacity-0 transition-[opacity,translate,scale] duration-300 ease-out', pop)}>{children}</div>
+    </div>
+  );
+}
+
 /** The menubar version: a small ring with the number inside, label beneath; details on hover. */
 export function MiniRing({ s }: { s: Summary }) {
   const r = 15, c = 2 * Math.PI * r, arc = c * 0.75, pct = Math.max(0, Math.min(1, s.pct ?? 0));
@@ -486,21 +505,18 @@ export function MiniRing({ s }: { s: Summary }) {
         <div className="metric absolute inset-0 grid place-items-center text-[11px]">{n.length > 4 ? <Icon name={s.icon} className="size-3.5" /> : n}</div>
       </div>
       <div className="-mt-1 max-w-[56px] truncate text-[10px] font-medium text-muted-foreground">{s.label}</div>
-      <div className="pointer-events-none invisible absolute top-full right-1/2 z-30 w-[260px] translate-x-1/2 pt-3 opacity-0 transition-all duration-300 ease-out
-        -translate-y-1 scale-95 group-hover/ring:visible group-hover/ring:translate-y-0 group-hover/ring:scale-100 group-hover/ring:opacity-100
-        group-focus-visible/ring:visible group-focus-visible/ring:opacity-100 group-focus-visible/ring:scale-100 glass-pop">
-        <SummaryTile s={s} />
-      </div>
+      <Popover group="ring" className="right-1/2 w-[260px] translate-x-1/2"><SummaryTile s={s} /></Popover>
     </div>
   );
 }
 
 /** Weather beside the clock: the ring runs from today's low to high (cool blue → warm amber), the marker is now. */
-export function WeatherRing({ s }: { s: Summary }) {
+export function WeatherRing({ card }: { card: ForecastCard }) {
+  const s = card.summary!;
   const r = 17, c = 2 * Math.PI * r, arc = c * 0.75, pct = Math.max(0, Math.min(1, s.pct ?? 0.5));
   const a = (135 + 270 * pct) * Math.PI / 180, mx = 21 + r * Math.cos(a), my = 21 + r * Math.sin(a);
   return (
-    <div className="flex items-center gap-2.5" title={s.detail}>
+    <div className="group/wx relative flex items-center gap-2.5 outline-none" tabIndex={0} aria-label={`${s.value}, ${s.label}. ${s.detail}`}>
       <div className="relative size-[42px]">
         <svg viewBox="0 0 42 42" className="size-full" aria-hidden>
           <defs><linearGradient id="wx" x1="0" y1="1" x2="1" y2="1"><stop offset="0" stopColor="#64d2ff" /><stop offset=".55" stopColor="#ffd60a" /><stop offset="1" stopColor="#ff9f0a" /></linearGradient></defs>
@@ -513,6 +529,50 @@ export function WeatherRing({ s }: { s: Summary }) {
         <div className="text-sm font-semibold tabular">{s.value}</div>
         <div className="max-w-[90px] truncate text-xs text-muted-foreground">{s.label}</div>
       </div>
+      <Popover group="wx" className="right-[-8px] w-[440px]"><Forecast card={card} /></Popover>
+    </div>
+  );
+}
+
+/** Hour by hour: icon, temperature on a smooth line, and the chance of rain as soft blue bars beneath. */
+export function Forecast({ card }: { card: ForecastCard }) {
+  const { now, hours } = card;
+  const lo = Math.min(...hours.map(h => h.temp)), hi = Math.max(...hours.map(h => h.temp)), span = Math.max(1, hi - lo);
+  const W = 400, H = 44, x = (i: number) => (i + .5) * (W / hours.length), y = (t: number) => 8 + (1 - (t - lo) / span) * (H - 16);
+  const wet = hours.some(h => h.pop >= 10);
+  return (
+    <div className="p-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="metric text-[44px] leading-none">{now.temp}°</div>
+          <div className="mt-1.5 text-sm font-medium">{now.words}</div>
+          <div className="text-xs text-muted-foreground">Feels {now.feels}° · H {now.hi}° · L {now.lo}°</div>
+        </div>
+        <Icon name={now.icon} className="size-9 text-foreground/90" />
+      </div>
+      <div className="mt-5 grid" style={{ gridTemplateColumns: `repeat(${hours.length}, minmax(0, 1fr))` }}>
+        {hours.map((h, i) => (
+          <div key={i} className="flex flex-col items-center gap-1.5">
+            <div className="text-[11px] text-muted-foreground">{i === 0 ? 'Next' : h.time}</div>
+            <Icon name={h.icon} className="size-4" />
+          </div>
+        ))}
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="mt-1 block w-full overflow-visible" aria-hidden>
+        <path d={smooth(hours.map((h, i) => [x(i), y(h.temp)] as [number, number]))} fill="none" stroke="currentColor" strokeOpacity=".55" strokeWidth="1.5" />
+        {hours.map((h, i) => <g key={i}><circle cx={x(i)} cy={y(h.temp)} r="2.2" fill="currentColor" />
+          <text x={x(i)} y={y(h.temp) - 6} textAnchor="middle" className="fill-current text-[10px] font-semibold tabular-nums">{h.temp}°</text></g>)}
+      </svg>
+      {wet ? (
+        <div className="mt-2 grid items-end" style={{ gridTemplateColumns: `repeat(${hours.length}, minmax(0, 1fr))`, height: 46 }}>
+          {hours.map((h, i) => (
+            <div key={i} className="flex h-full flex-col items-center justify-end gap-1">
+              <div className="w-3 rounded-full bg-[#64d2ff]" style={{ height: `${Math.max(2, h.pop * .3)}px`, opacity: .25 + h.pop / 130 }} />
+              <div className={cn('text-[10px] tabular', h.pop >= 30 ? 'text-[#64d2ff]' : 'text-muted-foreground')}>{h.pop}%</div>
+            </div>
+          ))}
+        </div>
+      ) : <div className="mt-3 text-center text-xs text-muted-foreground">No rain expected in the next 12 hours</div>}
     </div>
   );
 }

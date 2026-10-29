@@ -19,8 +19,9 @@ export default defineIntegration({
     interval: z.number().default(600_000),
   }),
   create(cfg, ctx) {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${cfg.latitude}&longitude=${cfg.longitude}&timezone=auto&forecast_days=1`
-      + '&current=temperature_2m,apparent_temperature,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min'
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${cfg.latitude}&longitude=${cfg.longitude}&timezone=auto&forecast_days=2`
+      + '&current=temperature_2m,apparent_temperature,weather_code,is_day,precipitation&daily=temperature_2m_max,temperature_2m_min'
+      + '&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,is_day&forecast_hours=13'
       + (cfg.units === 'imperial' ? '&temperature_unit=fahrenheit' : '');
     const get = () => ctx.http<any>(url, { timeout: 8000 });
     return {
@@ -29,10 +30,19 @@ export default defineIntegration({
           title: 'Weather', interval: cfg.interval,
           async fetch() {
             const w = await get(), t = w.current.temperature_2m, lo = w.daily.temperature_2m_min[0], hi = w.daily.temperature_2m_max[0];
-            const [, words, icon] = describe(w.current.weather_code), night = !w.current.is_day && (icon === 'sun' || icon === 'cloud-sun');
+            const look = (code: number, day: number) => { const [, w, i] = describe(code); return { words: w, icon: !day && i === 'sun' ? 'moon' : !day && i === 'cloud-sun' ? 'cloud-moon' : i }; };
+            const { words, icon } = look(w.current.weather_code, w.current.is_day);
             const c = cfg.units === 'imperial' ? (t - 32) / 1.8 : t;
-            return { type: 'stats', title: 'Weather', icon: 'sun', items: [{ label: 'Now', value: `${Math.round(t)}°` }, { label: 'High', value: `${Math.round(hi)}°` }, { label: 'Low', value: `${Math.round(lo)}°` }],
-              summary: { label: words, icon: night ? (icon === 'sun' ? 'moon' : 'cloud-moon') : icon, value: `${Math.round(t)}°`,
+            const h = w.hourly;
+            const hours = h.time.slice(1, 13).map((iso: string, i: number) => ({
+              time: new Date(iso).toLocaleTimeString('en', { hour: 'numeric', timeZone: w.timezone }).replace(' ', '').toLowerCase(),
+              temp: Math.round(h.temperature_2m[i + 1]), icon: look(h.weather_code[i + 1], h.is_day[i + 1]).icon,
+              pop: h.precipitation_probability[i + 1] ?? 0, mm: h.precipitation[i + 1] ?? 0,
+            }));
+            return { type: 'forecast', title: 'Weather', icon,
+              now: { temp: Math.round(t), feels: Math.round(w.current.apparent_temperature), words, icon, hi: Math.round(hi), lo: Math.round(lo), precip: w.current.precipitation },
+              hours,
+              summary: { label: words, icon, value: `${Math.round(t)}°`,
                 detail: `H ${Math.round(hi)}° · L ${Math.round(lo)}° · feels ${Math.round(w.current.apparent_temperature)}°`,
                 pct: hi > lo ? (t - lo) / (hi - lo) : 0.5,
                 tone: c < 0 ? 'accent' : c < 18 ? 'good' : c < 28 ? 'warn' : 'bad' } };
