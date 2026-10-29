@@ -120,6 +120,10 @@
 .pcx .world.picking .f:not(.keep) { --lo: .1 !important; }
 .pcx .world.picking .f:not(.keep) .glow, .pcx .world.picking .f:not(.keep) .halo { opacity: 0 !important; }
 .pcx .dragging { cursor: grabbing; }
+/* hover: a faint light edge and lift on the part under the pointer */
+.pcx .world .f.hov:not(.pane) { box-shadow: inset 0 0 0 1px rgb(255 255 255 / .28), 0 0 22px rgb(255 255 255 / .07) !important; }
+.pcx .world .f.hov:not(.pane)::after { opacity: 0 !important; }
+.pcx .world .f.hov:not(.pane)::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: rgb(255 255 255 / .06); pointer-events: none; }
 .pcx .world .f[data-part], .pcx .world .f[data-of]:not([data-of=""]) { cursor: pointer; }
 
 /* the case's own light strip */

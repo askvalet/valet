@@ -207,15 +207,37 @@ export function createViewer(box: HTMLElement, opts: ViewerOptions = {}) {
   let data: ModelData | null = null, shape = '', sel: string | null = null, dragged = false;
   const cam = { ry: turn, rx: tilt, at: [CW / 2, CH / 2, CD / 2, 1] as number[] };
 
-  const fit = () => { const k = box.clientWidth / W; world.style.transform = `scale(${k})`; box.style.height = H * k + 'px'; };
-  const ro = new ResizeObserver(fit); ro.observe(box); fit();
 
+  const pose = (ox: number, oy: number, fit: number) => {
+    const [x, y, z, k] = cam.at;
+    return `translate(${ox}px, ${oy}px) scale(${fit * k}) rotateX(${cam.rx}deg) rotateY(${cam.ry}deg) translate3d(${CW / 2 - x}px, ${CH / 2 - y}px, ${CD / 2 - z}px)`;
+  };
+  // In the overview the case is framed: whatever the angle, it's centred and fills ~88% of the box. Perspective moves
+  // it around as it turns, so this is measured rather than computed. A focused part just flies to the centre.
+  const frame = (c: HTMLElement) => {
+    if (sel) return pose(0, 0, .9);
+    const before = c.style.transform, trans = c.style.transition;
+    c.style.transition = 'none'; c.style.transform = pose(0, 0, 1);
+    const k = box.clientWidth / W, b = box.getBoundingClientRect();
+    let l = Infinity, t = Infinity, r = -Infinity, btm = -Infinity;
+    world.querySelectorAll<HTMLElement>('.wall, .rear, .mesh, .floor, .ceiling, .pane').forEach(f => {
+      const q = f.getBoundingClientRect(); l = Math.min(l, q.left); t = Math.min(t, q.top); r = Math.max(r, q.right); btm = Math.max(btm, q.bottom);
+    });
+    c.style.transform = before; void c.offsetWidth; c.style.transition = trans;
+    if (!isFinite(l) || !b.width) return pose(0, 0, .9);
+    const fit = Math.min(.88 * b.width / (r - l), .88 * b.height / (btm - t));
+    const dx = (b.left + b.width / 2 - (l + r) / 2) / k, dy = (b.top + b.height / 2 - (t + btm) / 2) / k;
+    return pose(dx * fit, dy * fit, fit);
+  };
   const aim = (animate = true) => {
     const c = world.querySelector<HTMLElement>('.cam'); if (!c) return;
-    const [x, y, z, k] = cam.at;
+    const target = frame(c);
     c.style.transition = animate ? 'transform .9s cubic-bezier(.2, .8, .2, 1)' : 'none';
-    c.style.transform = `translateY(-4px) scale(${0.9 * k}) rotateX(${cam.rx}deg) rotateY(${cam.ry}deg) translate3d(${CW / 2 - x}px, ${CH / 2 - y}px, ${CD / 2 - z}px)`;
+    c.style.transform = target;
   };
+  const fit = () => { const k = box.clientWidth / W; world.style.transform = `scale(${k})`; box.style.height = H * k + 'px'; aim(false); };
+  const ro = new ResizeObserver(fit); ro.observe(box); fit();
+
   const dim = () => {
     world.classList.toggle('picking', !!sel);
     const ids = !sel ? [] : sel === 'fans' && data ? [topFans(data)] : [sel];
@@ -232,22 +254,42 @@ export function createViewer(box: HTMLElement, opts: ViewerOptions = {}) {
     if (!dragged) { dragged = true; box.setPointerCapture(e.pointerId); box.classList.add('dragging'); }
     cam.ry = Math.max(-55, Math.min(55, start.ry + dx * .35));
     cam.rx = Math.max(-18, Math.min(24, start.rx - dy * .25));
-    aim(false);
+    const c = world.querySelector<HTMLElement>('.cam');
+    if (c) { c.style.transition = 'none'; c.style.transform = c.style.transform.replace(/rotateX\([^)]*\) rotateY\([^)]*\)/, `rotateX(${cam.rx}deg) rotateY(${cam.ry}deg)`); }
   };
-  const up = () => { start = null; box.classList.remove('dragging'); };
+  const up = () => { if (start && dragged) aim(); start = null; box.classList.remove('dragging'); };
   if (draggable) {
     box.classList.add('draggable');
     box.addEventListener('pointerdown', down); box.addEventListener('pointermove', move);
     box.addEventListener('pointerup', up); box.addEventListener('pointercancel', up);
   }
+  const pickAt = (target: EventTarget | null) => {
+    for (let el = target as HTMLElement | null; el && el !== world; el = el.parentElement) {
+      const id = el.dataset.part ?? el.dataset.of ?? el.dataset.tint;
+      if (id) return isFanUnit(id) ? 'fans' : PICKS.some(p => p.id === id) ? id : null;
+    }
+    return null;
+  };
+  const facesOf = (pick: string | null) => {
+    const ids = !pick ? [] : pick === 'fans' && data ? [topFans(data)] : [pick];
+    return [...world.querySelectorAll<HTMLElement>('.f')].filter(f => ids.some(id => f.dataset.part === id || f.dataset.of === id || f.dataset.tint === id));
+  };
+  // hovering a part lifts it slightly
+  let hovered: string | null = null;
+  const hover = (e: PointerEvent) => {
+    if (start && dragged) return;
+    const p = pickAt(e.target);
+    if (p === hovered) return;
+    world.querySelectorAll('.hov').forEach(f => f.classList.remove('hov'));
+    hovered = p;
+    facesOf(p).forEach(f => f.classList.add('hov'));
+  };
+  const leave = () => { hovered = null; world.querySelectorAll('.hov').forEach(f => f.classList.remove('hov')); };
+  world.addEventListener('pointermove', hover); world.addEventListener('pointerleave', leave);
   // clicking selects whatever was hit; clicking it again, or empty space, lets go
   const click = (e: MouseEvent) => {
     if (dragged) return;
-    let hit: string | null = null;
-    for (let el = e.target as HTMLElement | null; el && el !== world; el = el.parentElement) {
-      const id = el.dataset.part ?? el.dataset.of ?? el.dataset.tint;
-      if (id) { hit = isFanUnit(id) ? 'fans' : PICKS.some(p => p.id === id) ? id : null; break; }
-    }
+    const hit = pickAt(e.target);
     const next = hit === sel ? null : hit;
     api.select(next); onPick?.(next);
   };
@@ -267,7 +309,7 @@ export function createViewer(box: HTMLElement, opts: ViewerOptions = {}) {
       aim(); dim();
     },
     destroy() {
-      ro.disconnect(); world.removeEventListener('click', click);
+      ro.disconnect(); world.removeEventListener('click', click); world.removeEventListener('pointermove', hover); world.removeEventListener('pointerleave', leave);
       box.removeEventListener('pointerdown', down); box.removeEventListener('pointermove', move);
       box.removeEventListener('pointerup', up); box.removeEventListener('pointercancel', up);
       world.remove();
