@@ -81,11 +81,11 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
   };
 
   return (
-    <div className="grid items-center gap-x-6 gap-y-4 @xl/card:grid-cols-[minmax(0,1fr)_244px]">
+    <div className="grid items-start gap-x-6 gap-y-4 @xl/card:grid-cols-[minmax(0,1fr)_244px]">
       <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-xl" aria-label="3D model of the PC. Select a part to see it and change its lighting." role="img" />
-      <div className="min-w-0 self-stretch">
+      <div className="min-w-0 @xl/card:pt-2">
         {!pick ? (
-          <div className="flex h-full flex-col justify-center gap-5 animate-in fade-in duration-300">
+          <div className="flex flex-col gap-5 animate-in fade-in duration-300">
             {data.presets?.length ? (
               <div>
                 <div className="mb-2.5 text-[11.5px] text-muted-foreground">Presets</div>
