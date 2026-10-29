@@ -137,8 +137,11 @@ if (config.assistant) {
   });
 }
 
-app.use('/*', serveStatic({ root: './dist/web' }));
-app.get('*', serveStatic({ path: './dist/web/index.html' }));
+// Hashed assets never change, so they cache forever; the page itself is always revalidated, so a new build shows
+// up on the next load instead of whenever the browser's heuristic cache expires.
+const cacheFor = (path: string) => path.includes('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache';
+app.use('/*', serveStatic({ root: './dist/web', onFound: (path, c) => { c.header('Cache-Control', cacheFor(path)); } }));
+app.get('*', serveStatic({ path: './dist/web/index.html', onFound: (_, c) => { c.header('Cache-Control', 'no-cache'); } }));
 
 serve({ fetch: app.fetch, port: PORT, hostname: HOST }, i =>
   console.log(`atrium on http://${HOST}:${i.port} · ${instances.size} integrations · ${placed.size} widgets`));
