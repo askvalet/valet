@@ -96,8 +96,11 @@ function build(world: HTMLElement, d: PcCaseData) {
   const floor = add(face(mk('floor'), CW, CD, `translateY(${CH / 2}px) rotateX(90deg)`));
   floor.dataset.of = 'floor';
   // three 140 mm intake fans on the floor, framed in a tray; seen from above through the glass
-  floor.insertAdjacentHTML('beforeend', '<i class="tray"></i>');
-  [0, 1, 2].forEach(i => { const f = mk('floorfan', `<i class="ring"></i><i class="blades" style="animation-delay:${-i * .41}s"></i><i class="hub"></i>`); Object.assign(f.style, { left: 62 + i * 158 + 'px', top: '52px', width: '150px', height: '150px' }); floor.appendChild(f); });
+  const tray = lid(mk('tray'), 44, CH - 34, 512, 184, 60);
+  tray.style.transform += ' rotateX(-22deg)';
+  tray.dataset.of = 'floor';
+  [0, 1, 2].forEach(i => { const f = mk('floorfan', `<i class="ring"></i><i class="blades" style="animation-delay:${-i * .41}s"></i><i class="hub"></i>`); Object.assign(f.style, { left: 18 + i * 160 + 'px', top: '14px', width: '156px', height: '156px' }); tray.appendChild(f); });
+  add(tray);
   add(face(mk('ceiling'), CW, CD, `translateY(${-CH / 2}px) rotateX(90deg)`));
 
   // ── motherboard (ASUS ProArt): dark board, gold line-art heatsinks, M.2 plate
@@ -139,8 +142,8 @@ function build(world: HTMLElement, d: PcCaseData) {
   const gpu = has('gpu');
   add(lid(mk('gputop', '<span class="rtx">GEFORCE RTX</span><i class="emb"></i>'), 40, 312, 404, 170, 0)).dataset.of = 'gpu';
   add(side(mk('gpuend'), 40, 312, 170, 44)).dataset.of = 'gpu';
-  add(at(gpu ? part('gpufront', 'gpu', '<span class="rtx">GEFORCE RTX</span><i class="badge light lin"><b>SUPRIM</b></i><i class="badgeglow light lin"></i><i class="logo light lin"></i>')
-    : unread('gpufront', '<span class="rtx">GEFORCE RTX</span><i class="badge light lin"><b>SUPRIM</b></i><i class="badgeglow light lin"></i><i class="logo light lin"></i>'), 40, 312, 404, 44, 170)).dataset.of = 'gpu';
+  add(at(gpu ? part('gpufront', 'gpu', '<i class="badgeglow light lin"></i><span class="rtx">GEFORCE RTX</span><i class="badge light lin"><b>SUPRIM</b></i><i class="logo light lin"></i>')
+    : unread('gpufront', '<i class="badgeglow light lin"></i><span class="rtx">GEFORCE RTX</span><i class="badge light lin"><b>SUPRIM</b></i><i class="logo light lin"></i>'), 40, 312, 404, 44, 170)).dataset.of = 'gpu';
   // its power cable: off the top, across and down to the floor
   add(at(mk('braids', svg(braid('M300 312 C 330 300, 420 300, 470 340 S 500 470, 520 520', 3.4, 6, 2.2))), 0, 0, CW, CH, 150));
 
@@ -248,7 +251,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
     return () => ro.disconnect();
   }, []);
   // the camera: drag to orbit, and fly in to whatever is selected
-  const view = data.view ?? { turn: -15, tilt: 12, draggable: true };
+  const view = data.view ?? { turn: -15, tilt: 7, draggable: true };
   const cam = useRef({ ry: view.turn, rx: view.tilt, at: [CW / 2, CH / 2, CD / 2, 1] as number[] });
   const dragged = useRef(false);
   const aim = (animate = true) => {

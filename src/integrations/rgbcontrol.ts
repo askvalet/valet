@@ -14,9 +14,9 @@ export default defineIntegration({
     controls: z.boolean().default(true),       // allow changing lights from the card (false: look, don't touch)
     view: z.object({                           // the model's starting angle; drag to look around
       turn: z.number().default(-15),           // degrees left/right
-      tilt: z.number().default(12),            // degrees up/down
+      tilt: z.number().default(7),             // degrees up/down
       draggable: z.boolean().default(true),
-    }).default({ turn: -15, tilt: 12, draggable: true }),
+    }).default({ turn: -15, tilt: 7, draggable: true }),
   }),
   create(cfg, ctx) {
     const get = () => ctx.http<any>(`${cfg.url}/api/state`, { timeout: 5000 });
