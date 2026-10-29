@@ -41,14 +41,21 @@ export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?
 export interface MediaItem {
   title: string;
   subtitle?: string;      // episode / artist
-  image?: string;
+  image?: string;         // poster / cover
+  backdrop?: string;      // wide artwork shown full-bleed behind the item
   pct?: number;           // playback position 0..1
   state?: 'playing' | 'paused' | 'buffering';
   user?: string;
   device?: string;
   detail?: string;        // e.g. "4K · direct play · 36 Mbps"
+  tags?: string[];        // small labels shown as chips, e.g. ["4K", "Transcode", "40 Mbps"]
+  remaining?: string;     // e.g. "41 min left"
 }
 export interface MediaCard extends Base { type: 'media'; items: MediaItem[]; empty?: string }
+
+/** A horizontal shelf of artwork (posters, albums, photos), like a row in the Apple TV app. */
+export interface ShelfItem { title: string; subtitle?: string; image?: string; badge?: string; href?: string }
+export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string }
 
 export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string }
 export interface StatusCard extends Base { type: 'status'; items: StatusItem[] }
@@ -81,7 +88,7 @@ export interface TextCard extends Base { type: 'text'; text: string; tone?: Tone
 
 export interface GroupCard extends Base { type: 'group'; cards: Card[]; layout?: 'row' | 'column' }
 
-export type Card = StatsCard | ListCard | MediaCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
+export type Card = StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
 
 /** One widget slot's live state, as pushed to the browser. */
 export interface WidgetState { key: string; card?: Card; error?: string; at: number; source?: string }

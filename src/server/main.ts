@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import { extname, resolve } from 'node:path';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
@@ -41,8 +43,19 @@ const hub = new Hub(new Map([...instances].map(([id, i]) => [id, {
 
 const app = new Hono();
 
+// A local wallpaper file is served from here; a URL is handed to the browser as is.
+const wallpaper = config.appearance.wallpaper;
+const wallpaperFile = wallpaper && !/^https?:\/\//.test(wallpaper) ? resolve(wallpaper) : null;
+app.get('/api/wallpaper', async c => {
+  if (!wallpaperFile) return c.notFound();
+  const type = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.avif': 'image/avif' }[extname(wallpaperFile).toLowerCase()];
+  if (!type) return c.notFound();
+  return c.body(await readFile(wallpaperFile), 200, { 'Content-Type': type, 'Cache-Control': 'public, max-age=3600' });
+});
+
 app.get('/api/page', c => c.json({
   title: config.title, greeting: config.greeting, location: config.location,
+  appearance: { ...config.appearance, wallpaper: wallpaperFile ? '/api/wallpaper' : wallpaper },
   assistant: config.assistant ? { name: config.assistant.name, model: config.assistant.model } : null,
   sections: config.layout.map(s => ({ title: s.title, columns: s.columns, widgets: s.widgets.filter(k => hub.widget(k)) })),
   widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),

@@ -17,6 +17,7 @@ const Assistant = lazy(() => import('./assistant.tsx'));
 
 interface Page {
   title: string; greeting?: string; location?: string;
+  appearance: { wallpaper?: string; dim: number; blur: number };
   assistant: { name: string; model: string } | null;
   sections: { title?: string; columns?: number; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
@@ -86,6 +87,12 @@ export function App() {
 
   useEffect(() => { fetch('/api/page').then(r => r.json()).then(setPage); }, []);
   useEffect(() => { if (page) document.title = page.title; }, [page]);
+  // A wallpaper means glass over a photo: always the dark material, so text stays legible on any image.
+  const wall = page?.appearance?.wallpaper;
+  useEffect(() => {
+    document.documentElement.classList.toggle('has-wallpaper', !!wall);
+    if (wall) document.documentElement.classList.add('dark');
+  }, [wall]);
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === 'k' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setPalette(p => !p); } };
     addEventListener('keydown', k); return () => removeEventListener('keydown', k);
@@ -105,12 +112,17 @@ export function App() {
 
   return (
     <TooltipProvider>
+      {wall && (
+        <div className="wallpaper" style={{ '--wall-dim': page!.appearance.dim } as React.CSSProperties} aria-hidden>
+          <img src={wall} alt="" style={page!.appearance.blur ? { filter: `blur(${page!.appearance.blur}px)` } : undefined} />
+        </div>
+      )}
       <SidebarProvider style={{ '--sidebar-width': '15rem' } as React.CSSProperties}>
         <Sidebar variant="inset" collapsible="offcanvas">
           <SidebarHeader>
             <SidebarMenu><SidebarMenuItem>
               <SidebarMenuButton size="lg" onClick={() => setView('all')}>
-                <div className="grid size-8 place-items-center rounded-lg bg-foreground text-background">
+                <div className="icon-tile size-8! rounded-[10px]!">
                   <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" aria-hidden><path d="M5 19V10l7-5 7 5v9" /></svg>
                 </div>
                 <div className="grid leading-tight"><span className="font-semibold">{page?.title ?? 'Home'}</span><span className="text-xs text-muted-foreground">{online ? 'Live' : 'Reconnecting…'}</span></div>
@@ -148,7 +160,7 @@ export function App() {
         </Sidebar>
 
         <SidebarInset>
-          <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 rounded-t-xl border-b bg-background/80 px-4 backdrop-blur-xl lg:px-6">
+          <header className="glass-bar sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 rounded-t-xl border-b bg-background/80 px-4 backdrop-blur-xl lg:px-6">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mx-1 data-[orientation=vertical]:h-4" />
             <h1 className="text-sm font-medium">{view === 'all' ? 'Overview' : page?.sections[view]?.title}</h1>
@@ -159,14 +171,14 @@ export function App() {
                   <kbd className="ml-auto hidden rounded border bg-muted px-1.5 font-sans text-[10px] font-medium sm:inline">⌘K</kbd>
                 </Button>
               )}
-              <Button variant="ghost" size="icon" className="size-8" onClick={theme.toggle} aria-label="Toggle theme">{theme.dark ? <Sun /> : <Moon />}</Button>
+              {!wall && <Button variant="ghost" size="icon" className="size-8" onClick={theme.toggle} aria-label="Toggle theme">{theme.dark ? <Sun /> : <Moon />}</Button>}
             </div>
           </header>
 
           <main className="@container/main flex flex-1 flex-col gap-6 px-4 py-6 lg:px-6">
             {view === 'all' && (
               <>
-                <div>
+                <div className="wall-text">
                   <div className="text-sm text-muted-foreground tabular">
                     {now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} · {now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
                   </div>
@@ -182,7 +194,7 @@ export function App() {
             )}
             {sections.map(sec => (
               <section key={sec.i} className="space-y-3">
-                {view === 'all' && sec.title && <h3 className="px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h3>}
+                {view === 'all' && sec.title && <h3 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h3>}
                 <div className="grid items-start gap-4" style={{ gridTemplateColumns: sec.columns ? `repeat(${sec.columns}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
                   {sec.widgets.map(key => {
                     const s = state[key];

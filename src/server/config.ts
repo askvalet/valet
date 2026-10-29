@@ -36,10 +36,18 @@ export const McpServer = z.object({
   name: z.string().optional(),
 }).strict();
 
+// Look and feel. A wallpaper turns every card into frosted glass over it.
+export const Appearance = z.object({
+  wallpaper: z.string().optional(),        // local file path (served by Atrium) or an image URL
+  dim: z.number().min(0).max(0.9).default(0.35),
+  blur: z.number().min(0).max(40).default(0),
+}).strict();
+
 export const Config = z.object({
   title: z.string().default('Home'),
   greeting: z.string().optional(),         // name to greet, e.g. "Ibrahim"
   location: z.string().optional(),
+  appearance: Appearance.default({ dim: 0.35, blur: 0 }),
   assistant: AssistantConfig.optional(),
   integrations: z.record(z.string(), z.object({ type: z.string() }).loose()).default({}),
   mcp: z.record(z.string(), McpServer).default({}),

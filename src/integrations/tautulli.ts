@@ -16,6 +16,13 @@ export default defineIntegration({
       return r.response.data;
     };
     const poster = (s: any) => { const t = s.grandparent_thumb || s.parent_thumb || s.thumb; return t ? ctx.image(t) : undefined; };
+    const backdrop = (s: any) => { const a = s.grandparent_art || s.art; return a ? ctx.image(a) : undefined; };
+    const left = (ms: number) => { const m = Math.max(0, Math.round(ms / 60000)); return m >= 60 ? `${Math.floor(m / 60)} hr ${m % 60} min left` : `${m} min left`; };
+    const decision = (d: string) => d === 'direct play' ? 'Direct Play' : d === 'copy' ? 'Direct Stream' : d === 'transcode' ? 'Transcode' : d;
+    const added = (t: number) => {
+      const d = new Date(t * 1000), days = Math.floor((Date.now() - d.getTime()) / 864e5);
+      return days < 1 ? 'Today' : days < 2 ? 'Yesterday' : days < 7 ? d.toLocaleDateString(undefined, { weekday: 'long' }) : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    };
     const title = (s: any) => s.media_type === 'episode' ? s.grandparent_title : s.title;
     const subtitle = (s: any) => s.media_type === 'episode'
       ? `S${s.parent_media_index}·E${s.media_index} — ${s.title}`
@@ -26,7 +33,9 @@ export default defineIntegration({
       return { count: Number(d.stream_count), bandwidth: Number(d.total_bandwidth), sessions: d.sessions as any[] };
     }
     const toItem = (s: any): MediaItem => ({
-      title: title(s), subtitle: subtitle(s), image: poster(s), pct: Number(s.progress_percent) / 100,
+      title: title(s), subtitle: subtitle(s), image: poster(s), backdrop: backdrop(s), pct: Number(s.progress_percent) / 100,
+      tags: [s.stream_video_full_resolution, decision(s.transcode_decision), `${(Number(s.bandwidth) / 1000).toFixed(0)} Mbps`].filter(Boolean),
+      remaining: left(Number(s.duration) - Number(s.view_offset)),
       state: s.state === 'paused' ? 'paused' : s.state === 'buffering' ? 'buffering' : 'playing',
       user: s.friendly_name, device: s.player,
       detail: [s.stream_video_full_resolution, s.transcode_decision === 'direct play' ? 'direct' : s.transcode_decision,
@@ -47,11 +56,13 @@ export default defineIntegration({
       recent: {
         title: 'Recently added', interval: 300_000,
         async fetch() {
-          const d = await api('get_recently_added', { count: 6 });
-          return { type: 'list', title: 'Recently added', icon: 'film', href: cfg.href,
-            items: (d.recently_added as any[]).map(r => ({ title: title(r) || r.title, image: poster(r),
-              subtitle: r.media_type === 'season' ? r.title : r.media_type === 'episode' ? subtitle(r) : r.year,
-              meta: new Date(Number(r.added_at) * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) })) };
+          const d = await api('get_recently_added', { count: 12 });
+          return { type: 'shelf', title: 'Recently added', icon: 'film', href: cfg.href, aspect: 'poster',
+            items: (d.recently_added as any[]).map(r => ({
+              title: r.media_type === 'season' ? r.parent_title : r.media_type === 'episode' ? r.grandparent_title : r.title,
+              subtitle: r.media_type === 'season' ? r.title : r.media_type === 'episode' ? `S${r.parent_media_index} · E${r.media_index}` : r.year ? String(r.year) : undefined,
+              image: ctx.image(r.media_type === 'episode' ? (r.grandparent_thumb || r.thumb) : r.thumb || r.parent_thumb),
+              badge: added(Number(r.added_at)) })) };
         },
       },
     } satisfies Instance['widgets'];
@@ -60,7 +71,10 @@ export default defineIntegration({
       widgets,
       image(ref) {
         if (!/^\/library\/metadata\/\d+\/(thumb|art)(\/\d+)?$/.test(ref)) throw new Error('bad image ref');
-        const q = new URLSearchParams({ apikey: cfg.apiKey, cmd: 'pms_image_proxy', img: ref, width: '300', height: '450', fallback: 'poster' });
+        // backdrops wide and sharp; posters at 2× for retina shelves
+        const art = /\/art(\/|$)/.test(ref);
+        const q = new URLSearchParams({ apikey: cfg.apiKey, cmd: 'pms_image_proxy', img: ref, width: art ? '1280' : '480', height: art ? '720' : '720',
+          fallback: art ? 'art' : 'poster', img_format: 'jpg' });   // JPEG: a backdrop is ~100 KB instead of ~900 KB as PNG
         return ctx.http<Response>(`${base}/api/v2?${q}`, { as: 'response' });
       },
       tools: {
