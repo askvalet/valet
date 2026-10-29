@@ -63,8 +63,7 @@ function pulse(state: Record<string, WidgetState>) {
   const down = items.filter(i => !i.ok && !i.quiet), errors = Object.values(state).filter(s => s.error);
   if (down.length) return { text: `${down.map(d => d.name).join(', ')} ${down.length === 1 ? 'is' : 'are'} down`, tone: 'text-bad' };
   if (errors.length) return { text: `${errors.length} widget${errors.length > 1 ? 's' : ''} can't reach ${errors.length > 1 ? 'their services' : 'its service'}`, tone: 'text-warn' };
-  if (items.length) return { text: `Everything's running. All ${items.length} services are up.`, tone: 'text-muted-foreground' };
-  return { text: 'Connecting…', tone: 'text-muted-foreground' };
+  return { text: '', tone: '' };   // all well: say nothing
 }
 
 async function runAction(key: string, action: string, args?: Record<string, unknown>) {
@@ -175,7 +174,7 @@ export function App() {
         {view === 'all' && (
           <header className="wall-text mx-auto w-full max-w-[680px] text-center">
             <div className="text-[22px] font-semibold tracking-tight">{greet(now.getHours())}{page?.greeting ? `, ${page.greeting}` : ''}</div>
-            <div className={cn('mt-0.5 text-[13px]', p.tone)}>{p.text}</div>
+            {p.text && <div className={cn('mt-0.5 text-[13px]', p.tone)}>{p.text}</div>}
             {page?.assistant && (
               <form className="glass-round mt-5 flex items-center gap-2 rounded-[22px] py-1.5 pr-1.5 pl-4 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
