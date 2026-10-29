@@ -31,7 +31,7 @@ export default defineIntegration({
       hide: z.array(z.string()).default([]),             // map rooms to leave out (balconies, say)
       rotate: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).default(0),
       flip: z.boolean().default(true),                   // mirror top-to-bottom (vacuum maps usually count y upwards)
-      view: z.object({ turn: z.number().default(-10), tilt: z.number().default(-58) }).default({ turn: -10, tilt: -58 }),
+      view: z.object({ turn: z.number().default(-40), tilt: z.number().default(-35) }).default({ turn: -40, tilt: -35 }),
     })).default({}),
   }),
   create(cfg, ctx) {
@@ -117,8 +117,12 @@ export default defineIntegration({
           };
           const v = plan.vacuum ? byId.get(plan.vacuum) : undefined, va = v?.attributes ?? {};
           const sensor = (suffix: string) => { const id = plan.vacuum?.replace(/^vacuum\./, `sensor.`) + `_${suffix}`; const n = Number(byId.get(id)?.state); return Number.isFinite(n) ? n : undefined; };
+          const cleaning = v && /clean|return|mop|pause/i.test(v.state) && v.state !== 'docked';
+          const battery = sensor('battery_level') ?? va.battery_level;
           return {
             type: 'showcase', title: plan.title, icon: 'home', href: cfg.href, wide: true, items: [],
+            activity: cleaning ? { title: 'Vacuum', subtitle: String(va.status ?? v.state).replace(/_/g, ' '), icon: 'home',
+              pct: battery != null ? battery / 100 : undefined, trailing: battery != null ? `${battery}%` : undefined, paused: /pause/i.test(v.state) } : undefined,
             visual: { kind: 'home', data: {
               view: plan.view,
               rooms: rooms.map(r => ({ ...r, ...P(r), lights: (plan.rooms[r.name] ?? []).map(light) })),

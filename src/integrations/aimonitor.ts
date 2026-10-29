@@ -30,6 +30,9 @@ export default defineIntegration({
             summary: { label: 'Local AI', icon: 'gpu', value: m.swapping ? 'Loading' : working ? 'Working' : 'Idle', sub: m.name,
               detail: `${Math.round(g.power)} W · ${Math.round(g.temp)}°C`, trend: [...hist.power], tone: working ? 'accent' : 'neutral' },
             note: m.swapping ? `loading ${m.swapping}…` : `${m.name}${working ? ' · working' : ' · idle'}`,
+            activity: m.swapping ? { title: 'Loading model', subtitle: m.swapping, icon: 'sparkle', tone: 'accent' }
+              : working ? { title: 'Local AI', subtitle: `${j.running[0]?.app ? `${j.running[0].app} · ` : ''}${m.name}`, icon: 'sparkle', trailing: `${Math.round(g.power)} W`,
+                tone: 'accent', count: j.running.length } : undefined,
             items: [
               { label: 'GPU', value: Math.round(g.util), unit: '%', trend: [...hist.util], sub: `${Math.round(g.temp)}°C`, tone: heat(g.temp) },
               { label: 'Power', value: Math.round(g.power), unit: 'W', trend: [...hist.power], tone: 'accent' },

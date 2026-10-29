@@ -13,10 +13,10 @@ export default defineIntegration({
     presets: z.boolean().default(true),        // show the lighting presets when no part is selected
     controls: z.boolean().default(true),       // allow changing lights from the card (false: look, don't touch)
     view: z.object({                           // the model's starting angle; drag to look around
-      turn: z.number().default(-8),            // degrees left/right
-      tilt: z.number().default(0),             // degrees up/down
+      turn: z.number().default(-27),           // degrees left/right
+      tilt: z.number().default(-18),           // degrees up/down (negative looks down)
       draggable: z.boolean().default(true),
-    }).default({ turn: -8, tilt: 0, draggable: true }),
+    }).default({ turn: -27, tilt: -18, draggable: true }),
   }),
   create(cfg, ctx) {
     const get = () => ctx.http<any>(`${cfg.url}/api/state`, { timeout: 5000 });

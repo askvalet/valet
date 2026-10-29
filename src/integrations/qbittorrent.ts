@@ -48,6 +48,9 @@ export default defineIntegration({
               detail: `↑ ${fmt.rate(info.up_info_speed)}`, trend: [...speeds] },
             note: `↓ ${fmt.rate(info.dl_info_speed)} · ↑ ${fmt.rate(info.up_info_speed)}`,
             empty: 'Nothing downloading',
+            activity: dl.length ? { title: dl.length > 1 ? `${dl.length} downloads` : dl[0].name, subtitle: dl.length > 1 ? dl[0].name : `↓ ${fmt.rate(info.dl_info_speed)}`,
+              icon: 'download', pct: dl.reduce((s, t) => s + t.progress, 0) / dl.length,
+              trailing: dl.length > 1 ? fmt.rate(info.dl_info_speed) : dl[0].eta < 8640000 ? `${fmt.duration(dl[0].eta)} left` : undefined, count: dl.length } : undefined,
             items: dl.slice(0, 8).map(t => ({ title: t.name, pct: t.progress, subtitle: label(t),
               meta: t.eta < 8640000 ? fmt.duration(t.eta) : '–', tone: t.state === 'stalledDL' ? 'warn' : 'neutral' })),
           };

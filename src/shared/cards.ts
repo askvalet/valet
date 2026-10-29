@@ -17,6 +17,20 @@ export interface Summary {
   ring?: string;          // the number shown inside a ring gauge, if different from `value` (e.g. "23%")
 }
 
+/** Something happening right now, for the island at the top of the page: a stream, a download, a robot cleaning.
+ *  A card carries one only while it's live; the island shows the live ones in the order the config lists them. */
+export interface Activity {
+  title: string;
+  subtitle?: string;
+  image?: string;         // artwork; otherwise `icon`
+  icon?: string;
+  pct?: number;           // 0..1 progress
+  trailing?: string;      // short text on the right, e.g. "34m left"
+  tone?: Tone;
+  count?: number;         // more of the same (e.g. 3 streams)
+  paused?: boolean;
+}
+
 interface Base {
   title?: string;
   icon?: string;          // icon name from the built-in set, or a URL
@@ -25,6 +39,7 @@ interface Base {
   summary?: Summary;
   summaries?: Summary[];  // several headline tiles from one card (e.g. CPU, memory, network, each disk)
   wide?: boolean;         // take two columns (and two rows) on wide screens
+  activity?: Activity;    // set only while something's live
 }
 
 export interface StatItem {

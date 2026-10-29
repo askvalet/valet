@@ -17,10 +17,12 @@ export interface Scene<D> {
   focus(pick: string, d: D): Focus | undefined;    // where the camera flies for a pick
   limits?: { tilt: [number, number]; turn: [number, number] };
 }
-export interface StageOptions { turn?: number; tilt?: number; draggable?: boolean; onPick?: (id: string | null) => void }
+export interface StageOptions { turn?: number; tilt?: number; draggable?: boolean; remember?: string; onPick?: (id: string | null) => void }
 
 export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOptions = {}) {
-  const { turn = 0, tilt = 0, draggable = true, onPick } = opts;
+  const { turn = 0, tilt = 0, draggable = true, remember, onPick } = opts;
+  // a view you dragged to sticks (this browser only); otherwise the configured angles
+  const saved = (() => { try { return remember ? JSON.parse(localStorage.getItem(`atrium-view:${remember}`) ?? 'null') : null; } catch { return null; } })();
   const [W, H] = scene.size, [cx, cy, cz] = scene.center;
   const lim = scene.limits ?? { tilt: [-18, 24], turn: [-55, 55] };
   box.classList.add('stage', scene.scope);
@@ -29,7 +31,7 @@ export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOpt
   box.appendChild(world);
   let data: D | null = null, shape = '', sel: string | null = null, dragged = false;
   const home: Focus = [cx, cy, cz, 1];
-  const cam = { ry: turn, rx: tilt, at: home as number[] };
+  const cam = { ry: saved?.ry ?? turn, rx: saved?.rx ?? tilt, at: home as number[] };
 
   const pose = (ox: number, oy: number, fit: number) => {
     const [x, y, z, k] = cam.at;
@@ -84,7 +86,10 @@ export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOpt
     const c = world.querySelector<HTMLElement>('.cam');
     if (c) { c.style.transition = 'none'; c.style.transform = c.style.transform.replace(/rotateX\([^)]*\) rotateY\([^)]*\)/, `rotateX(${cam.rx}deg) rotateY(${cam.ry}deg)`); }
   };
-  const up = () => { if (start && dragged) aim(); start = null; box.classList.remove('dragging'); };
+  const up = () => {
+    if (start && dragged) { aim(); try { if (remember) localStorage.setItem(`atrium-view:${remember}`, JSON.stringify({ rx: cam.rx, ry: cam.ry })); } catch {} }
+    start = null; box.classList.remove('dragging');
+  };
   if (draggable) {
     box.classList.add('draggable');
     box.addEventListener('pointerdown', down); box.addEventListener('pointermove', move);

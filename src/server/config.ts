@@ -55,6 +55,9 @@ export const Config = z.object({
   mcp: z.record(z.string(), McpServer).default({}),
   layout: z.array(Section).default([]),
   menubar: z.array(z.string()).default([]),
+  // the island: a black notch at the top that comes alive with whatever's happening (plays, downloads, a robot
+  // cleaning), in this order of importance. idle: keep a small empty notch, or hide it when nothing's live.
+  island: z.object({ activities: z.array(z.string()).default([]), idle: z.enum(['notch', 'hide']).default('notch') }).optional(),
   weather: z.string().optional(),               // a widget key (e.g. weather.now) shown as a ring beside the clock   // widget keys whose headline numbers sit as small rings in the top bar
 }).strict();
 export type Config = z.infer<typeof Config>;

@@ -39,10 +39,10 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
   const [draft, setDraft] = useState<Record<string, Partial<PlanLight>>>({});   // optimistic changes while HA catches up
   useEffect(() => setDraft({}), [data]);
   const shown = useMemo(() => ({ ...data, rooms: data.rooms.map(r => ({ ...r, lights: r.lights.map(l => ({ ...l, ...draft[l.id] })) })) }), [data, draft]);
-  const view = data.view ?? { turn: -10, tilt: -58 };
+  const view = data.view ?? { turn: -40, tilt: -35 };
 
   useEffect(() => {
-    const s = createHome(box.current!, { ...view, onPick: setSel });
+    const s = createHome(box.current!, { ...view, remember: 'home', onPick: setSel });
     stage.current = s; return () => s.destroy();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view.turn, view.tilt]);

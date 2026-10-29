@@ -49,12 +49,15 @@ export default defineIntegration({
         async fetch() {
           const a = await activity();
           bw.push(a.bandwidth / 1000); if (bw.length > 40) bw.shift();
+          const items = a.sessions.map(toItem), first = items.find(i => i.state !== 'paused') ?? items[0];
           return { type: 'media', title: 'Now playing', icon: 'play', href: cfg.href, empty: 'Nothing playing',
             summary: { label: 'Plex', icon: 'play', value: a.count ? `${a.count} stream${a.count > 1 ? 's' : ''}` : 'Idle',
               sub: a.count ? [...new Set(a.sessions.map(s => s.friendly_name))].join(', ') : 'Nothing playing',
               detail: a.count ? `${(a.bandwidth / 1000).toFixed(0)} Mbps` : undefined, trend: [...bw] },
             note: a.count ? `${a.count} stream${a.count > 1 ? 's' : ''} · ${(a.bandwidth / 1000).toFixed(0)} Mbps` : undefined,
-            items: a.sessions.map(toItem) };
+            activity: first && { title: first.title, subtitle: [first.user, first.device].filter(Boolean).join(' · '), image: first.image, icon: 'play',
+              pct: first.pct, trailing: first.state === 'paused' ? 'Paused' : first.remaining, paused: first.state === 'paused', count: a.count },
+            items };
         },
       },
       recent: {

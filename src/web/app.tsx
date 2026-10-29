@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { ForecastCard, StatusCard, WidgetState } from '../shared/cards.ts';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
+import Island, { type Live } from './island.tsx';
 import { Icon, isEmpty, MiniRing, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
 
 // The assistant (and the AI SDK client) loads only when someone asks something.
@@ -17,6 +18,7 @@ interface Page {
   appearance: { wallpaper?: string; dim: number; blur: number };
   assistant: { name: string; model: string } | null;
   menubar?: string[];
+  island?: { activities: string[]; idle: 'notch' | 'hide' };
   weather?: string;
   sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings'; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
@@ -89,6 +91,12 @@ function RoundButton({ label, active, onClick, children }: { label: string; acti
   );
 }
 
+function useWide(query = '(min-width: 1280px)') {
+  const [wide, setWide] = useState(() => matchMedia(query).matches);
+  useEffect(() => { const m = matchMedia(query), on = () => setWide(m.matches); m.addEventListener('change', on); return () => m.removeEventListener('change', on); }, [query]);
+  return wide;
+}
+
 export function App() {
   const [page, setPage] = useState<Page | null>(null);
   const { state, online } = useLive();
@@ -98,6 +106,7 @@ export function App() {
   const [palette, setPalette] = useState(false);
   const [chat, setChat] = useState<{ text: string; n: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const wide = useWide();
   const [draft, setDraft] = useState('');
   const [query, setQuery] = useState('');
 
@@ -120,6 +129,11 @@ export function App() {
   }, []);
 
   const p = pulse(state);
+  // what's live right now, most important first (the config's order)
+  const live: Live[] = (page?.island?.activities ?? []).flatMap(key => {
+    const c = state[key]?.card;
+    return c?.activity ? [{ ...c.activity, key, href: c.href }] : [];
+  });
   const sections = page?.sections.map((s, i) => ({ ...s, i })).filter(s => view === 'all' || s.i === view) ?? [];
   const sectionIcon = (s: Page['sections'][number]) => state[s.widgets[0]]?.card?.icon;
   const nav = page?.sections.map((s, i) => ({ ...s, i })).filter(s => s.title) ?? [];
@@ -151,7 +165,8 @@ export function App() {
 
       {/* top-right: the menubar rings, weather and time (and the theme switch when there's no wallpaper).
           Below lg it sits at the top of the page instead, centred and wrapping, so phones see it too. */}
-      <div className="wall-text z-20 flex flex-wrap items-center justify-center gap-2 px-3 pt-4 lg:fixed lg:top-5 lg:right-5 lg:flex-nowrap lg:gap-4 lg:p-0">
+      {page?.island && <Island live={live} idle={page.island.idle} docked={wide} />}
+      <div className="wall-text z-20 flex flex-wrap items-center justify-center gap-2 px-3 pt-4 xl:fixed xl:top-5 xl:right-5 xl:flex-nowrap xl:gap-4 xl:p-0">
         {!!page?.menubar?.length && (
           <div className="glass-bar relative flex items-center gap-2 rounded-full border px-3 py-1.5 sm:gap-3 sm:px-4">
             {page.menubar.flatMap(key => {
@@ -170,7 +185,7 @@ export function App() {
         {!wall && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={theme.toggle}>{theme.dark ? <Sun /> : <Moon />}</RoundButton>}
       </div>
 
-      <main className="@container/main mx-auto flex max-w-[1320px] flex-col gap-8 px-4 pt-6 pb-28 md:pr-8 md:pl-24 md:pb-16 lg:pt-20">
+      <main className="@container/main mx-auto flex max-w-[1320px] flex-col gap-8 px-4 pt-6 pb-28 md:pr-8 md:pl-24 md:pb-16 xl:pt-20">
         {/* the hero: ask anything */}
         {view === 'all' && (
           <header className="wall-text mx-auto w-full max-w-[680px] text-center">

@@ -206,4 +206,4 @@ export const pcScene: Scene<ModelData> = {
 };
 
 /** Mounts the PC in `box` (see stage.ts). Kept as its own export: rgb-control calls it. */
-export const createViewer = (box: HTMLElement, opts: StageOptions = {}) => createStage(box, pcScene, { turn: -8, tilt: 0, ...opts });
+export const createViewer = (box: HTMLElement, opts: StageOptions = {}) => createStage(box, pcScene, { turn: -27, tilt: -18, remember: 'pc', ...opts });

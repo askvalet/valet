@@ -44,7 +44,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
   const viewer = useRef<ReturnType<typeof createViewer> | null>(null);
   const [sel, setSel] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, Light>>({});   // optimistic lighting while a change is on its way
-  const view = data.view ?? { turn: -8, tilt: 0, draggable: true };
+  const view = data.view ?? { turn: -27, tilt: -18, draggable: true };
   const fanId = topFans(data);
   const lightId = (pick: string) => pick === 'fans' ? fanId : PICKS.find(p => p.id === pick)?.light;
   // the data the model paints with: server state, overlaid with what was just picked
