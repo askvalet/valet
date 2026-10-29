@@ -44,6 +44,25 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     }
   }
 
+  // Built-in: lay out any widgets the assistant may read, as live cards side by side or stacked.
+  const readable = [...instances].filter(([id]) => rank[a.access[id] ?? a.access.default ?? 'read'] >= rank.read)
+    .flatMap(([id, inst]) => Object.entries(inst.widgets).map(([w, def]) => ({ key: `${id}.${w}`, title: def.title, def })));
+  if (readable.length) {
+    tools.show = tool({
+      description: 'Show live widgets as cards, side by side ("row") or stacked ("column"). Use when the person asks to see, show or compare things. Widgets: '
+        + readable.map(r => `${r.key} (${r.title})`).join(', '),
+      inputSchema: z.object({ widgets: z.array(z.string()).min(1).max(6), layout: z.enum(['row', 'column']).default('row') }),
+      execute: async ({ widgets, layout }) => {
+        const picked = widgets.map(k => readable.find(r => r.key === k)).filter(Boolean) as typeof readable;
+        const cards = await Promise.all(picked.map(r => r.def.fetch().catch(e => ({ type: 'text', title: r.title, text: (e as Error).message, tone: 'bad' }) as const)));
+        return { data: { shown: picked.map(r => r.key), missing: widgets.filter(k => !picked.some(r => r.key === k)) },
+                 card: cards.length === 1 ? cards[0] : { type: 'group', layout, cards } };
+      },
+      toModelOutput: ({ output }) => ({ type: 'json', value: (output as { data: any }).data }),
+    });
+    catalog.push('- show: put live widget cards in the chat');
+  }
+
   const mcp = mcpTools(config);
 
   const system = (extra: string[]) => [
