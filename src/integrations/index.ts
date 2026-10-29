@@ -5,9 +5,10 @@ import glances from './glances.ts';
 import homeassistant from './homeassistant.ts';
 import http from './http.ts';
 import qbittorrent from './qbittorrent.ts';
+import rgbcontrol from './rgbcontrol.ts';
 import tautulli from './tautulli.ts';
 import weather from './weather.ts';
 
 export const registry: Record<string, Integration> = Object.fromEntries(
-  [aimonitor, glances, homeassistant, http, qbittorrent, tautulli, weather].map(i => [i.type, i as Integration]),
+  [aimonitor, glances, homeassistant, http, qbittorrent, rgbcontrol, tautulli, weather].map(i => [i.type, i as Integration]),
 );

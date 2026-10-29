@@ -4,7 +4,7 @@ import {
   Activity, ArrowUpRight, ChevronLeft, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Sparkles, Wifi,
   type LucideIcon,
 } from 'lucide-react';
-import { Fragment, useRef, useState, type ReactNode } from 'react';
+import { Fragment, lazy, Suspense, useRef, useState, type ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import type { Card as CardT, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
+import type { Card as CardT, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
 const ICONS: Record<string, LucideIcon> = {
   cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
@@ -121,9 +121,9 @@ function ServiceRow({ s }: { s: StatusCard['items'][number] }) {
       <AppIcon src={s.icon} name={s.name} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">{s.name}</div>
-        <div className={cn('truncate text-xs tabular', s.ok ? 'text-muted-foreground' : 'text-bad')}>{s.ok ? (s.ms != null ? `${s.ms} ms` : 'Up') : s.detail}</div>
+        <div className={cn('truncate text-xs tabular', s.ok || s.quiet ? 'text-muted-foreground' : 'text-bad')}>{s.ok ? (s.ms != null ? `${s.ms} ms` : 'Up') : s.quiet ? 'Offline' : s.detail}</div>
       </div>
-      <span className={cn('dot', s.ok ? 'dot-good' : 'dot-bad')} />
+      <span className={cn('dot', s.ok ? 'dot-good' : s.quiet ? 'bg-muted-foreground/40' : 'dot-bad')} />
     </a>
   );
 }
@@ -298,8 +298,39 @@ function Controls({ card, run }: { card: ControlsCard; run?: RunAction }) {
 }
 
 /** The body of a card, without its frame. */
+// Showcase visuals load on demand, so a page without them never downloads them.
+const VISUALS: Record<string, React.LazyExoticComponent<(p: { data: any }) => ReactNode>> = {
+  'pc-case': lazy(() => import('./visuals/pc-case.tsx')),
+};
+
+/** The visual on the left, its numbers stacked on the right: big values, quiet labels, nothing else. */
+function Showcase({ card }: { card: ShowcaseCard }) {
+  const V = VISUALS[card.visual.kind];
+  return (
+    <div className="grid items-center gap-x-6 gap-y-4 @md/card:grid-cols-[minmax(0,1fr)_150px]">
+      <div className="min-w-0">
+        {V ? <Suspense fallback={<Skeleton className="aspect-square w-full rounded-xl" />}><V data={card.visual.data} /></Suspense>
+          : card.visual.src ? <img src={card.visual.src} alt="" className="w-full rounded-xl object-cover" /> : null}
+      </div>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-4 @md/card:grid-cols-1 @md/card:gap-y-5">
+        {card.items.map(s => (
+          <div key={s.label} className="min-w-0">
+            <dt className="text-[12px] text-muted-foreground">{s.label}</dt>
+            <dd className={cn('metric mt-0.5 truncate text-[26px] leading-none', toneText[s.tone ?? 'neutral'])}>
+              {s.value}{s.unit && <span className="ml-0.5 text-[14px] font-medium text-muted-foreground">{s.unit}</span>}
+            </dd>
+            {s.sub && <div className="mt-1 truncate text-[12px] text-muted-foreground">{s.sub}</div>}
+          </div>
+        ))}
+        {card.caption && <div className="col-span-full text-[12px] text-muted-foreground">{card.caption}</div>}
+      </dl>
+    </div>
+  );
+}
+
 export function CardBody({ card, run }: { card: CardT; run?: RunAction }): ReactNode {
   switch (card.type) {
+    case 'showcase': return <Showcase card={card} />;
     case 'stats': return <Stats card={card} />;
     case 'list': return <List card={card} />;
     case 'status': return <Status card={card} />;
@@ -445,8 +476,8 @@ export function MiniRing({ s }: { s: Summary }) {
   const color = s.tone === 'bad' ? 'var(--bad)' : s.tone === 'warn' ? 'var(--warn)' : s.tone === 'accent' ? 'var(--primary)' : 'var(--good)';
   const n = String(s.ring ?? s.value).replace(/%$/, '');
   return (
-    <div className="flex flex-col items-center" title={[s.label, s.value, s.detail].filter(Boolean).join(' · ')}>
-      <div className="relative size-[38px]">
+    <div className="group/ring relative flex flex-col items-center outline-none" tabIndex={0} aria-label={[s.label, s.value, s.detail].filter(Boolean).join(', ')}>
+      <div className="relative size-[38px] transition-transform duration-300 ease-out group-hover/ring:scale-110">
         <svg viewBox="0 0 38 38" className="size-full rotate-[135deg]" aria-hidden>
           <circle cx="19" cy="19" r={r} fill="none" stroke="currentColor" strokeOpacity=".16" strokeWidth="3.2" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} />
           <circle cx="19" cy="19" r={r} fill="none" stroke={color} strokeWidth="3.2" strokeLinecap="round"
@@ -455,6 +486,11 @@ export function MiniRing({ s }: { s: Summary }) {
         <div className="metric absolute inset-0 grid place-items-center text-[11px]">{n.length > 4 ? <Icon name={s.icon} className="size-3.5" /> : n}</div>
       </div>
       <div className="-mt-1 max-w-[56px] truncate text-[10px] font-medium text-muted-foreground">{s.label}</div>
+      <div className="pointer-events-none invisible absolute top-full right-1/2 z-30 w-[260px] translate-x-1/2 pt-3 opacity-0 transition-all duration-300 ease-out
+        -translate-y-1 scale-95 group-hover/ring:visible group-hover/ring:translate-y-0 group-hover/ring:scale-100 group-hover/ring:opacity-100
+        group-focus-visible/ring:visible group-focus-visible/ring:opacity-100 group-focus-visible/ring:scale-100 glass-pop">
+        <SummaryTile s={s} />
+      </div>
     </div>
   );
 }

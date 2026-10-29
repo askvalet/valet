@@ -160,7 +160,7 @@
 .has-wallpaper [data-slot="card"],
 .has-wallpaper .glass {
   position: relative; background: var(--card); border-color: var(--glass-edge); box-shadow: var(--glass-shadow);
-  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
 }
 /* the sheen: light catching the top edge of the pane */
 .has-wallpaper [data-slot="card"]::before {
@@ -170,13 +170,22 @@
 .has-wallpaper [data-slot="sidebar-inset"] { background: transparent !important; box-shadow: none !important; }
 .has-wallpaper [data-slot="popover-content"], .has-wallpaper [data-slot="select-content"],
 .has-wallpaper [data-slot="dialog-content"], .has-wallpaper [data-slot="sheet-content"] {
-  backdrop-filter: blur(40px) saturate(1.8); -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  backdrop-filter: blur(40px) saturate(1.8);
   background: rgb(28 28 31 / 0.72); border-color: var(--glass-edge);
 }
-.glass-bar { background: rgb(255 255 255 / .75); backdrop-filter: blur(40px) saturate(1.6); -webkit-backdrop-filter: blur(40px) saturate(1.6); }
-.has-wallpaper .glass-bar, .dark .glass-bar { background: rgb(22 22 26 / 0.62); backdrop-filter: blur(56px) saturate(1.8); -webkit-backdrop-filter: blur(56px) saturate(1.8);
-  border-color: var(--glass-edge); box-shadow: inset 0 1px 0 rgb(255 255 255 / .1), 0 10px 30px -12px rgb(0 0 0 / .6); }
-.has-wallpaper .glass-round { background: rgb(40 40 46 / .5); backdrop-filter: blur(40px) saturate(1.7); -webkit-backdrop-filter: blur(40px) saturate(1.7); }
+/* Floating chrome (top bars). The frost lives on ::before so things inside (the ring popovers) can blur the page
+   themselves; a backdrop-filter on the bar itself would trap them. Values go through variables because the CSS
+   minifier otherwise keeps only the -webkit- form, which Chrome ignores. */
+:root { --bar-blur: blur(40px) saturate(1.6); --bar-bg: rgb(255 255 255 / .75); }
+.has-wallpaper, .dark { --bar-blur: blur(60px) saturate(1.8); --bar-bg: rgb(22 22 26 / .66); }
+.glass-bar { isolation: isolate; border-color: var(--glass-edge, var(--border));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .1), 0 10px 30px -12px rgb(0 0 0 / .6); }
+.glass-bar::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--bar-bg);
+  backdrop-filter: var(--bar-blur); }
+.glass-pop { --pop-blur: blur(60px) saturate(1.8); }
+.glass-pop [data-slot="card"] { background: rgb(24 24 28 / .8) !important; backdrop-filter: var(--pop-blur) !important; }
+:root { --round-blur: blur(40px) saturate(1.7); }
+.has-wallpaper .glass-round { background: rgb(40 40 46 / .5); backdrop-filter: var(--round-blur); }
 .has-wallpaper .wall-text { text-shadow: 0 1px 12px rgb(0 0 0 / 0.35); }
 
 /* glossy icon tile: a small rounded square with a gradient body and a lit top edge */
@@ -188,7 +197,7 @@
 
 /* round glass controls (rail buttons, chips, the phone nav) */
 .glass-round { background: rgb(255 255 255 / .1); border: 1px solid rgb(255 255 255 / .14);
-  backdrop-filter: blur(24px) saturate(1.6); -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .15), 0 8px 20px -10px rgb(0 0 0 / .5); }
 :root:not(.dark) .glass-round { background: rgb(255 255 255 / .7); border-color: rgb(0 0 0 / .06); }
 

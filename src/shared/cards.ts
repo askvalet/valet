@@ -24,6 +24,7 @@ interface Base {
   note?: string;          // small text in the card header, e.g. "↓ 4 MB/s"
   summary?: Summary;
   summaries?: Summary[];  // several headline tiles from one card (e.g. CPU, memory, network, each disk)
+  wide?: boolean;         // take two columns (and two rows) on wide screens
 }
 
 export interface StatItem {
@@ -68,7 +69,7 @@ export interface MediaCard extends Base { type: 'media'; items: MediaItem[]; emp
 export interface ShelfItem { title: string; subtitle?: string; image?: string; badge?: string; href?: string }
 export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string }
 
-export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string; group?: string }
+export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string; group?: string; quiet?: boolean }   // quiet: being down is expected, never an alert
 export interface StatusCard extends Base { type: 'status'; items: StatusItem[] }
 
 export interface ChartCard extends Base {
@@ -93,13 +94,22 @@ export interface Control {
 }
 export interface ControlsCard extends Base { type: 'controls'; items: Control[] }
 
+/** A hero visual with its numbers beside it: a device, a room, a camera. `visual.kind` picks a renderer
+ *  from the web app's visuals (e.g. "pc-case"), or "image" for a plain picture. */
+export interface ShowcaseCard extends Base {
+  type: 'showcase';
+  visual: { kind: string; src?: string; data?: unknown };
+  items: StatItem[];
+  caption?: string;       // a quiet line under the numbers, e.g. "Lights · white at 100%"
+}
+
 export interface KVCard extends Base { type: 'kv'; rows: [string, string][] }
 
 export interface TextCard extends Base { type: 'text'; text: string; tone?: Tone }
 
 export interface GroupCard extends Base { type: 'group'; cards: Card[]; layout?: 'row' | 'column' }
 
-export type Card = StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
+export type Card = ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
 
 /** One widget slot's live state, as pushed to the browser. */
 export interface WidgetState { key: string; card?: Card; error?: string; at: number; source?: string }

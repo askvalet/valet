@@ -13,6 +13,10 @@ assistant:
   access: { default: read, downloads: control }
 
 integrations:
+  weather:
+    type: weather                  # Open-Meteo, no key needed
+    latitude: 43.65
+    longitude: -79.38
   system:
     type: glances
     url: http://glances:61208
@@ -48,6 +52,11 @@ mcp:
     access: read
 
 # What the homepage shows, top to bottom. Widgets are "<integration>.<widget>".
+# Small ring gauges in the top bar; hover one for its live graph. Any widget with headline numbers works.
+menubar: [system.tiles]
+# A ring beside the clock: where the temperature sits between today's low and high.
+weather: weather.now
+
 layout:
   - title: Now
     widgets: [system.overview, downloads.active]

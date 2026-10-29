@@ -1,0 +1,96 @@
+/* The 3D case, ported from rgb-control's lighting page. Everything is scoped under .pcx. */
+/* ---------------------------------------------------------------- 3D case */
+.pcx .world { position: absolute; left: 0; top: 0; width: 720px; height: 700px; transform-origin: 0 0; perspective: 1250px; perspective-origin: 46% 50%; }
+.pcx .cam { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-style: preserve-3d; transform: rotateX(4deg) rotateY(19deg); }
+.pcx .f { position: absolute; transform-style: preserve-3d; }
+.pcx .f.backwall { background: linear-gradient(180deg, #13161c, #0c0e12); box-shadow: inset 0 0 90px rgba(0,0,0,.85); }
+.pcx .f.ceiling { background: linear-gradient(180deg, #0a0b0e, #121419); box-shadow: inset 0 0 50px rgba(0,0,0,.7); }
+.pcx .f.floor { background: linear-gradient(0deg, #15161a, #0b0c0f); box-shadow: inset 0 0 60px rgba(0,0,0,.8); }
+.pcx .f.mesh { background: #0c0d10 radial-gradient(circle, #24272e 1.5px, transparent 1.8px) 0 0 / 9px 9px; box-shadow: inset 0 0 70px rgba(0,0,0,.9); }
+.pcx .f.pane { pointer-events: none; background: linear-gradient(112deg, rgba(255,255,255,.065) 0 11%, transparent 11.4% 54%, rgba(255,255,255,.03) 54.4% 61%, transparent 61.4%); box-shadow: inset 2px 0 0 rgba(255,255,255,.14), inset 0 2px 0 rgba(255,255,255,.06); }
+.pcx .spill { pointer-events: none; opacity: calc(var(--lo, 0) * .32); background: radial-gradient(ellipse 55% 75% at 50% 0%, var(--lcs, transparent), transparent 72%); }
+.pcx .spill.round { background: radial-gradient(closest-side, var(--lcs, transparent), transparent); }
+.pcx .m-off.spill { opacity: 0; }
+.pcx .boot .light, .pcx .boot .spill { opacity: 0 !important; }
+.pcx .light, .pcx .spill { transition: opacity .9s ease; }
+
+.pcx .part { cursor: pointer; }
+
+.pcx .light { opacity: var(--lo, 1); }
+.pcx .m-off .light { opacity: 0 !important; }
+.pcx .m-breathe .light { animation: pcx-breathe var(--dur, 4s) ease-in-out infinite; }
+@keyframes pcx-breathe { 0%, 100% { opacity: var(--lo); } 50% { opacity: calc(var(--lo) * .08); } }
+.pcx .m-cycle .light, .pcx .m-rainbow .lin { animation: pcx-hue var(--dur, 4s) linear infinite; }
+.pcx .m-rainbow .spin, .pcx .m-comet .spin { animation: pcx-spin var(--dur, 4s) linear infinite; }
+@keyframes pcx-hue { to { filter: hue-rotate(360deg); } }
+@keyframes pcx-spin { to { transform: rotate(360deg); } }
+
+/* radiator + fans on the ceiling, seen from below */
+.pcx .rad { position: absolute; border-radius: 8px; background: repeating-linear-gradient(90deg, #121317 0 3px, #0b0c0e 3px 5px); box-shadow: inset 0 0 0 2px #1d1f24; }
+.pcx .fanframe { position: absolute; border-radius: 16px; background: #0d0e11; box-shadow: inset 0 0 0 2px #22252b, 0 0 0 1px #050506; }
+.pcx .fan { position: absolute; border-radius: 50%; }
+.pcx .fan > i { position: absolute; border-radius: 50%; display: block; }
+.pcx .fan .glow { inset: -6%; background: var(--lc); filter: blur(18px); opacity: calc(var(--lo) * .7); }
+.pcx .fan .r1, .pcx .fan .r2, .pcx .fan .r3 { background: var(--lc); }
+.pcx .fan .r1 { inset: 0; -webkit-mask: radial-gradient(farthest-side, transparent 83%, #000 85%, #000 98%, transparent); mask: radial-gradient(farthest-side, transparent 83%, #000 85%, #000 98%, transparent); }
+.pcx .fan .r2 { inset: 7%; -webkit-mask: radial-gradient(farthest-side, transparent 88%, #000 91%, transparent 99%); mask: radial-gradient(farthest-side, transparent 88%, #000 91%, transparent 99%); }
+.pcx .fan .r2.light { opacity: calc(var(--lo) * .55); }
+.pcx .fan .r3 { inset: 14%; -webkit-mask: radial-gradient(farthest-side, transparent 88%, #000 92%, transparent 99%); mask: radial-gradient(farthest-side, transparent 88%, #000 92%, transparent 99%); }
+.pcx .fan .r3.light { opacity: calc(var(--lo) * .28); }
+.pcx .fan .blades { inset: 21%; background: radial-gradient(circle, transparent 38%, rgba(0,0,0,.55)), repeating-conic-gradient(from 8deg, #1f2227 0 21deg, #0d0e11 21deg 40deg); animation: pcx-spin 1.6s linear infinite; }
+.pcx .fan .hub { inset: 39%; background: radial-gradient(circle at 36% 30%, #9a9ea6, #3b3e45 45%, #15171a 75%); box-shadow: 0 0 0 2px #0a0b0d; }
+.pcx .lbar { position: absolute; height: 10px; background: var(--lb); clip-path: polygon(0 50%, 5% 0, 95% 0, 100% 50%, 95% 100%, 5% 100%); }
+.pcx .lbar.soft { filter: blur(9px); height: 14px; opacity: calc(var(--lo) * .65); }
+
+/* motherboard */
+.pcx .mobo { border-radius: 6px; background: linear-gradient(165deg, #1a1c21, #101115 60%, #0d0e11); box-shadow: inset 0 0 0 1px #2a2d34, 0 0 40px rgba(0,0,0,.6); overflow: hidden; }
+.pcx .mobo > i { position: absolute; display: block; }
+.pcx .mobo .io { left: 10px; top: 10px; width: 210px; height: 30px; border-radius: 6px; background: linear-gradient(#30333a, #1c1e23); box-shadow: inset 0 0 0 1px #3a3d45; }
+.pcx .mobo .vrm { left: 10px; top: 46px; width: 30px; height: 150px; border-radius: 6px; background: linear-gradient(90deg, #1c1e23, #30333a); box-shadow: inset 0 0 0 1px #3a3d45; }
+.pcx .mobo .m2 { left: 254px; top: 22px; width: 112px; height: 92px; border-radius: 6px; background: linear-gradient(140deg, #8a8e95, #5d6168 55%, #72767d); box-shadow: inset 0 0 0 1px rgba(255,255,255,.25), 0 4px 10px rgba(0,0,0,.5); }
+.pcx .mobo .m2::after { content: ""; position: absolute; inset: 10px; border: 1px solid rgba(40,44,52,.45); border-radius: 0 0 60px 0; background: linear-gradient(90deg, transparent 49.5%, rgba(40,44,52,.4) 50%, transparent 50.5%), linear-gradient(0deg, transparent 49.5%, rgba(40,44,52,.4) 50%, transparent 50.5%); }
+.pcx .mobo .chip { left: 250px; top: 168px; width: 120px; height: 66px; border-radius: 6px; background: linear-gradient(160deg, #26292f, #15171b); box-shadow: inset 0 0 0 1px #34373e; }
+.pcx .mobo .chip::after { content: ""; position: absolute; left: 14px; right: 14px; top: 26px; height: 1px; background: #4a4e57; box-shadow: 0 6px 0 #3a3d44, 0 12px 0 #2e3137; }
+.pcx .mobo .slot { left: 56px; width: 310px; height: 10px; border-radius: 2px; background: #08090b; box-shadow: 0 0 0 2px #8f949c, 0 0 0 3px #08090b; }
+.pcx .mobo .atx { right: 8px; top: 120px; width: 14px; height: 72px; border-radius: 2px; background: repeating-linear-gradient(0deg, #0a0b0d 0 5px, #2a2d33 5px 6px); }
+.pcx .mobo .screw { width: 7px; height: 7px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #9aa0a8, #3a3d44); }
+.pcx .grommets { border-radius: 4px; background: repeating-linear-gradient(90deg, #050607 0 10px, transparent 10px 26px); }
+.pcx .f.braid { pointer-events: none; overflow: visible; }
+
+/* RAM: lit edge facing you + the stick's side */
+.pcx .ram { border-radius: 2px; }
+.pcx .ram .bar { position: absolute; inset: 0; border-radius: 2px; background: var(--lb); }
+.pcx .ram .glow { position: absolute; inset: -8px -12px; background: var(--lb); filter: blur(11px); opacity: calc(var(--lo) * .55); }
+.pcx .ramside { background: linear-gradient(180deg, #2b2e35 0 30%, #1b1d22 30% 100%); box-shadow: inset 0 0 0 1px #3a3d45; }
+.pcx .ramside::after { content: ""; position: absolute; left: 0; right: 0; top: 30%; height: 2px; background: linear-gradient(90deg, #555a63, #b5b9c0, #555a63); }
+.pcx .ramside .wash { position: absolute; inset: 0 0 70% 0; background: var(--lb); opacity: calc(var(--lo) * .35); }
+
+/* pump head */
+.pcx .pump { border-radius: 10px; background: linear-gradient(160deg, #2a2c31, #141518); box-shadow: inset 0 0 0 1px #3a3d44; }
+.pcx .pump .glow { position: absolute; inset: -14px; border-radius: 20px; background: var(--lc); filter: blur(18px); opacity: calc(var(--lo) * .4); }
+.pcx .pump .edge { position: absolute; inset: 0; border-radius: 10px; padding: 2.5px; background: var(--lc); -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+.pcx .pump .scr { position: absolute; inset: 7px; border-radius: 6px; overflow: hidden; background: #000; }
+.pcx .pump .scr img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pcx .pump .scr::after { content: ""; position: absolute; inset: 0; background: linear-gradient(125deg, rgba(255,255,255,.14) 0 22%, transparent 22.5%); }
+.pcx .pumpside { border-radius: 2px; background: linear-gradient(90deg, #1b1c20, #33363c 40%, #1e2024); }
+.pcx .pumptop { border-radius: 2px; background: linear-gradient(180deg, #3a3d43, #24262b); }
+
+/* GPU */
+.pcx .gpuedge { border-radius: 3px; background: linear-gradient(180deg, #2b2d32, #141518); box-shadow: inset 0 0 0 1px #3a3d44, 0 26px 40px rgba(0,0,0,.65); }
+.pcx .gpuedge .word { position: absolute; left: 14px; top: 6px; font: italic 700 20px/1 "Geist Variable", sans-serif; letter-spacing: 4px; background: var(--lb); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.pcx .gpuedge .glow { position: absolute; left: 0; width: 160px; top: -12px; bottom: -12px; background: var(--lb); filter: blur(18px); opacity: calc(var(--lo) * .45); }
+.pcx .gpuedge::after { content: ""; position: absolute; left: 170px; right: 12px; top: 10px; height: 12px; border-radius: 2px; background: repeating-linear-gradient(90deg, #0a0b0d 0 5px, #24262b 5px 8px); }
+.pcx .gputop { border-radius: 4px; background: linear-gradient(90deg, #1d1f23, #2a2c31 30%, #1a1b1f 70%, #24262a); box-shadow: inset 0 0 0 1px #34373e; }
+.pcx .gputop .logo { position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px; transform: rotate(45deg); border: 2.5px solid transparent; background: linear-gradient(#1f2125, #1f2125) padding-box, var(--lb) border-box; }
+.pcx .gputop .tube2 { position: absolute; right: 30px; top: 20%; width: 90px; height: 16px; border-radius: 8px; background: #121316; box-shadow: 0 34px 0 #121316; }
+.pcx .gpuend { border-radius: 2px; background: linear-gradient(90deg, #17181c, #2c2e33); }
+
+/* plain black floor fans */
+.pcx .bfan { position: absolute; border-radius: 14px; background: #0f1013; box-shadow: inset 0 0 0 2px #24272d; }
+.pcx .bfan::before { content: ""; position: absolute; inset: 7%; border-radius: 50%; background: radial-gradient(circle, #8d9199 0 7%, #2b2e34 8% 13%, transparent 14%), repeating-conic-gradient(from 0deg, #1b1d21 0 25deg, #0c0d0f 25deg 40deg); animation: pcx-spin 2.4s linear infinite; }
+
+.pcx .strip { border-radius: 3px; background: #121316; }
+.pcx .strip .bar { position: absolute; inset: 0; border-radius: 3px; background: #fff3d9; }
+.pcx .strip .glow { position: absolute; inset: -10px -14px; background: #fff3d9; filter: blur(13px); opacity: .5; }
+.pcx .part { cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .pcx * { animation: none !important; } }

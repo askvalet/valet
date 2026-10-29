@@ -60,7 +60,7 @@ const greet = (h: number) => h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h 
 /** One line that says whether anything needs attention. */
 function pulse(state: Record<string, WidgetState>) {
   const items = Object.values(state).map(s => s.card).filter((c): c is StatusCard => c?.type === 'status').flatMap(c => c.items);
-  const down = items.filter(i => !i.ok), errors = Object.values(state).filter(s => s.error);
+  const down = items.filter(i => !i.ok && !i.quiet), errors = Object.values(state).filter(s => s.error);
   if (down.length) return { text: `${down.map(d => d.name).join(', ')} ${down.length === 1 ? 'is' : 'are'} down`, tone: 'text-bad' };
   if (errors.length) return { text: `${errors.length} widget${errors.length > 1 ? 's' : ''} can't reach ${errors.length > 1 ? 'their services' : 'its service'}`, tone: 'text-warn' };
   if (items.length) return { text: `Everything's running. All ${items.length} services are up.`, tone: 'text-muted-foreground' };
@@ -153,14 +153,14 @@ export function App() {
       {/* top-right: time, and the theme switch when there's no wallpaper */}
       <div className="wall-text fixed top-5 right-5 z-20 flex items-center gap-4">
         {!!page?.menubar?.length && (
-          <div className="glass-bar hidden items-center gap-3 rounded-full border px-4 py-1.5 lg:flex">
+          <div className="glass-bar relative hidden items-center gap-3 rounded-full border px-4 py-1.5 lg:flex">
             {page.menubar.flatMap(key => {
               const c = state[key]?.card;
               return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <MiniRing key={`${key}${j}`} s={t} />);
             })}
           </div>
         )}
-        <div className="glass-bar hidden items-center gap-4 rounded-full border py-1.5 pr-5 pl-2 sm:flex">
+        <div className="glass-bar relative hidden items-center gap-4 rounded-full border py-1.5 pr-5 pl-2 sm:flex">
           {page?.weather && state[page.weather]?.card?.summary && <WeatherRing s={state[page.weather]!.card!.summary!} />}
           <div className="text-right leading-tight">
           <div className="text-sm font-semibold tabular">{now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</div>
@@ -221,14 +221,28 @@ export function App() {
                 </div>
               )
               : (
-                <div className="grid items-start gap-4" style={{ gridTemplateColumns: sec.columns ? `repeat(${sec.columns}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
-                  {sec.widgets.filter(key => !isEmpty(state[key]?.card)).map(key => {
+                (() => {
+                  const keys = sec.widgets.filter(key => !isEmpty(state[key]?.card));
+                  const widget = (key: string) => {
                     const s = state[key];
                     return <Widget key={key} card={s?.card} title={page?.widgets[key]?.title}
                       status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
                       run={(action, args) => runAction(key, action, args)} />;
-                  })}
-                </div>
+                  };
+                  // a wide card (e.g. the 3D desktop) takes two thirds; the rest stack beside it
+                  const hero = !sec.columns && keys.find(k => state[k]?.card?.wide);
+                  if (hero) return (
+                    <div className="grid items-start gap-4 @5xl/main:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                      {widget(hero)}
+                      <div className="grid gap-4">{keys.filter(k => k !== hero).map(widget)}</div>
+                    </div>
+                  );
+                  return (
+                    <div className="grid items-start gap-4" style={{ gridTemplateColumns: sec.columns ? `repeat(${sec.columns}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
+                      {keys.map(widget)}
+                    </div>
+                  );
+                })()
               )}
           </section>
         ))}
