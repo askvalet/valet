@@ -1,5 +1,5 @@
 import { ArrowUp, LayoutGrid, Moon, Sparkles, Sun } from 'lucide-react';
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
@@ -107,6 +107,15 @@ export function App() {
   const [chat, setChat] = useState<{ text: string; n: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const wide = useWide();
+  // At the top of the page the island floats level with the top bar; scrolled, it tucks up into a notch.
+  const bar = useRef<HTMLDivElement>(null);
+  const [atTop, setAtTop] = useState(true), [lift, setLift] = useState(0);
+  useEffect(() => { const on = () => setAtTop(scrollY < 24); on(); addEventListener('scroll', on, { passive: true }); return () => removeEventListener('scroll', on); }, []);
+  useLayoutEffect(() => {
+    const el = bar.current; if (!el) return;
+    const measure = () => { const r = el.getBoundingClientRect(); setLift(Math.max(0, r.top + scrollY + r.height / 2 - 20)); };
+    measure(); const ro = new ResizeObserver(measure); ro.observe(el); return () => ro.disconnect();
+  }, [page]);
   const [draft, setDraft] = useState('');
   const [query, setQuery] = useState('');
 
@@ -147,7 +156,7 @@ export function App() {
       )}
 
       {/* top-left: the home's name */}
-      <div className="glass-bar fixed top-5 left-5 z-20 hidden items-center gap-3 rounded-full border py-1.5 pr-5 pl-1.5 md:flex">
+      <div className="glass-bar absolute top-5 left-5 z-20 hidden items-center gap-3 rounded-full border py-1.5 pr-5 pl-1.5 md:flex">
         <span className="icon-tile size-11! rounded-full!">
           <svg viewBox="0 0 24 24" className="size-[18px]!" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" aria-hidden><path d="M5 19V10l7-5 7 5v9" /></svg>
         </span>
@@ -165,21 +174,22 @@ export function App() {
 
       {/* top-right: the menubar rings, weather and time (and the theme switch when there's no wallpaper).
           Below lg it sits at the top of the page instead, centred and wrapping, so phones see it too. */}
-      {page?.island && <Island live={live} idle={page.island.idle} docked={wide} />}
-      <div className="wall-text z-20 flex flex-wrap items-center justify-center gap-2 px-3 pt-4 xl:fixed xl:top-5 xl:right-5 xl:flex-nowrap xl:gap-4 xl:p-0">
+      {page?.island && <Island live={live} idle={page.island.idle} docked={wide} lift={atTop ? lift : 0} />}
+      {/* phones: one row, condensed; wide screens: top right, level with the island */}
+      <div ref={bar} className="wall-text z-20 flex items-center justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:right-5 xl:gap-4 xl:p-0">
         {!!page?.menubar?.length && (
-          <div className="glass-bar relative flex items-center gap-2 rounded-full border px-3 py-1.5 sm:gap-3 sm:px-4">
+          <div className="glass-bar relative flex shrink items-center gap-1 rounded-full border px-2 py-1 sm:gap-3 sm:px-4 sm:py-1.5">
             {page.menubar.flatMap(key => {
               const c = state[key]?.card;
               return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <MiniRing key={`${key}${j}`} s={t} />);
             })}
           </div>
         )}
-        <div className="glass-bar relative flex items-center gap-4 rounded-full border py-1.5 pr-5 pl-2">
+        <div className="glass-bar relative flex shrink-0 items-center gap-2.5 rounded-full border py-1 pr-3.5 pl-1.5 sm:gap-4 sm:py-1.5 sm:pr-5 sm:pl-2">
           {page?.weather && state[page.weather]?.card?.type === 'forecast' && <WeatherRing card={state[page.weather]!.card as ForecastCard} />}
           <div className="text-right leading-tight">
           <div className="text-sm font-semibold tabular">{now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</div>
-          <div className="text-xs text-muted-foreground">{now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+          <div className="hidden text-xs text-muted-foreground sm:block">{now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
           </div>
         </div>
         {!wall && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={theme.toggle}>{theme.dark ? <Sun /> : <Moon />}</RoundButton>}

@@ -178,7 +178,7 @@ function NowPlaying({ m, compact }: { m: MediaItem; compact?: boolean }) {
           <div className="truncate text-xl font-semibold tracking-tight @md/np:text-2xl">{m.title}</div>
           {m.subtitle && <div className="truncate text-[15px] text-white/75">{m.subtitle}</div>}
           <div className="mt-4 flex items-center gap-3">
-            {m.state === 'paused' ? <Pause className="size-3.5 shrink-0 fill-white" /> : <Play className="size-3.5 shrink-0 fill-white" />}
+            {m.state === 'paused' ? <Pause className="size-3.5 shrink-0 fill-white" /> : m.icon ? <Icon name={m.icon} className="size-3.5 shrink-0" /> : <Play className="size-3.5 shrink-0 fill-white" />}
             <div className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/25">
               <div className="h-full rounded-full bg-white transition-[width] duration-1000" style={{ width: `${Math.round((m.pct ?? 0) * 100)}%` }} />
             </div>
@@ -498,7 +498,7 @@ export function MiniRing({ s }: { s: Summary }) {
   const n = String(s.ring ?? s.value).replace(/%$/, '');
   return (
     <div className="group/ring relative flex flex-col items-center outline-none" tabIndex={0} aria-label={[s.label, s.value, s.detail].filter(Boolean).join(', ')}>
-      <div className="relative size-[38px] transition-transform duration-300 ease-out group-hover/ring:scale-110">
+      <div className="relative size-[32px] transition-transform duration-300 ease-out group-hover/ring:scale-110 sm:size-[38px]">
         <svg viewBox="0 0 38 38" className="size-full rotate-[135deg]" aria-hidden>
           <circle cx="19" cy="19" r={r} fill="none" stroke="currentColor" strokeOpacity=".16" strokeWidth="3.2" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} />
           <circle cx="19" cy="19" r={r} fill="none" stroke={color} strokeWidth="3.2" strokeLinecap="round"
@@ -506,7 +506,7 @@ export function MiniRing({ s }: { s: Summary }) {
         </svg>
         <div className="metric absolute inset-0 grid place-items-center text-[11px]">{n.length > 4 ? <Icon name={s.icon} className="size-3.5" /> : n}</div>
       </div>
-      <div className="-mt-1 max-w-[56px] truncate text-[10px] font-medium text-muted-foreground">{s.label}</div>
+      <div className="-mt-1 hidden max-w-[56px] truncate text-[10px] font-medium text-muted-foreground sm:block">{s.label}</div>
       <Popover group="ring" className="right-1/2 w-[260px] translate-x-1/2"><SummaryTile s={s} /></Popover>
     </div>
   );
@@ -518,8 +518,8 @@ export function WeatherRing({ card }: { card: ForecastCard }) {
   const r = 17, c = 2 * Math.PI * r, arc = c * 0.75, pct = Math.max(0, Math.min(1, s.pct ?? 0.5));
   const a = (135 + 270 * pct) * Math.PI / 180, mx = 21 + r * Math.cos(a), my = 21 + r * Math.sin(a);
   return (
-    <div className="group/wx relative flex items-center gap-2.5 outline-none" tabIndex={0} aria-label={`${s.value}, ${s.label}. ${s.detail}`}>
-      <div className="relative size-[42px]">
+    <div className="group/wx relative flex items-center gap-2 outline-none sm:gap-2.5" tabIndex={0} aria-label={`${s.value}, ${s.label}. ${s.detail}`}>
+      <div className="relative size-[32px] sm:size-[42px]">
         <svg viewBox="0 0 42 42" className="size-full" aria-hidden>
           <defs><linearGradient id="wx" x1="0" y1="1" x2="1" y2="1"><stop offset="0" stopColor="#64d2ff" /><stop offset=".55" stopColor="#ffd60a" /><stop offset="1" stopColor="#ff9f0a" /></linearGradient></defs>
           <circle cx="21" cy="21" r={r} fill="none" stroke="url(#wx)" strokeOpacity=".9" strokeWidth="3" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} transform="rotate(135 21 21)" />
@@ -529,7 +529,7 @@ export function WeatherRing({ card }: { card: ForecastCard }) {
       </div>
       <div className="text-left leading-tight">
         <div className="text-sm font-semibold tabular">{s.value}</div>
-        <div className="max-w-[90px] truncate text-xs text-muted-foreground">{s.label}</div>
+        <div className="hidden max-w-[90px] truncate text-xs text-muted-foreground sm:block">{s.label}</div>
       </div>
       <Popover group="wx" className="right-[-8px] w-[440px]"><Forecast card={card} /></Popover>
     </div>

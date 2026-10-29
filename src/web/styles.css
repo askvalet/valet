@@ -205,9 +205,10 @@
 .no-scrollbar { scrollbar-width: none; } .no-scrollbar::-webkit-scrollbar { display: none; }
 
 /* ── The island: black, springy. It animates between measured sizes. ── */
-.island { transition: width .5s cubic-bezier(.32, 1.35, .45, 1), height .5s cubic-bezier(.32, 1.35, .45, 1), border-radius .5s ease;
+.island { transition: width .55s cubic-bezier(.22, 1.2, .36, 1), height .55s cubic-bezier(.22, 1.2, .36, 1), border-radius .55s cubic-bezier(.22, 1.2, .36, 1);
   box-shadow: 0 10px 30px -10px rgb(0 0 0 / .7), inset 0 0 0 1px rgb(255 255 255 / .06); }
 /* hanging from the top edge like a Mac notch: square on top, round below, never shorter than the empty notch */
+.island-dock { transition: transform .5s cubic-bezier(.22, 1.2, .36, 1); }
 .island-docked { border-radius: 0 0 20px 20px; min-width: 170px; min-height: 30px; box-shadow: 0 10px 30px -10px rgb(0 0 0 / .7); }
 .island-docked.island-open { border-radius: 0 0 30px 30px; }
 .island:not(.island-docked).island-open { border-radius: 30px; }

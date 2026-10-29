@@ -77,6 +77,7 @@ export interface MediaItem {
   detail?: string;        // e.g. "4K · direct play · 36 Mbps"
   tags?: string[];        // small labels shown as chips, e.g. ["4K", "Transcode", "40 Mbps"]
   remaining?: string;     // e.g. "41 min left"
+  icon?: string;          // the glyph by the progress bar (default: play/pause), e.g. download
 }
 export interface MediaCard extends Base { type: 'media'; items: MediaItem[]; empty?: string }
 
