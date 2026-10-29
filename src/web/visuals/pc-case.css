@@ -1,9 +1,4 @@
 /* The 3D case. Scoped under .pcx. Surfaces are matte black steel; light comes only from the parts that are lit. */
-.pcx .world { position: absolute; left: 0; top: 0; width: 720px; height: 680px; transform-origin: 0 0; perspective: 1300px; perspective-origin: 50% 50%; }
-.pcx .cam { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-style: preserve-3d; }
-.pcx .f { position: absolute; transform-style: preserve-3d; }
-.pcx .f > i, .pcx .f > b, .pcx .f > span, .pcx .f > div, .pcx .f > svg, .pcx .part > i { position: absolute; display: block; }
-.pcx .f > svg { left: 0; top: 0; }
 
 /* case shell */
 .pcx .wall { background: linear-gradient(180deg, #121317, #0b0c0e 70%, #08090a); box-shadow: inset 0 0 120px rgba(0,0,0,.85); }
@@ -112,19 +107,7 @@
 
 /* picking a part: it stays lit, everything else falls back */
 /* dim by darkening each surface and turning its light down; a filter here would flatten the 3D and tint the glows */
-.pcx .world .f::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: #000; opacity: 0; pointer-events: none; transition: opacity .45s ease; }
-.pcx .world.picking .f:not(.keep):not(.pane):not(.braids)::after { opacity: .72; }
-.pcx .world .braids { transition: opacity .45s ease; }
-.pcx .world.picking .braids:not(.keep) { opacity: .3; }
-.pcx .braids::after { display: none; }
-.pcx .world.picking .f:not(.keep) { --lo: .1 !important; }
-.pcx .world.picking .f:not(.keep) .glow, .pcx .world.picking .f:not(.keep) .halo { opacity: 0 !important; }
-.pcx .dragging { cursor: grabbing; }
 /* hover: a faint light edge and lift on the part under the pointer */
-.pcx .world .f.hov:not(.pane) { box-shadow: inset 0 0 0 1px rgb(255 255 255 / .28), 0 0 22px rgb(255 255 255 / .07) !important; }
-.pcx .world .f.hov:not(.pane)::after { opacity: 0 !important; }
-.pcx .world .f.hov:not(.pane)::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: rgb(255 255 255 / .06); pointer-events: none; }
-.pcx .world .f[data-part], .pcx .world .f[data-of]:not([data-of=""]) { cursor: pointer; }
 
 /* the case's own light strip */
 .pcx .strip .bar { inset: 0; border-radius: 2px; background: #f3f0ea; }
@@ -147,4 +130,3 @@
 .pcx .fanedge { position: absolute; top: 5px; width: 146px; height: 24px; border-radius: 3px; background: linear-gradient(180deg, #202227, #121316); box-shadow: inset 0 0 0 1px #2c2f35, inset 0 1px 0 #3a3d44; }
 .pcx .fanedge::before, .pcx .fanedge::after { content: ""; position: absolute; top: 7px; width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #5a5e66, #1c1e22); }
 .pcx .fanedge::before { left: 8px; } .pcx .fanedge::after { right: 8px; }
-.pcx .draggable { cursor: grab; }

@@ -21,6 +21,18 @@ export default defineIntegration({
     cards: z.record(z.string(), z.object({ title: z.string(), icon: z.string().optional(),
       entities: z.array(z.union([z.string(), z.object({ id: z.string(), name: z.string() })])) })).default({}),
     controllable: z.array(z.string()).default([]),   // extra entities the assistant may control (cards' entities always may)
+    // each entry becomes a 3D floor plan widget `<instance>.<key>`: rooms come from a robot vacuum's map camera
+    // (e.g. Dreame's camera.*_map), lit by the lights you list per room; the robot and its dock sit where they are
+    floorplans: z.record(z.string(), z.object({
+      title: z.string().default('Home'),
+      map: z.string(),                                   // camera entity whose attributes carry `rooms` (x0..y1 in mm)
+      vacuum: z.string().optional(),                     // vacuum entity: drawn on the plan, controllable from it
+      rooms: z.record(z.string(), z.array(z.string())).default({}),   // room name (as on the map) → its lights
+      hide: z.array(z.string()).default([]),             // map rooms to leave out (balconies, say)
+      rotate: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).default(0),
+      flip: z.boolean().default(true),                   // mirror top-to-bottom (vacuum maps usually count y upwards)
+      view: z.object({ turn: z.number().default(-10), tilt: z.number().default(-58) }).default({ turn: -10, tilt: -58 }),
+    })).default({}),
   }),
   create(cfg, ctx) {
     const base = cfg.url.replace(/\/$/, '');
@@ -30,7 +42,8 @@ export default defineIntegration({
       ctx.http(`${base}/api/services/${domain}/${service}`, { method: 'POST', headers, body: JSON.stringify(data) });
     const ids = (c: (typeof cfg.cards)[string]) => c.entities.map(e => typeof e === 'string' ? e : e.id);
     const names = new Map(Object.values(cfg.cards).flatMap(c => c.entities).flatMap(e => typeof e === 'string' ? [] : [[e.id, e.name] as const]));
-    const allowed = new Set([...Object.values(cfg.cards).flatMap(ids), ...cfg.controllable]);
+    const planEntities = Object.values(cfg.floorplans).flatMap(f => [...Object.values(f.rooms).flat(), ...(f.vacuum ? [f.vacuum] : [])]);
+    const allowed = new Set([...Object.values(cfg.cards).flatMap(ids), ...cfg.controllable, ...planEntities]);
     // "L50 Ultra  L50 Ultra" → "L50 Ultra"; a configured name always wins
     const nameOf = (e: any) => names.get(e.entity_id) ?? String(e.attributes?.friendly_name ?? e.entity_id).replace(/\s+/g, ' ').replace(/^(.+?) \1$/, '$1');
 
@@ -68,6 +81,60 @@ export default defineIntegration({
       };
     }
 
+    // ── floor plans: the vacuum's map (mm) → plan units; lights per room; the robot and its dock
+    const hexOf = (c?: number[]) => Array.isArray(c) ? '#' + c.map(v => Math.round(v).toString(16).padStart(2, '0')).join('') : undefined;
+    for (const [key, plan] of Object.entries(cfg.floorplans)) {
+      widgets[key] = {
+        title: plan.title, interval: 5000,
+        async fetch() {
+          const all = await states(), byId = new Map(all.map(s => [s.entity_id, s]));
+          const map = byId.get(plan.map)?.attributes;
+          if (!map?.rooms) throw new Error(`${plan.map} has no rooms`);
+          const turn = (x: number, y: number): [number, number] => {
+            const [a, b] = plan.rotate === 90 ? [-y, x] : plan.rotate === 180 ? [-x, -y] : plan.rotate === 270 ? [y, -x] : [x, y];
+            return [a, plan.flip ? -b : b];
+          };
+          const rect = (x0: number, y0: number, x1: number, y1: number) => {
+            const [a, b] = turn(x0, y0), [c, d] = turn(x1, y1);
+            return { x: Math.min(a, c), z: Math.min(b, d), w: Math.abs(c - a), d: Math.abs(d - b) };
+          };
+          const rooms = Object.values(map.rooms as Record<string, any>)
+            .filter(r => r.visibility !== 'Hidden' && !plan.hide.includes(r.name))
+            .map(r => ({ id: r.room_id as number, name: r.name as string, floor: /tile/i.test(r.floor_material ?? '') ? 'tile' : 'wood', ...rect(r.x0, r.y0, r.x1, r.y1) }));
+          // fit the plan into ~560 units, centred on the origin
+          const minX = Math.min(...rooms.map(r => r.x)), maxX = Math.max(...rooms.map(r => r.x + r.w));
+          const minZ = Math.min(...rooms.map(r => r.z)), maxZ = Math.max(...rooms.map(r => r.z + r.d));
+          const s = 560 / Math.max(maxX - minX, maxZ - minZ), mx = (minX + maxX) / 2, mz = (minZ + maxZ) / 2;
+          const P = (r: { x: number; z: number; w: number; d: number }) => ({ x: (r.x - mx) * s, z: (r.z - mz) * s, w: r.w * s, d: r.d * s });
+          const point = (p?: { x: number; y: number; a?: number }) => { if (!p) return undefined; const [x, z] = turn(p.x, p.y); return { x: (x - mx) * s, z: (z - mz) * s, a: ((p.a ?? 0) + plan.rotate) * (plan.flip ? -1 : 1) }; };
+          const light = (id: string) => {
+            const e = byId.get(id), a = e?.attributes ?? {};
+            const modes: string[] = a.supported_color_modes ?? [];
+            return { id, name: nameOf(e ?? { entity_id: id }), on: e?.state === 'on', available: !!e && e.state !== 'unavailable',
+              color: hexOf(a.rgb_color), level: a.brightness != null ? Math.round(a.brightness / 2.55) : e?.state === 'on' ? 100 : 0,
+              kelvin: a.color_temp_kelvin, canColor: modes.some(m => ['xy', 'hs', 'rgb', 'rgbw', 'rgbww'].includes(m)), canTemp: modes.includes('color_temp'),
+              dims: modes.some(m => m !== 'onoff') };
+          };
+          const v = plan.vacuum ? byId.get(plan.vacuum) : undefined, va = v?.attributes ?? {};
+          const sensor = (suffix: string) => { const id = plan.vacuum?.replace(/^vacuum\./, `sensor.`) + `_${suffix}`; const n = Number(byId.get(id)?.state); return Number.isFinite(n) ? n : undefined; };
+          return {
+            type: 'showcase', title: plan.title, icon: 'home', href: cfg.href, wide: true, items: [],
+            visual: { kind: 'home', data: {
+              view: plan.view,
+              rooms: rooms.map(r => ({ ...r, ...P(r), lights: (plan.rooms[r.name] ?? []).map(light) })),
+              furniture: (map.furnitures ?? []).filter((f: any) => rooms.some(r => r.id === f.room_id)).map((f: any) => ({
+                type: String(f.type), room: f.room_id, angle: f.angle ?? 0, ...P(rect(f.x0, f.y0, f.x0 + f.width, f.y0 + f.height)) })),
+              dock: point(map.charger_position),
+              robot: v && { ...point(map.vacuum_position), id: plan.vacuum, state: v.state, status: va.status, error: va.error !== 'No error' ? va.error : undefined,
+                battery: sensor('battery_level') ?? va.battery_level, fanSpeed: va.fan_speed, fanSpeeds: va.fan_speed_list ?? [],
+                cleaningMode: va.cleaning_mode, cleanedArea: va.cleaned_area, cleaningTime: va.cleaning_time,
+                wear: [['Main brush', va.main_brush_left], ['Side brush', va.side_brush_left], ['Filter', va.filter_left]].filter(([, n]) => n != null) },
+            } },
+          };
+        },
+      };
+    }
+
     async function set(entity_id: string, value: boolean) {
       if (!allowed.has(entity_id)) throw new Error(`${entity_id} isn't on the page or in controllable`);
       const [domain] = entity_id.split('.');
@@ -92,6 +159,29 @@ export default defineIntegration({
           } },
         press: { description: 'Run a scene/script, press a button, start/dock a vacuum', input: z.object({ entity_id: z.string(), service: z.string().optional() }),
           run: ({ entity_id, service }) => press(entity_id, service) },
+        light: { description: 'Turn lights on/off, set brightness (0-100), colour (rgb) or warmth (kelvin)',
+          input: z.object({ entity_id: z.union([z.string(), z.array(z.string())]), on: z.boolean().default(true),
+            brightness: z.number().min(1).max(100).optional(), rgb: z.array(z.number().int().min(0).max(255)).length(3).optional(), kelvin: z.number().min(1500).max(9000).optional() }),
+          async run({ entity_id, on, brightness, rgb: color, kelvin }) {
+            const list = Array.isArray(entity_id) ? entity_id : [entity_id];
+            for (const id of list) if (!allowed.has(id) || !id.startsWith('light.')) throw new Error(`${id} isn't a light on the page`);
+            await call('light', on ? 'turn_on' : 'turn_off', { entity_id: list, ...(on && brightness != null ? { brightness_pct: brightness } : {}),
+              ...(on && color ? { rgb_color: color } : {}), ...(on && kelvin ? { color_temp_kelvin: kelvin } : {}) });
+          } },
+        vacuum: { description: 'Robot vacuum: start, pause, dock, locate, clean some rooms, or set suction',
+          input: z.object({ entity_id: z.string(), command: z.enum(['start', 'pause', 'dock', 'locate', 'clean_rooms', 'fan_speed']),
+            rooms: z.array(z.number().int()).optional(), fan_speed: z.string().optional() }),
+          async run({ entity_id, command, rooms, fan_speed }) {
+            if (!allowed.has(entity_id) || !entity_id.startsWith('vacuum.')) throw new Error(`${entity_id} isn't a vacuum on the page`);
+            if (command === 'clean_rooms') {
+              if (!rooms?.length) throw new Error('which rooms?');
+              // Dreame's integration cleans map segments; other vacuums may not support this
+              return call('dreame_vacuum', 'vacuum_clean_segment', { entity_id, segments: rooms });
+            }
+            if (command === 'fan_speed') return call('vacuum', 'set_fan_speed', { entity_id, fan_speed });
+            const svc: Record<string, string> = { start: 'start', pause: 'pause', dock: 'return_to_base', locate: 'locate' };
+            return call('vacuum', svc[command], { entity_id });
+          } },
       },
       tools: {
         home_find: {

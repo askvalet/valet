@@ -1,0 +1,26 @@
+/* The stage every 3D model runs on (stage.ts): a scaled world, a camera, flat faces placed in 3D. Picking dims
+   everything but the chosen part; hovering lifts a part slightly. Each model adds its own scope class for its parts. */
+.stage .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; perspective: 1300px; perspective-origin: 50% 50%; }
+.stage .cam { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-style: preserve-3d; }
+.stage .f { position: absolute; transform-style: preserve-3d; }
+.stage .f > i, .stage .f > b, .stage .f > span, .stage .f > div, .stage .f > svg, .stage .part > i { position: absolute; display: block; }
+.stage .f > svg { left: 0; top: 0; }
+
+/* picking: the chosen part stays lit, everything else falls back. Dim with an overlay and by turning lights down;
+   a filter would flatten the 3D and tint the glows. Full-size layers (cables) fade instead of covering what's behind. */
+.stage .world .f::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: #000; opacity: 0; pointer-events: none; transition: opacity .45s ease; }
+.stage .world.picking .f:not(.keep):not(.pane):not(.layer)::after { opacity: .72; }
+.stage .world .layer { transition: opacity .45s ease; }
+.stage .world.picking .layer:not(.keep) { opacity: .3; }
+.stage .layer::after { display: none; }
+.stage .world.picking .f:not(.keep) { --lo: .1 !important; }
+.stage .world.picking .f:not(.keep) .glow, .stage .world.picking .f:not(.keep) .halo { opacity: 0 !important; }
+
+/* hover: a faint light edge and lift on the part under the pointer */
+.stage .world .f.hov:not(.pane) { box-shadow: inset 0 0 0 1px rgb(255 255 255 / .28), 0 0 22px rgb(255 255 255 / .07) !important; }
+.stage .world .f.hov:not(.pane)::after { opacity: 0 !important; }
+.stage .world .f.hov:not(.pane)::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: rgb(255 255 255 / .06); pointer-events: none; }
+.stage .world .f[data-part], .stage .world .f[data-of]:not([data-of=""]) { cursor: pointer; }
+.stage.draggable { cursor: grab; }
+.stage.dragging { cursor: grabbing; }
+@media (prefers-reduced-motion: reduce) { .stage * { animation: none !important; } }

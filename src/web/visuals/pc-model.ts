@@ -3,6 +3,7 @@
 // Lights take the colours they really are. Framework-free: Atrium's card and rgb-control's page both mount it with
 // createViewer(). rgb-control gets a bundled copy (npm run export:pc-model).
 import './pc-case.css';
+import { createStage, type Scene, type StageOptions } from './stage.ts';
 
 export type Light = { mode?: string; color?: number[]; brightness?: number; speed?: number };
 export type Metric = { label: string; value: string | number; unit?: string; tone?: 'warn' | 'bad'; pct?: number };
@@ -98,7 +99,7 @@ export function build(world: HTMLElement, d: ModelData) {
   const floorFront = mk('fanrow dark', [0, 1, 2].map(i => `<i class="fanedge" style="left:${6 + i * 154}px"></i>`).join(''));
   for (const f of [floorTop, side(mk('fanpack rside'), 16, FY, 280, 34, 14), at(floorFront, 16, FY, 468, 34, 294)]) { f.dataset.of = 'floor'; add(f); }
   // their daisy-chained cable off the right end, back into the cable grommets
-  add(at(mk('braids', svg(braid(`M484 ${FY + 18} C 520 ${FY + 10}, 540 ${FY - 40}, 520 ${FY - 120}`, 3.2, 2, 2))), 0, 0, CW, CH, 160)).dataset.of = 'floor';
+  add(at(mk('braids layer', svg(braid(`M484 ${FY + 18} C 520 ${FY + 10}, 540 ${FY - 40}, 520 ${FY - 120}`, 3.2, 2, 2))), 0, 0, CW, CH, 160)).dataset.of = 'floor';
   add(face(mk('ceiling'), CW, CD, `translateY(${-CH / 2}px) rotateX(90deg)`));
 
   // ── motherboard (ASUS ProArt): dark board, gold line-art heatsinks, M.2 plate
@@ -125,16 +126,16 @@ export function build(world: HTMLElement, d: ModelData) {
   }
 
   // 24-pin bundle out of the right edge of the board, looping back into the grommets
-  add(at(mk('braids', svg(braid('M326 126 C 352 128, 372 150, 368 196 S 344 236, 330 238', 4.2, 7, 2.6))), 0, 0, CW, CH, 10));
+  add(at(mk('braids layer', svg(braid('M326 126 C 352 128, 372 150, 368 196 S 344 236, 330 238', 4.2, 7, 2.6))), 0, 0, CW, CH, 10));
   // CPU power up the top-left into the ceiling
-  add(at(mk('braids', svg(braid('M96 82 C 92 50, 60 30, 58 -4', 3.6, 5, 2.4))), 0, 0, CW, CH, 22));
+  add(at(mk('braids layer', svg(braid('M96 82 C 92 50, 60 30, 58 -4', 3.6, 5, 2.4))), 0, 0, CW, CH, 22));
 
   // pump head: a black block with the live screen between two lit strips, one down each side
   const pump = has('pump') ? part('pumpface', 'pump', '<i class="edge-l light"></i><i class="edge-r light"></i><i class="halo l light"></i><i class="halo r light"></i><div class="scr"><img alt=""></div>') : mk('pumpface', '<div class="scr"><img alt=""></div>');
   block(add, 160, 146, 76, 80, 2, 48, 'pump', pump, 'pump');
 
   // the two radiator hoses: down out of the pump, a wide sweep right, then up to the radiator at the top right
-  add(at(mk('braids hose' /* pump */, svg(braid('M184 226 C 186 280, 250 292, 330 268 S 470 210, 478 64', 10) + braid('M206 226 C 210 270, 268 278, 340 252 S 456 196, 492 64', 10))), 0, 0, CW, CH, 40));
+  add(at(mk('braids layer hose' /* pump */, svg(braid('M184 226 C 186 280, 250 292, 330 268 S 470 210, 478 64', 10) + braid('M206 226 C 210 270, 268 278, 340 252 S 456 196, 492 64', 10))), 0, 0, CW, CH, 40));
 
   // the GPU (MSI SUPRIM): a long slab across the lower slot, SUPRIM badge and the emblem lit on its edge
   const gpu = has('gpu');
@@ -143,7 +144,7 @@ export function build(world: HTMLElement, d: ModelData) {
   add(at(gpu ? part('gpufront', 'gpu', '<i class="badgeglow light lin"></i><span class="rtx">GEFORCE RTX</span><i class="badge light lin"><b>SUPRIM</b></i><i class="logo light lin"></i>')
     : unread('gpufront', '<i class="badgeglow light lin"></i><span class="rtx">GEFORCE RTX</span><i class="badge light lin"><b>SUPRIM</b></i><i class="logo light lin"></i>'), 40, 312, 404, 44, 170)).dataset.of = 'gpu';
   // its power cable: off the top, across and down to the floor
-  add(at(mk('braids', svg(braid('M300 312 C 330 300, 420 300, 470 340 S 500 470, 520 520', 3.4, 6, 2.2))), 0, 0, CW, CH, 150));
+  add(at(mk('braids layer', svg(braid('M300 312 C 330 300, 420 300, 470 340 S 500 470, 520 520', 3.4, 6, 2.2))), 0, 0, CW, CH, 150));
 
   // radiator up top; its three fans hang beneath it, seen from below: lit rings and spinning blades
   add(lid(mk('radiator'), 16, 0, 468, 290, 20));
@@ -190,130 +191,19 @@ export const PICKS: { id: string; name: string; light?: string; note?: string; a
   { id: 'strip', name: 'Case light', note: 'Set by the case itself, not something software can change.', at: [560, 260, 300, 1.5] },
 ];
 
-const W = 720, H = 680;   // the world's box; scaled to fit its container
 const isFanUnit = (id: string) => id === 'coolerfans' || /^fans\d$/.test(id);
 /** the fan group drawn on the radiator */
 export const topFans = (d: ModelData) => d.parts.find(p => isFanUnit(p.id) && (d.layout?.[p.id] ?? (p.id === 'fans0' ? 'top' : '')) === 'top')?.id ?? 'fans0';
 
-export interface ViewerOptions { turn?: number; tilt?: number; draggable?: boolean; onPick?: (id: string | null) => void }
-/**
- * Mounts the model in `box` and runs it: fits it to the box, orbits on drag, flies the camera to a selected part
- * and dims the rest. Frameworks only call update() with fresh data and select() with a PICKS id (or null).
- */
-export function createViewer(box: HTMLElement, opts: ViewerOptions = {}) {
-  const { turn = -8, tilt = 0, draggable = true, onPick } = opts;
-  box.classList.add('pcx');
-  const world = document.createElement('div'); world.className = 'world boot'; box.appendChild(world);
-  let data: ModelData | null = null, shape = '', sel: string | null = null, dragged = false;
-  const cam = { ry: turn, rx: tilt, at: [CW / 2, CH / 2, CD / 2, 1] as number[] };
+export const pcScene: Scene<ModelData> = {
+  scope: 'pcx', size: [720, 600], center: [CW / 2, CH / 2, CD / 2],
+  frame: '.wall, .rear, .mesh, .floor, .ceiling, .pane',
+  shape: d => JSON.stringify([d.parts.map(p => [p.id, p.zones.length]), d.layout]),
+  build, paint,
+  pickOf: id => isFanUnit(id) ? 'fans' : PICKS.some(p => p.id === id) ? id : null,
+  facesOf: (pick, d) => pick === 'fans' ? [topFans(d)] : [pick],
+  focus: pick => PICKS.find(p => p.id === pick)?.at,
+};
 
-
-  const pose = (ox: number, oy: number, fit: number) => {
-    const [x, y, z, k] = cam.at;
-    return `translate(${ox}px, ${oy}px) scale(${fit * k}) rotateX(${cam.rx}deg) rotateY(${cam.ry}deg) translate3d(${CW / 2 - x}px, ${CH / 2 - y}px, ${CD / 2 - z}px)`;
-  };
-  // In the overview the case is framed: whatever the angle, it's centred and fills ~88% of the box. Perspective moves
-  // it around as it turns, so this is measured rather than computed. A focused part just flies to the centre.
-  const frame = (c: HTMLElement) => {
-    if (sel) return pose(0, 0, .9);
-    const before = c.style.transform, trans = c.style.transition;
-    c.style.transition = 'none'; c.style.transform = pose(0, 0, 1);
-    const k = box.clientWidth / W, b = box.getBoundingClientRect();
-    let l = Infinity, t = Infinity, r = -Infinity, btm = -Infinity;
-    world.querySelectorAll<HTMLElement>('.wall, .rear, .mesh, .floor, .ceiling, .pane').forEach(f => {
-      const q = f.getBoundingClientRect(); l = Math.min(l, q.left); t = Math.min(t, q.top); r = Math.max(r, q.right); btm = Math.max(btm, q.bottom);
-    });
-    c.style.transform = before; void c.offsetWidth; c.style.transition = trans;
-    if (!isFinite(l) || !b.width) return pose(0, 0, .9);
-    const fit = Math.min(.88 * b.width / (r - l), .88 * b.height / (btm - t));
-    const dx = (b.left + b.width / 2 - (l + r) / 2) / k, dy = (b.top + b.height / 2 - (t + btm) / 2) / k;
-    return pose(dx * fit, dy * fit, fit);
-  };
-  const aim = (animate = true) => {
-    const c = world.querySelector<HTMLElement>('.cam'); if (!c) return;
-    const target = frame(c);
-    c.style.transition = animate ? 'transform .9s cubic-bezier(.2, .8, .2, 1)' : 'none';
-    c.style.transform = target;
-  };
-  const fit = () => { const k = box.clientWidth / W; world.style.transform = `scale(${k})`; box.style.height = H * k + 'px'; aim(false); };
-  const ro = new ResizeObserver(fit); ro.observe(box); fit();
-
-  const dim = () => {
-    world.classList.toggle('picking', !!sel);
-    const ids = !sel ? [] : sel === 'fans' && data ? [topFans(data)] : [sel];
-    world.querySelectorAll<HTMLElement>('.f').forEach(f => f.classList.toggle('keep', ids.some(id => f.dataset.part === id || f.dataset.of === id || f.dataset.tint === id)));
-  };
-
-  // drag to orbit; a drag isn't a click
-  let start: { x: number; y: number; rx: number; ry: number } | null = null;
-  const down = (e: PointerEvent) => { start = { x: e.clientX, y: e.clientY, rx: cam.rx, ry: cam.ry }; dragged = false; };
-  const move = (e: PointerEvent) => {
-    if (!start) return;
-    const dx = e.clientX - start.x, dy = e.clientY - start.y;
-    if (!dragged && Math.hypot(dx, dy) < 5) return;
-    if (!dragged) { dragged = true; box.setPointerCapture(e.pointerId); box.classList.add('dragging'); }
-    cam.ry = Math.max(-55, Math.min(55, start.ry + dx * .35));
-    cam.rx = Math.max(-18, Math.min(24, start.rx - dy * .25));
-    const c = world.querySelector<HTMLElement>('.cam');
-    if (c) { c.style.transition = 'none'; c.style.transform = c.style.transform.replace(/rotateX\([^)]*\) rotateY\([^)]*\)/, `rotateX(${cam.rx}deg) rotateY(${cam.ry}deg)`); }
-  };
-  const up = () => { if (start && dragged) aim(); start = null; box.classList.remove('dragging'); };
-  if (draggable) {
-    box.classList.add('draggable');
-    box.addEventListener('pointerdown', down); box.addEventListener('pointermove', move);
-    box.addEventListener('pointerup', up); box.addEventListener('pointercancel', up);
-  }
-  const pickAt = (target: EventTarget | null) => {
-    for (let el = target as HTMLElement | null; el && el !== world; el = el.parentElement) {
-      const id = el.dataset.part ?? el.dataset.of ?? el.dataset.tint;
-      if (id) return isFanUnit(id) ? 'fans' : PICKS.some(p => p.id === id) ? id : null;
-    }
-    return null;
-  };
-  const facesOf = (pick: string | null) => {
-    const ids = !pick ? [] : pick === 'fans' && data ? [topFans(data)] : [pick];
-    return [...world.querySelectorAll<HTMLElement>('.f')].filter(f => ids.some(id => f.dataset.part === id || f.dataset.of === id || f.dataset.tint === id));
-  };
-  // hovering a part lifts it slightly
-  let hovered: string | null = null;
-  const hover = (e: PointerEvent) => {
-    if (start && dragged) return;
-    const p = pickAt(e.target);
-    if (p === hovered) return;
-    world.querySelectorAll('.hov').forEach(f => f.classList.remove('hov'));
-    hovered = p;
-    facesOf(p).forEach(f => f.classList.add('hov'));
-  };
-  const leave = () => { hovered = null; world.querySelectorAll('.hov').forEach(f => f.classList.remove('hov')); };
-  world.addEventListener('pointermove', hover); world.addEventListener('pointerleave', leave);
-  // clicking selects whatever was hit; clicking it again, or empty space, lets go
-  const click = (e: MouseEvent) => {
-    if (dragged) return;
-    const hit = pickAt(e.target);
-    const next = hit === sel ? null : hit;
-    api.select(next); onPick?.(next);
-  };
-  world.addEventListener('click', click);
-
-  const api = {
-    update(d: ModelData) {
-      data = d;
-      const s = JSON.stringify([d.parts.map(p => [p.id, p.zones.length]), d.layout]);
-      if (s !== shape) { shape = s; build(world, d); setTimeout(() => world.classList.remove('boot'), 150); aim(false); dim(); }
-      paint(world, d);
-    },
-    select(id: string | null) {
-      sel = id;
-      const p = PICKS.find(p => p.id === id);
-      cam.at = p ? p.at : [CW / 2, CH / 2, CD / 2, 1];
-      aim(); dim();
-    },
-    destroy() {
-      ro.disconnect(); world.removeEventListener('click', click); world.removeEventListener('pointermove', hover); world.removeEventListener('pointerleave', leave);
-      box.removeEventListener('pointerdown', down); box.removeEventListener('pointermove', move);
-      box.removeEventListener('pointerup', up); box.removeEventListener('pointercancel', up);
-      world.remove();
-    },
-  };
-  return api;
-}
+/** Mounts the PC in `box` (see stage.ts). Kept as its own export: rgb-control calls it. */
+export const createViewer = (box: HTMLElement, opts: StageOptions = {}) => createStage(box, pcScene, { turn: -8, tilt: 0, ...opts });

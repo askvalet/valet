@@ -301,6 +301,7 @@ function Controls({ card, run }: { card: ControlsCard; run?: RunAction }) {
 // Showcase visuals load on demand, so a page without them never downloads them.
 const VISUALS: Record<string, React.LazyExoticComponent<(p: { data: any; run?: RunAction }) => ReactNode>> = {
   'pc-case': lazy(() => import('./visuals/pc-case.tsx')),
+  home: lazy(() => import('./visuals/home-case.tsx')),
 };
 
 /** The visual on the left, its numbers stacked on the right: big values, quiet labels, nothing else. */
@@ -477,13 +478,14 @@ export function Ring({ s }: { s: Summary }) {
  *  opacity would stop Chrome blurring anything inside it until the fade ends (the flicker). */
 function Popover({ group, className, children }: { group: 'ring' | 'wx'; className?: string; children: ReactNode }) {
   const show = group === 'ring'
-    ? 'group-hover/ring:visible group-focus-visible/ring:visible'
-    : 'group-hover/wx:visible group-focus-visible/wx:visible';
+    ? 'group-hover/ring:visible group-focus/ring:visible'
+    : 'group-hover/wx:visible group-focus/wx:visible';
   const pop = group === 'ring'
-    ? 'group-hover/ring:opacity-100 group-hover/ring:translate-y-0 group-hover/ring:scale-100 group-focus-visible/ring:opacity-100 group-focus-visible/ring:translate-y-0 group-focus-visible/ring:scale-100'
-    : 'group-hover/wx:opacity-100 group-hover/wx:translate-y-0 group-hover/wx:scale-100 group-focus-visible/wx:opacity-100 group-focus-visible/wx:translate-y-0 group-focus-visible/wx:scale-100';
+    ? 'group-hover/ring:opacity-100 group-hover/ring:translate-y-0 group-hover/ring:scale-100 group-focus/ring:opacity-100 group-focus/ring:translate-y-0 group-focus/ring:scale-100'
+    : 'group-hover/wx:opacity-100 group-hover/wx:translate-y-0 group-hover/wx:scale-100 group-focus/wx:opacity-100 group-focus/wx:translate-y-0 group-focus/wx:scale-100';
   return (
-    <div className={cn('invisible absolute top-full z-30 pt-3 transition-[visibility] duration-300', show, className)}>
+    <div className={cn('invisible absolute top-full z-30 pt-3 transition-[visibility] duration-300', show, className,
+      'max-lg:fixed max-lg:inset-x-3 max-lg:top-auto max-lg:bottom-24 max-lg:w-auto max-lg:translate-x-0 max-lg:pt-0')}>
       <div className={cn('glass-pop origin-top -translate-y-1 scale-95 opacity-0 transition-[opacity,translate,scale] duration-300 ease-out', pop)}>{children}</div>
     </div>
   );

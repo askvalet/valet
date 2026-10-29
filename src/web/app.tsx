@@ -149,17 +149,18 @@ export function App() {
         {page?.assistant && <RoundButton label={page.assistant.name} onClick={() => setChatOpen(true)}><Sparkles /></RoundButton>}
       </nav>
 
-      {/* top-right: time, and the theme switch when there's no wallpaper */}
-      <div className="wall-text fixed top-5 right-5 z-20 flex items-center gap-4">
+      {/* top-right: the menubar rings, weather and time (and the theme switch when there's no wallpaper).
+          Below lg it sits at the top of the page instead, centred and wrapping, so phones see it too. */}
+      <div className="wall-text z-20 flex flex-wrap items-center justify-center gap-2 px-3 pt-4 lg:fixed lg:top-5 lg:right-5 lg:flex-nowrap lg:gap-4 lg:p-0">
         {!!page?.menubar?.length && (
-          <div className="glass-bar relative hidden items-center gap-3 rounded-full border px-4 py-1.5 lg:flex">
+          <div className="glass-bar relative flex items-center gap-2 rounded-full border px-3 py-1.5 sm:gap-3 sm:px-4">
             {page.menubar.flatMap(key => {
               const c = state[key]?.card;
               return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <MiniRing key={`${key}${j}`} s={t} />);
             })}
           </div>
         )}
-        <div className="glass-bar relative hidden items-center gap-4 rounded-full border py-1.5 pr-5 pl-2 sm:flex">
+        <div className="glass-bar relative flex items-center gap-4 rounded-full border py-1.5 pr-5 pl-2">
           {page?.weather && state[page.weather]?.card?.type === 'forecast' && <WeatherRing card={state[page.weather]!.card as ForecastCard} />}
           <div className="text-right leading-tight">
           <div className="text-sm font-semibold tabular">{now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</div>
@@ -169,7 +170,7 @@ export function App() {
         {!wall && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={theme.toggle}>{theme.dark ? <Sun /> : <Moon />}</RoundButton>}
       </div>
 
-      <main className="@container/main mx-auto flex max-w-[1320px] flex-col gap-8 px-4 pt-20 pb-28 md:pr-8 md:pl-24 md:pb-16">
+      <main className="@container/main mx-auto flex max-w-[1320px] flex-col gap-8 px-4 pt-6 pb-28 md:pr-8 md:pl-24 md:pb-16 lg:pt-20">
         {/* the hero: ask anything */}
         {view === 'all' && (
           <header className="wall-text mx-auto w-full max-w-[680px] text-center">
@@ -187,10 +188,13 @@ export function App() {
               </form>
             )}
             {page?.assistant && (
-              <div className="no-scrollbar mt-2.5 flex justify-center gap-1.5 overflow-x-auto">
-                {SUGGESTIONS.slice(0, 3).map(s => (
-                  <button key={s} onClick={() => ask(s)} className="shrink-0 rounded-full px-2.5 py-1 text-[12.5px] text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground">{s}</button>
-                ))}
+              <div className="no-scrollbar mt-2.5 overflow-x-auto">
+                {/* centred when it fits, scrolls from the start when it doesn't */}
+                <div className="mx-auto flex w-max gap-1.5">
+                  {SUGGESTIONS.slice(0, 3).map(s => (
+                    <button key={s} onClick={() => ask(s)} className="shrink-0 rounded-full px-2.5 py-1 text-[12.5px] text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground">{s}</button>
+                  ))}
+                </div>
               </div>
             )}
           </header>
@@ -230,6 +234,7 @@ export function App() {
                   };
                   // a wide card (e.g. the 3D desktop) takes two thirds; the rest stack beside it
                   const hero = !sec.columns && keys.find(k => state[k]?.card?.wide);
+                  if (hero && keys.length === 1) return widget(hero);
                   if (hero) return (
                     <div className="grid items-start gap-4 @5xl/main:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                       {widget(hero)}

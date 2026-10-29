@@ -81,7 +81,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
   };
 
   return (
-    <div className="grid items-start gap-x-6 gap-y-4 @xl/card:grid-cols-[minmax(0,1fr)_244px]">
+    <div className="grid items-start gap-x-4 gap-y-4 @xl/card:grid-cols-[minmax(0,1fr)_188px]">
       <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-xl" aria-label="3D model of the PC. Select a part to see it and change its lighting." role="img" />
       <div className="min-w-0 @xl/card:pt-2">
         {!pick ? (
@@ -89,13 +89,13 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
             {data.presets?.length ? (
               <div>
                 <div className="mb-2.5 text-[11.5px] text-muted-foreground">Presets</div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-4 gap-x-1 gap-y-3">
                   {data.presets.map(p => (
-                    <button key={p.id} onClick={() => run?.('preset', { id: p.id })}
-                      className="group/p flex items-center gap-2.5 rounded-xl bg-white/[.06] px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-white/[.12]">
-                      <span className="size-5 shrink-0 rounded-full transition-transform group-hover/p:scale-110"
-                        style={{ background: p.swatch.length > 1 ? `conic-gradient(${[...p.swatch, p.swatch[0]].join(', ')})` : p.swatch[0], boxShadow: 'inset 0 0 0 1px rgb(255 255 255 / .2)' }} />
-                      <span className="truncate">{p.name}</span>
+                    <button key={p.id} onClick={() => run?.('preset', { id: p.id })} title={p.name}
+                      className="group/p flex flex-col items-center gap-1.5 text-center">
+                      <span className="size-8 rounded-full transition-transform group-hover/p:scale-110"
+                        style={{ background: p.swatch.length > 1 ? `conic-gradient(${[...p.swatch, p.swatch[0]].join(', ')})` : p.swatch[0], boxShadow: 'inset 0 0 0 1px rgb(255 255 255 / .22)' }} />
+                      <span className="w-full truncate text-[10.5px] leading-tight text-muted-foreground group-hover/p:text-foreground">{p.name}</span>
                     </button>
                   ))}
                 </div>
