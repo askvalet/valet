@@ -11,6 +11,7 @@ export default defineIntegration({
       url: z.string().url(),
       href: z.string().optional(),               // where the tile links to (defaults to url)
       icon: z.string().optional(),               // dashboard-icons slug (e.g. "plex") or an image URL; default: from the name
+      group: z.string().optional(),              // heading the service sits under, e.g. "Media"
       expect: z.array(z.number()).optional(),    // OK status codes; default any 2xx/3xx/401
     })),
     interval: z.number().default(30_000),
@@ -25,9 +26,9 @@ export default defineIntegration({
         try {
           const res = await ctx.http<Response>(t.url, { as: 'response', timeout: 5000, redirect: 'manual' });
           const ok = t.expect ? t.expect.includes(res.status) : res.status < 400 || res.status === 401;
-          return { name: t.name, ok, ms: Math.round(performance.now() - t0), detail: ok ? undefined : `HTTP ${res.status}`, href: t.href ?? t.url, icon: icon(t) };
+          return { name: t.name, ok, ms: Math.round(performance.now() - t0), detail: ok ? undefined : `HTTP ${res.status}`, href: t.href ?? t.url, icon: icon(t), group: t.group };
         } catch (e) {
-          return { name: t.name, ok: false, detail: (e as Error).name === 'TimeoutError' ? 'timed out' : 'unreachable', href: t.href ?? t.url, icon: icon(t) };
+          return { name: t.name, ok: false, detail: (e as Error).name === 'TimeoutError' ? 'timed out' : 'unreachable', href: t.href ?? t.url, icon: icon(t), group: t.group };
         }
       }));
     }

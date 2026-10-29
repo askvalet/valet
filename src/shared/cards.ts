@@ -13,6 +13,8 @@ export interface Summary {
   tone?: Tone;
   icon?: string;
   trend?: number[];       // recent values, drawn as a live area graph behind the tile
+  pct?: number;           // 0..1, for ring gauges
+  ring?: string;          // the number shown inside a ring gauge, if different from `value` (e.g. "23%")
 }
 
 interface Base {
@@ -66,7 +68,7 @@ export interface MediaCard extends Base { type: 'media'; items: MediaItem[]; emp
 export interface ShelfItem { title: string; subtitle?: string; image?: string; badge?: string; href?: string }
 export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string }
 
-export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string }
+export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string; group?: string }
 export interface StatusCard extends Base { type: 'status'; items: StatusItem[] }
 
 export interface ChartCard extends Base {

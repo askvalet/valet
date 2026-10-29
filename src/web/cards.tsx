@@ -1,7 +1,7 @@
 // Renders any card from the shared catalog with shadcn/ui primitives. The homepage and the assistant both use this,
 // so a generated card looks exactly like the widget it came from.
 import {
-  Activity, ArrowUpRight, ChevronLeft, ChevronRight, Cpu, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Sparkles, Wifi,
+  Activity, ArrowUpRight, ChevronLeft, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Sparkles, Wifi,
   type LucideIcon,
 } from 'lucide-react';
 import { Fragment, useRef, useState, type ReactNode } from 'react';
@@ -19,6 +19,7 @@ import type { Card as CardT, ChartCard, Control, ControlsCard, ListCard, MediaCa
 const ICONS: Record<string, LucideIcon> = {
   cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
   bulb: Lightbulb, home: House, shield: Shield, sparkle: Sparkles,
+  sun: Sun, moon: Moon, cloud: Cloud, 'cloud-sun': CloudSun, 'cloud-moon': CloudMoon, rain: CloudRain, snow: CloudSnow, fog: CloudFog, storm: CloudLightning,
 };
 export function Icon({ name, className }: { name?: string; className?: string }) {
   if (!name) return null;
@@ -114,19 +115,35 @@ function AppIcon({ src, name }: { src?: string; name: string }) {
   return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className="size-7 shrink-0 object-contain" />;
 }
 
-function Status({ card }: { card: StatusCard }) {
+function ServiceRow({ s }: { s: StatusCard['items'][number] }) {
   return (
+    <a href={s.href} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-accent">
+      <AppIcon src={s.icon} name={s.name} />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-medium">{s.name}</div>
+        <div className={cn('truncate text-xs tabular', s.ok ? 'text-muted-foreground' : 'text-bad')}>{s.ok ? (s.ms != null ? `${s.ms} ms` : 'Up') : s.detail}</div>
+      </div>
+      <span className={cn('dot', s.ok ? 'dot-good' : 'dot-bad')} />
+    </a>
+  );
+}
+
+/** Services in columns. With groups, each group is a block (heading + its services) and the blocks flow into as
+ *  many columns as fit, so a long list stays short. */
+function Status({ card }: { card: StatusCard }) {
+  const groups = [...new Set(card.items.map(i => i.group ?? ''))];
+  if (groups.length === 1 && !groups[0]) return (
     <div className="-mx-2 grid gap-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-      {card.items.map(s => (
-        <a key={s.name} href={s.href} target="_blank" rel="noreferrer"
-          className="flex min-w-0 items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-accent">
-          <AppIcon src={s.icon} name={s.name} />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium">{s.name}</div>
-            <div className={cn('truncate text-xs tabular', s.ok ? 'text-muted-foreground' : 'text-bad')}>{s.ok ? (s.ms != null ? `${s.ms} ms` : 'Up') : s.detail}</div>
-          </div>
-          <span className={cn('dot', s.ok ? 'dot-good' : 'dot-bad')} />
-        </a>
+      {card.items.map(s => <ServiceRow key={s.name} s={s} />)}
+    </div>
+  );
+  return (
+    <div className="-mx-2 gap-x-4" style={{ columnWidth: '220px' }}>
+      {groups.map(g => (
+        <div key={g} className="mb-3 break-inside-avoid">
+          {g && <div className="px-2 pt-1 pb-1.5 text-xs font-medium text-muted-foreground">{g}</div>}
+          {card.items.filter(i => (i.group ?? '') === g).map(s => <ServiceRow key={s.name} s={s} />)}
+        </div>
       ))}
     </div>
   );
@@ -173,6 +190,9 @@ function NowPlaying({ m, compact }: { m: MediaItem; compact?: boolean }) {
     </div>
   );
 }
+
+/** True when a card has nothing worth a slot on the page (e.g. Now Playing with nothing playing). */
+export const isEmpty = (card?: CardT) => card?.type === 'media' && !card.items.length;
 
 function Media({ card }: { card: MediaCard }) {
   if (!card.items.length) return (
@@ -393,4 +413,70 @@ export function SummaryTile({ s, href }: { s: Summary; href?: string }) {
     </Card>
   );
   return href ? <a href={href} target="_blank" rel="noreferrer" className="block min-w-0">{body}</a> : <div className="min-w-0">{body}</div>;
+}
+
+/** A ring gauge: a ¾ circle (gap at the bottom), the number in the middle, coloured by health. */
+export function Ring({ s }: { s: Summary }) {
+  const r = 40, c = 2 * Math.PI * r, arc = c * 0.75, pct = Math.max(0, Math.min(1, s.pct ?? 0));
+  const color = s.tone === 'bad' ? 'var(--bad)' : s.tone === 'warn' ? 'var(--warn)' : s.tone === 'accent' ? 'var(--primary)' : 'var(--good)';
+  return (
+    <div className="flex min-w-0 flex-col items-center text-center">
+      <div className="relative size-[104px]">
+        <svg viewBox="0 0 100 100" className="size-full rotate-[135deg]" aria-hidden>
+          <circle cx="50" cy="50" r={r} fill="none" stroke="currentColor" strokeOpacity=".12" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} />
+          <circle cx="50" cy="50" r={r} fill="none" stroke={color} strokeWidth="7" strokeLinecap="round"
+            strokeDasharray={`${Math.max(0.001, pct) * arc} ${c}`} className="transition-[stroke-dasharray] duration-700 ease-out"
+            style={{ filter: `drop-shadow(0 0 6px color-mix(in srgb, ${color} 45%, transparent))` }} />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <Icon name={s.icon} className="mb-0.5 size-4 text-muted-foreground" />
+          <div className="metric max-w-[76px] truncate text-[19px] leading-tight">{s.ring ?? s.value}</div>
+        </div>
+      </div>
+      <div className="mt-1 max-w-full truncate text-[13px] font-medium">{s.label}</div>
+      {s.detail && <div className="max-w-full truncate text-[11.5px] text-muted-foreground">{s.detail}</div>}
+    </div>
+  );
+}
+
+/** The menubar version: a small ring with the number inside, label beneath; details on hover. */
+export function MiniRing({ s }: { s: Summary }) {
+  const r = 15, c = 2 * Math.PI * r, arc = c * 0.75, pct = Math.max(0, Math.min(1, s.pct ?? 0));
+  const color = s.tone === 'bad' ? 'var(--bad)' : s.tone === 'warn' ? 'var(--warn)' : s.tone === 'accent' ? 'var(--primary)' : 'var(--good)';
+  const n = String(s.ring ?? s.value).replace(/%$/, '');
+  return (
+    <div className="flex flex-col items-center" title={[s.label, s.value, s.detail].filter(Boolean).join(' · ')}>
+      <div className="relative size-[38px]">
+        <svg viewBox="0 0 38 38" className="size-full rotate-[135deg]" aria-hidden>
+          <circle cx="19" cy="19" r={r} fill="none" stroke="currentColor" strokeOpacity=".16" strokeWidth="3.2" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} />
+          <circle cx="19" cy="19" r={r} fill="none" stroke={color} strokeWidth="3.2" strokeLinecap="round"
+            strokeDasharray={`${Math.max(0.001, pct) * arc} ${c}`} className="transition-[stroke-dasharray] duration-700 ease-out" />
+        </svg>
+        <div className="metric absolute inset-0 grid place-items-center text-[11px]">{n.length > 4 ? <Icon name={s.icon} className="size-3.5" /> : n}</div>
+      </div>
+      <div className="-mt-1 max-w-[56px] truncate text-[10px] font-medium text-muted-foreground">{s.label}</div>
+    </div>
+  );
+}
+
+/** Weather beside the clock: the ring runs from today's low to high (cool blue → warm amber), the marker is now. */
+export function WeatherRing({ s }: { s: Summary }) {
+  const r = 17, c = 2 * Math.PI * r, arc = c * 0.75, pct = Math.max(0, Math.min(1, s.pct ?? 0.5));
+  const a = (135 + 270 * pct) * Math.PI / 180, mx = 21 + r * Math.cos(a), my = 21 + r * Math.sin(a);
+  return (
+    <div className="flex items-center gap-2.5" title={s.detail}>
+      <div className="relative size-[42px]">
+        <svg viewBox="0 0 42 42" className="size-full" aria-hidden>
+          <defs><linearGradient id="wx" x1="0" y1="1" x2="1" y2="1"><stop offset="0" stopColor="#64d2ff" /><stop offset=".55" stopColor="#ffd60a" /><stop offset="1" stopColor="#ff9f0a" /></linearGradient></defs>
+          <circle cx="21" cy="21" r={r} fill="none" stroke="url(#wx)" strokeOpacity=".9" strokeWidth="3" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} transform="rotate(135 21 21)" />
+          <circle cx={mx} cy={my} r="3.6" fill="#fff" stroke="rgb(0 0 0 / .35)" strokeWidth="1" className="transition-all duration-700" />
+        </svg>
+        <div className="absolute inset-0 grid place-items-center"><Icon name={s.icon} className="size-4" /></div>
+      </div>
+      <div className="text-left leading-tight">
+        <div className="text-sm font-semibold tabular">{s.value}</div>
+        <div className="max-w-[90px] truncate text-xs text-muted-foreground">{s.label}</div>
+      </div>
+    </div>
+  );
 }

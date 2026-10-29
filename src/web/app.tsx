@@ -6,7 +6,8 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { StatusCard, WidgetState } from '../shared/cards.ts';
 import { cn } from '@/lib/utils';
-import { Icon, SummaryTile, Widget } from './cards.tsx';
+import { Card } from '@/components/ui/card';
+import { Icon, isEmpty, MiniRing, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
 
 // The assistant (and the AI SDK client) loads only when someone asks something.
 const Assistant = lazy(() => import('./assistant.tsx'));
@@ -15,7 +16,9 @@ interface Page {
   title: string; greeting?: string; location?: string;
   appearance: { wallpaper?: string; dim: number; blur: number };
   assistant: { name: string; model: string } | null;
-  sections: { title?: string; columns?: number; display?: 'cards' | 'tiles'; widgets: string[] }[];
+  menubar?: string[];
+  weather?: string;
+  sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings'; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
 }
 
@@ -131,7 +134,7 @@ export function App() {
       )}
 
       {/* top-left: the home's name */}
-      <div className="fixed top-5 left-5 z-20 hidden items-center gap-3 md:flex">
+      <div className="glass-bar fixed top-5 left-5 z-20 hidden items-center gap-3 rounded-full border py-1.5 pr-5 pl-1.5 md:flex">
         <span className="icon-tile size-11! rounded-full!">
           <svg viewBox="0 0 24 24" className="size-[18px]!" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" aria-hidden><path d="M5 19V10l7-5 7 5v9" /></svg>
         </span>
@@ -148,10 +151,21 @@ export function App() {
       </nav>
 
       {/* top-right: time, and the theme switch when there's no wallpaper */}
-      <div className="wall-text fixed top-5 right-5 z-20 flex items-center gap-3">
-        <div className="hidden text-right leading-tight sm:block">
+      <div className="wall-text fixed top-5 right-5 z-20 flex items-center gap-4">
+        {!!page?.menubar?.length && (
+          <div className="glass-bar hidden items-center gap-3 rounded-full border px-4 py-1.5 lg:flex">
+            {page.menubar.flatMap(key => {
+              const c = state[key]?.card;
+              return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <MiniRing key={`${key}${j}`} s={t} />);
+            })}
+          </div>
+        )}
+        <div className="glass-bar hidden items-center gap-4 rounded-full border py-1.5 pr-5 pl-2 sm:flex">
+          {page?.weather && state[page.weather]?.card?.summary && <WeatherRing s={state[page.weather]!.card!.summary!} />}
+          <div className="text-right leading-tight">
           <div className="text-sm font-semibold tabular">{now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</div>
           <div className="text-xs text-muted-foreground">{now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+          </div>
         </div>
         {!wall && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={theme.toggle}>{theme.dark ? <Sun /> : <Moon />}</RoundButton>}
       </div>
@@ -159,31 +173,45 @@ export function App() {
       <main className="@container/main mx-auto flex max-w-[1320px] flex-col gap-8 px-4 pt-20 pb-28 md:pr-8 md:pl-24 md:pb-16">
         {/* the hero: ask anything */}
         {view === 'all' && (
-          <header className="wall-text mx-auto w-full max-w-[760px] pt-4 text-center">
-            <div className="text-[17px] font-medium">{greet(now.getHours())}{page?.greeting ? `, ${page.greeting}` : ''}</div>
-            <div className={cn('mt-1 text-sm', p.tone)}>{p.text}</div>
+          <header className="wall-text mx-auto w-full max-w-[680px] text-center">
+            <div className="text-[22px] font-semibold tracking-tight">{greet(now.getHours())}{page?.greeting ? `, ${page.greeting}` : ''}</div>
+            <div className={cn('mt-0.5 text-[13px]', p.tone)}>{p.text}</div>
             {page?.assistant && (
-              <form className="group mt-5 flex items-center gap-3 border-b border-white/15 pb-3 transition-colors focus-within:border-white/40"
+              <form className="glass-round mt-5 flex items-center gap-2 rounded-[22px] py-1.5 pr-1.5 pl-4 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
-                <input value={draft} onChange={e => setDraft(e.target.value)} aria-label={`Ask ${page.assistant.name}`} placeholder="Ask me anything"
-                  className="min-w-0 flex-1 bg-transparent text-center text-[34px] font-light tracking-tight outline-none placeholder:text-foreground/55 sm:text-[42px]" />
-                {draft.trim() && <button type="submit" aria-label="Ask" className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-black"><ArrowUp className="size-5" /></button>}
+                <Sparkles className="size-4 shrink-0 text-muted-foreground" />
+                <input value={draft} onChange={e => setDraft(e.target.value)} aria-label={`Ask ${page.assistant.name}`} placeholder={`Ask ${page.assistant.name} anything…`}
+                  className="h-10 min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground" />
+                {!draft.trim() && <kbd className="hidden rounded-md border border-white/15 px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground sm:block">⌘K</kbd>}
+                <button type="submit" aria-label="Ask" disabled={!draft.trim()}
+                  className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-black transition-opacity disabled:opacity-25"><ArrowUp className="size-[18px]" /></button>
               </form>
             )}
             {page?.assistant && (
-              <div className="mt-4 flex flex-wrap justify-center gap-2">
-                {SUGGESTIONS.map(s => (
-                  <button key={s} onClick={() => ask(s)} className="glass-round rounded-full px-3.5 py-1.5 text-[13px] text-foreground/80 transition-colors hover:text-foreground">{s}</button>
+              <div className="no-scrollbar mt-2.5 flex justify-center gap-1.5 overflow-x-auto">
+                {SUGGESTIONS.slice(0, 3).map(s => (
+                  <button key={s} onClick={() => ask(s)} className="shrink-0 rounded-full px-2.5 py-1 text-[12.5px] text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground">{s}</button>
                 ))}
               </div>
             )}
           </header>
         )}
 
-        {sections.map(sec => (
+        {sections.filter(sec => sec.display !== 'cards' || sec.widgets.some(k => !isEmpty(state[k]?.card))).map(sec => (
           <section key={sec.i} className="space-y-3">
-            {sec.title && sec.display !== 'tiles' && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title) && <h2 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h2>}
-            {sec.display === 'tiles'
+            {sec.title && sec.display === 'cards' && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title) && <h2 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h2>}
+            {sec.display === 'rings'
+              ? (
+                <Card className="py-5 shadow-card">
+                  <div className="grid gap-y-5 px-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))' }}>
+                    {sec.widgets.flatMap(key => {
+                      const c = state[key]?.card;
+                      return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <Ring key={`${key}${j}`} s={t} />);
+                    })}
+                  </div>
+                </Card>
+              )
+              : sec.display === 'tiles'
               ? (
                 <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 165px), 1fr))' }}>
                   {sec.widgets.flatMap(key => {
@@ -194,7 +222,7 @@ export function App() {
               )
               : (
                 <div className="grid items-start gap-4" style={{ gridTemplateColumns: sec.columns ? `repeat(${sec.columns}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
-                  {sec.widgets.map(key => {
+                  {sec.widgets.filter(key => !isEmpty(state[key]?.card)).map(key => {
                     const s = state[key];
                     return <Widget key={key} card={s?.card} title={page?.widgets[key]?.title}
                       status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}

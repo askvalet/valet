@@ -32,7 +32,7 @@ for (const [id, block] of Object.entries(config.integrations)) {
 }
 
 // Only widgets placed in the layout are polled.
-const placed = new Set(config.layout.flatMap(s => s.widgets));
+const placed = new Set([...config.layout.flatMap(s => s.widgets), ...config.menubar, ...(config.weather ? [config.weather] : [])]);
 for (const key of placed) {
   const [inst, w] = key.split('.');
   if (!instances.get(inst)?.widgets[w]) console.error(`config: layout: no widget "${key}"`);
@@ -62,6 +62,9 @@ const ICON_DIR = resolve(process.env.ATRIUM_DATA ?? 'data', 'icons');
 app.get('/api/icon/:slug', async c => {
   const slug = c.req.param('slug');
   if (!/^[a-z0-9-]{1,64}$/.test(slug)) return c.notFound();
+  // your own icon: drop data/icons/<slug>.svg (or .png) and it wins over the CDN
+  const svg = await readFile(resolve(ICON_DIR, `${slug}.svg`)).catch(() => null);
+  if (svg) return c.body(svg, 200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' });
   const file = resolve(ICON_DIR, `${slug}.png`);
   let body = await readFile(file).catch(() => null);
   if (!body) {
@@ -78,6 +81,8 @@ app.get('/api/page', c => c.json({
   // ?v= the file's mtime: replacing the wallpaper changes the URL, so browsers never show a stale cached one
   appearance: { ...config.appearance, wallpaper: wallpaperFile ? `/api/wallpaper?v=${wallpaperVersion}` : wallpaper },
   assistant: config.assistant ? { name: config.assistant.name, model: config.assistant.model } : null,
+  menubar: config.menubar.filter(k => hub.widget(k)),
+  weather: config.weather && hub.widget(config.weather) ? config.weather : undefined,
   sections: config.layout.map(s => ({ title: s.title, columns: s.columns, display: s.display, widgets: s.widgets.filter(k => hub.widget(k)) })),
   widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
 }));

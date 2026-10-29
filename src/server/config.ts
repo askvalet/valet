@@ -23,7 +23,8 @@ const Section = z.object({
   title: z.string().optional(),
   widgets: z.array(z.string()),            // "instance.widget"
   columns: z.number().int().min(1).max(4).optional(),
-  display: z.enum(['cards', 'tiles']).default('cards'),   // tiles: each widget's headline tiles with live graphs
+  // tiles: headline tiles with live graphs · rings: the same as ring gauges coloured by health · cards: full cards
+  display: z.enum(['cards', 'tiles', 'rings']).default('cards'),
 }).strict();
 
 // An MCP server whose tools the assistant may use. `access: read` offers only the tools the server marks read-only
@@ -53,6 +54,8 @@ export const Config = z.object({
   integrations: z.record(z.string(), z.object({ type: z.string() }).loose()).default({}),
   mcp: z.record(z.string(), McpServer).default({}),
   layout: z.array(Section).default([]),
+  menubar: z.array(z.string()).default([]),
+  weather: z.string().optional(),               // a widget key (e.g. weather.now) shown as a ring beside the clock   // widget keys whose headline numbers sit as small rings in the top bar
 }).strict();
 export type Config = z.infer<typeof Config>;
 
