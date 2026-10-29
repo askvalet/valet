@@ -67,4 +67,4 @@ chat. Atrium never hands the model your API keys; tools run on the server.
 
 ## Licence
 
-MIT. The bundled Instrument Sans font is under the SIL Open Font License (`public/fonts/OFL.txt`).
+MIT. Geist (bundled via Fontsource) is under the SIL Open Font License.

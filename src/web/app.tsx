@@ -1,7 +1,16 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { LayoutGrid, Moon, Sparkles, Sun } from 'lucide-react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
+import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import {
+  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger,
+} from '@/components/ui/sidebar';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import type { StatusCard, WidgetState } from '../shared/cards.ts';
-import { Frame } from './cards.tsx';
-import { Icon } from './icons.tsx';
+import { Icon, SummaryTile, Widget } from './cards.tsx';
 
 // The assistant (and the AI SDK client) loads only when someone asks something.
 const Assistant = lazy(() => import('./assistant.tsx'));
@@ -29,100 +38,198 @@ function useLive() {
   return { state, online };
 }
 
-const greet = (h: number) => h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-
 function useClock() {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 15_000); return () => clearInterval(t); }, []);
   return now;
 }
 
-/** One line that says whether anything needs attention, built from whatever widgets are on the page. */
-function Pulse({ state }: { state: Record<string, WidgetState> }) {
-  const status = Object.values(state).map(s => s.card).filter((c): c is StatusCard => c?.type === 'status');
-  const items = status.flatMap(c => c.items);
-  const down = items.filter(i => !i.ok);
-  const errors = Object.values(state).filter(s => s.error);
-  if (!items.length && !errors.length) return <span className="muted">Connecting…</span>;
-  if (down.length) return <span className="tone-bad font-medium">{down.map(d => d.name).join(', ')} {down.length === 1 ? 'is' : 'are'} down</span>;
-  if (errors.length) return <span className="tone-warn font-medium">{errors.length} widget{errors.length > 1 ? 's' : ''} can't reach {errors.length > 1 ? 'their services' : 'its service'}</span>;
-  return <span className="muted">All {items.length} services are up</span>;
+function useTheme() {
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const toggle = () => {
+    const next = !dark;
+    document.documentElement.classList.toggle('dark', next);
+    try { localStorage.setItem('atrium-theme', next ? 'dark' : 'light'); } catch { /* private mode */ }
+    setDark(next);
+  };
+  return { dark, toggle };
+}
+
+const greet = (h: number) => h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+
+/** One line that says whether anything needs attention. */
+function pulse(state: Record<string, WidgetState>) {
+  const items = Object.values(state).map(s => s.card).filter((c): c is StatusCard => c?.type === 'status').flatMap(c => c.items);
+  const down = items.filter(i => !i.ok), errors = Object.values(state).filter(s => s.error);
+  if (down.length) return { text: `${down.map(d => d.name).join(', ')} ${down.length === 1 ? 'is' : 'are'} down`, tone: 'text-bad' };
+  if (errors.length) return { text: `${errors.length} widget${errors.length > 1 ? 's' : ''} can't reach ${errors.length > 1 ? 'their services' : 'its service'}`, tone: 'text-warn' };
+  if (items.length) return { text: `Everything's running. All ${items.length} services are up.`, tone: 'text-muted-foreground' };
+  return { text: 'Connecting…', tone: 'text-muted-foreground' };
 }
 
 async function runAction(key: string, action: string, args?: Record<string, unknown>) {
-  const inst = key.split('.')[0];
-  const r = await fetch(`/api/action/${inst}/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(args ?? {}) });
+  const r = await fetch(`/api/action/${key.split('.')[0]}/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(args ?? {}) });
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? r.statusText);
 }
+
+const SUGGESTIONS = ['Is anything down?', 'How are my downloads doing?', "What's playing on Plex?", 'Show me the GPU and Plex side by side'];
 
 export function App() {
   const [page, setPage] = useState<Page | null>(null);
   const { state, online } = useLive();
   const now = useClock();
-  const [ask, setAsk] = useState<{ text: string; n: number } | null>(null);
-  const [draft, setDraft] = useState('');
+  const theme = useTheme();
+  const [view, setView] = useState<number | 'all'>('all');
+  const [palette, setPalette] = useState(false);
+  const [chat, setChat] = useState<{ text: string; n: number } | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => { fetch('/api/page').then(r => r.json()).then(setPage); }, []);
   useEffect(() => { if (page) document.title = page.title; }, [page]);
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === 'k' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setPalette(p => !p); } };
+    addEventListener('keydown', k); return () => removeEventListener('keydown', k);
+  }, []);
 
-  const suggestions = useMemo(() => ['Is anything down?', 'How are my downloads doing?', 'How is the server doing?'], []);
-  const submit = (text: string) => { if (!text.trim()) return; setAsk({ text: text.trim(), n: Date.now() }); setDraft(''); };
+  const ask = useCallback((text: string) => {
+    if (!text.trim()) return;
+    setChat({ text: text.trim(), n: Date.now() }); setChatOpen(true); setPalette(false);
+  }, []);
+
+  const p = pulse(state);
+  const summaries = useMemo(() => Object.values(state).filter(s => s.card?.summary)
+    .sort((a, b) => (page ? Object.keys(page.widgets).indexOf(a.key) - Object.keys(page.widgets).indexOf(b.key) : 0)), [state, page]);
+  const sections = page?.sections.map((s, i) => ({ ...s, i })).filter(s => view === 'all' || s.i === view) ?? [];
+  const sectionIcon = (s: Page['sections'][number]) => state[s.widgets[0]]?.card?.icon;
+  const [query, setQuery] = useState('');
 
   return (
-    <>
-      <div className="ambient" aria-hidden="true"><i /><i /><i /></div>
-      <div className={`mx-auto max-w-[1240px] px-4 sm:px-8 pt-10 sm:pt-16 pb-16 transition-[padding] ${ask ? 'lg:pr-[452px]' : ''}`}>
-        <header className="mb-8 sm:mb-10 fade-in">
-          <div className="text-[14px] muted flex items-center gap-2">
-            <span>{now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
-            <span className="faint">·</span>
-            <span className="num">{now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
-            {!online && <span className="ml-2 tone-warn">reconnecting…</span>}
-          </div>
-          <h1 className="text-[34px] sm:text-[44px] leading-[1.05] font-semibold tracking-[-0.02em] mt-2">
-            {greet(now.getHours())}{page?.greeting ? `, ${page.greeting}` : ''}
-          </h1>
-          <p className="text-[17px] mt-2"><Pulse state={state} /></p>
-
+    <TooltipProvider>
+      <SidebarProvider style={{ '--sidebar-width': '15rem' } as React.CSSProperties}>
+        <Sidebar variant="inset" collapsible="offcanvas">
+          <SidebarHeader>
+            <SidebarMenu><SidebarMenuItem>
+              <SidebarMenuButton size="lg" onClick={() => setView('all')}>
+                <div className="grid size-8 place-items-center rounded-lg bg-foreground text-background">
+                  <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" aria-hidden><path d="M5 19V10l7-5 7 5v9" /></svg>
+                </div>
+                <div className="grid leading-tight"><span className="font-semibold">{page?.title ?? 'Home'}</span><span className="text-xs text-muted-foreground">{online ? 'Live' : 'Reconnecting…'}</span></div>
+              </SidebarMenuButton>
+            </SidebarMenuItem></SidebarMenu>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupContent><SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={view === 'all'} onClick={() => setView('all')}><LayoutGrid /><span>Overview</span></SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu></SidebarGroupContent>
+            </SidebarGroup>
+            <SidebarGroup>
+              <SidebarGroupLabel>Sections</SidebarGroupLabel>
+              <SidebarGroupContent><SidebarMenu>
+                {page?.sections.map((s, i) => (
+                  <SidebarMenuItem key={i}>
+                    <SidebarMenuButton isActive={view === i} onClick={() => setView(i)}>
+                      <Icon name={sectionIcon(s) ?? 'pulse'} /><span>{s.title ?? `Section ${i + 1}`}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu></SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
           {page?.assistant && (
-            <form className="ask mt-6 flex items-center gap-2 pl-4 pr-2 py-2 max-w-[720px]" onSubmit={e => { e.preventDefault(); submit(draft); }}>
-              <Icon name="sparkle" className="tone-accent shrink-0" size={18} />
-              <input value={draft} onChange={e => setDraft(e.target.value)} placeholder={`Ask ${page.assistant.name} about your homelab…`}
-                aria-label="Ask the assistant" className="flex-1 bg-transparent outline-none py-2 text-[16px] min-w-0 placeholder:text-[var(--faint)]" />
-              <button type="submit" aria-label="Ask" className="w-9 h-9 grid place-items-center rounded-xl bg-[var(--ink)] text-[var(--base)] disabled:opacity-30" disabled={!draft.trim()}>
-                <Icon name="send" />
-              </button>
-            </form>
+            <SidebarFooter>
+              <SidebarMenu><SidebarMenuItem>
+                <SidebarMenuButton onClick={() => setChatOpen(true)}><Sparkles className="text-primary" /><span>{page.assistant.name}</span></SidebarMenuButton>
+              </SidebarMenuItem></SidebarMenu>
+            </SidebarFooter>
           )}
-          {page?.assistant && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {suggestions.map(s => <button key={s} className="chip" onClick={() => submit(s)}>{s}</button>)}
-            </div>
-          )}
-        </header>
+        </Sidebar>
 
-        {page?.sections.map((sec, i) => (
-          <section key={i} className="mb-8">
-            {sec.title && <h2 className="text-[15px] font-semibold muted mb-3 px-1">{sec.title}</h2>}
-            <div className="grid gap-4 items-start" style={{ gridTemplateColumns: sec.columns ? `repeat(${sec.columns}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
-              {sec.widgets.map(key => {
-                const s = state[key];
-                return (
-                  <Frame key={key} card={s?.card} title={page.widgets[key]?.title}
-                    status={s?.error ? <span className="text-[12.5px] tone-warn truncate" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
-                    run={(action, args) => runAction(key, action, args)} />
-                );
-              })}
+        <SidebarInset>
+          <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 rounded-t-xl border-b bg-background/80 px-4 backdrop-blur-xl lg:px-6">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mx-1 data-[orientation=vertical]:h-4" />
+            <h1 className="text-sm font-medium">{view === 'all' ? 'Overview' : page?.sections[view]?.title}</h1>
+            <div className="ml-auto flex items-center gap-2">
+              {page?.assistant && (
+                <Button variant="outline" size="sm" className="h-8 w-44 justify-start gap-2 text-muted-foreground sm:w-64" onClick={() => setPalette(true)}>
+                  <Sparkles className="text-primary" /><span className="truncate">Ask {page.assistant.name}…</span>
+                  <kbd className="ml-auto hidden rounded border bg-muted px-1.5 font-sans text-[10px] font-medium sm:inline">⌘K</kbd>
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" className="size-8" onClick={theme.toggle} aria-label="Toggle theme">{theme.dark ? <Sun /> : <Moon />}</Button>
             </div>
-          </section>
-        ))}
-      </div>
+          </header>
 
-      {ask && page?.assistant && (
-        <Suspense fallback={null}>
-          <Assistant name={page.assistant.name} model={page.assistant.model} ask={ask} onClose={() => setAsk(null)} />
-        </Suspense>
+          <main className="@container/main flex flex-1 flex-col gap-6 px-4 py-6 lg:px-6">
+            {view === 'all' && (
+              <>
+                <div>
+                  <div className="text-sm text-muted-foreground tabular">
+                    {now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} · {now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                  </div>
+                  <h2 className="mt-1 text-3xl font-semibold tracking-tight">{greet(now.getHours())}{page?.greeting ? `, ${page.greeting}` : ''}</h2>
+                  <p className={`mt-1 ${p.tone}`}>{p.text}</p>
+                </div>
+                {summaries.length > 0 && (
+                  <div className="grid grid-cols-2 gap-4 @3xl/main:grid-cols-3 @5xl/main:grid-cols-5">
+                    {summaries.map(s => <SummaryTile key={s.key} s={s.card!.summary!} href={s.card!.href} />)}
+                  </div>
+                )}
+              </>
+            )}
+            {sections.map(sec => (
+              <section key={sec.i} className="space-y-3">
+                {view === 'all' && sec.title && <h3 className="px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h3>}
+                <div className="grid items-start gap-4" style={{ gridTemplateColumns: sec.columns ? `repeat(${sec.columns}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
+                  {sec.widgets.map(key => {
+                    const s = state[key];
+                    return <Widget key={key} card={s?.card} title={page?.widgets[key]?.title}
+                      status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
+                      run={(action, args) => runAction(key, action, args)} />;
+                  })}
+                </div>
+              </section>
+            ))}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+
+      {page?.assistant && (
+        <CommandDialog open={palette} onOpenChange={setPalette} title={`Ask ${page.assistant.name}`} description="Ask a question or jump to a section">
+          <CommandInput placeholder={`Ask ${page.assistant.name} anything about your homelab…`} value={query} onValueChange={setQuery}
+            onKeyDown={e => { if (e.key === 'Enter' && query.trim() && !document.querySelector('[cmdk-item][data-selected="true"]')) { ask(query); setQuery(''); } }} />
+          <CommandList>
+            <CommandEmpty>
+              <button className="mx-auto flex items-center gap-2 text-sm" onClick={() => { ask(query); setQuery(''); }}><Sparkles className="size-4 text-primary" />Ask “{query}”</button>
+            </CommandEmpty>
+            {query.trim() && <CommandGroup heading="Ask"><CommandItem value={`ask ${query}`} onSelect={() => { ask(query); setQuery(''); }}><Sparkles className="text-primary" />Ask “{query}”<CommandShortcut>↵</CommandShortcut></CommandItem></CommandGroup>}
+            <CommandGroup heading="Suggestions">
+              {SUGGESTIONS.map(s => <CommandItem key={s} onSelect={() => ask(s)}><Sparkles className="text-muted-foreground" />{s}</CommandItem>)}
+            </CommandGroup>
+            <CommandGroup heading="Go to">
+              <CommandItem onSelect={() => { setView('all'); setPalette(false); }}><LayoutGrid />Overview</CommandItem>
+              {page.sections.map((s, i) => <CommandItem key={i} onSelect={() => { setView(i); setPalette(false); }}><Icon name={sectionIcon(s) ?? 'pulse'} />{s.title}</CommandItem>)}
+            </CommandGroup>
+          </CommandList>
+        </CommandDialog>
       )}
-    </>
+
+      {page?.assistant && (
+        <Sheet open={chatOpen} onOpenChange={setChatOpen}>
+          <SheetContent className="w-full gap-0 p-0 sm:max-w-[460px]">
+            <SheetTitle className="sr-only">{page.assistant.name}</SheetTitle>
+            <SheetDescription className="sr-only">Ask about your homelab</SheetDescription>
+            {chatOpen && (
+              <Suspense fallback={null}>
+                <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={SUGGESTIONS} onAsk={ask} />
+              </Suspense>
+            )}
+          </SheetContent>
+        </Sheet>
+      )}
+    </TooltipProvider>
   );
 }

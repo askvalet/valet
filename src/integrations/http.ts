@@ -31,7 +31,12 @@ export default defineIntegration({
       widgets: {
         status: {
           title: 'Services', interval: cfg.interval,
-          async fetch() { return { type: 'status', title: 'Services', icon: 'pulse', items: await check() }; },
+          async fetch() {
+            const items = await check(), down = items.filter(i => !i.ok);
+            return { type: 'status', title: 'Services', icon: 'pulse', items,
+              summary: { label: 'Services', value: `${items.length - down.length}/${items.length}`, tone: down.length ? 'bad' : 'good',
+                sub: down.length ? `${down.map(d => d.name).join(', ')} down` : 'All up' } };
+          },
         },
       },
       tools: {

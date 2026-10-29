@@ -42,6 +42,7 @@ export default defineIntegration({
           const { info, dl } = await state();
           return {
             type: 'list', title: 'Downloads', icon: 'download', href: cfg.href ?? cfg.url,
+            summary: { label: 'Downloads', value: dl.length, sub: dl.length ? `↓ ${fmt.rate(info.dl_info_speed)}` : 'Idle' },
             note: `↓ ${fmt.rate(info.dl_info_speed)} · ↑ ${fmt.rate(info.up_info_speed)}`,
             empty: 'Nothing downloading',
             items: dl.slice(0, 8).map(t => ({ title: t.name, pct: t.progress, subtitle: label(t),

@@ -1,91 +1,128 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
 
-@font-face {
-  font-family: "Instrument Sans";
-  src: url("/fonts/InstrumentSans.woff2") format("woff2");
-  font-weight: 400 700; font-stretch: 75% 100%; font-display: swap;
-}
+/* dark: follows the system (html.dark is set before first paint in index.html) */
+@custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
-  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
-}
-
-/* Tokens. Light is a soft daylight field; dark is a night field with the same hues at low light. */
+/* Light: Apple's off-white page with white cards. Dark: true black with raised #1c1c1e cards.
+   One accent (system blue); system green / orange / red only for status. */
 :root {
-  --ink: #15171d; --muted: #6a6f7d; --faint: #9aa0ad;
-  --base: #edeff4;
-  --glass: rgb(255 255 255 / .58); --glass-strong: rgb(255 255 255 / .8);
-  --edge: rgb(255 255 255 / .75); --hair: rgb(20 24 40 / .07);
-  --shadow: 0 1px 2px rgb(16 20 40 / .04), 0 12px 32px -12px rgb(16 20 40 / .12);
-  --accent: #5b5cf0; --accent-soft: rgb(91 92 240 / .1);
-  --good: #11a06a; --warn: #d4860f; --bad: #e0464c;
-  --blob-1: #cdc8ff; --blob-2: #bfe6f4; --blob-3: #f7dccb;
-  color-scheme: light;
+  --radius: 0.9rem;
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
+  --card: #ffffff;
+  --card-foreground: #1d1d1f;
+  --popover: #ffffff;
+  --popover-foreground: #1d1d1f;
+  --primary: #0071e3;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f0f3;
+  --secondary-foreground: #1d1d1f;
+  --muted: #f0f0f3;
+  --muted-foreground: #6e6e73;
+  --accent: #ececf0;
+  --accent-foreground: #1d1d1f;
+  --destructive: #ff3b30;
+  --border: rgb(0 0 0 / 0.08);
+  --input: rgb(0 0 0 / 0.12);
+  --ring: #0071e3;
+  --good: #28a745; --warn: #e08600; --bad: #ff3b30;
+  --sidebar: #f5f5f7;
+  --sidebar-foreground: #1d1d1f;
+  --sidebar-primary: #0071e3;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgb(0 0 0 / 0.05);
+  --sidebar-accent-foreground: #1d1d1f;
+  --sidebar-border: rgb(0 0 0 / 0.06);
+  --sidebar-ring: #0071e3;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px -4px rgb(0 0 0 / 0.06);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --ink: #eceef3; --muted: #8e93a2; --faint: #5f6473;
-    --base: #0b0c10;
-    --glass: rgb(24 26 33 / .58); --glass-strong: rgb(30 32 40 / .85);
-    --edge: rgb(255 255 255 / .07); --hair: rgb(255 255 255 / .06);
-    --shadow: 0 1px 0 rgb(255 255 255 / .03) inset, 0 16px 40px -16px rgb(0 0 0 / .6);
-    --accent: #8b8cff; --accent-soft: rgb(139 140 255 / .14);
-    --good: #3ccf91; --warn: #f2b14a; --bad: #ff6b70;
-    --blob-1: #2b2470; --blob-2: #0f3b4a; --blob-3: #3a2418;
-    color-scheme: dark;
-  }
+
+.dark {
+  --background: #000000;
+  --foreground: #f5f5f7;
+  --card: #1c1c1e;
+  --card-foreground: #f5f5f7;
+  --popover: #1c1c1e;
+  --popover-foreground: #f5f5f7;
+  --primary: #0a84ff;
+  --primary-foreground: #ffffff;
+  --secondary: #2c2c2e;
+  --secondary-foreground: #f5f5f7;
+  --muted: #2c2c2e;
+  --muted-foreground: #98989d;
+  --accent: #2c2c2e;
+  --accent-foreground: #f5f5f7;
+  --destructive: #ff453a;
+  --border: rgb(255 255 255 / 0.08);
+  --input: rgb(255 255 255 / 0.12);
+  --ring: #0a84ff;
+  --good: #30d158; --warn: #ff9f0a; --bad: #ff453a;
+  --sidebar: #000000;
+  --sidebar-foreground: #f5f5f7;
+  --sidebar-primary: #0a84ff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgb(255 255 255 / 0.07);
+  --sidebar-accent-foreground: #f5f5f7;
+  --sidebar-border: rgb(255 255 255 / 0.06);
+  --sidebar-ring: #0a84ff;
+  --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.02);
 }
 
-html, body { background: var(--base); color: var(--ink); }
-body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; font-size: 15px; line-height: 1.45; min-height: 100dvh; }
-
-/* The ambient field: three soft colour pools, fixed behind everything. Static, so it costs nothing to scroll. */
-.ambient { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
-.ambient i { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .9; }
-.ambient i:nth-child(1) { width: 52vw; height: 52vw; left: -10vw; top: -18vw; background: var(--blob-1); }
-.ambient i:nth-child(2) { width: 46vw; height: 46vw; right: -12vw; top: 8vh; background: var(--blob-2); }
-.ambient i:nth-child(3) { width: 40vw; height: 40vw; left: 30vw; bottom: -22vw; background: var(--blob-3); opacity: .7; }
-
-.glass {
-  background: var(--glass); border: 1px solid var(--edge); border-radius: 22px; box-shadow: var(--shadow);
-  backdrop-filter: blur(22px) saturate(1.4); -webkit-backdrop-filter: blur(22px) saturate(1.4);
+@theme inline {
+  --font-sans: "Geist Variable", -apple-system, BlinkMacSystemFont, "SF Pro Text", ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --shadow-card: var(--shadow-card);
 }
-.num { font-stretch: 78%; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
-.muted { color: var(--muted); }
-.faint { color: var(--faint); }
-.hair { border-color: var(--hair); }
 
-.tone-good { color: var(--good); } .tone-warn { color: var(--warn); } .tone-bad { color: var(--bad); } .tone-accent { color: var(--accent); }
-.bg-tone-good { background: var(--good); } .bg-tone-warn { background: var(--warn); } .bg-tone-bad { background: var(--bad); }
-.bg-tone-neutral, .bg-tone-accent { background: var(--accent); }
-
-.meter { height: 4px; border-radius: 99px; background: var(--hair); overflow: hidden; }
-.meter > i { display: block; height: 100%; border-radius: inherit; transition: width .6s cubic-bezier(.2,.7,.2,1); }
-
-.dot { width: 7px; height: 7px; border-radius: 99px; flex: none; }
-.dot.ok { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 18%, transparent); }
-.dot.down { background: var(--bad); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 20%, transparent); }
-
-.ask {
-  background: var(--glass-strong); border: 1px solid var(--edge); border-radius: 18px; box-shadow: var(--shadow);
-  backdrop-filter: blur(22px) saturate(1.4); -webkit-backdrop-filter: blur(22px) saturate(1.4);
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-background text-foreground antialiased; font-feature-settings: "ss01", "cv11"; }
 }
-.ask:focus-within { border-color: color-mix(in srgb, var(--accent) 45%, var(--edge)); box-shadow: var(--shadow), 0 0 0 4px var(--accent-soft); }
-.chip { border: 1px solid var(--hair); background: var(--glass); border-radius: 99px; padding: 6px 12px; font-size: 13.5px; color: var(--muted); transition: color .15s, border-color .15s; }
-.chip:hover { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 35%, var(--hair)); }
 
-.btn { border-radius: 10px; padding: 7px 12px; font-weight: 600; font-size: 13.5px; transition: opacity .15s, transform .1s; }
-.btn:active { transform: scale(.97); }
-.btn-primary { background: var(--ink); color: var(--base); }
-.btn-ghost { border: 1px solid var(--hair); color: var(--ink); }
+.tabular { font-variant-numeric: tabular-nums; }
+.metric { font-weight: 600; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; }
 
-.fade-in { animation: fade-in .35s cubic-bezier(.2,.7,.2,1) both; }
-@keyframes fade-in { from { opacity: 0; transform: translateY(6px); } }
-.pulse { animation: pulse 1.4s ease-in-out infinite; }
-@keyframes pulse { 50% { opacity: .35; } }
+.dot { width: 7px; height: 7px; border-radius: 999px; flex: none; }
+.dot-good { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 18%, transparent); }
+.dot-bad { background: var(--bad); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 20%, transparent); }
 
 .prose-chat p { margin: 0 0 .5em; } .prose-chat p:last-child { margin: 0; }
 .prose-chat strong { font-weight: 600; }
-.prose-chat code { font-size: .9em; padding: 1px 5px; border-radius: 6px; background: var(--hair); }
+.prose-chat code { font-size: .9em; padding: 1px 5px; border-radius: 6px; background: var(--muted); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

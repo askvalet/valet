@@ -4,11 +4,15 @@
 
 export type Tone = 'neutral' | 'good' | 'warn' | 'bad' | 'accent';
 
+/** A headline number for the overview's top row ("Services · 10/10 · all up"). Any card may carry one. */
+export interface Summary { label: string; value: string | number; sub?: string; tone?: Tone }
+
 interface Base {
   title?: string;
   icon?: string;          // icon name from the built-in set, or a URL
   href?: string;          // "open the app" link
-  note?: string;          // small footer text, e.g. "updated 3 s ago" is added by the UI
+  note?: string;          // small text in the card header, e.g. "↓ 4 MB/s"
+  summary?: Summary;
 }
 
 export interface StatItem {

@@ -53,7 +53,8 @@ export default defineIntegration({
             if (o.gpu) items.push({ label: 'GPU', value: Math.round(o.gpu.proc ?? 0), unit: '%', pct: (o.gpu.proc ?? 0) / 100,
               trend: [...hist.gpu], sub: `${o.gpu.temperature}°C · VRAM ${Math.round(o.gpu.mem)}%`, tone: heat(o.gpu.temperature) });
             items.push({ label: 'Uptime', value: o.uptime.replace(/:\d\d$/, '').replace(' days, ', 'd ') });
-            return { type: 'stats', title: 'System', icon: 'cpu', items };
+            return { type: 'stats', title: 'System', icon: 'cpu', items,
+              summary: { label: 'Server', value: `${Math.round(o.cpu.total)}%`, sub: `CPU${o.temp != null ? ` · ${o.temp}°C` : ''} · RAM ${Math.round(o.mem.percent)}%`, tone: heat(o.temp) } };
           },
         },
         disks: {

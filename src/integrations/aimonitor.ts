@@ -27,6 +27,7 @@ export default defineIntegration({
           const working = (j.running?.length ?? 0) > 0;
           return {
             type: 'stats', title: 'Local AI', icon: 'gpu', href: cfg.href,
+            summary: { label: 'Local AI', value: m.swapping ? 'Loading' : working ? 'Working' : 'Idle', sub: `${m.name} · ${Math.round(g.power)} W`, tone: working ? 'accent' : 'neutral' },
             note: m.swapping ? `loading ${m.swapping}…` : `${m.name}${working ? ' · working' : ' · idle'}`,
             items: [
               { label: 'GPU', value: Math.round(g.util), unit: '%', trend: [...hist.util], sub: `${Math.round(g.temp)}°C`, tone: heat(g.temp) },
