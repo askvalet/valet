@@ -18,7 +18,7 @@ integrations:
     url: http://host:8098
     presets: true                  # show the lighting presets when no part is selected
     controls: true                 # false: look, don't touch
-    view: { turn: -15, tilt: 7, draggable: true }
+    view: { turn: -8, tilt: 0, draggable: true }
   weather:
     type: weather                  # Open-Meteo, no key needed
     latitude: 43.65
