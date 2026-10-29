@@ -23,6 +23,7 @@ const Section = z.object({
   title: z.string().optional(),
   widgets: z.array(z.string()),            // "instance.widget"
   columns: z.number().int().min(1).max(4).optional(),
+  display: z.enum(['cards', 'tiles']).default('cards'),   // tiles: each widget's headline tiles with live graphs
 }).strict();
 
 // An MCP server whose tools the assistant may use. `access: read` offers only the tools the server marks read-only

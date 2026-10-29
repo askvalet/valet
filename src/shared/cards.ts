@@ -5,7 +5,15 @@
 export type Tone = 'neutral' | 'good' | 'warn' | 'bad' | 'accent';
 
 /** A headline number for the overview's top row ("Services · 10/10 · all up"). Any card may carry one. */
-export interface Summary { label: string; value: string | number; sub?: string; tone?: Tone }
+export interface Summary {
+  label: string;
+  value: string | number;
+  sub?: string;           // under the label, e.g. "Ryzen 9 9950X3D"
+  detail?: string;        // bottom right, e.g. "39°C"
+  tone?: Tone;
+  icon?: string;
+  trend?: number[];       // recent values, drawn as a live area graph behind the tile
+}
 
 interface Base {
   title?: string;
@@ -13,6 +21,7 @@ interface Base {
   href?: string;          // "open the app" link
   note?: string;          // small text in the card header, e.g. "↓ 4 MB/s"
   summary?: Summary;
+  summaries?: Summary[];  // several headline tiles from one card (e.g. CPU, memory, network, each disk)
 }
 
 export interface StatItem {
@@ -57,7 +66,7 @@ export interface MediaCard extends Base { type: 'media'; items: MediaItem[]; emp
 export interface ShelfItem { title: string; subtitle?: string; image?: string; badge?: string; href?: string }
 export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string }
 
-export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string }
+export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string }
 export interface StatusCard extends Base { type: 'status'; items: StatusItem[] }
 
 export interface ChartCard extends Base {

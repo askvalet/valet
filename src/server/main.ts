@@ -1,4 +1,4 @@
-import { readFile, stat } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -56,12 +56,29 @@ app.get('/api/wallpaper', async c => {
   return c.body(await readFile(wallpaperFile), 200, { 'Content-Type': type, 'Cache-Control': 'public, max-age=31536000, immutable' });
 });
 
+// Service icons from the open dashboard-icons set (the one Homepage uses), fetched once and cached on disk, so the
+// browser never talks to a CDN and the page works offline after the first load.
+const ICON_DIR = resolve(process.env.ATRIUM_DATA ?? 'data', 'icons');
+app.get('/api/icon/:slug', async c => {
+  const slug = c.req.param('slug');
+  if (!/^[a-z0-9-]{1,64}$/.test(slug)) return c.notFound();
+  const file = resolve(ICON_DIR, `${slug}.png`);
+  let body = await readFile(file).catch(() => null);
+  if (!body) {
+    const r = await fetch(`https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/${slug}.png`, { signal: AbortSignal.timeout(8000) }).catch(() => null);
+    if (!r?.ok) return c.notFound();
+    body = Buffer.from(await r.arrayBuffer());
+    await mkdir(ICON_DIR, { recursive: true }).then(() => writeFile(file, body!)).catch(() => {});
+  }
+  return c.body(body, 200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=604800' });
+});
+
 app.get('/api/page', c => c.json({
   title: config.title, greeting: config.greeting, location: config.location,
   // ?v= the file's mtime: replacing the wallpaper changes the URL, so browsers never show a stale cached one
   appearance: { ...config.appearance, wallpaper: wallpaperFile ? `/api/wallpaper?v=${wallpaperVersion}` : wallpaper },
   assistant: config.assistant ? { name: config.assistant.name, model: config.assistant.model } : null,
-  sections: config.layout.map(s => ({ title: s.title, columns: s.columns, widgets: s.widgets.filter(k => hub.widget(k)) })),
+  sections: config.layout.map(s => ({ title: s.title, columns: s.columns, display: s.display, widgets: s.widgets.filter(k => hub.widget(k)) })),
   widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
 }));
 

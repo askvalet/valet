@@ -81,6 +81,8 @@ export const fmt = {
     return `${n.toFixed(i ? d : 0)} ${u[i]}`;
   },
   rate: (bps: number) => `${fmt.bytes(bps)}/s`,
+  /** short speed for tight spaces: "912 KB/s", "1.5 MB/s" */
+  speed: (bps: number) => bps < 1024 ** 2 ? `${Math.round(bps / 1024)} KB/s` : `${fmt.bytes(bps, 1)}/s`,
   duration(s: number) {
     if (!Number.isFinite(s) || s < 0 || s > 8640000) return '∞';
     const d = Math.floor(s / 86400), h = Math.floor(s / 3600) % 24, m = Math.floor(s / 60) % 60;

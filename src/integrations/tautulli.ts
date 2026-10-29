@@ -28,6 +28,7 @@ export default defineIntegration({
       ? `S${s.parent_media_index}·E${s.media_index} — ${s.title}`
       : s.media_type === 'track' ? `${s.grandparent_title} — ${s.parent_title}` : s.year ? String(s.year) : undefined;
 
+    const bw: number[] = [];
     async function activity() {
       const d = await api('get_activity');
       return { count: Number(d.stream_count), bandwidth: Number(d.total_bandwidth), sessions: d.sessions as any[] };
@@ -47,8 +48,11 @@ export default defineIntegration({
         title: 'Now playing', interval: 10_000,
         async fetch() {
           const a = await activity();
+          bw.push(a.bandwidth / 1000); if (bw.length > 40) bw.shift();
           return { type: 'media', title: 'Now playing', icon: 'play', href: cfg.href, empty: 'Nothing playing',
-            summary: { label: 'Streaming', value: a.count, sub: a.count ? `${(a.bandwidth / 1000).toFixed(0)} Mbps · ${[...new Set(a.sessions.map(s => s.friendly_name))].join(', ')}` : 'Nothing playing' },
+            summary: { label: 'Plex', icon: 'play', value: a.count ? `${a.count} stream${a.count > 1 ? 's' : ''}` : 'Idle',
+              sub: a.count ? [...new Set(a.sessions.map(s => s.friendly_name))].join(', ') : 'Nothing playing',
+              detail: a.count ? `${(a.bandwidth / 1000).toFixed(0)} Mbps` : undefined, trend: [...bw] },
             note: a.count ? `${a.count} stream${a.count > 1 ? 's' : ''} · ${(a.bandwidth / 1000).toFixed(0)} Mbps` : undefined,
             items: a.sessions.map(toItem) };
         },

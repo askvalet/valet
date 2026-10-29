@@ -1,7 +1,7 @@
 // Glances (https://nicolargo.github.io/glances/) API v4: CPU, memory, temperatures, GPU, disks, network.
 import { z } from 'zod';
 import { defineIntegration, fmt, type Instance } from '../server/core.ts';
-import type { StatItem } from '../shared/cards.ts';
+import type { StatItem, Summary } from '../shared/cards.ts';
 
 const heat = (c?: number) => c == null ? 'neutral' : c >= 85 ? 'bad' : c >= 75 ? 'warn' : 'neutral';
 
@@ -10,13 +10,17 @@ export default defineIntegration({
   name: 'Glances',
   config: z.object({
     url: z.string().url(),
-    disks: z.array(z.string()).optional(),         // mount points to show; default: every real disk
+    // mount points to show (default: every real disk); { mount, name, sub } to label a tile, e.g. { mount: /ssd, name: SSD }
+    disks: z.array(z.union([z.string(), z.object({ mount: z.string(), name: z.string(), sub: z.string().optional() })])).optional(),
     network: z.string().optional(),                // interface to show, e.g. "eth0"
     cpuSensor: z.string().default('CPU'),          // label of the CPU temperature sensor
   }),
   create(cfg, ctx) {
     const api = (p: string) => ctx.http(`${cfg.url.replace(/\/$/, '')}/api/4/${p}`);
-    const hist = { cpu: [] as number[], mem: [] as number[], gpu: [] as number[] };
+    const hist = { cpu: [] as number[], mem: [] as number[], gpu: [] as number[], rx: [] as number[] };
+    const diskHist = new Map<string, number[]>();
+    const mounts = (cfg.disks ?? []).map(d => typeof d === 'string' ? { mount: d, name: d, sub: undefined } : d);
+    let cpuName: string | undefined;
     const push = (a: number[], v: number) => { a.push(Math.round(v)); if (a.length > 40) a.shift(); };
 
     async function overview() {
@@ -33,17 +37,50 @@ export default defineIntegration({
       const fs = (await api('fs')) as any[];
       const seen = new Set<string>();
       return fs.filter(d => {
-        if (cfg.disks) return cfg.disks.includes(d.mnt_point);
+        if (cfg.disks) return mounts.some(m => m.mount === d.mnt_point);
         if (seen.has(d.device_name) || !d.device_name.startsWith('/dev/')) return false;   // bind mounts repeat devices
         seen.add(d.device_name); return true;
       });
     }
 
+    async function network() {
+      if (!cfg.network) return undefined;
+      const nets = (await api('network').catch(() => [])) as any[];
+      return nets.find(n => n.interface_name === cfg.network);
+    }
+
     const widgets = {
+        // headline tiles like a classic homelab dashboard: CPU, memory, GPU, network, then one per disk
+        tiles: {
+          title: 'System', interval: 3000,
+          async fetch() {
+            const [o, net, d] = await Promise.all([overview(), network(), disks()]);
+            cpuName ??= await api('quicklook').then(q => String(q.cpu_name ?? '').replace(/ \d+-Core Processor$/, '').replace(/^AMD /, '')).catch(() => undefined);
+            const tiles: Summary[] = [
+              { label: 'CPU', icon: 'cpu', sub: cpuName, value: `${Math.round(o.cpu.total)}%`, detail: o.temp != null ? `${o.temp}°C` : undefined, trend: [...hist.cpu], tone: heat(o.temp) },
+              { label: 'Memory', icon: 'memory', sub: fmt.bytes(o.mem.total, 0), value: `${Math.round(o.mem.percent)}%`, detail: `${fmt.bytes(o.mem.used, 1)} used`, trend: [...hist.mem] },
+            ];
+            if (net) {
+              push(hist.rx, net.bytes_recv_rate_per_sec ?? 0);
+              tiles.push({ label: 'Network', icon: 'wifi', sub: net.interface_name, value: fmt.speed(net.bytes_recv_rate_per_sec ?? 0), detail: `↑ ${fmt.speed(net.bytes_sent_rate_per_sec ?? 0)}`, trend: [...hist.rx] });
+            }
+            if (o.gpu) tiles.push({ label: 'GPU', icon: 'gpu', sub: String(o.gpu.name).replace(/^NVIDIA GeForce /, ''), value: `${Math.round(o.gpu.proc ?? 0)}%`,
+              detail: `${o.gpu.temperature}°C · VRAM ${Math.round(o.gpu.mem)}%`, trend: [...hist.gpu], tone: heat(o.gpu.temperature) });
+            for (const x of d) {
+              const m = mounts.find(m => m.mount === x.mnt_point);
+              const h = diskHist.get(x.mnt_point) ?? []; push(h, x.percent); diskHist.set(x.mnt_point, h);
+              tiles.push({ label: m?.name ?? x.mnt_point, icon: 'disk', sub: m?.sub ?? fmt.bytes(x.size, 0), value: `${fmt.bytes(x.free, 1)} free`,
+                detail: `${Math.round(x.percent)}% used`, trend: [...h], tone: x.percent > 90 ? 'bad' : x.percent > 80 ? 'warn' : 'neutral' });
+            }
+            return { type: 'stats', title: 'System', icon: 'cpu', items: [], summaries: tiles };
+          },
+        },
+
         overview: {
           title: 'System', interval: 5000,
           async fetch() {
             const o = await overview();
+            cpuName ??= await api('quicklook').then(q => String(q.cpu_name ?? '').replace(/ \d+-Core Processor$/, '').replace(/^AMD /, '')).catch(() => undefined);
             const items: StatItem[] = [
               { label: 'CPU', value: Math.round(o.cpu.total), unit: '%', pct: o.cpu.total / 100, trend: [...hist.cpu],
                 sub: o.temp != null ? `${o.temp}°C` : undefined, tone: heat(o.temp) },
@@ -54,7 +91,8 @@ export default defineIntegration({
               trend: [...hist.gpu], sub: `${o.gpu.temperature}°C · VRAM ${Math.round(o.gpu.mem)}%`, tone: heat(o.gpu.temperature) });
             items.push({ label: 'Uptime', value: o.uptime.replace(/:\d\d$/, '').replace(' days, ', 'd ') });
             return { type: 'stats', title: 'System', icon: 'cpu', items,
-              summary: { label: 'Server', value: `${Math.round(o.cpu.total)}%`, sub: `CPU${o.temp != null ? ` · ${o.temp}°C` : ''} · RAM ${Math.round(o.mem.percent)}%`, tone: heat(o.temp) } };
+              summary: { label: 'CPU', icon: 'cpu', value: `${Math.round(o.cpu.total)}%`, sub: cpuName, trend: [...hist.cpu],
+                detail: [o.temp != null ? `${o.temp}°C` : '', `RAM ${Math.round(o.mem.percent)}%`].filter(Boolean).join(' · '), tone: heat(o.temp) } };
           },
         },
         disks: {

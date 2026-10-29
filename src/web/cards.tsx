@@ -1,7 +1,7 @@
 // Renders any card from the shared catalog with shadcn/ui primitives. The homepage and the assistant both use this,
 // so a generated card looks exactly like the widget it came from.
 import {
-  Activity, ArrowUpRight, ChevronLeft, ChevronRight, Cpu, Download, Film, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Sparkles,
+  Activity, ArrowUpRight, ChevronLeft, ChevronRight, Cpu, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Sparkles, Wifi,
   type LucideIcon,
 } from 'lucide-react';
 import { Fragment, useRef, useState, type ReactNode } from 'react';
@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import type { Card as CardT, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
 const ICONS: Record<string, LucideIcon> = {
-  cpu: Cpu, gpu: MemoryStick, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
+  cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
   bulb: Lightbulb, home: House, shield: Shield, sparkle: Sparkles,
 };
 export function Icon({ name, className }: { name?: string; className?: string }) {
@@ -107,15 +107,25 @@ function List({ card }: { card: ListCard }) {
   );
 }
 
+/** An app icon that falls back to the service's initial if no icon exists. */
+function AppIcon({ src, name }: { src?: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-secondary text-xs font-semibold text-muted-foreground">{name[0]}</span>;
+  return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className="size-7 shrink-0 object-contain" />;
+}
+
 function Status({ card }: { card: StatusCard }) {
   return (
-    <div className="-mx-2 grid gap-0.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
+    <div className="-mx-2 grid gap-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
       {card.items.map(s => (
         <a key={s.name} href={s.href} target="_blank" rel="noreferrer"
-          className="flex min-w-0 items-center gap-2.5 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-accent">
+          className="flex min-w-0 items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-accent">
+          <AppIcon src={s.icon} name={s.name} />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-medium">{s.name}</div>
+            <div className={cn('truncate text-xs tabular', s.ok ? 'text-muted-foreground' : 'text-bad')}>{s.ok ? (s.ms != null ? `${s.ms} ms` : 'Up') : s.detail}</div>
+          </div>
           <span className={cn('dot', s.ok ? 'dot-good' : 'dot-bad')} />
-          <span className="min-w-0 flex-1 truncate">{s.name}</span>
-          <span className={cn('text-xs tabular', s.ok ? 'text-muted-foreground' : 'text-bad')}>{s.ok ? (s.ms != null ? `${s.ms} ms` : '') : s.detail}</span>
         </a>
       ))}
     </div>
@@ -131,23 +141,24 @@ function Art({ src, className, alt = '' }: { src?: string; className?: string; a
 }
 
 /** One stream as a cinematic tile: the backdrop is the card, details float over a soft scrim. */
-function NowPlaying({ m }: { m: MediaItem }) {
+function NowPlaying({ m, compact }: { m: MediaItem; compact?: boolean }) {
   return (
-    <div className="@container/np relative isolate aspect-[16/10] max-h-[380px] min-h-[230px] w-full overflow-hidden rounded-2xl bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/0.55)] @2xl/main:aspect-[21/9]">
+    <div className={cn('@container/np relative isolate w-full overflow-hidden rounded-2xl bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/0.55)]',
+      compact ? 'aspect-[16/9] min-h-[190px]' : 'aspect-[16/9] max-h-[260px] min-h-[200px] @3xl/main:aspect-[3/1]')}>
       {m.backdrop
         ? <Art src={m.backdrop} className="absolute inset-0 -z-10 size-full object-cover" />
         : <Art src={m.image} className="absolute inset-0 -z-10 size-full scale-125 object-cover blur-2xl saturate-150" />}
       <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
       <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/50 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 flex items-end gap-5 p-5 @md/np:p-6">
-        <Art src={m.image} className="hidden aspect-[2/3] w-[104px] shrink-0 rounded-lg object-cover shadow-[0_16px_32px_-8px_rgb(0_0_0/0.7)] @md/np:block @2xl/np:w-[124px]" />
+        <Art src={m.image} className="hidden aspect-[2/3] w-[84px] shrink-0 rounded-lg object-cover shadow-[0_16px_32px_-8px_rgb(0_0_0/0.7)] @md/np:block @2xl/np:w-[96px]" />
         <div className="min-w-0 flex-1">
           {m.tags && m.tags.length > 0 && (
             <div className="mb-2.5 flex flex-wrap gap-1.5">
               {m.tags.map(t => <span key={t} className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-medium tracking-wide backdrop-blur-md">{t}</span>)}
             </div>
           )}
-          <div className="truncate text-2xl font-semibold tracking-tight @md/np:text-[28px]">{m.title}</div>
+          <div className="truncate text-xl font-semibold tracking-tight @md/np:text-2xl">{m.title}</div>
           {m.subtitle && <div className="truncate text-[15px] text-white/75">{m.subtitle}</div>}
           <div className="mt-4 flex items-center gap-3">
             {m.state === 'paused' ? <Pause className="size-3.5 shrink-0 fill-white" /> : <Play className="size-3.5 shrink-0 fill-white" />}
@@ -169,7 +180,12 @@ function Media({ card }: { card: MediaCard }) {
       <div><Film className="mx-auto mb-2 size-5 text-muted-foreground" /><div className="text-sm text-muted-foreground">{card.empty ?? 'Nothing playing'}</div></div>
     </div>
   );
-  return <div className="space-y-3">{card.items.map((m, i) => <NowPlaying key={i} m={m} />)}</div>;
+  if (card.items.length === 1) return <NowPlaying m={card.items[0]} />;
+  return (
+    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))' }}>
+      {card.items.map((m, i) => <NowPlaying key={i} m={m} compact />)}
+    </div>
+  );
 }
 
 /** A row of artwork, like the Apple TV app: snap-scrolling, no borders, arrows to page through on desktop. */
@@ -325,18 +341,55 @@ export function Widget({ card, run, title, status, compact }: { card?: CardT; ru
   );
 }
 
-/** Headline tile for the overview's top row. */
+/** A smooth path through points (Catmull-Rom → cubic Bézier), for graphs that read as calm curves, not zig-zags. */
+function smooth(pts: [number, number][]) {
+  if (pts.length < 2) return '';
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x0, y0] = pts[i - 1] ?? pts[i], [x1, y1] = pts[i], [x2, y2] = pts[i + 1], [x3, y3] = pts[i + 2] ?? pts[i + 1];
+    d += `C${(x1 + (x2 - x0) / 6).toFixed(1)},${(y1 + (y2 - y0) / 6).toFixed(1)} ${(x2 - (x3 - x1) / 6).toFixed(1)},${(y2 - (y3 - y1) / 6).toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`;
+  }
+  return d;
+}
+
+/** The live graph behind a summary tile: a soft filled area across the lower part of the tile. */
+function TileGraph({ points }: { points: number[] }) {
+  if (points.length < 2) return null;
+  const w = 200, h = 60, max = Math.max(...points), min = Math.min(...points), span = max - min || Math.max(1, max);
+  const pts = points.map((p, i) => [(i / (points.length - 1)) * w, h - 4 - ((p - min) / span) * (h - 14)] as [number, number]);
+  const line = smooth(pts);
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="pointer-events-none absolute inset-x-0 bottom-0 h-[58%] w-full" aria-hidden>
+      <defs>
+        <linearGradient id="tileFill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor="currentColor" stopOpacity=".16" /><stop offset="1" stopColor="currentColor" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={`${line}L${w},${h}L0,${h}Z`} fill="url(#tileFill)" />
+      <path d={line} fill="none" stroke="currentColor" strokeOpacity=".38" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+/** Headline tile for the overview's top row: label and context up top, the value at the bottom, a live graph behind. */
 export function SummaryTile({ s, href }: { s: Summary; href?: string }) {
   const body = (
-    <Card className="@container/card h-full gap-2 py-4 shadow-card transition-colors hover:bg-accent/40">
-      <CardHeader className="px-4">
-        <CardDescription className="text-[13px]">{s.label}</CardDescription>
-        <CardTitle className={cn('metric text-[26px] leading-none', toneText[s.tone ?? 'neutral'])}>{s.value}</CardTitle>
-        {s.tone && s.tone !== 'neutral' && s.tone !== 'accent' && (
-          <CardAction><span className={cn('dot', s.tone === 'good' ? 'dot-good' : 'dot-bad')} /></CardAction>
-        )}
-      </CardHeader>
-      {s.sub && <CardFooter className="px-4"><span className="truncate text-xs text-muted-foreground">{s.sub}</span></CardFooter>}
+    <Card className="relative h-[136px] gap-0 overflow-hidden py-0 shadow-card transition-colors hover:bg-accent/30">
+      <div className="text-foreground"><TileGraph points={s.trend ?? []} /></div>
+      <div className="relative flex h-full flex-col p-4">
+        <div className="flex items-start gap-3">
+          {s.icon && <Icon name={s.icon} className="mt-0.5 size-[18px] shrink-0 text-muted-foreground" />}
+          <div className="min-w-0">
+            <div className="truncate text-[15px] font-semibold leading-tight">{s.label}</div>
+            {s.sub && <div className="truncate text-[13px] text-muted-foreground">{s.sub}</div>}
+          </div>
+          {s.tone && (s.tone === 'good' || s.tone === 'bad') && <span className={cn('dot ml-auto mt-1.5', s.tone === 'good' ? 'dot-good' : 'dot-bad')} />}
+        </div>
+        <div className="mt-auto flex items-baseline justify-between gap-3">
+          <div className={cn('metric truncate text-[22px] leading-none', toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}>{s.value}</div>
+          {s.detail && <div className="shrink-0 truncate text-xs tabular text-muted-foreground">{s.detail}</div>}
+        </div>
+      </div>
     </Card>
   );
   return href ? <a href={href} target="_blank" rel="noreferrer" className="block min-w-0">{body}</a> : <div className="min-w-0">{body}</div>;

@@ -9,6 +9,7 @@ export default defineIntegration({
   create(cfg, ctx) {
     const base = cfg.url.replace(/\/$/, '');
     let cookie = '';
+    const speeds: number[] = [];
     async function login() {
       const res = await ctx.http<Response>(`${base}/api/v2/auth/login`, {
         as: 'response', method: 'POST', body: new URLSearchParams({ username: cfg.username, password: cfg.password }),
@@ -40,9 +41,11 @@ export default defineIntegration({
         title: 'Downloads', interval: 5000,
         async fetch() {
           const { info, dl } = await state();
+          speeds.push(info.dl_info_speed); if (speeds.length > 40) speeds.shift();
           return {
             type: 'list', title: 'Downloads', icon: 'download', href: cfg.href ?? cfg.url,
-            summary: { label: 'Downloads', value: dl.length, sub: dl.length ? `↓ ${fmt.rate(info.dl_info_speed)}` : 'Idle' },
+            summary: { label: 'Downloads', icon: 'download', value: fmt.rate(info.dl_info_speed), sub: dl.length ? `${dl.length} active` : 'Idle',
+              detail: `↑ ${fmt.rate(info.up_info_speed)}`, trend: [...speeds] },
             note: `↓ ${fmt.rate(info.dl_info_speed)} · ↑ ${fmt.rate(info.up_info_speed)}`,
             empty: 'Nothing downloading',
             items: dl.slice(0, 8).map(t => ({ title: t.name, pct: t.progress, subtitle: label(t),
