@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -46,16 +46,20 @@ const app = new Hono();
 // A local wallpaper file is served from here; a URL is handed to the browser as is.
 const wallpaper = config.appearance.wallpaper;
 const wallpaperFile = wallpaper && !/^https?:\/\//.test(wallpaper) ? resolve(wallpaper) : null;
+let wallpaperVersion = 0;
+if (wallpaperFile) wallpaperVersion = Math.round((await stat(wallpaperFile).catch(() => ({ mtimeMs: 0 }))).mtimeMs);
 app.get('/api/wallpaper', async c => {
   if (!wallpaperFile) return c.notFound();
   const type = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.avif': 'image/avif' }[extname(wallpaperFile).toLowerCase()];
   if (!type) return c.notFound();
-  return c.body(await readFile(wallpaperFile), 200, { 'Content-Type': type, 'Cache-Control': 'public, max-age=3600' });
+  wallpaperVersion = Math.round((await stat(wallpaperFile)).mtimeMs);
+  return c.body(await readFile(wallpaperFile), 200, { 'Content-Type': type, 'Cache-Control': 'public, max-age=31536000, immutable' });
 });
 
 app.get('/api/page', c => c.json({
   title: config.title, greeting: config.greeting, location: config.location,
-  appearance: { ...config.appearance, wallpaper: wallpaperFile ? '/api/wallpaper' : wallpaper },
+  // ?v= the file's mtime: replacing the wallpaper changes the URL, so browsers never show a stale cached one
+  appearance: { ...config.appearance, wallpaper: wallpaperFile ? `/api/wallpaper?v=${wallpaperVersion}` : wallpaper },
   assistant: config.assistant ? { name: config.assistant.name, model: config.assistant.model } : null,
   sections: config.layout.map(s => ({ title: s.title, columns: s.columns, widgets: s.widgets.filter(k => hub.widget(k)) })),
   widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
