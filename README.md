@@ -1,0 +1,70 @@
+# Atrium
+
+A fast, good-looking homepage for your homelab, with an assistant built in.
+
+Glance at what matters: what's playing, what's downloading, whether anything is down, how the server is doing. Control
+things right from the page: lights, scenes, downloads. When you'd rather ask than look, ask: "how are my downloads
+doing?", "is anything down?", "show me Plex and the GPU side by side". Answers come back as the same live cards the
+homepage uses, not walls of text.
+
+- **One YAML file.** Integrations, layout and the assistant live in `config.yaml`. Secrets come from the environment.
+- **Light.** One Node process, about 60 MB of RAM. The page is ~75 KB gzipped; the assistant loads only when you ask
+  something. Services are polled once, server-side, only while someone has the page open, and shared by every tab.
+- **Your model, your rules.** Use a local model (Ollama, llama.cpp, vLLM, LM Studio) or a hosted one (OpenRouter,
+  OpenAI, Anthropic). Decide per integration whether the assistant can read it, control it, or not touch it. Anything
+  that changes something asks you first.
+- **MCP.** Point Atrium at any MCP server and its tools become available to the assistant, under the same rules.
+- **Built to be extended.** An integration is one TypeScript file: config schema, widgets, actions, assistant tools.
+
+## Quick start
+
+```sh
+docker run -d --name atrium -p 7575:7575 \
+  -v ./config:/config --env-file .env \
+  ghcr.io/OWNER/atrium:latest
+```
+
+Copy [`config.example.yaml`](config.example.yaml) to `config/config.yaml`, edit it, and open http://localhost:7575.
+
+From source (Node 22.18+):
+
+```sh
+npm install
+npm run build
+cp config.example.yaml config.yaml   # then edit
+node --env-file=.env src/server/main.ts
+```
+
+## Integrations
+
+| Type | What you get |
+|---|---|
+| `glances` | CPU, memory, GPU, temperatures, uptime, disks |
+| `http` | Up/down and response time for any list of URLs |
+| `qbittorrent` | Active downloads, speeds, pause/resume |
+| `tautulli` | What's playing on Plex (with posters), recently added, watch history |
+| `homeassistant` | Cards of entities as live controls (lights, switches, scenes, selects, vacuums, sensors), plus search and control tools for the assistant |
+| `aimonitor` | GPU load, power, VRAM and model status for a local-AI monitor |
+
+Writing one is covered in [docs/integrations.md](docs/integrations.md).
+
+## Cards
+
+Every widget and every assistant answer is built from one small catalog of cards (`stats`, `list`, `media`,
+`status`, `chart`, `controls`, `kv`, `text`, `group`), defined in [`src/shared/cards.ts`](src/shared/cards.ts).
+Integrations return plain data in these shapes; Atrium draws them. That's why a third-party integration looks native,
+and why the assistant can lay out cards from different integrations side by side.
+
+## Assistant access
+
+```yaml
+assistant:
+  access: { default: read, home: control, downloads: none }
+```
+
+`read` tools fetch information. `control` tools change something, and each call waits for you to approve it in the
+chat. Atrium never hands the model your API keys; tools run on the server.
+
+## Licence
+
+MIT. The bundled Instrument Sans font is under the SIL Open Font License (`public/fonts/OFL.txt`).

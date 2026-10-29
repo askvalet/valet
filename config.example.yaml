@@ -1,0 +1,59 @@
+# Atrium configuration. `${NAME}` is replaced from the environment, so keep secrets in .env or Docker secrets.
+title: Home
+greeting: Sam                      # "Good evening, Sam"
+location: Toronto, Canada          # gives the assistant local context
+
+# The assistant. Any OpenAI-compatible server (Ollama, llama.cpp, vLLM, LM Studio, OpenRouter, OpenAI) or Anthropic.
+assistant:
+  name: Atrium
+  provider: openai-compatible
+  baseURL: http://localhost:11434/v1   # Ollama
+  model: qwen3:8b
+  # what it may use: none | read | control. Control actions always ask you first.
+  access: { default: read, downloads: control }
+
+integrations:
+  system:
+    type: glances
+    url: http://glances:61208
+  services:
+    type: http
+    targets:
+      - { name: Plex, url: "http://plex:32400/identity", href: "https://plex.example.com" }
+      - { name: Home Assistant, url: "http://homeassistant:8123" }
+  downloads:
+    type: qbittorrent
+    url: http://qbittorrent:8080
+    username: ${QBIT_USER}
+    password: ${QBIT_PASS}
+  plex:
+    type: tautulli
+    url: http://tautulli:8181
+    apiKey: ${TAUTULLI_KEY}
+  home:
+    type: homeassistant
+    url: http://homeassistant:8123
+    token: ${HA_TOKEN}
+    cards:
+      lights:
+        title: Lights
+        icon: bulb
+        entities: [light.living_room, light.office, { id: scene.movie_night, name: Movie night }]
+
+# Any MCP server's tools, under the same access rules.
+mcp:
+  homeassistant:
+    url: http://homeassistant:8123/api/mcp
+    headers: { Authorization: "Bearer ${HA_TOKEN}" }
+    access: read
+
+# What the homepage shows, top to bottom. Widgets are "<integration>.<widget>".
+layout:
+  - title: Now
+    widgets: [system.overview, downloads.active]
+  - title: Watching
+    widgets: [plex.streams, plex.recent]
+  - title: Home
+    widgets: [home.lights]
+  - title: Services
+    widgets: [services.status, system.disks]
