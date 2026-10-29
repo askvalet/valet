@@ -11,8 +11,7 @@ WORKDIR /app
 ENV NODE_ENV=production PORT=7575 ATRIUM_CONFIG=/config/config.yaml
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
-COPY --from=build /app/src ./src
 COPY package.json ./
 USER node
 EXPOSE 7575
-CMD ["node", "src/server/main.ts"]
+CMD ["node", "dist/server.js"]

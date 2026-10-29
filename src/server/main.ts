@@ -90,8 +90,12 @@ app.get('/api/image/:inst', async c => {
 });
 
 if (config.assistant) {
-  const { chatRoute } = await import('./chat.ts');
-  app.post('/api/chat', chatRoute(config, instances, meta));
+  // The AI SDK, providers and MCP client load on the first question, so an unused assistant costs no memory.
+  let handler: ((c: any) => Promise<Response>) | undefined;
+  app.post('/api/chat', async c => {
+    handler ??= (await import('./chat.ts')).chatRoute(config, instances, meta);
+    return handler(c);
+  });
 }
 
 app.use('/*', serveStatic({ root: './dist/web' }));

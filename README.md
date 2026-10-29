@@ -8,7 +8,7 @@ doing?", "is anything down?", "show me Plex and the GPU side by side". Answers c
 homepage uses, not walls of text.
 
 - **One YAML file.** Integrations, layout and the assistant live in `config.yaml`. Secrets come from the environment.
-- **Light.** One Node process, about 60 MB of RAM. The page is ~75 KB gzipped; the assistant loads only when you ask
+- **Light.** One Node process, about 100 MB of RAM. The page is ~75 KB gzipped; the assistant loads only when you ask
   something. Services are polled once, server-side, only while someone has the page open, and shared by every tab.
 - **Your model, your rules.** Use a local model (Ollama, llama.cpp, vLLM, LM Studio) or a hosted one (OpenRouter,
   OpenAI, Anthropic). Decide per integration whether the assistant can read it, control it, or not touch it. Anything
@@ -32,7 +32,7 @@ From source (Node 22.18+):
 npm install
 npm run build
 cp config.example.yaml config.yaml   # then edit
-node --env-file=.env src/server/main.ts
+npm start
 ```
 
 ## Integrations
