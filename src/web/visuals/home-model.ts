@@ -115,7 +115,7 @@ export function paint(world: HTMLElement, d: PlanData) {
 }
 
 export const homeScene: Scene<PlanData> = {
-  scope: 'homex', size: [720, 480], center: [0, 0, 0],
+  scope: 'homex', size: [720, 430], center: [0, 0, 0],
   frame: '.slab',
   shape: d => JSON.stringify([d.rooms.map(r => [r.id, Math.round(r.x), Math.round(r.z), r.lights.map(l => l.id)]), d.furniture.length, !!d.dock, !!d.robot]),
   build, paint,

@@ -90,7 +90,7 @@ export function build(world: HTMLElement, d: ModelData) {
   rear.style.backgroundImage = HEX;
   rear.insertAdjacentHTML('beforeend', [0, 1, 2, 3, 4, 5, 6].map(i => `<i class="slotcover" style="top:${262 + i * 22}px"></i>`).join(''));
   add(face(mk('mesh'), CD, CH, `translateX(${CW / 2}px) rotateY(90deg)`));
-  const floor = add(face(mk('floor'), CW, CD, `translateY(${CH / 2}px) rotateX(90deg)`));
+  add(face(mk('floor'), CW, CD, `translateY(${CH / 2}px) rotateX(90deg)`));
   // three intake fans on the floor: the same pack as the radiator's (same frames, same thickness), just unlit
   const FY = CH - 34;   // their top face
   const floorTop = lid(mk('fanunder floorpack'), 16, FY, 468, 280, 14);
@@ -196,7 +196,7 @@ const isFanUnit = (id: string) => id === 'coolerfans' || /^fans\d$/.test(id);
 export const topFans = (d: ModelData) => d.parts.find(p => isFanUnit(p.id) && (d.layout?.[p.id] ?? (p.id === 'fans0' ? 'top' : '')) === 'top')?.id ?? 'fans0';
 
 export const pcScene: Scene<ModelData> = {
-  scope: 'pcx', size: [720, 600], center: [CW / 2, CH / 2, CD / 2],
+  scope: 'pcx', size: [720, 430], center: [CW / 2, CH / 2, CD / 2],
   frame: '.wall, .rear, .mesh, .floor, .ceiling, .pane',
   shape: d => JSON.stringify([d.parts.map(p => [p.id, p.zones.length]), d.layout]),
   build, paint,
