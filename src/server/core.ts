@@ -34,6 +34,9 @@ export interface Instance {
   widgets: Record<string, Widget>;
   actions?: Record<string, Action>;
   tools?: Record<string, Tool>;
+  /** Serve an image (poster, camera snapshot) through Atrium so the browser never needs the service's key.
+   *  Cards point at it with ctx.image(ref); validate `ref` before fetching. */
+  image?(ref: string): Promise<Response>;
 }
 
 export interface Context {
@@ -41,6 +44,8 @@ export interface Context {
   /** fetch with a timeout and a readable error; returns parsed JSON unless `as: 'text'` */
   http<T = any>(url: string, init?: RequestInit & { timeout?: number; as?: 'json' | 'text' | 'response' }): Promise<T>;
   log(...args: unknown[]): void;
+  /** URL for a card image served by this instance's image() */
+  image(ref: string): string;
 }
 
 export interface Integration<C = any> {
@@ -63,6 +68,7 @@ export function makeContext(id: string): Context {
       return (as === 'text' ? res.text() : res.json()) as any;
     },
     log: (...a) => console.log(`[${id}]`, ...a),
+    image: ref => `/api/image/${encodeURIComponent(id)}?ref=${encodeURIComponent(ref)}`,
   };
 }
 

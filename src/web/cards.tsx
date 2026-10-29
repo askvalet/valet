@@ -45,7 +45,9 @@ function List({ card }: { card: ListCard }) {
   return (
     <ul className="space-y-3">
       {card.items.map((it, i) => (
-        <li key={i} className="min-w-0">
+        <li key={i} className="min-w-0 flex gap-3 items-center">
+          {it.image && <img src={it.image} alt="" loading="lazy" className="w-9 h-[52px] rounded-md object-cover shrink-0 bg-[var(--hair)]" />}
+          <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-3">
             <div className="min-w-0 flex-1">
               <div className="truncate font-medium">{it.title}</div>
@@ -54,6 +56,7 @@ function List({ card }: { card: ListCard }) {
             {it.meta && <div className="num text-[14px] muted shrink-0">{it.meta}</div>}
           </div>
           {it.pct != null && <div className="mt-1.5"><Meter pct={it.pct} tone={it.tone} /></div>}
+          </div>
         </li>
       ))}
     </ul>
@@ -122,13 +125,14 @@ function Chart({ card }: { card: ChartCard }) {
 export type RunAction = (action: string, args?: Record<string, unknown>) => Promise<void>;
 
 function Controls({ card, run }: { card: ControlsCard; run?: RunAction }) {
-  const fire = (c: Control, extra: Record<string, unknown>) => run?.(c.action, { ...c.args, ...extra });
+  const fire = (c: Control, extra: Record<string, unknown>) => c.action && run?.(c.action, { ...c.args, ...extra });
   return (
     <div className="space-y-2.5">
       {card.items.map(c => (
         <div key={c.id} className="flex items-center gap-3 min-w-0">
           {c.color && <span className="w-3 h-3 rounded-full shrink-0 border hair" style={{ background: c.color }} />}
-          <span className="flex-1 truncate">{c.label}</span>
+          <span className="flex-1 min-w-0"><span className="block truncate">{c.label}</span>{c.sub && <span className="block text-[12.5px] muted truncate">{c.sub}</span>}</span>
+          {c.kind === 'value' && <span className="num text-[15px]">{String(c.value ?? '–')}</span>}
           {c.kind === 'toggle' && (
             <button role="switch" aria-checked={!!c.value} aria-label={c.label} disabled={!run} onClick={() => fire(c, { value: !c.value })}
               className={`w-10 h-6 rounded-full p-0.5 transition-colors ${c.value ? 'bg-[var(--accent)]' : 'bg-[var(--hair)]'}`}>

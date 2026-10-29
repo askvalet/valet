@@ -60,12 +60,13 @@ export interface ChartCard extends Base {
 export interface Control {
   id: string;
   label: string;
-  kind: 'toggle' | 'slider' | 'select' | 'button';
+  kind: 'toggle' | 'slider' | 'select' | 'button' | 'value';   // value: read-only, e.g. a sensor reading
   value?: boolean | number | string;
   options?: string[];
   min?: number; max?: number; step?: number;
   color?: string;         // swatch, e.g. a light's current colour
-  action: string;         // action name on the same integration instance
+  action?: string;        // action name on the same integration instance (not needed for 'value')
+  sub?: string;           // second line under the label, e.g. "Office · 80%"
   args?: Record<string, unknown>;
 }
 export interface ControlsCard extends Base { type: 'controls'; items: Control[] }

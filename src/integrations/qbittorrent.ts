@@ -14,7 +14,8 @@ export default defineIntegration({
         as: 'response', method: 'POST', body: new URLSearchParams({ username: cfg.username, password: cfg.password }),
         headers: { Referer: base },
       });
-      const sid = res.headers.get('set-cookie')?.match(/SID=[^;]+/)?.[0];
+      // the cookie is "SID" on older versions and "QBT_SID_<port>" on 5.x
+      const sid = res.headers.get('set-cookie')?.match(/(?:QBT_SID_\d+|SID)=[^;]+/)?.[0];
       if (!sid) throw new Error('qBittorrent login failed');
       cookie = sid;
     }

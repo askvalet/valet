@@ -78,6 +78,17 @@ app.post('/api/action/:inst/:action', async c => {
   } catch (e) { return c.json({ error: (e as Error).message }, 502); }
 });
 
+app.get('/api/image/:inst', async c => {
+  const inst = instances.get(c.req.param('inst'));
+  const ref = c.req.query('ref');
+  if (!inst?.image || !ref) return c.notFound();
+  try {
+    const res = await inst.image(ref);
+    if (!res.ok) return c.body(null, 502);
+    return new Response(res.body, { headers: { 'Content-Type': res.headers.get('content-type') ?? 'image/jpeg', 'Cache-Control': 'private, max-age=86400' } });
+  } catch { return c.body(null, 502); }
+});
+
 if (config.assistant) {
   const { chatRoute } = await import('./chat.ts');
   app.post('/api/chat', chatRoute(config, instances, meta));

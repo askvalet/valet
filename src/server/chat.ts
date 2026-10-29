@@ -17,7 +17,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   const a = config.assistant!;
   const model = a.provider === 'anthropic'
     ? createAnthropic({ apiKey: a.apiKey, baseURL: a.baseURL })(a.model)
-    : createOpenAICompatible({ name: 'assistant', baseURL: a.baseURL ?? 'http://localhost:11434/v1', apiKey: a.apiKey, includeUsage: true })(a.model);
+    : createOpenAICompatible({ name: 'assistant', baseURL: a.baseURL ?? 'http://localhost:11434/v1', apiKey: a.apiKey, includeUsage: true, headers: { 'User-Agent': 'Atrium' } })(a.model);
 
   // Tool names are "<instance>__<tool>" so two instances of one integration (two Plex servers) don't collide.
   const tools: ToolSet = {};
