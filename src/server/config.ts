@@ -25,12 +25,24 @@ const Section = z.object({
   columns: z.number().int().min(1).max(4).optional(),
 }).strict();
 
+// An MCP server whose tools the assistant may use. `access: read` offers only the tools the server marks read-only
+// (plus any listed in readOnly); `control` offers all of them, and anything not read-only asks the person first.
+export const McpServer = z.object({
+  url: z.string().url(),
+  transport: z.enum(['http', 'sse']).default('http'),
+  headers: z.record(z.string(), z.string()).optional(),
+  access: Access.default('read'),
+  readOnly: z.array(z.string()).default([]),
+  name: z.string().optional(),
+}).strict();
+
 export const Config = z.object({
   title: z.string().default('Home'),
   greeting: z.string().optional(),         // name to greet, e.g. "Ibrahim"
   location: z.string().optional(),
   assistant: AssistantConfig.optional(),
   integrations: z.record(z.string(), z.object({ type: z.string() }).loose()).default({}),
+  mcp: z.record(z.string(), McpServer).default({}),
   layout: z.array(Section).default([]),
 }).strict();
 export type Config = z.infer<typeof Config>;

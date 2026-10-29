@@ -104,7 +104,7 @@ export function App() {
         {page?.sections.map((sec, i) => (
           <section key={i} className="mb-8">
             {sec.title && <h2 className="text-[15px] font-semibold muted mb-3 px-1">{sec.title}</h2>}
-            <div className="grid gap-4" style={{ gridTemplateColumns: sec.columns ? `repeat(${sec.columns}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
+            <div className="grid gap-4 items-start" style={{ gridTemplateColumns: sec.columns ? `repeat(${sec.columns}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
               {sec.widgets.map(key => {
                 const s = state[key];
                 return (

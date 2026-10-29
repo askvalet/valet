@@ -76,6 +76,14 @@ export default function Assistant({ name, model, ask, onClose }: { name: string;
                   if (p.state === 'output-available') {
                     const card = p.output?.card as Card | undefined;
                     if (card) return <Frame key={i} card={card} nested />;
+                    // MCP tools return { content: [{ type: 'text', text }] }: show the text, folded if long
+                    const mcpText = Array.isArray(p.output?.content) ? p.output.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n') : '';
+                    if (mcpText) return (
+                      <details key={i} className="rounded-2xl border hair px-4 py-3 text-[13px]">
+                        <summary className="cursor-pointer muted capitalize">{label}</summary>
+                        <pre className="mt-2 whitespace-pre-wrap break-words max-h-64 overflow-auto font-[inherit]">{mcpText.slice(0, 4000)}</pre>
+                      </details>
+                    );
                     if (p.output?.data?.error) return <div key={i} className="text-[13px] tone-warn">{label}: {p.output.data.error}</div>;
                     return <div key={i} className="text-[13px] muted flex items-center gap-1.5"><Icon name="check" className="tone-good" />{label}</div>;
                   }

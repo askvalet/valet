@@ -10,6 +10,7 @@ import type { Context as HonoContext } from 'hono';
 import { z } from 'zod';
 import type { Config } from './config.ts';
 import type { Instance, Integration } from './core.ts';
+import { mcpTools } from './mcp.ts';
 
 const rank = { none: 0, read: 1, control: 2 } as const;
 
@@ -43,27 +44,31 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     }
   }
 
-  const system = () => [
+  const mcp = mcpTools(config);
+
+  const system = (extra: string[]) => [
     `You are ${a.name}, the assistant built into ${config.title}, a homepage for a self-hosted homelab${config.greeting ? ` run by ${config.greeting}` : ''}.`,
     `Now: ${new Date().toString()}.${config.location ? ` Location: ${config.location}.` : ''}`,
     'You answer questions about the homelab by calling tools. Never guess a status, number or name: call the tool.',
     'Tool results are shown to the person as rich cards, so do not repeat what the card shows. Reply in one or two',
     'short sentences that interpret it: what matters, what is wrong, what to do. Use plain language.',
     'Tools that change something ask the person to approve first; call them only when asked to act.',
-    'Available integrations and tools:', ...catalog,
+    'Available integrations and tools:', ...catalog, ...extra,
     a.instructions ?? '',
   ].join('\n');
 
   return async (c: HonoContext) => {
     const { messages } = await c.req.json<{ messages: UIMessage[] }>();
+    const m = await mcp();
+    const all = { ...tools, ...m.tools }, approvals = { ...approval, ...m.approval };
     const result = streamText({
       model,
-      system: system(),
-      messages: await convertToModelMessages(messages, { tools }),
-      tools,
-      toolApproval: approval,
+      system: system(m.catalog),
+      messages: await convertToModelMessages(messages, { tools: all }),
+      tools: all,
+      toolApproval: approvals,
       stopWhen: isStepCount(a.maxSteps),
     });
-    return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream, tools }) });
+    return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream, tools: all }) });
   };
 }

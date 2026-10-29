@@ -17,7 +17,9 @@ export default defineIntegration({
     token: z.string(),
     href: z.string().optional(),
     // each entry becomes a homepage widget: `<instance>.<key>`
-    cards: z.record(z.string(), z.object({ title: z.string(), icon: z.string().optional(), entities: z.array(z.string()) })).default({}),
+    // entities are ids, or { id, name } to rename one on the page
+    cards: z.record(z.string(), z.object({ title: z.string(), icon: z.string().optional(),
+      entities: z.array(z.union([z.string(), z.object({ id: z.string(), name: z.string() })])) })).default({}),
     controllable: z.array(z.string()).default([]),   // extra entities the assistant may control (cards' entities always may)
   }),
   create(cfg, ctx) {
@@ -26,12 +28,16 @@ export default defineIntegration({
     const states = () => ctx.http<any[]>(`${base}/api/states`, { headers });
     const call = (domain: string, service: string, data: Record<string, unknown>) =>
       ctx.http(`${base}/api/services/${domain}/${service}`, { method: 'POST', headers, body: JSON.stringify(data) });
-    const allowed = new Set([...Object.values(cfg.cards).flatMap(c => c.entities), ...cfg.controllable]);
+    const ids = (c: (typeof cfg.cards)[string]) => c.entities.map(e => typeof e === 'string' ? e : e.id);
+    const names = new Map(Object.values(cfg.cards).flatMap(c => c.entities).flatMap(e => typeof e === 'string' ? [] : [[e.id, e.name] as const]));
+    const allowed = new Set([...Object.values(cfg.cards).flatMap(ids), ...cfg.controllable]);
+    // "L50 Ultra  L50 Ultra" → "L50 Ultra"; a configured name always wins
+    const nameOf = (e: any) => names.get(e.entity_id) ?? String(e.attributes?.friendly_name ?? e.entity_id).replace(/\s+/g, ' ').replace(/^(.+?) \1$/, '$1');
 
     function control(e: any): Control {
       const [domain] = e.entity_id.split('.');
       const a = e.attributes ?? {};
-      const label = a.friendly_name ?? e.entity_id;
+      const label = nameOf(e);
       const off = e.state === 'unavailable' || e.state === 'unknown';
       if (PRESS.has(domain)) return { id: e.entity_id, label, kind: 'button', value: domain === 'automation' ? 'Trigger' : 'Run', action: 'press', args: { entity_id: e.entity_id } };
       if (domain === 'vacuum') {
@@ -57,7 +63,7 @@ export default defineIntegration({
         async fetch() {
           const byId = new Map((await states()).map(s => [s.entity_id, s]));
           return { type: 'controls', title: card.title, icon: card.icon ?? 'home', href: cfg.href,
-            items: card.entities.map(id => byId.get(id) ? control(byId.get(id)) : { id, label: id, kind: 'value', value: 'not found' } as Control) };
+            items: ids(card).map(id => byId.get(id) ? control(byId.get(id)) : { id, label: id, kind: 'value', value: 'not found' } as Control) };
         },
       };
     }
