@@ -1,4 +1,4 @@
-import { ArrowUp, CornerDownLeft, LayoutGrid, LogOut, MessageCircle, Moon, Sun } from 'lucide-react';
+import { ArrowUp, CornerDownLeft, LayoutGrid, LogOut, MessageCircle, Moon, Sun, Zap } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -155,6 +155,8 @@ function Home() {
   }, [chatTab, view]);
 
   const p = pulse(state);
+  // every card's quick actions, for ⌘K: "pause" finds "Pi-hole · Pause 5 min"
+  const actions = Object.values(state).flatMap(w => (w.card?.buttons ?? []).map(b => ({ key: w.key, b, card: w.card!.title ?? page?.widgets[w.key]?.title ?? w.key })));
   // every service from the status cards, for ⌘K: type a name, open it
   const services = Object.values(state).flatMap(w => w.card?.type === 'status' ? w.card.items.filter(i => i.href) : []);
   // every item of a section's media cards, in the config's order: what's playing, then what's downloading…
@@ -363,6 +365,15 @@ function Home() {
             <CommandEmpty>
               <button className="mx-auto flex items-center gap-2 text-sm" onClick={() => { ask(query); setQuery(''); }}><CornerDownLeft className="text-muted-foreground" />Ask “{query}”</button>
             </CommandEmpty>
+            {actions.length > 0 && (
+              <CommandGroup heading="Do">
+                {actions.map(({ key, b, card }) => (
+                  <CommandItem key={`${key}:${b.label}`} value={`do ${card} ${b.label}`} onSelect={() => { setPalette(false); runAction(key, b.action, b.args).catch(() => {}); }}>
+                    <Zap className="text-muted-foreground" />{card}<span className="text-muted-foreground">· {b.label}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
             {services.length > 0 && (
               <CommandGroup heading="Open">
                 {services.map(sv => (
