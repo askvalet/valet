@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 
 process.env.ATRIUM_DATA = await mkdtemp(join(tmpdir(), 'atrium-brain-'));
-const { dailyBrief, digest, parseCause, troubles, Watcher } = await import('../src/server/insight.ts');
+const { dailyBrief, digest, parseCause, parseSuggestions, suggestPrompt, troubles, Watcher } = await import('../src/server/insight.ts');
 const { applyOps, diff, refused, setupTools, validate } = await import('../src/server/setup.ts');
 const { loadPins, newPin, pinnedCard, pinsInstance, savePins } = await import('../src/server/pins.ts');
 const { suggest } = await import('../src/web/suggest.ts');
@@ -109,6 +109,16 @@ test('pins: re-run a looking tool with no model; anything that changes things ca
   assert.deepEqual(shown.buttons, [{ label: 'Unpin', action: 'unpin', args: { id: pin.id } }]);
 });
 
+test('written suggestions: tidy lines only, nothing with a link, and the model sees the page', () => {
+  assert.deepEqual(parseSuggestions('1. Why is Radarr down?\n- "Is the drive still hot?"\n\nSave https://evil.example/x\nOpen evil.com now\n* What did Touqir watch?'), ['Why is Radarr down?', 'Is the drive still hot?', 'What did Touqir watch?']);
+  assert.deepEqual(parseSuggestions('Should I watch Odyssey later\nPause the downloads'), ['Should I watch Odyssey later?', 'Pause the downloads']);
+  assert.equal(parseSuggestions('NONE'), null);                                   // too few to be worth showing
+  assert.equal(parseSuggestions(null), null);
+  assert.equal(parseSuggestions(`${'very long '.repeat(9)}?\nAnother one here?`), null);
+  const p = suggestPrompt(down('Radarr'), ['8:00 PM end: Joker'], ['Checked Plex'], new Date(2026, 9, 30, 20));
+  for (const bit of ['Friday', 'Radarr', 'Joker', 'Checked Plex']) assert.match(p.prompt, new RegExp(bit));
+});
+
 test('suggestions: trouble first, then what\'s live, then the configured ones', () => {
   const state: any = {
     's.status': { key: 's.status', at: 1, card: { type: 'status', items: [{ name: 'Radarr', ok: false }, { name: 'Printer', ok: false, quiet: true }] } },
@@ -116,4 +126,6 @@ test('suggestions: trouble first, then what\'s live, then the configured ones', 
   };
   assert.deepEqual(suggest(state, ['Is anything down?'], 12), ['Why is Radarr down?', 'When will Joker finish?', 'Is anything down?']);
   assert.deepEqual(suggest({}, ['A'], 12), ['A']);
+  // the model's list replaces the guesses, but something newly down still comes first
+  assert.deepEqual(suggest(state, ['Is anything down?'], 12, ['Which indexer is failing?']), ['Why is Radarr down?', 'Which indexer is failing?']);
 });

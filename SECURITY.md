@@ -28,6 +28,8 @@ the damage if something goes wrong, and how to give it as little power as possib
 - **What the assistant does unasked can only talk.** The morning brief, the shared-cause line and "Why?" call the model
   with no tools at all, so a poisoned feed title can at worst make it say something odd. They have a daily budget, and
   the model is only consulted when rules say it's worth it (one problem never is).
+- **Suggestions can't carry a stranger's words.** A tapped suggestion is sent as your own message, so the model writes
+  them without seeing feeds, Hacker News or Reddit, and any suggestion containing a link is thrown away.
 - **It can't give itself more power.** Editing the config needs `assistant.access.config`, and each save needs your
   approval. Sign-in, plugins, MCP, allowed hosts and its own access are off limits, and secrets can't be written.
 - **Another agent is its own thing.** If `assistant.agent` hands the chat to one (Hermes, say), it gets the conversation

@@ -28,7 +28,7 @@ export const AssistantConfig = z.object({
   agent: z.object({ name: z.string(), baseURL: z.string().url(), apiKey: z.string().optional(), model: z.string() }).strict().optional(),
   // what it does on its own: a morning brief, and spotting a shared cause when several things break at once. These get
   // no tools, so they can only say something. perDay caps the model calls they make.
-  background: z.object({ watch: z.boolean().default(true), brief: z.boolean().default(true), perDay: z.number().int().min(1).max(500).default(24) }).default({ watch: true, brief: true, perDay: 24 }),
+  background: z.object({ watch: z.boolean().default(true), brief: z.boolean().default(true), suggest: z.boolean().default(true), perDay: z.number().int().min(1).max(500).default(24) }).default({ watch: true, brief: true, suggest: true, perDay: 24 }),
   suggestions: z.array(z.string()).default(['Is anything down?', 'How are my downloads doing?', "What's playing on Plex?", 'Show me the GPU and Plex side by side']),
 }).strict();
 

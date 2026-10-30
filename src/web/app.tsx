@@ -168,6 +168,7 @@ function Home({ account }: { account: boolean }) {
   const [page, setPage] = useState<Page | null>(null);
   const { state, notice, generation, insight: liveInsight } = useLive();
   const [brief, setBrief] = useState<string | null>(null);
+  const [tailored, setTailored] = useState<string[] | null>(null);
   const now = useClock();
   const theme = useTheme();
   const [view, setView] = useState<string>('all');   // 'all' (the overview) or a tab's name
@@ -189,6 +190,14 @@ function Home({ account }: { account: boolean }) {
 
   useEffect(() => { fetch(`/api/page?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`).then(r => r.json()).then(setPage); }, [generation]);
   useEffect(() => { if (page) document.title = page.title; }, [page]);
+  // questions the model wrote for what's going on now; refreshed while the page stays open
+  useEffect(() => {
+    if (!page?.assistant) return;
+    const get = () => fetch('/api/suggest').then(r => r.json()).then(j => { if (j.list) setTailored(j.list); }).catch(() => {});
+    get();
+    const t = setInterval(get, 6 * 60_000);
+    return () => clearInterval(t);
+  }, [!!page?.assistant]);
   useEffect(() => { if (page?.assistant) fetch('/api/brief').then(r => r.json()).then(b => setBrief(b.text)).catch(() => {}); }, [!!page?.assistant]);
   // A wallpaper means glass over a photo: always the dark material, so text stays legible on any image.
   const wall = page?.appearance?.wallpaper;
@@ -234,7 +243,7 @@ function Home({ account }: { account: boolean }) {
   };
   const p = pulse(state);
   const cause = liveInsight === undefined ? page?.insight : liveInsight;
-  const questions = page?.assistant ? suggest(state, page.assistant.suggestions) : [];
+  const questions = page?.assistant ? suggest(state, page.assistant.suggestions, undefined, tailored) : [];
   // every card's quick actions, for ⌘K: "pause" finds "Pi-hole · Pause 5 min"
   const actions = page?.canAct === false ? [] : Object.values(state).flatMap(w => (w.card?.buttons ?? []).map(b => ({ key: w.key, b, card: w.card!.title ?? page?.widgets[w.key]?.title ?? w.key })));
   // every service from the status cards, for ⌘K: type a name, open it
@@ -287,7 +296,7 @@ function Home({ account }: { account: boolean }) {
                 {/* centred when it fits, scrolls from the start when it doesn't */}
                 <div className="mx-auto flex w-max gap-1.5">
                   {questions.slice(0, 3).map(s => (
-                    <button key={s} onClick={() => ask(s)} className="shrink-0 rounded-full px-2.5 py-1 text-[12.5px] text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground">{s}</button>
+                    <button key={s} onClick={() => ask(s)} className="fade-in-soft shrink-0 rounded-full px-2.5 py-1 text-[12.5px] text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground">{s}</button>
                   ))}
                 </div>
               </div>

@@ -79,6 +79,23 @@ export const whyPrompt = (name: string, about: string | undefined, state: Widget
   prompt: `Asked about: ${clip(about ?? name, 200)} (in the "${name}" widget)\n\n${state?.error ? `Its error: ${clip(state.error, 300)}\n` : ''}Its data: ${clip(JSON.stringify(state?.card ?? null), 3000)}\n${series.length ? `Recent headline numbers, oldest first: ${JSON.stringify(series)}\n` : ''}\nThe rest of the page:\n${digest(all)}`,
 });
 
+// ── what to ask next
+/** Questions worth asking right now, from what's on the page. A tapped suggestion goes out as the person's own words, so
+ *  these must never carry a stranger's text: feeds stay out of the prompt, and anything with a link in it is dropped. */
+export const suggestPrompt = (states: WidgetState[], journal: string[], tools: string[], now = new Date()) => ({
+  system: `You suggest what the owner of a homelab would actually want to ask its assistant right now. Write 4, one per line, at most 7 words each.
+A good one gets something the page can't show at a glance: an explanation, a comparison, a recommendation, or something to do. Trouble first, then what's live, then what suits the time of day and day of the week.
+Never ask about something the page already answers, like whether a thing is idle, how many of something there are, or a number that's on screen. Don't invent names; name a service or title only if it's below. Each must be possible with the tools listed.
+No numbering, no quotes, nothing else.\n${SEP}`,
+  prompt: `It's ${now.toLocaleString('en', { weekday: 'long', hour: 'numeric', minute: '2-digit' })}.\n\nWrong right now:\n${troubles(states).map(t => `- ${t.text}`).join('\n') || '(nothing)'}\n\nThe page:\n${digest(states)}\n\nLately:\n${journal.slice(-10).join('\n') || '(quiet)'}\n\nTools: ${tools.join(', ')}`,
+});
+export function parseSuggestions(reply: string | null) {
+  const list = (reply ?? '').split('\n').map(l => l.replace(/^[\s\-*•\d.)"'“]+|["'”\s]+$/g, '').trim())
+    .filter(l => l.length >= 6 && l.length <= 60 && !/https?:|www\.|\w\.(com|net|org|io|dev)\b|file id|\[/i.test(l));
+  const asked = list.map(l => /^(what|which|why|how|when|who|where|should|is|are|did|do|does|can|will)\b/i.test(l) && !/[?.!]$/.test(l) ? `${l}?` : l);
+  return asked.length >= 2 ? [...new Set(asked)].slice(0, 4) : null;
+}
+
 // ── the morning brief
 const FILE = () => resolve(process.env.ATRIUM_DATA ?? 'data', 'brief.json');
 export interface Brief { day: string; text: string }

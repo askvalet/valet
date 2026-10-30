@@ -76,8 +76,8 @@ In Docker, prefix these with `docker exec -it atrium`.
 | `access` | `{ default: read }` | per integration (by its id): `none`, `read`, `write` (adds things, like saving a link) or `control` (changes or removes things; asks you every time). `config: control` lets it edit this file: see below |
 | `maxSteps` | `6` | tool calls per answer, 1–20 |
 | `agent` | none | hand the chat to another agent: `{ name, baseURL, apiKey, model }`, anything OpenAI-compatible (Hermes Agent's API server, say). Remove it to go back. It runs its own tools, so access levels and approvals don't apply; it gets only the conversation, answers are plain text, and a read-only page stays on Atrium's assistant. "Why?", the brief and shared causes stay on `model` |
-| `suggestions` | four examples | questions offered on an empty chat and in ⌘K, after any drawn from what's happening |
-| `background` | `{ watch: true, brief: true, perDay: 24 }` | what it does unasked. `watch`: when two or more things break, say what they share, if the data shows it. `brief`: one line each morning. `perDay` caps these model calls. They get no tools |
+| `suggestions` | four examples | questions offered until the model has written its own, or if `background.suggest` is off |
+| `background` | `{ watch: true, brief: true, suggest: true, perDay: 24 }` | what it does unasked. `watch`: when two or more things break, say what they share, if the data shows it. `brief`: one line each morning. `suggest`: write the suggested questions from what's on the page (when it changes, at most every five minutes; `suggestions` is the fallback). `perDay` caps the first two. None of them get tools |
 
 **Setting up by talking.** With `access: { config: control }` you can say "add a card for http://box/status". It reads
 this file and the integration's options, tries the change without saving (a diff, problems, and the real card in chat),

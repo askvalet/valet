@@ -11,7 +11,7 @@ import { sameOrigin, setupAuth, userCommand } from './auth.ts';
 import { loadConfig, startConfig, validZone, type Config } from './config.ts';
 import { headers, hostGuard } from './security.ts';
 import { UPLOAD_DIR } from './core.ts';
-import { dailyBrief, whyPrompt } from './insight.ts';
+import { dailyBrief, parseSuggestions, suggestPrompt, troubles, whyPrompt } from './insight.ts';
 import { loadPins, newPin, pinnedCard, savePins } from './pins.ts';
 import { loadPlugins } from './plugins.ts';
 import { chatAgent } from './model.ts';
@@ -252,10 +252,31 @@ app.post('/api/why', async c => {
   if (whyCache.size > 60) whyCache.delete(whyCache.keys().next().value!);
   return c.json({ text: clean });
 });
+// the page has just opened, so give its widgets a moment to report in
+const settled = async () => { for (let i = 0; i < 12 && site.hub.snapshot().length < site.placed.size * .6; i++) await new Promise(r => setTimeout(r, 500)); };
+// Suggestions are rewritten when what's going on changes (or every half hour), never more than every five minutes.
+const OUTSIDE = new Set(['rss', 'hackernews', 'reddit']);   // written by strangers: see suggestPrompt
+let tailored: { at: number; mood: string; list: string[] | null } | undefined, tailoring: Promise<void> | undefined;
+app.get('/api/suggest', async c => {
+  if (!site.ask || !site.config.assistant?.background.suggest) return c.json({ list: null });
+  await settled();
+  const states = site.hub.snapshot().filter(s => !OUTSIDE.has(site.meta.get(s.key.split('.')[0])?.type ?? ''));
+  const mood = JSON.stringify([troubles(states).map(t => t.id).sort(), states.flatMap(s => s.card?.activity?.title ?? []).sort()]);
+  const age = Date.now() - (tailored?.at ?? 0);
+  if (!tailored || (mood !== tailored.mood && age > 300_000) || age > 1_800_000) {
+    tailoring ??= (async () => {
+      const tools = [...site.instances].flatMap(([, i]) => Object.values(i.tools ?? {}).filter(t => t.access !== 'control').flatMap(t => t.label ?? []));
+      const p = suggestPrompt(states, site.journal, tools);
+      const list = parseSuggestions(await site.ask!(p.system, p.prompt, 'asked'));
+      tailored = { at: Date.now(), mood, list: list ?? tailored?.list ?? null };
+    })().finally(() => { tailoring = undefined; });
+    await tailoring;
+  }
+  return c.json({ list: tailored?.list ? JSON.parse(site.redact(JSON.stringify(tailored.list))) : null });
+});
 app.get('/api/brief', async c => {
   if (!site.ask || !site.config.assistant?.background.brief) return c.json({ text: null });
-  // the page has just opened, so give its widgets a moment to report in
-  for (let i = 0; i < 12 && site.hub.snapshot().length < site.placed.size * .6; i++) await new Promise(r => setTimeout(r, 500));
+  await settled();
   const b = await dailyBrief(site.ask, site.journal.slice(-40), site.hub.snapshot());
   return c.json({ text: b ? site.redact(b.text) : null });
 });
