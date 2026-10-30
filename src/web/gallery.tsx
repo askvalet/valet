@@ -18,7 +18,7 @@ export default function Gallery() {
         {SAMPLES.map(({ name, card }) => (
           <section key={name} className="space-y-3">
             <h2 className="font-mono text-xs text-muted-foreground">{name}</h2>
-            <div className="grid items-start gap-5" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.6fr) minmax(0,.9fr)' }}>
+            <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,.9fr)]">
               <div className="min-w-0 space-y-1.5"><div className="text-[11px] text-muted-foreground">medium</div><Widget card={card} run={async () => {}} /></div>
               <div className="min-w-0 space-y-1.5"><div className="text-[11px] text-muted-foreground">large</div><Widget card={card} large run={async () => {}} /></div>
               <div className="min-w-0 space-y-3">

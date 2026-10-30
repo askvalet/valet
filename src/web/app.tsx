@@ -249,7 +249,7 @@ function Home() {
                       {keys.map(key => {
                         const size = sec.sizes![key], c = state[key]?.card;
                         if (size === 'small' && c?.summary) return <div key={key} className="min-w-0"><SummaryTile s={c.summary} href={c.href} /></div>;
-                        return <div key={key} className={cn('min-w-0 @xl/main:col-span-2', size === 'large' && '@5xl/main:col-span-4')}>{widget(key, size === 'large')}</div>;
+                        return <div key={key} className={cn('col-span-full min-w-0 @xl/main:col-span-2', size === 'large' && '@5xl/main:col-span-4')}>{widget(key, size === 'large')}</div>;
                       })}
                     </div>
                   );
@@ -263,7 +263,9 @@ function Home() {
                     </div>
                   );
                   return (
-                    <div className="grid items-start gap-4" style={{ gridTemplateColumns: aside ? '1fr' : sec.columns ? `repeat(${sec.columns}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
+                    // a fixed column count applies from tablet width up; phones get one column
+                    <div className={cn('grid items-start gap-4', sec.columns && !aside && 'grid-cols-1 @3xl/main:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))]')}
+                      style={sec.columns && !aside ? { '--cols': sec.columns } as React.CSSProperties : { gridTemplateColumns: aside ? '1fr' : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
                       {keys.map(k => widget(k))}
                     </div>
                   );

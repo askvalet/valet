@@ -623,20 +623,20 @@ function TileGraph({ points }: { points: number[] }) {
 /** Headline tile for the overview's top row: label and context up top, the value at the bottom, a live graph behind. */
 export function SummaryTile({ s, href }: { s: Summary; href?: string }) {
   const body = (
-    <Card className="relative h-[136px] gap-0 overflow-hidden py-0 shadow-card transition-colors hover:bg-accent/30">
+    <Card className="@container/tile relative h-[136px] gap-0 overflow-hidden py-0 shadow-card transition-colors hover:bg-accent/30">
       <div className="text-foreground"><TileGraph points={s.trend ?? []} /></div>
       <div className="relative flex h-full flex-col p-4">
         <div className="flex items-start gap-3">
           {s.icon && <Icon name={s.icon} className="mt-0.5 size-[18px] shrink-0 text-muted-foreground" />}
           <div className="min-w-0">
-            <div className="truncate text-[15px] font-semibold leading-tight">{s.label}</div>
+            <div className="truncate text-[14px] font-semibold leading-tight @[200px]/tile:text-[15px]">{s.label}</div>
             {s.sub && <div className="truncate text-[13px] text-muted-foreground">{s.sub}</div>}
           </div>
           {s.tone && (s.tone === 'good' || s.tone === 'bad') && <span className={cn('dot ml-auto mt-1.5', s.tone === 'good' ? 'dot-good' : 'dot-bad')} />}
         </div>
-        <div className="mt-auto flex items-baseline justify-between gap-3">
-          <div className={cn('metric truncate text-[22px] leading-none', toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}>{s.value}</div>
-          {s.detail && <div className="shrink-0 truncate text-xs tabular text-muted-foreground">{s.detail}</div>}
+        <div className="mt-auto flex min-w-0 items-baseline justify-between gap-3">
+          <div className={cn('metric min-w-0 shrink-0 truncate text-[20px] leading-none @[200px]/tile:text-[22px]', toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}>{s.value}</div>
+          {s.detail && <div className="hidden min-w-0 truncate text-xs tabular text-muted-foreground @[200px]/tile:block">{s.detail}</div>}
         </div>
       </div>
     </Card>
