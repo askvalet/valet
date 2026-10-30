@@ -1,7 +1,7 @@
 // Renders any card from the shared catalog with shadcn/ui primitives. The homepage and the assistant both use this,
 // so a generated card looks exactly like the widget it came from.
 import {
-  Activity, ArrowUpRight, Bookmark, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
+  Activity, ArrowUpRight, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
   type LucideIcon,
 } from 'lucide-react';
 import { createContext, Fragment, lazy, Suspense, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -17,7 +17,7 @@ import type { Card as CardT, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCar
 
 const ICONS: Record<string, LucideIcon> = {
   cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
-  bulb: Lightbulb, home: House, shield: Shield, chat: MessageCircle, image: ImageIcon, clock: Clock, crescent: MoonIcon, coins: Coins, text: Type,
+  bulb: Lightbulb, home: House, shield: Shield, chat: MessageCircle, image: ImageIcon, clock: Clock, crescent: MoonIcon, game: Gamepad2, coins: Coins, text: Type,
   file: FileText, bookmark: Bookmark, sun: Sun, moon: Moon, cloud: Cloud, 'cloud-sun': CloudSun, 'cloud-moon': CloudMoon, rain: CloudRain, snow: CloudSnow, fog: CloudFog, storm: CloudLightning,
 };
 export function Icon({ name, className }: { name?: string; className?: string }) {
