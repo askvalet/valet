@@ -12,8 +12,8 @@ Real Valet, made-up homelab. The page runs the published code; the only stand-in
 
 ```sh
 docker compose build                       # in the repo root: builds local/valet:dev
-cd demo && docker compose up -d            # http://127.0.0.1:7580
+cd demo && docker compose up -d            # http://172.17.0.1:7580
 ```
 
-It is **not public**: the port is on this machine's loopback address only. To open it later, add the public name to
-`allowedHosts` in `config.yaml` and point a proxy or tunnel at that port.
+It is **not public**: the port is on the Docker bridge address only, for a reverse proxy on the same machine. To open it
+later, add the public name to `allowedHosts` in `config.yaml` and point a proxy or tunnel at that port.
