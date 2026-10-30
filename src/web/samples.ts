@@ -32,6 +32,10 @@ export const SAMPLES: { name: string; card: Card }[] = [
     { name: 'Hacker News', href: 'https://news.ycombinator.com', note: 'news' }, { name: 'Lobsters', href: 'https://lobste.rs' }, { name: 'A bookmark with a long name that truncates', href: 'https://example.com', note: 'and a note' }] } },
   { name: 'list · links', card: { type: 'list', title: 'Feed', icon: 'rss', items: [{ title: 'An article worth reading', subtitle: 'The Verge', meta: '2h', href: 'https://example.com' }, { title: 'Another one', subtitle: 'Ars', meta: '5h', href: 'https://example.com' }] } },
   { name: 'chart', card: { type: 'chart', title: 'GPU', unit: 'W', span: 'last hour', series: [{ name: 'power', points: wave(60) }, { name: 'idle', points: wave(60, 2), tone: 'accent' }] } },
+  { name: 'chart · scrub', card: { type: 'chart', title: 'Memory', unit: '%', from: Date.now() - 864e5, to: Date.now(), span: 'last 24 hours', series: [{ name: 'Memory', points: wave(48) }] } },
+  { name: 'code · logs', card: { type: 'code', title: 'radarr logs', lines: ['03:11 Fetching feed', '03:12 Out of memory: killed process 412 (Radarr)', '03:12 exited with code 137'] } },
+  { name: 'code · diff', card: { type: 'code', title: 'Config change', diff: true, lines: ['  integrations:', '+   speedtest:', '+     type: api', '-   old: true'] } },
+  { name: 'table', card: { type: 'table', title: 'Watched', columns: ['Who', 'Title', 'Watched'], rows: [['Sam', 'Joker', 95], ['Alex', 'Dune', 40], ['Sam', 'A much longer title that has to fit somewhere', 12]] } },
   { name: 'controls', card: { type: 'controls', title: 'Lights', icon: 'bulb', items: [
     { id: 'a', label: 'Office', kind: 'toggle', value: true, color: '#ffb46b', sub: '80%', action: 'set' }, { id: 'b', label: 'Scene', kind: 'button', value: 'Run', action: 'press' },
     { id: 'c', label: 'Mode', kind: 'select', value: 'Auto', options: ['Auto', 'Off'], action: 'choose' }, { id: 'd', label: 'Brightness', kind: 'slider', value: 40, min: 0, max: 100, action: 'set' },

@@ -111,6 +111,8 @@ A widget returns one card from the catalog in `src/shared/cards.ts`. Pick the on
 | `verse` | a verse or quote | original (right-to-left if Arabic), translation, reference |
 | `controls` | switches, sliders, choices | each control names an action of the same integration |
 | `chart`, `kv`, `text` | a graph, key–value rows, a sentence | |
+| `code` | Logs or config: numbered lines, copy, and `diff: true` colours lines starting `+` and `-` |
+| `table` | `columns` and `rows`; numbers line up, and a tap on a heading sorts |
 | `showcase` | a custom visual with its panel | renderers live in `src/web/visuals/` |
 | `group` | cards side by side | mostly for the assistant |
 

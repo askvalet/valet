@@ -1,6 +1,6 @@
 // Renders any card from the shared catalog with shadcn/ui primitives. The homepage and the assistant both use this,
 // so a generated card looks exactly like the widget it came from.
-import { X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
+import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
   Activity, ArrowUpRight, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
   type LucideIcon,
 } from 'lucide-react';
@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import type { LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
+import type { CodeCard, TableCard, LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
 // Icon names cards may use (docs/integrations.md lists them; keep the two in step). Anything else: a URL or a path.
 const ICONS: Record<string, LucideIcon> = {
@@ -357,21 +357,91 @@ function ShelfRow({ card, header, small }: { card: ShelfCard; header?: ReactNode
   );
 }
 
+/** A line you can read with your finger: scrub across it for the exact value and when it was, and it says how far it's
+ *  moved. The line draws itself in once. */
 function Chart({ card }: { card: ChartCard }) {
-  const w = 300, h = 96;
-  const all = card.series.flatMap(s => s.points), max = card.max ?? Math.max(...all, 1);
+  const w = 300, h = 96, count = Math.max(...card.series.map(s => s.points.length), 0);
+  // the scale fits the data, so a number that moves a little still shows its shape; a fixed max (a percentage) keeps zero
+  const all = card.series.flatMap(s => s.points), top = Math.max(...all, 0), low = Math.min(...all, top), pad = (top - low) * .2 || Math.abs(top) * .1 || 1;
+  const max = card.max ?? top + pad, min = card.max != null ? 0 : Math.max(low >= 0 ? 0 : -Infinity, low - pad);
+  const x = (i: number, n: number) => (i / Math.max(1, n - 1)) * w, y = (p: number) => h - 3 - ((p - min) / (max - min || 1)) * (h - 8);
+  const [at, setAt] = useState<number | null>(null);
+  const unit = card.unit ?? '';
+  const num = (v: number) => `${Math.abs(v) >= 100 ? Math.round(v).toLocaleString() : Math.round(v * 10) / 10}${unit && !/^\s/.test(unit) && unit.length > 2 ? ` ${unit}` : unit}`;
+  const lead = card.series[0], last = lead?.points.at(-1), first = lead?.points[0];
+  const move = (first != null && last != null && first !== 0) ? (last - first) / Math.abs(first) : null;
+  const when = (i: number) => card.labels?.[i] ?? (card.from != null && card.to != null ? new Date(card.from + (i / Math.max(1, count - 1)) * (card.to - card.from)).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : null);
+  const scrub = (e: React.PointerEvent<HTMLDivElement>) => {
+    const box = e.currentTarget.getBoundingClientRect();
+    setAt(Math.round(Math.max(0, Math.min(1, (e.clientX - box.left) / box.width)) * (count - 1)));
+  };
+  const shown = at != null ? lead?.points[at] : last;
   return (
     <div>
-      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="h-28 w-full" aria-hidden>
-        {[0.25, 0.5, 0.75].map(f => <line key={f} x1="0" x2={w} y1={h * f} y2={h * f} stroke="var(--border)" vectorEffect="non-scaling-stroke" />)}
-        {card.series.map((s, k) => {
-          const d = s.points.map((p, i) => `${i ? 'L' : 'M'}${((i / Math.max(1, s.points.length - 1)) * w).toFixed(1)},${(h - 2 - (p / max) * (h - 6)).toFixed(1)}`).join('');
-          const color = k ? 'var(--muted-foreground)' : toneVar(s.tone);
-          return <g key={s.name}>{!k && <path d={`${d}L${w},${h}L0,${h}Z`} fill={color} opacity=".1" />}
-            <path d={d} fill="none" stroke={color} strokeWidth="1.6" vectorEffect="non-scaling-stroke" /></g>;
+      <div className="mb-2 flex items-baseline gap-2">
+        <span className="metric text-[22px] leading-none">{shown != null ? num(shown) : '–'}</span>
+        <span className="min-w-0 truncate text-xs text-muted-foreground">
+          {at != null ? when(at) : move != null && Math.abs(move) >= .005 ? <span className={cn('tabular', lead.tone === 'bad' ? 'text-bad' : '')}>{move > 0 ? '+' : ''}{Math.round(move * 1000) / 10}%{card.span ? ` over the ${card.span.replace(/^last /, 'last ')}` : ''}</span> : card.span}
+        </span>
+      </div>
+      <div className="chart-scrub relative touch-pan-y select-none" onPointerMove={scrub} onPointerDown={scrub} onPointerLeave={() => setAt(null)} onPointerUp={e => { if (e.pointerType !== 'mouse') setAt(null); }}>
+        <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="chart-draw h-28 w-full" aria-hidden>
+          {[0.25, 0.5, 0.75].map(f => <line key={f} x1="0" x2={w} y1={h * f} y2={h * f} stroke="var(--border)" vectorEffect="non-scaling-stroke" />)}
+          {card.series.map((s, k) => {
+            const pts = s.points.map((p, i) => [x(i, s.points.length), y(p)] as [number, number]), d = smooth(pts);
+            const color = k ? 'var(--muted-foreground)' : toneVar(s.tone);
+            return <g key={s.name}>{!k && <path d={`${d}L${w},${h}L0,${h}Z`} fill={color} opacity=".1" />}
+              <path d={d} fill="none" stroke={color} strokeWidth="1.6" vectorEffect="non-scaling-stroke" /></g>;
+          })}
+        </svg>
+        {at != null && lead && (
+          <>
+            <span className="pointer-events-none absolute inset-y-0 w-px bg-foreground/25" style={{ left: `${(at / Math.max(1, count - 1)) * 100}%` }} />
+            {card.series.map((s, k) => s.points[at] != null && <span key={s.name} className="pointer-events-none absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-background" style={{ left: `${(at / Math.max(1, count - 1)) * 100}%`, top: `${(y(s.points[at]) / h) * 100}%`, background: k ? 'var(--muted-foreground)' : toneVar(s.tone) }} />)}
+          </>
+        )}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        {card.series.length > 1 && card.series.map(s => <span key={s.name} className="tabular">{s.name} {at != null && s.points[at] != null ? num(s.points[at]) : s.points.length ? num(s.points.at(-1)!) : ''}</span>)}
+        {card.span && <span className="ml-auto">{card.span}</span>}
+      </div>
+    </div>
+  );
+}
+
+/** Logs and config: monospace, numbered, one-tap copy; a diff shows what's added and removed. */
+function Code({ card }: { card: CodeCard }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => { navigator.clipboard?.writeText(card.lines.join('\n')); setCopied(true); setTimeout(() => setCopied(false), 1400); };
+  return (
+    <div className="group/code relative -mx-1">
+      <button type="button" onClick={copy} aria-label="Copy" className="chat-icon absolute top-1 right-1 z-10 text-muted-foreground">{copied ? <Check className="morph size-3.5 text-good" /> : <Copy className="size-3.5" />}</button>
+      <pre className="max-h-72 overflow-auto rounded-xl bg-black/25 py-2 font-mono text-[11.5px] leading-[1.65]">
+        {card.lines.map((l, i) => {
+          const tone = card.diff && l[0] === '+' ? 'bg-good/10 text-good' : card.diff && l[0] === '-' ? 'bg-bad/10 text-bad' : '';
+          return <div key={i} className={cn('flex min-w-max gap-3 pr-10 pl-2', tone)}><span className="w-6 shrink-0 text-right text-muted-foreground/50 tabular select-none">{i + 1}</span><span className="whitespace-pre">{l || ' '}</span></div>;
         })}
-      </svg>
-      <div className="mt-2 flex gap-4 text-xs text-muted-foreground">{card.series.map(s => <span key={s.name}>{s.name}</span>)}{card.span && <span className="ml-auto">{card.span}</span>}</div>
+      </pre>
+    </div>
+  );
+}
+
+/** Rows and columns, numbers lined up; tap a heading to sort by it. */
+function Table({ card }: { card: TableCard }) {
+  const [sort, setSort] = useState<{ col: number; up: boolean } | null>(null);
+  const numeric = card.columns.map((_, c) => card.rows.length > 0 && card.rows.every(r => r[c] === '' || Number.isFinite(Number(String(r[c]).replace(/[,%$]/g, '')))));
+  const value = (v: string | number, c: number) => numeric[c] ? Number(String(v).replace(/[,%$]/g, '')) : String(v).toLowerCase();
+  const rows = sort ? [...card.rows].sort((a, b) => { const x = value(a[sort.col], sort.col), y = value(b[sort.col], sort.col); return (x < y ? -1 : x > y ? 1 : 0) * (sort.up ? 1 : -1); }) : card.rows;
+  return (
+    <div className="-mx-1 overflow-x-auto">
+      <table className="w-full text-[13px]">
+        <thead><tr>{card.columns.map((c, i) => (
+          <th key={c} className={cn('whitespace-nowrap px-1.5 pb-1.5 font-medium text-muted-foreground', numeric[i] ? 'text-right' : 'text-left')}>
+            <button type="button" className="transition-colors hover:text-foreground" onClick={() => setSort(s => s?.col === i ? (s.up ? { col: i, up: false } : null) : { col: i, up: true })}>{c}{sort?.col === i ? (sort.up ? ' ↑' : ' ↓') : ''}</button>
+          </th>
+        ))}</tr></thead>
+        <tbody className="divide-y">{rows.slice(0, 60).map((r, i) => <tr key={i} className="transition-colors hover:bg-accent/50">{r.map((v, c) => <td key={c} className={cn('max-w-[240px] truncate px-1.5 py-1.5', numeric[c] && 'text-right tabular')}>{v}</td>)}</tr>)}</tbody>
+      </table>
     </div>
   );
 }
@@ -628,6 +698,8 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
     case 'media': return <Media card={card} />;
     case 'shelf': return <Shelf card={card} />;
     case 'chart': return <Chart card={card} />;
+    case 'code': return <Code card={card} />;
+    case 'table': return <Table card={card} />;
     case 'controls': return <Controls card={card} run={run} />;
     case 'kv': return <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">{card.rows.map(([k, v]) => <Fragment key={k}><dt className="text-muted-foreground">{k}</dt><dd className="text-right tabular">{v}</dd></Fragment>)}</dl>;
     case 'text': return <p className={cn('text-sm', toneText[card.tone ?? 'neutral'])}>{card.text}</p>;

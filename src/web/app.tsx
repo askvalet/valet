@@ -476,7 +476,7 @@ function Home({ account }: { account: boolean }) {
       {page?.assistant && (
         <Dialog open={chatOpen} onOpenChange={setChatOpen}>
           {/* the chat pops out over the page: a tall window in the middle, frosted like everything else */}
-          <DialogContent showCloseButton={false} className="chat-pop flex h-[min(82vh,820px)] w-[min(760px,calc(100vw-1.5rem))] max-w-none flex-col gap-0 overflow-hidden rounded-[28px] p-0 sm:max-w-none">
+          <DialogContent showCloseButton={false} onOpenAutoFocus={e => { if (phone) e.preventDefault(); }} className="chat-pop flex h-[min(82vh,820px)] w-[min(760px,calc(100vw-1.5rem))] max-w-none flex-col gap-0 overflow-hidden rounded-[28px] p-0 sm:max-w-none">
             <DialogTitle className="sr-only">{page.assistant.name}</DialogTitle>
             <DialogDescription className="sr-only">Ask about your homelab</DialogDescription>
             {chatOpen && (

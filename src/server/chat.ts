@@ -12,6 +12,7 @@ import type { Config } from './config.ts';
 import type { Instance, Integration } from './core.ts';
 import { mcpTools } from './mcp.ts';
 import { chatAgent, makeAgentModel, makeModel } from './model.ts';
+import { checkCard } from '../shared/cards.schema.ts';
 
 const rank = { none: 0, read: 1, write: 2, control: 3 } as const;
 
@@ -120,6 +121,21 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     });
     catalog.push('- search_everything: one search across documents, links, photos and more');
   }
+
+  // Built-in: numbers it already has, drawn properly. It only makes a card: no data of its own, no effect on anything.
+  tools.present = tool({
+    description: 'Draw a chart or table in the chat from numbers you already got from tools, when that reads better than a sentence: comparisons, rankings, several rows. Never invent or estimate a value. For a number over time use metric_chart instead.',
+    inputSchema: z.object({ kind: z.enum(['chart', 'table']), title: z.string(), unit: z.string().optional(), labels: z.array(z.string()).optional().describe('chart: a name per point'),
+      series: z.array(z.object({ name: z.string(), points: z.array(z.number()) })).optional().describe('chart'), columns: z.array(z.string()).optional().describe('table'), rows: z.array(z.array(z.union([z.string(), z.number()]))).optional().describe('table') }),
+    execute: async ({ kind, title, unit, labels, series, columns, rows }) => {
+      const card = kind === 'chart' ? { type: 'chart', title, unit, labels, series: series ?? [] } : { type: 'table', title, columns: columns ?? [], rows: rows ?? [] };
+      const ok = checkCard(card);
+      if (!ok.success || (kind === 'chart' ? !series?.length : !rows?.length)) return { data: { error: 'that needs series (chart) or columns and rows (table)' } };
+      return JSON.parse(safety.redact(JSON.stringify({ data: { shown: true }, card })));
+    },
+    toModelOutput: ({ output }) => ({ type: 'json', value: (output as { data: any }).data }),
+  });
+  catalog.push('- present: draw a chart or table from numbers you already have');
 
   // Built-in: lay out any widgets the assistant may read, as live cards side by side or stacked.
   const readable = [...instances].filter(([id]) => accessOf(id) >= rank.read)

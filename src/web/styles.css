@@ -297,6 +297,10 @@
 .chat-pin { position: absolute; top: 8px; right: 8px; z-index: 2; opacity: 0; transition: opacity 160ms var(--ease-out); }
 .chat-pinnable:hover .chat-pin, .chat-pin:focus-visible, .chat-pin[data-done] { opacity: 1; }
 @media (pointer: coarse) { .chat-pin { opacity: 1; } }
+/* a chart's line draws itself in, once */
+.chart-draw { animation: chart-draw 900ms var(--ease-out) both; }
+@keyframes chart-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.chart-scrub { cursor: crosshair; }
 /* a theme switch: the sun and moon turn into each other */
 .spin-in { animation: spin-in 360ms var(--ease-out) both; }
 @keyframes spin-in { from { opacity: 0; transform: rotate(-90deg) scale(.6); } }

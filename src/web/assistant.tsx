@@ -79,6 +79,7 @@ const verbOf = (name: string, tools: Record<string, ToolInfo>) => {
   if (name === 'show') return ['Laid out cards', Lightbulb] as const;
   if (name === 'search_everything') return ['Searched everything', Search] as const;
   if (name === 'plan') return ['Made a plan', Zap] as const;
+  if (name === 'present') return ['Laid it out', Lightbulb] as const;
   return [t?.label ?? toolLabel(name).replace(/^\w/, c => c.toUpperCase()), t ? ICON[t.access] : Activity] as const;
 };
 const argOf = (input: any) => {

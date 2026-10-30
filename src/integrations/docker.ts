@@ -90,7 +90,7 @@ export default defineIntegration({
             const r = await ctx.http<Response>(`${base}/containers/${c.id}/logs?${q}`, { as: 'response', timeout: 15_000 });
             if (!r.ok) throw new Error(`Docker answered ${r.status}`);
             const kept = tidyLogs(parseLogs(Buffer.from(await r.arrayBuffer())), match);
-            return { data: { container: c.name, state: c.state, status: c.status, lines: kept }, card: { type: 'text', title: `${c.name} logs`, text: kept.slice(-12).join('\n') || 'Nothing logged' } };
+            return { data: { container: c.name, state: c.state, status: c.status, lines: kept }, card: kept.length ? { type: 'code', title: `${c.name} logs`, lines: kept.slice(-40) } : { type: 'text', title: `${c.name} logs`, text: 'Nothing logged' } };
           },
         },
       },

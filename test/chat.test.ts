@@ -62,7 +62,7 @@ test('access: it\'s offered only what its level allows, and nothing that acts on
   const looking = await talk(scripted('hi'), say('hi'), { access: { dl: 'read' } });
   assert.deepEqual(looking.offered.filter(t => t.startsWith('dl__')), ['dl__status']);
   const readOnly = await talk(scripted('hi'), say('hi'), { acting: false });
-  assert.deepEqual(readOnly.offered.filter(t => !t.includes('search')).sort(), ['dl__status']);
+  assert.deepEqual(readOnly.offered.filter(t => !t.includes('search')).sort(), ['dl__status', 'present']);   // present only draws a card
 });
 
 test('a read tool just runs; its result reaches neither the model nor the page unredacted', async () => {

@@ -24,7 +24,7 @@ const home = new Map<string, any>(Object.entries({
   dns: { widgets: {}, tools: { ...look('adblock_status', 'Checked ad blocking', 'Pi-hole: blocked share, blocking on or off.', { blocked: '14%', blocking: true }), ...act('adblock_pause', 'control', 'Paused ad blocking', 'Pause ad blocking for some minutes.') } },
   requests: { widgets: {}, tools: { ...look('media_search', 'Searched movies & shows', 'Search movies and shows to request.', [{ id: 1, title: 'Arrival', year: 2016, status: 'not requested' }]), ...act('media_request', 'control', 'Requested', 'Request a movie or show by id.') } },
   docker: { widgets: {}, tools: { ...look('containers_status', 'Checked the containers', 'Every container: running or not, how it exited.', [{ name: 'radarr', state: 'exited', status: 'Exited (137) 2 hours ago' }, { name: 'plex', state: 'running' }]), ...look('container_logs', 'Read the logs', 'Recent logs of a container. Use first for why did X crash.', { container: 'radarr', lines: ['03:12 Out of memory: killed process (Radarr)', '03:12 exit code 137'] }) } },
-  atrium: { widgets: {}, tools: { ...look('timeline', 'Checked what happened', 'What happened over a period: services down and back, things finishing, changes, how numbers moved. Use for what happened overnight, what changed since yesterday.', { events: [{ when: 'Fri 3:12 AM', kind: 'down', what: 'Radarr is down' }, { when: 'Fri 1:40 AM', kind: 'end', what: 'Joker finished' }] }), ...look('activity_log', 'Checked what changed', 'What Atrium itself changed: who asked, what it did. Use for did you do that, what did you change.', [{ when: 'Fri 9:00 AM', who: 'you', via: 'chat', what: 'Paused downloads' }]), ...act('watch_add', 'write', 'Set a reminder', 'Tell the person later when something happens. Use for tell me when, let me know if.'), ...look('watch_list', 'Checked reminders', 'Reminders not yet fired.', []) } },
+  atrium: { widgets: {}, tools: { ...look('timeline', 'Checked what happened', 'What happened over a period: services down and back, things finishing, changes, how numbers moved. Use for what happened overnight, what changed since yesterday.', { events: [{ when: 'Fri 3:12 AM', kind: 'down', what: 'Radarr is down' }, { when: 'Fri 1:40 AM', kind: 'end', what: 'Joker finished' }] }), ...look('activity_log', 'Checked what changed', 'What Atrium itself changed: who asked, what it did. Use for did you do that, what did you change.', [{ when: 'Fri 9:00 AM', who: 'you', via: 'chat', what: 'Paused downloads' }]), ...act('watch_add', 'write', 'Set a reminder', 'Tell the person later when something happens. Use for tell me when, let me know if.'), ...look('watch_list', 'Checked reminders', 'Reminders not yet fired.', []), ...look('metric_chart', 'Drew a graph', 'A graph of any headline number over time. Use for graph, chart, show me X over the last day.', [{ name: 'Memory', now: 61, low: 40, high: 88 }]) } },
 }));
 const meta = new Map<string, any>([...home.keys()].map(id => [id, { type: id, name: id }]));
 
@@ -71,6 +71,10 @@ const CASES: Case[] = [
   // doesn't claim powers it hasn't got
   { ask: 'Restart radarr please', not: ['home_control'], says: /can'?t|cannot|not able|unable|docker (compose )?(restart|start)/i },
   { ask: 'Was Radarr killed for running out of memory?', uses: 'container_logs', says: /memory/i },
+  // graphs and tables
+  { ask: 'Graph memory over the last day', uses: 'metric_chart' },
+  { ask: 'Show me GPU usage this week as a chart', uses: 'metric_chart' },
+  { ask: 'Put what people watched yesterday in a table', uses: 'present' },
   // no tool needed, and no invented facts
   { ask: 'Hi there!', plain: true },
   { ask: 'What can you help with?', plain: true },

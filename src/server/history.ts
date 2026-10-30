@@ -18,6 +18,7 @@ export function numberOf(v: Summary['value']): number | null {
 export class History {
   private series = new Map<string, [number, number][]>();   // "<widget>#<summary index>" → [time, value]
   private labels = new Map<string, string>();               // series → what its headline is called
+  private units = new Map<string, string>();                // and the unit its value came with ("%", "W"), since samples are bare numbers
   private dirty = false;
   private hours: number; private everyMs: number;
   constructor(hours: number, everyMs: number) { this.hours = hours; this.everyMs = everyMs; }
@@ -28,14 +29,22 @@ export class History {
     try { saved = JSON.parse(raw); } catch { console.error('history: history.json is unreadable; starting fresh'); }
     for (const [k, v] of Object.entries(saved)) if (Array.isArray(v)) this.series.set(k, v);
     for (const [k, v] of Object.entries((saved as any).$labels ?? {})) this.labels.set(k, String(v));
+    for (const [k, v] of Object.entries((saved as any).$units ?? {})) this.units.set(k, String(v));
     setInterval(() => this.save().catch(e => console.error('history: save failed:', e.message)), 5 * 60_000).unref();
   }
   async save() {
     if (!this.dirty) return;
     await mkdir(dirname(FILE), { recursive: true });
-    await writeFile(`${FILE}.tmp`, JSON.stringify({ ...Object.fromEntries(this.series), $labels: Object.fromEntries(this.labels) }));
+    await writeFile(`${FILE}.tmp`, JSON.stringify({ ...Object.fromEntries(this.series), $labels: Object.fromEntries(this.labels), $units: Object.fromEntries(this.units) }));
     await rename(`${FILE}.tmp`, FILE);
     this.dirty = false;   // only once it's safely on disk
+  }
+
+  /** One headline's samples over a period, found by name: the ones whose label or widget matches. */
+  points(name: string, ms: number) {
+    const from = Date.now() - ms, q = name.toLowerCase();
+    return [...this.series].filter(([k]) => `${this.labels.get(k) ?? ''} ${k}`.toLowerCase().includes(q))
+      .map(([k, list]) => ({ name: this.labels.get(k) ?? k.split('#')[0], unit: this.units.get(k), points: list.filter(p => p[0] >= from) })).filter(s => s.points.length >= 2).slice(0, 3);
   }
 
   /** How each headline number moved over a period, the ones that moved most first. */
@@ -45,7 +54,7 @@ export class History {
       const pts = list.filter(p => p[0] >= from);
       if (pts.length < 2) return [];
       const vals = pts.map(p => p[1]), low = Math.min(...vals), high = Math.max(...vals), peak = pts.find(p => p[1] === high)!;
-      return [{ name: `${this.labels.get(k) ?? k.split('#')[0]} (${k.split('#')[0]})`, now: vals.at(-1)!, low, high, peakAt: at(peak[0]), spread: high - low ? (high - low) / (Math.abs(high) || 1) : 0 }];
+      return [{ name: `${this.labels.get(k) ?? k.split('#')[0]} (${k.split('#')[0]})`, unit: this.units.get(k), now: vals.at(-1)!, low, high, peakAt: at(peak[0]), spread: high - low ? (high - low) / (Math.abs(high) || 1) : 0 }];
     }).sort((a, b) => b.spread - a.spread).map(({ spread, ...r }) => r);
   }
 
@@ -60,6 +69,8 @@ export class History {
       if (!s) return s;
       const id = `${key}#${i}`, list = this.series.get(id) ?? [], v = numberOf(s.value);
       this.labels.set(id, s.label);
+      const unit = typeof s.value === 'string' ? s.value.match(/^\s*-?[\d.,]+\s*([^\d\s][^\s]*)\s*$/)?.[1] : undefined;
+      if (unit && !/^[kKMG]$/.test(unit)) this.units.set(id, unit);
       if (v != null && (!list.length || now - list[list.length - 1][0] >= this.everyMs)) {
         list.push([now, v]); this.dirty = true;
       }

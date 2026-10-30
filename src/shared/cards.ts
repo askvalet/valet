@@ -99,7 +99,13 @@ export interface ChartCard extends Base {
   max?: number;
   series: { name: string; points: number[]; tone?: Tone }[];
   span?: string;          // e.g. "last 10 min"
+  from?: number;          // when the first point is (ms), so scrubbing can say when
+  to?: number;            // when the last point is
+  labels?: string[];      // or a name per point, for charts that aren't over time
 }
+
+export interface CodeCard extends Base { type: 'code'; lines: string[]; diff?: boolean }   // logs, config: diff colours lines starting + and -
+export interface TableCard extends Base { type: 'table'; columns: string[]; rows: (string | number)[][] }
 
 export interface Control {
   id: string;
@@ -155,7 +161,7 @@ export interface TextCard extends Base { type: 'text'; text: string; tone?: Tone
 
 export interface GroupCard extends Base { type: 'group'; cards: Card[]; layout?: 'row' | 'column' }
 
-export type Card = LinksCard | VerseCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
+export type Card = CodeCard | TableCard | LinksCard | VerseCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
 
 /** One widget slot's live state, as pushed to the browser. */
 export interface WidgetState { key: string; card?: Card; error?: string; at: number; source?: string }

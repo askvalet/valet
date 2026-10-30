@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { parseConfig } from './config.ts';
 import { makeContext, type Instance, type Integration, type Tool } from './core.ts';
 import { check } from './site.ts';
+import type { Card } from '../shared/cards.ts';
 
 const EDITABLE = new Set(['integrations', 'layout', 'links', 'menubar', 'weather', 'island', 'nav', 'title', 'greeting', 'location', 'timezone', 'search', 'history', 'welcome']);
 const SECRET_KEY = /^(api[-_]?key|token|password|secret|client[-_]?secret|authorization|x-api-key)$/i;
@@ -153,7 +154,8 @@ export function setupTools(path: string, registry: Record<string, Integration>):
           let card, fetchError: string | undefined;
           if (w && !t.missing.length) { try { card = await w.fetch(); } catch (e) { fetchError = (e as Error).message; } }
           // what the card really shows, so a wrong path is caught here and not on the page
-          return { data: { diff: diff(t.before, t.after), problems: t.problems, fetchError, cardShows: card ? JSON.stringify(card).slice(0, 900) : undefined, needsInEnv: t.missing, widgets: inst ? Object.keys(inst.widgets) : undefined }, card };
+          const change: Card = { type: 'code', title: 'What changes', diff: true, lines: diff(t.before, t.after).split('\n') };
+          return { data: { diff: diff(t.before, t.after), problems: t.problems, fetchError, cardShows: card ? JSON.stringify(card).slice(0, 900) : undefined, needsInEnv: t.missing, widgets: inst ? Object.keys(inst.widgets) : undefined }, card: card ? { type: 'group', layout: 'column', cards: [card, change] } : change };
         } catch (e) { return { data: { error: (e as Error).message } }; }
       },
     },

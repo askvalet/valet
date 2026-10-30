@@ -91,7 +91,7 @@ into `data/integrations/`: see [docs/plugins.md](docs/plugins.md) and [`examples
 ## Cards
 
 Every widget and every assistant answer is built from one small catalog of cards (`stats`, `list`, `media`, `shelf`,
-`status`, `chart`, `controls`, `showcase`, `forecast`, `photos`, `schedule`, `verse`, `kv`, `text`, `group`), defined
+`status`, `links`, `chart`, `code`, `table`, `controls`, `showcase`, `forecast`, `photos`, `schedule`, `verse`, `kv`, `text`, `group`), defined
 in [`src/shared/cards.ts`](src/shared/cards.ts). Each works as a small tile, a card, a wide card and inside the chat;
 `/#gallery` shows them all.
 Integrations return plain data in these shapes; Atrium draws them. That's why a third-party integration looks native,

@@ -255,4 +255,6 @@ test('timeline and history: what happened, and how the numbers moved', async () 
   for (const v of ['10%', '90%', '20%']) { h.apply('a.b', { type: 'text', text: '', summary: { label: 'CPU', value: v } }); await new Promise(r => setTimeout(r, 2)); }
   const [m] = h.overview(36e5);
   assert.deepEqual([m.name, m.now, m.low, m.high], ['CPU (a.b)', 20, 10, 90]);
+  assert.equal(m.unit, '%');                                 // the graph knows what the numbers are
+  assert.equal(h.points('cpu', 36e5)[0].unit, '%');
 });
