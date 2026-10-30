@@ -11,6 +11,8 @@ export const SAMPLES: { name: string; card: Card }[] = [
   { name: 'stats', card: { type: 'stats', title: 'System', icon: 'cpu', note: 'up 9 days', items: [
     { label: 'CPU', value: 23, unit: '%', sub: '48°C', trend: wave(40) }, { label: 'Memory', value: 61, unit: '%' }, { label: 'GPU', value: 4, unit: '%' }, { label: 'Uptime', value: '9d' }],
     summary: { label: 'CPU', icon: 'cpu', value: '23%', sub: 'Ryzen 9', detail: '48°C', trend: wave(40), pct: .23, tone: 'good' } } },
+  { name: 'stats · pie', card: { type: 'stats', title: 'Pi-hole', icon: 'shield', items: [{ label: 'Blocked', value: '14%' }], pieCenter: '14%', pie: [{ label: 'Blocked', value: 1400 }, { label: 'Forwarded', value: 6100 }, { label: 'Cached', value: 2500 }] } },
+  { name: 'list · dots', card: { type: 'list', title: 'Drives', items: [{ title: 'WD Red', subtitle: '51°C · 3.1 years on', dot: 'good' }, { title: 'Old SSD', subtitle: '60°C', dot: 'warn', meta: 'Hot' }] } },
   { name: 'stats · warning', card: { type: 'stats', title: 'Drives', icon: 'disk', items: [{ label: 'Temperature', value: 61, unit: '°C', tone: 'warn', pct: .8 }] } },
   { name: 'list', card: { type: 'list', title: 'Downloads', icon: 'download', items: [
     { title: 'A very long release name that keeps going 2160p HDR x265 10bit-GROUP', subtitle: '12 MB/s · 3.2 GB left', meta: '4m', pct: .62 },

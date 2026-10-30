@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 
 process.env.VALET_DATA = await mkdtemp(join(tmpdir(), 'valet-brain-'));
-const { dailyBrief, digest, parseCause, parseSuggestions, suggestPrompt, troubles, Watcher } = await import('../src/server/insight.ts');
+const { digest, parseCause, parseSuggestions, suggestPrompt, troubles, Watcher, statusLine } = await import('../src/server/insight.ts');
 const { applyOps, diff, refused, setupTools, validate } = await import('../src/server/setup.ts');
 const { loadPins, newPin, pinnedCard, pinsInstance, savePins } = await import('../src/server/pins.ts');
 const { suggest } = await import('../src/web/suggest.ts');
@@ -45,21 +45,16 @@ test('watcher: one problem never reaches the model; two do once settled; a cause
   w.stop();
 });
 
-test('digest stays compact and the brief is written once a day', async () => {
+test('digest stays compact, and the status line is written at most every half hour', async () => {
   assert.equal(digest([{ key: 'a.b', at: 1, card: { type: 'stats', title: 'CPU', items: [], summary: { label: 'CPU', value: '4%' } } }]), 'CPU: CPU 4%');
-  let n = 0; const ask = async () => { n++; return 'Quiet night, nothing needs you.'; };
-  const morning = new Date(2026, 9, 30, 8), states = down('x');
-  assert.equal(await dailyBrief(ask, [], states, new Date(2026, 9, 30, 3)), null);    // too early
-  assert.equal((await dailyBrief(ask, [], states, morning))?.text, 'Quiet night, nothing needs you.');
-  await dailyBrief(ask, [], states, morning);
-  assert.equal(n, 1);
-  assert.equal(await dailyBrief(ask, [], states, new Date(2026, 9, 30, 15)), null);    // by the afternoon it's old news
-  // the thing it reported got fixed: it doesn't go on saying so, though it won't rewrite within half an hour
-  const fixed = down('y');
-  await dailyBrief(ask, [], fixed, new Date(2026, 9, 30, 8, 10));
-  assert.equal(n, 1);
-  await dailyBrief(ask, [], fixed, new Date(2026, 9, 30, 8, 40));
-  assert.equal(n, 2);
+  let n = 0; const ask = async () => { n++; return `Quiet, nothing needs you ${n}.`; };
+  const at = (m: number) => new Date(2026, 9, 30, 8, m), states = down('x');
+  assert.equal(await statusLine(ask, [], [], at(0)), null);                              // nothing to go on yet
+  assert.equal((await statusLine(ask, [], states, at(0)))?.text, 'Quiet, nothing needs you 1.');
+  await statusLine(ask, [], states, at(10));
+  assert.equal(n, 1);                                                                     // any number of opens, one rewrite
+  assert.equal((await statusLine(ask, [], states, at(31)))?.text, 'Quiet, nothing needs you 2.');
+  assert.equal((await statusLine(async () => null, [], states, at(59 + 40)))?.text, 'Quiet, nothing needs you 2.');   // no answer: keep the last
 });
 
 test('setup: edits keep comments; it can\'t touch sign-in or its own access, or write a secret into the file', async () => {

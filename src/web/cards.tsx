@@ -57,8 +57,38 @@ const Bar = ({ pct, tone }: { pct: number; tone?: Tone }) => (
 
 /** One point per card: the first item is the hero (large number, its label, one sparkline); the rest become a quiet
  *  footer of at most three small facts, divided by hairlines. */
+/** Parts of a whole, as a ring: the first slice in colour, the number that matters in the middle. */
+function Donut({ slices, center }: { slices: NonNullable<StatsCard['pie']>; center?: string }) {
+  const total = slices.reduce((t, s) => t + s.value, 0) || 1, r = 15.9155, gap = 1.2;   // this radius makes the circumference 100
+  const colors = ['var(--bad)', 'var(--primary)', 'rgb(255 255 255 / .28)', 'rgb(255 255 255 / .14)'];
+  let at = 0;
+  return (
+    <div className="flex items-center gap-4">
+      <div className="relative size-[88px] shrink-0">
+        <svg viewBox="0 0 36 36" className="size-full -rotate-90" aria-hidden>
+          {slices.map((s, i) => {
+            const pct = s.value / total * 100, seg = <circle key={s.label} className="donut-seg" cx="18" cy="18" r={r} fill="none" stroke={s.tone ? toneVar(s.tone) : colors[i % 4]} strokeWidth="3.4" strokeDasharray={`${Math.max(0, pct - gap)} ${100 - Math.max(0, pct - gap)}`} strokeDashoffset={-at} />;
+            at += pct; return seg;
+          })}
+        </svg>
+        {center && <span className="metric absolute inset-0 grid place-items-center text-[15px]">{center}</span>}
+      </div>
+      <ul className="min-w-0 flex-1 space-y-1 text-[12.5px]">
+        {slices.map((s, i) => (
+          <li key={s.label} className="flex items-center gap-2">
+            <span className="size-2 shrink-0 rounded-full" style={{ background: s.tone ? toneVar(s.tone) : colors[i % 4] }} />
+            <span className="min-w-0 flex-1 truncate text-muted-foreground">{s.label}</span>
+            <span className="tabular">{s.value.toLocaleString()}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function Stats({ card }: { card: StatsCard }) {
   const dense = useContext(Dense);
+  if (card.pie?.length && !dense) return <Donut slices={card.pie} center={card.pieCenter} />;
   const [hero, ...rest] = card.items;
   if (!hero) return null;
   const facts = rest.slice(0, 3);
@@ -106,7 +136,8 @@ function List({ card }: { card: ListCard }) {
             <div className="flex items-baseline gap-3">
               <div className={cn('min-w-0 flex-1 font-medium', dense ? 'text-[13px]' : 'text-sm', it.href && !dense ? 'line-clamp-2 leading-snug' : 'truncate')}>{it.title}</div>
               {it.meta && <div className="shrink-0 text-xs tabular text-muted-foreground">{it.meta}</div>}
-              {(it.tone === 'warn' || it.tone === 'bad') && <WhyChip about={`${it.title}: ${it.subtitle ?? ''} ${it.meta ?? ''}`} />}
+              {it.dot && <span className={cn('dot size-1.5', it.dot === 'good' ? 'dot-good' : 'dot-bad')} style={it.dot === 'warn' ? { background: 'var(--warn)' } : undefined} title={it.dot === 'good' ? 'Healthy' : undefined} />}
+              {it.tone === 'bad' && <WhyChip about={`${it.title}: ${it.subtitle ?? ''} ${it.meta ?? ''}`} />}
               {it.href && <ArrowUpRight className="row-arrow size-3.5 shrink-0 text-muted-foreground" />}
             </div>
             {it.subtitle && <div className={cn('truncate text-xs', it.tone && it.tone !== 'neutral' ? toneText[it.tone] : 'text-muted-foreground')}>{it.subtitle}</div>}
@@ -145,7 +176,7 @@ function WhyNote({ note, close }: { note: { busy: boolean; text?: string } | nul
 function AppIcon({ src, name, small }: { src?: string; name: string; small?: boolean }) {
   const [failed, setFailed] = useState(false);
   const size = small ? 'size-[18px]' : 'size-7';
-  if (!src || failed) return <span className={cn(size, 'grid shrink-0 place-items-center rounded-md bg-secondary font-semibold text-muted-foreground', small ? 'text-[10px]' : 'text-xs')}>{name[0]}</span>;
+  if (!src || failed) return <span className={cn(size, 'shrink-0')} aria-hidden />;   // no icon: just the space, so names still line up
   return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className={cn(size, 'shrink-0 object-contain')} />;
 }
 
@@ -565,11 +596,11 @@ function Sky({ card }: { card: ScheduleCard }) {
   return (
     <div className="space-y-2">
       <div className="flex items-end justify-between">
-        <div><div className="metric text-[30px] leading-none">{next.name}</div><div className="mt-1.5 text-[13px] text-muted-foreground tabular">{clock(next.t)}</div></div>
+        <div><div className="metric text-[24px] leading-none">{next.name}</div><div className="mt-1.5 text-[13px] text-muted-foreground tabular">{clock(next.t)}</div></div>
         <div className="text-right"><div className={cn('metric text-[22px] tabular leading-none', mins <= 15 && 'text-good')}><span key={mins} className="tick">{mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`}</span></div>
           <div className="mt-1.5 text-[12px] text-muted-foreground">to go</div></div>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="block w-full overflow-visible" aria-hidden>
+      <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block max-h-[150px] w-full overflow-visible" aria-hidden>
         <defs>
           <linearGradient id="sky-path" x1="0" x2="1"><stop offset="0" stopColor="#5e5ce6" /><stop offset=".25" stopColor="#ffb46b" /><stop offset=".5" stopColor="#ffd60a" /><stop offset=".75" stopColor="#ff9f0a" /><stop offset="1" stopColor="#5e5ce6" /></linearGradient>
           <radialGradient id="sky-sun"><stop offset="0" stopColor={sun.up ? '#fff4c2' : '#dfe6ff'} /><stop offset=".35" stopColor={sun.up ? '#ffd60a' : '#9fb4ff'} stopOpacity=".9" /><stop offset="1" stopColor={sun.up ? '#ffd60a' : '#9fb4ff'} stopOpacity="0" /></radialGradient>
@@ -684,11 +715,14 @@ function Photos({ card, large }: { card: PhotosCard; large?: boolean }) {
   );
 }
 
+/** The sky arc on the page; the plain timeline where space is tight. */
+function Times({ card }: { card: ScheduleCard }) { return useContext(Dense) ? <Schedule card={card} /> : <Sky card={card} />; }
+
 export function CardBody({ card, run, columns, minimal, large }: { card: CardT; run?: RunAction; columns?: number; minimal?: boolean; large?: boolean }): ReactNode {
   switch (card.type) {
     case 'showcase': return <Showcase card={card} run={run} />;
     case 'photos': return <Photos card={card} large={large} />;
-    case 'schedule': return large ? <Sky card={card} /> : <Schedule card={card} />;
+    case 'schedule': return <Times card={card} />;
     case 'verse': return <Verse card={card} />;
     case 'forecast': return <Forecast card={card} />;
     case 'stats': return <Stats card={card} />;

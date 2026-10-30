@@ -11,7 +11,7 @@ import { sameOrigin, setupAuth, userCommand } from './auth.ts';
 import { loadConfig, startConfig, validZone, type Config } from './config.ts';
 import { headers, hostGuard } from './security.ts';
 import { UPLOAD_DIR } from './core.ts';
-import { dailyBrief, parseSuggestions, suggestPrompt, troubles, whyPrompt } from './insight.ts';
+import { parseSuggestions, statusLine, suggestPrompt, troubles, whyPrompt } from './insight.ts';
 import { loadPins, newPin, pinnedCard, savePins } from './pins.ts';
 import { loadPlugins } from './plugins.ts';
 import { chatAgent } from './model.ts';
@@ -99,7 +99,7 @@ app.get('/api/wallpaper', async c => {
 
 // Service icons from the open dashboard-icons set (the one Homepage uses), and sites' own favicons, fetched once by
 // the server and cached on disk: the browser never talks to a CDN, and the page works offline after the first load.
-const ICON_DIR = resolve(DATA, 'icons');
+const ICON_DIR = resolve(DATA, 'icons'), noIcon = new Set<string>();
 const cached = async (file: string, url: string, type: string, c: Context) => {
   let body = await readFile(file).catch(() => null);
   if (!body) {
@@ -116,7 +116,16 @@ app.get('/api/icon/:slug', async c => {
   // your own icon: drop data/icons/<slug>.svg (or .png) and it wins over the CDN
   const svg = await readFile(resolve(ICON_DIR, `${slug}.svg`)).catch(() => null);
   if (svg) return c.body(svg, 200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' });
-  return cached(resolve(ICON_DIR, `${slug}.png`), `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/${slug}.png`, 'image/png', c);
+  // "immich-postgres" has no icon of its own, but "immich" does. What isn't there is remembered, so the CDN is asked once.
+  const parts = slug.split('-');
+  for (let n = parts.length; n > 0; n--) {
+    const name = parts.slice(0, n).join('-');
+    if (noIcon.has(name)) continue;
+    const r = await cached(resolve(ICON_DIR, `${name}.png`), `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/${name}.png`, 'image/png', c);
+    if (r.status === 200) return r;
+    noIcon.add(name);
+  }
+  return c.notFound();
 });
 app.get('/api/favicon/:host', async c => {
   const host = c.req.param('host').toLowerCase();
@@ -259,9 +268,8 @@ app.post('/api/why', async c => {
 });
 // the page has just opened, so give its widgets a moment to report in
 const settled = async () => { for (let i = 0; i < 12 && site.hub.snapshot().length < site.placed.size * .6; i++) await new Promise(r => setTimeout(r, 500)); };
-// Suggestions are rewritten when something the person cares about changes, at most every twenty minutes, and at least
-// twice a day. Each rewrite takes the GPU for a while, and a chat question would queue behind it, so they're on the daily
-// budget. The assistant's own work must not count as news: its activity would set off the next rewrite.
+// Suggestions are rewritten every half hour while the page is in use, or sooner (every ten minutes at most) when something
+// the person cares about changes. Each rewrite takes the GPU for a while, so they're on the daily budget. The assistant's own work must not count as news: its activity would set off the next rewrite.
 const OUTSIDE = new Set(['rss', 'hackernews', 'reddit']);   // written by strangers: see suggestPrompt
 let tailored: { at: number; mood: string; list: string[] | null } | undefined, tailoring: Promise<void> | undefined;
 app.get('/api/suggest', async c => {
@@ -270,7 +278,7 @@ app.get('/api/suggest', async c => {
   const states = site.hub.snapshot().filter(s => !OUTSIDE.has(site.meta.get(s.key.split('.')[0])?.type ?? ''));
   const mood = JSON.stringify([troubles(states).map(t => t.id).sort(), states.flatMap(s => ['play', 'download'].includes(s.card?.activity?.icon ?? '') ? [s.card!.activity!.title] : []).sort()]);
   const age = Date.now() - (tailored?.at ?? 0);
-  if (!tailored || (mood !== tailored.mood && age > 1_200_000) || age > 6 * 36e5) {
+  if (!tailored || (mood !== tailored.mood && age > 600_000) || age > 1_800_000) {
     tailoring ??= (async () => {
       const tools = [...site.instances].flatMap(([, i]) => Object.values(i.tools ?? {}).filter(t => t.access !== 'control').flatMap(t => t.label ?? []));
       const p = suggestPrompt(states, site.timeline.lines(6 * 36e5, 10), tools);
@@ -284,7 +292,7 @@ app.get('/api/suggest', async c => {
 app.get('/api/brief', async c => {
   if (!site.ask || !site.config.assistant?.background.brief) return c.json({ text: null });
   await settled();
-  const b = await dailyBrief(site.ask, site.timeline.lines(16 * 36e5), site.hub.snapshot());
+  const b = await statusLine(site.ask, site.timeline.lines(8 * 36e5), site.hub.snapshot());
   return c.json({ text: b ? site.redact(b.text) : null });
 });
 

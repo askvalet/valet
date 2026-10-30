@@ -1,7 +1,7 @@
 // Uptime Kuma: what it watches, whether each is up, and how reliable it's been (1 day / 30 days), plus certificate
 // expiry. Read from Kuma's Prometheus /metrics (basic auth with the Kuma login or an API key).
 import { z } from 'zod';
-import { defineIntegration } from '../server/core.ts';
+import { defineIntegration, iconFor } from '../server/core.ts';
 
 type M = { name: string; status: number; ms?: number; day?: number; month?: number; certDays?: number };
 
@@ -46,7 +46,7 @@ export default defineIntegration({
               note: avg != null ? `${pct(avg)} over 30 days` : undefined,
               summary: { label: 'Uptime', icon: 'pulse', value: down.length ? `${down.length} down` : pct(avg), tone: down.length ? 'bad' : certs.length ? 'warn' : 'good',
                 sub: down.length ? down.map(m => m.name).join(', ') : `${list.length} monitors · 30 days`, detail: certs.length ? `cert ${Math.min(...certs.map(c => c.certDays!))} days` : undefined, pct: avg },
-              items: list.map(m => ({ name: m.name, ok: m.status !== 0, ms: m.ms, detail: m.status === 0 ? 'down' : m.status === 3 ? 'maintenance' : `${pct(m.month)} · 30d` })),
+              items: list.map(m => ({ name: m.name, icon: iconFor(m.name), ok: m.status !== 0, ms: m.ms, detail: m.status === 0 ? 'down' : m.status === 3 ? 'maintenance' : `${pct(m.month)} · 30d` })),
             };
           },
         },

@@ -198,7 +198,13 @@ function Home({ account }: { account: boolean }) {
     const t = setInterval(get, 6 * 60_000);
     return () => clearInterval(t);
   }, [!!page?.assistant]);
-  useEffect(() => { if (page?.assistant) fetch('/api/brief').then(r => r.json()).then(b => setBrief(b.text)).catch(() => {}); }, [!!page?.assistant]);
+  useEffect(() => {
+    if (!page?.assistant) return;
+    const get = () => fetch('/api/brief').then(r => r.json()).then(b => { if (b.text) setBrief(b.text); }).catch(() => {});
+    get();
+    const t = setInterval(get, 6 * 60_000);
+    return () => clearInterval(t);
+  }, [!!page?.assistant]);
   // A wallpaper means glass over a photo: always the dark material, so text stays legible on any image.
   const wall = page?.appearance?.wallpaper;
   useEffect(() => {
@@ -274,7 +280,7 @@ function Home({ account }: { account: boolean }) {
           <header className="wall-text mx-auto w-full max-w-[720px] pt-8 text-center xl:pt-10">
             <div className="text-[22px] font-semibold tracking-tight">{greet(now.getHours())}{page?.greeting ? `, ${page.greeting}` : ''}</div>
             {cause ? <div className="brief-in mt-0.5 text-[13px] text-warn">{cause}</div> : p.text && <div className={cn('mt-0.5 text-[13px]', p.tone)}>{p.text}</div>}
-            {brief && !cause && !p.text && <div className="brief-in mx-auto mt-1 max-w-[560px] text-[13.5px] text-muted-foreground">{brief}</div>}
+            {brief && !cause && !p.text && <div key={brief} className="brief-in mx-auto mt-1 max-w-[560px] text-[13.5px] text-muted-foreground">{brief}</div>}
             {page?.assistant && (
               <form className="glass-round mt-5 flex items-center gap-2.5 rounded-[26px] py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
@@ -304,6 +310,7 @@ function Home({ account }: { account: boolean }) {
           </header>
         );
 
+  const chatWide = wide && !phone && !!chatTab && view === chatTab && !!page?.assistant;
   const renderSection = (sec: (typeof sections)[number], aside = sec.place === 'left' || sec.place === 'right') => (
           <section key={`${view}:${sec.i}`} className="settle space-y-3" style={{ animationDelay: `${Math.min(sec.i, 6) * 45}ms` }}>
             {sec.title && sec.heading !== false && (sec.display === 'cards' || sec.display === 'media') && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title) && <h2 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h2>}
@@ -423,7 +430,7 @@ function Home({ account }: { account: boolean }) {
         {!wall && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={theme.toggle}>{theme.dark ? <Sun key="sun" className="spin-in" /> : <Moon key="moon" className="spin-in" />}</RoundButton>}
       </div>
 
-      <main className={cn('@container/main mx-auto flex flex-col gap-8 px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-32', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-40 xl:pt-40' }[navSide], page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[1720px]' : 'max-w-[1320px]')}>
+      <main className={cn('@container/main mx-auto flex flex-col gap-8 px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-32', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-40 xl:pt-40' }[navSide], chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[1720px]' : 'max-w-[1320px]')}>
         {!hasSide && hero}
         {page?.welcome && view === 'all' && <Welcome path={page.welcome.path} saved={page.welcome.saved} />}
 
@@ -432,13 +439,17 @@ function Home({ account }: { account: boolean }) {
           <button onClick={() => setChatOpen(true)} className="glass-round press flex h-12 items-center gap-2.5 rounded-full px-5 text-left text-[16px] text-muted-foreground"><MessageCircle className="size-[18px]" />Ask {page.assistant.name}…</button>
         )}
         {!phone && chatTab && view === chatTab && page?.assistant && (
-          <div data-slot="card" className="h-[min(78vh,900px)] min-h-[520px] overflow-hidden rounded-[calc(var(--radius)*1.4)] border bg-card shadow-card">
+          <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_200px]">
+          <div data-slot="card" className="h-[calc(100dvh-7.5rem)] min-h-[520px] overflow-hidden rounded-[calc(var(--radius)*1.4)] border bg-card shadow-card">
             <Suspense fallback={null}>
               <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} canPin={page.canAct !== false} onAsk={ask} />
             </Suspense>
           </div>
+          {/* the tab's numbers sit small beside the chat, which gets the room */}
+          {chatWide && <aside className="chat-aside no-scrollbar flex max-h-[calc(100dvh-7.5rem)] flex-col gap-3 overflow-y-auto">{sections.map(x => renderSection(x, true))}</aside>}
+          </div>
         )}
-        {(() => {
+        {!chatWide && (() => {
           // sections placed left/right become a sidebar beside the rest on wide screens; stacked on smaller ones
           const shown = sections.filter(sec => sec.display === 'media' ? mediaOf(sec.widgets).length > 0 : sec.display !== 'cards' || sec.widgets.some(k => !isEmpty(state[k]?.card)));
           const side = shown.filter(x => x.place === 'left' || x.place === 'right'), rest = shown.filter(x => x.place !== 'left' && x.place !== 'right');

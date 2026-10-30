@@ -35,7 +35,7 @@ export default defineIntegration({
             const { s, history, blocking, timer, top } = await stats();
             const off = blocking !== 'enabled';
             return {
-              type: 'stats', title: 'Pi-hole', icon: 'shield', href: cfg.href ?? `${base}/admin`,
+              type: 'stats', title: 'Pi-hole', icon: 'shield', pieCenter: off ? 'Off' : pct(s.queries.percent_blocked), pie: [{ label: 'Blocked', value: s.queries.blocked }, { label: 'Forwarded', value: s.queries.forwarded ?? 0 }, { label: 'Cached', value: s.queries.cached ?? 0 }], href: cfg.href ?? `${base}/admin`,
               note: off ? (timer ? `paused · ${Math.ceil(timer / 60)} min left` : 'blocking off') : undefined,
               buttons: off ? [{ label: 'Resume blocking', action: 'pause', args: { minutes: 0 } }]
                 : [{ label: 'Pause 5 min', action: 'pause', args: { minutes: 5 } }, { label: 'Pause 1 hour', action: 'pause', args: { minutes: 60 } }],

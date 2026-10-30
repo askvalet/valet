@@ -261,7 +261,9 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
   // a reply: runs of tool calls become one chip list, followed by any cards they returned, then the words
   const live = isLast && busy;
   const blocks: ReactNode[] = [], thoughts: string[] = []; let run: any[] = [], thinking = false;
-  const flush = (k: string) => { if (run.length) { const r = run; blocks.push(<ToolChips key={`c${k}`} parts={r} tools={tools} settled={!live || m.parts.some((p: any) => p.type === 'text' && p.text.trim())} />, ...r.map((p, j) => <ToolPart key={`p${k}.${j}`} p={p} tools={tools} canPin={canPin} fresh={fresh} approve={act.approve} />)); run = []; } };
+  // keys come from the tool call, which never changes: keys based on position shifted as words arrived, so every card
+  // was rebuilt and replayed its animation, which is what made the chat flicker
+  const flush = () => { if (run.length) { const r = run, id = r[0].toolCallId; blocks.push(<ToolChips key={`c${id}`} parts={r} tools={tools} settled={!live || m.parts.some((p: any) => p.type === 'text' && p.text.trim())} />, <div key={`g${id}`} className="chat-cards">{r.map(p => <ToolPart key={p.toolCallId} p={p} tools={tools} canPin={canPin} fresh={fresh} approve={act.approve} />)}</div>); run = []; } };
   m.parts.forEach((p: any, i: number) => {
     if (p.type.startsWith('tool-') || p.type === 'dynamic-tool') run.push(p);
     else if (p.type === 'reasoning') { thoughts.push(p.text ?? ''); thinking ||= live && p.state === 'streaming'; }
@@ -270,11 +272,11 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
       const t = splitThink(p.text);
       if (t.thought) thoughts.push(t.thought);
       thinking ||= live && t.thinking;
-      if (t.said) { flush(String(i)); blocks.push(<Text key={i} text={t.said} live={live} />); }
+      if (t.said) { flush(); blocks.push(<Text key={i} text={t.said} live={live} />); }
     }
   });
   if (thoughts.some(t => t.trim()) || thinking) blocks.unshift(<Reasoning key="thought" text={thoughts.join('\n\n')} streaming={thinking} took={tookMs} />);
-  flush('end');
+  flush();
   const text = m.parts.filter((p: any) => p.type === 'text').map((p: any) => splitThink(p.text).said).join('\n\n').trim();
   // the last tool it used that suggests next questions
   const used = m.parts.filter((p: any) => p.type.startsWith('tool-') || p.type === 'dynamic-tool').map((p: any) => p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, ''));
@@ -380,7 +382,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
 
   return (
     <div className="relative flex h-full flex-col">
-      <header {...(sheet ? grab : {})} className={cn('relative flex items-center gap-2.5 border-b px-5', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'py-4')}>
+      <header {...(sheet ? grab : {})} className={cn('relative flex items-center gap-2.5 border-b px-5', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'py-2.5')}>
         {sheet && <span className="sheet-grip absolute top-[max(.4rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2" aria-hidden />}
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold leading-tight">{name}</div>

@@ -1,7 +1,7 @@
 // A machine's systemd services, through the Valet agent (agent/valet-agent.py): what's running, what failed and why,
 // and logs. One instance per machine. The agent can only look, so this can too.
 import { z } from 'zod';
-import { defineIntegration } from '../server/core.ts';
+import { defineIntegration, iconFor } from '../server/core.ts';
 import type { StatusItem } from '../shared/cards.ts';
 
 export default defineIntegration({
@@ -18,7 +18,7 @@ export default defineIntegration({
     interface S { unit: string; name: string; description?: string; state: string; sub?: string; result?: string; restarts?: number; exitStatus?: number; since?: string; stopped?: string; memoryBytes?: number }
     const services = () => ctx.http<{ host: string; services: S[] }>(`${base}/services`, { headers, timeout: 20_000 });
     const up = (s: S) => s.state === 'active';
-    const item = (s: S, group: string): StatusItem => ({ name: s.name, ok: up(s), detail: up(s) ? undefined : s.state === 'failed' ? `failed (${s.result})` : s.state, group, quiet: cfg.quiet.includes(s.name) });
+    const item = (s: S, group: string): StatusItem => ({ name: s.name, icon: iconFor(s.name), ok: up(s), detail: up(s) ? undefined : s.state === 'failed' ? `failed (${s.result})` : s.state, group, quiet: cfg.quiet.includes(s.name) });
     return {
       widgets: {
         services: {

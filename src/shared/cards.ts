@@ -53,11 +53,12 @@ export interface StatItem {
   trend?: number[];       // recent values → sparkline
 }
 
-export interface StatsCard extends Base { type: 'stats'; items: StatItem[] }
+export interface StatsCard extends Base { type: 'stats'; items: StatItem[]; pie?: { label: string; value: number; tone?: Tone }[]; pieCenter?: string }   // pie: parts of a whole, drawn as a ring instead
 
 export interface ListItem {
   title: string;
   href?: string;           // the row opens this (a new tab)
+  dot?: Tone;              // a status dot on the right, instead of a word
   subtitle?: string;
   meta?: string;          // right-aligned, e.g. "8 min left"
   pct?: number;           // 0..1 progress bar

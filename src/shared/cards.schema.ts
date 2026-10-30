@@ -23,7 +23,7 @@ const base = {
 };
 const StatItem = z.object({ label: z.string(), value: z.union([z.string(), z.number()]), unit: z.string().optional(), sub: z.string().optional(),
   tone: Tone.optional(), pct: z.number().optional(), trend: nums.optional() }).strict();
-const ListItem = z.object({ title: z.string(), href: z.string().optional(), subtitle: z.string().optional(), meta: z.string().optional(), pct: unit.optional(), tone: Tone.optional(),
+const ListItem = z.object({ title: z.string(), href: z.string().optional(), dot: Tone.optional(), subtitle: z.string().optional(), meta: z.string().optional(), pct: unit.optional(), tone: Tone.optional(),
   image: z.string().optional(), badge: z.string().optional() }).strict();
 const MediaItem = z.object({ title: z.string(), subtitle: z.string().optional(), image: z.string().optional(), backdrop: z.string().optional(), pct: unit.optional(),
   state: z.enum(['playing', 'paused', 'buffering']).optional(), user: z.string().optional(), device: z.string().optional(), detail: z.string().optional(),
@@ -36,7 +36,7 @@ const Control = z.object({ id: z.string(), label: z.string(), kind: z.enum(['tog
   step: z.number().optional(), color: z.string().optional(), action: z.string().optional(), sub: z.string().optional(), args: z.record(z.string(), z.unknown()).optional() }).strict();
 
 export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('type', [
-  z.object({ ...base, type: z.literal('stats'), items: z.array(StatItem) }).strict(),
+  z.object({ ...base, type: z.literal('stats'), items: z.array(StatItem), pie: z.array(z.object({ label: z.string(), value: z.number(), tone: Tone.optional() }).strict()).optional(), pieCenter: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('list'), items: z.array(ListItem), empty: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('media'), items: z.array(MediaItem), empty: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('shelf'), items: z.array(ShelfItem), aspect: z.enum(['poster', 'square', 'wide']).optional(), empty: z.string().optional(), stack: z.boolean().optional() }).strict(),

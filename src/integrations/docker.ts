@@ -2,7 +2,7 @@
 // point this at the raw socket. Starting or restarting isn't offered, because the proxy can't allow that without also
 // allowing container creation, which is root on the host.
 import { z } from 'zod';
-import { defineIntegration } from '../server/core.ts';
+import { defineIntegration, iconFor } from '../server/core.ts';
 import { listTags, newest, parseImage, parseVersion, warnings } from '../server/registry.ts';
 import type { ListItem, StatusItem } from '../shared/cards.ts';
 
@@ -45,7 +45,7 @@ export default defineIntegration({
         .filter(c => !cfg.hide.includes(c.name)).sort((a, b) => a.name.localeCompare(b.name));
     }
     const healthy = (c: C) => c.state === 'running' && !c.unhealthy;
-    const item = (c: C): StatusItem => ({ name: c.name, ok: healthy(c), detail: healthy(c) ? undefined : c.unhealthy ? 'unhealthy' : c.exit != null ? `exited (${c.exit})` : c.state, group: c.project,
+    const item = (c: C): StatusItem => ({ name: c.name, icon: iconFor(c.name), ok: healthy(c), detail: healthy(c) ? undefined : c.unhealthy ? 'unhealthy' : c.exit != null ? `exited (${c.exit})` : c.state, group: c.project,
       quiet: c.exit === 0 });   // finished cleanly: a one-off job, not a problem
     const find = async (name: string) => {
       const all = await containers(), n = name.toLowerCase();
@@ -116,7 +116,7 @@ export default defineIntegration({
           title: 'Containers', interval: 30_000,
           async fetch() {
             const list = await containers(), bad = list.filter(c => !healthy(c) && c.exit !== 0);
-            return { type: 'status', title: 'Containers', icon: 'disk', items: list.map(item), note: `${list.filter(c => c.state === 'running').length} running`,
+            return { type: 'status', title: 'Containers', icon: 'disk', items: list.map(item),
               summary: { label: 'Containers', icon: 'disk', value: bad.length ? `${bad.length} down` : `${list.filter(c => c.state === 'running').length} up`, tone: bad.length ? 'bad' : 'good' } };
           },
         },

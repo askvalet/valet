@@ -30,7 +30,7 @@ export default defineIntegration({
               summary: { label: 'Drives', icon: 'disk', value: bad.length ? `${bad.length} failing` : 'Healthy', tone: bad.length ? 'bad' : warm.length ? 'warn' : 'good',
                 sub: `${list.length} drives`, detail: list.length ? `${Math.max(...list.map(d => d.temp ?? 0))}°C max` : undefined },
               items: list.map(d => ({ title: d.model, subtitle: [d.temp != null && `${d.temp}°C`, age(d.hours)].filter(Boolean).join(' · '),
-                meta: d.failed ? 'Failing' : d.hot ? 'Hot' : 'Healthy', tone: d.failed ? 'bad' : d.hot ? 'warn' : 'neutral' })),
+                meta: d.failed ? 'Failing' : d.hot ? 'Hot' : undefined, dot: d.failed ? 'bad' : d.hot ? 'warn' : 'good', tone: d.failed ? 'bad' : d.hot ? 'warn' : 'neutral' })),
             };
           },
         },
