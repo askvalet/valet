@@ -13,6 +13,7 @@ import http from '../src/integrations/http.ts';
 import pihole from '../src/integrations/pihole.ts';
 import qbittorrent from '../src/integrations/qbittorrent.ts';
 import quran from '../src/integrations/quran.ts';
+import releases from '../src/integrations/releases.ts';
 import scrutiny from '../src/integrations/scrutiny.ts';
 import uptimekuma from '../src/integrations/uptimekuma.ts';
 
@@ -118,6 +119,11 @@ test('qbittorrent: stuck torrents are reported, and stay out of the island', asy
   assert.deepEqual(card.items.map((i: any) => i.detail), ['Stalled · 1.9 GB left', 'Finding peers']);
   const { data }: any = await q.tools.downloads_status.run({}, {} as any);
   assert.deepEqual([data.count, data.stuck, data.torrents[0].waitingHours], [2, 2, 2]);
+});
+
+test('releases: being rate limited is an error, not "no releases"', async () => {
+  const r = make(releases, { repos: ['a/b'] }, fake(() => { throw new Error('api.github.com answered 403'); }));
+  await assert.rejects(r.widgets.latest.fetch(), /403/);
 });
 
 test('scrutiny: a failing drive is called out', async () => {

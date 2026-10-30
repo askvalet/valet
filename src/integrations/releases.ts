@@ -19,6 +19,7 @@ export default defineIntegration({
     let cache: { at: number; list: Rel[] } | undefined;
     async function releases(): Promise<Rel[]> {
       if (cache && Date.now() - cache.at < 1_800_000) return cache.list;
+      let failed = '';
       const all = await Promise.all(cfg.repos.map(async repo => {
         try {
           // /releases/latest skips prereleases; the list has them
@@ -32,11 +33,14 @@ export default defineIntegration({
             const t = (await ctx.http<any[]>(`https://api.github.com/repos/${repo}/tags?per_page=1`, { headers, timeout: 10_000 }).catch(() => []))[0];
             return t ? [{ repo, tag: t.name, at: 0, href: `https://github.com/${repo}/releases/tag/${t.name}`, prerelease: false }] : [];
           }
-          ctx.log(`${repo}: ${(e as Error).message}`); return [];
+          ctx.log(`${repo}: ${(e as Error).message}`); failed = (e as Error).message; return [];
         }
       }));
       const list = all.flat().sort((a, b) => b.at - a.at);
-      cache = { at: Date.now(), list };
+      // a rate limit isn't "no releases": keep what we knew, or say we couldn't look
+      if (failed && cache) return cache.list;
+      if (failed && !list.length) throw new Error(failed);
+      if (!failed) cache = { at: Date.now(), list };
       return list;
     }
     // "immich", but "home-assistant/core": a generic repo name needs its owner to mean anything

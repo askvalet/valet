@@ -382,7 +382,7 @@ function Spotlight({ card, header }: { card: ShelfCard; header?: ReactNode }) {
       <div className="mb-3 flex items-center gap-2">{header}</div>
       <div className="grid items-start gap-4 @4xl/main:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <Tile href={first.href} className="group relative block aspect-[16/9] overflow-hidden rounded-2xl bg-muted shadow-[0_18px_40px_-20px_rgb(0_0_0/.6)]">
-          <Art src={first.backdrop ?? first.image} alt={first.title} className="size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]" />
+          <Art src={first.backdrop ?? first.image} alt={first.title} className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-4 text-white">
             {first.backdrop && first.image && <Art src={first.image} alt="" className="h-[92px] w-[62px] shrink-0 rounded-lg object-cover shadow-lg" />}
