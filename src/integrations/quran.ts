@@ -13,8 +13,15 @@ export default defineIntegration({
   create(cfg, ctx) {
     const base = cfg.url.replace(/\/$/, ''), web = (cfg.href ?? base).replace(/\/$/, '');
     let index: Surah[] | null = null;
+    // the index stays; surah files are kept for the last few looked at (the whole Quran would be tens of MB in memory)
     const cache = new Map<string, any>();
-    const get = async (path: string) => { if (!cache.has(path)) cache.set(path, await ctx.http(`${base}/data/${path}`, { timeout: 15_000 })); return cache.get(path); };
+    const get = async (path: string) => {
+      if (cache.has(path)) { const v = cache.get(path); cache.delete(path); cache.set(path, v); return v; }
+      const v = await ctx.http(`${base}/data/${path}`, { timeout: 15_000 });
+      cache.set(path, v);
+      for (const k of cache.keys()) { if (cache.size <= 9) break; if (k !== 'index.json') cache.delete(k); }
+      return v;
+    };
     // the word segments carry tajweed markup; keep the letters, drop verse-end glyphs from the private-use area
     const arabic = (words: any[]) => words.map(w => w.map((seg: any[]) => seg[0]).join('')).join(' ').replace(/[-]/g, '').replace(/\s*[ۖ-ۭ]+\s*$/u, '').trim();
 

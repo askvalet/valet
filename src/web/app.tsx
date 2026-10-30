@@ -1,17 +1,17 @@
-import { ArrowUp, CornerDownLeft, LayoutGrid, LogOut, MessageCircle, Moon, Sun, Zap } from 'lucide-react';
+import { ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Sun } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ForecastCard, StatusCard, WidgetState } from '../shared/cards.ts';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import Island, { type Live, type Notice } from './island.tsx';
-import { SignIn, signOut, useMe } from './signin.tsx';
+import { SignIn, useMe } from './signin.tsx';
 import { Icon, NowPlaying, isEmpty, MiniRing, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
 
 // The assistant (and the AI SDK client) loads only when someone asks something.
 const Assistant = lazy(() => import('./assistant.tsx'));
+const Palette = lazy(() => import('./palette.tsx'));
 
 interface Page {
   title: string; greeting?: string; location?: string; canAct?: boolean;
@@ -129,7 +129,6 @@ function Home() {
   const wide = useWide();
   const bar = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState('');
-  const [query, setQuery] = useState('');
 
   useEffect(() => { fetch('/api/page').then(r => r.json()).then(setPage); }, []);
   useEffect(() => { if (page) document.title = page.title; }, [page]);
@@ -154,6 +153,13 @@ function Home() {
     if (!(chatTab && view === chatTab)) setChatOpen(true);
   }, [chatTab, view]);
 
+  // one stable action function per widget, so memoised cards don't re-render on every live update
+  const runners = useRef(new Map<string, (action: string, args?: Record<string, unknown>) => Promise<void>>());
+  const runFor = (key: string) => {
+    let f = runners.current.get(key);
+    if (!f) runners.current.set(key, f = (action, args) => runAction(key, action, args));
+    return f;
+  };
   const p = pulse(state);
   // every card's quick actions, for ⌘K: "pause" finds "Pi-hole · Pause 5 min"
   const actions = page?.canAct === false ? [] : Object.values(state).flatMap(w => (w.card?.buttons ?? []).map(b => ({ key: w.key, b, card: w.card!.title ?? page?.widgets[w.key]?.title ?? w.key })));
@@ -243,7 +249,7 @@ function Home() {
                     const s = state[key];
                     return <Widget key={key} large={large} card={s?.card} title={page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={sec.variant === 'minimal' && view === 'all'} headless={sec.header === false && view === 'all'}
                       status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
-                      run={page?.canAct === false ? undefined : (action, args) => runAction(key, action, args)} />;
+                      run={page?.canAct === false ? undefined : runFor(key)} />;
                   };
                   // sized: a grid of narrow tracks; small cards take one (as their headline tile), medium two, large four
                   if (sec.sizes && Object.keys(sec.sizes).length && !aside) return (
@@ -358,47 +364,8 @@ function Home() {
       </nav>
 
       {page?.assistant && (
-        <CommandDialog open={palette} onOpenChange={setPalette} title={`Ask ${page.assistant.name}`} description="Ask a question or jump to a section">
-          <CommandInput placeholder={`Ask ${page.assistant.name} anything about your homelab…`} value={query} onValueChange={setQuery}
-            onKeyDown={e => { if (e.key === 'Enter' && query.trim() && !document.querySelector('[cmdk-item][data-selected="true"]')) { ask(query); setQuery(''); } }} />
-          <CommandList>
-            <CommandEmpty>
-              <button className="mx-auto flex items-center gap-2 text-sm" onClick={() => { ask(query); setQuery(''); }}><CornerDownLeft className="text-muted-foreground" />Ask “{query}”</button>
-            </CommandEmpty>
-            {actions.length > 0 && (
-              <CommandGroup heading="Do">
-                {actions.map(({ key, b, card }) => (
-                  <CommandItem key={`${key}:${b.label}`} value={`do ${card} ${b.label}`} onSelect={() => { setPalette(false); runAction(key, b.action, b.args).catch(() => {}); }}>
-                    <Zap className="text-muted-foreground" />{card}<span className="text-muted-foreground">· {b.label}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-            {services.length > 0 && (
-              <CommandGroup heading="Open">
-                {services.map(sv => (
-                  <CommandItem key={sv.name} value={`open ${sv.name} ${sv.group ?? ''}`} onSelect={() => { window.open(sv.href, '_blank', 'noopener'); setPalette(false); }}>
-                    {sv.icon ? <img src={sv.icon} alt="" className="size-4 object-contain" /> : <ArrowUp className="rotate-45 text-muted-foreground" />}
-                    {sv.name}
-                    <span className={cn('dot ml-auto size-1.5', sv.ok ? 'dot-good' : sv.quiet ? 'bg-muted-foreground/40' : 'dot-bad')} />
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-            {query.trim() && <CommandGroup heading="Ask"><CommandItem value={`ask ${query}`} onSelect={() => { ask(query); setQuery(''); }}><CornerDownLeft className="text-muted-foreground" />Ask “{query}”<CommandShortcut>↵</CommandShortcut></CommandItem></CommandGroup>}
-            <CommandGroup heading="Suggestions">
-              {SUGGESTIONS.map(s => <CommandItem key={s} onSelect={() => ask(s)}><CornerDownLeft className="text-muted-foreground" />{s}</CommandItem>)}
-            </CommandGroup>
-            <CommandGroup heading="Go to">
-              <CommandItem onSelect={() => { setView('all'); setPalette(false); }}><LayoutGrid />Overview</CommandItem>
-              {nav.map(s => <CommandItem key={s.key} onSelect={() => { setView(s.key); setPalette(false); }}><Icon name={s.chat ? 'chat' : sectionIcon(s) ?? 'pulse'} />{s.key}</CommandItem>)}
-            </CommandGroup>
-            <CommandGroup heading="Account">
-              <CommandItem value="sign out" onSelect={() => signOut()}><LogOut />Sign out</CommandItem>
-              <CommandItem value="sign out everywhere" onSelect={() => signOut(true)}><LogOut />Sign out everywhere</CommandItem>
-            </CommandGroup>
-          </CommandList>
-        </CommandDialog>
+        palette && <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant.name} ask={ask} actions={actions}
+          runAction={runAction} services={services} SUGGESTIONS={SUGGESTIONS} setView={setView} nav={nav} sectionIcon={sectionIcon} /></Suspense>
       )}
 
       {page?.assistant && (

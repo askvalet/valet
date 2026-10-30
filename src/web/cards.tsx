@@ -4,7 +4,7 @@ import {
   Activity, ArrowUpRight, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
   type LucideIcon,
 } from 'lucide-react';
-import { createContext, Fragment, lazy, Suspense, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, Fragment, lazy, memo, Suspense, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -621,7 +621,7 @@ function CardButtons({ buttons, run }: { buttons: NonNullable<CardT['buttons']>;
   );
 }
 
-export function Widget({ card, run, title, status, compact, columns, minimal, headless, large }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean }) {
+function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean }) {
   // artwork-led cards sit directly on the page, without a card frame
   if (card?.type === 'shelf') return <Shelf card={card} small={compact} header={<BareHeader card={card} title={title} status={status} />} />;
   if (card?.type === 'photos') return (
@@ -690,7 +690,7 @@ function TileGraph({ points }: { points: number[] }) {
 }
 
 /** Headline tile for the overview's top row: label and context up top, the value at the bottom, a live graph behind. */
-export function SummaryTile({ s, href }: { s: Summary; href?: string }) {
+function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
   const body = (
     <Card className="@container/tile relative h-[136px] gap-0 overflow-hidden py-0 shadow-card transition-colors hover:bg-accent/30">
       <div className="text-foreground"><TileGraph points={s.trend ?? []} /></div>
@@ -755,7 +755,7 @@ function Popover({ group, className, children }: { group: 'ring' | 'wx'; classNa
 }
 
 /** The menubar version: a small ring with the number inside, label beneath; details on hover. */
-export function MiniRing({ s }: { s: Summary }) {
+function MiniRingView({ s }: { s: Summary }) {
   const r = 15, c = 2 * Math.PI * r, arc = c * 0.75, pct = Math.max(0, Math.min(1, s.pct ?? 0));
   const color = s.tone === 'bad' ? 'var(--bad)' : s.tone === 'warn' ? 'var(--warn)' : s.tone === 'accent' ? 'var(--primary)' : 'var(--good)';
   const n = String(s.ring ?? s.value).replace(/%$/, '');
@@ -841,3 +841,8 @@ export function Forecast({ card }: { card: ForecastCard }) {
     </div>
   );
 }
+
+// live updates replace only the widget that changed; unchanged cards keep their object, so memo skips them
+export const Widget = memo(WidgetView);
+export const SummaryTile = memo(SummaryTileView);
+export const MiniRing = memo(MiniRingView);

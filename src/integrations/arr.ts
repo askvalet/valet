@@ -31,7 +31,11 @@ export default defineIntegration({
     let lib: { shows: any[]; films: any[]; at: number } | null = null;
     async function library() {
       if (lib && Date.now() - lib.at < 300_000) return lib;
-      const [shows, films]: any[][] = await Promise.all([cfg.sonarr ? get(cfg.sonarr, "series") : [], cfg.radarr ? get(cfg.radarr, "movie") : []]);
+      const [allShows, allFilms]: any[][] = await Promise.all([cfg.sonarr ? get(cfg.sonarr, "series") : [], cfg.radarr ? get(cfg.radarr, "movie") : []]);
+      // keep only what lookups use: a big library's full payload is many MB
+      const poster = (images: any[]) => [{ coverType: 'poster', remoteUrl: images?.find((i: any) => i.coverType === 'poster')?.remoteUrl }];
+      const shows = allShows.map(s => ({ id: s.id, title: s.title, year: s.year, monitored: s.monitored, statistics: { episodeFileCount: s.statistics?.episodeFileCount, episodeCount: s.statistics?.episodeCount }, images: poster(s.images) }));
+      const films = allFilms.map(m => ({ id: m.id, title: m.title, year: m.year, monitored: m.monitored, hasFile: m.hasFile, images: poster(m.images) }));
       return (lib = { shows, films, at: Date.now() });
     }
     async function find(title: string) {

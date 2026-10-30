@@ -29,7 +29,7 @@ export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOpt
   const world = document.createElement('div'); world.className = 'world boot';
   Object.assign(world.style, { width: W + 'px', height: H + 'px' });
   box.appendChild(world);
-  let data: D | null = null, shape = '', sel: string | null = null, dragged = false;
+  let data: D | null = null, shape = '', sel: string | null = null, dragged = false, boot: ReturnType<typeof setTimeout> | undefined;
   const home: Focus = [cx, cy, cz, 1];
   const cam = { ry: saved?.ry ?? turn, rx: saved?.rx ?? tilt, at: home as number[] };
 
@@ -127,7 +127,7 @@ export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOpt
     update(d: D) {
       data = d;
       const s = scene.shape(d);
-      if (s !== shape) { shape = s; scene.build(world, d); setTimeout(() => world.classList.remove('boot'), 150); aim(false); dim(); }
+      if (s !== shape) { shape = s; scene.build(world, d); clearTimeout(boot); boot = setTimeout(() => world.classList.remove('boot'), 150); aim(false); dim(); }
       scene.paint(world, d);
     },
     select(id: string | null) {
@@ -136,7 +136,7 @@ export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOpt
       aim(); dim();
     },
     destroy() {
-      ro.disconnect(); world.removeEventListener('click', onClick); world.removeEventListener('pointermove', hover); world.removeEventListener('pointerleave', leave);
+      clearTimeout(boot); ro.disconnect(); world.removeEventListener('click', onClick); world.removeEventListener('pointermove', hover); world.removeEventListener('pointerleave', leave);
       box.removeEventListener('pointerdown', down); box.removeEventListener('pointermove', move);
       box.removeEventListener('pointerup', up); box.removeEventListener('pointercancel', up);
       world.remove();

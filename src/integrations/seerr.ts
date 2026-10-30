@@ -23,7 +23,16 @@ export default defineIntegration({
       image: poster(r.posterPath), badge: status ? STATUS[status] : undefined, href: `${web}/${r.mediaType === 'tv' ? 'tv' : 'movie'}/${r.id}`,
     });
     // a request's title lives on TMDB's record, which Seerr fetches per item
-    const details = (type: string, id: number) => api<any>(`${type === 'tv' ? 'tv' : 'movie'}/${id}`).catch(() => null);
+    // a title's details never change: remember up to 300 instead of fetching each request's every refresh
+    const seen = new Map<string, Promise<any>>();
+    const details = (type: string, id: number) => {
+      const k = `${type}/${id}`;
+      if (!seen.has(k)) {
+        seen.set(k, api<any>(`${type === 'tv' ? 'tv' : 'movie'}/${id}`).catch(() => { seen.delete(k); return null; }));
+        if (seen.size > 300) seen.delete(seen.keys().next().value!);
+      }
+      return seen.get(k)!;
+    };
     async function requests(take: number) {
       const r = await api<any>(`request?take=${take}&sort=added`);
       return Promise.all((r.results ?? []).map(async (q: any) => {

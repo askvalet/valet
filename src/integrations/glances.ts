@@ -18,6 +18,7 @@ export default defineIntegration({
   create(cfg, ctx) {
     const api = (p: string) => ctx.http(`${cfg.url.replace(/\/$/, '')}/api/4/${p}`);
     const hist = { cpu: [] as number[], mem: [] as number[], gpu: [] as number[], rx: [] as number[] };
+    let lastPoint = 0;
     const diskHist = new Map<string, number[]>();
     const mounts = (cfg.disks ?? []).map(d => typeof d === 'string' ? { mount: d, name: d, sub: undefined } : d);
     let cpuName: string | undefined;
@@ -29,7 +30,8 @@ export default defineIntegration({
       ]);
       const temp = (sensors as any[]).find(s => s.label === cfg.cpuSensor)?.value as number | undefined;
       const gpu = (gpus as any[]).filter(g => g.temperature != null).sort((a, b) => (b.mem ?? 0) - (a.mem ?? 0))[0];
-      push(hist.cpu, cpu.total); push(hist.mem, mem.percent); if (gpu) push(hist.gpu, gpu.proc ?? 0);
+      // several widgets read this; record a graph point at most every ~3 s so the graphs keep an even pace
+      if (Date.now() - lastPoint >= 2500) { lastPoint = Date.now(); push(hist.cpu, cpu.total); push(hist.mem, mem.percent); if (gpu) push(hist.gpu, gpu.proc ?? 0); }
       return { cpu, mem, temp, gpu, uptime: String(uptime) };
     }
 
