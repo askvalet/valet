@@ -1,0 +1,16 @@
+# Atrium with Docker Compose. Put config.yaml and .env next to this file, then: docker compose up -d
+services:
+  atrium:
+    image: ghcr.io/OWNER/atrium:latest
+    container_name: atrium
+    restart: unless-stopped
+    env_file: .env                    # secrets referenced as ${NAME} in config.yaml
+    volumes:
+      - ./config.yaml:/config/config.yaml:ro
+      - ./data:/app/data              # wallpaper, icon cache, uploads, accounts
+    ports:
+      - 7575:7575
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
