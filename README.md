@@ -24,7 +24,12 @@ docker run -d --name atrium -p 7575:7575 \
   ghcr.io/OWNER/atrium:latest
 ```
 
-Copy [`config.example.yaml`](config.example.yaml) to `config/config.yaml`, edit it, and open http://localhost:7575.
+Copy [`config.example.yaml`](config.example.yaml) to `config/config.yaml` and keep the integrations you use. Copy
+[`.env.example`](.env.example) to `.env` and fill in their keys: it says where each one is in that app's settings.
+Then open http://localhost:7575. A [`docker-compose.example.yml`](docker-compose.example.yml) is there too.
+
+Secrets never go in `config.yaml`: it refers to them as `${NAME}`, so you can share or commit your config safely.
+`npm run test:live` (or the startup log) tells you which integrations can't reach their service, and why.
 
 From source (Node 22.18+):
 
