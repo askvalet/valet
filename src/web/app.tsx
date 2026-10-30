@@ -289,6 +289,13 @@ export function App() {
       <main className={cn('@container/main mx-auto flex flex-col gap-8 px-4 pt-6 pb-28 xl:pt-20', view !== 'all' && 'pt-10 xl:pt-32', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-40 xl:pt-40' }[navSide], page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[1720px]' : 'max-w-[1320px]')}>
         {!hasSide && hero}
 
+        {chatTab && view === chatTab && page?.assistant && (
+          <div data-slot="card" className="h-[min(78vh,900px)] min-h-[520px] overflow-hidden rounded-[calc(var(--radius)*1.4)] border bg-card shadow-card">
+            <Suspense fallback={null}>
+              <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={SUGGESTIONS} onAsk={ask} />
+            </Suspense>
+          </div>
+        )}
         {(() => {
           // sections placed left/right become a sidebar beside the rest on wide screens; stacked on smaller ones
           const shown = sections.filter(sec => sec.display === 'media' ? mediaOf(sec.widgets).length > 0 : sec.display !== 'cards' || sec.widgets.some(k => !isEmpty(state[k]?.card)));
@@ -303,13 +310,6 @@ export function App() {
             </div>
           );
         })()}
-        {chatTab && view === chatTab && page?.assistant && (
-          <div data-slot="card" className="h-[min(78vh,900px)] min-h-[520px] overflow-hidden rounded-[calc(var(--radius)*1.4)] border bg-card shadow-card">
-            <Suspense fallback={null}>
-              <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={SUGGESTIONS} onAsk={ask} />
-            </Suspense>
-          </div>
-        )}
       </main>
 
       {/* phones: the rail becomes a floating pill at the bottom */}
