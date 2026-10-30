@@ -4,6 +4,7 @@ import type { Instance } from './core.ts';
 import type { WidgetState } from '../shared/cards.ts';
 
 type Listener = (s: WidgetState) => void;
+type Change = (key: string, prev: WidgetState | undefined, next: WidgetState) => void;
 
 export class Hub {
   private state = new Map<string, WidgetState>();
@@ -12,7 +13,8 @@ export class Hub {
   private inflight = new Set<string>();
 
   private instances: Map<string, Instance>;
-  constructor(instances: Map<string, Instance>) { this.instances = instances; }
+  private onChange?: Change;
+  constructor(instances: Map<string, Instance>, onChange?: Change) { this.instances = instances; this.onChange = onChange; }
 
   widget(key: string) {
     const [inst, name] = key.split('.');
@@ -39,8 +41,10 @@ export class Hub {
     const prev = this.state.get(key);
     this.state.set(key, next);
     // don't push identical cards: most refreshes of a quiet service change nothing
-    if (!prev || JSON.stringify(prev.card) !== JSON.stringify(next.card) || prev.error !== next.error)
+    if (!prev || JSON.stringify(prev.card) !== JSON.stringify(next.card) || prev.error !== next.error) {
+      if (!next.error) this.onChange?.(key, prev, next);
       for (const l of this.listeners) l(next);
+    }
   }
 
   refreshInstance(inst: string) {

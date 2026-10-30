@@ -126,3 +126,16 @@ test('quran: picks a verse that reads on its own, and keeps the Arabic clean', a
   assert.equal(card.reference, 'Test 1:2');
   assert.equal(card.arabic, 'كلمة اخرى');
 });
+
+test('notices: only configured changes, never on first load, quiet services stay quiet', async () => {
+  const { noticesFor } = await import('../src/server/notices.ts');
+  const dl = (live: boolean) => ({ type: 'media', items: [], activity: live ? { title: 'Film', icon: 'download' } : undefined }) as any;
+  const svc = (ok: boolean, quiet = false) => ({ type: 'status', items: [{ name: 'Plex', ok }, { name: 'Clock', ok, quiet }] }) as any;
+  const rules = [{ widget: 'd', on: 'end' as const, text: '{title} finished' }, { widget: 's', on: 'down' as const }];
+  assert.deepEqual(noticesFor('d', undefined, dl(false), rules), []);
+  assert.equal(noticesFor('d', dl(true), dl(false), rules)[0].text, 'Film finished');
+  assert.deepEqual(noticesFor('d', dl(false), dl(true), rules), []);           // start isn't configured
+  const down = noticesFor('s', svc(true, true), svc(false, true), rules);
+  assert.deepEqual(down.map(n => n.text), ['Plex is down']);                   // Clock is quiet
+  assert.deepEqual(noticesFor('x', dl(true), dl(false), rules), []);           // no rule for this widget
+});

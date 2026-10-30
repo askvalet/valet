@@ -9,6 +9,7 @@ import { sameOrigin, setupAuth, userCommand } from './auth.ts';
 import { loadConfig } from './config.ts';
 import { makeContext, UPLOAD_DIR, type Instance, type Integration } from './core.ts';
 import { Hub } from './hub.ts';
+import { noticesFor, type Notice } from './notices.ts';
 import { registry } from '../integrations/index.ts';
 
 const CONFIG = process.env.ATRIUM_CONFIG ?? 'config.yaml';
@@ -42,9 +43,16 @@ for (const key of placed) {
   const [inst, w] = key.split('.');
   if (!instances.get(inst)?.widgets[w]) console.error(`config: layout: no widget "${key}"`);
 }
+// notices go to every open page; the last few are replayed to a page that opens within a minute of them
+const noticeListeners = new Set<(n: Notice) => void>(), recent: Notice[] = [];
 const hub = new Hub(new Map([...instances].map(([id, i]) => [id, {
   ...i, widgets: Object.fromEntries(Object.entries(i.widgets).filter(([w]) => placed.has(`${id}.${w}`))),
-}])));
+}])), (key, prev, next) => {
+  for (const n of noticesFor(key, prev?.card, next.card, config.island?.notify ?? [])) {
+    recent.push(n); if (recent.length > 5) recent.shift();
+    for (const l of noticeListeners) l(n);
+  }
+});
 
 const app = new Hono();
 
@@ -111,15 +119,19 @@ app.get('/api/events', c => streamSSE(c, async stream => {
   for (const s of hub.snapshot()) await stream.writeSSE({ event: 'widget', data: JSON.stringify(s) });
   const queue: string[] = [];
   let wake: (() => void) | null = null;
+  const notices: string[] = recent.filter(n => Date.now() - n.at < 60_000).map(n => JSON.stringify(n));
   const off = hub.subscribe(s => { queue.push(JSON.stringify(s)); wake?.(); });
-  stream.onAbort(off);
+  const tell = (n: Notice) => { notices.push(JSON.stringify(n)); wake?.(); };
+  noticeListeners.add(tell);
+  stream.onAbort(() => { off(); noticeListeners.delete(tell); });
   while (!stream.aborted) {
     while (queue.length) await stream.writeSSE({ event: 'widget', data: queue.shift()! });
+    while (notices.length) await stream.writeSSE({ event: 'notice', data: notices.shift()! });
     await Promise.race([new Promise<void>(r => (wake = r)), stream.sleep(25_000)]);
     wake = null;
-    if (!queue.length) await stream.writeSSE({ event: 'ping', data: '' });   // keeps proxies from closing it
+    if (!queue.length && !notices.length) await stream.writeSSE({ event: 'ping', data: '' });   // keeps proxies from closing it
   }
-  off();
+  off(); noticeListeners.delete(tell);
 }));
 
 // Homepage controls: run an integration action, then refresh that integration's widgets right away.

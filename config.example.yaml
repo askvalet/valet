@@ -17,6 +17,37 @@ integrations:
     type: paperless                # ask about your documents; paste or attach to file them
     url: http://paperless:8000
     token: ${PAPERLESS_TOKEN}
+  coming:
+    type: arr                      # Sonarr/Radarr: episodes and movies coming up, as posters with the day
+    sonarr: { url: "http://sonarr:8989", apiKey: "${SONARR_KEY}" }
+    radarr: { url: "http://radarr:7878", apiKey: "${RADARR_KEY}" }
+  dns:
+    type: pihole                   # Pi-hole v6: blocked share, a day of queries, pause/resume
+    url: http://pihole
+    password: ${PIHOLE_PASSWORD}   # an app password (Settings → Web interface/API) is best
+  uptime:
+    type: uptimekuma               # Uptime Kuma: up/down and uptime over 30 days, certificates expiring
+    url: http://uptime-kuma:3001
+    username: ${KUMA_USER}         # or username: "" and password: an API key
+    password: ${KUMA_PASSWORD}
+  drives:
+    type: scrutiny                 # Scrutiny: drive health (SMART), temperature, age
+    url: http://scrutiny:8080
+  games:
+    type: romm                     # RomM: recently added games with box art
+    url: http://romm:8080
+    username: ${ROMM_USER}
+    password: ${ROMM_PASSWORD}
+  indexers:
+    type: indexers                 # Prowlarr indexer health and Bazarr missing subtitles
+    prowlarr: { url: "http://prowlarr:9696", apiKey: "${PROWLARR_KEY}" }
+    bazarr: { url: "http://bazarr:6767", apiKey: "${BAZARR_KEY}" }
+  ollama:
+    type: ollama                   # installed and loaded models
+    url: http://ollama:11434
+  quran:
+    type: quran                    # a verse of the day from a self-hosted Quran site (its data/ folder)
+    url: https://quran.example.com
   photos:
     type: immich                   # search photos by what's in them, by person or date; "on this day" on the page
     url: http://immich:2283
@@ -86,6 +117,12 @@ mcp:
 menubar: [system.tiles]
 # A ring beside the clock: where the temperature sits between today's low and high.
 weather: weather.now
+# The island: a black notch at the top that shows what's happening, in this order, and hides when nothing is.
+island:
+  activities: [plex.streams, downloads.active, home.plan]
+  notify:                          # short notices when things change (none unless listed)
+    - { widget: downloads.active, on: end, text: "{title} finished downloading" }
+    - { widget: services.status, on: down }   # also: up, start
 
 nav: { side: left }               # where the tab buttons sit: left, right, top or bottom
 # Each layout section is a tab in the rail. Per section:
@@ -97,6 +134,9 @@ nav: { side: left }               # where the tab buttons sit: left, right, top 
 #   overview: false     only on its own tab, not the overview
 #   tab: Name           share a tab with other sections (default: its title)
 #   chat: true          its tab also holds the assistant, full page
+#   heading: false      no title above it on the page (it still names its tab)
+# A widget is "instance.widget", or { widget: instance.widget, size: small | medium | large }:
+#   small = its headline as a tile, medium = the card, large = two columns wide with room for more
 layout:
   - title: Now
     widgets: [system.overview, downloads.active]

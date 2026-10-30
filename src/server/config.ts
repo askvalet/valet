@@ -84,7 +84,12 @@ export const Config = z.object({
   nav: z.object({ side: z.enum(['left', 'right', 'top', 'bottom']).default('left') }).default({ side: 'left' }),   // where the tab buttons sit (wide screens; phones always bottom)
   // the island: a black notch at the top that comes alive with whatever's happening (plays, downloads, a robot
   // cleaning), in this order of importance. idle: keep a small empty notch, or hide it when nothing's live.
-  island: z.object({ activities: z.array(z.string()).default([]), idle: z.enum(['hide', 'notch']).default('hide') }).optional(),
+  island: z.object({
+    activities: z.array(z.string()).default([]), idle: z.enum(['hide', 'notch']).default('hide'),
+    // short notices when things change, e.g. { widget: downloads.active, on: end, text: "{title} finished" }:
+    // start/end of a widget's live activity, a service going down/up (status cards). {title}, {name} fill in.
+    notify: z.array(z.object({ widget: z.string(), on: z.enum(['start', 'end', 'down', 'up']), text: z.string().optional() })).default([]),
+  }).optional(),
   weather: z.string().optional(),               // a widget key (e.g. weather.now) shown as a ring beside the clock   // widget keys whose headline numbers sit as small rings in the top bar
 }).strict();
 export type Config = z.infer<typeof Config>;

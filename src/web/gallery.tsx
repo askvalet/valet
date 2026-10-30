@@ -1,6 +1,8 @@
 // /#gallery: every card in the library, in every size, with made-up data. For designing cards and checking a change
 // didn't break one. Loads only when asked for.
+import { useState } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import Island, { type Notice } from './island.tsx';
 import { MiniRing, SummaryTile, Widget } from './cards.tsx';
 import { SAMPLES } from './samples.ts';
 
@@ -12,6 +14,7 @@ export default function Gallery() {
           <h1 className="text-[28px] font-semibold tracking-tight">Card library</h1>
           <p className="mt-1 text-sm text-muted-foreground">{SAMPLES.length} samples · each as a homepage card, a large card, in chat, and as a headline tile. Made-up data.</p>
         </header>
+        <IslandDemo />
         {SAMPLES.map(({ name, card }) => (
           <section key={name} className="space-y-3">
             <h2 className="font-mono text-xs text-muted-foreground">{name}</h2>
@@ -28,5 +31,24 @@ export default function Gallery() {
         ))}
       </main>
     </TooltipProvider>
+  );
+}
+
+/** The island with a live activity, and a button that sends it a notice. */
+function IslandDemo() {
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const live = [{ key: 'a', title: 'A Film', icon: 'play', pct: .4, trailing: '1h left' }, { key: 'b', title: 'A download', icon: 'download', pct: .7 }];
+  const say = (n: Omit<Notice, 'n' | 'key'>) => setNotice({ ...n, key: 'x', n: Date.now() });
+  return (
+    <section className="space-y-3">
+      <h2 className="font-mono text-xs text-muted-foreground">island</h2>
+      <div className="flex items-start gap-4">
+        <Island live={live} idle="hide" docked={false} notice={notice} />
+        <div className="flex flex-wrap gap-2 pt-2">
+          <button className="press rounded-full bg-white/10 px-3 py-1.5 text-xs" onClick={() => say({ text: 'A download finished downloading', icon: 'download', tone: 'good' })}>Finished</button>
+          <button className="press rounded-full bg-white/10 px-3 py-1.5 text-xs" onClick={() => say({ text: 'Radarr is down', sub: 'timed out', icon: 'pulse', tone: 'bad' })}>Down</button>
+        </div>
+      </div>
+    </section>
   );
 }

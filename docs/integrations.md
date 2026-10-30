@@ -80,3 +80,41 @@ durations and percentages consistently.
 - One request per widget refresh if you can. If several widgets share data, fetch once and cache briefly.
 - Fail with a clear message (`throw new Error('qBittorrent login failed')`); Atrium shows it on the widget.
 - Don't invent card types. If the catalog is missing something you need, open an issue: new types get added for everyone.
+
+## Cards
+
+A widget returns one card from the catalog in `src/shared/cards.ts`. Pick the one that fits what the data *is*:
+
+| Card | For | Notes |
+|---|---|---|
+| `stats` | a few numbers, one leading | first item is the hero; `trend` draws a sparkline, `pct` a meter |
+| `list` | rows of things with a status | `pct` adds a progress bar; `tone` colours a row |
+| `status` | services that are up or down | `group` sections them; `quiet` for things that sleep on purpose |
+| `media` | what's playing or downloading | full-bleed artwork; `tags`, progress, time left |
+| `shelf` | a row of artwork | `aspect` poster/square/wide; `stack: true` piles them up (documents, photos) |
+| `photos` | photos to look at | `flashback` crossfades; `mosaic` (or size large) tiles them |
+| `schedule` | a day's times | next one counts down live; `muted` times show but are never "next" |
+| `forecast` | weather | now, high/low, the next hours with rain chance |
+| `verse` | a verse or quote | original (right-to-left if Arabic), translation, reference |
+| `controls` | switches, sliders, choices | each control names an action of the same integration |
+| `chart`, `kv`, `text` | a graph, key–value rows, a sentence | |
+| `showcase` | a custom visual with its panel | renderers live in `src/web/visuals/` |
+| `group` | cards side by side | mostly for the assistant |
+
+Any card can also carry:
+
+- `summary` (or `summaries`): its headline, shown when the widget is placed with `size: small`, in the menubar, or as a tile.
+- `activity`: set only while something is happening; the island shows it.
+- `buttons`: quick actions along the bottom (`{ label, action, args }`), run through the integration's `actions`.
+
+Sizes are the layout's business, not the integration's: every card works as small (its summary), medium and large,
+and in chat (dense). Give a card a `summary` so the small size has something to show.
+
+## Testing
+
+- `checkCard(card)` from `src/shared/cards.schema.ts` validates a card against the catalog (strictly: unknown fields
+  are errors). Use it in your integration's tests.
+- `npm test` renders every sample card in every size and runs the integration tests, which feed each integration
+  made-up responses (see `test/integrations.test.ts` for the pattern: a fake `ctx.http`).
+- `npm run test:live` fetches every widget in your `config.yaml` from your real services and validates each card.
+- `/#gallery` shows every sample card in every size. Add a sample to `src/web/samples.ts` when you add a card type.

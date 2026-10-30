@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { ForecastCard, StatusCard, WidgetState } from '../shared/cards.ts';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
-import Island, { type Live } from './island.tsx';
+import Island, { type Live, type Notice } from './island.tsx';
 import { SignIn, signOut, useMe } from './signin.tsx';
 import { Icon, NowPlaying, isEmpty, MiniRing, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
 
@@ -28,8 +28,10 @@ interface Page {
 function useLive() {
   const [state, setState] = useState<Record<string, WidgetState>>({});
   const [online, setOnline] = useState(true);
+  const [notice, setNotice] = useState<Notice | null>(null);
   useEffect(() => {
     const es = new EventSource('/api/events');
+    es.addEventListener('notice', e => setNotice({ ...JSON.parse((e as MessageEvent).data), n: Date.now() }));
     es.addEventListener('widget', e => {
       const s = JSON.parse((e as MessageEvent).data) as WidgetState;
       setState(prev => ({ ...prev, [s.key]: s }));
@@ -38,7 +40,7 @@ function useLive() {
     es.onerror = () => setOnline(false);
     return () => es.close();
   }, []);
-  return { state, online };
+  return { state, online, notice };
 }
 
 function useClock() {
@@ -117,7 +119,7 @@ export function App() {
 
 function Home() {
   const [page, setPage] = useState<Page | null>(null);
-  const { state } = useLive();
+  const { state, notice } = useLive();
   const now = useClock();
   const theme = useTheme();
   const [view, setView] = useState<string>('all');   // 'all' (the overview) or a tab's name
@@ -295,7 +297,7 @@ function Home() {
 
       {/* top-right: the menubar rings, weather and time (and the theme switch when there's no wallpaper).
           Below lg it sits at the top of the page instead, centred and wrapping, so phones see it too. */}
-      {page?.island && <Island live={live} idle={page.island.idle} docked={wide} />}
+      {page?.island && <Island live={live} idle={page.island.idle} docked={wide} notice={notice} />}
       {/* phones: one row, condensed; wide screens: top right, level with the island */}
       <div ref={bar} className="wall-text z-20 flex items-center justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:right-5 xl:gap-4 xl:p-0">
         {!!page?.menubar?.length && (

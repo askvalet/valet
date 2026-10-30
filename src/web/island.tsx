@@ -8,6 +8,7 @@ import type { Activity } from '../shared/cards.ts';
 import { Icon } from './cards.tsx';
 
 export type Live = Activity & { key: string; href?: string };
+export type Notice = { key: string; text: string; sub?: string; icon?: string; image?: string; tone: 'good' | 'warn' | 'bad' | 'accent'; n: number };
 
 const TONE: Record<string, string> = { accent: 'var(--primary)', good: 'var(--good)', warn: 'var(--warn)', bad: 'var(--bad)' };
 const tint = (a: Live) => TONE[a.tone ?? ''] ?? (a.icon === 'play' ? '#ff9f0a' : a.icon === 'download' ? 'var(--primary)' : 'var(--good)');
@@ -55,24 +56,32 @@ function Badge({ a, size }: { a: Live; size: number }) {
   );
 }
 
-export default function Island({ live, idle, docked }: { live: Live[]; idle: 'notch' | 'hide'; docked: boolean }) {
+export default function Island({ live, idle, docked, notice }: { live: Live[]; idle: 'notch' | 'hide'; docked: boolean; notice?: Notice | null }) {
+  // a notice springs the island open for a few seconds, then it settles back to whatever's live
+  const [shout, setShout] = useState<Notice | null>(null);
+  useEffect(() => {
+    if (!notice) return;
+    setShout(notice);
+    const t = setTimeout(() => setShout(s => (s?.n === notice.n ? null : s)), 5200);
+    return () => clearTimeout(t);
+  }, [notice]);
   const [open, setOpen] = useState(false);
-  const small = useRef<HTMLDivElement>(null), big = useRef<HTMLDivElement>(null);
+  const small = useRef<HTMLDivElement>(null), big = useRef<HTMLDivElement>(null), loud = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const expanded = open && live.length > 0;
 
   // the shell springs between the measured sizes of whichever layer is showing
   useLayoutEffect(() => {
-    const el = (expanded ? big : small).current; if (!el) return;
+    const el = (shout ? loud : expanded ? big : small).current; if (!el) return;
     const measure = () => setSize({ w: el.offsetWidth, h: el.offsetHeight });
     measure();
     const ro = new ResizeObserver(measure); ro.observe(el);
     return () => ro.disconnect();
-  }, [expanded, live.length]);
+  }, [expanded, live.length, shout]);
   useEffect(() => { if (!live.length) setOpen(false); }, [live.length]);
 
-  if (!live.length && (idle === 'hide' || !docked)) return null;
+  if (!live.length && !shout && (idle === 'hide' || !docked)) return null;
   const [main, ...rest] = live;
   const layer = 'absolute top-0 left-1/2 w-max -translate-x-1/2 transition-[opacity,filter,scale] ease-out';
 
@@ -84,11 +93,11 @@ export default function Island({ live, idle, docked }: { live: Live[]; idle: 'no
         <div role={live.length ? 'button' : undefined} tabIndex={live.length ? 0 : -1} aria-expanded={expanded} aria-label={live.length ? 'Live activities' : undefined}
           onClick={e => { if ((e.nativeEvent as PointerEvent).pointerType !== 'mouse') setOpen(o => !o); }}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o); } if (e.key === 'Escape') setOpen(false); }}
-          className={cn('island relative overflow-hidden bg-black text-white outline-none', docked ? 'island-docked' : 'rounded-[22px]', expanded && 'island-open', live.length && 'cursor-pointer')}
+          className={cn('island relative overflow-hidden bg-black text-white outline-none', docked ? 'island-docked' : 'rounded-[22px]', (expanded || shout) && 'island-open', live.length && 'cursor-pointer')}
           style={size ? { width: size.w, height: size.h } : undefined}>
           {/* compact: the most important activity */}
           <div ref={small} aria-hidden={expanded}
-            className={cn(layer, 'duration-200', expanded ? 'pointer-events-none scale-95 opacity-0 blur-[3px]' : 'opacity-100 delay-100 duration-300')}>
+            className={cn(layer, 'duration-200', expanded || shout ? 'pointer-events-none scale-95 opacity-0 blur-[3px]' : 'opacity-100 delay-100 duration-300')}>
             <div className={cn('flex h-[44px] min-w-[280px] items-center gap-3 pr-4 pl-2', !live.length && 'h-[30px] w-[170px] min-w-0 p-0')}>
               {main && (<>
                 <Art a={main} size={28} />
@@ -97,9 +106,22 @@ export default function Island({ live, idle, docked }: { live: Live[]; idle: 'no
               </>)}
             </div>
           </div>
+          {/* a notice: icon or artwork, the news, a line under it */}
+          <div ref={loud} aria-live="polite" className={cn(layer, shout ? 'opacity-100 delay-100 duration-300' : 'pointer-events-none scale-95 opacity-0 blur-[3px] duration-200')}>
+            {shout && (
+              <div className="flex h-[58px] min-w-[300px] items-center gap-3 pr-5 pl-2.5">
+                {shout.image ? <img src={shout.image} alt="" className="size-10 rounded-[11px] object-cover" />
+                  : <span className="grid size-10 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${TONE[shout.tone]} 22%, transparent)`, color: TONE[shout.tone] }}><Icon name={shout.icon ?? 'pulse'} className="size-5" /></span>}
+                <span className="min-w-0">
+                  <span className="block max-w-[300px] truncate text-[14px] font-semibold">{shout.text}</span>
+                  {shout.sub && <span className="block max-w-[300px] truncate text-[12px] text-white/55">{shout.sub}</span>}
+                </span>
+              </div>
+            )}
+          </div>
           {/* open: everything that's live */}
           <div ref={big} aria-hidden={!expanded}
-            className={cn(layer, expanded ? 'opacity-100 delay-100 duration-300' : 'pointer-events-none scale-[.97] opacity-0 blur-[3px] duration-150')}>
+            className={cn(layer, expanded && !shout ? 'opacity-100 delay-100 duration-300' : 'pointer-events-none scale-[.97] opacity-0 blur-[3px] duration-150')}>
             <div className="w-[min(420px,calc(100vw-24px))] space-y-1 p-3 pt-4">
               {live.map(a => (
                 <a key={a.key} href={a.href} target="_blank" rel="noreferrer" tabIndex={expanded ? 0 : -1} onClick={e => e.stopPropagation()}
@@ -124,7 +146,7 @@ export default function Island({ live, idle, docked }: { live: Live[]; idle: 'no
         {rest.slice(0, 2).map(a => (
           <div key={a.key} title={`${a.title}${a.trailing ? ` · ${a.trailing}` : ''}`}
             className={cn('island-bubble grid shrink-0 place-items-center rounded-full bg-black text-white transition-[opacity,scale] duration-300',
-              docked ? 'mt-1 size-[36px]' : 'size-[42px]', expanded && 'pointer-events-none scale-50 opacity-0')}>
+              docked ? 'mt-1 size-[36px]' : 'size-[42px]', (expanded || shout) && 'pointer-events-none scale-50 opacity-0')}>
             <Badge a={a} size={docked ? 34 : 36} />
           </div>
         ))}
