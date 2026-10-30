@@ -238,20 +238,20 @@ function Stack({ card, header, onOpen }: { card: ShelfCard; header?: ReactNode; 
     <div>
       {header && <div className="mb-3 flex items-center gap-2">{header}</div>}
       <button onClick={open} aria-label={one ? `Open ${top.title}` : `Show all ${card.items.length}`}
-        className="group/stack press relative mx-auto flex h-[196px] w-full items-center justify-center">
+        className="group/stack relative block h-[196px] w-full">
         {pile.slice().reverse().map((it, i) => {
           const [r, x] = rest[i], depth = pile.length - 1 - i;
           return (
-            <div key={i} className="stack-page absolute aspect-[3/4] h-[176px] overflow-hidden rounded-[10px] bg-white shadow-[0_10px_30px_-10px_rgb(0_0_0/.6),0_0_0_1px_rgb(0_0_0/.08)]"
-              style={{ '--r': `${one ? -2 : r}deg`, '--x': `${x}px`, '--fan-x': `${(i - (pile.length - 1) / 2) * 62}px`, '--fan-r': `${(i - (pile.length - 1) / 2) * 7}deg`,
+            <div key={i} className="stack-page absolute top-2.5 left-3 aspect-[3/4] h-[176px] origin-bottom-left overflow-hidden rounded-[10px] bg-white shadow-[0_10px_30px_-10px_rgb(0_0_0/.6),0_0_0_1px_rgb(0_0_0/.08)]"
+              style={{ '--r': `${one ? -2 : r * .7}deg`, '--x': `${x + 10}px`, '--fan-x': `${depth ? (pile.length - 1 - depth) * 58 : (pile.length - 1) * 58}px`, '--fan-r': `${(i - (pile.length - 1)) * -2.5}deg`,
                 zIndex: i, filter: depth ? `brightness(${1 - depth * .06})` : undefined, animationDelay: `${i * 50}ms` } as React.CSSProperties}>
               <Art src={it.image} alt="" className="size-full object-cover object-top" />
             </div>
           );
         })}
-        {more > 0 && <span className="absolute right-3 bottom-1 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-md">+{more}</span>}
+        {more > 0 && <span className="absolute bottom-1 left-[140px] z-10 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-md">+{more}</span>}
       </button>
-      <div className="mt-2 text-center">
+      <div className="mt-2 pl-1">
         <div className="truncate text-[13px] font-medium">{top.title}</div>
         <div className="truncate text-xs text-muted-foreground">{one ? top.subtitle : `${card.items.length} documents · tap to see all`}</div>
       </div>
@@ -262,7 +262,7 @@ function Stack({ card, header, onOpen }: { card: ShelfCard; header?: ReactNode; 
 function Shelf({ card, header, small }: { card: ShelfCard; header?: ReactNode; small?: boolean }) {
   const [spread, setSpread] = useState(false);
   if (card.stack && !spread && card.items.length) return <Stack card={card} header={header} onOpen={() => setSpread(true)} />;
-  return <ShelfRow card={card} header={header} small={small} />;
+  return <div className={card.stack ? 'stack-open' : undefined}><ShelfRow card={card} header={header} small={small} /></div>;
 }
 
 function ShelfRow({ card, header, small }: { card: ShelfCard; header?: ReactNode; small?: boolean }) {

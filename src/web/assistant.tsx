@@ -55,6 +55,7 @@ function Pending({ since, label = 'Thinking' }: { since: number; label?: string 
 const VERB: [RegExp, string, typeof Search][] = [
   [/docs_search/, 'Searched documents', Search], [/docs_read/, 'Read a document', FileText], [/docs_add/, 'Filed a document', FileText],
   [/bookmarks_search/, 'Searched saved links', Search], [/bookmark_read/, 'Read a bookmark', Bookmark], [/bookmark_save/, 'Saved a link', Bookmark],
+  [/media_search/, 'Searched movies & shows', Search], [/media_request$/, 'Requested', Film], [/media_requests/, 'Checked requests', Film],
   [/plex|streams|recently_added|history/, 'Checked Plex', Film], [/service_status/, 'Checked services', Activity], [/downloads/, 'Checked downloads', Activity],
   [/home_find/, 'Looked up the home', Search], [/home_control|light|press/, 'Changed the home', Zap], [/show/, 'Laid out cards', Lightbulb],
   [/status|local_ai|pc_status|system/, 'Checked status', Activity],

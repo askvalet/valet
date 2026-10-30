@@ -259,8 +259,11 @@
 @keyframes chat-pop-out { to { opacity: 0; transform: translate(-50%, calc(-50% + 6px)) scale(.98); } }
 [data-slot="dialog-overlay"] { backdrop-filter: blur(6px); }
 
-/* a stack of pages: each settles into its pile; hovering fans them out like a hand of cards */
-.stack-page { transform: translateX(var(--x)) rotate(var(--r)); transition: transform 380ms var(--ease-out); animation: stack-in 420ms var(--ease-out) both; }
-@keyframes stack-in { from { opacity: 0; transform: translateY(14px) rotate(0deg) scale(.96); } }
-@media (hover: hover) and (pointer: fine) { .group\/stack:hover .stack-page { transform: translateX(var(--fan-x)) rotate(var(--fan-r)) translateY(-4px); } }
-@media (prefers-reduced-motion: reduce) { .stack-page { animation: none; transition: none; } }
+/* a stack of pages: each settles into its pile, a beat apart; hovering fans them out to the right like a hand of cards.
+   Long, soft ease-out both ways so nothing snaps. */
+.stack-page { transform: translateX(var(--x)) rotate(var(--r)); transition: transform 560ms var(--ease-out), filter 560ms var(--ease-out); animation: stack-in 640ms var(--ease-out) both; }
+@keyframes stack-in { from { opacity: 0; transform: translateY(10px) rotate(0deg) scale(.97); filter: blur(2px); } }
+@media (hover: hover) and (pointer: fine) { .group\/stack:hover .stack-page { transform: translateX(var(--fan-x)) rotate(var(--fan-r)); } }
+.stack-open { animation: stack-open 520ms var(--ease-out) both; }
+@keyframes stack-open { from { opacity: 0; transform: translateY(6px); filter: blur(3px); } }
+@media (prefers-reduced-motion: reduce) { .stack-page, .stack-open { animation: none; transition: none; } }
