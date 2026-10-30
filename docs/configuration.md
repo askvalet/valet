@@ -185,7 +185,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `reddit` | `subreddits`, `sort` (`hot`), `limit` (10), `style` (`list` or `shelf`) | `posts` |
 | `releases` | `repos` (`owner/name`), `token` (optional, raises GitHub's rate limit), `limit`, `prereleases` | `latest` |
 | `markets` | `symbols` (`AAPL`, `BTC-USD`, `^GSPC`, `EURUSD=X`, or `{ symbol, name }`), `range` (`1d`), `title` | `quotes` |
-| `docker` | `url` (a read-only socket proxy, never the raw socket), `hide` | `containers` |
+| `docker` | `url` (a read-only socket proxy, never the raw socket), `hide` (names to leave out, e.g. containers that are meant to stay stopped) | `containers` |
 | `api` | `url`, `headers`, `method`, `body`, `every` (60s), `title`, `icon`, `href`, `about`, and one of `stats`, `list`, `rows`, `status` (see below) | `data` |
 | `calendar` | `calendars` (iCal URLs, or `{ url, name }`), `days` (14), `limit` (10), `title` | `upcoming` |
 | `links` | (from the top-level `links:` block) | one per group |

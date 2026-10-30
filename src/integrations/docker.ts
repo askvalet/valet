@@ -70,7 +70,7 @@ export default defineIntegration({
       tools: {
         containers_status: {
           label: 'Checked the containers', followUps: ['Which one is using the most memory?'],
-          description: 'Every Docker container: running or not, how it exited and how long ago, whether it\'s healthy. With usage, also CPU and memory of those running: use for "what\'s using all the memory". You can only look: you cannot start, stop or restart a container, so give the person the command instead and never offer to do it. Exit code 137 only means it was killed, by a memory limit or by a stop that timed out: say out of memory only if the logs show it.',
+          description: 'Every Docker container: running or not, how it exited and how long ago, whether it\'s healthy. With usage, also CPU and memory of those running: use for "what\'s using all the memory". You can only look: you cannot start, stop or restart a container, so give the person the command instead and never offer to do it. Exit code 137 only means it was killed, usually by someone stopping it: say out of memory only if container_logs reports killedForMemory or the logs show it.',
           access: 'read', input: z.object({ usage: z.boolean().default(false) }),
           async run({ usage: want }) {
             const list = await containers();
@@ -90,7 +90,9 @@ export default defineIntegration({
             const r = await ctx.http<Response>(`${base}/containers/${c.id}/logs?${q}`, { as: 'response', timeout: 15_000 });
             if (!r.ok) throw new Error(`Docker answered ${r.status}`);
             const kept = tidyLogs(parseLogs(Buffer.from(await r.arrayBuffer())), match);
-            return { data: { container: c.name, state: c.state, status: c.status, lines: kept }, card: kept.length ? { type: 'code', title: `${c.name} logs`, lines: kept.slice(-40) } : { type: 'text', title: `${c.name} logs`, text: 'Nothing logged' } };
+            // Docker knows whether its own memory limit did it; only this one flag is kept from the inspect response
+            const state = await ctx.http<any>(`${base}/containers/${c.id}/json`, { timeout: 10_000 }).then(i => i?.State).catch(() => undefined);
+            return { data: { container: c.name, state: c.state, status: c.status, killedForMemory: state?.OOMKilled, lines: kept }, card: kept.length ? { type: 'code', title: `${c.name} logs`, lines: kept.slice(-40) } : { type: 'text', title: `${c.name} logs`, text: 'Nothing logged' } };
           },
         },
       },
