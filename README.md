@@ -40,6 +40,12 @@ cp config.example.yaml config.yaml   # then edit
 npm start
 ```
 
+## Security
+
+Atrium holds keys to your services, so it's built to keep them: they never leave the server, they're redacted from
+anything it sends out, it's read-only until you turn on sign-in (or trust your network), and the assistant asks before
+changing anything. [SECURITY.md](SECURITY.md) has the details and the least-privilege key to give each service.
+
 ## Integrations
 
 | Type | What you get |

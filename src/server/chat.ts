@@ -14,7 +14,8 @@ import { mcpTools } from './mcp.ts';
 
 const rank = { none: 0, read: 1, write: 2, control: 3 } as const;
 
-export function chatRoute(config: Config, instances: Map<string, Instance>, meta: Map<string, { type: string; name: string; integration: Integration }>) {
+export function chatRoute(config: Config, instances: Map<string, Instance>, meta: Map<string, { type: string; name: string; integration: Integration }>,
+  safety: { acting: boolean; redact: (s: string) => string } = { acting: true, redact: s => s }) {
   const a = config.assistant!;
   const model = a.provider === 'anthropic'
     ? createAnthropic({ apiKey: a.apiKey, baseURL: a.baseURL })(a.model)
@@ -25,7 +26,8 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   const approval: Record<string, 'user-approval'> = {};
   const catalog: string[] = [];
   for (const [id, inst] of instances) {
-    const level = rank[a.access[id] ?? a.access.default ?? 'read'];
+    // read-only Atrium (no sign-in, untrusted network): the assistant may look, never add or change
+    const level = Math.min(rank[a.access[id] ?? a.access.default ?? 'read'], safety.acting ? rank.control : rank.read);
     const usable = Object.entries(inst.tools ?? {}).filter(([, t]) => rank[t.access] <= level);
     if (!usable.length) continue;
     catalog.push(`- ${id} (${meta.get(id)!.name}): ${usable.map(([n]) => n).join(', ')}`);
@@ -35,8 +37,9 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
         description: `[${id}] ${t.description}`,
         inputSchema: t.input as z.ZodType<any>,
         execute: async args => {
-          try { return await t.run(args); }
-          catch (e) { return { data: { error: (e as Error).message } }; }
+          // results pass through the redactor: a secret in an error or a payload never reaches the model or the page
+          try { return JSON.parse(safety.redact(JSON.stringify(await t.run(args)))); }
+          catch (e) { return { data: { error: safety.redact((e as Error).message) } }; }
         },
         toModelOutput: ({ output }) => ({ type: 'json', value: (output as { data: any }).data ?? null }),
       });
@@ -63,7 +66,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     catalog.push('- show: put live widget cards in the chat');
   }
 
-  const mcp = mcpTools(config);
+  const mcp = mcpTools(config, safety.acting);
 
   const system = (extra: string[]) => [
     `You are ${a.name}, the assistant built into ${config.title}, a homepage for a self-hosted homelab${config.greeting ? ` run by ${config.greeting}` : ''}.`,

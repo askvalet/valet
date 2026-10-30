@@ -1,3 +1,7 @@
+# Sign-in. Off by default, and then Atrium is read-only (no buttons, no assistant tools that change things).
+# local: built-in accounts · proxy: trust your sign-in proxy's user header · trustNetwork: true if only your VPN/tailnet reaches it
+auth: { mode: none, trustNetwork: false }
+
 # Atrium configuration. `${NAME}` is replaced from the environment, so keep secrets in .env or Docker secrets.
 title: Home
 greeting: Sam                      # "Good evening, Sam"

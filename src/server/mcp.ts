@@ -7,7 +7,7 @@ import type { Config } from './config.ts';
 interface Entry { client?: MCPClient; tools: ToolSet; readOnly: Set<string>; at: number; error?: string }
 const TTL = 10 * 60_000;
 
-export function mcpTools(config: Config) {
+export function mcpTools(config: Config, acting = true) {
   const cache = new Map<string, Entry>();
 
   async function load(id: string): Promise<Entry> {
@@ -17,7 +17,8 @@ export function mcpTools(config: Config) {
       const client = old?.client ?? await createMCPClient({ transport: { type: s.transport, url: s.url, headers: s.headers } });
       const defs = await client.listTools();
       const readOnly = new Set(defs.tools.filter(t => t.annotations?.readOnlyHint || s.readOnly.includes(t.name)).map(t => t.name));
-      const offered = s.access === 'control' ? defs.tools : defs.tools.filter(t => readOnly.has(t.name));
+      // read-only Atrium offers only an MCP server's read-only tools, whatever its access says
+      const offered = s.access === 'control' && acting ? defs.tools : defs.tools.filter(t => readOnly.has(t.name));
       const tools = client.toolsFromDefinitions({ ...defs, tools: offered }) as ToolSet;
       const e = { client, tools, readOnly, at: Date.now() };
       cache.set(id, e);

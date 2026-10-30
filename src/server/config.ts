@@ -64,11 +64,14 @@ export const Auth = z.object({
   mode: z.enum(['none', 'local', 'proxy']).default('none'),
   sessionDays: z.number().int().min(1).max(365).default(30),   // how long "keep me signed in" lasts
   secureCookie: z.boolean().default(true),                     // false only when serving over plain http
+  // with mode: none, Atrium is read-only (no buttons, no assistant tools that add or change things) unless you say the
+  // network itself is the lock, e.g. it's only reachable over your VPN/tailnet or behind a sign-in proxy
+  trustNetwork: z.boolean().default(false),
   proxy: z.object({
     header: z.string().default('Remote-User'),                 // the header your proxy puts the signed-in user in
     trusted: z.array(z.string()).default(['127.0.0.1']),       // proxy addresses whose header is believed
   }).default({ header: 'Remote-User', trusted: ['127.0.0.1'] }),
-}).default({ mode: 'none', sessionDays: 30, secureCookie: true, proxy: { header: 'Remote-User', trusted: ['127.0.0.1'] } });
+}).default({ mode: 'none', sessionDays: 30, secureCookie: true, trustNetwork: false, proxy: { header: 'Remote-User', trusted: ['127.0.0.1'] } });
 
 export const Config = z.object({
   auth: Auth,
@@ -105,9 +108,12 @@ export const Config = z.object({
 }).strict();
 export type Config = z.infer<typeof Config>;
 
+/** every value a ${VAR} was replaced with: Atrium redacts these from anything it sends out */
+export const usedSecrets: string[] = [];
 function substitute(v: unknown): unknown {
   if (typeof v === 'string') return v.replace(/\$\{([A-Z0-9_]+)\}/g, (_, k) => {
     if (process.env[k] === undefined) throw new Error(`config: environment variable ${k} is not set`);
+    usedSecrets.push(process.env[k]!);
     return process.env[k]!;
   });
   if (Array.isArray(v)) return v.map(substitute);

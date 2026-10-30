@@ -75,7 +75,7 @@ export async function userCommand(args: string[]) {
 export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHandler> {
   const mode = config.auth.mode;
   if (mode === 'none') {
-    console.log('auth: off (auth.mode: none). Anyone who can reach this page can use it, including its controls; keep it on a private network or behind your proxy\'s sign-in, or set auth.mode: local.');
+    console.log(config.auth.trustNetwork ? 'auth: off, network trusted (auth.trustNetwork): anyone who can reach this page can use its controls' : 'auth: off; read-only until you set auth.mode (or auth.trustNetwork for a private network)');
     app.get('/api/auth/me', c => c.json({ mode, user: { name: 'you' } }));
     return async (_c, next) => next();
   }

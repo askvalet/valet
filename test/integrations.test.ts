@@ -172,3 +172,15 @@ test('plugins: a one-file plugin loads, can\'t silently take a built-in name, an
   const card = await registry.hello.create({}, {}).widgets.w.fetch();
   assert.equal(card.text, 'hi');
 });
+
+test('security: secrets are redacted, and Atrium is read-only without sign-in unless the network is trusted', async () => {
+  const { redactor, canAct } = await import('../src/server/security.ts');
+  const r = redactor(['s3cr3t-key-123', 'short', 'another.secret+value']);
+  assert.equal(r('GET http://x/?apikey=s3cr3t-key-123 failed'), 'GET http://x/?apikey=••• failed');
+  assert.equal(r('pw another.secret+value!'), 'pw •••!');           // regex characters are escaped
+  assert.equal(r('short stays'), 'short stays');                     // too short to be a real secret
+  const cfg = (auth: object) => Config.parse({ auth });
+  assert.equal(canAct(cfg({})), false);
+  assert.equal(canAct(cfg({ mode: 'none', trustNetwork: true })), true);
+  assert.equal(canAct(cfg({ mode: 'local' })), true);
+});

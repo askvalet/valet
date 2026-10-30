@@ -6,7 +6,8 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { sameOrigin, setupAuth, userCommand } from './auth.ts';
-import { loadConfig } from './config.ts';
+import { loadConfig, usedSecrets } from './config.ts';
+import { canAct, headers, redactor } from './security.ts';
 import { makeContext, UPLOAD_DIR, type Instance, type Integration } from './core.ts';
 import { Hub } from './hub.ts';
 import { noticesFor, type Notice } from './notices.ts';
@@ -23,6 +24,8 @@ const HOST = process.env.HOST ?? '0.0.0.0';
 if (process.argv[2] === 'user') process.exit(await userCommand(process.argv.slice(3)).catch(e => { console.error(String(e.message ?? e)); return 1; }));
 
 const config = loadConfig(CONFIG);
+const redact = redactor(usedSecrets);
+const acting = canAct(config);
 const fromPlugins = await loadPlugins(registry, config.plugins.packages, config.plugins.replace);
 
 // Build every integration instance from config. A broken block is reported and skipped, not fatal.
@@ -74,6 +77,7 @@ const hub = new Hub(new Map([...instances].map(([id, i]) => [id, {
 if (history && config.history && config.history.background) hub.sampleInBackground(config.history.every * 60_000);
 
 const app = new Hono();
+app.use('*', headers);
 
 // Sign-in first: /api/auth/* are open; the wallpaper and icons too (the sign-in screen uses them); everything else
 // under /api needs a session. Anything that changes something must also come from this page's origin.
@@ -119,7 +123,7 @@ app.get('/api/icon/:slug', async c => {
 });
 
 app.get('/api/page', c => c.json({
-  title: config.title, greeting: config.greeting, location: config.location,
+  title: config.title, greeting: config.greeting, location: config.location, canAct: acting,
   // ?v= the file's mtime: replacing the wallpaper changes the URL, so browsers never show a stale cached one
   appearance: { ...config.appearance, wallpaper: wallpaperFile ? `/api/wallpaper?v=${wallpaperVersion}` : wallpaper },
   assistant: config.assistant ? { name: config.assistant.name, model: config.assistant.model } : null,
@@ -135,11 +139,11 @@ app.get('/api/page', c => c.json({
 
 // Live updates: the full current state on connect, then each change as it happens.
 app.get('/api/events', c => streamSSE(c, async stream => {
-  for (const s of hub.snapshot()) await stream.writeSSE({ event: 'widget', data: JSON.stringify(s) });
+  for (const s of hub.snapshot()) await stream.writeSSE({ event: 'widget', data: redact(JSON.stringify(s)) });
   const queue: string[] = [];
   let wake: (() => void) | null = null;
   const notices: string[] = recent.filter(n => Date.now() - n.at < 60_000).map(n => JSON.stringify(n));
-  const off = hub.subscribe(s => { queue.push(JSON.stringify(s)); wake?.(); });
+  const off = hub.subscribe(s => { queue.push(redact(JSON.stringify(s))); wake?.(); });
   const tell = (n: Notice) => { notices.push(JSON.stringify(n)); wake?.(); };
   noticeListeners.add(tell);
   stream.onAbort(() => { off(); noticeListeners.delete(tell); });
@@ -175,6 +179,7 @@ app.post('/api/files', async c => {
 });
 
 app.post('/api/action/:inst/:action', async c => {
+  if (!acting) return c.json({ error: 'Atrium is read-only: sign-in is off (set auth.mode, or auth.trustNetwork if the network is private)' }, 403);
   const { inst, action } = c.req.param();
   const a = instances.get(inst)?.actions?.[action];
   if (!a) return c.json({ error: `no action ${inst}.${action}` }, 404);
@@ -184,7 +189,7 @@ app.post('/api/action/:inst/:action', async c => {
     const result = await a.run(args.data);
     setTimeout(() => hub.refreshInstance(inst), 300);
     return c.json({ ok: true, result });
-  } catch (e) { return c.json({ error: (e as Error).message }, 502); }
+  } catch (e) { return c.json({ error: redact((e as Error).message) }, 502); }
 });
 
 app.get('/api/image/:inst', async c => {
@@ -202,7 +207,7 @@ if (config.assistant) {
   // The AI SDK, providers and MCP client load on the first question, so an unused assistant costs no memory.
   let handler: ((c: any) => Promise<Response>) | undefined;
   app.post('/api/chat', async c => {
-    handler ??= (await import('./chat.ts')).chatRoute(config, instances, meta);
+    handler ??= (await import('./chat.ts')).chatRoute(config, instances, meta, { acting, redact });
     return handler(c);
   });
 }

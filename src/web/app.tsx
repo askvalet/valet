@@ -14,7 +14,7 @@ import { Icon, NowPlaying, isEmpty, MiniRing, WeatherRing, Ring, SummaryTile, Wi
 const Assistant = lazy(() => import('./assistant.tsx'));
 
 interface Page {
-  title: string; greeting?: string; location?: string;
+  title: string; greeting?: string; location?: string; canAct?: boolean;
   appearance: { wallpaper?: string; dim: number; blur: number };
   assistant: { name: string; model: string } | null;
   menubar?: string[];
@@ -156,7 +156,7 @@ function Home() {
 
   const p = pulse(state);
   // every card's quick actions, for ⌘K: "pause" finds "Pi-hole · Pause 5 min"
-  const actions = Object.values(state).flatMap(w => (w.card?.buttons ?? []).map(b => ({ key: w.key, b, card: w.card!.title ?? page?.widgets[w.key]?.title ?? w.key })));
+  const actions = page?.canAct === false ? [] : Object.values(state).flatMap(w => (w.card?.buttons ?? []).map(b => ({ key: w.key, b, card: w.card!.title ?? page?.widgets[w.key]?.title ?? w.key })));
   // every service from the status cards, for ⌘K: type a name, open it
   const services = Object.values(state).flatMap(w => w.card?.type === 'status' ? w.card.items.filter(i => i.href) : []);
   // every item of a section's media cards, in the config's order: what's playing, then what's downloading…
@@ -243,7 +243,7 @@ function Home() {
                     const s = state[key];
                     return <Widget key={key} large={large} card={s?.card} title={page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={sec.variant === 'minimal' && view === 'all'} headless={sec.header === false && view === 'all'}
                       status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
-                      run={(action, args) => runAction(key, action, args)} />;
+                      run={page?.canAct === false ? undefined : (action, args) => runAction(key, action, args)} />;
                   };
                   // sized: a grid of narrow tracks; small cards take one (as their headline tile), medium two, large four
                   if (sec.sizes && Object.keys(sec.sizes).length && !aside) return (
