@@ -611,8 +611,8 @@ function Sky({ card }: { card: ScheduleCard }) {
           <g key={x.name} opacity={x.muted ? .45 : 1}>
             <circle cx={p.x} cy={p.y} r={isNext ? 5 : 3.5} fill={isNext ? '#fff' : 'currentColor'} fillOpacity={isNext ? 1 : .55} />
             {/* labels sit outside the arc: above it by day, below it by night */}
-            <text x={p.x} y={p.y + (p.up ? -27 : 22)} textAnchor="middle" className="fill-current text-[13px] font-medium" opacity={isNext ? 1 : .7}>{x.name}</text>
-            <text x={p.x} y={p.y + (p.up ? -12 : 37)} textAnchor="middle" className="fill-current text-[11px] tabular" opacity=".45">{clock(x.t)}</text>
+            <text x={p.x} y={p.y + (p.up ? -33 : 26)} textAnchor="middle" className="fill-current text-[20px] font-medium" opacity={isNext ? 1 : .7}>{x.name}</text>
+            <text x={p.x} y={p.y + (p.up ? -13 : 46)} textAnchor="middle" className="fill-current text-[17px] tabular" opacity=".6">{clock(x.t)}</text>
           </g>
         ); })}
         <circle cx={sun.x} cy={sun.y} r="22" fill="url(#sky-sun)" className="transition-all duration-1000" />
