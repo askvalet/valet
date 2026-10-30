@@ -83,7 +83,7 @@ export interface MediaCard extends Base { type: 'media'; items: MediaItem[]; emp
 
 /** A horizontal shelf of artwork (posters, albums, photos), like a row in the Apple TV app. */
 export interface ShelfItem { title: string; subtitle?: string; image?: string; badge?: string; href?: string }
-export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string }
+export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string; stack?: boolean }   // stack: a pile of pages that fans out
 
 export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string; group?: string; quiet?: boolean }   // quiet: being down is expected, never an alert
 export interface StatusCard extends Base { type: 'status'; items: StatusItem[] }

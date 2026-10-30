@@ -227,7 +227,45 @@ function Media({ card }: { card: MediaCard }) {
 }
 
 /** A row of artwork, like the Apple TV app: snap-scrolling, no borders, arrows to page through on desktop. */
+/** A pile of pages, like an iMessage photo stack: slightly rotated, the top one in front. Hover fans them out; a
+ *  click opens the full row. One page is just that page, held up a little. */
+function Stack({ card, header, onOpen }: { card: ShelfCard; header?: ReactNode; onOpen: () => void }) {
+  const pile = card.items.slice(0, 4), more = card.items.length - pile.length;
+  const one = card.items.length === 1, top = card.items[0];
+  const rest = [[-7, -10], [6, 8], [-3, -4], [0, 0]].slice(4 - pile.length);   // [rotate°, x px] from back to front
+  const open = one ? () => top.href && window.open(top.href, '_blank', 'noopener') : onOpen;
+  return (
+    <div>
+      {header && <div className="mb-3 flex items-center gap-2">{header}</div>}
+      <button onClick={open} aria-label={one ? `Open ${top.title}` : `Show all ${card.items.length}`}
+        className="group/stack press relative mx-auto flex h-[196px] w-full items-center justify-center">
+        {pile.slice().reverse().map((it, i) => {
+          const [r, x] = rest[i], depth = pile.length - 1 - i;
+          return (
+            <div key={i} className="stack-page absolute aspect-[3/4] h-[176px] overflow-hidden rounded-[10px] bg-white shadow-[0_10px_30px_-10px_rgb(0_0_0/.6),0_0_0_1px_rgb(0_0_0/.08)]"
+              style={{ '--r': `${one ? -2 : r}deg`, '--x': `${x}px`, '--fan-x': `${(i - (pile.length - 1) / 2) * 62}px`, '--fan-r': `${(i - (pile.length - 1) / 2) * 7}deg`,
+                zIndex: i, filter: depth ? `brightness(${1 - depth * .06})` : undefined, animationDelay: `${i * 50}ms` } as React.CSSProperties}>
+              <Art src={it.image} alt="" className="size-full object-cover object-top" />
+            </div>
+          );
+        })}
+        {more > 0 && <span className="absolute right-3 bottom-1 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-md">+{more}</span>}
+      </button>
+      <div className="mt-2 text-center">
+        <div className="truncate text-[13px] font-medium">{top.title}</div>
+        <div className="truncate text-xs text-muted-foreground">{one ? top.subtitle : `${card.items.length} documents · tap to see all`}</div>
+      </div>
+    </div>
+  );
+}
+
 function Shelf({ card, header, small }: { card: ShelfCard; header?: ReactNode; small?: boolean }) {
+  const [spread, setSpread] = useState(false);
+  if (card.stack && !spread && card.items.length) return <Stack card={card} header={header} onOpen={() => setSpread(true)} />;
+  return <ShelfRow card={card} header={header} small={small} />;
+}
+
+function ShelfRow({ card, header, small }: { card: ShelfCard; header?: ReactNode; small?: boolean }) {
   const row = useRef<HTMLDivElement>(null);
   const page = (dir: number) => row.current?.scrollBy({ left: dir * row.current.clientWidth * 0.85, behavior: 'smooth' });
   const ratio = card.aspect === 'square' ? 'aspect-square' : card.aspect === 'wide' ? 'aspect-video' : 'aspect-[2/3]';

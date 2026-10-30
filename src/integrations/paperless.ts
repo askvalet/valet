@@ -55,7 +55,7 @@ export default defineIntegration({
             const hits = r.results ?? [];
             return {
               data: { total: r.count, results: hits.map((d: any) => ({ ...brief(d, n), snippet: plain(d.__search_hit__?.highlights).slice(0, 300) })) },
-              card: hits.length ? { type: 'shelf', title: `Documents · “${query}”`, icon: 'file', href: `${web}/documents?query=${encodeURIComponent(query)}`, aspect: 'poster', items: shelf(hits, n) }
+              card: hits.length ? { type: 'shelf', stack: true, title: `Documents · “${query}”`, icon: 'file', href: `${web}/documents?query=${encodeURIComponent(query)}`, aspect: 'poster', items: shelf(hits, n) }
                 : { type: 'text', text: `No documents match “${query}”.` },
             };
           },
@@ -68,7 +68,7 @@ export default defineIntegration({
             const text = String(d.content ?? '');
             return {
               data: { ...brief(d, n), pages: d.page_count, text: text.slice(0, 16_000), truncated: text.length > 16_000 },
-              card: { type: 'shelf', title: d.title, icon: 'file', aspect: 'poster', items: shelf([d], n) },
+              card: { type: 'shelf', stack: true, title: d.title, icon: 'file', aspect: 'poster', items: shelf([d], n) },
             };
           },
         },

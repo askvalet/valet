@@ -258,3 +258,9 @@
 @keyframes chat-pop-in { from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)) scale(.97); } }
 @keyframes chat-pop-out { to { opacity: 0; transform: translate(-50%, calc(-50% + 6px)) scale(.98); } }
 [data-slot="dialog-overlay"] { backdrop-filter: blur(6px); }
+
+/* a stack of pages: each settles into its pile; hovering fans them out like a hand of cards */
+.stack-page { transform: translateX(var(--x)) rotate(var(--r)); transition: transform 380ms var(--ease-out); animation: stack-in 420ms var(--ease-out) both; }
+@keyframes stack-in { from { opacity: 0; transform: translateY(14px) rotate(0deg) scale(.96); } }
+@media (hover: hover) and (pointer: fine) { .group\/stack:hover .stack-page { transform: translateX(var(--fan-x)) rotate(var(--fan-r)) translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .stack-page { animation: none; transition: none; } }
