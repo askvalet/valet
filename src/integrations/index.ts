@@ -20,7 +20,14 @@ import seerr from './seerr.ts';
 import tautulli from './tautulli.ts';
 import uptimekuma from './uptimekuma.ts';
 import weather from './weather.ts';
+import { links } from './links.ts';
+import rss from './rss.ts';
+import hackernews from './hackernews.ts';
+import reddit from './reddit.ts';
+import releases from './releases.ts';
+import markets from './markets.ts';
+import calendar from './calendar.ts';
 
 export const registry: Record<string, Integration> = Object.fromEntries(
-  [aimonitor, arr, glances, homeassistant, http, immich, indexers, karakeep, ollama, paperless, pihole, qbittorrent, quran, rgbcontrol, romm, scrutiny, seerr, tautulli, uptimekuma, weather].map(i => [i.type, i as Integration]),
+  [aimonitor, arr, glances, homeassistant, http, immich, indexers, karakeep, ollama, paperless, pihole, qbittorrent, quran, rgbcontrol, romm, scrutiny, seerr, tautulli, uptimekuma, weather, links, rss, hackernews, reddit, releases, markets, calendar].map(i => [i.type, i as Integration]),
 );

@@ -1,5 +1,5 @@
 // The ⌘K palette: ask, do a card's action, open a service, jump to a tab. Loaded the first time it opens.
-import { ArrowUp, CornerDownLeft, LayoutGrid, LogOut, Zap } from 'lucide-react';
+import { ArrowUp, CornerDownLeft, Globe, LayoutGrid, LogOut, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
@@ -13,10 +13,16 @@ export interface PaletteProps {
   runAction: (key: string, action: string, args?: Record<string, unknown>) => Promise<void>;
   services: StatusItem[]; SUGGESTIONS: string[]; setView: (v: string) => void;
   nav: { key: string; chat?: boolean; icon?: string }[]; sectionIcon: (s: any) => string | undefined;
+  search?: string;   // a provider name or a URL with {q}
 }
 
-export default function Palette({ palette, setPalette, assistantName, ask, actions, runAction, services, SUGGESTIONS, setView, nav, sectionIcon }: PaletteProps) {
+const PROVIDERS: Record<string, string> = { duckduckgo: 'https://duckduckgo.com/?q={q}', google: 'https://www.google.com/search?q={q}', kagi: 'https://kagi.com/search?q={q}',
+  brave: 'https://search.brave.com/search?q={q}', startpage: 'https://www.startpage.com/do/search?q={q}', searxng: '/search?q={q}' };
+const searchUrl = (p: string, q: string) => (PROVIDERS[p] ?? p).replace('{q}', encodeURIComponent(q));
+
+export default function Palette({ palette, setPalette, assistantName, ask, actions, runAction, services, SUGGESTIONS, setView, nav, sectionIcon, search }: PaletteProps) {
   const [query, setQuery] = useState('');
+  const web = () => { window.open(searchUrl(search!, query), '_blank', 'noopener'); setQuery(''); setPalette(false); };
   return (
         <CommandDialog open={palette} onOpenChange={setPalette} title={`Ask ${assistantName}`} description="Ask a question or jump to a section">
           <CommandInput placeholder={`Ask ${assistantName} anything about your homelab…`} value={query} onValueChange={setQuery}
@@ -45,7 +51,8 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
                 ))}
               </CommandGroup>
             )}
-            {query.trim() && <CommandGroup heading="Ask"><CommandItem value={`ask ${query}`} onSelect={() => { ask(query); setQuery(''); }}><CornerDownLeft className="text-muted-foreground" />Ask “{query}”<CommandShortcut>↵</CommandShortcut></CommandItem></CommandGroup>}
+            {query.trim() && <CommandGroup heading="Ask"><CommandItem value={`ask ${query}`} onSelect={() => { ask(query); setQuery(''); }}><CornerDownLeft className="text-muted-foreground" />Ask “{query}”<CommandShortcut>↵</CommandShortcut></CommandItem>
+              {search && <CommandItem value={`search web ${query}`} onSelect={web}><Globe className="text-muted-foreground" />Search the web for “{query}”</CommandItem>}</CommandGroup>}
             <CommandGroup heading="Suggestions">
               {SUGGESTIONS.map(s => <CommandItem key={s} onSelect={() => ask(s)}><CornerDownLeft className="text-muted-foreground" />{s}</CommandItem>)}
             </CommandGroup>

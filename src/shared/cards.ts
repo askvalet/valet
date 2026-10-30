@@ -57,6 +57,7 @@ export interface StatsCard extends Base { type: 'stats'; items: StatItem[] }
 
 export interface ListItem {
   title: string;
+  href?: string;           // the row opens this (a new tab)
   subtitle?: string;
   meta?: string;          // right-aligned, e.g. "8 min left"
   pct?: number;           // 0..1 progress bar
@@ -88,6 +89,9 @@ export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; asp
 
 export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string; group?: string; quiet?: boolean }   // quiet: being down is expected, never an alert
 export interface StatusCard extends Base { type: 'status'; items: StatusItem[] }
+
+export interface LinkItem { name: string; href: string; icon?: string; note?: string }
+export interface LinksCard extends Base { type: 'links'; items: LinkItem[] }   // bookmarks: a tidy list of places to go
 
 export interface ChartCard extends Base {
   type: 'chart';
@@ -151,7 +155,7 @@ export interface TextCard extends Base { type: 'text'; text: string; tone?: Tone
 
 export interface GroupCard extends Base { type: 'group'; cards: Card[]; layout?: 'row' | 'column' }
 
-export type Card = VerseCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
+export type Card = LinksCard | VerseCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
 
 /** One widget slot's live state, as pushed to the browser. */
 export interface WidgetState { key: string; card?: Card; error?: string; at: number; source?: string }

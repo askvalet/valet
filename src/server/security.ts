@@ -34,11 +34,13 @@ export const headers: MiddlewareHandler = async (c, next) => {
 /** Answer only to names Atrium is meant to have. A malicious site can point its own domain at your Atrium's IP (DNS
  *  rebinding) and script your browser against it; refusing unknown Host headers closes that. IP addresses and
  *  localhost are always fine: an attacker's page can't use those names. */
-export function hostGuard(allowed: string[]): MiddlewareHandler {
-  const exact = new Set(allowed.filter(h => !h.startsWith('*.')).map(h => h.toLowerCase()));
-  const wild = allowed.filter(h => h.startsWith('*.')).map(h => h.slice(1).toLowerCase());
+export function hostGuard(allowed: string[] | (() => string[])): MiddlewareHandler {
+  // the list may come from a config that reloads, so it's read per request (it's a few names)
+  const list = () => typeof allowed === 'function' ? allowed() : allowed;
   const ok = (raw: string | undefined) => {
     if (!raw) return true;
+    const exact = new Set(list().filter(h => !h.startsWith('*.')).map(h => h.toLowerCase()));
+    const wild = list().filter(h => h.startsWith('*.')).map(h => h.slice(1).toLowerCase());
     const host = raw.toLowerCase().replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
     return host === 'localhost' || host.endsWith('.localhost') || /^[\d.]+$/.test(host) || host.includes(':')   // IPv4, IPv6
       || exact.has(host) || wild.some(w => host.endsWith(w));

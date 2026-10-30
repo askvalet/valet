@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { watch } from 'node:fs';
 import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { serve } from '@hono/node-server';
@@ -7,80 +8,56 @@ import { Hono, type Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { bodyLimit } from 'hono/body-limit';
 import { sameOrigin, setupAuth, userCommand } from './auth.ts';
-import { loadConfig, usedSecrets } from './config.ts';
-import { canAct, headers, hostGuard, redactor } from './security.ts';
-import { makeContext, UPLOAD_DIR, type Instance, type Integration } from './core.ts';
-import { Hub } from './hub.ts';
-import { noticesFor, type Notice } from './notices.ts';
-import { History } from './history.ts';
-import { guardCards, loadPlugins } from './plugins.ts';
+import { loadConfig } from './config.ts';
+import { headers, hostGuard } from './security.ts';
+import { UPLOAD_DIR } from './core.ts';
+import { loadPlugins } from './plugins.ts';
+import { buildSite, type Site } from './site.ts';
 import { registry } from '../integrations/index.ts';
 
 const CONFIG = process.env.ATRIUM_CONFIG ?? 'config.yaml';
+const DATA = resolve(process.env.ATRIUM_DATA ?? 'data');
 const PORT = Number(process.env.PORT ?? 7575);
 const HOST = process.env.HOST ?? '0.0.0.0';
 
-// `node dist/server.js user add <name>` and friends manage accounts, then exit
+// `node dist/server.js user add <name>`, `config check` and friends run and exit
 if (process.argv[2] === 'new-integration') process.exit(await (await import('./plugins.ts')).scaffold(process.argv[3]));
 if (process.argv[2] === 'user') process.exit(await userCommand(process.argv.slice(3)).catch(e => { console.error(String(e.message ?? e)); return 1; }));
+if (process.argv[2] === 'config') process.exit(await (await import('./cli.ts')).configCommand(process.argv.slice(3), CONFIG, registry));
 
 // one bad promise in an integration shouldn't take the whole page down: log it and carry on
 process.on('unhandledRejection', e => console.error('unhandled:', e instanceof Error ? e.message : e));
 
 const config = loadConfig(CONFIG);
-const redact = redactor(usedSecrets);
-const acting = canAct(config);
 const fromPlugins = await loadPlugins(registry, config.plugins.packages, config.plugins.replace);
+let site: Site = await buildSite(config, registry, fromPlugins);
+for (const sig of ['SIGTERM', 'SIGINT'] as const) process.once(sig, async () => { try { await site.history?.save(); } finally { process.exit(0); } });
 
-// Build every integration instance from config. A broken block is reported and skipped, not fatal.
-const instances = new Map<string, Instance>();
-const meta = new Map<string, { type: string; name: string; integration: Integration }>();
-for (const [id, block] of Object.entries(config.integrations)) {
-  const integration = registry[block.type];
-  if (!integration) { console.error(`config: integrations.${id}: unknown type "${block.type}"`); continue; }
-  const { type, ...rest } = block;
-  const parsed = integration.config.safeParse(rest);
-  // zod drops keys it doesn't know; a misspelt option should say so rather than silently do nothing
-  const known = (integration.config as { shape?: object }).shape;
-  for (const k of known ? Object.keys(rest).filter(k => !(k in known)) : []) console.warn(`config: integrations.${id}: unknown option "${k}" (ignored)`);
-  if (!parsed.success) {
-    console.error(`config: integrations.${id}:\n` + parsed.error.issues.map(i => `  ${i.path.join('.')}: ${i.message}`).join('\n'));
-    continue;
-  }
-  const inst = integration.create(parsed.data, makeContext(id));
-  // a plugin's cards are checked against the catalog, so a mistake shows as an error, not a broken page
-  if (fromPlugins.has(block.type)) guardCards(inst);
-  instances.set(id, inst);
-  meta.set(id, { type, name: integration.name, integration });
+// Edits to config.yaml apply live. A broken edit is reported and the last good config keeps running; sign-in
+// settings and plugins are read once, so those still need a restart.
+const sseClients = new Set<() => void>();
+if (config.reload) {
+  let timer: NodeJS.Timeout | undefined;
+  const reload = async () => {
+    let next; try { next = loadConfig(CONFIG); } catch (e) { console.error(`config: not applied: ${(e as Error).message}`); return; }
+    if (JSON.stringify(next) === JSON.stringify(site.config)) return;
+    if (JSON.stringify(next.auth) !== JSON.stringify(site.config.auth) || JSON.stringify(next.plugins) !== JSON.stringify(site.config.plugins)) console.log('config: auth and plugins changes take effect after a restart');
+    const fresh = await buildSite(next, registry, fromPlugins, site);
+    const old = site; site = fresh; chat = undefined;
+    old.hub.dispose();
+    console.log(`config: reloaded · ${site.instances.size} integrations · ${site.placed.size} widgets${site.problems.length ? ` · ${site.problems.length} problems` : ''}`);
+    for (const tell of sseClients) tell();   // every open page refetches and reconnects
+  };
+  // editors save by replacing the file, which some watchers see as a delete; watch the folder and settle for 300ms
+  try { watch(resolve(CONFIG, '..'), (_, f) => { if (f && resolve(CONFIG, '..', f) === resolve(CONFIG)) { clearTimeout(timer); timer = setTimeout(reload, 300); } }); }
+  catch (e) { console.warn(`config: can't watch ${CONFIG} (${(e as Error).message})`); }
 }
-
-// Only widgets placed in the layout are polled.
-const placed = new Set([...config.layout.flatMap(s => s.widgets.map(w => w.widget)), ...config.menubar, ...(config.weather ? [config.weather] : []), ...(config.island?.activities ?? [])]);
-for (const key of placed) {
-  const [inst, w] = key.split('.');
-  if (!instances.get(inst)?.widgets[w]) console.error(`config: layout: no widget "${key}"`);
-}
-const history = config.history ? new History(config.history.hours, config.history.every * 60_000) : undefined;
-await history?.load();
-for (const sig of ['SIGTERM', 'SIGINT'] as const) process.once(sig, async () => { try { await history?.save(); } finally { process.exit(0); } });
-
-// notices go to every open page; the last few are replayed to a page that opens within a minute of them
-const noticeListeners = new Set<(n: Notice) => void>(), recent: Notice[] = [];
-const hub = new Hub(new Map([...instances].map(([id, i]) => [id, {
-  ...i, widgets: Object.fromEntries(Object.entries(i.widgets).filter(([w]) => placed.has(`${id}.${w}`))),
-}])), (key, prev, next) => {
-  for (const n of noticesFor(key, prev?.card, next.card, config.island?.notify ?? [])) {
-    recent.push(n); if (recent.length > 5) recent.shift();
-    for (const l of noticeListeners) l(n);
-  }
-}, history);
-if (history && config.history && config.history.background) hub.sampleInBackground(config.history.every * 60_000);
 
 const app = new Hono();
-app.use('*', hostGuard(config.allowedHosts));
+app.use('*', hostGuard(() => site.config.allowedHosts));
 app.use('*', headers);
 // for Docker's healthcheck and uptime monitors: up, and how many widgets have a fresh card
-app.get('/healthz', c => c.json({ ok: true, widgets: hub.snapshot().filter(s => s.card && !s.error).length }));
+app.get('/healthz', c => c.json({ ok: true, widgets: site.hub.snapshot().filter(s => s.card && !s.error).length }));
 
 // Sign-in first: /api/auth/* are open; the wallpaper and icons too (the sign-in screen uses them); everything else
 // under /api needs a session. Anything that changes something must also come from this page's origin.
@@ -93,88 +70,97 @@ app.use('/api/*', async (c, next) => c.req.path === '/api/files' ? next() : c.re
 const signedIn = await setupAuth(app, config);
 app.use('/api/*', async (c, next) => {
   const p = c.req.path;
-  if (p.startsWith('/api/auth/') || p === '/api/wallpaper' || p.startsWith('/api/icon/')) return next();
+  if (p.startsWith('/api/auth/') || p === '/api/wallpaper' || p.startsWith('/api/icon/') || p.startsWith('/api/favicon/')) return next();
   return signedIn(c, next);
 });
 
-// A local wallpaper file is served from here; a URL is handed to the browser as is.
-const wallpaper = config.appearance.wallpaper;
-const wallpaperFile = wallpaper && !/^https?:\/\//.test(wallpaper) ? resolve(wallpaper) : null;
-let wallpaperVersion = 0;
-if (wallpaperFile) wallpaperVersion = Math.round((await stat(wallpaperFile).catch(() => ({ mtimeMs: 0 }))).mtimeMs);
 app.get('/api/wallpaper', async c => {
-  if (!wallpaperFile) return c.notFound();
-  const type = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.avif': 'image/avif' }[extname(wallpaperFile).toLowerCase()];
+  const file = site.wallpaperFile;
+  if (!file) return c.notFound();
+  const type = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.avif': 'image/avif' }[extname(file).toLowerCase()];
   if (!type) return c.notFound();
-  wallpaperVersion = Math.round((await stat(wallpaperFile)).mtimeMs);
-  return c.body(await readFile(wallpaperFile), 200, { 'Content-Type': type, 'Cache-Control': 'public, max-age=31536000, immutable' });
+  site.wallpaperVersion = Math.round((await stat(file)).mtimeMs);
+  return c.body(await readFile(file), 200, { 'Content-Type': type, 'Cache-Control': 'public, max-age=31536000, immutable' });
 });
 
-// Service icons from the open dashboard-icons set (the one Homepage uses), fetched once and cached on disk, so the
-// browser never talks to a CDN and the page works offline after the first load.
-const ICON_DIR = resolve(process.env.ATRIUM_DATA ?? 'data', 'icons');
+// Service icons from the open dashboard-icons set (the one Homepage uses), and sites' own favicons, fetched once by
+// the server and cached on disk: the browser never talks to a CDN, and the page works offline after the first load.
+const ICON_DIR = resolve(DATA, 'icons');
+const cached = async (file: string, url: string, type: string, c: Context) => {
+  let body = await readFile(file).catch(() => null);
+  if (!body) {
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'Atrium' } }).catch(() => null);
+    if (!r?.ok || !(r.headers.get('content-type') ?? '').startsWith('image/')) return c.notFound();
+    body = Buffer.from(await r.arrayBuffer());
+    await mkdir(resolve(file, '..'), { recursive: true }).then(() => writeFile(file, body!)).catch(() => {});
+  }
+  return c.body(body, 200, { 'Content-Type': type, 'Cache-Control': 'public, max-age=604800' });
+};
 app.get('/api/icon/:slug', async c => {
   const slug = c.req.param('slug');
   if (!/^[a-z0-9-]{1,64}$/.test(slug)) return c.notFound();
   // your own icon: drop data/icons/<slug>.svg (or .png) and it wins over the CDN
   const svg = await readFile(resolve(ICON_DIR, `${slug}.svg`)).catch(() => null);
   if (svg) return c.body(svg, 200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' });
-  const file = resolve(ICON_DIR, `${slug}.png`);
-  let body = await readFile(file).catch(() => null);
-  if (!body) {
-    const r = await fetch(`https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/${slug}.png`, { signal: AbortSignal.timeout(8000) }).catch(() => null);
-    if (!r?.ok) return c.notFound();
-    body = Buffer.from(await r.arrayBuffer());
-    await mkdir(ICON_DIR, { recursive: true }).then(() => writeFile(file, body!)).catch(() => {});
-  }
-  return c.body(body, 200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=604800' });
+  return cached(resolve(ICON_DIR, `${slug}.png`), `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/${slug}.png`, 'image/png', c);
+});
+app.get('/api/favicon/:host', async c => {
+  const host = c.req.param('host').toLowerCase();
+  if (!/^[a-z0-9.-]{1,253}$/.test(host)) return c.notFound();
+  return cached(resolve(ICON_DIR, 'sites', `${host}.ico`), `https://icons.duckduckgo.com/ip3/${host}.ico`, 'image/x-icon', c);
 });
 
-app.get('/api/page', c => c.json({
-  title: config.title, greeting: config.greeting, location: config.location, canAct: acting,
-  // ?v= the file's mtime: replacing the wallpaper changes the URL, so browsers never show a stale cached one
-  appearance: { ...config.appearance, wallpaper: wallpaperFile ? `/api/wallpaper?v=${wallpaperVersion}` : wallpaper },
-  assistant: config.assistant ? { name: config.assistant.name, model: config.assistant.model, suggestions: config.assistant.suggestions,
-    // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>")
-    tools: Object.fromEntries([...instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {})
-      .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access }]))) } : null,
-  menubar: config.menubar.filter(k => hub.widget(k)),
-  nav: config.nav,
-  island: config.island && { ...config.island, activities: config.island.activities.filter(k => hub.widget(k)) },
-  weather: config.weather && hub.widget(config.weather) ? config.weather : undefined,
-  sections: config.layout.map(s => ({ title: s.title, columns: s.columns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat,
-    widgets: s.widgets.map(w => w.widget).filter(k => hub.widget(k)),
-    sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium').map(w => [w.widget, w.size])) })),
-  widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
-}));
+app.get('/api/page', c => {
+  const { config, instances, hub, placed } = site;
+  return c.json({
+    title: config.title, greeting: config.greeting, location: config.location, canAct: site.acting, search: config.search,
+    // ?v= the file's mtime: replacing the wallpaper changes the URL, so browsers never show a stale cached one
+    appearance: { ...config.appearance, wallpaper: site.wallpaperFile ? `/api/wallpaper?v=${site.wallpaperVersion}` : config.appearance.wallpaper },
+    assistant: config.assistant ? { name: config.assistant.name, model: config.assistant.model, suggestions: config.assistant.suggestions,
+      // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>")
+      tools: Object.fromEntries([...instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {})
+        .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access }]))) } : null,
+    menubar: config.menubar.filter(k => hub.widget(k)),
+    nav: config.nav,
+    island: config.island && { ...config.island, activities: config.island.activities.filter(k => hub.widget(k)) },
+    weather: config.weather && hub.widget(config.weather) ? config.weather : undefined,
+    sections: config.layout.map(s => ({ title: s.title, columns: s.columns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat,
+      widgets: s.widgets.map(w => w.widget).filter(k => hub.widget(k)),
+      sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium').map(w => [w.widget, w.size])) })),
+    widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
+  });
+});
 
 // Live updates: the full current state on connect, then each change as it happens.
 app.get('/api/events', c => streamSSE(c, async stream => {
+  const { hub, redact, recent, noticeListeners } = site;
   // subscribe first so nothing changes unseen while the snapshot is written; a slow page keeps only the newest state
   // of each widget, so its queue can't grow without bound
   const queue = new Map<string, string>();
-  let wake: (() => void) | null = null;
+  let wake: (() => void) | null = null, reloaded = false;
   const notices: string[] = recent.filter(n => Date.now() - n.at < 60_000).map(n => redact(JSON.stringify(n)));
   const off = hub.subscribe(s => { queue.delete(s.key); queue.set(s.key, redact(JSON.stringify(s))); wake?.(); });
   for (const s of hub.snapshot()) if (!queue.has(s.key)) queue.set(s.key, redact(JSON.stringify(s)));
-  const tell = (n: Notice) => { notices.push(redact(JSON.stringify(n))); wake?.(); };
-  noticeListeners.add(tell);
-  stream.onAbort(() => { off(); noticeListeners.delete(tell); });
-  while (!stream.aborted) {
+  const tell = (n: { at: number }) => { notices.push(redact(JSON.stringify(n))); wake?.(); };
+  const onReload = () => { reloaded = true; wake?.(); };
+  noticeListeners.add(tell); sseClients.add(onReload);
+  const done = () => { off(); noticeListeners.delete(tell); sseClients.delete(onReload); };
+  stream.onAbort(done);
+  while (!stream.aborted && !reloaded) {
     for (const [k, data] of queue) { queue.delete(k); await stream.writeSSE({ event: 'widget', data }); }
     while (notices.length) await stream.writeSSE({ event: 'notice', data: notices.shift()! });
     await Promise.race([new Promise<void>(r => (wake = r)), stream.sleep(25_000)]);
     wake = null;
-    if (!queue.size && !notices.length) await stream.writeSSE({ event: 'ping', data: '' });   // keeps proxies from closing it
+    if (!queue.size && !notices.length && !reloaded) await stream.writeSSE({ event: 'ping', data: '' });   // keeps proxies from closing it
   }
-  off(); noticeListeners.delete(tell);
+  if (reloaded) await stream.writeSSE({ event: 'reload', data: '' });
+  done();
 }));
 
-// Homepage controls: run an integration action, then refresh that integration's widgets right away.
 // Files attached in chat (pasted, dropped or picked): stored for a day so a tool can file them (to Paperless, say).
 // The browser gets back an id it puts in the message; nothing is served back out.
 app.post('/api/files', bodyLimit({ maxSize: 50 * 2 ** 20, onError: c => c.json({ error: 'files are limited to 50 MB' }, 413) }), async c => {
-  if (!acting) return c.json({ error: 'Atrium is read-only: attaching files is off' }, 403);
+  if (!site.acting) return c.json({ error: 'Atrium is read-only: attaching files is off' }, 403);
   // at most 500 MB waiting to be filed at once
   let held = 0;
   for (const f of await readdir(UPLOAD_DIR).catch(() => [] as string[])) held += (await stat(resolve(UPLOAD_DIR, f)).catch(() => ({ size: 0 }))).size;
@@ -198,8 +184,10 @@ app.post('/api/files', bodyLimit({ maxSize: 50 * 2 ** 20, onError: c => c.json({
   return c.json({ id, name, type, size: body.length });
 });
 
+// Homepage controls: run an integration action, then refresh that integration's widgets right away.
 app.post('/api/action/:inst/:action', async c => {
-  if (!acting) return c.json({ error: 'Atrium is read-only: sign-in is off (set auth.mode, or auth.trustNetwork if the network is private)' }, 403);
+  const { instances, hub, redact } = site;
+  if (!site.acting) return c.json({ error: 'Atrium is read-only: sign-in is off (set auth.mode, or auth.trustNetwork if the network is private)' }, 403);
   const { inst, action } = c.req.param();
   const a = instances.get(inst)?.actions?.[action];
   if (!a) return c.json({ error: `no action ${inst}.${action}` }, 404);
@@ -213,7 +201,7 @@ app.post('/api/action/:inst/:action', async c => {
 });
 
 app.get('/api/image/:inst', async c => {
-  const inst = instances.get(c.req.param('inst'));
+  const inst = site.instances.get(c.req.param('inst'));
   const ref = c.req.query('ref');
   if (!inst?.image || !ref) return c.notFound();
   try {
@@ -227,20 +215,19 @@ app.get('/api/image/:inst', async c => {
   } catch { return c.body(null, 502); }
 });
 
-if (config.assistant) {
-  // The AI SDK, providers and MCP client load on the first question, so an unused assistant costs no memory.
-  let handler: ((c: any) => Promise<Response>) | undefined;
-  app.post('/api/chat', async c => {
-    handler ??= (await import('./chat.ts')).chatRoute(config, instances, meta, { acting, redact });
-    return handler(c);
-  });
-}
+// The AI SDK, providers and MCP client load on the first question, so an unused assistant costs no memory.
+let chat: ((c: any) => Promise<Response>) | undefined;
+app.post('/api/chat', async c => {
+  if (!site.config.assistant) return c.json({ error: 'no assistant configured' }, 404);
+  chat ??= (await import('./chat.ts')).chatRoute(site.config, site.instances, site.meta, { acting: site.acting, redact: site.redact });
+  return chat(c);
+});
 
 // Community visuals: the browser half of a plugin, data/integrations/<kind>.web.js, served as a module
 app.get('/plugins/:file', async c => {
   const file = c.req.param('file');
   if (!/^[a-z0-9][a-z0-9-]{0,63}\.web\.js$/.test(file)) return c.notFound();
-  const body = await readFile(resolve(process.env.ATRIUM_DATA ?? 'data', 'integrations', file)).catch(() => null);
+  const body = await readFile(resolve(DATA, 'integrations', file)).catch(() => null);
   return body ? c.body(body, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }) : c.notFound();
 });
 
@@ -251,4 +238,4 @@ app.use('/*', serveStatic({ root: './dist/web', onFound: (path, c) => { c.header
 app.get('*', serveStatic({ path: './dist/web/index.html', onFound: (_, c) => { c.header('Cache-Control', 'no-cache'); } }));
 
 serve({ fetch: app.fetch, port: PORT, hostname: HOST }, i =>
-  console.log(`atrium on http://${HOST}:${i.port} · ${instances.size} integrations · ${placed.size} widgets`));
+  console.log(`atrium on http://${HOST}:${i.port} · ${site.instances.size} integrations · ${site.placed.size} widgets${site.problems.length ? ` · ${site.problems.length} config problems (node dist/server.js config check)` : ''}`));

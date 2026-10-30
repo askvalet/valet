@@ -5,3 +5,4 @@ config.yaml
 data
 docker-compose.yml
 .test
+config/

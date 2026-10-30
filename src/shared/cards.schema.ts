@@ -23,7 +23,7 @@ const base = {
 };
 const StatItem = z.object({ label: z.string(), value: z.union([z.string(), z.number()]), unit: z.string().optional(), sub: z.string().optional(),
   tone: Tone.optional(), pct: z.number().optional(), trend: nums.optional() }).strict();
-const ListItem = z.object({ title: z.string(), subtitle: z.string().optional(), meta: z.string().optional(), pct: unit.optional(), tone: Tone.optional(),
+const ListItem = z.object({ title: z.string(), href: z.string().optional(), subtitle: z.string().optional(), meta: z.string().optional(), pct: unit.optional(), tone: Tone.optional(),
   image: z.string().optional(), badge: z.string().optional() }).strict();
 const MediaItem = z.object({ title: z.string(), subtitle: z.string().optional(), image: z.string().optional(), backdrop: z.string().optional(), pct: unit.optional(),
   state: z.enum(['playing', 'paused', 'buffering']).optional(), user: z.string().optional(), device: z.string().optional(), detail: z.string().optional(),
@@ -41,6 +41,7 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
   z.object({ ...base, type: z.literal('media'), items: z.array(MediaItem), empty: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('shelf'), items: z.array(ShelfItem), aspect: z.enum(['poster', 'square', 'wide']).optional(), empty: z.string().optional(), stack: z.boolean().optional() }).strict(),
   z.object({ ...base, type: z.literal('status'), items: z.array(StatusItem) }).strict(),
+  z.object({ ...base, type: z.literal('links'), items: z.array(z.object({ name: z.string(), href: z.string(), icon: z.string().optional(), note: z.string().optional() }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('chart'), unit: z.string().optional(), max: z.number().optional(), span: z.string().optional(),
     series: z.array(z.object({ name: z.string(), points: nums, tone: Tone.optional() }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('controls'), items: z.array(Control) }).strict(),

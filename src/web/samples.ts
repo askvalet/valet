@@ -28,6 +28,9 @@ export const SAMPLES: { name: string; card: Card }[] = [
   { name: 'status', card: { type: 'status', title: 'Services', icon: 'pulse', items: [
     { name: 'Plex', ok: true, ms: 8, group: 'Media' }, { name: 'Radarr', ok: true, ms: 12, group: 'Media' }, { name: 'Broken', ok: false, detail: 'timed out', group: 'Home' },
     { name: 'Asleep', ok: false, quiet: true, group: 'Home' }, { name: 'A service with a long name', ok: true, ms: 1200, group: 'Network' }] } },
+  { name: 'links', card: { type: 'links', title: 'Reading', icon: 'bookmark', items: [
+    { name: 'Hacker News', href: 'https://news.ycombinator.com', note: 'news' }, { name: 'Lobsters', href: 'https://lobste.rs' }, { name: 'A bookmark with a long name that truncates', href: 'https://example.com', note: 'and a note' }] } },
+  { name: 'list · links', card: { type: 'list', title: 'Feed', icon: 'rss', items: [{ title: 'An article worth reading', subtitle: 'The Verge', meta: '2h', href: 'https://example.com' }, { title: 'Another one', subtitle: 'Ars', meta: '5h', href: 'https://example.com' }] } },
   { name: 'chart', card: { type: 'chart', title: 'GPU', unit: 'W', span: 'last hour', series: [{ name: 'power', points: wave(60) }, { name: 'idle', points: wave(60, 2), tone: 'accent' }] } },
   { name: 'controls', card: { type: 'controls', title: 'Lights', icon: 'bulb', items: [
     { id: 'a', label: 'Office', kind: 'toggle', value: true, color: '#ffb46b', sub: '80%', action: 'set' }, { id: 'b', label: 'Scene', kind: 'button', value: 'Run', action: 'press' },

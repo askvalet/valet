@@ -18,6 +18,7 @@ interface Page {
   title: string; greeting?: string; location?: string; canAct?: boolean;
   appearance: { wallpaper?: string; dim: number; blur: number };
   assistant: { name: string; model: string; suggestions: string[]; tools: Record<string, ToolInfo> } | null;
+  search?: string;
   menubar?: string[];
   nav?: { side: 'left' | 'right' | 'top' | 'bottom' };
   island?: { activities: string[]; idle: 'notch' | 'hide' };
@@ -30,6 +31,7 @@ function useLive() {
   const [state, setState] = useState<Record<string, WidgetState>>({});
   const [online, setOnline] = useState(true);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [generation, setGeneration] = useState(0);   // bumps when the server's config was reloaded
   useEffect(() => {
     const es = new EventSource('/api/events');
     es.addEventListener('notice', e => setNotice({ ...JSON.parse((e as MessageEvent).data), n: Date.now() }));
@@ -37,11 +39,13 @@ function useLive() {
       const s = JSON.parse((e as MessageEvent).data) as WidgetState;
       setState(prev => ({ ...prev, [s.key]: s }));
     });
+    // the config changed: drop what we know and come back for the new layout (the stream ends; this effect reruns)
+    es.addEventListener('reload', () => { es.close(); setState({}); setGeneration(g => g + 1); });
     es.onopen = () => setOnline(true);
     es.onerror = () => setOnline(false);
     return () => es.close();
-  }, []);
-  return { state, online, notice };
+  }, [generation]);
+  return { state, online, notice, generation };
 }
 
 function useClock() {
@@ -119,7 +123,7 @@ export function App() {
 
 function Home() {
   const [page, setPage] = useState<Page | null>(null);
-  const { state, notice } = useLive();
+  const { state, notice, generation } = useLive();
   const now = useClock();
   const theme = useTheme();
   const [view, setView] = useState<string>('all');   // 'all' (the overview) or a tab's name
@@ -130,7 +134,7 @@ function Home() {
   const bar = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState('');
 
-  useEffect(() => { fetch('/api/page').then(r => r.json()).then(setPage); }, []);
+  useEffect(() => { fetch('/api/page').then(r => r.json()).then(setPage); }, [generation]);
   useEffect(() => { if (page) document.title = page.title; }, [page]);
   // A wallpaper means glass over a photo: always the dark material, so text stays legible on any image.
   const wall = page?.appearance?.wallpaper;
@@ -365,7 +369,7 @@ function Home() {
 
       {page?.assistant && (
         palette && <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant.name} ask={ask} actions={actions}
-          runAction={runAction} services={services} SUGGESTIONS={page.assistant.suggestions} setView={setView} nav={nav} sectionIcon={sectionIcon} /></Suspense>
+          runAction={runAction} services={services} SUGGESTIONS={page.assistant.suggestions} setView={setView} nav={nav} sectionIcon={sectionIcon} search={page.search} /></Suspense>
       )}
 
       {page?.assistant && (

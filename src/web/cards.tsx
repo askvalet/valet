@@ -1,6 +1,6 @@
 // Renders any card from the shared catalog with shadcn/ui primitives. The homepage and the assistant both use this,
 // so a generated card looks exactly like the widget it came from.
-import {
+import { Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
   Activity, ArrowUpRight, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
   type LucideIcon,
 } from 'lucide-react';
@@ -12,13 +12,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import type { Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
+import type { LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
 // Icon names cards may use (docs/integrations.md lists them; keep the two in step). Anything else: a URL or a path.
 const ICONS: Record<string, LucideIcon> = {
   cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
   bulb: Lightbulb, home: House, shield: Shield, chat: MessageCircle, image: ImageIcon, clock: Clock, crescent: MoonIcon, game: Gamepad2, book: BookOpen, coins: Coins, text: Type,
-  file: FileText, bookmark: Bookmark, sun: Sun, moon: Moon, cloud: Cloud, 'cloud-sun': CloudSun, 'cloud-moon': CloudMoon, rain: CloudRain, snow: CloudSnow, fog: CloudFog, storm: CloudLightning,
+  file: FileText, bookmark: Bookmark, rss: Rss, news: Newspaper, reddit: MessagesSquare, tag: Tag, chart: TrendingUp, calendar: Calendar, sun: Sun, moon: Moon, cloud: Cloud, 'cloud-sun': CloudSun, 'cloud-moon': CloudMoon, rain: CloudRain, snow: CloudSnow, fog: CloudFog, storm: CloudLightning,
 };
 export function Icon({ name, className }: { name?: string; className?: string }) {
   if (!name) return null;
@@ -99,7 +99,8 @@ function List({ card }: { card: ListCard }) {
   return (
     <ul className="-my-1 divide-y">
       {card.items.map((it, i) => (
-        <li key={i} className={cn('flex min-w-0 items-center gap-3', dense ? 'py-1.5' : 'py-2.5')}>
+        <li key={i} className={cn('flex min-w-0 items-center gap-3', dense ? 'py-1.5' : 'py-2.5', it.href && '-mx-2 rounded-lg px-2 transition-colors hover:bg-accent')}
+          onClick={it.href ? () => window.open(it.href, '_blank', 'noopener') : undefined} role={it.href ? 'link' : undefined}>
           {it.image && <img src={it.image} alt="" loading="lazy" className={cn('shrink-0 rounded-md bg-muted object-cover', dense ? 'h-9 w-6' : 'h-12 w-8')} />}
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-3">
@@ -170,6 +171,22 @@ function Status({ card, columns, minimal }: { card: StatusCard; columns?: number
           {groups.some(Boolean) && <div className={cn('break-after-avoid px-2 font-medium text-muted-foreground', minimal ? 'pt-1 pb-0.5 text-[11px]' : 'pt-1 pb-1.5 text-xs')}>{b.label || '\u00a0'}</div>}
           {b.items.map(s => <ServiceRow key={s.name} s={s} minimal={minimal} />)}
         </div>
+      ))}
+    </div>
+  );
+}
+
+/** Bookmarks: icon, name, a quiet note; in two columns when there's room. */
+function Links({ card }: { card: LinksCard }) {
+  const dense = useContext(Dense);
+  return (
+    <div className="-mx-2 grid gap-0.5" style={{ gridTemplateColumns: dense ? undefined : 'repeat(auto-fill, minmax(180px, 1fr))' }}>
+      {card.items.map(l => (
+        <a key={l.href + l.name} href={l.href} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-2.5 rounded-lg px-2 py-[6px] transition-colors hover:bg-accent">
+          <AppIcon src={l.icon} name={l.name} small />
+          <span className="min-w-0 flex-1 truncate text-[13px]">{l.name}</span>
+          {l.note && <span className="shrink-0 truncate text-[11px] text-muted-foreground">{l.note}</span>}
+        </a>
       ))}
     </div>
   );
@@ -578,6 +595,7 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
     case 'stats': return <Stats card={card} />;
     case 'list': return <List card={card} />;
     case 'status': return <Status card={card} columns={columns} minimal={minimal} />;
+    case 'links': return <Links card={card} />;
     case 'media': return <Media card={card} />;
     case 'shelf': return <Shelf card={card} />;
     case 'chart': return <Chart card={card} />;

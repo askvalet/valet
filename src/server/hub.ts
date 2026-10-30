@@ -22,9 +22,13 @@ export class Hub {
   /** Sample every widget every `ms` even with nobody watching, so history has no gaps. */
   sampleInBackground(ms: number) {
     for (const [inst, i] of this.instances) for (const name of Object.keys(i.widgets)) {
-      setInterval(() => { if (!this.listeners.size) this.refresh(`${inst}.${name}`); }, ms).unref();
+      this.background.push(setInterval(() => { if (!this.listeners.size) this.refresh(`${inst}.${name}`); }, ms).unref());
     }
   }
+  private background: NodeJS.Timeout[] = [];
+
+  /** Stop every timer and forget every listener (the config was reloaded; a new hub takes over). */
+  dispose() { this.stop(); for (const t of this.background) clearInterval(t); this.background = []; this.listeners.clear(); }
 
   widget(key: string) {
     const [inst, name] = key.split('.');

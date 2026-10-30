@@ -1,5 +1,5 @@
-// config.yaml: one file, readable top to bottom. `${NAME}` anywhere is replaced from the environment, so secrets
-// can live in .env / docker secrets instead of the file. Unknown keys are errors, with the path in the message.
+// config.yaml: one file, readable top to bottom. `${NAME}` anywhere is replaced from the environment (or a file,
+// for Docker secrets: see `substitute`), so secrets never sit in the file. Unknown keys are errors, with the path.
 import { readFileSync } from 'node:fs';
 import { parse } from 'yaml';
 import { z } from 'zod';
@@ -21,11 +21,20 @@ export const AssistantConfig = z.object({
   suggestions: z.array(z.string()).default(['Is anything down?', 'How are my downloads doing?', "What's playing on Plex?", 'Show me the GPU and Plex side by side']),
 }).strict();
 
+/** a duration: seconds as a number, or "30s" / "5m" / "2h" / "1d"; comes out in milliseconds */
+export const Every = z.union([z.number().positive(), z.string().regex(/^\d+(\.\d+)?\s*[smhd]?$/, 'a duration like 30s, 5m or 1h')])
+  .transform(v => {
+    if (typeof v === 'number') return v * 1000;
+    const n = Number.parseFloat(v), unit = v.trim().slice(-1) as 's' | 'm' | 'h' | 'd';
+    return n * ({ s: 1e3, m: 6e4, h: 36e5, d: 864e5 }[unit] ?? 1e3);
+  });
+
 const Section = z.object({
   title: z.string().optional(),
   // "instance.widget", or { widget, size } to pick a size: small (its headline as a tile), medium (the card),
   // large (the card across two columns, with room for more)
-  widgets: z.array(z.union([z.string(), z.object({ widget: z.string(), size: z.enum(['small', 'medium', 'large']).default('medium') })]))
+  // `every` overrides how often it refreshes while someone's looking: seconds, or "30s", "5m", "1h"
+  widgets: z.array(z.union([z.string(), z.object({ widget: z.string(), size: z.enum(['small', 'medium', 'large']).default('medium'), every: Every.optional() })]))
     .transform(ws => ws.map(w => typeof w === 'string' ? { widget: w, size: 'medium' as const } : w)),
   columns: z.number().int().min(1).max(4).optional(),
   // tiles: headline tiles with live graphs · rings: the same as ring gauges coloured by health · cards: full cards
@@ -110,16 +119,33 @@ export const Config = z.object({
     notify: z.array(z.object({ widget: z.string(), on: z.enum(['start', 'end', 'down', 'up']), text: z.string().optional() })).default([]),
   }).optional(),
   weather: z.string().optional(),               // a widget key (e.g. weather.now) shown as a ring beside the clock
+  // web search from ⌘K: a provider name, or a URL with {q} for the words
+  search: z.union([z.enum(['duckduckgo', 'google', 'kagi', 'brave', 'startpage', 'searxng']), z.string().url()]).optional(),
+  // links on the page, grouped: `links.<group>` is a widget key, e.g. links: { Media: [{ name: Plex, url: https://… }] }
+  links: z.record(z.string(), z.array(z.object({ name: z.string(), url: z.string().url(), icon: z.string().optional(), note: z.string().optional() }))).default({}),
+  reload: z.boolean().default(true),            // watch config.yaml and apply edits live (a bad edit keeps the last good one)
 }).strict();
 export type Config = z.infer<typeof Config>;
 
-/** every value a ${VAR} was replaced with: Atrium redacts these from anything it sends out */
+/** every value a ${…} was replaced with: Atrium redacts these from anything it sends out */
 export const usedSecrets: string[] = [];
-function substitute(v: unknown): unknown {
-  if (typeof v === 'string') return v.replace(/\$\{([A-Z0-9_]+)\}/g, (_, k) => {
-    if (process.env[k] === undefined) throw new Error(`config: environment variable ${k} is not set`);
-    usedSecrets.push(process.env[k]!);
-    return process.env[k]!;
+const readSecret = (path: string, what: string) => {
+  try { return readFileSync(path, 'utf8').trim(); }
+  catch { throw new Error(`config: ${what}: can't read ${path}`); }
+};
+/** `${NAME}` from the environment (or the file `NAME_FILE` points at, the Docker convention); `${secret:name}` from
+ *  /run/secrets/name; `${file:/path}` from any file. `\${…}` is left alone. */
+export function substitute(v: unknown): unknown {
+  if (typeof v === 'string') return v.replace(/(\\?)\$\{(?:(secret|file):([^}]+)|([A-Z0-9_]+))\}/g, (m, esc, kind, arg, name) => {
+    if (esc) return m.slice(1);
+    let value: string;
+    if (kind === 'secret') value = readSecret(`/run/secrets/${arg.trim()}`, m);
+    else if (kind === 'file') value = readSecret(arg.trim(), m);
+    else if (process.env[name] !== undefined) value = process.env[name]!;
+    else if (process.env[`${name}_FILE`]) value = readSecret(process.env[`${name}_FILE`]!, m);
+    else throw new Error(`config: environment variable ${name} is not set (nor ${name}_FILE)`);
+    usedSecrets.push(value);
+    return value;
   });
   if (Array.isArray(v)) return v.map(substitute);
   if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, substitute(x)]));

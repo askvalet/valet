@@ -10,7 +10,7 @@ import { MiniRing, SummaryTile, Widget } from '../src/web/cards.tsx';
 import Island from '../src/web/island.tsx';
 import { SAMPLES } from '../src/web/samples.ts';
 
-const TYPES = ['stats', 'list', 'media', 'shelf', 'status', 'chart', 'controls', 'showcase', 'forecast', 'photos', 'schedule', 'verse', 'kv', 'text', 'group'];
+const TYPES = ['stats', 'list', 'media', 'shelf', 'status', 'links', 'chart', 'controls', 'showcase', 'forecast', 'photos', 'schedule', 'verse', 'kv', 'text', 'group'];
 
 test('every card type has a sample', () => {
   const have = new Set(SAMPLES.map(s => s.card.type));
