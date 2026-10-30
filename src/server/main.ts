@@ -86,7 +86,7 @@ app.get('/api/page', c => c.json({
   nav: config.nav,
   island: config.island && { ...config.island, activities: config.island.activities.filter(k => hub.widget(k)) },
   weather: config.weather && hub.widget(config.weather) ? config.weather : undefined,
-  sections: config.layout.map(s => ({ title: s.title, columns: s.columns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, tab: s.tab, chat: s.chat, widgets: s.widgets.filter(k => hub.widget(k)) })),
+  sections: config.layout.map(s => ({ title: s.title, columns: s.columns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat, widgets: s.widgets.filter(k => hub.widget(k)) })),
   widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
 }));
 

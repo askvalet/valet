@@ -180,7 +180,7 @@ function Art({ src, className, alt = '' }: { src?: string; className?: string; a
 export function NowPlaying({ m, compact }: { m: MediaItem; compact?: boolean }) {
   return (
     <div className={cn('@container/np relative isolate w-full overflow-hidden rounded-2xl bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/0.55)]',
-      compact ? 'aspect-[16/9] min-h-[190px]' : 'aspect-[16/9] max-h-[260px] min-h-[200px] @3xl/main:aspect-[3/1]')}>
+      compact ? 'aspect-[16/9] min-h-[170px]' : 'aspect-[16/9] max-h-[210px] min-h-[170px] @3xl/main:aspect-[3.6/1]')}>
       {m.backdrop
         ? <Art src={m.backdrop} className="absolute inset-0 -z-10 size-full object-cover" />
         : <Art src={m.image} className="absolute inset-0 -z-10 size-full scale-125 object-cover blur-2xl saturate-150" />}

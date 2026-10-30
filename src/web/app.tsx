@@ -20,7 +20,7 @@ interface Page {
   nav?: { side: 'left' | 'right' | 'top' | 'bottom' };
   island?: { activities: string[]; idle: 'notch' | 'hide' };
   weather?: string;
-  sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; tab?: string; chat?: boolean; widgets: string[] }[];
+  sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
 }
 
@@ -99,7 +99,7 @@ function useWide(query = '(min-width: 1280px)') {
 
 export function App() {
   const [page, setPage] = useState<Page | null>(null);
-  const { state, online } = useLive();
+  const { state } = useLive();
   const now = useClock();
   const theme = useTheme();
   const [view, setView] = useState<string>('all');   // 'all' (the overview) or a tab's name
@@ -157,7 +157,7 @@ export function App() {
   const hero = view === 'all' && (
           <header className="wall-text mx-auto w-full max-w-[680px] pt-8 text-center xl:pt-10">
             <div className="text-[22px] font-semibold tracking-tight">{greet(now.getHours())}{page?.greeting ? `, ${page.greeting}` : ''}</div>
-            {(p.text || !online) && <div className={cn('mt-0.5 text-[13px]', online ? p.tone : 'text-muted-foreground')}>{online ? p.text : 'Reconnecting…'}</div>}
+            {p.text && <div className={cn('mt-0.5 text-[13px]', p.tone)}>{p.text}</div>}
             {page?.assistant && (
               <form className="glass-round mt-5 flex items-center gap-2 rounded-[22px] py-1.5 pr-1.5 pl-4 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
@@ -184,7 +184,7 @@ export function App() {
 
   const renderSection = (sec: (typeof sections)[number], aside = sec.place === 'left' || sec.place === 'right') => (
           <section key={sec.i} className="space-y-3">
-            {sec.title && (sec.display === 'cards' || sec.display === 'media') && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title) && <h2 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h2>}
+            {sec.title && sec.heading !== false && (sec.display === 'cards' || sec.display === 'media') && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title) && <h2 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h2>}
             {sec.display === 'media'
               ? (
                 <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${sec.columns ? Math.floor(1200 / sec.columns) - 40 : 420}px), 1fr))` }}>
@@ -287,7 +287,7 @@ export function App() {
         {!wall && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={theme.toggle}>{theme.dark ? <Sun /> : <Moon />}</RoundButton>}
       </div>
 
-      <main className={cn('@container/main mx-auto flex flex-col gap-8 px-4 pt-6 pb-28 xl:pt-20', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-40 xl:pt-40' }[navSide], page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[1720px]' : 'max-w-[1320px]')}>
+      <main className={cn('@container/main mx-auto flex flex-col gap-8 px-4 pt-6 pb-28 xl:pt-20', view !== 'all' && 'pt-10 xl:pt-32', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-40 xl:pt-40' }[navSide], page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[1720px]' : 'max-w-[1320px]')}>
         {!hasSide && hero}
 
         {(() => {
