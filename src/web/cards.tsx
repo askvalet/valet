@@ -4,7 +4,7 @@ import {
   Activity, ArrowUpRight, Bookmark, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
   type LucideIcon,
 } from 'lucide-react';
-import { Fragment, lazy, Suspense, useRef, useState, type ReactNode } from 'react';
+import { createContext, Fragment, lazy, Suspense, useContext, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -31,6 +31,9 @@ const toneText: Record<Tone, string> = { neutral: '', good: 'text-good', warn: '
 const toneBar: Record<Tone, string> = { neutral: '', good: '[&>div]:bg-good', warn: '[&>div]:bg-warn', bad: '[&>div]:bg-bad', accent: '' };
 const toneVar = (t?: Tone) => (t && t !== 'neutral' && t !== 'accent' ? `var(--${t})` : 'var(--primary)');
 
+// Cards in chat are dense: same content, about half the height (smaller numbers, tighter rows, a smaller header)
+const Dense = createContext(false);
+
 function Spark({ points, tone }: { points: number[]; tone?: Tone }) {
   if (points.length < 2) return <div className="h-12" />;
   const w = 100, h = 32, max = Math.max(...points, 1), min = Math.min(...points, 0);
@@ -52,28 +55,29 @@ const Bar = ({ pct, tone }: { pct: number; tone?: Tone }) =>
 /** One point per card: the first item is the hero (large number, its label, one sparkline); the rest become a quiet
  *  footer of at most three small facts, divided by hairlines. */
 function Stats({ card }: { card: StatsCard }) {
+  const dense = useContext(Dense);
   const [hero, ...rest] = card.items;
   if (!hero) return null;
   const facts = rest.slice(0, 3);
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-end gap-5">
+    <div className={cn('flex flex-col', dense ? 'gap-2.5' : 'gap-4')}>
+      <div className={cn('flex items-end', dense ? 'gap-4' : 'gap-5')}>
         <div className="min-w-0 shrink-0">
-          <div className={cn('metric text-[44px] leading-[0.95]', toneText[hero.tone ?? 'neutral'])}>
-            {hero.value}{hero.unit && <span className="ml-1 text-[18px] font-medium tracking-normal text-muted-foreground">{hero.unit}</span>}
+          <div className={cn('metric leading-[0.95]', dense ? 'text-[26px]' : 'text-[44px]', toneText[hero.tone ?? 'neutral'])}>
+            {hero.value}{hero.unit && <span className={cn('ml-1 font-medium tracking-normal text-muted-foreground', dense ? 'text-[13px]' : 'text-[18px]')}>{hero.unit}</span>}
           </div>
-          <div className="mt-1.5 truncate text-[13px] text-muted-foreground">{[hero.label, hero.sub].filter(Boolean).join(' · ')}</div>
+          <div className={cn('truncate text-muted-foreground', dense ? 'mt-1 text-[12px]' : 'mt-1.5 text-[13px]')}>{[hero.label, hero.sub].filter(Boolean).join(' · ')}</div>
         </div>
-        <div className="min-w-0 flex-1 pb-1">
+        <div className={cn('min-w-0 flex-1 pb-1', dense && 'max-h-9 overflow-hidden')}>
           {hero.trend ? <Spark points={hero.trend} tone={hero.tone} /> : hero.pct != null ? <Bar pct={hero.pct} tone={hero.tone} /> : null}
         </div>
       </div>
       {facts.length > 0 && (
-        <div className="grid divide-x border-t pt-3.5" style={{ gridTemplateColumns: `repeat(${facts.length}, minmax(0, 1fr))` }}>
+        <div className={cn('grid divide-x border-t', dense ? 'pt-2.5' : 'pt-3.5')} style={{ gridTemplateColumns: `repeat(${facts.length}, minmax(0, 1fr))` }}>
           {facts.map(f => (
             <div key={f.label} className="min-w-0 px-3 first:pl-0 last:pr-0">
-              <div className="truncate text-[11.5px] text-muted-foreground">{f.label}</div>
-              <div className={cn('metric truncate text-[17px]', toneText[f.tone ?? 'neutral'])}>
+              <div className={cn('truncate text-muted-foreground', dense ? 'text-[11px]' : 'text-[11.5px]')}>{f.label}</div>
+              <div className={cn('metric truncate', dense ? 'text-[14px]' : 'text-[17px]', toneText[f.tone ?? 'neutral'])}>
                 {f.value}{f.unit && <span className="ml-0.5 text-[12px] font-medium text-muted-foreground">{f.unit}</span>}
               </div>
             </div>
@@ -87,19 +91,20 @@ function Stats({ card }: { card: StatsCard }) {
 const Empty = ({ text }: { text: string }) => <p className="py-6 text-center text-sm text-muted-foreground">{text}</p>;
 
 function List({ card }: { card: ListCard }) {
+  const dense = useContext(Dense);
   if (!card.items.length) return <Empty text={card.empty ?? 'Nothing here'} />;
   return (
     <ul className="-my-1 divide-y">
       {card.items.map((it, i) => (
-        <li key={i} className="flex min-w-0 items-center gap-3 py-2.5">
-          {it.image && <img src={it.image} alt="" loading="lazy" className="h-12 w-8 shrink-0 rounded-md bg-muted object-cover" />}
+        <li key={i} className={cn('flex min-w-0 items-center gap-3', dense ? 'py-1.5' : 'py-2.5')}>
+          {it.image && <img src={it.image} alt="" loading="lazy" className={cn('shrink-0 rounded-md bg-muted object-cover', dense ? 'h-9 w-6' : 'h-12 w-8')} />}
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-3">
-              <div className="min-w-0 flex-1 truncate text-sm font-medium">{it.title}</div>
+              <div className={cn('min-w-0 flex-1 truncate font-medium', dense ? 'text-[13px]' : 'text-sm')}>{it.title}</div>
               {it.meta && <div className="shrink-0 text-xs tabular text-muted-foreground">{it.meta}</div>}
             </div>
             {it.subtitle && <div className={cn('truncate text-xs', it.tone && it.tone !== 'neutral' ? toneText[it.tone] : 'text-muted-foreground')}>{it.subtitle}</div>}
-            {it.pct != null && <div className="mt-2"><Bar pct={it.pct} tone={it.tone} /></div>}
+            {it.pct != null && <div className={dense ? 'mt-1' : 'mt-2'}><Bar pct={it.pct} tone={it.tone} /></div>}
           </div>
         </li>
       ))}
@@ -429,11 +434,12 @@ export function Widget({ card, run, title, status, compact, columns, minimal, he
   const t = card?.title ?? title;
   const bare = card?.type === 'group';
   return (
-    <Card className={cn('@container/card min-w-0 gap-4 shadow-card', compact ? 'py-4 shadow-none' : 'py-5', bare && 'border-0 bg-transparent py-0 shadow-none')}>
+    <Dense.Provider value={!!compact}>
+    <Card className={cn('@container/card min-w-0 shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'gap-4 py-5', bare && 'border-0 bg-transparent py-0 shadow-none')}>
       {t && !bare && !headless && (
-        <CardHeader className={cn('flex items-center gap-2', compact ? 'px-4' : 'px-5')}>
-          {card?.icon && <span className="icon-tile"><Icon name={card.icon} /></span>}
-          <CardTitle className="truncate text-[15px]">{t}</CardTitle>
+        <CardHeader className={cn('flex items-center gap-2', compact ? 'px-3.5' : 'px-5')}>
+          {card?.icon && (compact ? <Icon name={card.icon} className="size-3.5 text-muted-foreground" /> : <span className="icon-tile"><Icon name={card.icon} /></span>)}
+          <CardTitle className={cn('truncate', compact ? 'text-[13px]' : 'text-[15px]')}>{t}</CardTitle>
           {status}
           <CardAction className="flex items-center gap-2 self-center">
             {card?.note && <span className="truncate text-xs tabular text-muted-foreground">{card.note}</span>}
@@ -445,10 +451,11 @@ export function Widget({ card, run, title, status, compact, columns, minimal, he
           </CardAction>
         </CardHeader>
       )}
-      <CardContent className={cn(bare ? 'p-0' : compact ? 'px-4' : 'px-5')}>
+      <CardContent className={cn(bare ? 'p-0' : compact ? 'px-3.5' : 'px-5')}>
         {card ? <CardBody card={card} run={run} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /> : <div className="space-y-3"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-4 w-3/5" /></div>}
       </CardContent>
     </Card>
+    </Dense.Provider>
   );
 }
 
