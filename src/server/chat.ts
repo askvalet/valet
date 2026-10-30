@@ -6,6 +6,7 @@ import {
   convertToModelMessages, createUIMessageStreamResponse, isStepCount, streamText, tool, toUIMessageStream,
   type ToolSet, type UIMessage,
 } from 'ai';
+import { splitThink } from '../shared/think.ts';
 import type { Context as HonoContext } from 'hono';
 import { z } from 'zod';
 import type { Config } from './config.ts';
@@ -77,7 +78,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
 
   const system = (extra: string[]) => [
     `You are ${a.name}, the assistant built into ${config.title}, a homepage for a self-hosted homelab${config.greeting ? ` run by ${config.greeting}` : ''}.`,
-    `Now: ${new Date().toString()}.${config.location ? ` Location: ${config.location}.` : ''}`,
+    `Now: ${new Date().toString()}.${config.location ? ` Location: ${config.location}.` : ''} Every time in tool results is already in this time zone; "today" and "yesterday" mean this zone's calendar days.`,
     'You answer questions about the homelab by calling tools. Never guess a status, number or name: call the tool.',
     'Tool results are shown to the person as rich cards, so do not repeat what the card shows. Reply in one or two',
     'short sentences that interpret it: what matters, what is wrong, what to do. Use plain language.',
@@ -95,7 +96,8 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     const lastUser = [...all_].reverse().find(m => m.role === 'user');
     said = (lastUser?.parts ?? []).map((p: any) => p.type === 'text' ? p.text : '').join('\n');
     // the model gets the last 24 messages: enough context for a conversation, bounded cost for a long one
-    const messages = all_.slice(-24);
+    // and without any reasoning that leaked into earlier replies
+    const messages = all_.slice(-24).map(m => m.role !== 'assistant' ? m : { ...m, parts: m.parts.map((p: any) => p.type === 'text' ? { ...p, text: splitThink(p.text).said } : p) });
     const m = await mcp();
     // MCP results pass through the redactor too (their headers can hold keys)
     const mcp_ = Object.fromEntries(Object.entries(m.tools).map(([k, t]: [string, any]) => [k, { ...t, execute: async (...args: any[]) => JSON.parse(safety.redact(JSON.stringify(await t.execute(...args) ?? null))) }]));

@@ -180,6 +180,7 @@ test('security: secrets are redacted, and Atrium is read-only without sign-in un
   assert.equal(r('GET http://x/?apikey=s3cr3t-key-123 failed'), 'GET http://x/?apikey=••• failed');
   assert.equal(r('pw another.secret+value!'), 'pw •••!');           // regex characters are escaped
   assert.equal(r('pass pw12'), 'pass •••');                          // short passwords too
+  assert.equal(r('xpw12y'), 'xpw12y');                               // but only as whole words
   assert.equal(r('abc stays'), 'abc stays');                         // too short to tell from words
   const cfg = (auth: object) => Config.parse({ auth });
   assert.equal(canAct(cfg({})), false);
@@ -239,4 +240,34 @@ test('home assistant: buttons only do what cards offer, never an arbitrary servi
   await assert.rejects(ha.actions!.choose.run({ entity_id: 'sensor.t', value: 'x' }));
   await ha.actions!.press.run({ entity_id: 'vacuum.robot', service: 'start' });
   assert.ok(calls.some(u => u.endsWith('/api/services/vacuum/start')));
+});
+
+test('custom api: paths, formats, templates, thresholds, and each way of showing it', async () => {
+  const { default: api, pick, fill } = await import('../src/integrations/api.ts');
+  assert.equal(pick({ a: { b: [{ c: 1 }] } }, 'a.b[0].c'), 1);
+  assert.equal(pick({ a: 1 }, 'constructor'), undefined);                   // only the data's own properties
+  assert.equal(fill('size|bytes', { size: 2048 }), '2.0 KB');
+  assert.equal(fill('ratio|pct', { ratio: .42 }), '42%');
+  assert.equal(fill('{used|bytes} of {total|bytes}', { used: 1024, total: 2048 }), '1.0 KB of 2.0 KB');
+  assert.equal(fill('n|divide:1000|round:1', { n: 1234 }), 1.2);
+  assert.throws(() => fill('n|nope', { n: 1 }), /unknown format "nope"/);
+
+  const body = { cpu: 95, free: 5, name: 'box', items: [{ n: 'a', up: 'healthy', s: 1 }, { n: 'b', up: 'down', s: 2 }] };
+  const ctx = fake(() => body);
+  const stats = make(api, { url: 'http://x/', title: 'Box', stats: [{ label: 'CPU', value: 'cpu', unit: '%', max: 100, warn: 70, bad: 90 }, { label: 'Free', value: 'free', warn: 20, bad: 10 }, { label: 'Name', value: 'name' }] }, ctx);
+  const s: any = await stats.widgets.data.fetch(); valid(s);
+  assert.deepEqual(s.items.map((i: any) => [i.value, i.tone, i.pct]), [[95, 'bad', .95], [5, 'bad', undefined], ['box', undefined, undefined]]);
+  assert.equal(s.summaries[0].value, '95%');
+
+  const list: any = await make(api, { url: 'http://x/', list: { items: 'items', title: 'n', subtitle: 'status {up}' } }, ctx).widgets.data.fetch(); valid(list);
+  assert.deepEqual(list.items.map((i: any) => i.subtitle), ['status healthy', 'status down']);
+  const status: any = await make(api, { url: 'http://x/', status: { items: 'items', name: 'n', ok: 'up' } }, ctx).widgets.data.fetch(); valid(status);
+  assert.deepEqual([status.items.map((i: any) => i.ok), status.summary.value], [[true, false], '1 down']);
+  const rows = make(api, { url: 'http://x/', rows: { Name: 'name', CPU: '{cpu}%' } }, ctx);
+  const kv: any = await rows.widgets.data.fetch(); valid(kv);
+  assert.deepEqual(kv.rows, [['Name', 'box'], ['CPU', '95%']]);
+  assert.deepEqual((await rows.tools!.read.run({})).data, { Name: 'box', CPU: '95%' });
+
+  assert.throws(() => make(api, { url: 'http://x/' }, ctx), /exactly one of/);
+  await assert.rejects(make(api, { url: 'http://x/', list: { items: 'name', title: 'n' } }, ctx).widgets.data.fetch(), /isn't a list/);
 });

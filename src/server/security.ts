@@ -10,7 +10,8 @@ export const canAct = (config: Config) => config.auth.mode !== 'none' || config.
 export function redactor(secrets: string[]) {
   const list = [...new Set(secrets.filter(s => s && s.length >= 4))].sort((a, b) => b.length - a.length);
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = list.length ? new RegExp(list.map(esc).join('|'), 'g') : null;
+  // short values only as whole words: a four-letter password shouldn't punch holes in ordinary text
+  const re = list.length ? new RegExp(list.map(s => s.length < 8 ? `(?<![\\w])${esc(s)}(?![\\w])` : esc(s)).join('|'), 'g') : null;
   return (text: string) => (re ? text.replace(re, '•••') : text);
 }
 

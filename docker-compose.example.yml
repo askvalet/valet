@@ -4,6 +4,7 @@ services:
     image: ghcr.io/OWNER/atrium:latest
     container_name: atrium
     restart: unless-stopped
+    environment: { TZ: America/Toronto }   # your time zone, for times the server writes
     env_file: .env                    # secrets referenced as ${NAME} in config.yaml
     volumes:
       - ./config:/config:ro              # a folder, not the file: edits to config.yaml then show up live

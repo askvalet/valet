@@ -15,7 +15,7 @@
     "check": "tsc --noEmit && tsc --noEmit -p tsconfig.web.json",
     "export:pc-model": "esbuild src/web/visuals/pc-model.ts --bundle --format=esm --minify --outdir=${PC_MODEL_OUT:-dist/pc-model}",
     "test": "esbuild test/*.test.ts test/*.test.tsx --bundle --platform=node --format=esm --outdir=.test --out-extension:.js=.test.mjs --packages=external --jsx=automatic --tsconfig=tsconfig.web.json --loader:.css=empty --loader:.txt=text --log-level=warning && node --test .test/*.test.mjs",
-    "test:live": "esbuild test/live.ts --bundle --platform=node --format=esm --outfile=.test/live.mjs --packages=external --log-level=warning && node --env-file-if-exists=.env .test/live.mjs"
+    "test:live": "esbuild test/live.ts --bundle --platform=node --format=esm --outfile=.test/live.mjs --packages=external --loader:.txt=text --log-level=warning && node --env-file-if-exists=.env .test/live.mjs"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

@@ -38,6 +38,7 @@ In Docker, prefix these with `docker exec -it atrium`.
 | `title` | `Home` | the page title |
 | `greeting` | none | the name in "Good evening, Sam" |
 | `location` | none | gives the assistant local context |
+| `timezone` | `TZ`, else the first browser's | an IANA name like `America/Toronto`. Times the server writes (assistant answers, watch history) use it; containers default to UTC |
 | `appearance` | `{ dim: 0.35, blur: 0 }` | `wallpaper` (a file in the data folder or an image URL), `dim` 0–0.9, `blur` 0–40 px |
 | `allowedHosts` | `[]` | names Atrium answers to besides localhost and IP addresses, e.g. `[atrium.example.com, "*.home.example.com"]`. Others get 421 (DNS-rebinding protection) |
 | `history` | `{ hours: 24, every: 5, background: true }` | remember headline numbers so tiles can draw a graph. `every` is minutes between samples; `background` keeps sampling while nobody has the page open; `false` turns it off |
@@ -48,6 +49,7 @@ In Docker, prefix these with `docker exec -it atrium`.
 | `search` | none | web search from ⌘K: `duckduckgo`, `google`, `kagi`, `brave`, `startpage`, `searxng`, or a URL with `{q}` |
 | `links` | `{}` | bookmarks by group, each group a widget `links.<group-slug>`: `Media: [{ name, url, icon?, note? }]`. Without `icon`, the site's favicon (fetched by Atrium) |
 | `reload` | `true` | watch the file and apply edits live |
+| `welcome` | `false` | the getting-started card; a fresh starter config turns it on |
 
 ## `auth`
 
@@ -148,8 +150,50 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `reddit` | `subreddits`, `sort` (`hot`), `limit` (10), `style` (`list` or `shelf`) | `posts` |
 | `releases` | `repos` (`owner/name`), `token` (optional, raises GitHub's rate limit), `limit`, `prereleases` | `latest` |
 | `markets` | `symbols` (`AAPL`, `BTC-USD`, `^GSPC`, `EURUSD=X`, or `{ symbol, name }`), `range` (`1d`), `title` | `quotes` |
+| `api` | `url`, `headers`, `method`, `body`, `every` (60s), `title`, `icon`, `href`, `about`, and one of `stats`, `list`, `rows`, `status` (see below) | `data` |
 | `calendar` | `calendars` (iCal URLs, or `{ url, name }`), `days` (14), `limit` (10), `title` | `upcoming` |
 | `links` | (from the top-level `links:` block) | one per group |
+
+### Any JSON API: `type: api`
+
+For a service Atrium doesn't know, name a URL and say where the numbers are. No code, and the assistant can read it too
+(`about` tells it what it's for).
+
+```yaml
+integrations:
+  speedtest:
+    type: api
+    url: http://speedtest:8080/api/speedtest/latest
+    headers: { Authorization: "Bearer ${SPEEDTEST_TOKEN}" }
+    every: 5m
+    title: Speedtest
+    icon: wifi
+    about: Internet speed, measured every hour.
+    stats:
+      - { label: Down, value: data.download|round, unit: " Mbps", warn: 200, bad: 50 }   # warn > bad: lower is worse
+      - { label: Ping, value: data.ping|round, unit: " ms", warn: 40, bad: 100 }
+      - { label: Disk, value: data.used, max: 100 }                                       # max draws a bar
+  jobs:
+    type: api
+    url: http://ci:8080/api/jobs
+    title: Jobs
+    list: { items: results, limit: 8, title: name, subtitle: "{status} · {size|bytes}", meta: started|ago, href: "http://ci:8080/job/{id}" }
+  cluster:
+    type: api
+    url: http://nodes:9000/nodes
+    title: Nodes
+    status: { items: $, name: hostname, ok: state, detail: message }   # up, ok, healthy, running, online, true or a 2xx count as up
+  box:
+    type: api
+    url: http://box/info
+    title: Box
+    rows: { Version: version, Uptime: uptime|duration, Used: "{used|bytes} of {total|bytes}" }
+```
+
+A field is a path into the response (`data.speed`, `items[0].name`, `$` for the whole thing), or a template when it has
+braces. Paths can pass through formats: `bytes`, `rate`, `duration` (seconds), `pct` (0 to 1), `round:1`, `divide:1000`,
+`day`, `time`, `ago`, `upper`, `lower`, `count`. Quote anything with `{` so YAML reads it as text. Secrets go in `headers`
+or the `url` as `${NAME}`.
 
 The comments in each integration's schema (`src/integrations/<type>.ts`, the `config:` block) explain the nested
 options (Home Assistant's `cards`, `schedules` and `floorplans`; the PC `build`). `/#gallery` shows every card type.

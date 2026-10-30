@@ -257,12 +257,44 @@
   .lift:hover { transform: translateY(-1px); box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 14px 32px -12px rgb(0 0 0 / .22); }
   .has-wallpaper .lift:hover, .dark .lift:hover { box-shadow: inset 0 1px 0 rgb(255 255 255 / .14), 0 28px 56px -24px rgb(0 0 0 / .75); }
 }
+/* the selected tab's pill slides from one button to the next */
+.nav-pill { position: absolute; top: 0; left: 0; border-radius: 999px; background: #fff; box-shadow: 0 8px 20px -8px rgb(0 0 0 / .5);
+  transition: transform 340ms var(--ease-drawer), width 340ms var(--ease-drawer); pointer-events: none; }
+.glass-round.is-on { background: transparent !important; border-color: transparent; box-shadow: none; backdrop-filter: none; color: #000; }
+.fade-in-soft { animation: fade-in-soft 320ms var(--ease-out) both; }
+@keyframes fade-in-soft { from { opacity: 0; } }
+/* placeholders: a soft light passes over them, so waiting looks like work rather than a stuck page */
+[data-slot="skeleton"] { position: relative; overflow: hidden; animation: none; }
+[data-slot="skeleton"]::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / .09), transparent); animation: skeleton-sweep 1.6s var(--ease-in-out) infinite; }
+@keyframes skeleton-sweep { to { transform: translateX(100%); } }
+/* the wallpaper fades up once it has decoded */
+.wallpaper img { opacity: 0; transition: opacity 700ms var(--ease-out); }
+.wallpaper img.is-on { opacity: 1; }
+/* ⌘K: drops in from just above, and its list eases to the height of the results */
+.palette-pop[data-state="open"] { animation: palette-in 220ms var(--ease-out) both; }
+.palette-pop[data-state="closed"] { animation: palette-out 120ms var(--ease-out) both; }
+@keyframes palette-in { from { opacity: 0; transform: translateY(-8px) scale(.98); } }
+@keyframes palette-out { to { opacity: 0; transform: translateY(-4px) scale(.99); } }
+[cmdk-list] { height: min(var(--cmdk-list-height), 340px); max-height: 340px; transition: height 180ms var(--ease-out); }
+[cmdk-item] { transition: background-color 110ms var(--ease-out); border-radius: 10px; }
+/* the island opening: its rows arrive just after the shape does */
+.island-row { animation: island-row 380ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 45ms + 70ms); }
+@keyframes island-row { from { opacity: 0; transform: translateY(-6px); } }
+/* a row of chips that scrolls sideways fades out at the edge instead of being cut off */
+@media (max-width: 639px) { .fade-x { mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); } }
+/* services: two tight columns even on a phone */
+.status-tight { column-width: 165px; } .status-wide { column-width: 220px; }
+@container card (max-width: 440px) { .status-tight { column-width: auto; column-count: 2; } }
 /* a theme switch: the sun and moon turn into each other */
 .spin-in { animation: spin-in 360ms var(--ease-out) both; }
 @keyframes spin-in { from { opacity: 0; transform: rotate(-90deg) scale(.6); } }
 /* a row that opens somewhere shows its arrow only when asked */
-.row-arrow { opacity: 0; transform: translateX(-3px); transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out); }
-@media (hover: hover) and (pointer: fine) { .row-link:hover .row-arrow { opacity: 1; transform: none; } }
+.row-arrow { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .row-arrow { display: block; opacity: 0; transform: translateX(-3px); transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out); }
+  .row-link:hover .row-arrow { opacity: 1; transform: none; }
+}
 .tick { display: inline-block; animation: tick 260ms var(--ease-out) both; }
 @keyframes tick { from { opacity: 0; transform: translateY(2px) scale(.96); filter: blur(2px); } }
 @media (prefers-reduced-motion: reduce) { .settle, .settle-card, .tick, .spin-in { animation: none; } .chat-word, .chat-card, .chat-in { animation: none; } .chat-shimmer { animation: none; color: var(--muted-foreground); } .lift, .lift:hover { transform: none; } }
@@ -281,8 +313,20 @@
 /* the chat window: rises in from slightly below and smaller, eased out; leaves faster than it came */
 .chat-pop[data-state="open"] { animation: chat-pop-in 280ms var(--ease-out) both; }
 .chat-pop[data-state="closed"] { animation: chat-pop-out 160ms var(--ease-out) both; }
-@keyframes chat-pop-in { from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)) scale(.97); } }
-@keyframes chat-pop-out { to { opacity: 0; transform: translate(-50%, calc(-50% + 6px)) scale(.98); } }
+@keyframes chat-pop-in { from { opacity: 0; transform: translateY(12px) scale(.97); } }
+@keyframes chat-pop-out { to { opacity: 0; transform: translateY(6px) scale(.98); } }
+/* on a phone the chat is a full sheet: it rides up from the bottom, follows the keyboard (--vvh, set while it's open)
+   and can be dragged back down by its header */
+@media (max-width: 639px) {
+  .chat-pop { top: var(--vvt, 0px); left: 0; translate: none; width: 100vw; max-width: none; height: var(--vvh, 100dvh); border: 0; border-radius: 0; }
+  .chat-pop[data-state="open"] { animation: chat-sheet-in 380ms var(--ease-drawer) both; }
+  .chat-pop[data-state="closed"] { animation: chat-sheet-out 240ms var(--ease-drawer) both; }
+}
+@keyframes chat-sheet-in { from { transform: translateY(100%); } }
+@keyframes chat-sheet-out { to { transform: translateY(100%); } }
+.sheet-grip { width: 36px; height: 4px; border-radius: 99px; background: rgb(255 255 255 / .25); }
+/* fingers need more than a mouse */
+@media (pointer: coarse) { .chat-icon { width: 36px; height: 36px; border-radius: 10px; } }
 [data-slot="dialog-overlay"] { backdrop-filter: blur(6px); }
 
 /* a stack of pages: each settles into its pile, a beat apart; hovering fans them out to the right like a hand of cards.

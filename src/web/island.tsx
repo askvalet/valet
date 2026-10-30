@@ -101,7 +101,7 @@ export default function Island({ live, idle, docked, notice }: { live: Live[]; i
             <div className={cn('flex h-[44px] min-w-[280px] items-center gap-3 pr-4 pl-2', !live.length && 'h-[30px] w-[170px] min-w-0 p-0')}>
               {main && (<>
                 <Art a={main} size={28} />
-                <span className="max-w-[260px] flex-1 truncate text-[14px] font-medium tracking-[-.01em]">{main.title}</span>
+                <span key={main.key} className="tick max-w-[260px] flex-1 truncate text-[14px] font-medium tracking-[-.01em]">{main.title}</span>
                 <span className="ml-3 flex items-center">{main.icon === 'play' ? <Bars a={main} /> : main.pct != null ? <Progress a={main} /> : main.trailing && <span className="text-[11.5px] tabular text-white/60">{main.trailing}</span>}</span>
               </>)}
             </div>
@@ -123,9 +123,9 @@ export default function Island({ live, idle, docked, notice }: { live: Live[]; i
           <div ref={big} aria-hidden={!expanded}
             className={cn(layer, expanded && !shout ? 'opacity-100 delay-100 duration-300' : 'pointer-events-none scale-[.97] opacity-0 blur-[3px] duration-150')}>
             <div className="w-[min(420px,calc(100vw-24px))] space-y-1 p-3 pt-4">
-              {live.map(a => (
+              {live.map((a, i) => (
                 <a key={a.key} href={a.href} target="_blank" rel="noreferrer" tabIndex={expanded ? 0 : -1} onClick={e => e.stopPropagation()}
-                  className="flex items-center gap-3 rounded-2xl p-2 transition-colors hover:bg-white/[.07]">
+                  style={{ '--i': i } as React.CSSProperties} className={cn('flex items-center gap-3 rounded-2xl p-2 transition-colors hover:bg-white/[.07]', expanded && 'island-row')}>
                   <Art a={a} size={44} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14px] font-semibold">{a.title}</span>

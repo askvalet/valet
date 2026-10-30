@@ -131,8 +131,8 @@ export default defineIntegration({
           access: 'read', input: z.object({ user: z.string().optional(), count: z.number().int().min(1).max(50).default(15) }),
           async run({ user, count }) {
             const d = await api('get_history', { length: count, ...(user ? { search: user } : {}) });
-            const rows = (d.data as any[]).map(h => ({ when: new Date(h.date * 1000).toLocaleString(), user: h.friendly_name, title: h.full_title, watched: `${h.percent_complete}%`, device: h.player }));
-            return { data: rows, card: { type: 'list', title: 'Watch history', icon: 'film', items: rows.map(r => ({ title: r.title, subtitle: `${r.user} · ${r.device}`, meta: r.when.replace(/:\d\d(\s|$)/, '$1') })) } };
+            const rows = (d.data as any[]).map(h => ({ at: h.date * 1000, when: new Date(h.date * 1000).toLocaleString(), user: h.friendly_name, title: h.full_title, watched: `${h.percent_complete}%`, device: h.player }));
+            return { data: rows.map(({ at, ...r }) => r), card: { type: 'list', title: 'Watch history', icon: 'film', items: rows.map(r => ({ title: r.title, subtitle: `${r.user} · ${r.device}`, meta: `${fmt.relativeDay(r.at)}, ${fmt.time(r.at)}` })) } };
           },
         },
       },

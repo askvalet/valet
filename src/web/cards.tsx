@@ -99,7 +99,7 @@ function List({ card }: { card: ListCard }) {
   return (
     <ul className="-my-1 divide-y">
       {card.items.map((it, i) => (
-        <li key={i} className={cn('flex min-w-0 items-center gap-3', dense ? 'py-1.5' : 'py-2.5', it.href && 'row-link -mx-2 cursor-pointer rounded-lg px-2 transition-colors hover:bg-accent')}
+        <li key={i} className={cn('flex min-w-0 items-center gap-3', dense ? 'py-1.5' : 'py-2.5', it.href && 'row-link -mx-2 cursor-pointer px-2 transition-colors hover:bg-accent')}
           onClick={it.href ? () => window.open(it.href, '_blank', 'noopener') : undefined} role={it.href ? 'link' : undefined}>
           {it.image && <img src={it.image} alt="" loading="lazy" className={cn('shrink-0 rounded-md bg-muted object-cover', dense ? 'h-9 w-6' : 'h-12 w-8')} />}
           <div className="min-w-0 flex-1">
@@ -165,7 +165,7 @@ function Status({ card, columns, minimal }: { card: StatusCard; columns?: number
     return [{ g, label: g, items: items.slice(0, half) }, { g: `${g}·2`, label: '', items: items.slice(half) }];
   });
   return (
-    <div className="-mx-2 gap-x-4" style={columns ? { columnCount: columns } : { columnWidth: minimal ? '165px' : '220px' }}>
+    <div className={cn('-mx-2 gap-x-4', !columns && (minimal ? 'status-tight' : 'status-wide'))} style={columns ? { columnCount: columns } : undefined}>
       {blocks.map(b => (
         // with a set column count (a sidebar list) groups flow on across columns; otherwise each stays whole
         <div key={b.g} className={cn(minimal ? 'mb-2' : 'mb-3', columns ? 'break-inside-auto' : 'break-inside-avoid')}>
@@ -644,14 +644,48 @@ function CardButtons({ buttons, run }: { buttons: NonNullable<CardT['buttons']>;
   );
 }
 
-function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean }) {
+// What each widget looked like last time (its card type and height, nothing it showed), so the placeholder on the next
+// visit has the right shape and the page doesn't jump when the data lands.
+const SHAPES = 'atrium-shapes';
+const shapes: Record<string, { t?: string; h?: number; empty?: boolean }> = (() => { try { return JSON.parse(localStorage.getItem(SHAPES) ?? '{}'); } catch { return {}; } })();
+let saving: ReturnType<typeof setTimeout> | undefined;
+export const shapeOf = (id: string) => shapes[id];
+export function noteShape(id: string, shape: { t?: string; h?: number; empty?: boolean }) {
+  if (JSON.stringify(shapes[id]) === JSON.stringify(shape)) return;
+  shapes[id] = shape;
+  clearTimeout(saving);
+  saving = setTimeout(() => { try { localStorage.setItem(SHAPES, JSON.stringify(shapes)); } catch { /* private mode */ } }, 1000);
+}
+/** Holds a widget's remembered height until its card arrives, and notes the height once it has. */
+export function Shaped({ id, card, children }: { id: string; card?: CardT; children: ReactNode }) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (card && box.current?.offsetHeight) noteShape(id, { t: card.type, h: box.current.offsetHeight }); }, [id, card?.type, !card]);
+  const h = !card ? shapes[id]?.h : undefined;
+  return <div ref={box} className="min-w-0" style={h ? { minHeight: h } : undefined}>{children}</div>;
+}
+
+/** A placeholder that looks like the card that's coming. */
+function CardSkeleton({ kind }: { kind?: string }) {
+  const row = (i: number) => <div key={i} className="flex items-center gap-3"><Skeleton className="size-8 shrink-0 rounded-lg" /><div className="flex-1 space-y-1.5"><Skeleton className="h-3 w-3/4" /><Skeleton className="h-2.5 w-1/2" /></div></div>;
+  if (kind === 'stats') return <div className="grid grid-cols-2 gap-4">{[0, 1, 2, 3].map(i => <div key={i} className="space-y-2"><Skeleton className="h-2.5 w-1/2" /><Skeleton className="h-6 w-2/3" /></div>)}</div>;
+  if (kind === 'status') return <div className="grid grid-cols-2 gap-3">{[0, 1, 2, 3, 4, 5].map(i => <div key={i} className="flex items-center gap-2.5"><Skeleton className="size-[18px] rounded-md" /><Skeleton className="h-3 flex-1" /></div>)}</div>;
+  if (kind === 'shelf') return <div className="flex gap-3 overflow-hidden">{[0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="aspect-[2/3] w-[120px] shrink-0 rounded-xl" />)}</div>;
+  if (kind === 'media' || kind === 'photos' || kind === 'showcase') return <Skeleton className="aspect-[16/7] w-full rounded-xl" />;
+  if (kind === 'list' || kind === 'links') return <div className="space-y-4">{[0, 1, 2, 3].map(row)}</div>;
+  return <div className="space-y-3"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-4 w-3/5" /></div>;
+}
+export const TileSkeleton = () => (
+  <Card className="relative h-[136px] gap-0 py-0 shadow-card"><div className="flex h-full flex-col justify-between p-4"><Skeleton className="h-3.5 w-2/3" /><Skeleton className="h-7 w-1/2" /></div></Card>
+);
+
+function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, kind }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; kind?: string }) {
   // artwork-led cards sit directly on the page, without a card frame
-  if (card?.type === 'shelf') return <Shelf card={card} small={compact} header={<BareHeader card={card} title={title} status={status} />} />;
+  if (card?.type === 'shelf') return <div className="fade-in-soft min-w-0"><Shelf card={card} small={compact} header={<BareHeader card={card} title={title} status={status} />} /></div>;
   if (card?.type === 'photos') return (
-    <div className="min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Photos card={card} large={large} /></div>
+    <div className="fade-in-soft min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Photos card={card} large={large} /></div>
   );
   if (card?.type === 'media') return (
-    <div className="min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Media card={card} compact={compact} /></div>
+    <div className="fade-in-soft min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Media card={card} compact={compact} /></div>
   );
   const t = card?.title ?? title;
   const bare = card?.type === 'group';
@@ -674,7 +708,7 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
         </CardHeader>
       )}
       <CardContent className={cn(bare ? 'p-0' : compact ? 'px-3.5' : 'px-5')}>
-        {card ? <CardBody card={card} run={run} large={large} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /> : <div className="space-y-3"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-4 w-3/5" /></div>}
+        {card ? <div className="fade-in-soft"><CardBody card={card} run={run} large={large} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /></div> : <CardSkeleton kind={kind} />}
         {card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null}
       </CardContent>
     </Card>

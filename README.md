@@ -24,7 +24,8 @@ docker run -d --name atrium -p 127.0.0.1:7575:7575 \
   ghcr.io/OWNER/atrium:latest
 ```
 
-Copy [`config.example.yaml`](config.example.yaml) to `config/config.yaml` and keep the integrations you use. Copy
+On first start Atrium writes a starter `config/config.yaml` and the page walks you through it; or copy
+[`config.example.yaml`](config.example.yaml) there and keep the integrations you use. Copy
 [`.env.example`](.env.example) to `.env` and fill in their keys: it says where each one is in that app's settings.
 Then open http://localhost:7575. A [`docker-compose.example.yml`](docker-compose.example.yml) is there too, and
 [docs/configuration.md](docs/configuration.md) lists every option. `./data` keeps the wallpaper, icon cache, history,
@@ -81,6 +82,7 @@ changing anything. [SECURITY.md](SECURITY.md) has the details and the least-priv
 | `markets` | Stocks, indices, currencies, crypto, with the day's line |
 | `calendar` | What's coming up, from any iCal link (Google, iCloud, Nextcloud, Outlook, Proton) |
 | `links` | Bookmarks, grouped, with favicons |
+| `api` | Any JSON API as a card, from YAML alone: numbers, a list, a table or up/down |
 
 Writing one is covered in [docs/integrations.md](docs/integrations.md). Community integrations are single files you drop
 into `data/integrations/`: see [docs/plugins.md](docs/plugins.md) and [`examples/hello-plugin.mjs`](examples/hello-plugin.mjs).

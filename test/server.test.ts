@@ -166,3 +166,12 @@ test('built-in tools: each says what it did in words, and changes are never read
     }
   }
 });
+
+test('thinking: reasoning left in a reply is split from the answer', async () => {
+  const { splitThink } = await import('../src/shared/think.ts');
+  assert.deepEqual(splitThink('Reasoning here.\n</think>\n\nThe answer.'), { thought: 'Reasoning here.', said: 'The answer.', thinking: false });
+  assert.deepEqual(splitThink('<think>hmm</think>Hello'), { thought: 'hmm', said: 'Hello', thinking: false });
+  assert.deepEqual(splitThink('<think>still going'), { thought: 'still going', said: '', thinking: true });
+  assert.deepEqual(splitThink('Plain answer about <b>'), { thought: '', said: 'Plain answer about <b>', thinking: false });
+  assert.deepEqual(splitThink('one</think>two</think>three'), { thought: 'onetwo', said: 'three', thinking: false });
+});

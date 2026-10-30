@@ -3,13 +3,14 @@
 import { Chat, useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
 import {
-  Activity, ArrowDown, ArrowUp, Bookmark, Check, ChevronRight, Copy, CornerDownRight, FileText, Lightbulb, Loader2, Paperclip, RotateCcw,
+  Activity, ArrowDown, ArrowUp, Bookmark, Check, ChevronDown, ChevronRight, Copy, CornerDownRight, FileText, Lightbulb, Loader2, Paperclip, RotateCcw,
   Search, Square, X, Zap,
 } from 'lucide-react';
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Card } from '../shared/cards.ts';
+import { splitThink } from '../shared/think.ts';
 import { Widget } from './cards.tsx';
 
 // One conversation for the whole page session, so closing and reopening the panel keeps it.
@@ -126,8 +127,8 @@ function ToolPart({ p, approve }: { p: any; approve: (id: string, ok: boolean) =
       <div className="text-sm font-medium first-letter:uppercase">{label}?</div>
       {p.input && Object.keys(p.input).length > 0 && <div className="mt-1 break-all text-xs text-muted-foreground">{Object.entries(p.input).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(' · ')}</div>}
       <div className="mt-3 flex gap-2">
-        <Button size="sm" onClick={() => approve(p.approval.id, true)}>Approve</Button>
-        <Button size="sm" variant="outline" onClick={() => approve(p.approval.id, false)}>Don't</Button>
+        <Button size="sm" className="max-sm:h-10 max-sm:flex-1" onClick={() => approve(p.approval.id, true)}>Approve</Button>
+        <Button size="sm" variant="outline" className="max-sm:h-10 max-sm:flex-1" onClick={() => approve(p.approval.id, false)}>Don't</Button>
       </div>
     </div>
   );
@@ -148,9 +149,26 @@ function ToolPart({ p, approve }: { p: any; approve: (id: string, ok: boolean) =
   return null;
 }
 
-export default function Assistant({ name, model, ask, suggestions, tools = {}, onAsk }: {
+export default function Assistant({ name, model, ask, suggestions, tools = {}, onAsk, onClose }: {
   name: string; model: string; ask: { text: string; n: number } | null; suggestions: string[]; tools?: Record<string, ToolInfo>; onAsk: (t: string) => void;
+  onClose?: () => void;   // shown as a phone sheet: a grabber to drag it away, and room for fingers and the keyboard
 }) {
+  const sheet = !!onClose;
+  // dragging the header pulls the sheet down with the finger; far or fast enough lets it go, otherwise it rides back
+  const pull = useRef<{ y: number; t: number; el: HTMLElement } | null>(null);
+  const grab = {
+    onPointerDown: (e: React.PointerEvent<HTMLElement>) => {
+      const el = e.currentTarget.closest<HTMLElement>('.chat-pop'); if (!el) return;
+      e.currentTarget.setPointerCapture(e.pointerId); el.style.transition = 'none'; pull.current = { y: e.clientY, t: Date.now(), el };
+    },
+    onPointerMove: (e: React.PointerEvent) => { const p = pull.current; if (p) p.el.style.transform = `translateY(${Math.max(0, e.clientY - p.y)}px)`; },
+    onPointerUp: (e: React.PointerEvent) => {
+      const p = pull.current; if (!p) return; pull.current = null;
+      const dy = e.clientY - p.y;
+      if (dy > 140 || dy / (Date.now() - p.t) > .6) { onClose?.(); return; }
+      p.el.style.transition = 'transform 280ms var(--ease-drawer)'; p.el.style.transform = '';
+    },
+  };
   const { messages, sendMessage, status, addToolApprovalResponse, error, stop, regenerate } = useChat({ chat });
   // how long each answer took, measured from the question to the last word
   const started = useRef(0);
@@ -201,16 +219,19 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
 
   return (
     <div className="relative flex h-full flex-col">
-      <header className="flex items-center gap-2.5 border-b px-5 py-4">
-        <div className="min-w-0">
+      <header {...(sheet ? grab : {})} className={cn('relative flex items-center gap-2.5 border-b px-5', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'py-4')}>
+        {sheet && <span className="sheet-grip absolute top-[max(.4rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2" aria-hidden />}
+        <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold leading-tight">{name}</div>
           <div className="truncate text-xs text-muted-foreground">{model}</div>
         </div>
+        {sheet && <button onClick={onClose} onPointerDown={e => e.stopPropagation()} aria-label="Close" className="press grid size-9 place-items-center rounded-full bg-white/[.08]"><ChevronDown className="size-[18px]" /></button>}
       </header>
 
-      <div ref={scroller} onScroll={onScroll} className="relative flex-1 space-y-5 overflow-y-auto px-5 py-5">
+      <div ref={scroller} onScroll={onScroll} className={cn('relative flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5', sheet && !messages.length && 'flex flex-col justify-end')}>
         {!messages.length && (
-          <div className="pt-10 text-center animate-in fade-in duration-500">
+          // on a phone the suggestions sit low, where the thumb is
+          <div className={cn('text-center animate-in fade-in duration-500', !sheet && 'pt-10')}>
             <div className="text-lg font-semibold tracking-tight">What would you like to know?</div>
             <p className="mt-1 text-sm text-muted-foreground">Ask about anything on your homepage.</p>
             <div className="mx-auto mt-6 grid max-w-[560px] gap-1.5 sm:grid-cols-2">
@@ -233,22 +254,29 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
           );
           // a reply: runs of tool calls become one chip list, followed by any cards they returned, then the words
           const isLast = mi === messages.length - 1, live = isLast && busy;
-          const blocks: ReactNode[] = []; let run: any[] = [];
+          const blocks: ReactNode[] = [], thoughts: string[] = []; let run: any[] = [], thinking = false;
           const flush = (k: string) => { if (run.length) { const r = run; blocks.push(<ToolChips key={`c${k}`} parts={r} tools={tools} settled={!live || m.parts.some((p: any) => p.type === 'text' && p.text.trim())} />, ...r.map((p, j) => <ToolPart key={`p${k}.${j}`} p={p} approve={(id, ok) => addToolApprovalResponse({ id, approved: ok })} />)); run = []; } };
           m.parts.forEach((p: any, i) => {
             if (p.type.startsWith('tool-') || p.type === 'dynamic-tool') run.push(p);
-            else if (p.type === 'reasoning') { flush(String(i)); blocks.push(<Reasoning key={i} text={p.text ?? ''} streaming={live && p.state === 'streaming'} took={took[m.id]} />); }
-            else if (p.type === 'text' && p.text.trim()) { flush(String(i)); blocks.push(<Text key={i} text={p.text} />); }
+            else if (p.type === 'reasoning') { thoughts.push(p.text ?? ''); thinking ||= live && p.state === 'streaming'; }
+            else if (p.type === 'text' && p.text.trim()) {
+              // reasoning a model left in its reply goes with the rest of its reasoning
+              const t = splitThink(p.text);
+              if (t.thought) thoughts.push(t.thought);
+              thinking ||= live && t.thinking;
+              if (t.said) { flush(String(i)); blocks.push(<Text key={i} text={t.said} />); }
+            }
           });
+          if (thoughts.some(t => t.trim()) || thinking) blocks.unshift(<Reasoning key="thought" text={thoughts.join('\n\n')} streaming={thinking} took={took[m.id]} />);
           flush('end');
-          const text = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('\n\n').trim();
+          const text = m.parts.filter((p: any) => p.type === 'text').map((p: any) => splitThink(p.text).said).join('\n\n').trim();
           // the last tool it used that suggests next questions
           const used = m.parts.filter((p: any) => p.type.startsWith('tool-') || p.type === 'dynamic-tool').map((p: any) => p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, ''));
           const follow = isLast && !busy ? used.map((t: string) => tools[t]?.followUps).filter(Boolean).at(-1)?.slice(0, 2) ?? [] : [];
           return (
             <div key={m.id} className="space-y-3">
               {blocks}
-              {live && !text && !m.parts.some((p: any) => ((p.type.startsWith('tool-') || p.type === 'dynamic-tool') && p.state !== 'output-available') || (p.type === 'reasoning' && p.state === 'streaming')) && <Pending since={started.current || Date.now()} label={m.parts.length ? 'Writing' : 'Thinking'} />}
+              {live && !text && !m.parts.some((p: any) => ((p.type.startsWith('tool-') || p.type === 'dynamic-tool') && p.state !== 'output-available') || (p.type === 'reasoning' && p.state === 'streaming')) && !thinking && <Pending since={started.current || Date.now()} label={m.parts.length ? 'Writing' : 'Thinking'} />}
               {!live && text && (
                 <div className="flex items-center gap-1 text-muted-foreground animate-in fade-in duration-500">
                   <button aria-label="Copy" title="Copy" onClick={() => { navigator.clipboard?.writeText(text); setCopied(m.id); setTimeout(() => setCopied(null), 1400); }}
@@ -261,7 +289,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
                 <div className="space-y-0.5 pt-1">
                   {follow.map((f, k) => (
                     <button key={f} onClick={() => onAsk(f)} style={{ animationDelay: `${150 + k * 60}ms` }}
-                      className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-[13.5px] text-muted-foreground transition-colors fill-mode-both hover:bg-white/[.05] hover:text-foreground animate-in fade-in slide-in-from-bottom-1 duration-300">
+                      className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left max-sm:py-2.5 text-[13.5px] text-muted-foreground transition-colors fill-mode-both hover:bg-white/[.05] hover:text-foreground animate-in fade-in slide-in-from-bottom-1 duration-300">
                       <CornerDownRight className="size-3.5 shrink-0 opacity-60" />{f}
                     </button>
                   ))}
@@ -286,7 +314,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
         </button>
       )}
 
-      <form className="border-t p-3" onSubmit={e => { e.preventDefault(); submit(); }}
+      <form className={cn('border-t p-3', sheet && 'pb-[max(.75rem,env(safe-area-inset-bottom))]')} onSubmit={e => { e.preventDefault(); submit(); }}
         onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setOver(true); } }} onDragLeave={() => setOver(false)}
         onDrop={e => { if (e.dataTransfer.files.length) { e.preventDefault(); setOver(false); attach(e.dataTransfer.files); } }}>
         {files.length > 0 && (
@@ -302,11 +330,11 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
         )}
         <div className={cn('composer flex items-end gap-2 rounded-2xl border bg-card px-3 py-2 shadow-card', over && 'ring-2 ring-primary/60')}>
           <input ref={pick} type="file" multiple hidden onChange={e => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
-          <button type="button" onClick={() => pick.current?.click()} aria-label="Attach a file" className="mb-0.5 grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"><Paperclip className="size-4" /></button>
-          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={`Message ${name}, paste a link or drop a file`} aria-label="Message"
+          <button type="button" onClick={() => pick.current?.click()} aria-label="Attach a file" className={cn('mb-0.5 grid shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground', sheet ? 'size-8' : 'size-7')}><Paperclip className="size-4" /></button>
+          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={sheet ? `Message ${name}` : `Message ${name}, paste a link or drop a file`} aria-label="Message"
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
             onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
-            className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-1.5 text-[15px] outline-none field-sizing-content placeholder:text-muted-foreground" autoFocus />
+            className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-1.5 text-[16px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-[15px]" autoFocus={!sheet} />
           {busy
             ? <Button type="button" size="icon" variant="secondary" className="size-8 rounded-full" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" /></Button>
             : <Button type="submit" size="icon" className="size-8 rounded-full transition-opacity duration-200" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}

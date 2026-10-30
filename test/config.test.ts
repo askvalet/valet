@@ -41,3 +41,18 @@ test('check: unknown types, options and widget keys are named; links from the to
   ]);
   assert.equal(config.layout[0].widgets[3].every, 120_000);
 });
+
+test('first run: writes a starter config that checks clean, and runs from memory when it can\'t', async () => {
+  const { startConfig } = await import('../src/server/config.ts');
+  const dir = await mkdtemp(join(tmpdir(), 'atrium-first-'));
+  const log = console.log; console.log = () => {};
+  const a = startConfig(join(dir, 'sub', 'config.yaml'));
+  await writeFile(join(dir, 'file'), '');
+  const b = startConfig(join(dir, 'file', 'x', 'config.yaml'));               // a file where the folder should be
+  console.log = log;
+  assert.equal(a.saved, true);
+  assert.equal(b.saved, false);
+  assert.equal(a.config.welcome, true);
+  assert.equal(startConfig(join(dir, 'sub', 'config.yaml')).saved, true);     // now it's just a config
+  assert.deepEqual(check(a.config, registry).problems, []);
+});

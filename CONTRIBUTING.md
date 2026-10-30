@@ -17,6 +17,8 @@ every size.
 
 ## Adding things
 
+- **A service with a JSON API:** you may not need code: `type: api` maps it to a card from YAML
+  ([docs/configuration.md](docs/configuration.md)).
 - **An integration for a service:** start with a plugin (`node dist/server.js new-integration <name>`, see
   [docs/plugins.md](docs/plugins.md)). If it's broadly useful, it can become a built-in: one file in
   `src/integrations/`, registered in `index.ts`, with a test in `test/integrations.test.ts` against made-up responses.

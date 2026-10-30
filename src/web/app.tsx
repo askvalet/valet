@@ -1,5 +1,5 @@
-import { ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Sun } from 'lucide-react';
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Search, Sun } from 'lucide-react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ForecastCard, StatusCard, WidgetState } from '../shared/cards.ts';
@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import Island, { type Live, type Notice } from './island.tsx';
 import { SignIn, useMe } from './signin.tsx';
-import { Icon, NowPlaying, isEmpty, MiniRing, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
+import { Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, shapeOf, TileSkeleton, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
 
 // The assistant (and the AI SDK client) loads only when someone asks something.
 const Assistant = lazy(() => import('./assistant.tsx'));
@@ -19,6 +19,7 @@ interface Page {
   appearance: { wallpaper?: string; dim: number; blur: number };
   assistant: { name: string; model: string; suggestions: string[]; tools: Record<string, ToolInfo> } | null;
   search?: string;
+  welcome?: { path: string; saved: boolean };
   menubar?: string[];
   nav?: { side: 'left' | 'right' | 'top' | 'bottom' };
   island?: { activities: string[]; idle: 'notch' | 'hide' };
@@ -88,13 +89,48 @@ function RoundButton({ label, active, onClick, children, tip = 'right' }: { labe
     <Tooltip>
       <TooltipTrigger asChild>
         <button onClick={onClick} aria-label={label} aria-current={active ? 'page' : undefined}
-          className={cn('glass-round grid size-11 place-items-center rounded-full transition-all duration-200 [&_svg]:size-[18px]',
-            active ? 'bg-white text-black shadow-lg' : 'text-foreground/85 hover:text-foreground')}>
+          className={cn('glass-round relative grid size-11 place-items-center rounded-full [&_svg]:size-[18px]', active ? 'is-on' : 'text-foreground/85 hover:text-foreground')}>
           {children}
         </button>
       </TooltipTrigger>
       <TooltipContent side={tip}>{label}</TooltipContent>
     </Tooltip>
+  );
+}
+
+/** The white pill behind the selected tab: measured, so it slides between buttons wherever they sit. */
+function useNavPill(view: string, count: number) {
+  const box = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = box.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    setAt(el ? { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight } : null);
+  }, [view, count]);
+  return { box, pill: at && <span className="nav-pill" aria-hidden style={{ width: at.w, height: at.h, transform: `translate(${at.x}px, ${at.y}px)` }} /> };
+}
+
+/** The wallpaper, fading up once it has decoded (at once if the browser already has it). */
+function Wall({ src, style }: { src: string; style?: React.CSSProperties }) {
+  return <img src={src} alt="" style={style} ref={el => { if (el?.complete && el.naturalWidth) el.classList.add('is-on'); }} onLoad={e => e.currentTarget.classList.add('is-on')} onError={e => { e.currentTarget.style.display = 'none'; }} />;
+}
+
+/** On a fresh install: what to do next, in three lines. It goes away when the config says so. */
+function Welcome({ path, saved }: { path: string; saved: boolean }) {
+  const step = (n: number, title: string, body: React.ReactNode) => (
+    <div className="flex gap-3"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-white/10 text-xs font-semibold tabular">{n}</span>
+      <div className="min-w-0"><div className="text-sm font-medium">{title}</div><div className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">{body}</div></div></div>
+  );
+  const code = 'rounded-md bg-white/[.08] px-1.5 py-0.5 font-mono text-[12px] break-all text-foreground/85';
+  return (
+    <Card className="settle gap-4 px-6 py-5 shadow-card">
+      <div><div className="text-[17px] font-semibold tracking-tight">Welcome to your homepage</div>
+        <p className="mt-0.5 text-[13.5px] text-muted-foreground">This page is built from one file. Edit it and watch here: changes appear as you save.</p></div>
+      <div className="grid gap-4 md:grid-cols-3">
+        {step(1, saved ? 'Open your config' : 'Create your config', <>{saved ? 'A starter is at' : 'Save a config at'} <code className={code}>{path}</code>{!saved && ' (that folder is read-only to Atrium, so this page is a sample until then)'}</>)}
+        {step(2, 'Add your services', <>Each one is a few lines. Secrets go in <code className={code}>.env</code> as <code className={code}>{'${NAME}'}</code>. Anything with a JSON API works with <code className={code}>type: api</code>.</>)}
+        {step(3, 'Check it, then hide this', <>Run <code className={code}>config check</code> to find mistakes, and delete the <code className={code}>welcome</code> line when you're done.</>)}
+      </div>
+    </Card>
   );
 }
 
@@ -116,12 +152,12 @@ export function App() {
   if (me.user && hash === '#gallery') { document.documentElement.classList.add('dark'); return <Suspense fallback={null}><Gallery /></Suspense>; }
   if (!me.user) return (
     <SignIn setup={!!me.setup} provider={me.provider} onDone={name => setMe({ ...me, user: { name } })}
-      wallpaper={<div className="wallpaper" aria-hidden><img src="/api/wallpaper" alt="" style={{ filter: 'blur(6px)' }} onError={e => (e.currentTarget.style.display = 'none')} /></div>} />
+      wallpaper={<div className="wallpaper" aria-hidden><Wall src="/api/wallpaper" style={{ filter: 'blur(6px)' }} /></div>} />
   );
-  return <Home />;
+  return <Home account={me.mode !== 'none'} />;
 }
 
-function Home() {
+function Home({ account }: { account: boolean }) {
   const [page, setPage] = useState<Page | null>(null);
   const { state, notice, generation } = useLive();
   const now = useClock();
@@ -131,10 +167,19 @@ function Home() {
   const [chat, setChat] = useState<{ text: string; n: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const wide = useWide();
+  const phone = useWide('(max-width: 639px)');
   const bar = useRef<HTMLDivElement>(null);
+  // the chat sheet follows the on-screen keyboard (phones report it through the visual viewport)
+  useEffect(() => {
+    const v = window.visualViewport, root = document.documentElement.style;
+    if (!v || !chatOpen || !phone) return;
+    const set = () => { root.setProperty('--vvh', `${v.height}px`); root.setProperty('--vvt', `${v.offsetTop}px`); };
+    set(); v.addEventListener('resize', set); v.addEventListener('scroll', set);
+    return () => { v.removeEventListener('resize', set); v.removeEventListener('scroll', set); root.removeProperty('--vvh'); root.removeProperty('--vvt'); };
+  }, [chatOpen, phone]);
   const [draft, setDraft] = useState('');
 
-  useEffect(() => { fetch('/api/page').then(r => r.json()).then(setPage); }, [generation]);
+  useEffect(() => { fetch(`/api/page?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`).then(r => r.json()).then(setPage); }, [generation]);
   useEffect(() => { if (page) document.title = page.title; }, [page]);
   // A wallpaper means glass over a photo: always the dark material, so text stays legible on any image.
   const wall = page?.appearance?.wallpaper;
@@ -153,9 +198,10 @@ function Home() {
   const ask = useCallback((text: string) => {
     if (!text.trim()) return;
     setChat({ text: text.trim(), n: Date.now() }); setPalette(false); setDraft('');
-    // on the assistant's own tab the answer appears on the page; anywhere else, in the side panel
-    if (!(chatTab && view === chatTab)) setChatOpen(true);
-  }, [chatTab, view]);
+    // on the assistant's own tab the answer appears on the page; anywhere else (and always on a phone), in the sheet
+    if (phone || !(chatTab && view === chatTab)) setChatOpen(true);
+  }, [chatTab, view, phone]);
+  const warm = () => { void import('./assistant.tsx'); };   // about to be needed: start loading it
 
   // one stable action function per widget, so memoised cards don't re-render on every live update
   const runners = useRef(new Map<string, (action: string, args?: Record<string, unknown>) => Promise<void>>());
@@ -186,6 +232,9 @@ function Home() {
   const tip = ({ left: 'right', right: 'left', top: 'bottom', bottom: 'top' } as const)[navSide];
   const nav = (page?.sections.map((s, i) => ({ ...s, i, key: tabOf(s, i) })).filter(s => s.title || s.tab) ?? [])
     .filter((s, j, all) => all.findIndex(x => x.key === s.key) === j);
+  const rail = useNavPill(view, nav.length), dock = useNavPill(view, nav.length);
+  // remember what's empty (nothing playing), so it doesn't flash a placeholder on the next visit
+  useEffect(() => { for (const [k, s] of Object.entries(state)) if (isEmpty(s.card)) noteShape(k, { empty: true }); }, [state]);
 
   // the hero: ask anything
   const hero = view === 'all' && (
@@ -195,15 +244,21 @@ function Home() {
             {page?.assistant && (
               <form className="glass-round mt-5 flex items-center gap-2.5 rounded-[26px] py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
-                <input value={draft} onChange={e => setDraft(e.target.value)} aria-label={`Ask ${page.assistant.name}`} placeholder={`Ask ${page.assistant.name} anything…`}
+                <input value={draft} onChange={e => setDraft(e.target.value)} onFocus={warm} aria-label={`Ask ${page.assistant.name}`} placeholder={`Ask ${page.assistant.name} anything…`}
                   className="h-11 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground" />
                 {!draft.trim() && <kbd className="hidden rounded-md border border-white/15 px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground sm:block">⌘K</kbd>}
                 <button type="submit" aria-label="Ask" disabled={!draft.trim()}
                   className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-black transition-opacity disabled:opacity-25"><ArrowUp className="size-[18px]" /></button>
               </form>
             )}
+            {page && !page.assistant && (
+              <button onClick={() => setPalette(true)} className="glass-round mt-5 flex h-11 w-full items-center gap-2.5 rounded-full px-5 text-left text-[15px] text-muted-foreground">
+                <Search className="size-4" /><span className="flex-1">Search services and actions</span>
+                <kbd className="hidden rounded-md border border-white/15 px-1.5 py-0.5 font-sans text-[11px] sm:block">⌘K</kbd>
+              </button>
+            )}
             {page?.assistant && (
-              <div className="no-scrollbar mt-2.5 overflow-x-auto">
+              <div className="fade-x no-scrollbar mt-2.5 overflow-x-auto">
                 {/* centred when it fits, scrolls from the start when it doesn't */}
                 <div className="mx-auto flex w-max gap-1.5">
                   {page.assistant.suggestions.slice(0, 3).map(s => (
@@ -242,18 +297,19 @@ function Home() {
                 <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 165px), 1fr))' }}>
                   {sec.widgets.flatMap(key => {
                     const c = state[key]?.card;
-                    return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <SummaryTile key={`${key}${j}`} s={t} href={c?.href} />);
+                    if (!c) return [<TileSkeleton key={key} />];
+                    return (c.summaries ?? (c.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} className="fade-in-soft min-w-0"><SummaryTile s={t} href={c.href} /></div>);
                   })}
                 </div>
               )
               : (
                 (() => {
-                  const keys = sec.widgets.filter(key => !isEmpty(state[key]?.card));
+                  const keys = sec.widgets.filter(key => state[key] ? !isEmpty(state[key].card) : !shapeOf(key)?.empty);
                   const widget = (key: string, large = false) => {
                     const s = state[key];
-                    return <Widget key={key} large={large} card={s?.card} title={page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={sec.variant === 'minimal' && view === 'all'} headless={sec.header === false && view === 'all'}
+                    return <Shaped key={key} id={key} card={s?.card}><Widget large={large} card={s?.card} kind={shapeOf(key)?.t} title={page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={(sec.variant === 'minimal' || phone) && view === 'all'} headless={sec.header === false && view === 'all'}
                       status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
-                      run={page?.canAct === false ? undefined : runFor(key)} />;
+                      run={page?.canAct === false ? undefined : runFor(key)} /></Shaped>;
                   };
                   // sized: a grid of narrow tracks; small cards take one (as their headline tile), medium two, large four
                   if (sec.sizes && Object.keys(sec.sizes).length && !aside) return (
@@ -290,18 +346,19 @@ function Home() {
     <TooltipProvider delayDuration={300}>
       {wall && (
         <div className="wallpaper" style={{ '--wall-dim': page!.appearance.dim } as React.CSSProperties} aria-hidden>
-          <img src={wall} alt="" style={page!.appearance.blur ? { filter: `blur(${page!.appearance.blur}px)` } : undefined} />
+          <Wall src={wall} style={page!.appearance.blur ? { filter: `blur(${page!.appearance.blur}px)` } : undefined} />
         </div>
       )}
 
 
       {/* the tab buttons, on whichever side the config says (wide screens); a column on the left/right, a dock at the top/bottom */}
-      <nav aria-label="Sections" className={cn('z-30 hidden gap-3 md:flex', {
+      <nav ref={rail.box as React.RefObject<HTMLElement>} aria-label="Sections" className={cn('z-30 hidden gap-3 md:flex', {
         left: 'fixed top-1/2 left-5 -translate-y-1/2 flex-col',
         right: 'fixed top-1/2 right-5 -translate-y-1/2 flex-col',
         bottom: 'glass-bar fixed bottom-5 left-1/2 -translate-x-1/2 rounded-full border p-1.5 gap-2',
         top: 'glass-bar absolute top-24 left-1/2 -translate-x-1/2 rounded-full border p-1.5 gap-2',
       }[navSide])}>
+        {rail.pill}
         <RoundButton tip={tip} label="Overview" active={view === 'all'} onClick={() => setView('all')}><LayoutGrid /></RoundButton>
         {nav.map(s => (
           <RoundButton tip={tip} key={s.key} label={s.key} active={view === s.key} onClick={() => setView(s.key)}><Icon name={s.chat ? 'chat' : sectionIcon(s) ?? 'pulse'} /></RoundButton>
@@ -318,7 +375,7 @@ function Home() {
           <div className="glass-bar relative flex shrink items-center gap-1 rounded-full border px-2 py-1 sm:gap-3 sm:px-4 sm:py-1.5">
             {page.menubar.flatMap(key => {
               const c = state[key]?.card;
-              return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <MiniRing key={`${key}${j}`} s={t} />);
+              return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} className="fade-in-soft"><MiniRing s={t} /></div>);
             })}
           </div>
         )}
@@ -332,10 +389,15 @@ function Home() {
         {!wall && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={theme.toggle}>{theme.dark ? <Sun key="sun" className="spin-in" /> : <Moon key="moon" className="spin-in" />}</RoundButton>}
       </div>
 
-      <main className={cn('@container/main mx-auto flex flex-col gap-8 px-4 pt-6 pb-28 xl:pt-20', view !== 'all' && 'pt-10 xl:pt-32', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-40 xl:pt-40' }[navSide], page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[1720px]' : 'max-w-[1320px]')}>
+      <main className={cn('@container/main mx-auto flex flex-col gap-8 px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-32', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-40 xl:pt-40' }[navSide], page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[1720px]' : 'max-w-[1320px]')}>
         {!hasSide && hero}
+        {page?.welcome && view === 'all' && <Welcome path={page.welcome.path} saved={page.welcome.saved} />}
 
-        {chatTab && view === chatTab && page?.assistant && (
+        {/* phones: the assistant's tab is its stats plus a way into the chat sheet */}
+        {phone && chatTab && view === chatTab && page?.assistant && (
+          <button onClick={() => setChatOpen(true)} className="glass-round press flex h-12 items-center gap-2.5 rounded-full px-5 text-left text-[16px] text-muted-foreground"><MessageCircle className="size-[18px]" />Ask {page.assistant.name}…</button>
+        )}
+        {!phone && chatTab && view === chatTab && page?.assistant && (
           <div data-slot="card" className="h-[min(78vh,900px)] min-h-[520px] overflow-hidden rounded-[calc(var(--radius)*1.4)] border bg-card shadow-card">
             <Suspense fallback={null}>
               <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={page.assistant.suggestions} tools={page.assistant.tools} onAsk={ask} />
@@ -359,17 +421,21 @@ function Home() {
       </main>
 
       {/* phones: the rail becomes a floating pill at the bottom */}
-      <nav aria-label="Sections" className="glass-round fixed inset-x-4 bottom-4 z-20 flex justify-around rounded-full p-1.5 md:hidden">
-        <button onClick={() => setView('all')} aria-label="Overview" className={cn('grid size-10 place-items-center rounded-full', view === 'all' && 'bg-white text-black')}><LayoutGrid className="size-[18px]" /></button>
-        {nav.map(s => (
-          <button key={s.key} onClick={() => setView(s.key)} aria-label={s.key} className={cn('grid size-10 place-items-center rounded-full', view === s.key && 'bg-white text-black')}><Icon name={s.chat ? 'chat' : sectionIcon(s) ?? 'pulse'} className="size-[18px]" /></button>
-        ))}
-        {page?.assistant && !chatTab && <button onClick={() => setChatOpen(true)} aria-label={page.assistant.name} className="grid size-10 place-items-center rounded-full"><CornerDownLeft className="text-muted-foreground" /></button>}
+      <nav aria-label="Sections" className="glass-bar fixed inset-x-3 bottom-[max(.75rem,env(safe-area-inset-bottom))] z-20 rounded-full border p-1.5 md:hidden">
+        <div ref={dock.box} className="no-scrollbar relative flex justify-between gap-1 overflow-x-auto">
+          {dock.pill}
+          <button onClick={() => setView('all')} aria-label="Overview" aria-current={view === 'all' ? 'page' : undefined} className={cn('press relative grid size-11 shrink-0 place-items-center rounded-full transition-colors duration-200', view === 'all' && 'text-black')}><LayoutGrid className="size-[19px]" /></button>
+          {nav.map(s => (
+            <button key={s.key} onClick={() => { setView(s.key); if (s.chat) { warm(); setChatOpen(true); } }} aria-label={s.key} aria-current={view === s.key ? 'page' : undefined}
+              className={cn('press relative grid size-11 shrink-0 place-items-center rounded-full transition-colors duration-200', view === s.key && 'text-black')}><Icon name={s.chat ? 'chat' : sectionIcon(s) ?? 'pulse'} className="size-[19px]" /></button>
+          ))}
+          {page?.assistant && !chatTab && <button onClick={() => setChatOpen(true)} aria-label={page.assistant.name} className="press relative grid size-11 shrink-0 place-items-center rounded-full"><MessageCircle className="size-[19px]" /></button>}
+        </div>
       </nav>
 
-      {page?.assistant && (
-        palette && <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant.name} ask={ask} actions={actions}
-          runAction={runAction} services={services} SUGGESTIONS={page.assistant.suggestions} setView={setView} nav={nav} sectionIcon={sectionIcon} search={page.search} /></Suspense>
+      {page && palette && (
+        <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} ask={ask} actions={actions} account={account}
+          runAction={runAction} services={services} SUGGESTIONS={page.assistant?.suggestions ?? []} setView={setView} nav={nav} sectionIcon={sectionIcon} search={page.search} /></Suspense>
       )}
 
       {page?.assistant && (
@@ -380,7 +446,7 @@ function Home() {
             <DialogDescription className="sr-only">Ask about your homelab</DialogDescription>
             {chatOpen && (
               <Suspense fallback={null}>
-                <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={page.assistant.suggestions} tools={page.assistant.tools} onAsk={ask} />
+                <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={page.assistant.suggestions} tools={page.assistant.tools} onAsk={ask} onClose={phone ? () => setChatOpen(false) : undefined} />
               </Suspense>
             )}
           </DialogContent>

@@ -8,7 +8,7 @@ import { Hono, type Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { bodyLimit } from 'hono/body-limit';
 import { sameOrigin, setupAuth, userCommand } from './auth.ts';
-import { loadConfig } from './config.ts';
+import { loadConfig, startConfig, validZone } from './config.ts';
 import { headers, hostGuard } from './security.ts';
 import { UPLOAD_DIR } from './core.ts';
 import { loadPlugins } from './plugins.ts';
@@ -28,7 +28,11 @@ if (process.argv[2] === 'config') process.exit(await (await import('./cli.ts')).
 // one bad promise in an integration shouldn't take the whole page down: log it and carry on
 process.on('unhandledRejection', e => console.error('unhandled:', e instanceof Error ? e.message : e));
 
-const config = loadConfig(CONFIG);
+const { config, saved } = startConfig(CONFIG);
+// Dates the server writes (assistant answers, "Tonight", watch history) need the person's clock, not the container's
+// UTC. config `timezone` wins, then TZ; failing both, the first browser to open the page says where it is.
+let zoneKnown = !!(config.timezone || process.env.TZ);
+if (config.timezone) process.env.TZ = config.timezone;
 const fromPlugins = await loadPlugins(registry, config.plugins.packages, config.plugins.replace);
 let site: Site = await buildSite(config, registry, fromPlugins);
 for (const sig of ['SIGTERM', 'SIGINT'] as const) process.once(sig, async () => { try { await site.history?.save(); } finally { process.exit(0); } });
@@ -42,6 +46,7 @@ if (config.reload) {
     let next; try { next = loadConfig(CONFIG); } catch (e) { console.error(`config: not applied: ${(e as Error).message}`); return; }
     if (JSON.stringify(next) === JSON.stringify(site.config)) return;
     if (JSON.stringify(next.auth) !== JSON.stringify(site.config.auth) || JSON.stringify(next.plugins) !== JSON.stringify(site.config.plugins)) console.log('config: auth and plugins changes take effect after a restart');
+    if (next.timezone) { process.env.TZ = next.timezone; zoneKnown = true; }
     const fresh = await buildSite(next, registry, fromPlugins, site);
     const old = site; site = fresh; chat = undefined;
     old.hub.dispose();
@@ -112,8 +117,11 @@ app.get('/api/favicon/:host', async c => {
 
 app.get('/api/page', c => {
   const { config, instances, hub, placed } = site;
+  const tz = c.req.query('tz');
+  if (!zoneKnown && tz && validZone(tz)) { process.env.TZ = tz; zoneKnown = true; console.log(`time zone: ${tz} (from the browser; set timezone in config.yaml to fix it)`); }
   return c.json({
     title: config.title, greeting: config.greeting, location: config.location, canAct: site.acting, search: config.search,
+    welcome: config.welcome ? { path: CONFIG, saved } : undefined,
     // ?v= the file's mtime: replacing the wallpaper changes the URL, so browsers never show a stale cached one
     appearance: { ...config.appearance, wallpaper: site.wallpaperFile ? `/api/wallpaper?v=${site.wallpaperVersion}` : config.appearance.wallpaper },
     assistant: config.assistant ? { name: config.assistant.name, model: config.assistant.model, suggestions: config.assistant.suggestions,

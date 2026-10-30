@@ -27,7 +27,8 @@ import reddit from './reddit.ts';
 import releases from './releases.ts';
 import markets from './markets.ts';
 import calendar from './calendar.ts';
+import api from './api.ts';
 
 export const registry: Record<string, Integration> = Object.fromEntries(
-  [aimonitor, arr, glances, homeassistant, http, immich, indexers, karakeep, ollama, paperless, pihole, qbittorrent, quran, rgbcontrol, romm, scrutiny, seerr, tautulli, uptimekuma, weather, links, rss, hackernews, reddit, releases, markets, calendar].map(i => [i.type, i as Integration]),
+  [aimonitor, arr, glances, homeassistant, http, immich, indexers, karakeep, ollama, paperless, pihole, qbittorrent, quran, rgbcontrol, romm, scrutiny, seerr, tautulli, uptimekuma, weather, links, rss, hackernews, reddit, releases, markets, calendar, api].map(i => [i.type, i as Integration]),
 );

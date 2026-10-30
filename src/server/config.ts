@@ -1,8 +1,13 @@
 // config.yaml: one file, readable top to bottom. `${NAME}` anywhere is replaced from the environment (or a file,
 // for Docker secrets: see `substitute`), so secrets never sit in the file. Unknown keys are errors, with the path.
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { parse } from 'yaml';
 import { z } from 'zod';
+import { STARTER } from './starter.ts';
+
+/** an IANA name Node knows, e.g. America/Toronto */
+export function validZone(tz: string) { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch { return false; } }
 
 const Access = z.enum(['none', 'read', 'write', 'control']);   // write: may add things (save a link, file a doc) without asking
 
@@ -115,6 +120,7 @@ export const Config = z.object({
   title: z.string().default('Home'),
   greeting: z.string().optional(),         // name to greet, e.g. "Sam"
   location: z.string().optional(),
+  timezone: z.string().refine(validZone, 'an IANA time zone, like America/Toronto').optional(),   // default: TZ, or else the first browser's
   appearance: Appearance.default({ dim: 0.35, blur: 0 }),
   assistant: AssistantConfig.optional(),
   integrations: z.record(z.string(), z.object({ type: z.string() }).loose()).default({}),
@@ -135,6 +141,7 @@ export const Config = z.object({
   search: z.union([z.enum(['duckduckgo', 'google', 'kagi', 'brave', 'startpage', 'searxng']), z.string().url()]).optional(),
   // links on the page, grouped: `links.<group>` is a widget key, e.g. links: { Media: [{ name: Plex, url: https://… }] }
   links: z.record(z.string(), z.array(z.object({ name: z.string(), url: z.string().url(), icon: z.string().optional(), note: z.string().optional() }))).default({}),
+  welcome: z.boolean().default(false),          // the getting-started card (a fresh config turns it on)
   reload: z.boolean().default(true),            // watch config.yaml and apply edits live (a bad edit keeps the last good one)
 }).strict();
 export type Config = z.infer<typeof Config>;
@@ -156,7 +163,8 @@ export function substitute(v: unknown): unknown {
     else if (process.env[name] !== undefined) value = process.env[name]!;
     else if (process.env[`${name}_FILE`]) value = readSecret(process.env[`${name}_FILE`]!, m);
     else throw new Error(`config: environment variable ${name} is not set (nor ${name}_FILE)`);
-    usedSecrets.push(value);
+    // a user name, an address or a port isn't a secret, and blanking one mangles real text ("sam" inside "samantha")
+    if (kind || !/USER|LOGIN|URL|HOST|PORT|ADDR/.test(name)) usedSecrets.push(value);
     return value;
   });
   if (Array.isArray(v)) return v.map(substitute);
@@ -164,8 +172,20 @@ export function substitute(v: unknown): unknown {
   return v;
 }
 
-export function loadConfig(path: string): Config {
-  const raw = substitute(parse(readFileSync(path, 'utf8')) ?? {});
+/** Startup: the config, or on a fresh install a starter one, written next to where it belongs if the folder allows
+ *  (a read-only mount doesn't, and then it runs from memory and the welcome card says so). */
+export function startConfig(path: string): { config: Config; saved: boolean } {
+  if (existsSync(path)) return { config: loadConfig(path), saved: true };
+  let saved = false;
+  try { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, STARTER, { flag: 'wx', mode: 0o600 }); saved = true; console.log(`config: no ${path} yet, wrote a starter one`); }
+  catch { console.log(`config: no ${path}, and that folder can't be written: running a starter config from memory`); }
+  return { config: parseConfig(STARTER), saved };
+}
+
+export function loadConfig(path: string): Config { return parseConfig(readFileSync(path, 'utf8')); }
+
+function parseConfig(yaml: string): Config {
+  const raw = substitute(parse(yaml) ?? {});
   const r = Config.safeParse(raw);
   if (!r.success) throw new Error('config.yaml:\n' + r.error.issues.map(i => `  ${i.path.join('.')}: ${i.message}`).join('\n'));
   return r.data;
