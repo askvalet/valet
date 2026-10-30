@@ -142,13 +142,16 @@ export interface ScheduleCard extends Base {
   muted?: string[];                         // shown on the timeline but never "next" (e.g. sunrise)
 }
 
+/** A verse or a quote: the original (right-to-left if Arabic), its translation, where it's from. */
+export interface VerseCard extends Base { type: 'verse'; arabic?: string; english: string; reference: string; meaning?: string }
+
 export interface KVCard extends Base { type: 'kv'; rows: [string, string][] }
 
 export interface TextCard extends Base { type: 'text'; text: string; tone?: Tone }
 
 export interface GroupCard extends Base { type: 'group'; cards: Card[]; layout?: 'row' | 'column' }
 
-export type Card = ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
+export type Card = VerseCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
 
 /** One widget slot's live state, as pushed to the browser. */
 export interface WidgetState { key: string; card?: Card; error?: string; at: number; source?: string }

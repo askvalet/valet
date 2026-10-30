@@ -272,3 +272,6 @@
 .photo-slide { opacity: 0; transform: scale(1.06); transition: opacity 1.4s var(--ease-in-out), transform 8s linear; }
 .photo-slide.is-on { opacity: 1; transform: scale(1); }
 @media (prefers-reduced-motion: reduce) { .photo-slide { transition: opacity .4s ease; transform: none; } }
+
+/* Arabic: a classical Naskh face where the system has one */
+.verse-ar { font-family: "Scheherazade New", "Amiri", "Noto Naskh Arabic", "Geeza Pro", "Al Bayan", serif; font-feature-settings: normal; }
