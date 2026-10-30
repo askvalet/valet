@@ -53,6 +53,13 @@ test('digest stays compact and the brief is written once a day', async () => {
   assert.equal((await dailyBrief(ask, [], states, morning))?.text, 'Quiet night, nothing needs you.');
   await dailyBrief(ask, [], states, morning);
   assert.equal(n, 1);
+  assert.equal(await dailyBrief(ask, [], states, new Date(2026, 9, 30, 15)), null);    // by the afternoon it's old news
+  // the thing it reported got fixed: it doesn't go on saying so, though it won't rewrite within half an hour
+  const fixed = down('y');
+  await dailyBrief(ask, [], fixed, new Date(2026, 9, 30, 8, 10));
+  assert.equal(n, 1);
+  await dailyBrief(ask, [], fixed, new Date(2026, 9, 30, 8, 40));
+  assert.equal(n, 2);
 });
 
 test('setup: edits keep comments; it can\'t touch sign-in or its own access, or write a secret into the file', async () => {

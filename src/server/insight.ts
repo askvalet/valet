@@ -98,22 +98,25 @@ export function parseSuggestions(reply: string | null) {
 
 // ── the morning brief
 const FILE = () => resolve(process.env.VALET_DATA ?? 'data', 'brief.json');
-export interface Brief { day: string; text: string }
+export interface Brief { day: string; text: string; basis?: string; at?: number }
+/** What the brief's claims rest on: anything flagged right now. If that changes, what it said may no longer be true. */
+const basisOf = (states: WidgetState[]) => JSON.stringify([...states.flatMap(s => [s.card?.summary, ...(s.card?.summaries ?? [])].filter(h => h?.tone === 'warn' || h?.tone === 'bad').map(h => `${s.key}:${h!.label}:${h!.sub ?? ''}`)), ...troubles(states).map(t => t.id)].sort());
 let making: Promise<Brief | null> | undefined;
 
-/** One line about the night, written once a day after 5am and kept on disk. */
+/** One line about the night, written after 5am and shown until noon: by the afternoon "overnight" is old news. It's written
+ *  again if what it was based on changes, so it never goes on reporting a problem that's been fixed. */
 export async function dailyBrief(ask: Ask, journal: string[], states: WidgetState[], now = new Date()): Promise<Brief | null> {
   const day = now.toDateString();
-  const saved: Brief | null = await readFile(FILE(), 'utf8').then(JSON.parse).catch(() => null);
-  if (saved?.day === day) return saved;
-  if (now.getHours() < 5 || !states.length) return null;
+  if (now.getHours() < 5 || now.getHours() >= 12 || !states.length) return null;
+  const saved: Brief | null = await readFile(FILE(), 'utf8').then(JSON.parse).catch(() => null), basis = basisOf(states);
+  if (saved?.day === day && (saved.basis === basis || now.getTime() - (saved.at ?? 0) < 1_800_000)) return saved;
   return making ??= (async () => {
     try {
       const text = await ask(
         `Write one sentence, at most 20 words, telling the owner of a homelab what happened overnight and whether anything needs them. Plain and calm; no greeting. If nothing happened, say so briefly.\n${SEP}`,
         `Since yesterday:\n${journal.join('\n') || '(nothing recorded)'}\n\nRight now:\n${digest(states)}`);
       if (!text) return null;
-      const brief = { day, text: clip(text, 200) };
+      const brief = { day, text: clip(text, 200), basis, at: now.getTime() };
       await mkdir(dirname(FILE()), { recursive: true });
       await writeFile(`${FILE()}.tmp`, JSON.stringify(brief)); await rename(`${FILE()}.tmp`, FILE());
       return brief;
