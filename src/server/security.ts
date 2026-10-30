@@ -8,7 +8,7 @@ export const canAct = (config: Config) => config.auth.mode !== 'none' || config.
 
 /** Every secret Atrium knows (each ${VAR} the config used), so none can slip out in an error message or a tool result. */
 export function redactor(secrets: string[]) {
-  const list = [...new Set(secrets.filter(s => s && s.length >= 6))].sort((a, b) => b.length - a.length);
+  const list = [...new Set(secrets.filter(s => s && s.length >= 4))].sort((a, b) => b.length - a.length);
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const re = list.length ? new RegExp(list.map(esc).join('|'), 'g') : null;
   return (text: string) => (re ? text.replace(re, '•••') : text);
@@ -27,6 +27,8 @@ export const headers: MiddlewareHandler = async (c, next) => {
   c.header('X-Frame-Options', 'DENY');
   c.header('Permissions-Policy', 'microphone=(self), camera=(), geolocation=(), payment=(), usb=()');
   c.header('Cross-Origin-Opener-Policy', 'same-origin');
+  // live data and anything behind sign-in: never kept by the browser or a proxy cache
+  if (c.req.path.startsWith('/api/') && !c.res.headers.has('Cache-Control')) c.header('Cache-Control', 'no-store');
 };
 
 /** Answer only to names Atrium is meant to have. A malicious site can point its own domain at your Atrium's IP (DNS
@@ -42,8 +44,10 @@ export function hostGuard(allowed: string[]): MiddlewareHandler {
       || exact.has(host) || wild.some(w => host.endsWith(w));
   };
   return async (c, next) => {
-    const host = c.req.header('x-forwarded-host') ?? c.req.header('host');
-    if (!ok(host)) return c.text(`Atrium doesn't answer to "${host}". If that's your address for it, add it to allowedHosts in config.yaml.`, 421);
+    // both must pass: a page in the browser can set X-Forwarded-Host on its own same-origin requests, so it may only
+    // narrow what Host allows, never vouch for it
+    const host = [c.req.header('host'), c.req.header('x-forwarded-host')].find(h => !ok(h));
+    if (host !== undefined) return c.text(`Atrium doesn't answer to "${host}". If that's your address for it, add it to allowedHosts in config.yaml.`, 421);
     return next();
   };
 }

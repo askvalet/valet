@@ -176,10 +176,11 @@ test('plugins: a one-file plugin loads, can\'t silently take a built-in name, an
 
 test('security: secrets are redacted, and Atrium is read-only without sign-in unless the network is trusted', async () => {
   const { redactor, canAct } = await import('../src/server/security.ts');
-  const r = redactor(['s3cr3t-key-123', 'short', 'another.secret+value']);
+  const r = redactor(['s3cr3t-key-123', 'pw12', 'abc', 'another.secret+value']);
   assert.equal(r('GET http://x/?apikey=s3cr3t-key-123 failed'), 'GET http://x/?apikey=••• failed');
   assert.equal(r('pw another.secret+value!'), 'pw •••!');           // regex characters are escaped
-  assert.equal(r('short stays'), 'short stays');                     // too short to be a real secret
+  assert.equal(r('pass pw12'), 'pass •••');                          // short passwords too
+  assert.equal(r('abc stays'), 'abc stays');                         // too short to tell from words
   const cfg = (auth: object) => Config.parse({ auth });
   assert.equal(canAct(cfg({})), false);
   assert.equal(canAct(cfg({ mode: 'none', trustNetwork: true })), true);
@@ -212,6 +213,7 @@ test('host guard: IPs, localhost and listed names pass; other names are refused 
   for (const h of ['localhost:7575', '192.168.1.5:7575', '[::1]:7575', 'atrium.example.com', 'dash.home.example.com']) assert.equal(await at(h), 200, h);
   for (const h of ['evil.example.net', 'atrium.example.com.evil.net', 'home.example.com']) assert.equal(await at(h), 421, h);
   assert.equal(await at('localhost', 'evil.example.net'), 421);   // a proxy forwarding a strange name
+  assert.equal(await at('evil.example.net', 'localhost'), 421);   // a rebinding page can't vouch for itself
 });
 
 test('toolkit: session helper signs in once for parallel callers and again after reset; relative days', async () => {
