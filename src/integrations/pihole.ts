@@ -10,21 +10,15 @@ export default defineIntegration({
   config: z.object({ url: z.string().url(), password: z.string(), href: z.string().optional() }),
   create(cfg, ctx) {
     const base = cfg.url.replace(/\/$/, '');
-    let sid = '', pending: Promise<void> | null = null;
-    // one sign-in at a time: parallel requests wait for the same one (Pi-hole rate-limits bursts of sign-ins)
-    function login() {
-      pending ??= (async () => {
-        const r = await ctx.http<any>(`${base}/api/auth`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: cfg.password }) });
-        if (!r.session?.valid) throw new Error('Pi-hole sign-in failed');
-        sid = r.session.sid;
-      })().finally(() => { pending = null; });
-      return pending;
-    }
+    const sid = ctx.session(async () => {
+      const r = await ctx.http<any>(`${base}/api/auth`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: cfg.password }) });
+      if (!r.session?.valid) throw new Error('Pi-hole sign-in failed');
+      return r.session.sid as string;
+    });
     async function api<T = any>(path: string, init: RequestInit = {}): Promise<T> {
-      if (!sid) await login();
-      const go = () => ctx.http<Response>(`${base}/api/${path}`, { ...init, as: 'response', headers: { 'X-FTL-SID': sid, 'Content-Type': 'application/json' } });
+      const go = async () => ctx.http<Response>(`${base}/api/${path}`, { ...init, as: 'response', headers: { 'X-FTL-SID': await sid.get(), 'Content-Type': 'application/json' } });
       let r = await go();
-      if (r.status === 401) { await login(); r = await go(); }
+      if (r.status === 401) { sid.reset(); r = await go(); }
       if (!r.ok) throw new Error(`Pi-hole answered ${r.status}`);
       return r.json() as Promise<T>;
     }

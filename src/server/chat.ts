@@ -21,6 +21,10 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     ? createAnthropic({ apiKey: a.apiKey, baseURL: a.baseURL })(a.model)
     : createOpenAICompatible({ name: 'assistant', baseURL: a.baseURL ?? 'http://localhost:11434/v1', apiKey: a.apiKey, includeUsage: true, headers: { 'User-Agent': 'Atrium' } })(a.model);
 
+  // what the person wrote in their latest message (set per request; write tools check their inputs against it)
+  let said = '';
+  const personSaid = (v: string) => v.trim().length > 0 && said.includes(v.trim());
+
   // Tool names are "<instance>__<tool>" so two instances of one integration (two Plex servers) don't collide.
   const tools: ToolSet = {};
   const approval: Record<string, 'user-approval'> = {};
@@ -44,6 +48,9 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
         toModelOutput: ({ output }) => ({ type: 'json', value: (output as { data: any }).data ?? null }),
       });
       if (t.access === 'control') approval[key] = 'user-approval';
+      // a write tool runs on its own only with what the person themselves wrote, never what something it read suggested
+      else if (t.access === 'write' && t.fromPerson?.length) approval[key] = ((input: Record<string, unknown>) =>
+        t.fromPerson!.every(f => input[f] == null || personSaid(String(input[f]))) ? 'not-applicable' : 'user-approval') as any;
     }
   }
 
@@ -58,8 +65,8 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       execute: async ({ widgets, layout }) => {
         const picked = widgets.map(k => readable.find(r => r.key === k)).filter(Boolean) as typeof readable;
         const cards = await Promise.all(picked.map(r => r.def.fetch().catch(e => ({ type: 'text', title: r.title, text: (e as Error).message, tone: 'bad' }) as const)));
-        return { data: { shown: picked.map(r => r.key), missing: widgets.filter(k => !picked.some(r => r.key === k)) },
-                 card: cards.length === 1 ? cards[0] : { type: 'group', layout, cards } };
+        return JSON.parse(safety.redact(JSON.stringify({ data: { shown: picked.map(r => r.key), missing: widgets.filter(k => !picked.some(r => r.key === k)) },
+                 card: cards.length === 1 ? cards[0] : { type: 'group', layout, cards } })));
       },
       toModelOutput: ({ output }) => ({ type: 'json', value: (output as { data: any }).data }),
     });
@@ -84,11 +91,18 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   ].join('\n');
 
   return async (c: HonoContext) => {
-    const { messages } = await c.req.json<{ messages: UIMessage[] }>();
+    const { messages: all_ } = await c.req.json<{ messages: UIMessage[] }>();
+    const lastUser = [...all_].reverse().find(m => m.role === 'user');
+    said = (lastUser?.parts ?? []).map((p: any) => p.type === 'text' ? p.text : '').join('\n');
+    // the model gets the last 24 messages: enough context for a conversation, bounded cost for a long one
+    const messages = all_.slice(-24);
     const m = await mcp();
-    const all = { ...tools, ...m.tools }, approvals = { ...approval, ...m.approval };
+    // MCP results pass through the redactor too (their headers can hold keys)
+    const mcp_ = Object.fromEntries(Object.entries(m.tools).map(([k, t]: [string, any]) => [k, { ...t, execute: async (...args: any[]) => JSON.parse(safety.redact(JSON.stringify(await t.execute(...args) ?? null))) }]));
+    const all = { ...tools, ...mcp_ }, approvals = { ...approval, ...m.approval };
     const result = streamText({
       model,
+      abortSignal: c.req.raw.signal,   // Stop (or closing the chat) ends generation and any tools still running
       system: system(m.catalog),
       messages: await convertToModelMessages(messages, { tools: all }),
       tools: all,

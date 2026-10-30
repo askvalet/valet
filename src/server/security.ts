@@ -28,3 +28,22 @@ export const headers: MiddlewareHandler = async (c, next) => {
   c.header('Permissions-Policy', 'microphone=(self), camera=(), geolocation=(), payment=(), usb=()');
   c.header('Cross-Origin-Opener-Policy', 'same-origin');
 };
+
+/** Answer only to names Atrium is meant to have. A malicious site can point its own domain at your Atrium's IP (DNS
+ *  rebinding) and script your browser against it; refusing unknown Host headers closes that. IP addresses and
+ *  localhost are always fine: an attacker's page can't use those names. */
+export function hostGuard(allowed: string[]): MiddlewareHandler {
+  const exact = new Set(allowed.filter(h => !h.startsWith('*.')).map(h => h.toLowerCase()));
+  const wild = allowed.filter(h => h.startsWith('*.')).map(h => h.slice(1).toLowerCase());
+  const ok = (raw: string | undefined) => {
+    if (!raw) return true;
+    const host = raw.toLowerCase().replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
+    return host === 'localhost' || host.endsWith('.localhost') || /^[\d.]+$/.test(host) || host.includes(':')   // IPv4, IPv6
+      || exact.has(host) || wild.some(w => host.endsWith(w));
+  };
+  return async (c, next) => {
+    const host = c.req.header('x-forwarded-host') ?? c.req.header('host');
+    if (!ok(host)) return c.text(`Atrium doesn't answer to "${host}". If that's your address for it, add it to allowedHosts in config.yaml.`, 421);
+    return next();
+  };
+}

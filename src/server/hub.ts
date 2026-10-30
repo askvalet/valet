@@ -12,6 +12,7 @@ export class Hub {
   private timers = new Map<string, NodeJS.Timeout>();
   private listeners = new Set<Listener>();
   private inflight = new Set<string>();
+  private again = new Set<string>();   // a refresh was asked for while one was running: run once more after
 
   private instances: Map<string, Instance>;
   private onChange?: Change;
@@ -41,7 +42,8 @@ export class Hub {
   /** Refresh one widget now (after an action changed something) instead of waiting for its timer. */
   async refresh(key: string) {
     const w = this.widget(key);
-    if (!w || this.inflight.has(key)) return;
+    if (!w) return;
+    if (this.inflight.has(key)) { this.again.add(key); return; }
     this.inflight.add(key);
     let next: WidgetState;
     try { const card = await w.fetch(); next = { key, card: this.history ? this.history.apply(key, card) : card, at: Date.now() }; }
@@ -54,6 +56,7 @@ export class Hub {
       if (!next.error) this.onChange?.(key, prev, next);
       for (const l of this.listeners) l(next);
     }
+    if (this.again.delete(key)) await this.refresh(key);
   }
 
   refreshInstance(inst: string) {

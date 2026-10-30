@@ -23,15 +23,17 @@ export class History {
 
   async load() {
     const raw = await readFile(FILE, 'utf8').catch(() => '{}');
-    for (const [k, v] of Object.entries(JSON.parse(raw) as Record<string, [number, number][]>)) this.series.set(k, v);
-    setInterval(() => this.save(), 5 * 60_000).unref();
+    let saved: Record<string, [number, number][]> = {};
+    try { saved = JSON.parse(raw); } catch { console.error('history: history.json is unreadable; starting fresh'); }
+    for (const [k, v] of Object.entries(saved)) if (Array.isArray(v)) this.series.set(k, v);
+    setInterval(() => this.save().catch(e => console.error('history: save failed:', e.message)), 5 * 60_000).unref();
   }
   async save() {
     if (!this.dirty) return;
-    this.dirty = false;
     await mkdir(dirname(FILE), { recursive: true });
     await writeFile(`${FILE}.tmp`, JSON.stringify(Object.fromEntries(this.series)));
     await rename(`${FILE}.tmp`, FILE);
+    this.dirty = false;   // only once it's safely on disk
   }
 
   /** Record this card's headline numbers, then give back the card with a day of history on any headline that has no

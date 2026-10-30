@@ -5,9 +5,10 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
+import { bodyLimit } from 'hono/body-limit';
 import { sameOrigin, setupAuth, userCommand } from './auth.ts';
 import { loadConfig, usedSecrets } from './config.ts';
-import { canAct, headers, redactor } from './security.ts';
+import { canAct, headers, hostGuard, redactor } from './security.ts';
 import { makeContext, UPLOAD_DIR, type Instance, type Integration } from './core.ts';
 import { Hub } from './hub.ts';
 import { noticesFor, type Notice } from './notices.ts';
@@ -66,7 +67,7 @@ for (const key of placed) {
 }
 const history = config.history ? new History(config.history.hours, config.history.every * 60_000) : undefined;
 await history?.load();
-process.once('SIGTERM', async () => { await history?.save(); process.exit(0); });
+for (const sig of ['SIGTERM', 'SIGINT'] as const) process.once(sig, async () => { try { await history?.save(); } finally { process.exit(0); } });
 
 // notices go to every open page; the last few are replayed to a page that opens within a minute of them
 const noticeListeners = new Set<(n: Notice) => void>(), recent: Notice[] = [];
@@ -81,6 +82,7 @@ const hub = new Hub(new Map([...instances].map(([id, i]) => [id, {
 if (history && config.history && config.history.background) hub.sampleInBackground(config.history.every * 60_000);
 
 const app = new Hono();
+app.use('*', hostGuard(config.allowedHosts));
 app.use('*', headers);
 // for Docker's healthcheck and uptime monitors: up, and how many widgets have a fresh card
 app.get('/healthz', c => c.json({ ok: true, widgets: hub.snapshot().filter(s => s.card && !s.error).length }));
@@ -145,20 +147,22 @@ app.get('/api/page', c => c.json({
 
 // Live updates: the full current state on connect, then each change as it happens.
 app.get('/api/events', c => streamSSE(c, async stream => {
-  for (const s of hub.snapshot()) await stream.writeSSE({ event: 'widget', data: redact(JSON.stringify(s)) });
-  const queue: string[] = [];
+  // subscribe first so nothing changes unseen while the snapshot is written; a slow page keeps only the newest state
+  // of each widget, so its queue can't grow without bound
+  const queue = new Map<string, string>();
   let wake: (() => void) | null = null;
-  const notices: string[] = recent.filter(n => Date.now() - n.at < 60_000).map(n => JSON.stringify(n));
-  const off = hub.subscribe(s => { queue.push(redact(JSON.stringify(s))); wake?.(); });
-  const tell = (n: Notice) => { notices.push(JSON.stringify(n)); wake?.(); };
+  const notices: string[] = recent.filter(n => Date.now() - n.at < 60_000).map(n => redact(JSON.stringify(n)));
+  const off = hub.subscribe(s => { queue.delete(s.key); queue.set(s.key, redact(JSON.stringify(s))); wake?.(); });
+  for (const s of hub.snapshot()) if (!queue.has(s.key)) queue.set(s.key, redact(JSON.stringify(s)));
+  const tell = (n: Notice) => { notices.push(redact(JSON.stringify(n))); wake?.(); };
   noticeListeners.add(tell);
   stream.onAbort(() => { off(); noticeListeners.delete(tell); });
   while (!stream.aborted) {
-    while (queue.length) await stream.writeSSE({ event: 'widget', data: queue.shift()! });
+    for (const [k, data] of queue) { queue.delete(k); await stream.writeSSE({ event: 'widget', data }); }
     while (notices.length) await stream.writeSSE({ event: 'notice', data: notices.shift()! });
     await Promise.race([new Promise<void>(r => (wake = r)), stream.sleep(25_000)]);
     wake = null;
-    if (!queue.length && !notices.length) await stream.writeSSE({ event: 'ping', data: '' });   // keeps proxies from closing it
+    if (!queue.size && !notices.length) await stream.writeSSE({ event: 'ping', data: '' });   // keeps proxies from closing it
   }
   off(); noticeListeners.delete(tell);
 }));
@@ -166,12 +170,19 @@ app.get('/api/events', c => streamSSE(c, async stream => {
 // Homepage controls: run an integration action, then refresh that integration's widgets right away.
 // Files attached in chat (pasted, dropped or picked): stored for a day so a tool can file them (to Paperless, say).
 // The browser gets back an id it puts in the message; nothing is served back out.
-app.post('/api/files', async c => {
+app.post('/api/files', bodyLimit({ maxSize: 50 * 2 ** 20, onError: c => c.json({ error: 'files are limited to 50 MB' }, 413) }), async c => {
+  if (!acting) return c.json({ error: 'Atrium is read-only: attaching files is off' }, 403);
+  // at most 500 MB waiting to be filed at once
+  let held = 0;
+  for (const f of await readdir(UPLOAD_DIR).catch(() => [] as string[])) held += (await stat(resolve(UPLOAD_DIR, f)).catch(() => ({ size: 0 }))).size;
+  if (held > 500 * 2 ** 20) return c.json({ error: 'too many files waiting; try again later' }, 507);
   const body = Buffer.from(await c.req.arrayBuffer());
   if (!body.length) return c.json({ error: 'empty file' }, 400);
   if (body.length > 50 * 2 ** 20) return c.json({ error: 'files are limited to 50 MB' }, 413);
   const id = randomBytes(12).toString('hex');
-  const name = decodeURIComponent(c.req.header('x-file-name') ?? 'pasted').replace(/[\/\\]/g, '_').slice(0, 200);
+  let name = 'pasted';
+  try { name = decodeURIComponent(c.req.header('x-file-name') ?? 'pasted'); } catch {}
+  name = name.replace(/[\/\\\x00-\x1f]/g, '_').slice(0, 200);
   const type = (c.req.header('content-type') ?? 'application/octet-stream').split(';')[0];
   await mkdir(UPLOAD_DIR, { recursive: true });
   await writeFile(resolve(UPLOAD_DIR, `${id}.bin`), body);
@@ -194,7 +205,7 @@ app.post('/api/action/:inst/:action', async c => {
   try {
     const result = await a.run(args.data);
     setTimeout(() => hub.refreshInstance(inst), 300);
-    return c.json({ ok: true, result });
+    return c.json(JSON.parse(redact(JSON.stringify({ ok: true, result: result ?? null }))));
   } catch (e) { return c.json({ error: redact((e as Error).message) }, 502); }
 });
 
@@ -205,7 +216,11 @@ app.get('/api/image/:inst', async c => {
   try {
     const res = await inst.image(ref);
     if (!res.ok) return c.body(null, 502);
-    return new Response(res.body, { headers: { 'Content-Type': res.headers.get('content-type') ?? 'image/jpeg', 'Cache-Control': 'private, max-age=86400' } });
+    // images only: a service that answers with HTML or a PDF never gets it served from Atrium's origin
+    const type = (res.headers.get('content-type') ?? '').split(';')[0].trim();
+    if (!/^image\/(?!svg)/.test(type)) { await res.body?.cancel(); return c.body(null, 415); }
+    return new Response(res.body, { headers: { 'Content-Type': type, 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "sandbox; default-src 'none'", 'Content-Disposition': 'inline' } });
   } catch { return c.body(null, 502); }
 });
 

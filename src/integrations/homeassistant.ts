@@ -45,7 +45,15 @@ export default defineIntegration({
   create(cfg, ctx) {
     const base = cfg.url.replace(/\/$/, '');
     const headers = { Authorization: `Bearer ${cfg.token}`, 'Content-Type': 'application/json' };
-    const states = () => ctx.http<any[]>(`${base}/api/states`, { headers });
+    // every card and the floor plan read the same /api/states (all entities, can be MBs): share one download briefly
+    let cached: { at: number; p: Promise<any[]> } | null = null;
+    const states = () => {
+      if (cached && Date.now() - cached.at < 2000) return cached.p;
+      const p = ctx.http<any[]>(`${base}/api/states`, { headers });
+      cached = { at: Date.now(), p };
+      p.catch(() => { if (cached?.p === p) cached = null; });
+      return p;
+    };
     const call = (domain: string, service: string, data: Record<string, unknown>) =>
       ctx.http(`${base}/api/services/${domain}/${service}`, { method: 'POST', headers, body: JSON.stringify(data) });
     const ids = (c: (typeof cfg.cards)[string]) => c.entities.map(e => typeof e === 'string' ? e : e.id);
@@ -176,7 +184,10 @@ export default defineIntegration({
       if (!allowed.has(entity_id)) throw new Error(`${entity_id} isn't on the page or in controllable`);
       const [domain] = entity_id.split('.');
       const svc = service ?? (domain === 'automation' ? 'trigger' : domain === 'button' || domain === 'input_button' ? 'press' : 'turn_on');
-      if (!/^[a-z_]+$/.test(svc)) throw new Error('bad service');
+      // only what the page's buttons do: never an arbitrary service (unlock, open_cover…) on something shown on a card
+      const OK: Record<string, string[]> = { vacuum: ['start', 'pause', 'return_to_base', 'locate'], button: ['press'], input_button: ['press'],
+        automation: ['trigger'], scene: ['turn_on'], script: ['turn_on'] };
+      if (!OK[domain]?.includes(svc)) throw new Error(`${domain}.${svc} isn't something Atrium's buttons do`);
       await call(domain, svc, { entity_id });
     }
 
@@ -187,7 +198,9 @@ export default defineIntegration({
         choose: { description: 'Pick an option of a select entity', input: z.object({ entity_id: z.string(), value: z.string() }),
           async run({ entity_id, value }) {
             if (!allowed.has(entity_id)) throw new Error(`${entity_id} isn't on the page or in controllable`);
-            await call(entity_id.split('.')[0], 'select_option', { entity_id, option: value });
+            const domain = entity_id.split('.')[0];
+            if (domain !== 'select' && domain !== 'input_select') throw new Error(`${entity_id} isn't a select`);
+            await call(domain, 'select_option', { entity_id, option: value });
           } },
         press: { description: 'Run a scene/script, press a button, start/dock a vacuum', input: z.object({ entity_id: z.string(), service: z.string().optional() }),
           run: ({ entity_id, service }) => press(entity_id, service) },

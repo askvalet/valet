@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Config } from '../src/server/config.ts';
-import type { Context, Instance } from '../src/server/core.ts';
+import { session, type Context, type Instance } from '../src/server/core.ts';
 import { checkCard } from '../src/shared/cards.schema.ts';
 import arr from '../src/integrations/arr.ts';
 import homeassistant from '../src/integrations/homeassistant.ts';
@@ -17,6 +17,7 @@ function fake(handler: Handler): Context & { calls: string[] } {
   const calls: string[] = [];
   return {
     id: 't', calls, log() {}, image: r => `/img/${r}`, upload: async () => ({ name: 'f', type: 'text/plain', data: Buffer.from('') }),
+    session,
     async http(url: string, init: any = {}) {
       calls.push(`${init.method ?? 'GET'} ${url}`);
       const out = await handler(url, init);
@@ -199,4 +200,41 @@ test('scaffold: new-integration writes a plugin that loads and whose cards and t
   const inst = i.create(i.config.parse({ url: 'http://x' }), { http: async () => ({}) });
   valid(await inst.widgets.status.fetch());
   assert.equal(inst.tools['my_service_restart'].access, 'control');
+});
+
+test('host guard: IPs, localhost and listed names pass; other names are refused (DNS rebinding)', async () => {
+  const { hostGuard } = await import('../src/server/security.ts');
+  const { Hono } = await import('hono');
+  const app = new Hono();
+  app.use('*', hostGuard(['atrium.example.com', '*.home.example.com']));
+  app.get('/', c => c.text('ok'));
+  const at = (host: string, fwd?: string) => app.request('/', { headers: { host, ...(fwd ? { 'x-forwarded-host': fwd } : {}) } }).then(r => r.status);
+  for (const h of ['localhost:7575', '192.168.1.5:7575', '[::1]:7575', 'atrium.example.com', 'dash.home.example.com']) assert.equal(await at(h), 200, h);
+  for (const h of ['evil.example.net', 'atrium.example.com.evil.net', 'home.example.com']) assert.equal(await at(h), 421, h);
+  assert.equal(await at('localhost', 'evil.example.net'), 421);   // a proxy forwarding a strange name
+});
+
+test('toolkit: session helper signs in once for parallel callers and again after reset; relative days', async () => {
+  const { session, fmt } = await import('../src/server/core.ts');
+  let n = 0;
+  const s = session(async () => { n++; await new Promise(r => setTimeout(r, 5)); return `sid${n}`; });
+  assert.deepEqual(await Promise.all([s.get(), s.get(), s.get()]), ['sid1', 'sid1', 'sid1']);
+  s.reset();
+  assert.equal(await s.get(), 'sid2');
+  let fail = true;
+  const f = session(async () => { if (fail) throw new Error('no'); return 'ok'; });
+  await assert.rejects(f.get());
+  fail = false;
+  assert.equal(await f.get(), 'ok');   // a failed sign-in isn't cached
+  assert.equal(fmt.relativeDay(Date.now() + 864e5), 'Tomorrow');
+});
+
+test('home assistant: buttons only do what cards offer, never an arbitrary service', async () => {
+  const calls: string[] = [];
+  const ha = make(homeassistant, { url: 'http://ha', token: 'x', cards: { c: { title: 'C', entities: ['lock.front', 'vacuum.robot', 'sensor.t'] } } },
+    fake(url => { calls.push(url); return {}; }));
+  await assert.rejects(ha.actions!.press.run({ entity_id: 'lock.front', service: 'unlock' }));
+  await assert.rejects(ha.actions!.choose.run({ entity_id: 'sensor.t', value: 'x' }));
+  await ha.actions!.press.run({ entity_id: 'vacuum.robot', service: 'start' });
+  assert.ok(calls.some(u => u.endsWith('/api/services/vacuum/start')));
 });

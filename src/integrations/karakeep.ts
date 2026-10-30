@@ -54,7 +54,7 @@ export default defineIntegration({
         },
         bookmark_save: {
           description: 'Save a link (or a text note) to Karakeep. Optionally a note, tags, or a list to put it in. Karakeep crawls the page and adds its own summary and tags.',
-          access: 'write',
+          access: 'write', fromPerson: ['url', 'text'],   // a link a document or page suggested asks first
           input: z.object({ url: z.string().url().optional(), text: z.string().optional(), note: z.string().optional(), tags: z.array(z.string()).optional(), list: z.string().optional() }),
           async run({ url, text, note, tags, list }) {
             if (!url && !text) return { data: { error: 'give a link or some text' } };

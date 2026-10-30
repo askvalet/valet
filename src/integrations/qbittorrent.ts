@@ -14,23 +14,20 @@ export default defineIntegration({
   }),
   create(cfg, ctx) {
     const base = cfg.url.replace(/\/$/, '');
-    let cookie = '';
     const speeds: number[] = [];
-    async function login() {
+    // qBittorrent hands back a cookie: "SID" on older versions, "QBT_SID_<port>" on 5.x
+    const cookie = ctx.session(async () => {
       const res = await ctx.http<Response>(`${base}/api/v2/auth/login`, {
-        as: 'response', method: 'POST', body: new URLSearchParams({ username: cfg.username, password: cfg.password }),
-        headers: { Referer: base },
+        as: 'response', method: 'POST', body: new URLSearchParams({ username: cfg.username, password: cfg.password }), headers: { Referer: base },
       });
-      // the cookie is "SID" on older versions and "QBT_SID_<port>" on 5.x
       const sid = res.headers.get('set-cookie')?.match(/(?:QBT_SID_\d+|SID)=[^;]+/)?.[0];
       if (!sid) throw new Error('qBittorrent login failed');
-      cookie = sid;
-    }
+      return sid;
+    });
     async function api<T = any>(path: string, init: RequestInit = {}): Promise<T> {
-      if (!cookie) await login();
-      const go = () => ctx.http<Response>(`${base}/api/v2/${path}`, { ...init, as: 'response', headers: { Cookie: cookie, Referer: base } });
+      const go = async () => ctx.http<Response>(`${base}/api/v2/${path}`, { ...init, as: 'response', headers: { Cookie: await cookie.get(), Referer: base } });
       let res = await go();
-      if (res.status === 403) { await login(); res = await go(); }
+      if (res.status === 403) { cookie.reset(); res = await go(); }
       if (!res.ok) throw new Error(`qBittorrent answered ${res.status}`);
       const text = await res.text();
       return (text.startsWith('{') || text.startsWith('[') ? JSON.parse(text) : text) as T;

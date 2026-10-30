@@ -116,9 +116,16 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
 
   // failed sign-ins slow down per address: 5 free, then a growing wait (up to 15 minutes)
   const fails = new Map<string, { n: number; until: number }>();
-  const ipOf = (c: Context) => (getConnInfo(c).remote.address ?? '?').replace(/^::ffff:/, '');
+  // behind a trusted reverse proxy, the client is the first X-Forwarded-For hop, not the proxy (or one attacker
+  // would lock everyone out)
+  const trusted = new Set(config.auth.proxy.trusted);
+  const ipOf = (c: Context) => {
+    const sock = (getConnInfo(c).remote.address ?? '?').replace(/^::ffff:/, '');
+    return trusted.has(sock) ? c.req.header('x-forwarded-for')?.split(',')[0].trim() || sock : sock;
+  };
   const throttled = (ip: string) => { const f = fails.get(ip); return f && f.until > Date.now() ? Math.ceil((f.until - Date.now()) / 1000) : 0; };
   const failed = (ip: string) => {
+    if (fails.size > 5000) for (const [k, v] of fails) if (v.until < Date.now()) fails.delete(k);   // stays bounded
     const f = fails.get(ip) ?? { n: 0, until: 0 }; f.n++;
     if (f.n > 5) f.until = Date.now() + Math.min(900_000, 2 ** (f.n - 5) * 1000);
     fails.set(ip, f);
@@ -129,14 +136,15 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
     return u ? c.json({ mode, user: { name: u.name } }) : c.json({ mode, user: null, setup: !!setupCode }, 401);
   });
   app.post('/api/auth/login', async c => {
-    const ip = ipOf(c), wait = throttled(ip);
-    if (wait) return c.json({ error: `Too many tries. Wait ${wait}s.` }, 429);
+    const ip = ipOf(c);
     const { name, password, remember } = await c.req.json().catch(() => ({}));
+    const who = `user:${String(name ?? '').slice(0, 32)}`, wait = Math.max(throttled(ip), throttled(who));
+    if (wait) return c.json({ error: `Too many tries. Wait ${wait}s.` }, 429);
     const u = users.find(x => x.name === String(name ?? ''));
     // check a hash even for unknown names, so timing doesn't reveal which names exist
     const ok = u ? await verify(u, String(password ?? '')) : (await hash(String(password ?? '')), false);
-    if (!ok) { failed(ip); return c.json({ error: 'That name and password don\'t match.' }, 401); }
-    fails.delete(ip);
+    if (!ok) { failed(ip); failed(who); return c.json({ error: 'That name and password don\'t match.' }, 401); }
+    fails.delete(ip); fails.delete(who);
     start(c, u!, remember !== false);
     return c.json({ user: { name: u!.name } });
   });

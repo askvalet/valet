@@ -28,6 +28,9 @@ export interface Action<A = any> {
 export interface Tool<A = any> {
   description: string;                   // written for the model: what it returns and when to use it
   access: Access;
+  /** For 'write' tools: input fields that must come word for word from the person's own latest message for the tool to
+   *  run without asking (e.g. the link they pasted). Otherwise, say when a document or web page suggested it, it asks. */
+  fromPerson?: string[];
   input: z.ZodType<A>;
   /** `data` goes to the model (keep it compact); `card` is what the person sees in chat. */
   run(args: A): Promise<{ data: unknown; card?: Card }>;
@@ -51,6 +54,21 @@ export interface Context {
   image(ref: string): string;
   /** a file the person attached in chat (ids come from the message), for tools that file things away */
   upload(id: string): Promise<{ name: string; type: string; data: Buffer }>;
+  /** For services that sign in and hand back a session (a cookie, a token). get() signs in once and reuses it; parallel
+   *  callers share one sign-in; reset() after the service says the session expired. */
+  session<T>(login: () => Promise<T>): { get(): Promise<T>; reset(): void };
+}
+
+export function session<T>(login: () => Promise<T>) {
+  let value: Promise<T> | null = null;
+  return {
+    get() {
+      value ??= login();
+      value.catch(() => { value = null; });   // a failed sign-in is retried next time, not cached
+      return value;
+    },
+    reset() { value = null; },
+  };
 }
 
 export interface Integration<C = any> {
@@ -75,6 +93,7 @@ export function makeContext(id: string): Context {
     log: (...a) => console.log(`[${id}]`, ...a),
     image: ref => `/api/image/${encodeURIComponent(id)}?ref=${encodeURIComponent(ref)}`,
     upload: readUpload,
+    session,
   };
 }
 
@@ -88,6 +107,20 @@ export async function readUpload(fileId: string) {
 
 // Small formatting helpers integrations share, so numbers read the same everywhere.
 export const fmt = {
+  /** "Oct 29, 2024" */
+  day: (d?: string | number | Date) => d == null || d === '' ? undefined : new Date(d).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }),
+  /** "6:31 PM" */
+  time: (d: string | number | Date) => new Date(d).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }),
+  /** "Tonight", "Tomorrow", "Fri", "Nov 4" (and "Yesterday") */
+  relativeDay(iso: string | number | Date) {
+    const d = new Date(iso), today = new Date(new Date().toDateString()).getTime();
+    const diff = Math.floor((new Date(d.toDateString()).getTime() - today) / 864e5);
+    if (diff === -1) return 'Yesterday';
+    if (diff === 0) return d.getHours() >= 17 ? 'Tonight' : 'Today';
+    if (diff === 1) return 'Tomorrow';
+    if (diff > 1 && diff < 7) return d.toLocaleDateString('en', { weekday: 'short' });
+    return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+  },
   bytes(n: number, d = 1) {
     if (!Number.isFinite(n)) return '–';
     const u = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']; let i = 0;

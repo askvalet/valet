@@ -75,6 +75,9 @@ export const Auth = z.object({
 
 export const Config = z.object({
   auth: Auth,
+  // the names Atrium answers to besides localhost and IP addresses, e.g. [atrium.example.com, "*.home.example.com"].
+  // Anything else is refused, so a web page elsewhere can't reach it through your browser (DNS rebinding).
+  allowedHosts: z.array(z.string()).default([]),
   // community integrations: npm packages to load (files in data/integrations/ load on their own);
   // `replace` lets a plugin take over a built-in type
   plugins: z.union([z.array(z.string()), z.object({ packages: z.array(z.string()).default([]), replace: z.array(z.string()).default([]) })])
