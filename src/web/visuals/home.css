@@ -20,13 +20,21 @@
 .homex .orb.off::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: #2a2c31; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .18); }
 .homex .orb.gone { opacity: .35; }
 
-.homex .furn.top { border-radius: 3px; }
-.homex .furn.side { background: #121316; }
-.homex .bed.top { background: linear-gradient(180deg, #d9d4cb 0 22%, #b9b3a8 22% 26%, #8e8a83 26%); }
-.homex .sofa.top { background: #3a3d44; box-shadow: inset 0 0 0 3px #2c2e33; }
-.homex .table.top { background: linear-gradient(135deg, #5a4634, #3e2f22); }
-.homex .porcelain.top { background: #e8e8e6; border-radius: 40%; }
-.homex .cabinet.top { background: #2b2d32; }
+.homex .furn { --m: #2b2d32; --s: 62%; background: color-mix(in srgb, color-mix(in srgb, var(--m) var(--s), #000) calc(100% - var(--lo, 0) * 34%), var(--lc, #ffd8a8)); }
+.homex .furn.top { --s: 100%; border-radius: 1.5px; }
+.homex .furn.end { --s: 46%; }
+.homex .fabric { --m: #47505f; } .homex .cushion { --m: #5f6c84; } .homex .pillow { --m: #eeeae2; } .homex .linen { --m: #d9d4cb; } .homex .duvet { --m: #7a8dab; }
+.homex .wood { --m: #8a6543; } .homex .walnut { --m: #54392a; } .homex .white { --m: #dcdcd8; } .homex .porcelain { --m: #eeeeea; } .homex .metal { --m: #9ea3ab; }
+.homex .black { --m: #17181b; } .homex .brass { --m: #c9a66b; } .homex .shade { --m: #efe3cc; } .homex .leaf { --m: #3f8a56; } .homex .clay { --m: #a8623f; } .homex .rug { --m: #5a4252; } .homex .water { --m: #7fb6cc; }
+.homex .screen { --m: #0c0d10; }
+.homex .screen.top, .homex .screen.side { box-shadow: 0 0 10px rgb(100 150 255 / .18); }
+.homex .pole, .homex .cord { background: #6b6f77; pointer-events: none; }
+.homex .cord { background: #3a3c42; }
+.homex .wallp { background: linear-gradient(180deg, color-mix(in srgb, #fff calc(16% + var(--lo, 0) * 8%), transparent), color-mix(in srgb, var(--lc, #fff) calc(4% + var(--lo, 0) * 22%), transparent)); }
+
+/* a lamp's light: a cone down to the floor and a pool where it lands */
+.homex .beam { pointer-events: none; opacity: calc(var(--lo, 0) * .3); clip-path: polygon(50% 0, 100% 100%, 0 100%); background: linear-gradient(180deg, var(--lc), transparent 92%); transition: opacity .5s ease; }
+.homex .floor .spot { width: 190px; height: 190px; margin: -95px 0 0 -95px; border-radius: 50%; pointer-events: none; opacity: var(--lo, 0); background: radial-gradient(closest-side, color-mix(in srgb, var(--lc) 78%, transparent), color-mix(in srgb, var(--lc) 26%, transparent) 55%, transparent); transition: opacity .5s ease; }
 
 .homex .dock.top { background: #1d1e22; }
 .homex .dock.side { background: linear-gradient(180deg, #2b2d32, #141518); }

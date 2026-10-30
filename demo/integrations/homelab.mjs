@@ -59,15 +59,31 @@ export default ({ z, defineIntegration }) => {
 
   const rooms = [[1, 'Living Room', 'wood', -280, -200, 290, 220], [2, 'Kitchen', 'tile', 10, -200, 150, 130], [3, 'Dining Room', 'wood', 160, -200, 120, 130], [4, 'Hallway', 'wood', 10, -70, 270, 90],
     [5, 'Office', 'wood', -280, 20, 170, 170], [6, 'Bedroom', 'wood', -110, 20, 210, 170], [7, 'Bathroom', 'tile', 100, 20, 100, 100], [8, 'Laundry', 'tile', 200, 20, 80, 100], [9, 'Guest Room', 'wood', 100, 120, 180, 70]];
-  const LIGHTS = { 'Living Room': ['Ceiling', 'Floor lamp', 'TV backlight'], Kitchen: ['Pendants'], Office: ['Desk lamp'], Bedroom: ['Bedside'] };
+  // [room, name, kind, x, z]: each light where it really is, so it lands on what it's meant to
+  const LIGHTS = [['Living Room', 'Ceiling', 'pendant', -135, -85], ['Living Room', 'Floor lamp', 'lamp', -262, -38], ['Living Room', 'TV backlight', 'strip', -140, -180],
+    ['Kitchen', 'Pendant left', 'pendant', 62, -122], ['Kitchen', 'Pendant right', 'pendant', 108, -122], ['Dining Room', 'Over the table', 'pendant', 220, -140],
+    ['Hallway', 'Hall light', 'ceiling', 100, -28], ['Office', 'Desk lamp', 'lamp', -268, 42], ['Office', 'Ceiling', 'ceiling', -195, 110],
+    ['Bedroom', 'Bedside left', 'lamp', -92, 36], ['Bedroom', 'Bedside right', 'lamp', 72, 36], ['Bathroom', 'Mirror', 'ceiling', 150, 60], ['Guest Room', 'Ceiling', 'ceiling', 190, 150]];
+  const OFF = new Set(['Hallway', 'Bathroom', 'Guest Room', 'Bedroom']);
+  const COLOUR = { 'TV backlight': '#7f7bff', 'Desk lamp': '#ffe8d1' };
   const lightId = (room, name) => `light.${room}_${name}`.toLowerCase().replace(/ /g, '_');
-  const light = (room, name) => { const id = lightId(room, name), s = got(id, { on: room !== 'Bedroom' && room !== 'Kitchen', level: 70, color: '#ffc58f' });
-    return { id, name, available: true, canColor: true, canTemp: true, dims: true, ...s }; };
+  const light = ([room, name, kind, x, z]) => { const id = lightId(room, name), s = got(id, { on: !OFF.has(room), level: 75, color: COLOUR[name] ?? '#ffc58f' });
+    return { id, name, kind, at: { x, z }, available: true, canColor: true, canTemp: true, dims: true, ...s }; };
+  const FURNITURE = [
+    ['Rug', 1, -220, -130, 170, 110], ['Sofa', 1, -215, -68, 160, 48, 180], ['Coffee table', 1, -172, -112, 76, 34], ['TV stand', 1, -215, -196, 150, 16], ['Armchair', 1, -272, -128, 36, 36, 90], ['Plant', 1, -268, -192, 26, 26], ['Bookshelf', 1, -20, -192, 26, 80, 90],
+    ['Counter', 2, 16, -196, 100, 22], ['Fridge', 2, 122, -196, 32, 26], ['Kitchen island', 2, 44, -138, 84, 26], ['Stool', 2, 54, -106, 15, 15], ['Stool', 2, 78, -106, 15, 15], ['Stool', 2, 102, -106, 15, 15],
+    ['Dining table', 3, 188, -166, 66, 50], ['Chair', 3, 196, -184, 18, 16], ['Chair', 3, 228, -184, 18, 16], ['Chair', 3, 196, -114, 18, 16, 180], ['Chair', 3, 228, -114, 18, 16, 180],
+    ['Shelf', 4, 24, -66, 90, 12], ['Rug', 4, 110, -56, 120, 28], ['Plant', 4, 16, -30, 22, 22],
+    ['Desk', 5, -272, 28, 110, 40], ['Chair', 5, -232, 72, 30, 28, 180], ['Shelf', 5, -272, 176, 90, 12, 180], ['Plant', 5, -140, 160, 24, 24], ['Rug', 5, -240, 108, 90, 60],
+    ['Bed', 6, -60, 28, 110, 118], ['Bedside table', 6, -92, 28, 26, 26], ['Bedside table', 6, 56, 28, 26, 26], ['Rug', 6, -78, 120, 146, 50], ['Wardrobe', 6, -102, 164, 150, 24, 180],
+    ['Toilet', 7, 106, 26, 24, 34], ['Sink', 7, 146, 24, 44, 20], ['Bathtub', 7, 106, 78, 88, 36],
+    ['Washer', 8, 206, 26, 32, 30], ['Dryer', 8, 242, 26, 32, 30], ['Shelf', 8, 206, 106, 68, 10, 180],
+    ['Bed', 9, 208, 124, 64, 60], ['Bedside table', 9, 180, 124, 22, 22], ['Plant', 9, 106, 164, 20, 20],
+  ];
   const homeCard = () => ({ type: 'showcase', title: 'Home', icon: 'home', wide: true, items: [],
-    visual: { kind: 'home', data: { view: { turn: -38, tilt: -38 },
-      rooms: rooms.map(([id, name, floor, x, z, w, d]) => ({ id, name, floor, x, z, w, d, lights: (LIGHTS[name] ?? []).map(n => light(name, n)) })),
-      furniture: [['Sofa', 1, -200, -90, 130, 44], ['TV', 1, -200, -196, 130, 12], ['Table', 3, 185, -160, 70, 50], ['Desk', 5, -270, 40, 90, 34], ['Bed', 6, -60, 70, 110, 110], ['Fridge', 2, 18, -192, 34, 34], ['Bed', 9, 200, 130, 70, 50]]
-        .map(([type, room, x, z, w, d]) => ({ type, room, angle: 0, x, z, w, d })),
+    visual: { kind: 'home', data: { view: { turn: -30, tilt: -46 },
+      rooms: rooms.map(([id, name, floor, x, z, w, d]) => ({ id, name, floor, x, z, w, d, lights: LIGHTS.filter(l => l[0] === name).map(light) })),
+      furniture: FURNITURE.map(([type, room, x, z, w, d, angle = 0]) => ({ type, room, angle, x, z, w, d })),
       dock: { x: 262, z: -55, a: 180 },
       robot: { x: 240, z: -40, a: 180, id: 'vacuum.robot', state: 'docked', status: 'Docked', battery: 100, fanSpeed: 'Standard', fanSpeeds: ['Quiet', 'Standard', 'Turbo'], wear: [['Main brush', 82], ['Filter', 64]] } } } });
 
@@ -155,8 +171,12 @@ export default ({ z, defineIntegration }) => {
         widgets,
         actions: {
           preset: { description: 'Apply a lighting preset', input: z.object({ id: z.string() }), run: async ({ id }) => { if (PRESET_RGB[id]) { put('preset', id); for (const p of ['fans0', 'fans1', 'pump', 'ram', 'gpu']) changes.delete(`part.${p}`); } } },
-          light: { description: "Set one part's lighting", input: z.object({ part: z.string(), state: z.object({}).loose() }), run: async ({ part, state }) => { if (/^(fans[01]|pump|ram|gpu)$/.test(part)) put(`part.${part}`, { mode: 'Static', brightness: 100, color: [255, 255, 255], ...state }); } },
-          lights: { description: 'Set home lights', input: z.object({ entity_id: z.array(z.string()) }).loose(), run: async ({ entity_id, ...s }) => { for (const id of entity_id.slice(0, 12)) if (/^light\.[a-z_]+$/.test(id)) put(id, { on: s.on ?? true, level: s.level ?? 70, color: s.color ?? '#ffc58f' }); } },
+          light: { description: 'Set a PC part or some home lights', input: z.object({ part: z.string().optional(), state: z.object({}).loose().optional(), entity_id: z.array(z.string()).optional() }).loose(),
+            run: async ({ part, state, entity_id, on, brightness, rgb }) => {
+              const color = rgb && `#${rgb.map(v => Number(v).toString(16).padStart(2, '0')).join('')}`;
+              if (part && /^(fans[01]|pump|ram|gpu)$/.test(part)) put(`part.${part}`, { mode: 'Static', brightness: 100, color: [255, 255, 255], ...state });
+              for (const id of (entity_id ?? []).slice(0, 13)) { const was = LIGHTS.find(l => lightId(l[0], l[1]) === id); if (was) { const now_ = light(was); put(id, { on: on ?? now_.on, level: brightness ?? now_.level, color: color ?? now_.color }); } }
+            } },
           vacuum: { description: 'Pretend to send the vacuum', input: z.object({}).loose(), run: async () => {} },
         },
         tools: {
@@ -175,7 +195,7 @@ export default ({ z, defineIntegration }) => {
           drive_health: { label: 'Checked the drives', access: 'read', input: z.object({}), description: 'Disk health.', run: async () => ({ data: { drives, hottest: 'the system NVMe at 46°C' }, card: await widgets.drives.fetch() }) },
           system_status: { label: 'Checked the server', access: 'read', input: z.object({}), description: 'CPU, memory and GPU.', run: async () => ({ data: { cpu: '12%', memory: '33%', gpu: '6%' }, card: { type: 'chart', title: 'CPU', unit: '%', span: 'last hour', from: now() - 36e5, to: now(), series: [{ name: 'CPU', points: past(60, 6, 30) }] } }) },
           set_lights: { label: 'Changed the lights', access: 'control', input: z.object({ room: z.string().default('Living Room'), on: z.boolean().default(false) }), description: 'Turn a room on or off.',
-            run: async ({ room, on }) => { for (const n of LIGHTS[room] ?? []) put(lightId(room, n), { on, level: on ? 70 : 0, color: '#ffc58f' }); return { data: { done: true }, card: textCard(`${room} lights ${on ? 'on' : 'off'}.`) }; } },
+            run: async ({ room, on }) => { for (const l of LIGHTS.filter(x => x[0] === room)) put(lightId(l[0], l[1]), { on, level: on ? 75 : 0, color: light(l).color }); return { data: { done: true }, card: textCard(`${room} lights ${on ? 'on' : 'off'}.`) }; } },
           what_happened: { label: 'Looked back', access: 'read', input: z.object({}), description: 'What happened recently.', run: async () => ({ data: { summary: 'Mealie ran out of memory at 3:12 AM, the backup finished at 4:00, and two episodes arrived.' }, card: { type: 'list', title: 'Overnight', icon: 'clock', items: [{ title: 'Mealie stopped', subtitle: 'Out of memory', meta: '3:12 AM', tone: 'bad' }, { title: 'Backup finished', subtitle: '41 GB, verified', meta: '4:00 AM' }, { title: 'Two new episodes', subtitle: 'Harbor Lights', meta: '5:30 AM' }] } }) },
         },
       };
