@@ -17,6 +17,8 @@ export const AssistantConfig = z.object({
   // what the assistant may use: a default plus per-integration overrides, e.g. { default: read, lights: control }
   access: z.record(z.string(), Access).default({ default: 'read' }),
   maxSteps: z.number().int().min(1).max(20).default(6),
+  // questions offered on an empty chat and in ⌘K
+  suggestions: z.array(z.string()).default(['Is anything down?', 'How are my downloads doing?', "What's playing on Plex?", 'Show me the GPU and Plex side by side']),
 }).strict();
 
 const Section = z.object({
@@ -33,11 +35,11 @@ const Section = z.object({
   // `columns` then sets how many columns its list uses.
   place: z.enum(['main', 'left', 'right']).default('main'),
   overview: z.boolean().default(true),    // false: only on its own tab in the rail, not on the overview
-  variant: z.enum(['full', 'minimal']).default('full'),
+  variant: z.enum(['full', 'minimal']).default('full'),    // minimal: smaller rows, just the essentials (e.g. services: icon, name, dot)
   header: z.boolean().default(true),      // false: the cards in this section drop their title bar (on the overview)
   heading: z.boolean().default(true),     // false: no section title above it on the page (it still names the tab)
   tab: z.string().optional(),             // which tab in the rail it belongs to (default: its title); sections can share one
-  chat: z.boolean().default(false),       // its tab also holds the assistant, full page   // minimal: smaller rows, just the essentials (e.g. services: icon, name, dot)
+  chat: z.boolean().default(false),       // its tab also holds the assistant, full page
 }).strict();
 
 // An MCP server whose tools the assistant may use. `access: read` offers only the tools the server marks read-only
@@ -90,14 +92,14 @@ export const Config = z.object({
     background: z.boolean().default(true),
   })]).default({ hours: 24, every: 5, background: true }),
   title: z.string().default('Home'),
-  greeting: z.string().optional(),         // name to greet, e.g. "Ibrahim"
+  greeting: z.string().optional(),         // name to greet, e.g. "Sam"
   location: z.string().optional(),
   appearance: Appearance.default({ dim: 0.35, blur: 0 }),
   assistant: AssistantConfig.optional(),
   integrations: z.record(z.string(), z.object({ type: z.string() }).loose()).default({}),
   mcp: z.record(z.string(), McpServer).default({}),
   layout: z.array(Section).default([]),
-  menubar: z.array(z.string()).default([]),
+  menubar: z.array(z.string()).default([]),     // widget keys whose headline numbers sit as small rings in the top bar
   nav: z.object({ side: z.enum(['left', 'right', 'top', 'bottom']).default('left') }).default({ side: 'left' }),   // where the tab buttons sit (wide screens; phones always bottom)
   // the island: a black notch at the top that comes alive with whatever's happening (plays, downloads, a robot
   // cleaning), in this order of importance. idle: keep a small empty notch, or hide it when nothing's live.
@@ -107,7 +109,7 @@ export const Config = z.object({
     // start/end of a widget's live activity, a service going down/up (status cards). {title}, {name} fill in.
     notify: z.array(z.object({ widget: z.string(), on: z.enum(['start', 'end', 'down', 'up']), text: z.string().optional() })).default([]),
   }).optional(),
-  weather: z.string().optional(),               // a widget key (e.g. weather.now) shown as a ring beside the clock   // widget keys whose headline numbers sit as small rings in the top bar
+  weather: z.string().optional(),               // a widget key (e.g. weather.now) shown as a ring beside the clock
 }).strict();
 export type Config = z.infer<typeof Config>;
 

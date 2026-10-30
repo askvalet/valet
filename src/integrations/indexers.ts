@@ -50,6 +50,7 @@ export default defineIntegration({
       },
       tools: {
         indexers_retest: {
+          label: 'Retested indexers',
           description: 'Ask Prowlarr to test every indexer again (clears failures that have recovered).',
           access: 'control', input: z.object({}),
           async run() {
@@ -60,6 +61,7 @@ export default defineIntegration({
           },
         },
         indexer_health: {
+          label: 'Checked indexers',
           description: 'Which torrent indexers (Prowlarr) are working or failing, and how many episodes/movies still lack subtitles (Bazarr). Use when downloads aren\'t being found.',
           access: 'read', input: z.object({}),
           async run() { return { data: await state() }; },

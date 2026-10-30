@@ -11,12 +11,13 @@ import { Icon, NowPlaying, isEmpty, MiniRing, WeatherRing, Ring, SummaryTile, Wi
 
 // The assistant (and the AI SDK client) loads only when someone asks something.
 const Assistant = lazy(() => import('./assistant.tsx'));
+import type { ToolInfo } from './assistant.tsx';
 const Palette = lazy(() => import('./palette.tsx'));
 
 interface Page {
   title: string; greeting?: string; location?: string; canAct?: boolean;
   appearance: { wallpaper?: string; dim: number; blur: number };
-  assistant: { name: string; model: string } | null;
+  assistant: { name: string; model: string; suggestions: string[]; tools: Record<string, ToolInfo> } | null;
   menubar?: string[];
   nav?: { side: 'left' | 'right' | 'top' | 'bottom' };
   island?: { activities: string[]; idle: 'notch' | 'hide' };
@@ -76,7 +77,6 @@ async function runAction(key: string, action: string, args?: Record<string, unkn
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? r.statusText);
 }
 
-const SUGGESTIONS = ['Is anything down?', 'How are my downloads doing?', "What's playing on Plex?", 'Show me the GPU and Plex side by side'];
 
 /** A round glass button for the floating rail and corners. Active is solid white, like a selected tab. */
 function RoundButton({ label, active, onClick, children, tip = 'right' }: { label: string; active?: boolean; onClick: () => void; children: React.ReactNode; tip?: 'left' | 'right' | 'top' | 'bottom' }) {
@@ -202,7 +202,7 @@ function Home() {
               <div className="no-scrollbar mt-2.5 overflow-x-auto">
                 {/* centred when it fits, scrolls from the start when it doesn't */}
                 <div className="mx-auto flex w-max gap-1.5">
-                  {SUGGESTIONS.slice(0, 3).map(s => (
+                  {page.assistant.suggestions.slice(0, 3).map(s => (
                     <button key={s} onClick={() => ask(s)} className="shrink-0 rounded-full px-2.5 py-1 text-[12.5px] text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground">{s}</button>
                   ))}
                 </div>
@@ -334,7 +334,7 @@ function Home() {
         {chatTab && view === chatTab && page?.assistant && (
           <div data-slot="card" className="h-[min(78vh,900px)] min-h-[520px] overflow-hidden rounded-[calc(var(--radius)*1.4)] border bg-card shadow-card">
             <Suspense fallback={null}>
-              <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={SUGGESTIONS} onAsk={ask} />
+              <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={page.assistant.suggestions} tools={page.assistant.tools} onAsk={ask} />
             </Suspense>
           </div>
         )}
@@ -365,7 +365,7 @@ function Home() {
 
       {page?.assistant && (
         palette && <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant.name} ask={ask} actions={actions}
-          runAction={runAction} services={services} SUGGESTIONS={SUGGESTIONS} setView={setView} nav={nav} sectionIcon={sectionIcon} /></Suspense>
+          runAction={runAction} services={services} SUGGESTIONS={page.assistant.suggestions} setView={setView} nav={nav} sectionIcon={sectionIcon} /></Suspense>
       )}
 
       {page?.assistant && (
@@ -376,7 +376,7 @@ function Home() {
             <DialogDescription className="sr-only">Ask about your homelab</DialogDescription>
             {chatOpen && (
               <Suspense fallback={null}>
-                <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={SUGGESTIONS} onAsk={ask} />
+                <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={page.assistant.suggestions} tools={page.assistant.tools} onAsk={ask} />
               </Suspense>
             )}
           </DialogContent>

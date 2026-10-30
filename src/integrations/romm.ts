@@ -25,6 +25,7 @@ export default defineIntegration({
       },
       tools: {
         games: {
+          label: 'Looked at games',
           description: 'Games in the RomM library: search by name or list recent ones, with system and whether played.',
           access: 'read', input: z.object({ search: z.string().optional() }),
           async run({ search }) {

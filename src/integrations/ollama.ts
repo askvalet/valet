@@ -37,6 +37,7 @@ export default defineIntegration({
       },
       tools: {
         ollama_unload: {
+          label: 'Unloaded a model',
           description: 'Unload a model from Ollama\'s memory, freeing its VRAM.',
           access: 'control', input: z.object({ model: z.string() }),
           async run({ model }) {
@@ -45,6 +46,7 @@ export default defineIntegration({
           },
         },
         ollama_models: {
+          label: 'Checked models',
           description: 'Models installed in Ollama, their size, and which are loaded in memory now.',
           access: 'read', input: z.object({}),
           async run() { return { data: await state() }; },

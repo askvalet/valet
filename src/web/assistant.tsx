@@ -3,7 +3,7 @@
 import { Chat, useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
 import {
-  Activity, ArrowUp, Bookmark, Check, ChevronRight, Copy, CornerDownRight, FileText, Film, Lightbulb, Loader2, Paperclip, RotateCcw,
+  Activity, ArrowUp, Bookmark, Check, ChevronRight, Copy, CornerDownRight, FileText, Lightbulb, Loader2, Paperclip, RotateCcw,
   Search, Square, X, Zap,
 } from 'lucide-react';
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -51,22 +51,16 @@ function Pending({ since, label = 'Thinking' }: { since: number; label?: string 
   );
 }
 
-// What a tool did, in words, with the thing it was given: "Searched documents · uber receipt"
-const VERB: [RegExp, string, typeof Search][] = [
-  [/docs_search/, 'Searched documents', Search], [/docs_read/, 'Read a document', FileText], [/docs_add/, 'Filed a document', FileText],
-  [/bookmarks_search/, 'Searched saved links', Search], [/bookmark_read/, 'Read a bookmark', Bookmark], [/bookmark_save/, 'Saved a link', Bookmark],
-  [/pc_lighting/, 'Changed the lights', Zap], [/top_programs/, 'Checked what\'s running', Activity], [/plex_stop/, 'Stopped a stream', Film],
-  [/library_lookup/, 'Checked the library', Search], [/library_search/, 'Searched for it', Search], [/torrent_control/, 'Changed a download', Zap],
-  [/ollama_unload/, 'Unloaded a model', Zap], [/indexers_retest/, 'Retested indexers', Activity], [/adblock/, 'Checked ad blocking', Activity],
-  [/uptime_history/, 'Checked uptime', Activity], [/drive_health/, 'Checked the drives', Activity], [/upcoming_media/, 'Checked what\'s coming', Film],
-  [/games/, 'Looked at games', Search], [/quran_verse/, 'Read a verse', FileText],
-  [/photos_search/, 'Searched photos', Search], [/photos_people/, 'Checked people', Search],
-  [/media_search/, 'Searched movies & shows', Search], [/media_request$/, 'Requested', Film], [/media_requests/, 'Checked requests', Film],
-  [/plex|streams|recently_added|history/, 'Checked Plex', Film], [/service_status/, 'Checked services', Activity], [/downloads/, 'Checked downloads', Activity],
-  [/home_find/, 'Looked up the home', Search], [/home_control|light|press/, 'Changed the home', Zap], [/show/, 'Laid out cards', Lightbulb],
-  [/status|local_ai|pc_status|system/, 'Checked status', Activity],
-];
-const verbOf = (name: string) => VERB.find(([re]) => re.test(name)) ?? [/./, toolLabel(name).replace(/^\w/, c => c.toUpperCase()), Lightbulb] as const;
+export type ToolInfo = { label?: string; followUps?: string[]; access: 'read' | 'write' | 'control' };
+
+// What a tool did, in words, with the thing it was given: "Searched documents · uber receipt". Integrations name it
+// (`label`); MCP tools and the built-in show fall back to their own names.
+const ICON = { read: Search, write: Bookmark, control: Zap } as const;
+const verbOf = (name: string, tools: Record<string, ToolInfo>) => {
+  const t = tools[name];
+  if (name === 'show') return ['Laid out cards', Lightbulb] as const;
+  return [t?.label ?? toolLabel(name).replace(/^\w/, c => c.toUpperCase()), t ? ICON[t.access] : Activity] as const;
+};
 const argOf = (input: any) => {
   if (!input || typeof input !== 'object') return '';
   const v = input.query ?? input.url ?? input.entity_id ?? input.title ?? input.id ?? input.text ?? Object.values(input)[0];
@@ -76,7 +70,7 @@ const argOf = (input: any) => {
 };
 
 /** A run of tool calls as compact chips: what it did, with what, and whether it worked. Collapses once the answer's in. */
-function ToolChips({ parts, settled }: { parts: any[]; settled: boolean }) {
+function ToolChips({ parts, settled, tools }: { parts: any[]; settled: boolean; tools: Record<string, ToolInfo> }) {
   const [open, setOpen] = useState<boolean | null>(null);
   const shown = open ?? !settled;
   const name = (p: any) => p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, '');
@@ -90,7 +84,7 @@ function ToolChips({ parts, settled }: { parts: any[]; settled: boolean }) {
       <div className={cn('grid transition-[grid-template-rows,opacity] duration-300 ease-out', shown || parts.length === 1 ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
         <div className="space-y-1 overflow-hidden">
           {parts.map((p, i) => {
-            const [, verb, I] = verbOf(name(p)), arg = argOf(p.input);
+            const [verb, I] = verbOf(name(p), tools), arg = argOf(p.input);
             const done = p.state === 'output-available', failed = p.state === 'output-error' || p.output?.data?.error, denied = p.state === 'output-denied';
             return (
               <div key={i} className="flex min-w-0 items-center gap-2 text-muted-foreground animate-in fade-in slide-in-from-bottom-1 duration-300">
@@ -106,13 +100,6 @@ function ToolChips({ parts, settled }: { parts: any[]; settled: boolean }) {
     </div>
   );
 }
-
-// After an answer, a couple of natural next questions, depending on what it just looked at
-const FOLLOW: [RegExp, string[]][] = [
-  [/photos_search/, ['Only the ones with people', 'Same place, other years']], [/docs_search|docs_read/, ['Summarize these', 'Anything due soon?']], [/bookmark/, ['Summarize the newest one', 'What else did I save this week?']],
-  [/plex|streams/, ['What was added recently?', 'Who watched the most this week?']], [/service_status/, ['How is the server doing?', 'Show downloads']],
-  [/downloads/, ['When will it finish?', 'Pause downloads']], [/home/, ['Which lights are on?', 'Turn off all lights']],
-];
 
 function ToolPart({ p, approve }: { p: any; approve: (id: string, ok: boolean) => void }) {
   const label = toolLabel(p.type === 'dynamic-tool' ? p.toolName : p.type);
@@ -144,8 +131,8 @@ function ToolPart({ p, approve }: { p: any; approve: (id: string, ok: boolean) =
   return null;
 }
 
-export default function Assistant({ name, model, ask, suggestions, onAsk }: {
-  name: string; model: string; ask: { text: string; n: number } | null; suggestions: string[]; onAsk: (t: string) => void;
+export default function Assistant({ name, model, ask, suggestions, tools = {}, onAsk }: {
+  name: string; model: string; ask: { text: string; n: number } | null; suggestions: string[]; tools?: Record<string, ToolInfo>; onAsk: (t: string) => void;
 }) {
   const { messages, sendMessage, status, addToolApprovalResponse, error, stop, regenerate } = useChat({ chat });
   // how long each answer took, measured from the question to the last word
@@ -226,15 +213,16 @@ export default function Assistant({ name, model, ask, suggestions, onAsk }: {
           // a reply: runs of tool calls become one chip list, followed by any cards they returned, then the words
           const isLast = mi === messages.length - 1, live = isLast && busy;
           const blocks: ReactNode[] = []; let run: any[] = [];
-          const flush = (k: string) => { if (run.length) { const r = run; blocks.push(<ToolChips key={`c${k}`} parts={r} settled={!live || m.parts.some((p: any) => p.type === 'text' && p.text.trim())} />, ...r.map((p, j) => <ToolPart key={`p${k}.${j}`} p={p} approve={(id, ok) => addToolApprovalResponse({ id, approved: ok })} />)); run = []; } };
+          const flush = (k: string) => { if (run.length) { const r = run; blocks.push(<ToolChips key={`c${k}`} parts={r} tools={tools} settled={!live || m.parts.some((p: any) => p.type === 'text' && p.text.trim())} />, ...r.map((p, j) => <ToolPart key={`p${k}.${j}`} p={p} approve={(id, ok) => addToolApprovalResponse({ id, approved: ok })} />)); run = []; } };
           m.parts.forEach((p: any, i) => {
             if (p.type.startsWith('tool-') || p.type === 'dynamic-tool') run.push(p);
             else if (p.type === 'text' && p.text.trim()) { flush(String(i)); blocks.push(<Text key={i} text={p.text} />); }
           });
           flush('end');
           const text = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('\n\n').trim();
-          const tools = m.parts.filter((p: any) => p.type.startsWith('tool-') || p.type === 'dynamic-tool').map((p: any) => p.type === 'dynamic-tool' ? p.toolName : p.type);
-          const follow = isLast && !busy ? (FOLLOW.find(([re]) => tools.some(t => re.test(t)))?.[1] ?? []) : [];
+          // the last tool it used that suggests next questions
+          const used = m.parts.filter((p: any) => p.type.startsWith('tool-') || p.type === 'dynamic-tool').map((p: any) => p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, ''));
+          const follow = isLast && !busy ? used.map((t: string) => tools[t]?.followUps).filter(Boolean).at(-1)?.slice(0, 2) ?? [] : [];
           return (
             <div key={m.id} className="space-y-3">
               {blocks}

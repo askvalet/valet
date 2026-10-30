@@ -28,6 +28,10 @@ export interface Action<A = any> {
 export interface Tool<A = any> {
   description: string;                   // written for the model: what it returns and when to use it
   access: Access;
+  /** What it did, for the person, past tense: "Searched documents". Shown on its chip in chat. */
+  label?: string;
+  /** A couple of natural next questions to offer after an answer that used it. */
+  followUps?: string[];
   /** For 'write' tools: input fields that must come word for word from the person's own latest message for the tool to
    *  run without asking (e.g. the link they pasted). Otherwise, say when a document or web page suggested it, it asks. */
   fromPerson?: string[];

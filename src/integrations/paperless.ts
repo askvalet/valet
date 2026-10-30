@@ -2,7 +2,7 @@
 // answer questions about it, and file new ones: a pasted note, or a file attached in chat. Recent documents show
 // as a shelf of page thumbnails.
 import { z } from 'zod';
-import { defineIntegration } from '../server/core.ts';
+import { defineIntegration, fmt } from '../server/core.ts';
 import type { ShelfItem } from '../shared/cards.ts';
 
 export default defineIntegration({
@@ -23,7 +23,7 @@ export default defineIntegration({
       names = { c, t, d }; namesAt = Date.now();
       return names;
     }
-    const day = (s?: string) => s ? new Date(s).toLocaleDateString('en', { year: 'numeric', month: 'short', day: 'numeric' }) : undefined;
+    const day = fmt.day;
     const plain = (h?: string) => (h ?? '').replace(/<\/?b>/g, '').replace(/\s+/g, ' ').trim();
     const brief = (d: any, n: typeof names) => ({
       id: d.id, title: d.title, correspondent: n.c.get(d.correspondent), type: n.d.get(d.document_type), date: d.created_date ?? d.created?.slice(0, 10),
@@ -47,6 +47,8 @@ export default defineIntegration({
       },
       tools: {
         docs_search: {
+          label: 'Searched documents',
+          followUps: ['Summarize these', 'Anything due soon?'],
           description: 'Search the person\'s documents in Paperless (full text: letters, bills, receipts, contracts, statements, IDs…). Returns the best matches with a snippet of where the words appear. Use it before answering any question about their documents, then docs_read the most relevant to answer precisely.',
           access: 'read',
           input: z.object({ query: z.string().describe('words to look for, e.g. "lease renewal" or "car insurance 2025"'), limit: z.number().int().min(1).max(20).default(8) }),
@@ -61,6 +63,8 @@ export default defineIntegration({
           },
         },
         docs_read: {
+          label: 'Read a document',
+          followUps: ['Summarize these', 'Anything due soon?'],
           description: 'Read one document\'s text (OCR) and details by id, to answer a question about it.',
           access: 'read', input: z.object({ id: z.number().int() }),
           async run({ id }) {
@@ -73,6 +77,7 @@ export default defineIntegration({
           },
         },
         docs_add: {
+          label: 'Filed a document',
           description: 'File something in Paperless: a file the person attached in chat (pass its file id from the message), or text they pasted (pass `text`; it\'s saved as a text document). Optionally a title and tags. Paperless OCRs and indexes it within a minute or two.',
           access: 'write', fromPerson: ['file_id', 'text'],   // only what the person attached or pasted files itself
           input: z.object({ file_id: z.string().optional(), text: z.string().optional(), title: z.string().optional(), tags: z.array(z.string()).optional() }),

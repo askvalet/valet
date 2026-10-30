@@ -54,6 +54,8 @@ export default ({ z, defineIntegration, fmt }) => defineIntegration({
       tools: {
         __SLUG___status: {
           description: 'Status of __TITLE__: how full it is and which things are up. Use when asked about __TITLE__.',
+          label: 'Checked __TITLE__',                      // the chip in chat: what it did, past tense
+          followUps: ['Is anything down?'],                 // offered after an answer that used it
           access: 'read', input: z.object({}),
           async run() {
             const s = await status();
@@ -62,6 +64,7 @@ export default ({ z, defineIntegration, fmt }) => defineIntegration({
         },
         __SLUG___restart: {
           description: 'Restart one thing in __TITLE__ by name.',
+          label: 'Restarted',
           access: 'control', input: z.object({ name: z.string() }),
           async run({ name }) {
             // await api(`/api/restart/${encodeURIComponent(name)}`)

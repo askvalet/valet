@@ -54,6 +54,7 @@ export default defineIntegration({
       },
       tools: {
         media_search: {
+          label: 'Searched movies & shows',
           description: 'Search movies and TV shows to watch or request (via Seerr/TMDB). Each result says whether it is already available in Plex, requested, or downloading. Use before media_request to get the right title and id; if the person\'s wording could mean several (a remake, a year), ask which.',
           access: 'read', input: z.object({ query: z.string() }),
           async run({ query }) {
@@ -68,6 +69,7 @@ export default defineIntegration({
           },
         },
         media_request: {
+          label: 'Requested',
           description: 'Request a movie or a whole TV show so it downloads into Plex. Pass tmdb_id and media_type from media_search, plus its title and year so the person can confirm the right one.',
           access: 'control',
           input: z.object({ title: z.string(), year: z.string().optional(), media_type: z.enum(['movie', 'tv']), tmdb_id: z.number().int() }),
@@ -80,6 +82,7 @@ export default defineIntegration({
           },
         },
         media_requests: {
+          label: 'Checked requests',
           description: 'Recent movie and TV requests and where each one is (waiting, approved, downloading, available).',
           access: 'read', input: z.object({}),
           async run() {

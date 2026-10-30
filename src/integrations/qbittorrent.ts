@@ -103,6 +103,7 @@ export default defineIntegration({
       },
       tools: {
         torrent_control: {
+          label: 'Changed a download',
           description: 'Pause, resume or remove ONE torrent (by part of its name, from downloads_status). Removing keeps the downloaded files.',
           access: 'control', input: z.object({ name: z.string(), do: z.enum(['pause', 'resume', 'remove']) }),
           async run({ name, do: what }) {
@@ -115,6 +116,8 @@ export default defineIntegration({
           },
         },
         downloads_status: {
+          label: 'Checked downloads',
+          followUps: ['When will it finish?', 'Pause downloads'],
           description: 'Torrents currently downloading with progress, speed, size left and ETA, plus total transfer speed.',
           access: 'read', input: z.object({}),
           async run() {
@@ -128,6 +131,8 @@ export default defineIntegration({
           },
         },
         pause_downloads: {
+          label: 'Paused downloads',
+          followUps: ['Resume downloads'],
           description: 'Pause downloading. Pass a torrent hash from downloads_status to pause one, or nothing to pause all.',
           access: 'control', input: z.object({ hash: z.string().optional() }),
           async run({ hash }) {
@@ -136,6 +141,7 @@ export default defineIntegration({
           },
         },
         resume_downloads: {
+          label: 'Resumed downloads',
           description: 'Resume downloading. Pass a torrent hash to resume one, or nothing to resume all.',
           access: 'control', input: z.object({ hash: z.string().optional() }),
           async run({ hash }) {

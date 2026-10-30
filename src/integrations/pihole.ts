@@ -57,6 +57,7 @@ export default defineIntegration({
       },
       tools: {
         adblock_status: {
+          label: 'Checked ad blocking',
           description: 'Pi-hole: share of DNS queries blocked today, totals, whether blocking is on, and the most blocked domains.',
           access: 'read', input: z.object({}),
           async run() {
@@ -65,6 +66,7 @@ export default defineIntegration({
           },
         },
         adblock_pause: {
+          label: 'Paused ad blocking',
           description: 'Pause Pi-hole ad blocking for some minutes (e.g. a site breaks), or resume it with minutes: 0.',
           access: 'control', input: z.object({ minutes: z.number().int().min(0).max(1440) }),
           async run({ minutes }) {

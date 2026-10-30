@@ -119,6 +119,7 @@ export default defineIntegration({
       widgets,
       tools: {
         top_programs: {
+          label: "Checked what's running",
           description: 'What is using the server right now: the programs using the most CPU or memory (grouped by program name). Use for "why is the fan loud", "what is eating my RAM".',
           access: 'read', input: z.object({ by: z.enum(['cpu', 'memory']).default('cpu'), limit: z.number().int().min(1).max(20).default(8) }),
           async run({ by, limit }) {
@@ -130,6 +131,7 @@ export default defineIntegration({
           },
         },
         system_status: {
+          label: 'Checked the server',
           description: 'Current CPU, memory, CPU/GPU temperatures, GPU load and uptime of the server, plus disk usage.',
           access: 'read', input: z.object({}),
           async run() {

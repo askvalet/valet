@@ -56,6 +56,7 @@ export default defineIntegration({
       },
       tools: {
         quran_verse: {
+          label: 'Read a verse',
           description: 'A verse of the Quran with its English meaning (Clear Quran): a given surah and verse, or today\'s verse when none is given.',
           access: 'read', input: z.object({ surah: z.number().int().min(1).max(114).optional(), verse: z.number().int().min(1).optional() }),
           async run({ surah, verse: n }) {

@@ -230,6 +230,8 @@ export default defineIntegration({
       },
       tools: {
         home_find: {
+          label: 'Looked up the home',
+          followUps: ['Which lights are on?', 'Turn off all lights'],
           description: 'Search Home Assistant entities (lights, switches, sensors, media players, scenes…) by name, area word or domain. Returns current state and key attributes. Use this before controlling anything.',
           access: 'read', input: z.object({ query: z.string().describe('words to match against names / entity ids, e.g. "office light" or "temperature"'), domain: z.string().optional() }),
           async run({ query, domain }) {
@@ -244,6 +246,8 @@ export default defineIntegration({
           },
         },
         home_control: {
+          label: 'Changed the home',
+          followUps: ['Which lights are on?'],
           description: 'Control a Home Assistant entity: turn_on / turn_off / toggle (optionally brightness 0-100 and rgb colour for lights), or run a scene/script, or start/return_to_base a vacuum. Only entities marked controllable by home_find.',
           access: 'control',
           input: z.object({ entity_id: z.string(), action: z.enum(['turn_on', 'turn_off', 'toggle', 'run', 'start', 'return_to_base']),

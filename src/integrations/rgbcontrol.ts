@@ -99,6 +99,7 @@ export default defineIntegration({
       },
       tools: {
         pc_lighting: {
+          label: 'Changed the lights',
           description: 'Change the PC\'s lighting: one part (fans, pump, ram, gpu, or "all") to a colour (hex like #0a84ff, or a name you turn into hex), an effect (Static, Breathing, Rainbow, …) and/or brightness 0-100; or apply a preset by name (e.g. "Ocean", "All white", "All off").',
           access: 'control',
           input: z.object({ part: z.string().default('all'), color: z.string().optional(), effect: z.string().optional(), brightness: z.number().min(0).max(100).optional(), preset: z.string().optional() }),
@@ -120,6 +121,7 @@ export default defineIntegration({
           },
         },
         pc_status: {
+          label: 'Checked the PC',
           description: "The desktop's temperatures (CPU, GPU, coolant), pump and fan speeds, and what its lights are set to.",
           access: 'read', input: z.object({}),
           async run() {

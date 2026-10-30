@@ -2,7 +2,7 @@
 // stack (smart search understands what's in a picture; people and dates narrow it). The homepage shows today's
 // memories ("on this day"), or a handful of random photos when there are none.
 import { z } from 'zod';
-import { defineIntegration } from '../server/core.ts';
+import { defineIntegration, fmt } from '../server/core.ts';
 import type { ShelfItem } from '../shared/cards.ts';
 
 export default defineIntegration({
@@ -13,7 +13,7 @@ export default defineIntegration({
     const base = cfg.url.replace(/\/$/, ''), web = (cfg.href ?? base).replace(/\/$/, '');
     const headers = { 'x-api-key': cfg.apiKey, 'Content-Type': 'application/json' };
     const api = <T = any>(path: string, init: RequestInit = {}) => ctx.http<T>(`${base}/api/${path}`, { ...init, headers, timeout: 20_000 });
-    const day = (s?: string) => s ? new Date(s).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined;
+    const day = fmt.day;
     const place = (a: any) => [a.exifInfo?.city, a.exifInfo?.country].filter(Boolean).join(', ') || undefined;
     const tile = (a: any): ShelfItem => ({ title: place(a) ?? day(a.localDateTime ?? a.fileCreatedAt) ?? 'Photo', subtitle: place(a) ? day(a.localDateTime) : undefined,
       image: ctx.image(a.id), href: `${web}/photos/${a.id}`, badge: a.type === 'VIDEO' ? 'Video' : undefined });
@@ -50,6 +50,8 @@ export default defineIntegration({
       },
       tools: {
         photos_search: {
+          label: 'Searched photos',
+          followUps: ['Only the ones with people', 'Same place, other years'],
           description: 'Search the person\'s photos and videos in Immich by what\'s in them (smart search: "sunset at the beach", "birthday cake", "dog in snow"), optionally narrowed to people (by name), a date range or a city. Results show as a photo stack. For "photos from <date>" with no subject, leave query empty and set the dates.',
           access: 'read',
           input: z.object({
@@ -75,6 +77,7 @@ export default defineIntegration({
           },
         },
         photos_people: {
+          label: 'Checked people',
           description: 'The people Immich recognises (named faces), to search photos of someone.',
           access: 'read', input: z.object({}),
           async run() {

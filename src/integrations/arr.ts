@@ -94,6 +94,7 @@ export default defineIntegration({
       },
       tools: {
         library_lookup: {
+          label: 'Checked the library',
           description: 'Is a show or movie in the library (Sonarr/Radarr), and how complete: episodes downloaded of total, or whether the movie file is there. Use for "do I have X", "how many episodes of Y".',
           access: 'read', input: z.object({ title: z.string() }),
           async run({ title }) {
@@ -105,6 +106,7 @@ export default defineIntegration({
           },
         },
         library_search: {
+          label: 'Searched for it',
           description: 'Ask Sonarr/Radarr to search now for what\'s missing of one show or movie in the library (by title), e.g. when an episode didn\'t download.',
           access: 'control', input: z.object({ title: z.string() }),
           async run({ title }) {
@@ -116,6 +118,7 @@ export default defineIntegration({
           },
         },
         upcoming_media: {
+          label: "Checked what's coming",
           description: 'Episodes airing and movies being released soon for shows and films the person follows (Sonarr/Radarr), and whether each is already downloaded.',
           access: 'read', input: z.object({ days: z.number().int().min(1).max(60).default(14) }),
           async run({ days }) {

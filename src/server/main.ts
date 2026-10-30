@@ -13,8 +13,7 @@ import { makeContext, UPLOAD_DIR, type Instance, type Integration } from './core
 import { Hub } from './hub.ts';
 import { noticesFor, type Notice } from './notices.ts';
 import { History } from './history.ts';
-import { loadPlugins } from './plugins.ts';
-import { checkCard } from '../shared/cards.schema.ts';
+import { guardCards, loadPlugins } from './plugins.ts';
 import { registry } from '../integrations/index.ts';
 
 const CONFIG = process.env.ATRIUM_CONFIG ?? 'config.yaml';
@@ -41,20 +40,16 @@ for (const [id, block] of Object.entries(config.integrations)) {
   if (!integration) { console.error(`config: integrations.${id}: unknown type "${block.type}"`); continue; }
   const { type, ...rest } = block;
   const parsed = integration.config.safeParse(rest);
+  // zod drops keys it doesn't know; a misspelt option should say so rather than silently do nothing
+  const known = (integration.config as { shape?: object }).shape;
+  for (const k of known ? Object.keys(rest).filter(k => !(k in known)) : []) console.warn(`config: integrations.${id}: unknown option "${k}" (ignored)`);
   if (!parsed.success) {
     console.error(`config: integrations.${id}:\n` + parsed.error.issues.map(i => `  ${i.path.join('.')}: ${i.message}`).join('\n'));
     continue;
   }
   const inst = integration.create(parsed.data, makeContext(id));
-  // a plugin's cards are checked against the catalog, so a mistake shows as the widget's error, not a broken page
-  if (fromPlugins.has(block.type)) for (const w of Object.values(inst.widgets)) {
-    const fetch = w.fetch.bind(w);
-    w.fetch = async () => {
-      const card = await fetch(), r = checkCard(card);
-      if (!r.success) throw new Error(`card doesn't match the catalog: ${r.error.issues.slice(0, 2).map(i => `${i.path.join('.') || 'card'}: ${i.message}`).join('; ')}`);
-      return card;
-    };
-  }
+  // a plugin's cards are checked against the catalog, so a mistake shows as an error, not a broken page
+  if (fromPlugins.has(block.type)) guardCards(inst);
   instances.set(id, inst);
   meta.set(id, { type, name: integration.name, integration });
 }
@@ -134,7 +129,10 @@ app.get('/api/page', c => c.json({
   title: config.title, greeting: config.greeting, location: config.location, canAct: acting,
   // ?v= the file's mtime: replacing the wallpaper changes the URL, so browsers never show a stale cached one
   appearance: { ...config.appearance, wallpaper: wallpaperFile ? `/api/wallpaper?v=${wallpaperVersion}` : wallpaper },
-  assistant: config.assistant ? { name: config.assistant.name, model: config.assistant.model } : null,
+  assistant: config.assistant ? { name: config.assistant.name, model: config.assistant.model, suggestions: config.assistant.suggestions,
+    // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>")
+    tools: Object.fromEntries([...instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {})
+      .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access }]))) } : null,
   menubar: config.menubar.filter(k => hub.widget(k)),
   nav: config.nav,
   island: config.island && { ...config.island, activities: config.island.activities.filter(k => hub.widget(k)) },

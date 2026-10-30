@@ -53,6 +53,7 @@ export default defineIntegration({
       },
       tools: {
         uptime_history: {
+          label: 'Checked uptime',
           description: 'Uptime Kuma: each monitored service, whether it is up now, and its uptime over the last day and 30 days; also certificates close to expiry. Use for "has X been flaky", "what went down".',
           access: 'read', input: z.object({}),
           async run() {

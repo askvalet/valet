@@ -34,6 +34,8 @@ export default defineIntegration({
       },
       tools: {
         bookmarks_search: {
+          label: 'Searched saved links',
+          followUps: ['Summarize the newest one', 'What else did I save this week?'],
           description: 'Search the person\'s saved links and notes in Karakeep (titles, page text, AI summaries, tags). Use for "that article about…", "what did I save on…".',
           access: 'read', input: z.object({ query: z.string(), limit: z.number().int().min(1).max(20).default(8) }),
           async run({ query, limit }) {
@@ -44,6 +46,8 @@ export default defineIntegration({
           },
         },
         bookmark_read: {
+          label: 'Read a bookmark',
+          followUps: ['Summarize the newest one', 'What else did I save this week?'],
           description: 'Read one saved bookmark by id: its summary, note, tags and link.',
           access: 'read', input: z.object({ id: z.string() }),
           async run({ id }) {
@@ -53,6 +57,7 @@ export default defineIntegration({
           },
         },
         bookmark_save: {
+          label: 'Saved a link',
           description: 'Save a link (or a text note) to Karakeep. Optionally a note, tags, or a list to put it in. Karakeep crawls the page and adds its own summary and tags.',
           access: 'write', fromPerson: ['url', 'text'],   // a link a document or page suggested asks first
           input: z.object({ url: z.string().url().optional(), text: z.string().optional(), note: z.string().optional(), tags: z.array(z.string()).optional(), list: z.string().optional() }),

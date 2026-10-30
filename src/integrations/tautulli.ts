@@ -86,6 +86,7 @@ export default defineIntegration({
       },
       tools: {
         plex_stop_stream: {
+          label: 'Stopped a stream',
           description: 'Stop someone\'s Plex stream, with a short message they\'ll see. Identify it by the user\'s name or the title (from plex_streams).',
           access: 'control', input: z.object({ who: z.string().describe('user name or title'), message: z.string().default('Stopped by the server owner.') }),
           async run({ who, message }) {
@@ -97,6 +98,8 @@ export default defineIntegration({
           },
         },
         plex_streams: {
+          label: 'Checked Plex',
+          followUps: ['What was added recently?', 'Who watched the most this week?'],
           description: 'Who is watching what on Plex right now: title, user, device, progress, quality, direct play or transcode, bandwidth.',
           access: 'read', input: z.object({}),
           async run() {
@@ -111,6 +114,8 @@ export default defineIntegration({
           },
         },
         plex_recently_added: {
+          label: 'Checked what was added',
+          followUps: ["What's playing now?"],
           description: 'The most recently added movies and episodes on Plex.',
           access: 'read', input: z.object({ count: z.number().int().min(1).max(25).default(8) }),
           async run({ count }) {
@@ -120,6 +125,8 @@ export default defineIntegration({
           },
         },
         plex_history: {
+          label: 'Checked Plex history',
+          followUps: ['What was added recently?'],
           description: 'Recent watch history: who watched what and when. Optionally filter by user name.',
           access: 'read', input: z.object({ user: z.string().optional(), count: z.number().int().min(1).max(50).default(15) }),
           async run({ user, count }) {

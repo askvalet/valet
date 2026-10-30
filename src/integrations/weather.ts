@@ -51,6 +51,7 @@ export default defineIntegration({
       },
       tools: {
         weather: {
+          label: 'Checked the weather',
           description: 'Current weather and today\'s high/low at home.', access: 'read', input: z.object({}),
           async run() { const w = await get(); return { data: { current: w.current, today: w.daily, words: describe(w.current.weather_code)[1] } }; },
         },

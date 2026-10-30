@@ -12,7 +12,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
 import { checkCard } from '../shared/cards.schema.ts';
-import { defineIntegration, fmt, type Integration } from './core.ts';
+import { defineIntegration, fmt, type Instance, type Integration } from './core.ts';
 
 export const toolkit = { z, fmt, defineIntegration, checkCard };
 
@@ -24,6 +24,30 @@ async function load(spec: string): Promise<Integration[]> {
 const valid = (i: any): i is Integration => i && typeof i.type === 'string' && typeof i.create === 'function' && typeof i.config?.safeParse === 'function';
 
 /** Load plugins into the registry. Built-ins keep their names unless the config says a plugin may replace one. */
+const mismatch = (card: unknown) => {
+  const r = checkCard(card);
+  return r.success ? null : `card doesn't match the catalog: ${r.error.issues.slice(0, 2).map(i => `${i.path.join('.') || 'card'}: ${i.message}`).join('; ')}`;
+};
+
+/** Check a plugin's cards against the catalog: a bad widget card becomes the widget's error, a bad chat card is dropped
+ *  (the model still gets the data) with the reason logged. */
+export function guardCards(inst: Instance) {
+  for (const w of Object.values(inst.widgets)) {
+    const fetch = w.fetch.bind(w);
+    w.fetch = async () => { const card = await fetch(), bad = mismatch(card); if (bad) throw new Error(bad); return card; };
+  }
+  for (const [name, t] of Object.entries(inst.tools ?? {})) {
+    const run = t.run.bind(t);
+    t.run = async args => {
+      const out = await run(args), bad = out.card && mismatch(out.card);
+      if (!bad) return out;
+      console.error(`plugin tool ${name}: ${bad}`);
+      return { data: out.data };
+    };
+  }
+  return inst;
+}
+
 export async function loadPlugins(registry: Record<string, Integration>, packages: string[], replace: string[]) {
   const dir = resolve(process.env.ATRIUM_DATA ?? 'data', 'integrations');
   const files = (await readdir(dir).catch(() => [] as string[])).filter(f => /\.(m?js)$/.test(f)).sort().map(f => pathToFileURL(resolve(dir, f)).href);

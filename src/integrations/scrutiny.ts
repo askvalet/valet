@@ -37,6 +37,7 @@ export default defineIntegration({
       },
       tools: {
         drive_health: {
+          label: 'Checked the drives',
           description: 'Health of every disk (SMART via Scrutiny): passed or failing, temperature, hours powered on.',
           access: 'read', input: z.object({}),
           async run() { return { data: await drives() }; },
