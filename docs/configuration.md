@@ -75,6 +75,7 @@ In Docker, prefix these with `docker exec -it atrium`.
 | `instructions` | none | added to the system prompt |
 | `access` | `{ default: read }` | per integration (by its id): `none`, `read`, `write` (adds things, like saving a link) or `control` (changes or removes things; asks you every time). `config: control` lets it edit this file: see below |
 | `maxSteps` | `6` | tool calls per answer, 1–20 |
+| `agents` | `[]` | other agents to talk to from the chat: `{ id, name, baseURL, apiKey, model }`, anything OpenAI-compatible (Hermes Agent's API server, say). A picker appears in the chat, which always starts with Atrium's own assistant. They run their own tools, so access levels and approvals don't apply; they get only the conversation, answers are plain text, and a read-only page refuses them |
 | `suggestions` | four examples | questions offered on an empty chat and in ⌘K, after any drawn from what's happening |
 | `background` | `{ watch: true, brief: true, perDay: 24 }` | what it does unasked. `watch`: when two or more things break, say what they share, if the data shows it. `brief`: one line each morning. `perDay` caps these model calls. They get no tools |
 

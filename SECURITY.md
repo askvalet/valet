@@ -30,6 +30,9 @@ the damage if something goes wrong, and how to give it as little power as possib
   the model is only consulted when rules say it's worth it (one problem never is).
 - **It can't give itself more power.** Editing the config needs `assistant.access.config`, and each save needs your
   approval. Sign-in, plugins, MCP, allowed hosts and its own access are off limits, and secrets can't be written.
+- **Other agents are their own thing.** An agent you add under `assistant.agents` (Hermes, say) gets the conversation
+  and nothing else from Atrium: no tools, no keys. But it runs its own tools, so everything above about access levels and
+  approvals is about Atrium's assistant, not it. The chat says so while it's selected, and a read-only page refuses it.
 - **Pins only look.** Only `read` tools can be pinned, and no model runs after that.
 - **Browser hardening.** A strict content-security policy (only Atrium's own scripts run), no framing, same-origin
   referrers, microphone only for Atrium, and every request that changes something must come from Atrium's own origin.

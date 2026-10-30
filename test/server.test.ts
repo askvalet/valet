@@ -175,3 +175,19 @@ test('thinking: reasoning left in a reply is split from the answer', async () =>
   assert.deepEqual(splitThink('Plain answer about <b>'), { thought: '', said: 'Plain answer about <b>', thinking: false });
   assert.deepEqual(splitThink('one</think>two</think>three'), { thought: 'onetwo', said: 'three', thinking: false });
 });
+
+test('other agents: chosen by id, and a read-only page refuses them', async () => {
+  const { chatRoute } = await import('../src/server/chat.ts');
+  const config = Config.parse({ assistant: { model: 'm', agents: [{ id: 'hermes', name: 'Hermes', baseURL: 'http://x/v1', model: 'h' }] } });
+  const route = (acting: boolean) => { const app = new Hono(); app.post('/chat', chatRoute(config, new Map(), new Map(), { acting, redact: s => s })); return app; };
+  const send = (app: Hono, agent: string) => app.request('/chat', { method: 'POST', body: JSON.stringify({ agent, messages: [] }) });
+  assert.equal((await send(route(false), 'hermes')).status, 403);
+  assert.equal((await send(route(true), 'nobody')).status, 404);
+});
+
+test('agent streams: named events are dropped, even split across chunks; ordinary frames pass', async () => {
+  const { plainEvents } = await import('../src/server/model.ts');
+  const parts = ['data: {"a":1}\n\nevent: hermes.tool.progress\nda', 'ta: {"tool":"x"}\n\ndata: {"a":2}\n\n', 'event: message\ndata: {"a":3}\n\ndata: [DONE]\n\n'];
+  const body = new ReadableStream<Uint8Array>({ start(c) { for (const p of parts) c.enqueue(new TextEncoder().encode(p)); c.close(); } });
+  assert.equal(await new Response(plainEvents(body)).text(), 'data: {"a":1}\n\ndata: {"a":2}\n\nevent: message\ndata: {"a":3}\n\ndata: [DONE]\n\n');
+});

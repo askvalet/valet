@@ -10,7 +10,7 @@ import { z } from 'zod';
 import type { Config } from './config.ts';
 import type { Instance, Integration } from './core.ts';
 import { mcpTools } from './mcp.ts';
-import { makeModel } from './model.ts';
+import { makeAgentModel, makeModel } from './model.ts';
 
 const rank = { none: 0, read: 1, write: 2, control: 3 } as const;
 
@@ -111,7 +111,18 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   ].join('\n');
 
   return async (c: HonoContext) => {
-    const { messages: all_ } = await c.req.json<{ messages: UIMessage[] }>();
+    const { messages: all_, agent } = await c.req.json<{ messages: UIMessage[]; agent?: string }>();
+    if (agent) {
+      const other = a.agents.find(x => x.id === agent);
+      if (!other) return c.json({ error: `no agent ${agent}` }, 404);
+      // it can act with tools of its own, so a page that may only look can't reach it
+      if (!safety.acting) return c.json({ error: 'Atrium is read-only: other agents are off' }, 403);
+      const plain = all_.slice(-24).filter(m => m.role !== 'system')
+        .map(m => ({ ...m, parts: m.parts.flatMap((p: any) => p.type === 'text' && splitThink(p.text).said ? [{ type: 'text' as const, text: splitThink(p.text).said }] : []) }))
+        .filter(m => m.parts.length);
+      const result = streamText({ model: makeAgentModel(other), abortSignal: c.req.raw.signal, messages: await convertToModelMessages(plain) });
+      return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream }) });
+    }
     const lastUser = [...all_].reverse().find(m => m.role === 'user');
     said = (lastUser?.parts ?? []).map((p: any) => p.type === 'text' ? p.text : '').join('\n');
     // the model gets the last 24 messages: enough context for a conversation, bounded cost for a long one

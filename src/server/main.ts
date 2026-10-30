@@ -133,6 +133,7 @@ app.get('/api/page', c => {
     // ?v= the file's mtime: replacing the wallpaper changes the URL, so browsers never show a stale cached one
     appearance: { ...config.appearance, wallpaper: site.wallpaperFile ? `/api/wallpaper?v=${site.wallpaperVersion}` : config.appearance.wallpaper },
     assistant: config.assistant ? { name: config.assistant.name, model: config.assistant.model, suggestions: config.assistant.suggestions,
+      agents: site.acting ? config.assistant.agents.map(a => ({ id: a.id, name: a.name, model: a.model })) : [],
       // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>")
       tools: Object.fromEntries([...instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {})
         .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access }]))) } : null,

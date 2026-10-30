@@ -14,8 +14,11 @@ import { splitThink } from '../shared/think.ts';
 import { Widget } from './cards.tsx';
 
 // One conversation for the whole page session, so closing and reopening the panel keeps it.
+export type Agent = { id: string; name: string; model: string };
+// who the chat is talking to: '' is Atrium's own assistant, and it's who every fresh page starts with
+let talkingTo = '';
 const chat = new Chat({
-  transport: new DefaultChatTransport({ api: '/api/chat' }),
+  transport: new DefaultChatTransport({ api: '/api/chat', body: () => (talkingTo ? { agent: talkingTo } : {}) }),
   sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
 });
 
@@ -202,12 +205,16 @@ export function InlineAnswer({ text, tools, onMore }: { text: string; tools: Rec
   );
 }
 
-export default function Assistant({ name, model, ask, suggestions, tools = {}, onAsk, onClose, canPin }: {
+export default function Assistant({ name, model, ask, suggestions, tools = {}, agents = [], onAsk, onClose, canPin }: {
   name: string; model: string; ask: { text: string; n: number } | null; suggestions: string[]; tools?: Record<string, ToolInfo>; onAsk: (t: string) => void;
   canPin?: boolean;
+  agents?: Agent[];
   onClose?: () => void;   // shown as a phone sheet: a grabber to drag it away, and room for fingers and the keyboard
 }) {
   const sheet = !!onClose;
+  const [who, setWho] = useState(talkingTo);
+  const pick = (id: string) => { talkingTo = id; setWho(id); };
+  const other = agents.find(a => a.id === who);
   // dragging the header pulls the sheet down with the finger; far or fast enough lets it go, otherwise it rides back
   const pull = useRef<{ y: number; t: number; el: HTMLElement } | null>(null);
   const grab = {
@@ -242,7 +249,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
   // files pasted, dropped or picked: uploaded right away, then named in the message so a tool can file them
   const [files, setFiles] = useState<{ key: number; name: string; id?: string; error?: string }[]>([]);
   const [over, setOver] = useState(false);
-  const pick = useRef<HTMLInputElement>(null);
+  const filePicker = useRef<HTMLInputElement>(null);
   const attach = (list: FileList | File[]) => {
     for (const f of Array.from(list)) {
       const key = Math.random();
@@ -276,12 +283,21 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
       <header {...(sheet ? grab : {})} className={cn('relative flex items-center gap-2.5 border-b px-5', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'py-4')}>
         {sheet && <span className="sheet-grip absolute top-[max(.4rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2" aria-hidden />}
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold leading-tight">{name}</div>
-          <div className="truncate text-xs text-muted-foreground">{model}</div>
+          <div className="text-sm font-semibold leading-tight">{other?.name ?? name}</div>
+          <div className="truncate text-xs text-muted-foreground">{other?.model ?? model}</div>
         </div>
+        {agents.length > 0 && (
+          <div role="radiogroup" aria-label="Talk to" onPointerDown={e => e.stopPropagation()} className="flex shrink-0 gap-0.5 rounded-full bg-white/[.07] p-0.5">
+            {[{ id: '', name }, ...agents].map(a => (
+              <button key={a.id} role="radio" aria-checked={who === a.id} onClick={() => pick(a.id)}
+                className={cn('press rounded-full px-3 py-1 text-[12.5px] transition-colors duration-200', who === a.id ? 'bg-white text-black' : 'text-muted-foreground hover:text-foreground')}>{a.name}</button>
+            ))}
+          </div>
+        )}
         {sheet && <button onClick={onClose} onPointerDown={e => e.stopPropagation()} aria-label="Close" className="press grid size-9 place-items-center rounded-full bg-white/[.08]"><ChevronDown className="size-[18px]" /></button>}
       </header>
 
+      {other && <div className="fade-in-soft border-b px-5 py-2 text-[12.5px] text-muted-foreground">{other.name} runs its own tools. Atrium's approvals and access levels don't apply, and answers are plain text.</div>}
       <div ref={scroller} onScroll={onScroll} className={cn('relative flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5', sheet && !messages.length && 'flex flex-col justify-end')}>
         {!messages.length && (
           // on a phone the suggestions sit low, where the thumb is
@@ -383,9 +399,9 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
           </div>
         )}
         <div className={cn('composer flex items-end gap-2 rounded-2xl border bg-card px-3 py-2 shadow-card', over && 'ring-2 ring-primary/60')}>
-          <input ref={pick} type="file" multiple hidden onChange={e => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
-          <button type="button" onClick={() => pick.current?.click()} aria-label="Attach a file" className={cn('mb-0.5 grid shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground', sheet ? 'size-8' : 'size-7')}><Paperclip className="size-4" /></button>
-          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={sheet ? `Message ${name}` : `Message ${name}, paste a link or drop a file`} aria-label="Message"
+          <input ref={filePicker} type="file" multiple hidden onChange={e => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
+          <button type="button" onClick={() => filePicker.current?.click()} aria-label="Attach a file" className={cn('mb-0.5 grid shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground', sheet ? 'size-8' : 'size-7')}><Paperclip className="size-4" /></button>
+          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={sheet || other ? `Message ${other?.name ?? name}` : `Message ${name}, paste a link or drop a file`} aria-label="Message"
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
             onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
             className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-1.5 text-[16px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-[15px]" autoFocus={!sheet} />

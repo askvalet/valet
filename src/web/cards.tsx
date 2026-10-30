@@ -706,12 +706,13 @@ export const TileSkeleton = () => (
 function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, kind, explain, failed }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; kind?: string; explain?: Explain; failed?: string }) {
   const why = useWhy(explain);
   // artwork-led cards sit directly on the page, without a card frame
-  if (card?.type === 'shelf') return <div className="fade-in-soft min-w-0"><Shelf card={card} small={compact} header={<BareHeader card={card} title={title} status={status} />} /></div>;
+  const actions = card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null;
+  if (card?.type === 'shelf') return <div className="fade-in-soft min-w-0"><Shelf card={card} small={compact} header={<BareHeader card={card} title={title} status={status} />} />{actions}</div>;
   if (card?.type === 'photos') return (
-    <div className="fade-in-soft min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Photos card={card} large={large} /></div>
+    <div className="fade-in-soft min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Photos card={card} large={large} />{actions}</div>
   );
   if (card?.type === 'media') return (
-    <div className="fade-in-soft min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Media card={card} compact={compact} /></div>
+    <div className="fade-in-soft min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Media card={card} compact={compact} />{actions}</div>
   );
   const t = card?.title ?? title;
   const bare = card?.type === 'group';
