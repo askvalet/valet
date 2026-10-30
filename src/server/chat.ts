@@ -227,7 +227,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       toolApproval: approvals,
       stopWhen: isStepCount(a.maxSteps),
       // the last step is for answering: a model still looking things up when its steps run out would otherwise say nothing
-      prepareStep: ({ stepNumber }) => stepNumber >= a.maxSteps - 1 ? { toolChoice: 'none' as const } : undefined,
+      prepareStep: ({ stepNumber }) => stepNumber >= a.maxSteps - 1 ? { toolChoice: 'none' as const, system: `${system(m.catalog)}\n\nYou have no more lookups. Answer now in plain words from what you already found. If it doesn't settle the question, say what you checked and that you can't tell. Do not write tool calls.` } : undefined,
     });
     // a tool that throws past runTool (a failed input check, say): the log and the page should both say what happened
     const failed = (e: unknown) => { const m = safety.redact((e as Error)?.message ?? String(e)); console.error(`assistant: ${m}`); return m; };
