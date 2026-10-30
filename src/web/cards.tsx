@@ -405,6 +405,54 @@ function Verse({ card }: { card: VerseCard }) {
   );
 }
 
+/** The large prayer card: the sky over a day. The sun rides an arc from sunrise to sunset, each prayer sits where the
+ *  sun is at its time (night prayers below the horizon), now glows on the path, and the next prayer counts down. */
+function Sky({ card }: { card: ScheduleCard }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t); }, []);
+  const items = card.items.map(x => ({ ...x, t: Date.parse(x.at), muted: card.muted?.includes(x.name) }));
+  if (items.length < 2) return <Schedule card={card} />;
+  const rise = items.find(x => /sunrise/i.test(x.name))?.t ?? items[1].t, set = items.find(x => /maghrib|sunset/i.test(x.name))?.t ?? items[items.length - 2].t;
+  const W = 600, H = 250, base = 168, r = 230, cx = W / 2;
+  // daylight maps onto the arc (0 at sunrise, 1 at sunset); before and after, the path dips below the horizon
+  const point = (t: number) => {
+    const day = (t - rise) / Math.max(1, set - rise);
+    const u = Math.max(-0.22, Math.min(1.22, day)), a = Math.PI * (1 - u);
+    return { x: cx + r * Math.cos(a), y: base - (u >= 0 && u <= 1 ? 1 : 0.55) * Math.sin(a) * 120, up: u >= 0 && u <= 1 };
+  };
+  const roll = items.filter(x => !x.muted).map(x => ({ ...x, t: x.t <= now ? x.t + 864e5 : x.t })).sort((a, b) => a.t - b.t);
+  const next = roll[0], mins = Math.max(0, Math.round((next.t - now) / 60_000)), sun = point(now);
+  const path = Array.from({ length: 61 }, (_, i) => { const p = point(rise - .22 * (set - rise) + (i / 60) * 1.44 * (set - rise)); return `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`; }).join('');
+  const clock = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return (
+    <div className="space-y-2">
+      <div className="flex items-end justify-between">
+        <div><div className="metric text-[30px] leading-none">{next.name}</div><div className="mt-1.5 text-[13px] text-muted-foreground tabular">{clock(next.t)}</div></div>
+        <div className="text-right"><div className={cn('metric text-[22px] tabular leading-none', mins <= 15 && 'text-good')}><span key={mins} className="tick">{mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`}</span></div>
+          <div className="mt-1.5 text-[12px] text-muted-foreground">to go</div></div>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="block w-full overflow-visible" aria-hidden>
+        <defs>
+          <linearGradient id="sky-path" x1="0" x2="1"><stop offset="0" stopColor="#5e5ce6" /><stop offset=".25" stopColor="#ffb46b" /><stop offset=".5" stopColor="#ffd60a" /><stop offset=".75" stopColor="#ff9f0a" /><stop offset="1" stopColor="#5e5ce6" /></linearGradient>
+          <radialGradient id="sky-sun"><stop offset="0" stopColor={sun.up ? '#fff4c2' : '#dfe6ff'} /><stop offset=".35" stopColor={sun.up ? '#ffd60a' : '#9fb4ff'} stopOpacity=".9" /><stop offset="1" stopColor={sun.up ? '#ffd60a' : '#9fb4ff'} stopOpacity="0" /></radialGradient>
+        </defs>
+        <line x1="0" x2={W} y1={base} y2={base} stroke="currentColor" strokeOpacity=".14" strokeDasharray="2 5" />
+        <path d={path} fill="none" stroke="url(#sky-path)" strokeWidth="2.2" strokeLinecap="round" opacity=".75" />
+        {items.map(x => { const p = point(x.t), isNext = x.name === next.name; return (
+          <g key={x.name} opacity={x.muted ? .45 : 1}>
+            <circle cx={p.x} cy={p.y} r={isNext ? 5 : 3.5} fill={isNext ? '#fff' : 'currentColor'} fillOpacity={isNext ? 1 : .55} />
+            {/* labels sit outside the arc: above it by day, below it by night */}
+            <text x={p.x} y={p.y + (p.up ? -27 : 22)} textAnchor="middle" className="fill-current text-[13px] font-medium" opacity={isNext ? 1 : .7}>{x.name}</text>
+            <text x={p.x} y={p.y + (p.up ? -12 : 37)} textAnchor="middle" className="fill-current text-[11px] tabular" opacity=".45">{clock(x.t)}</text>
+          </g>
+        ); })}
+        <circle cx={sun.x} cy={sun.y} r="22" fill="url(#sky-sun)" className="transition-all duration-1000" />
+        <circle cx={sun.x} cy={sun.y} r="6.5" fill={sun.up ? '#ffe680' : '#e8edff'} className="transition-all duration-1000" />
+      </svg>
+    </div>
+  );
+}
+
 /** A day's times: the next one large, counting down live; all of them on a line with a dot for now. */
 function Schedule({ card }: { card: ScheduleCard }) {
   const dense = useContext(Dense);
@@ -502,7 +550,7 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
   switch (card.type) {
     case 'showcase': return <Showcase card={card} run={run} />;
     case 'photos': return <Photos card={card} large={large} />;
-    case 'schedule': return <Schedule card={card} />;
+    case 'schedule': return large ? <Sky card={card} /> : <Schedule card={card} />;
     case 'verse': return <Verse card={card} />;
     case 'forecast': return <Forecast card={card} />;
     case 'stats': return <Stats card={card} />;
@@ -582,7 +630,7 @@ export function Widget({ card, run, title, status, compact, columns, minimal, he
         </CardHeader>
       )}
       <CardContent className={cn(bare ? 'p-0' : compact ? 'px-3.5' : 'px-5')}>
-        {card ? <CardBody card={card} run={run} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /> : <div className="space-y-3"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-4 w-3/5" /></div>}
+        {card ? <CardBody card={card} run={run} large={large} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /> : <div className="space-y-3"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-4 w-3/5" /></div>}
         {card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null}
       </CardContent>
     </Card>
