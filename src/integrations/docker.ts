@@ -29,7 +29,7 @@ export default defineIntegration({
   type: 'docker',
   name: 'Docker',
   config: z.object({
-    url: z.string().url(),                       // the read-only socket proxy, e.g. http://atrium-dockerproxy:2375
+    url: z.string().url(),                       // the read-only socket proxy, e.g. http://valet-dockerproxy:2375
     hide: z.array(z.string()).default([]),       // container names to leave out
     // where a container's release notes live, when its image doesn't say: { immich_server: immich-app/immich }
     sources: z.record(z.string(), z.string()).default({}),
@@ -66,7 +66,7 @@ export default defineIntegration({
     const repoOf = (c: C, image: string) => cfg.sources[c.name]
       ?? c.source?.match(/github\.com[/:]([\w.-]+\/[\w.-]+?)(\.git)?\/?$/)?.[1]
       ?? image.match(/^ghcr\.io\/([\w.-]+\/[\w.-]+)/)?.[1];
-    const github = (path: string) => ctx.http<any>(`https://api.github.com/${path}`, { timeout: 15_000, headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Atrium', ...(cfg.github ? { Authorization: `Bearer ${cfg.github}` } : {}) } });
+    const github = (path: string) => ctx.http<any>(`https://api.github.com/${path}`, { timeout: 15_000, headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Valet', ...(cfg.github ? { Authorization: `Bearer ${cfg.github}` } : {}) } });
     /** Releases after `current`, up to `latest`, newest first. */
     async function notes(repo: string, current: string, latest: string) {
       const list = await github(`repos/${repo}/releases?per_page=40`).catch(() => [] as any[]);

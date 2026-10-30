@@ -46,7 +46,7 @@ export default defineIntegration({
     async function entries() {
       if (cache && Date.now() - cache.at < cfg.every * 1000) return cache.entries;
       const all = await Promise.all(cfg.feeds.map(async f => {
-        try { return parseFeed(await ctx.http<string>(f.url, { as: 'text', timeout: 15_000, headers: { 'User-Agent': 'Atrium (feed reader)' } }), f.name); }
+        try { return parseFeed(await ctx.http<string>(f.url, { as: 'text', timeout: 15_000, headers: { 'User-Agent': 'Valet (feed reader)' } }), f.name); }
         catch (e) { ctx.log(`${f.url}: ${(e as Error).message}`); return []; }
       }));
       const list = all.flat().sort((a, b) => (b.at ?? 0) - (a.at ?? 0));

@@ -1,12 +1,12 @@
-// Security in one place: what the page may load, what never leaves the server, and when Atrium may change things.
+// Security in one place: what the page may load, what never leaves the server, and when Valet may change things.
 import type { MiddlewareHandler } from 'hono';
 import type { Config } from './config.ts';
 
-/** Atrium may press buttons and use tools that add or change things only when someone signed in, or the config says
+/** Valet may press buttons and use tools that add or change things only when someone signed in, or the config says
  *  the network itself is trusted. Otherwise it's a read-only dashboard. */
 export const canAct = (config: Config) => config.auth.mode !== 'none' || config.auth.trustNetwork;
 
-/** Every secret Atrium knows (each ${VAR} the config used), so none can slip out in an error message or a tool result. */
+/** Every secret Valet knows (each ${VAR} the config used), so none can slip out in an error message or a tool result. */
 export function redactor(secrets: string[]) {
   const list = [...new Set(secrets.filter(s => s && s.length >= 4))].sort((a, b) => b.length - a.length);
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -15,7 +15,7 @@ export function redactor(secrets: string[]) {
   return (text: string) => (re ? text.replace(re, '•••') : text);
 }
 
-/** Headers for every response: only Atrium's own scripts run, nothing frames it, referrers stay home. */
+/** Headers for every response: only Valet's own scripts run, nothing frames it, referrers stay home. */
 export const headers: MiddlewareHandler = async (c, next) => {
   await next();
   c.header('Content-Security-Policy', [
@@ -32,7 +32,7 @@ export const headers: MiddlewareHandler = async (c, next) => {
   if (c.req.path.startsWith('/api/') && !c.res.headers.has('Cache-Control')) c.header('Cache-Control', 'no-store');
 };
 
-/** Answer only to names Atrium is meant to have. A malicious site can point its own domain at your Atrium's IP (DNS
+/** Answer only to names Valet is meant to have. A malicious site can point its own domain at your Valet's IP (DNS
  *  rebinding) and script your browser against it; refusing unknown Host headers closes that. IP addresses and
  *  localhost are always fine: an attacker's page can't use those names. */
 export function hostGuard(allowed: string[] | (() => string[])): MiddlewareHandler {
@@ -50,7 +50,7 @@ export function hostGuard(allowed: string[] | (() => string[])): MiddlewareHandl
     // both must pass: a page in the browser can set X-Forwarded-Host on its own same-origin requests, so it may only
     // narrow what Host allows, never vouch for it
     const host = [c.req.header('host'), c.req.header('x-forwarded-host')].find(h => !ok(h));
-    if (host !== undefined) return c.text(`Atrium doesn't answer to "${host}". If that's your address for it, add it to allowedHosts in config.yaml.`, 421);
+    if (host !== undefined) return c.text(`Valet doesn't answer to "${host}". If that's your address for it, add it to allowedHosts in config.yaml.`, 421);
     return next();
   };
 }

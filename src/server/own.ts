@@ -1,4 +1,4 @@
-// Atrium's own abilities, shaped like an integration so the chat treats them like any other: what happened, what it
+// Valet's own abilities, shaped like an integration so the chat treats them like any other: what happened, what it
 // changed, and "tell me when". Access defaults to write (see chat.ts), so these work without any config.
 import { z } from 'zod';
 import type { Activity } from './activity.ts';
@@ -23,7 +23,7 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
     tools: {
       timeline: {
         label: 'Checked what happened', followUps: ['What should I do about it?'],
-        description: 'What happened over a period: things starting and finishing, services going down and coming back, problems appearing and clearing, changes made, and how each headline number moved (lowest, highest, now). Use for "what happened overnight", "what changed since yesterday", "why was it slow at 3am". Check this, then the logs, before explaining a past problem. A time here is when Atrium saw it happen; trust a service\'s own timestamps over it.',
+        description: 'What happened over a period: things starting and finishing, services going down and coming back, problems appearing and clearing, changes made, and how each headline number moved (lowest, highest, now). Use for "what happened overnight", "what changed since yesterday", "why was it slow at 3am". Check this, then the logs, before explaining a past problem. A time here is when Valet saw it happen; trust a service\'s own timestamps over it.',
         access: 'read', input: z.object({ hours: z.number().min(1).max(336).default(24), about: z.string().optional().describe('only events mentioning this') }),
         async run({ hours, about }) {
           const q = about?.toLowerCase();
@@ -36,7 +36,7 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
       metric_chart: {
         live: true,
         label: 'Drew a graph', followUps: ['What caused the peak?'],
-        description: 'A graph of any headline number Atrium tracks, over time: CPU, memory, GPU, disk, network, power, requests. Use for "graph", "chart", "show me X over the last day". The person can scrub across it. Use the unit it returns exactly; never assume one.',
+        description: 'A graph of any headline number Valet tracks, over time: CPU, memory, GPU, disk, network, power, requests. Use for "graph", "chart", "show me X over the last day". The person can scrub across it. Use the unit it returns exactly; never assume one.',
         access: 'read', input: z.object({ name: z.string().describe('what to graph, e.g. "memory" or "GPU"'), hours: z.number().min(1).max(336).default(24) }),
         async run({ name, hours }) {
           const found = o.history?.points(name, hours * 36e5) ?? [];
@@ -48,7 +48,7 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
       },
       activity_log: {
         label: 'Checked what changed', followUps: ['Undo the last one'],
-        description: 'What Atrium itself changed recently: who asked, from where (chat, a plan, a card), what it did and whether it worked. Use for "did you do that", "what did you change", "who turned that on".',
+        description: 'What Valet itself changed recently: who asked, from where (chat, a plan, a card), what it did and whether it worked. Use for "did you do that", "what did you change", "who turned that on".',
         access: 'read', input: z.object({}),
         async run() { return { data: o.activity.recent(25).map(e => ({ id: e.id, when: when(e.at), who: e.who, via: e.via, what: e.what, ok: e.ok, error: e.error, canUndo: !!e.undo && !e.undone })), card: log() }; },
       },

@@ -1,9 +1,9 @@
 # AGENTS.md
 
-How Atrium is designed and built. Read this before changing anything; keep it current when a principle changes or a
+How Valet is designed and built. Read this before changing anything; keep it current when a principle changes or a
 new gotcha is learned. `CLAUDE.md`-style tools should treat this file as their instructions for this repo.
 
-## What Atrium is
+## What Valet is
 
 A homepage for a homelab: live cards for the services you run, controls for the things you can change, and an
 assistant that answers with the same cards. One Node process, one YAML file, about 100 MB of RAM.
@@ -21,7 +21,7 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - **Light by default.** Only widgets placed on the page are polled, only while someone has it open, once for all tabs.
   Heavy things (the assistant, the AI SDK, MCP, 3D visuals) load on first use.
 - **Secure by default** (SECURITY.md is the contract). Keys stay on the server and pass through the redactor
-  (`src/server/security.ts`) on the way out; without sign-in Atrium is read-only unless `auth.trustNetwork`; strict CSP,
+  (`src/server/security.ts`) on the way out; without sign-in Valet is read-only unless `auth.trustNetwork`; strict CSP,
   so no inline scripts; image proxies validate every ref; new tools pick the narrowest access (`read` < `write` <
   `control`) and anything with consequences is `control`. Before committing: `npm audit --omit=dev` and the tests.
 - **The assistant reads freely and changes nothing without asking.** Tools are `read`, `write` or `control`. Control
@@ -38,7 +38,7 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - **Widgets summarise themselves.** A card may carry `summary`/`summaries` (label, value, tone, trend, pct) so the same
   data can appear as a tile, a ring in the menubar, or a full card, chosen in YAML.
 - **Community integrations are plugins** (`src/server/plugins.ts`, docs/plugins.md): the same integration shape, one
-  file in `data/integrations/` or an npm package, handed Atrium's toolkit so it needs no imports. Their cards are
+  file in `data/integrations/` or an npm package, handed Valet's toolkit so it needs no imports. Their cards are
   checked against the catalog at runtime. A new built-in should be writable as a plugin too: if it needs something
   the toolkit or `Context` doesn't offer, add it there rather than special-casing the built-in.
 - **Rich visuals are framework-free modules** (`src/web/visuals/*-model.ts`): a `createViewer(box, options)` that
@@ -48,7 +48,7 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - **Visuals are lazy**: registered in `VISUALS` in `cards.tsx` with `lazy(() => import(...))`, so a page without them
   never downloads them. A showcase card with no `items` hands the whole card to its visual.
 - **Server stays small.** Hono + node-server, bundled with esbuild (dependencies included, so the image ships no
-  `node_modules`) into `dist/server/`. No database: state lives in the services Atrium talks to.
+  `node_modules`) into `dist/server/`. No database: state lives in the services Valet talks to.
 - **A config is a Site** (`src/server/site.ts`): `check()` turns a config into instances and the list of problems
   (the CLI and tests use it alone); `buildSite()` adds the hub. `main.ts` keeps one `site` and swaps it when
   config.yaml changes, so routes read `site.x` at request time, never a captured copy.
@@ -56,8 +56,8 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - **AI is everywhere and required nowhere.** Without an `assistant:` block the page loses nothing. Rules decide when a
   model is worth asking; if a rule can do the job, no model runs. What it does unasked (`src/server/insight.ts`, through
   `brain.ts`) gets no tools. What it builds (pins, config edits in `setup.ts`) runs without it afterwards.
-- **Atrium stays in its box; agents go on the machines.** The container never gets the host. Anything from outside it
-  comes through a narrow read-only door: a socket proxy for Docker, `agent/atrium-agent.py` for systemd. Keep the agent one
+- **Valet stays in its box; agents go on the machines.** The container never gets the host. Anything from outside it
+  comes through a narrow read-only door: a socket proxy for Docker, `agent/valet-agent.py` for systemd. Keep the agent one
   file of Python's standard library, and keep it unable to change anything: `test/agent.test.ts` enforces that.
 - **Personal things live in config, never in code.** Hardware builds (`build:`), rooms and lights, services, layout,
   angles: the repo ships generic defaults and a documented `config.example.yaml`. Before committing, grep for anything

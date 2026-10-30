@@ -14,7 +14,7 @@ export default defineIntegration({
     prereleases: z.boolean().default(false),
   }),
   create(cfg, ctx) {
-    const headers: Record<string, string> = { Accept: 'application/vnd.github+json', 'User-Agent': 'Atrium', ...(cfg.token ? { Authorization: `Bearer ${cfg.token}` } : {}) };
+    const headers: Record<string, string> = { Accept: 'application/vnd.github+json', 'User-Agent': 'Valet', ...(cfg.token ? { Authorization: `Bearer ${cfg.token}` } : {}) };
     interface Rel { repo: string; tag: string; name?: string; at: number; href: string; notes?: string; prerelease: boolean }
     let cache: { at: number; list: Rel[] } | undefined;
     async function releases(): Promise<Rel[]> {

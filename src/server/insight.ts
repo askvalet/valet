@@ -97,7 +97,7 @@ export function parseSuggestions(reply: string | null) {
 }
 
 // ── the morning brief
-const FILE = () => resolve(process.env.ATRIUM_DATA ?? 'data', 'brief.json');
+const FILE = () => resolve(process.env.VALET_DATA ?? 'data', 'brief.json');
 export interface Brief { day: string; text: string }
 let making: Promise<Brief | null> | undefined;
 

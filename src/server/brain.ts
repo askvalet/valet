@@ -20,7 +20,7 @@ export function makeAsk(a: NonNullable<Config['assistant']>): Ask {
       try {
         // loaded here so a page nobody asks anything of never pays for the AI SDK
         const [{ generateText }, { makeModel }] = await Promise.all([import('ai'), import('./model.ts')]);
-        const r = await generateText({ model: makeModel(a), system, prompt, abortSignal: AbortSignal.timeout(90_000), headers: { 'User-Agent': 'Atrium' } });
+        const r = await generateText({ model: makeModel(a), system, prompt, abortSignal: AbortSignal.timeout(90_000), headers: { 'User-Agent': 'Valet' } });
         return splitThink(r.text).said.trim() || null;
       } catch (e) { console.error(`assistant: ${(e as Error).message}`); return null; }
     };

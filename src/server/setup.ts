@@ -1,4 +1,4 @@
-// Setting Atrium up by talking to it. The assistant can read the config, look up what an integration accepts, try a
+// Setting Valet up by talking to it. The assistant can read the config, look up what an integration accepts, try a
 // change without saving (a diff, every problem, and the new card), and, with the person's approval, save it. Only with
 // `assistant.access.config`. It can't touch sign-in, plugins, MCP or its own access, and it can't write a secret into
 // the file: those stay in .env. Saved edits go through the same hot reload as a person's.
@@ -168,7 +168,7 @@ export function setupTools(path: string, registry: Record<string, Integration>):
           if (t.missing.length) return { data: { error: `add ${t.missing.join(', ')} to .env and recreate the container first` } };
           if (t.problems.length) return { data: { error: 'not saved', problems: t.problems } };
           try { await writeFile(path, t.after); }
-          catch { return { data: { error: 'the config folder is read-only to Atrium, so nothing was saved; give the person this to paste in', diff: diff(t.before, t.after) } }; }
+          catch { return { data: { error: 'the config folder is read-only to Valet, so nothing was saved; give the person this to paste in', diff: diff(t.before, t.after) } }; }
           return { data: { saved: true } };
         } catch (e) { return { data: { error: (e as Error).message } }; }
       },

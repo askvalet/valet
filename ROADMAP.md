@@ -6,7 +6,7 @@ card type, a toolkit addition) rather than a special case.
 - **Voice.** A microphone button in the ask box and the chat composer: record in the browser, transcribe through any
   OpenAI-compatible speech-to-text endpoint (`/v1/audio/transcriptions`: a local Speaches/faster-whisper container,
   LocalAI, OpenAI, Groq), configured as `assistant.voice: { url, model, apiKey }`. The page's permissions policy
-  already allows the microphone for Atrium only.
+  already allows the microphone for Valet only.
 - **Published image.** A GitHub Action that builds and pushes the Docker image on each release (after the name is settled).
 - **Kiosk mode.** A full-screen ambient layout for a wall tablet or TV: clock, weather, now playing, photos, with
   burn-in shifting.

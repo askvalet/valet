@@ -51,7 +51,7 @@ export interface Instance {
   widgets: Record<string, Widget>;
   actions?: Record<string, Action>;
   tools?: Record<string, Tool>;
-  /** Serve an image (poster, camera snapshot) through Atrium so the browser never needs the service's key.
+  /** Serve an image (poster, camera snapshot) through Valet so the browser never needs the service's key.
    *  Cards point at it with ctx.image(ref); validate `ref` before fetching. */
   image?(ref: string): Promise<Response>;
 }
@@ -109,7 +109,7 @@ export function makeContext(id: string): Context {
 }
 
 // Files attached in chat: kept for a day under data/uploads, named <id>.<meta> and <id>.bin
-export const UPLOAD_DIR = resolve(process.env.ATRIUM_DATA ?? 'data', 'uploads');
+export const UPLOAD_DIR = resolve(process.env.VALET_DATA ?? 'data', 'uploads');
 export async function readUpload(fileId: string) {
   if (!/^[a-f0-9]{24}$/.test(fileId)) throw new Error('bad file id');
   const meta = JSON.parse(await readFile(resolve(UPLOAD_DIR, `${fileId}.json`), 'utf8').catch(() => { throw new Error('that file has expired; attach it again'); }));

@@ -25,13 +25,13 @@ const agentFetch: typeof fetch = async (url, init) => {
   return r.body && r.headers.get('content-type')?.includes('text/event-stream') ? new Response(plainEvents(r.body), { status: r.status, headers: r.headers }) : r;
 };
 
-/** Another agent, reached the same way. It's only ever given the conversation: never tools, never Atrium's data. */
+/** Another agent, reached the same way. It's only ever given the conversation: never tools, never Valet's data. */
 export function makeAgentModel(a: NonNullable<NonNullable<Config['assistant']>['agent']>) {
-  return createOpenAICompatible({ name: 'agent', baseURL: a.baseURL, apiKey: a.apiKey, headers: { 'User-Agent': 'Atrium' }, fetch: agentFetch })(a.model);
+  return createOpenAICompatible({ name: 'agent', baseURL: a.baseURL, apiKey: a.apiKey, headers: { 'User-Agent': 'Valet' }, fetch: agentFetch })(a.model);
 }
 
 export function makeModel(a: NonNullable<Config['assistant']>) {
   return a.provider === 'anthropic'
     ? createAnthropic({ apiKey: a.apiKey, baseURL: a.baseURL })(a.model)
-    : createOpenAICompatible({ name: 'assistant', baseURL: a.baseURL ?? 'http://localhost:11434/v1', apiKey: a.apiKey, includeUsage: true, headers: { 'User-Agent': 'Atrium' } })(a.model);
+    : createOpenAICompatible({ name: 'assistant', baseURL: a.baseURL ?? 'http://localhost:11434/v1', apiKey: a.apiKey, includeUsage: true, headers: { 'User-Agent': 'Valet' } })(a.model);
 }

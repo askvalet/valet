@@ -17,7 +17,7 @@ export default defineIntegration({
     style: z.enum(['list', 'shelf']).default('list'),   // shelf: image posts as tiles
   }),
   create(cfg, ctx) {
-    const headers = { 'User-Agent': 'atrium-dashboard/1.0 (self-hosted homepage)' };
+    const headers = { 'User-Agent': 'valet-dashboard/1.0 (self-hosted homepage)' };
     async function posts(limit: number) {
       const per = Math.max(3, Math.ceil(limit / cfg.subreddits.length));
       const all = await Promise.all(cfg.subreddits.map(async s => {

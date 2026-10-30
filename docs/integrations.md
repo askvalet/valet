@@ -53,13 +53,13 @@ layout:
 
 ## The parts
 
-**`config`** is a Zod schema. Atrium validates the user's block against it and reports errors with the path.
+**`config`** is a Zod schema. Valet validates the user's block against it and reports errors with the path.
 
 **`widgets`** each return a card from the catalog (`src/shared/cards.ts`). `interval` is how often it refreshes while
 someone is looking (default 10 s). Widgets that aren't in the layout are never polled.
 
 **`actions`** are what homepage controls call. A `controls` card item names an action and its args; when the person
-flips a toggle, Atrium runs the action and refreshes the integration's widgets right away.
+flips a toggle, Valet runs the action and refreshes the integration's widgets right away.
 
 **`tools`** are what the assistant may call. Write `description` for the model: what it returns and when to use it.
 Return `data` (compact JSON the model reads) and optionally a `card` (what the person sees). Give it a `label`: what it
@@ -74,7 +74,7 @@ answer that used it. Pick the narrowest `access`:
 - `control`: changes or removes something (pause, stop, turn off, request). Every call asks first, and it only exists
   for the assistant if the user grants `control`.
 
-**`image(ref)`** serves images (posters, snapshots) through Atrium so the browser never needs the service's key. Put
+**`image(ref)`** serves images (posters, snapshots) through Valet so the browser never needs the service's key. Put
 `ctx.image(ref)` in a card; validate `ref` before fetching.
 
 ## Context
@@ -92,7 +92,7 @@ game book coins text file bookmark sun moon cloud cloud-sun cloud-moon rain snow
 
 - Keep `data` small: the model's context is precious. Summarise; don't dump the raw API response.
 - One request per widget refresh if you can. If several widgets share data, fetch once and cache briefly.
-- Fail with a clear message (`throw new Error('qBittorrent login failed')`); Atrium shows it on the widget.
+- Fail with a clear message (`throw new Error('qBittorrent login failed')`); Valet shows it on the widget.
 - Don't invent card types. If the catalog is missing something you need, open an issue: new types get added for everyone.
 
 ## Cards

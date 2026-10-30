@@ -1,8 +1,8 @@
-# Atrium with Docker Compose. Put config/config.yaml and .env next to this file, then: docker compose up -d
+# Valet with Docker Compose. Put config/config.yaml and .env next to this file, then: docker compose up -d
 services:
-  atrium:
-    image: ghcr.io/OWNER/atrium:latest
-    container_name: atrium
+  valet:
+    image: ghcr.io/OWNER/valet:latest
+    container_name: valet
     restart: unless-stopped
     environment: { TZ: America/Toronto }   # your time zone, for times the server writes
     env_file: .env                    # secrets referenced as ${NAME} in config.yaml
@@ -16,9 +16,9 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
 
-  # Optional, for `type: docker`: containers and logs, read-only. Give Atrium the `docker-proxy` network too (networks:
-  # [default, docker-proxy]) and use url: http://atrium-dockerproxy:2375. Never mount the socket into Atrium itself.
-  # atrium-dockerproxy:
+  # Optional, for `type: docker`: containers and logs, read-only. Give Valet the `docker-proxy` network too (networks:
+  # [default, docker-proxy]) and use url: http://valet-dockerproxy:2375. Never mount the socket into Valet itself.
+  # valet-dockerproxy:
   #   image: tecnativa/docker-socket-proxy:v0.5.0
   #   environment: { CONTAINERS: 1, POST: 0 }
   #   volumes: [/var/run/docker.sock:/var/run/docker.sock:ro]

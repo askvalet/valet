@@ -1,6 +1,6 @@
-# Atrium
+# Valet
 
-A fast, good-looking homepage for your homelab, with an assistant built in.
+**Talk to your homelab.** A fast, good-looking homepage with an assistant built in, and it only gets the keys you hand it.
 
 Glance at what matters: what's playing, what's downloading, whether anything is down, how the server is doing. Control
 things right from the page: lights, scenes, downloads. When you'd rather ask than look, ask: "how are my downloads
@@ -13,18 +13,18 @@ homepage uses, not walls of text.
 - **Your model, your rules.** Use a local model (Ollama, llama.cpp, vLLM, LM Studio) or a hosted one (OpenRouter,
   OpenAI, Anthropic). Decide per integration whether the assistant can read it, control it, or not touch it. Anything
   that changes something asks you first.
-- **MCP.** Point Atrium at any MCP server and its tools become available to the assistant, under the same rules.
+- **MCP.** Point Valet at any MCP server and its tools become available to the assistant, under the same rules.
 - **Built to be extended.** An integration is one TypeScript file: config schema, widgets, actions, assistant tools.
 
 ## Quick start
 
 ```sh
-docker run -d --name atrium -p 127.0.0.1:7575:7575 \
+docker run -d --name valet -p 127.0.0.1:7575:7575 \
   -v ./config:/config -v ./data:/app/data --env-file .env \
-  ghcr.io/OWNER/atrium:latest
+  ghcr.io/OWNER/valet:latest
 ```
 
-On first start Atrium writes a starter `config/config.yaml` and the page walks you through it; or copy
+On first start Valet writes a starter `config/config.yaml` and the page walks you through it; or copy
 [`config.example.yaml`](config.example.yaml) there and keep the integrations you use. Copy
 [`.env.example`](.env.example) to `.env` and fill in their keys: it says where each one is in that app's settings.
 Then open http://localhost:7575. A [`docker-compose.example.yml`](docker-compose.example.yml) is there too, and
@@ -34,7 +34,7 @@ accounts and plugins. Publish the port on `127.0.0.1` (as above) when a reverse 
 Secrets never go in `config.yaml`: it refers to them as `${NAME}`, so you can share or commit your config safely.
 `npm run test:live` (or the startup log) tells you which integrations can't reach their service, and why.
 
-Config edits apply live, and `docker exec atrium node dist/server.js config check` names every problem in the file.
+Config edits apply live, and `docker exec valet node dist/server.js config check` names every problem in the file.
 
 From source (Node 22.18+):
 
@@ -47,7 +47,7 @@ npm start
 
 ## Security
 
-Atrium holds keys to your services, so it's built to keep them: they never leave the server, they're redacted from
+Valet holds keys to your services, so it's built to keep them: they never leave the server, they're redacted from
 anything it sends out, it's read-only until you turn on sign-in (or trust your network), and the assistant asks before
 changing anything. [SECURITY.md](SECURITY.md) has the details and the least-privilege key to give each service.
 
@@ -95,7 +95,7 @@ Every widget and every assistant answer is built from one small catalog of cards
 `status`, `links`, `chart`, `code`, `table`, `controls`, `showcase`, `forecast`, `photos`, `schedule`, `verse`, `kv`, `text`, `group`), defined
 in [`src/shared/cards.ts`](src/shared/cards.ts). Each works as a small tile, a card, a wide card and inside the chat;
 `/#gallery` shows them all.
-Integrations return plain data in these shapes; Atrium draws them. That's why a third-party integration looks native,
+Integrations return plain data in these shapes; Valet draws them. That's why a third-party integration looks native,
 and why the assistant can lay out cards from different integrations side by side.
 
 ## Assistant access
@@ -107,7 +107,7 @@ assistant:
 
 `read` tools fetch information. `write` tools add something (save a link, file a document) without asking, but only
 with what you typed yourself: if a page or document it read suggested it, it asks. `control` tools change or remove
-something, and each call waits for you to approve it in the chat. Atrium never hands the model your API keys; tools run
+something, and each call waits for you to approve it in the chat. Valet never hands the model your API keys; tools run
 on the server.
 
 ## Contributing

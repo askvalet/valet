@@ -54,7 +54,7 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   if (Object.keys(config.links).length) blocks.links = { type: 'links', groups: config.links };
   for (const [id, block] of Object.entries(blocks)) {
     if (!/^[a-z0-9][a-z0-9_-]*$/i.test(id)) { problems.push(`integrations.${id}: names are letters, numbers, - and _`); continue; }
-    if (['atrium', 'pins', 'config'].includes(id)) { problems.push(`integrations.${id}: that name is taken by Atrium itself`); continue; }
+    if (['valet', 'pins', 'config'].includes(id)) { problems.push(`integrations.${id}: that name is taken by Valet itself`); continue; }
     const integration = block.type === 'links' ? links : registry[block.type];
     if (!integration) { problems.push(`integrations.${id}: unknown type "${block.type}"`); continue; }
     const { type, ...rest } = block;
@@ -74,10 +74,10 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   const placed = new Set([...config.layout.flatMap(s => s.widgets.map(w => w.widget)), ...config.menubar, ...(config.weather ? [config.weather] : []), ...(config.island?.activities ?? [])]);
   for (const key of placed) {
     const [inst, w] = key.split('.');
-    if (inst === 'atrium') continue;      // Atrium's own widgets exist once the site is built
+    if (inst === 'valet') continue;      // Valet's own widgets exist once the site is built
     if (!instances.get(inst)?.widgets[w]) problems.push(`layout: no widget "${key}"${instances.has(inst) ? ` (${inst} has: ${Object.keys(instances.get(inst)!.widgets).join(', ')})` : ''}`);
   }
-  for (const [id] of Object.entries(config.assistant?.access ?? {})) if (!['default', 'config', 'atrium'].includes(id) && !instances.has(id)) problems.push(`assistant.access.${id}: no such integration`);
+  for (const [id] of Object.entries(config.assistant?.access ?? {})) if (!['default', 'config', 'valet'].includes(id) && !instances.has(id)) problems.push(`assistant.access.${id}: no such integration`);
   for (const n of config.island?.notify ?? []) if (!placed.has(n.widget)) problems.push(`island.notify: "${n.widget}" isn't placed on the page`);
   return { problems, instances, meta, placed };
 }
@@ -107,7 +107,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   const recent: Notice[] = previous?.recent ?? [], noticeListeners = previous?.noticeListeners ?? new Set<(n: Notice) => void>();
   const timeline = previous?.timeline ?? await new Timeline().load();
   const activity = previous?.activity ?? await new Activity(s => redactor(usedSecrets)(s)).load();
-  // reminders, and Atrium's own tools
+  // reminders, and Valet's own tools
   const watches = new Watches(await loadWatches(), w => {
     const n: Notice = { key: w.widget, text: w.say, icon: 'pulse', tone: 'accent', at: Date.now() };
     recent.push(n); if (recent.length > 5) recent.shift();
@@ -125,8 +125,8 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     activity.add({ who: e.who, via: 'page', what: `Undid: ${e.what}`, ok: true });
     return 'done';
   };
-  instances.set('atrium', ownInstance({ timeline, activity, watches, hub: () => hub, widgets: [...placed], history, undo }));
-  meta.set('atrium', { type: 'atrium', name: 'Atrium', integration: { type: 'atrium', name: 'Atrium' } as Integration });
+  instances.set('valet', ownInstance({ timeline, activity, watches, hub: () => hub, widgets: [...placed], history, undo }));
+  meta.set('valet', { type: 'valet', name: 'Valet', integration: { type: 'valet', name: 'Valet' } as Integration });
 
   const hub = new Hub(new Map([...instances].map(([id, i]) => [id, {
     ...i, widgets: Object.fromEntries(Object.entries(i.widgets).filter(([w]) => placed.has(`${id}.${w}`))
@@ -167,7 +167,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   if (history && config.history && config.history.background) hub.sampleInBackground(config.history.every * 60_000);
   watches.start(() => hub.snapshot(), key => void hub.refresh(key));
 
-  // a local wallpaper file is served by Atrium; a URL is handed to the browser as is
+  // a local wallpaper file is served by Valet; a URL is handed to the browser as is
   const wallpaper = config.appearance.wallpaper;
   const wallpaperFile = wallpaper && !/^https?:\/\//.test(wallpaper) ? resolve(wallpaper) : null;
   const wallpaperVersion = wallpaperFile ? Math.round((await stat(wallpaperFile).catch(() => ({ mtimeMs: 0 }))).mtimeMs) : 0;

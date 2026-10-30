@@ -7,7 +7,7 @@ import { delimiter, join } from 'node:path';
 import { after, before, test } from 'node:test';
 
 const python = spawnSync('python3', ['--version']).status === 0;
-const dir = await mkdtemp(join(tmpdir(), 'atrium-agent-')), log = join(dir, 'calls');
+const dir = await mkdtemp(join(tmpdir(), 'valet-agent-')), log = join(dir, 'calls');
 const TOKEN = 'a-token-that-is-long-enough-to-use', PORT = 17576 + Math.floor(Math.random() * 400), base = `http://127.0.0.1:${PORT}`;
 let agent: ReturnType<typeof spawn> | undefined;
 
@@ -17,7 +17,7 @@ before(async () => {
   await writeFile(join(dir, 'systemctl'), `#!/bin/sh\necho "$@" >> ${log}\ncat <<X\nActiveState=failed\nSubState=failed\nResult=exit-code\nNRestarts=3\nExecMainStatus=137\nMemoryCurrent=[not set]\nDescription=Radarr\nX\n`);
   await writeFile(join(dir, 'journalctl'), `#!/bin/sh\necho "$@" >> ${log}\nprintf '%s\\n' 'Oct 30 ok fine' 'Oct 30 ERROR out of memory'\n`);
   await chmod(join(dir, 'systemctl'), 0o755); await chmod(join(dir, 'journalctl'), 0o755);
-  agent = spawn('python3', ['agent/atrium-agent.py'], { stdio: 'ignore', env: { ...process.env, PATH: `${dir}${delimiter}${process.env.PATH}`, ATRIUM_AGENT_TOKEN: TOKEN, ATRIUM_AGENT_UNITS: 'radarr,user:ninfer', ATRIUM_AGENT_BIND: `127.0.0.1:${PORT}` } });
+  agent = spawn('python3', ['agent/valet-agent.py'], { stdio: 'ignore', env: { ...process.env, PATH: `${dir}${delimiter}${process.env.PATH}`, VALET_AGENT_TOKEN: TOKEN, VALET_AGENT_UNITS: 'radarr,user:ninfer', VALET_AGENT_BIND: `127.0.0.1:${PORT}` } });
   for (let i = 0; i < 50; i++) { if (await fetch(`${base}/health`).then(r => r.ok, () => false)) return; await new Promise(r => setTimeout(r, 100)); }
   throw new Error('agent did not start');
 });
@@ -51,13 +51,13 @@ test('agent: logs only for listed services, nothing unchecked reaches journalctl
 
 test('agent: it only reads', { skip: !python }, async () => {
   for (const method of ['POST', 'PUT', 'DELETE', 'PATCH']) assert.equal((await fetch(`${base}/services`, { method, headers: { Authorization: `Bearer ${TOKEN}` } })).status, 405, method);
-  const source = await readFile('agent/atrium-agent.py', 'utf8');
+  const source = await readFile('agent/valet-agent.py', 'utf8');
   for (const verb of ['"start"', '"stop"', '"restart"', 'shell=True', 'os.system']) assert.ok(!source.includes(verb), verb);
 });
 
 test('agent: won\'t start without a real token or a list of services', { skip: !python }, () => {
-  const run = (env: object) => spawnSync('python3', ['agent/atrium-agent.py'], { env: { ...process.env, ATRIUM_AGENT_BIND: '127.0.0.1:0', ...env }, timeout: 3000 }).status;
-  assert.equal(run({ ATRIUM_AGENT_TOKEN: 'short', ATRIUM_AGENT_UNITS: 'radarr' }), 1);
-  assert.equal(run({ ATRIUM_AGENT_TOKEN: TOKEN, ATRIUM_AGENT_UNITS: '' }), 1);
-  assert.equal(run({ ATRIUM_AGENT_TOKEN: TOKEN, ATRIUM_AGENT_UNITS: 'radarr;reboot' }), 1);
+  const run = (env: object) => spawnSync('python3', ['agent/valet-agent.py'], { env: { ...process.env, VALET_AGENT_BIND: '127.0.0.1:0', ...env }, timeout: 3000 }).status;
+  assert.equal(run({ VALET_AGENT_TOKEN: 'short', VALET_AGENT_UNITS: 'radarr' }), 1);
+  assert.equal(run({ VALET_AGENT_TOKEN: TOKEN, VALET_AGENT_UNITS: '' }), 1);
+  assert.equal(run({ VALET_AGENT_TOKEN: TOKEN, VALET_AGENT_UNITS: 'radarr;reboot' }), 1);
 });

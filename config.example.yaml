@@ -1,15 +1,15 @@
-# Sign-in. Off by default, and then Atrium is read-only (no buttons, no assistant tools that change things).
+# Sign-in. Off by default, and then Valet is read-only (no buttons, no assistant tools that change things).
 # local: built-in accounts · proxy: trust your sign-in proxy's user header · trustNetwork: true if only your VPN/tailnet reaches it
 auth: { mode: none, trustNetwork: false }
 
-# Atrium configuration. `${NAME}` is replaced from the environment, so keep secrets in .env or Docker secrets.
+# Valet configuration. `${NAME}` is replaced from the environment, so keep secrets in .env or Docker secrets.
 title: Home
 greeting: Sam                      # "Good evening, Sam"
 location: Toronto, Canada          # gives the assistant local context
 
 # The assistant. Any OpenAI-compatible server (Ollama, llama.cpp, vLLM, LM Studio, OpenRouter, OpenAI) or Anthropic.
 assistant:
-  name: Atrium
+  name: Valet
   provider: openai-compatible
   baseURL: http://localhost:11434/v1   # Ollama
   model: qwen3:8b

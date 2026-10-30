@@ -7,7 +7,7 @@ import type { Card, WidgetState } from '../shared/cards.ts';
 import { numberOf } from './history.ts';
 
 export interface Watch { id: string; widget: string; on: 'ends' | 'starts' | 'down' | 'up' | 'above' | 'below'; name?: string; value?: number; minutes: number; say: string; until: number }
-const FILE = () => resolve(process.env.ATRIUM_DATA ?? 'data', 'watches.json');
+const FILE = () => resolve(process.env.VALET_DATA ?? 'data', 'watches.json');
 export const loadWatches = (): Promise<Watch[]> => readFile(FILE(), 'utf8').then(JSON.parse).catch(() => []);
 async function save(list: Watch[]) {
   await mkdir(dirname(FILE()), { recursive: true });

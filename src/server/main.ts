@@ -18,8 +18,8 @@ import { chatAgent } from './model.ts';
 import { buildSite, type Site } from './site.ts';
 import { registry } from '../integrations/index.ts';
 
-const CONFIG = process.env.ATRIUM_CONFIG ?? 'config.yaml';
-const DATA = resolve(process.env.ATRIUM_DATA ?? 'data');
+const CONFIG = process.env.VALET_CONFIG ?? 'config.yaml';
+const DATA = resolve(process.env.VALET_DATA ?? 'data');
 const PORT = Number(process.env.PORT ?? 7575);
 const HOST = process.env.HOST ?? '0.0.0.0';
 
@@ -103,7 +103,7 @@ const ICON_DIR = resolve(DATA, 'icons');
 const cached = async (file: string, url: string, type: string, c: Context) => {
   let body = await readFile(file).catch(() => null);
   if (!body) {
-    const r = await fetch(url, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'Atrium' } }).catch(() => null);
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'Valet' } }).catch(() => null);
     if (!r?.ok || !(r.headers.get('content-type') ?? '').startsWith('image/')) return c.notFound();
     body = Buffer.from(await r.arrayBuffer());
     await mkdir(resolve(file, '..'), { recursive: true }).then(() => writeFile(file, body!)).catch(() => {});
@@ -179,7 +179,7 @@ app.get('/api/events', c => streamSSE(c, async stream => {
 // Files attached in chat (pasted, dropped or picked): stored for a day so a tool can file them (to Paperless, say).
 // The browser gets back an id it puts in the message; nothing is served back out.
 app.post('/api/files', bodyLimit({ maxSize: 50 * 2 ** 20, onError: c => c.json({ error: 'files are limited to 50 MB' }, 413) }), async c => {
-  if (!site.acting) return c.json({ error: 'Atrium is read-only: attaching files is off' }, 403);
+  if (!site.acting) return c.json({ error: 'Valet is read-only: attaching files is off' }, 403);
   // at most 500 MB waiting to be filed at once
   let held = 0;
   for (const f of await readdir(UPLOAD_DIR).catch(() => [] as string[])) held += (await stat(resolve(UPLOAD_DIR, f)).catch(() => ({ size: 0 }))).size;
@@ -206,7 +206,7 @@ app.post('/api/files', bodyLimit({ maxSize: 50 * 2 ** 20, onError: c => c.json({
 // Homepage controls: run an integration action, then refresh that integration's widgets right away.
 app.post('/api/action/:inst/:action', async c => {
   const { instances, hub, redact } = site;
-  if (!site.acting) return c.json({ error: 'Atrium is read-only: sign-in is off (set auth.mode, or auth.trustNetwork if the network is private)' }, 403);
+  if (!site.acting) return c.json({ error: 'Valet is read-only: sign-in is off (set auth.mode, or auth.trustNetwork if the network is private)' }, 403);
   const { inst, action } = c.req.param();
   const a = instances.get(inst)?.actions?.[action];
   if (!a) return c.json({ error: `no action ${inst}.${action}` }, 404);
@@ -231,7 +231,7 @@ app.get('/api/image/:inst', async c => {
   try {
     const res = await inst.image(ref);
     if (!res.ok) return c.body(null, 502);
-    // images only: a service that answers with HTML or a PDF never gets it served from Atrium's origin
+    // images only: a service that answers with HTML or a PDF never gets it served from Valet's origin
     const type = (res.headers.get('content-type') ?? '').split(';')[0].trim();
     if (!/^image\/(?!svg)/.test(type)) { await res.body?.cancel(); return c.body(null, 415); }
     return new Response(res.body, { headers: { 'Content-Type': type, 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff',
@@ -290,7 +290,7 @@ app.get('/api/brief', async c => {
 
 // Keep a chat card on the page. It must really produce a card now, from a tool that only looks.
 app.post('/api/pins', async c => {
-  if (!site.acting) return c.json({ error: 'Atrium is read-only' }, 403);
+  if (!site.acting) return c.json({ error: 'Valet is read-only' }, 403);
   const { tool, input } = await c.req.json().catch(() => ({} as any));
   if (typeof tool !== 'string' || !input || typeof input !== 'object') return c.json({ error: 'bad pin' }, 400);
   if (!site.config.assistant) return c.json({ error: 'no assistant configured' }, 404);
@@ -314,7 +314,7 @@ app.post('/api/live', async c => {
   const allowed = (id: string) => (a.access[id] ?? a.access.default ?? 'read') !== 'none';
   const [inst, name] = tool.split('__');
   const ok = tool === 'show' ? Array.isArray(input.widgets) && input.widgets.every((k: unknown) => typeof k === 'string' && allowed(k.split('.')[0]))
-    : inst !== 'atrium' ? !!site.instances.get(inst)?.tools?.[name]?.live && allowed(inst) : !!site.instances.get(inst)?.tools?.[name]?.live;
+    : inst !== 'valet' ? !!site.instances.get(inst)?.tools?.[name]?.live && allowed(inst) : !!site.instances.get(inst)?.tools?.[name]?.live;
   if (!ok) return c.json({ error: 'not a live card' }, 403);
   const id = JSON.stringify([tool, input]), hit = liveCache.get(id);
   if (hit && Date.now() - hit.at < 5000) return c.json({ card: hit.card });
@@ -349,4 +349,4 @@ app.use('/*', serveStatic({ root: './dist/web', onFound: (path, c) => { c.header
 app.get('*', serveStatic({ path: './dist/web/index.html', onFound: (_, c) => { c.header('Cache-Control', 'no-cache'); } }));
 
 serve({ fetch: app.fetch, port: PORT, hostname: HOST }, i =>
-  console.log(`atrium on http://${HOST}:${i.port} · ${site.instances.size} integrations · ${site.placed.size} widgets${site.problems.length ? ` · ${site.problems.length} config problems (node dist/server.js config check)` : ''}`));
+  console.log(`valet on http://${HOST}:${i.port} · ${site.instances.size} integrations · ${site.placed.size} widgets${site.problems.length ? ` · ${site.problems.length} config problems (node dist/server.js config check)` : ''}`));

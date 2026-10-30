@@ -1,4 +1,4 @@
-// The browser half of __NAME__: draws the `__NAME__` visual. Atrium calls mount(box, data, { run }) once, update(data)
+// The browser half of __NAME__: draws the `__NAME__` visual. Valet calls mount(box, data, { run }) once, update(data)
 // when new data arrives, and destroy() when the card goes away. Plain DOM: no React, no build step. The page's
 // colours are CSS variables (var(--foreground), var(--good), var(--primary)…) so it matches light and dark.
 export default function mount(box, data) {

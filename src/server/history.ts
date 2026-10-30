@@ -1,11 +1,11 @@
-// History for headline numbers. Many services only report "now"; Atrium remembers what each widget's headline said
+// History for headline numbers. Many services only report "now"; Valet remembers what each widget's headline said
 // over the last day (configurable), so its tile, ring and popover can show a graph even when the service keeps none.
 // Samples are kept in memory and saved to data/history.json now and then, so a restart doesn't wipe the day.
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import type { Card, Summary } from '../shared/cards.ts';
 
-const FILE = resolve(process.env.ATRIUM_DATA ?? 'data', 'history.json');
+const FILE = resolve(process.env.VALET_DATA ?? 'data', 'history.json');
 
 /** "13%", "62 W", "1.38M", "4,452", 7 → a number; words ("Healthy", "Fajr") → nothing */
 export function numberOf(v: Summary['value']): number | null {

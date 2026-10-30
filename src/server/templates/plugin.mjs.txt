@@ -1,13 +1,13 @@
-// __NAME__: a community integration for Atrium. It's live as soon as it's in data/integrations/ and config.yaml has
+// __NAME__: a community integration for Valet. It's live as soon as it's in data/integrations/ and config.yaml has
 //
 //   integrations:
 //     __NAME__:
 //       type: __NAME__
 //       url: http://your-service:1234
-//       apiKey: ${__ENV___KEY}          # in .env; Atrium keeps it on the server and redacts it from everything it sends
+//       apiKey: ${__ENV___KEY}          # in .env; Valet keeps it on the server and redacts it from everything it sends
 //
 // and a widget is placed in the layout:  - { widget: __NAME__.status, size: medium }
-// Docs: docs/integrations.md (cards and tools) and docs/plugins.md. Restart Atrium after editing.
+// Docs: docs/integrations.md (cards and tools) and docs/plugins.md. Restart Valet after editing.
 export default ({ z, defineIntegration, fmt }) => defineIntegration({
   type: '__NAME__',
   name: '__TITLE__',

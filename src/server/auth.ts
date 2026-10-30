@@ -1,4 +1,4 @@
-// Sign-in. Atrium can read your documents and switch your lights, so every API route needs a signed-in person.
+// Sign-in. Valet can read your documents and switch your lights, so every API route needs a signed-in person.
 //
 // local (default): accounts in data/users.json, passwords hashed with scrypt; a session is an HttpOnly cookie
 //   carrying the user, an expiry and the user's session version, signed with a secret kept in data/secret. Bumping
@@ -19,8 +19,8 @@ import type { Config } from './config.ts';
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number, opts: object) => Promise<Buffer>;
 const SCRYPT = { N: 2 ** 15, r: 8, p: 1, maxmem: 64 * 2 ** 20 };
-const COOKIE = 'atrium_session';
-const DATA = resolve(process.env.ATRIUM_DATA ?? 'data');
+const COOKIE = 'valet_session';
+const DATA = resolve(process.env.VALET_DATA ?? 'data');
 const USERS = resolve(DATA, 'users.json'), SECRET = resolve(DATA, 'secret');
 
 interface User { name: string; hash: string; salt: string; version: number; created: string }

@@ -7,8 +7,8 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { Hono } from 'hono';
 
-// auth.ts reads ATRIUM_DATA when it loads, so point it at a scratch folder first
-process.env.ATRIUM_DATA = await mkdtemp(join(tmpdir(), 'atrium-srv-'));
+// auth.ts reads VALET_DATA when it loads, so point it at a scratch folder first
+process.env.VALET_DATA = await mkdtemp(join(tmpdir(), 'valet-srv-'));
 const { setupAuth, sameOrigin, clientIp } = await import('../src/server/auth.ts');
 const { Config, loadConfig, usedSecrets } = await import('../src/server/config.ts');
 const { Hub } = await import('../src/server/hub.ts');
@@ -41,13 +41,13 @@ test('auth (local): setup code once, sign-in, tampered cookies refused, signing 
   const login = await app.request('/api/auth/login', json({ name: 'me', password: 'longenough' }), ip);
   assert.equal(login.status, 200);
   const cookie = cookieOf(login);
-  assert.match(cookie, /HttpOnly|atrium_session=/);
+  assert.match(cookie, /HttpOnly|valet_session=/);
   assert.equal((await app.request('/api/secret', { headers: { cookie } }, ip)).status, 200);
 
   // a forged body (another name) with the old signature, and a truncated signature, are both refused
   const [name, mac] = cookie.split('=')[1].split('.');
   const forged = Buffer.from(`admin|1|${Date.now() + 1e9}`).toString('base64url');
-  for (const bad of [`atrium_session=${forged}.${mac}`, `atrium_session=${name}.${mac.slice(0, 10)}`])
+  for (const bad of [`valet_session=${forged}.${mac}`, `valet_session=${name}.${mac.slice(0, 10)}`])
     assert.equal((await app.request('/api/secret', { headers: { cookie: bad } }, ip)).status, 401, bad);
 
   // signing out everywhere bumps the version, so the old cookie stops working
@@ -89,21 +89,21 @@ test('same origin: changes from another site are refused, reads and same-site po
   const app = new Hono();
   app.use('*', sameOrigin);
   app.all('/x', c => c.text('ok'));
-  const at = (method: string, origin?: string) => app.request('/x', { method, headers: { host: 'atrium.example.com', ...(origin ? { origin } : {}) } }).then(r => r.status);
+  const at = (method: string, origin?: string) => app.request('/x', { method, headers: { host: 'valet.example.com', ...(origin ? { origin } : {}) } }).then(r => r.status);
   assert.equal(await at('POST', 'https://evil.example.net'), 403);
-  assert.equal(await at('POST', 'https://atrium.example.com'), 200);
+  assert.equal(await at('POST', 'https://valet.example.com'), 200);
   assert.equal(await at('GET', 'https://evil.example.net'), 200);
 });
 
 test('config: ${VAR} fills from the environment and is remembered for redaction; a missing one is an error', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'atrium-cfg-'));
-  process.env.ATRIUM_TEST_KEY = 'k-1234567890';
-  await writeFile(join(dir, 'a.yaml'), 'integrations:\n  w: { type: weather, apiKey: "${ATRIUM_TEST_KEY}" }\n');
-  await writeFile(join(dir, 'b.yaml'), 'integrations:\n  w: { type: weather, apiKey: "${ATRIUM_NOT_SET}" }\n');
+  const dir = await mkdtemp(join(tmpdir(), 'valet-cfg-'));
+  process.env.VALET_TEST_KEY = 'k-1234567890';
+  await writeFile(join(dir, 'a.yaml'), 'integrations:\n  w: { type: weather, apiKey: "${VALET_TEST_KEY}" }\n');
+  await writeFile(join(dir, 'b.yaml'), 'integrations:\n  w: { type: weather, apiKey: "${VALET_NOT_SET}" }\n');
   const c = loadConfig(join(dir, 'a.yaml'));
   assert.equal((c.integrations.w as any).apiKey, 'k-1234567890');
   assert.ok(usedSecrets.includes('k-1234567890'));
-  assert.throws(() => loadConfig(join(dir, 'b.yaml')), /ATRIUM_NOT_SET is not set/);
+  assert.throws(() => loadConfig(join(dir, 'b.yaml')), /VALET_NOT_SET is not set/);
   await writeFile(join(dir, 'c.yaml'), 'titel: typo\n');
   assert.throws(() => loadConfig(join(dir, 'c.yaml')), /config\.yaml/);   // unknown top-level keys are mistakes
 });

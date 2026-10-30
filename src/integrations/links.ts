@@ -18,7 +18,7 @@ export const links = defineIntegration({
         title: group, interval: 3_600_000,
         async fetch() {
           return { type: 'links', title: group, icon: 'bookmark', items: items.map(l => ({ name: l.name, href: l.url, note: l.note,
-            // a dashboard-icons slug, an image URL, or the site's own favicon (fetched by Atrium, never by the browser)
+            // a dashboard-icons slug, an image URL, or the site's own favicon (fetched by Valet, never by the browser)
             icon: l.icon ? (/^https?:\/\/|^\//.test(l.icon) ? l.icon : `/api/icon/${l.icon}`) : `/api/favicon/${new URL(l.url).hostname}` })) };
         },
       };

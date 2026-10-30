@@ -9,12 +9,12 @@ import { check } from '../src/server/site.ts';
 import { registry } from '../src/integrations/index.ts';
 
 test('substitute: env, NAME_FILE, file:, escaped, and a clear error when missing', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'atrium-sub-'));
+  const dir = await mkdtemp(join(tmpdir(), 'valet-sub-'));
   await writeFile(join(dir, 'k'), 'from-file\n');
-  process.env.ATRIUM_T_A = 'plain'; process.env.ATRIUM_T_B_FILE = join(dir, 'k');
-  assert.deepEqual(substitute({ a: '${ATRIUM_T_A}', b: '${ATRIUM_T_B}', c: '${file:' + join(dir, 'k') + '}', d: 'keep \\${ATRIUM_T_A}', e: ['x${ATRIUM_T_A}'] }),
-    { a: 'plain', b: 'from-file', c: 'from-file', d: 'keep ${ATRIUM_T_A}', e: ['xplain'] });
-  assert.throws(() => substitute('${ATRIUM_T_NOPE}'), /ATRIUM_T_NOPE is not set \(nor ATRIUM_T_NOPE_FILE\)/);
+  process.env.VALET_T_A = 'plain'; process.env.VALET_T_B_FILE = join(dir, 'k');
+  assert.deepEqual(substitute({ a: '${VALET_T_A}', b: '${VALET_T_B}', c: '${file:' + join(dir, 'k') + '}', d: 'keep \\${VALET_T_A}', e: ['x${VALET_T_A}'] }),
+    { a: 'plain', b: 'from-file', c: 'from-file', d: 'keep ${VALET_T_A}', e: ['xplain'] });
+  assert.throws(() => substitute('${VALET_T_NOPE}'), /VALET_T_NOPE is not set \(nor VALET_T_NOPE_FILE\)/);
   assert.throws(() => substitute('${file:/nonexistent/x}'), /can't read/);
 });
 
@@ -44,7 +44,7 @@ test('check: unknown types, options and widget keys are named; links from the to
 
 test('first run: writes a starter config that checks clean, and runs from memory when it can\'t', async () => {
   const { startConfig } = await import('../src/server/config.ts');
-  const dir = await mkdtemp(join(tmpdir(), 'atrium-first-'));
+  const dir = await mkdtemp(join(tmpdir(), 'valet-first-'));
   const log = console.log; console.log = () => {};
   const a = startConfig(join(dir, 'sub', 'config.yaml'));
   await writeFile(join(dir, 'file'), '');

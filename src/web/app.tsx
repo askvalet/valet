@@ -67,7 +67,7 @@ function useTheme() {
   const toggle = () => {
     const next = !dark;
     document.documentElement.classList.toggle('dark', next);
-    try { localStorage.setItem('atrium-theme', next ? 'dark' : 'light'); } catch { /* private mode */ }
+    try { localStorage.setItem('valet-theme', next ? 'dark' : 'light'); } catch { /* private mode */ }
     setDark(next);
   };
   return { dark, toggle };
@@ -133,7 +133,7 @@ function Welcome({ path, saved }: { path: string; saved: boolean }) {
       <div><div className="text-[17px] font-semibold tracking-tight">Welcome to your homepage</div>
         <p className="mt-0.5 text-[13.5px] text-muted-foreground">This page is built from one file. Edit it and watch here: changes appear as you save.</p></div>
       <div className="grid gap-4 md:grid-cols-3">
-        {step(1, saved ? 'Open your config' : 'Create your config', <>{saved ? 'A starter is at' : 'Save a config at'} <code className={code}>{path}</code>{!saved && ' (that folder is read-only to Atrium, so this page is a sample until then)'}</>)}
+        {step(1, saved ? 'Open your config' : 'Create your config', <>{saved ? 'A starter is at' : 'Save a config at'} <code className={code}>{path}</code>{!saved && ' (that folder is read-only to Valet, so this page is a sample until then)'}</>)}
         {step(2, 'Add your services', <>Each one is a few lines. Secrets go in <code className={code}>.env</code> as <code className={code}>{'${NAME}'}</code>. Anything with a JSON API works with <code className={code}>type: api</code>.</>)}
         {step(3, 'Check it, then hide this', <>Run <code className={code}>config check</code> to find mistakes, and delete the <code className={code}>welcome</code> line when you're done.</>)}
       </div>

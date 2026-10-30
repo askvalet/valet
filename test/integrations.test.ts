@@ -156,8 +156,8 @@ test('plugins: a one-file plugin loads, can\'t silently take a built-in name, an
   const { mkdtemp, mkdir, writeFile } = await import('node:fs/promises');
   const { tmpdir } = await import('node:os');
   const { join } = await import('node:path');
-  const dir = await mkdtemp(join(tmpdir(), 'atrium-'));
-  process.env.ATRIUM_DATA = dir;
+  const dir = await mkdtemp(join(tmpdir(), 'valet-'));
+  process.env.VALET_DATA = dir;
   await mkdir(join(dir, 'integrations'));
   const plugin = (type: string) => `export default ({ z, defineIntegration }) => defineIntegration({ type: '${type}', name: 'P', config: z.object({}),
     create: () => ({ widgets: { w: { title: 'W', fetch: async () => ({ type: 'text', text: 'hi' }) } } }) })`;
@@ -174,7 +174,7 @@ test('plugins: a one-file plugin loads, can\'t silently take a built-in name, an
   assert.equal(card.text, 'hi');
 });
 
-test('security: secrets are redacted, and Atrium is read-only without sign-in unless the network is trusted', async () => {
+test('security: secrets are redacted, and Valet is read-only without sign-in unless the network is trusted', async () => {
   const { redactor, canAct } = await import('../src/server/security.ts');
   const r = redactor(['s3cr3t-key-123', 'pw12', 'abc', 'another.secret+value']);
   assert.equal(r('GET http://x/?apikey=s3cr3t-key-123 failed'), 'GET http://x/?apikey=••• failed');
@@ -192,7 +192,7 @@ test('scaffold: new-integration writes a plugin that loads and whose cards and t
   const { mkdtemp } = await import('node:fs/promises');
   const { tmpdir } = await import('node:os');
   const { join } = await import('node:path');
-  process.env.ATRIUM_DATA = await mkdtemp(join(tmpdir(), 'atrium-'));
+  process.env.VALET_DATA = await mkdtemp(join(tmpdir(), 'valet-'));
   const { scaffold, loadPlugins } = await import('../src/server/plugins.ts');
   assert.equal(await scaffold('my-service'), 0);
   assert.equal(await scaffold('my-service'), 1);   // won't overwrite
@@ -208,11 +208,11 @@ test('host guard: IPs, localhost and listed names pass; other names are refused 
   const { hostGuard } = await import('../src/server/security.ts');
   const { Hono } = await import('hono');
   const app = new Hono();
-  app.use('*', hostGuard(['atrium.example.com', '*.home.example.com']));
+  app.use('*', hostGuard(['valet.example.com', '*.home.example.com']));
   app.get('/', c => c.text('ok'));
   const at = (host: string, fwd?: string) => app.request('/', { headers: { host, ...(fwd ? { 'x-forwarded-host': fwd } : {}) } }).then(r => r.status);
-  for (const h of ['localhost:7575', '192.168.1.5:7575', '[::1]:7575', 'atrium.example.com', 'dash.home.example.com']) assert.equal(await at(h), 200, h);
-  for (const h of ['evil.example.net', 'atrium.example.com.evil.net', 'home.example.com']) assert.equal(await at(h), 421, h);
+  for (const h of ['localhost:7575', '192.168.1.5:7575', '[::1]:7575', 'valet.example.com', 'dash.home.example.com']) assert.equal(await at(h), 200, h);
+  for (const h of ['evil.example.net', 'valet.example.com.evil.net', 'home.example.com']) assert.equal(await at(h), 421, h);
   assert.equal(await at('localhost', 'evil.example.net'), 421);   // a proxy forwarding a strange name
   assert.equal(await at('evil.example.net', 'localhost'), 421);   // a rebinding page can't vouch for itself
 });

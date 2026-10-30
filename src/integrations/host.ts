@@ -1,4 +1,4 @@
-// A machine's systemd services, through the Atrium agent (agent/atrium-agent.py): what's running, what failed and why,
+// A machine's systemd services, through the Valet agent (agent/valet-agent.py): what's running, what failed and why,
 // and logs. One instance per machine. The agent can only look, so this can too.
 import { z } from 'zod';
 import { defineIntegration } from '../server/core.ts';

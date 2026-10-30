@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 
-process.env.ATRIUM_DATA = await mkdtemp(join(tmpdir(), 'atrium-brain-'));
+process.env.VALET_DATA = await mkdtemp(join(tmpdir(), 'valet-brain-'));
 const { dailyBrief, digest, parseCause, parseSuggestions, suggestPrompt, troubles, Watcher } = await import('../src/server/insight.ts');
 const { applyOps, diff, refused, setupTools, validate } = await import('../src/server/setup.ts');
 const { loadPins, newPin, pinnedCard, pinsInstance, savePins } = await import('../src/server/pins.ts');
@@ -73,7 +73,7 @@ test('setup: edits keep comments; it can\'t touch sign-in or its own access, or 
   assert.match(refused([{ op: 'set', path: ['integrations', 'k'], value: { type: 'api', headers: { Authorization: 'Bearer abc' } } }])!, /secret/);
   assert.equal(refused([{ op: 'set', path: ['integrations', 'k'], value: { type: 'seerr', apiKey: '${KEY}', headers: { Authorization: 'Bearer ${KEY}' } } }]), null);
 
-  const file = join(process.env.ATRIUM_DATA!, 'c.yaml'); await writeFile(file, text);
+  const file = join(process.env.VALET_DATA!, 'c.yaml'); await writeFile(file, text);
   const tools = setupTools(file, registry), ops = [{ op: 'set', path: ['title'], value: 'Den' }];
   assert.equal(tools.config_apply.access, 'control');
   assert.equal(tools.config_preview.access, 'read');

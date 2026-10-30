@@ -17,7 +17,7 @@ export function mcpTools(config: Config, acting = true) {
       const client = old?.client ?? await createMCPClient({ transport: { type: s.transport, url: s.url, headers: s.headers } });
       const defs = await client.listTools();
       const readOnly = new Set(defs.tools.filter(t => t.annotations?.readOnlyHint || s.readOnly.includes(t.name)).map(t => t.name));
-      // read-only Atrium offers only an MCP server's read-only tools, whatever its access says
+      // read-only Valet offers only an MCP server's read-only tools, whatever its access says
       const offered = s.access === 'control' && acting ? defs.tools : defs.tools.filter(t => readOnly.has(t.name));
       const tools = client.toolsFromDefinitions({ ...defs, tools: offered }) as ToolSet;
       const e = { client, tools, readOnly, at: Date.now() };

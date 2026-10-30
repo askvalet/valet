@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping. Atrium stays small and calm on purpose, so read [AGENTS.md](AGENTS.md) first: it's the design and
+Thanks for helping. Valet stays small and calm on purpose, so read [AGENTS.md](AGENTS.md) first: it's the design and
 code principles, and it's short.
 
 ## Setup

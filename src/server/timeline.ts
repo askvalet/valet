@@ -5,7 +5,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 export interface Event { at: number; kind: string; widget?: string; text: string }
-const FILE = () => resolve(process.env.ATRIUM_DATA ?? 'data', 'timeline.json');
+const FILE = () => resolve(process.env.VALET_DATA ?? 'data', 'timeline.json');
 const KEEP_MS = 14 * 864e5, KEEP_N = 4000;
 
 export class Timeline {

@@ -187,7 +187,7 @@ export default defineIntegration({
       // only what the page's buttons do: never an arbitrary service (unlock, open_cover…) on something shown on a card
       const OK: Record<string, string[]> = { vacuum: ['start', 'pause', 'return_to_base', 'locate'], button: ['press'], input_button: ['press'],
         automation: ['trigger'], scene: ['turn_on'], script: ['turn_on'] };
-      if (!OK[domain]?.includes(svc)) throw new Error(`${domain}.${svc} isn't something Atrium's buttons do`);
+      if (!OK[domain]?.includes(svc)) throw new Error(`${domain}.${svc} isn't something Valet's buttons do`);
       await call(domain, svc, { entity_id });
     }
 
@@ -254,7 +254,7 @@ export default defineIntegration({
           input: z.object({ entity_id: z.string(), action: z.enum(['turn_on', 'turn_off', 'toggle', 'run', 'start', 'return_to_base']),
             brightness: z.number().min(0).max(100).optional(), rgb: z.tuple([z.number(), z.number(), z.number()]).optional() }),
           async run({ entity_id, action, brightness, rgb: color }) {
-            if (!allowed.has(entity_id)) return { data: { error: `${entity_id} is not controllable from Atrium` } };
+            if (!allowed.has(entity_id)) return { data: { error: `${entity_id} is not controllable from Valet` } };
             const [domain] = entity_id.split('.');
             if (action === 'run') await press(entity_id);
             else if (action === 'start' || action === 'return_to_base') await press(entity_id, action);

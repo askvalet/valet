@@ -7,7 +7,7 @@ export default defineIntegration({
   type: 'rgb-control',
   name: 'PC lighting',
   config: z.object({
-    url: z.string().url(),                     // where Atrium reaches it, e.g. http://host:8098
+    url: z.string().url(),                     // where Valet reaches it, e.g. http://host:8098
     href: z.string().optional(),               // where the card links to
     interval: z.number().default(10_000),
     presets: z.boolean().default(true),        // show the lighting presets when no part is selected

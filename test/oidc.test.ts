@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 
-process.env.ATRIUM_DATA = await mkdtemp(join(tmpdir(), 'atrium-oidc-'));
+process.env.VALET_DATA = await mkdtemp(join(tmpdir(), 'valet-oidc-'));
 const { setupAuth } = await import('../src/server/auth.ts');
 const { Config } = await import('../src/server/config.ts');
 
@@ -35,9 +35,9 @@ provider.post('/token', async c => {
   const f = await c.req.parseBody();
   if (f.code !== seen?.code || b64(createHash('sha256').update(String(f.code_verifier)).digest()) !== seen.challenge) return c.json({ error: 'invalid_grant' }, 400);
   const auth = Buffer.from(c.req.header('authorization')!.slice(6), 'base64').toString();
-  if (auth !== 'atrium:s3cret') return c.json({ error: 'invalid_client' }, 401);
+  if (auth !== 'valet:s3cret') return c.json({ error: 'invalid_client' }, 401);
   const now = Math.floor(Date.now() / 1000);
-  return c.json({ id_token: idToken({ iss: issuer, aud: 'atrium', sub: '1', preferred_username: who, email: `${who}@example.com`, nonce: seen.nonce, iat: now, exp: now + 300 }) });
+  return c.json({ id_token: idToken({ iss: issuer, aud: 'valet', sub: '1', preferred_username: who, email: `${who}@example.com`, nonce: seen.nonce, iat: now, exp: now + 300 }) });
 });
 const server = serve({ fetch: provider.fetch, port: 0, hostname: '127.0.0.1' });
 await new Promise(r => server.once('listening', r));
@@ -47,43 +47,43 @@ const cookies = (r: Response) => r.headers.getSetCookie().map(c => c.split(';')[
 
 test('oidc: start → provider → callback signs in; a wrong state, a stranger and no cookie are refused', async () => {
   const app = new Hono();
-  const guard = await setupAuth(app, Config.parse({ auth: { mode: 'oidc', secureCookie: false, oidc: { issuer, clientId: 'atrium', clientSecret: 's3cret', allow: ['alice'] } } }));
+  const guard = await setupAuth(app, Config.parse({ auth: { mode: 'oidc', secureCookie: false, oidc: { issuer, clientId: 'valet', clientSecret: 's3cret', allow: ['alice'] } } }));
   app.use('/api/*', guard);
   app.get('/api/x', c => c.text('ok'));
   const me = await app.request('/api/auth/me');
   assert.equal(me.status, 401);
   assert.equal((await me.json() as any).provider, 'SSO');
 
-  const start = await app.request('/api/auth/oidc/start?to=/%23gallery', { headers: { host: 'atrium.test' } });
+  const start = await app.request('/api/auth/oidc/start?to=/%23gallery', { headers: { host: 'valet.test' } });
   assert.equal(start.status, 302);
   const to = new URL(start.headers.get('location')!);
   assert.equal(to.origin + to.pathname, `${issuer}/authorize`);
-  assert.equal(to.searchParams.get('redirect_uri'), 'http://atrium.test/api/auth/oidc/callback');
+  assert.equal(to.searchParams.get('redirect_uri'), 'http://valet.test/api/auth/oidc/callback');
   assert.equal(to.searchParams.get('code_challenge_method'), 'S256');
   const flow = cookies(start);
 
   // the provider sends the person back with a code
   const back = await provider.request(to.toString());
   const cb = new URL(back.headers.get('location')!);
-  assert.equal(cb.origin + cb.pathname, 'http://atrium.test/api/auth/oidc/callback');
+  assert.equal(cb.origin + cb.pathname, 'http://valet.test/api/auth/oidc/callback');
 
   // without the flow cookie, nothing doing; with a wrong state, nothing doing
-  assert.equal((await app.request(cb.pathname + cb.search, { headers: { host: 'atrium.test' } })).status, 400);
-  assert.equal((await app.request(`${cb.pathname}?code=${cb.searchParams.get('code')}&state=nope`, { headers: { host: 'atrium.test', cookie: flow } })).status, 400);
+  assert.equal((await app.request(cb.pathname + cb.search, { headers: { host: 'valet.test' } })).status, 400);
+  assert.equal((await app.request(`${cb.pathname}?code=${cb.searchParams.get('code')}&state=nope`, { headers: { host: 'valet.test', cookie: flow } })).status, 400);
 
-  const done = await app.request(cb.pathname + cb.search, { headers: { host: 'atrium.test', cookie: flow } });
+  const done = await app.request(cb.pathname + cb.search, { headers: { host: 'valet.test', cookie: flow } });
   assert.equal(done.status, 302, await done.text());
   assert.equal(done.headers.get('location'), '/#gallery');
-  const session = cookies(done).split('; ').find(c => c.startsWith('atrium_session='))!;
+  const session = cookies(done).split('; ').find(c => c.startsWith('valet_session='))!;
   assert.ok(session);
   assert.equal((await app.request('/api/x', { headers: { cookie: session } })).status, 200);
   assert.deepEqual((await (await app.request('/api/auth/me', { headers: { cookie: session } })).json() as any).user, { name: 'alice' });
 
   // a second person the allow list doesn't name
   who = 'mallory';
-  const s2 = await app.request('/api/auth/oidc/start', { headers: { host: 'atrium.test' } });
+  const s2 = await app.request('/api/auth/oidc/start', { headers: { host: 'valet.test' } });
   const cb2 = new URL((await provider.request(s2.headers.get('location')!)).headers.get('location')!);
-  const refused = await app.request(cb2.pathname + cb2.search, { headers: { host: 'atrium.test', cookie: cookies(s2) } });
+  const refused = await app.request(cb2.pathname + cb2.search, { headers: { host: 'valet.test', cookie: cookies(s2) } });
   assert.equal(refused.status, 403);
   assert.match(await refused.text(), /mallory isn't on the allow list/);
   assert.equal(tokenCalls, 2);
@@ -94,11 +94,11 @@ test('oidc: ID tokens with a bad signature, wrong audience or expiry are refused
   const { verifyIdToken } = await import('../src/server/oidc.ts');
   const keys = async () => [jwk];
   const now = Math.floor(Date.now() / 1000);
-  const good = { iss: 'https://idp', aud: 'atrium', exp: now + 60, sub: '1' };
-  assert.equal((await verifyIdToken(idToken(good), 'https://idp/', 'atrium', keys)).sub, '1');
-  await assert.rejects(verifyIdToken(idToken({ ...good, aud: 'other' }), 'https://idp', 'atrium', keys), /audience/);
-  await assert.rejects(verifyIdToken(idToken({ ...good, exp: now - 600 }), 'https://idp', 'atrium', keys), /expired/);
-  await assert.rejects(verifyIdToken(idToken({ ...good, iss: 'https://evil' }), 'https://idp', 'atrium', keys), /issuer/);
+  const good = { iss: 'https://idp', aud: 'valet', exp: now + 60, sub: '1' };
+  assert.equal((await verifyIdToken(idToken(good), 'https://idp/', 'valet', keys)).sub, '1');
+  await assert.rejects(verifyIdToken(idToken({ ...good, aud: 'other' }), 'https://idp', 'valet', keys), /audience/);
+  await assert.rejects(verifyIdToken(idToken({ ...good, exp: now - 600 }), 'https://idp', 'valet', keys), /expired/);
+  await assert.rejects(verifyIdToken(idToken({ ...good, iss: 'https://evil' }), 'https://idp', 'valet', keys), /issuer/);
   const t = idToken(good), forged = t.slice(0, -4) + 'AAAA';
-  await assert.rejects(verifyIdToken(forged, 'https://idp', 'atrium', keys), /signature/);
+  await assert.rejects(verifyIdToken(forged, 'https://idp', 'valet', keys), /signature/);
 });

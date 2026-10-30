@@ -1,10 +1,10 @@
-// Everything Atrium changed: who asked, how, what it did and whether it worked. The answer to "did you just trigger my
+// Everything Valet changed: who asked, how, what it did and whether it worked. The answer to "did you just trigger my
 // vacuum?". Kept in data/activity.json, newest last, with secrets redacted before they're stored.
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 export interface Entry { id: number; at: number; who: string; via: 'chat' | 'plan' | 'page' | 'watch' | 'pin'; what: string; input?: unknown; ok: boolean; error?: string; undo?: { tool: string; input: unknown }; undone?: boolean }
-const FILE = () => resolve(process.env.ATRIUM_DATA ?? 'data', 'activity.json');
+const FILE = () => resolve(process.env.VALET_DATA ?? 'data', 'activity.json');
 
 export class Activity {
   entries: Entry[] = [];

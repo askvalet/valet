@@ -1,12 +1,12 @@
 // A fresh install's config.yaml: a working page that needs no keys, with the next steps in comments.
-export const STARTER = `# Atrium. Save this file and the page updates by itself; a mistake is reported and the last good version keeps running.
+export const STARTER = `# Valet. Save this file and the page updates by itself; a mistake is reported and the last good version keeps running.
 # Every option: docs/configuration.md. To check this file: node dist/server.js config check
 
 title: Home
 # greeting: Sam                   # "Good evening, Sam"
 welcome: true                     # the getting-started card. Delete this line when you're done with it.
 
-# Without sign-in Atrium only shows things. To use its controls, turn on sign-in, or say your network is private:
+# Without sign-in Valet only shows things. To use its controls, turn on sign-in, or say your network is private:
 # auth: { mode: local }           # also: oidc, proxy
 # auth: { mode: none, trustNetwork: true }
 
@@ -32,7 +32,7 @@ integrations:
 
 links:
   Start:
-    - { name: Atrium docs, url: https://github.com/, note: docs/configuration.md }
+    - { name: Valet docs, url: https://github.com/, note: docs/configuration.md }
 
 layout:
   - title: Start

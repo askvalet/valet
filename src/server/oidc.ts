@@ -1,5 +1,5 @@
 // OpenID Connect sign-in (Authelia, Authentik, Keycloak, Pocket ID, Zitadel, Google…): the authorization-code flow
-// with PKCE, the ID token checked against the provider's keys, and then Atrium's own session cookie as with local
+// with PKCE, the ID token checked against the provider's keys, and then Valet's own session cookie as with local
 // accounts. No library: it's discovery, one redirect, one token request and one signature check.
 import { createHash, createPublicKey, randomBytes, timingSafeEqual, verify as verifySig } from 'node:crypto';
 import type { Context, Hono } from 'hono';
@@ -40,7 +40,7 @@ export function setupOidc(app: Hono, config: Config, sign: (body: string) => str
     try { d = await discover(); } catch (e) { return c.text(`Can't reach the sign-in provider: ${(e as Error).message}`, 502); }
     const state = b64(randomBytes(16)), nonce = b64(randomBytes(16)), verifier = b64(randomBytes(32));
     const body = b64(Buffer.from(JSON.stringify({ state, nonce, verifier, exp: Date.now() + 600_000, to: c.req.query('to') ?? '/' })));
-    setCookie(c, 'atrium_oidc', `${body}.${sign(body)}`, { httpOnly: true, sameSite: 'Lax', secure, path: '/api/auth/oidc', maxAge: 600 });
+    setCookie(c, 'valet_oidc', `${body}.${sign(body)}`, { httpOnly: true, sameSite: 'Lax', secure, path: '/api/auth/oidc', maxAge: 600 });
     const u = new URL(d.authorization_endpoint);
     for (const [k, v] of Object.entries({ response_type: 'code', client_id: o.clientId, redirect_uri: callback(c), scope: o.scope, state, nonce,
       code_challenge: b64(createHash('sha256').update(verifier).digest()), code_challenge_method: 'S256' })) u.searchParams.set(k, v);
@@ -48,8 +48,8 @@ export function setupOidc(app: Hono, config: Config, sign: (body: string) => str
   });
 
   app.get('/api/auth/oidc/callback', async c => {
-    const fail = (why: string, status = 400) => { deleteCookie(c, 'atrium_oidc', { path: '/api/auth/oidc' }); return c.text(`Sign-in failed: ${why}`, status as 400); };
-    const raw = getCookie(c, 'atrium_oidc') ?? '';
+    const fail = (why: string, status = 400) => { deleteCookie(c, 'valet_oidc', { path: '/api/auth/oidc' }); return c.text(`Sign-in failed: ${why}`, status as 400); };
+    const raw = getCookie(c, 'valet_oidc') ?? '';
     const [body, mac] = raw.split('.');
     if (!body || !mac || mac.length !== 43 || !timingSafeEqual(Buffer.from(mac), Buffer.from(sign(body)))) return fail('no sign-in in progress (start again)');
     const flow = json(body);
@@ -72,7 +72,7 @@ export function setupOidc(app: Hono, config: Config, sign: (body: string) => str
     const name = String(claims[o.claim] ?? claims.preferred_username ?? claims.email ?? claims.sub ?? '');
     if (!name) return fail(`the token has no "${o.claim}" claim`, 401);
     if (o.allow.length && !o.allow.some(a => a.toLowerCase() === name.toLowerCase() || a.toLowerCase() === String(claims.email ?? '').toLowerCase())) return fail(`${name} isn't on the allow list`, 403);
-    deleteCookie(c, 'atrium_oidc', { path: '/api/auth/oidc' });
+    deleteCookie(c, 'valet_oidc', { path: '/api/auth/oidc' });
     startSession(c, name);
     return c.redirect(/^\/[^/]/.test(flow.to) ? flow.to : '/');   // only back into this page
   });

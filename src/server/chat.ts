@@ -38,8 +38,8 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   safety: { acting: boolean; redact: (s: string) => string; activity?: Activity; model?: LanguageModel } = { acting: true, redact: s => s }) {
   const a = config.assistant!;
   const model = safety.model ?? makeModel(a);
-  // Atrium's own tools (what happened, reminders) work without being granted; read-only pages still cap them
-  const accessOf = (id: string) => rank[a.access[id] ?? (id === 'atrium' ? 'write' : a.access.default ?? 'read')];
+  // Valet's own tools (what happened, reminders) work without being granted; read-only pages still cap them
+  const accessOf = (id: string) => rank[a.access[id] ?? (id === 'valet' ? 'write' : a.access.default ?? 'read')];
 
   // what the person wrote in their latest message (set per request; write tools check their inputs against it)
   let said = '', who = 'you';
@@ -65,7 +65,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     }
   };
   for (const [id, inst] of instances) {
-    // read-only Atrium (no sign-in, untrusted network): the assistant may look, never add or change
+    // read-only Valet (no sign-in, untrusted network): the assistant may look, never add or change
     const level = Math.min(accessOf(id), safety.acting ? rank.control : rank.read);
     const usable = Object.entries(inst.tools ?? {}).filter(([, t]) => rank[t.access] <= level);
     if (!usable.length) continue;

@@ -5,7 +5,7 @@
 //       type: quote-of-the-day
 //       url: https://zenquotes.io/api/today
 //
-// and place its widget (`quotes.today`) in the layout. No build step, no imports: Atrium hands it its toolkit.
+// and place its widget (`quotes.today`) in the layout. No build step, no imports: Valet hands it its toolkit.
 export default ({ z, defineIntegration }) => defineIntegration({
   type: 'quote-of-the-day',
   name: 'Quote of the day',

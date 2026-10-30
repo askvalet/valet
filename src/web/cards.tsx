@@ -487,7 +487,7 @@ const VISUALS: Record<string, React.LazyExoticComponent<(p: { data: any; run?: R
 
 /** A community visual: a browser module next to a plugin (data/integrations/<kind>.web.js), served at
  *  /plugins/<kind>.web.js. Its default export mounts into a box: mount(el, data, { run }) → { update?(data), destroy?() }.
- *  The same contract as Atrium's own 3D models, so a plugin can draw anything without React or a build step. */
+ *  The same contract as Valet's own 3D models, so a plugin can draw anything without React or a build step. */
 function PluginVisual({ kind, data, run }: { kind: string; data: unknown; run?: RunAction }) {
   const box = useRef<HTMLDivElement>(null), inst = useRef<{ update?(d: unknown): void; destroy?(): void } | null>(null);
   const [error, setError] = useState('');
@@ -743,7 +743,7 @@ function CardButtons({ buttons, run }: { buttons: NonNullable<CardT['buttons']>;
 
 // What each widget looked like last time (its card type and height, nothing it showed), so the placeholder on the next
 // visit has the right shape and the page doesn't jump when the data lands.
-const SHAPES = 'atrium-shapes';
+const SHAPES = 'valet-shapes';
 const shapes: Record<string, { t?: string; h?: number; empty?: boolean }> = (() => { try { return JSON.parse(localStorage.getItem(SHAPES) ?? '{}'); } catch { return {}; } })();
 let saving: ReturnType<typeof setTimeout> | undefined;
 export const shapeOf = (id: string) => shapes[id];

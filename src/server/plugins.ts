@@ -1,12 +1,12 @@
 // Community integrations. A plugin is a module whose default export is an integration (the same shape as the built-in
-// ones: type, name, a zod config, create()), or a function that's handed Atrium's toolkit and returns one, so a
+// ones: type, name, a zod config, create()), or a function that's handed Valet's toolkit and returns one, so a
 // plugin can be a single .mjs file with no imports and no build step:
 //
 //   export default ({ z, defineIntegration }) => defineIntegration({ type: 'hello', name: 'Hello', config: z.object({}),
 //     create: () => ({ widgets: { hi: { title: 'Hi', fetch: async () => ({ type: 'text', text: 'Hello!' }) } } }) })
 //
 // Plugins come from every .js/.mjs file in data/integrations/ and from the npm packages listed under `plugins:` in the
-// config. They run inside Atrium with the same access as built-in integrations: install only ones you trust.
+// config. They run inside Valet with the same access as built-in integrations: install only ones you trust.
 import { readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -49,7 +49,7 @@ export function guardCards(inst: Instance) {
 }
 
 export async function loadPlugins(registry: Record<string, Integration>, packages: string[], replace: string[]) {
-  const dir = resolve(process.env.ATRIUM_DATA ?? 'data', 'integrations');
+  const dir = resolve(process.env.VALET_DATA ?? 'data', 'integrations');
   const files = (await readdir(dir).catch(() => [] as string[])).filter(f => /\.(m?js)$/.test(f)).sort().map(f => pathToFileURL(resolve(dir, f)).href);
   const loaded: string[] = [];
   for (const spec of [...files, ...packages]) {
@@ -65,11 +65,11 @@ export async function loadPlugins(registry: Record<string, Integration>, package
   return new Set(loaded);
 }
 
-/** `atrium new-integration <name>`: writes a working plugin (and its visual) into data/integrations/ to start from. */
+/** `valet new-integration <name>`: writes a working plugin (and its visual) into data/integrations/ to start from. */
 export async function scaffold(name: string) {
   if (!/^[a-z][a-z0-9-]{1,40}$/.test(name ?? '')) { console.log('usage: new-integration <name>   (lowercase letters, digits, dashes)'); return 1; }
   const { mkdir, writeFile, access } = await import('node:fs/promises');
-  const dir = resolve(process.env.ATRIUM_DATA ?? 'data', 'integrations');
+  const dir = resolve(process.env.VALET_DATA ?? 'data', 'integrations');
   const fill = (t: string) => t.replaceAll('__SLUG__', name.replace(/-/g, '_')).replaceAll('__NAME__', name).replaceAll('__TITLE__', name.replace(/(^|-)(\w)/g, (_, d, c) => (d ? ' ' : '') + c.toUpperCase()))
     .replaceAll('__ENV__', name.toUpperCase().replace(/-/g, '_')).replaceAll('__SLUG__', name.replace(/-/g, '_'));
   // the templates are bundled as text into dist/server.js (imported only here, so `npm run dev` never needs them)

@@ -8,7 +8,7 @@ import type { Card } from '../shared/cards.ts';
 import type { Instance } from './core.ts';
 
 export interface Pin { id: string; tool: string; input: Record<string, unknown>; title: string }
-const FILE = () => resolve(process.env.ATRIUM_DATA ?? 'data', 'pins.json');
+const FILE = () => resolve(process.env.VALET_DATA ?? 'data', 'pins.json');
 export const loadPins = (): Promise<Pin[]> => readFile(FILE(), 'utf8').then(JSON.parse).catch(() => []);
 export async function savePins(pins: Pin[]) {
   await mkdir(dirname(FILE()), { recursive: true });

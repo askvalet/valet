@@ -389,7 +389,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
         {sheet && <button onClick={onClose} onPointerDown={e => e.stopPropagation()} aria-label="Close" className="press grid size-9 place-items-center rounded-full bg-white/[.08]"><ChevronDown className="size-[18px]" /></button>}
       </header>
 
-      {external && <div className="border-b px-5 py-2 text-[12.5px] text-muted-foreground">{name} runs its own tools. Atrium's approvals and access levels don't apply, and answers are plain text.</div>}
+      {external && <div className="border-b px-5 py-2 text-[12.5px] text-muted-foreground">{name} runs its own tools. Valet's approvals and access levels don't apply, and answers are plain text.</div>}
       <div ref={scroller} onScroll={onScroll} className={cn('relative flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5', sheet && !messages.length && 'flex flex-col justify-end')}>
         {!messages.length && (
           // on a phone the suggestions sit low, where the thumb is

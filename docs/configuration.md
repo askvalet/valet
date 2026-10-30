@@ -1,35 +1,35 @@
 # Configuration reference
 
-Everything lives in one YAML file (`config.yaml`, or the path in `ATRIUM_CONFIG`). [`config.example.yaml`](../config.example.yaml)
+Everything lives in one YAML file (`config.yaml`, or the path in `VALET_CONFIG`). [`config.example.yaml`](../config.example.yaml)
 is a working starting point; this page lists every option. Anything you leave out takes the default shown.
 
 `${NAME}` anywhere in the file is replaced from the environment, or from the file `NAME_FILE` points at (the Docker
 secrets convention). `${secret:name}` reads `/run/secrets/name` and `${file:/path}` any file; `\${…}` is left alone.
-Atrium redacts every replaced value from anything it sends out.
+Valet redacts every replaced value from anything it sends out.
 
 Edits to the file apply live (`reload: true`): a broken edit is reported and the last good config keeps running, and
 open pages pick up the new layout. Sign-in settings and plugins are read once, so those need a restart. A misspelt
 top-level option is an error with its path; `node dist/server.js config check` lists every problem (unknown types,
 options and widget keys) without starting the server, and `config schema` prints a JSON schema editors and agents can
-work from (`# yaml-language-server: $schema=atrium.schema.json`).
+work from (`# yaml-language-server: $schema=valet.schema.json`).
 
 ## Environment and commands
 
 | Variable | Default | |
 |---|---|---|
-| `ATRIUM_CONFIG` | `config.yaml` (`/config/config.yaml` in Docker) | the config file |
-| `ATRIUM_DATA` | `data` (`/app/data` in Docker) | wallpaper, icon cache, uploads, history, accounts, plugins |
+| `VALET_CONFIG` | `config.yaml` (`/config/config.yaml` in Docker) | the config file |
+| `VALET_DATA` | `data` (`/app/data` in Docker) | wallpaper, icon cache, uploads, history, accounts, plugins |
 | `PORT` / `HOST` | `7575` / `0.0.0.0` | where it listens |
 
 ```sh
 node dist/server.js config check                            # every problem in config.yaml, or ✓
 node dist/server.js config print                            # the effective config, defaults filled in, secrets redacted
-node dist/server.js config schema > atrium.schema.json      # JSON schema of the whole file, every integration included
+node dist/server.js config schema > valet.schema.json      # JSON schema of the whole file, every integration included
 node dist/server.js user add|passwd|remove|signout <name>   # local accounts (asks for the password)
 node dist/server.js new-integration <name>                  # scaffold a plugin in data/integrations/
 ```
 
-In Docker, prefix these with `docker exec -it atrium`.
+In Docker, prefix these with `docker exec -it valet`.
 
 ## Top level
 
@@ -40,14 +40,14 @@ In Docker, prefix these with `docker exec -it atrium`.
 | `location` | none | gives the assistant local context |
 | `timezone` | `TZ`, else the first browser's | an IANA name like `America/Toronto`. Times the server writes (assistant answers, watch history) use it; containers default to UTC |
 | `appearance` | `{ dim: 0.35, blur: 0 }` | `wallpaper` (a file in the data folder or an image URL), `dim` 0–0.9, `blur` 0–40 px |
-| `allowedHosts` | `[]` | names Atrium answers to besides localhost and IP addresses, e.g. `[atrium.example.com, "*.home.example.com"]`. Others get 421 (DNS-rebinding protection) |
+| `allowedHosts` | `[]` | names Valet answers to besides localhost and IP addresses, e.g. `[valet.example.com, "*.home.example.com"]`. Others get 421 (DNS-rebinding protection) |
 | `history` | `{ hours: 72, every: 5, background: true }` | remember headline numbers, so tiles can draw a graph and the assistant can say how they moved. `every` is minutes between samples; `background` keeps sampling while nobody has the page open; `false` turns it off |
 | `plugins` | `[]` | npm packages of community integrations, or `{ packages, replace }` where `replace` lets a plugin take over a built-in type. Files in `data/integrations/` load on their own |
 | `menubar` | `[]` | widget keys whose headline numbers sit as small rings in the top bar |
 | `weather` | none | a widget key (e.g. `weather.now`) shown as a ring beside the clock |
 | `nav` | `{ side: left }` | where the tab buttons sit on wide screens: `left`, `right`, `top`, `bottom` (phones: bottom) |
 | `search` | none | web search from ⌘K: `duckduckgo`, `google`, `kagi`, `brave`, `startpage`, `searxng`, or a URL with `{q}` |
-| `links` | `{}` | bookmarks by group, each group a widget `links.<group-slug>`: `Media: [{ name, url, icon?, note? }]`. Without `icon`, the site's favicon (fetched by Atrium) |
+| `links` | `{}` | bookmarks by group, each group a widget `links.<group-slug>`: `Media: [{ name, url, icon?, note? }]`. Without `icon`, the site's favicon (fetched by Valet) |
 | `notify` | `{ channels: [] }` | where reminders go when you're not looking: see below. `insights: true` also pushes the shared-cause line |
 | `reload` | `true` | watch the file and apply edits live |
 | `welcome` | `false` | the getting-started card; a fresh starter config turns it on |
@@ -57,8 +57,8 @@ In Docker, prefix these with `docker exec -it atrium`.
 | Option | Default | |
 |---|---|---|
 | `mode` | `none` | `none`, `local` (built-in accounts), `proxy` (trust a sign-in proxy's user header) or `oidc` (OpenID Connect) |
-| `oidc` | — | for `mode: oidc`: `issuer`, `clientId`, `clientSecret`, `name` (on the button), `claim` (`preferred_username`), `scope`, `allow` (names or emails; empty: anyone the provider admits), `redirectUrl`. Register `https://<atrium>/api/auth/oidc/callback` at the provider |
-| `trustNetwork` | `false` | with `mode: none`, Atrium is read-only unless this is true (only your VPN/tailnet or a sign-in proxy reaches it) |
+| `oidc` | — | for `mode: oidc`: `issuer`, `clientId`, `clientSecret`, `name` (on the button), `claim` (`preferred_username`), `scope`, `allow` (names or emails; empty: anyone the provider admits), `redirectUrl`. Register `https://<valet>/api/auth/oidc/callback` at the provider |
+| `trustNetwork` | `false` | with `mode: none`, Valet is read-only unless this is true (only your VPN/tailnet or a sign-in proxy reaches it) |
 | `sessionDays` | `30` | how long "keep me signed in" lasts |
 | `secureCookie` | `true` | `false` only when serving over plain http |
 | `proxy.header` | `Remote-User` | the header your proxy puts the user in |
@@ -76,7 +76,7 @@ In Docker, prefix these with `docker exec -it atrium`.
 | `instructions` | none | added to the system prompt |
 | `access` | `{ default: read }` | per integration (by its id): `none`, `read`, `write` (adds things, like saving a link) or `control` (changes or removes things; asks you every time). `config: control` lets it edit this file: see below |
 | `maxSteps` | `6` | tool calls per answer, 1–20 |
-| `agent` | none | hand the chat to another agent: `{ name, baseURL, apiKey, model }`, anything OpenAI-compatible (Hermes Agent's API server, say). Remove it to go back. It runs its own tools, so access levels and approvals don't apply; it gets only the conversation, answers are plain text, and a read-only page stays on Atrium's assistant. "Why?", the brief and shared causes stay on `model` |
+| `agent` | none | hand the chat to another agent: `{ name, baseURL, apiKey, model }`, anything OpenAI-compatible (Hermes Agent's API server, say). Remove it to go back. It runs its own tools, so access levels and approvals don't apply; it gets only the conversation, answers are plain text, and a read-only page stays on Valet's assistant. "Why?", the brief and shared causes stay on `model` |
 | `suggestions` | four examples | questions offered until the model has written its own, or if `background.suggest` is off |
 | `background` | `{ watch: true, brief: true, suggest: true, perDay: 24 }` | what it does unasked. `watch`: when two or more things break, say what they share, if the data shows it. `brief`: one line each morning. `suggest`: write the suggested questions from what's on the page (when it changes, at most every five minutes; `suggestions` is the fallback). `perDay` caps the first two. None of them get tools |
 
@@ -91,8 +91,8 @@ place, and pin on a chat card to keep it on the page. A pin re-runs the same too
 pins live in `data/pins.json`.
 
 **Tell me when.** "Tell me when Dune finishes" or "warn me if the drive stays above 55° for 10 minutes" sets a one-off
-reminder. A plain rule checks it every half minute, with no model, even with the page closed. Add `atrium.activity` to the
-layout for a card of everything Atrium changed, with Undo where a change can be reversed.
+reminder. A plain rule checks it every half minute, with no model, even with the page closed. Add `valet.activity` to the
+layout for a card of everything Valet changed, with Undo where a change can be reversed.
 
 **Several changes at once.** The assistant can propose a plan: every step listed, one approval, stopping at the first
 failure. Each step is still a tool its access level allows.
@@ -156,7 +156,7 @@ A list of sections; each is a tab in the rail.
 ## Integrations
 
 Each entry under `integrations:` has an id (what you use in widget keys and `assistant.access`) and a `type`. Most take
-`url` (where Atrium reaches the service) and `href` (where its cards link to, if different).
+`url` (where Valet reaches the service) and `href` (where its cards link to, if different).
 
 | Type | Options | Widgets |
 |---|---|---|
@@ -186,28 +186,28 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `releases` | `repos` (`owner/name`), `token` (optional, raises GitHub's rate limit), `limit`, `prereleases` | `latest` |
 | `markets` | `symbols` (`AAPL`, `BTC-USD`, `^GSPC`, `EURUSD=X`, or `{ symbol, name }`), `range` (`1d`), `title` | `quotes` |
 | `docker` | `url` (a read-only socket proxy, never the raw socket), `hide` (names to leave out, e.g. containers that are meant to stay stopped), `sources` (container → GitHub `owner/repo` for release notes, when its image doesn't say), `github` (a token, past 60 requests an hour) | `containers`, `updates` |
-| `host` | `url` (the Atrium agent), `token`, `title`, `quiet` (services often off on purpose) | `services` |
+| `host` | `url` (the Valet agent), `token`, `title`, `quiet` (services often off on purpose) | `services` |
 | `api` | `url`, `headers`, `method`, `body`, `every` (60s), `title`, `icon`, `href`, `about`, and one of `stats`, `list`, `rows`, `status` (see below) | `data` |
 | `calendar` | `calendars` (iCal URLs, or `{ url, name }`), `days` (14), `limit` (10), `title` | `upcoming` |
 | `links` | (from the top-level `links:` block) | one per group |
 
 ### Services outside Docker: `type: host`
 
-Atrium runs in a locked-down container, so it can't see the machine it's on, or any other. For systemd services, run the
-Atrium agent on each machine: [`agent/atrium-agent.py`](../agent/atrium-agent.py), one file of Python's standard library
+Valet runs in a locked-down container, so it can't see the machine it's on, or any other. For systemd services, run the
+Valet agent on each machine: [`agent/valet-agent.py`](../agent/valet-agent.py), one file of Python's standard library
 with nothing to install. It needs a token, answers only about the services you list, and can only look.
 
 ```sh
 # on each machine
-install -m 755 agent/atrium-agent.py ~/.local/bin/
-install -Dm 644 agent/atrium-agent.service ~/.config/systemd/user/atrium-agent.service
-mkdir -p ~/.config/atrium-agent && install -m 600 /dev/null ~/.config/atrium-agent/env
-cat >> ~/.config/atrium-agent/env <<X
-ATRIUM_AGENT_TOKEN=$(openssl rand -hex 32)
-ATRIUM_AGENT_UNITS=radarr,sonarr,plexmediaserver,user:myjob
-ATRIUM_AGENT_BIND=172.17.0.1:7576
+install -m 755 agent/valet-agent.py ~/.local/bin/
+install -Dm 644 agent/valet-agent.service ~/.config/systemd/user/valet-agent.service
+mkdir -p ~/.config/valet-agent && install -m 600 /dev/null ~/.config/valet-agent/env
+cat >> ~/.config/valet-agent/env <<X
+VALET_AGENT_TOKEN=$(openssl rand -hex 32)
+VALET_AGENT_UNITS=radarr,sonarr,plexmediaserver,user:myjob
+VALET_AGENT_BIND=172.17.0.1:7576
 X
-systemctl --user enable --now atrium-agent
+systemctl --user enable --now valet-agent
 loginctl enable-linger $USER
 ```
 
@@ -220,12 +220,12 @@ integrations:
     title: NAS
 ```
 
-Bind it to the Docker bridge for the machine Atrium is on, or a tailnet address for another; never a public one. Reading
+Bind it to the Docker bridge for the machine Valet is on, or a tailnet address for another; never a public one. Reading
 system services' logs needs your user in the `systemd-journal` group.
 
 ### Any JSON API: `type: api`
 
-For a service Atrium doesn't know, name a URL and say where the numbers are. No code, and the assistant can read it too
+For a service Valet doesn't know, name a URL and say where the numbers are. No code, and the assistant can read it too
 (`about` tells it what it's for).
 
 ```yaml

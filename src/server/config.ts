@@ -25,7 +25,7 @@ export const AssistantConfig = z.object({
   maxSteps: z.number().int().min(1).max(20).default(6),
   // questions offered on an empty chat and in ⌘K
   // hand the chat to another agent (Hermes, say): anything with an OpenAI-compatible API. It runs its own tools, so
-  // Atrium's access levels and approvals don't apply to it, and a read-only page stays on Atrium's own assistant.
+  // Valet's access levels and approvals don't apply to it, and a read-only page stays on Valet's own assistant.
   agent: z.object({ name: z.string(), baseURL: z.string().url(), apiKey: z.string().optional(), model: z.string() }).strict().optional(),
   // what it does on its own: a morning brief, and spotting a shared cause when several things break at once. These get
   // no tools, so they can only say something. perDay caps the model calls they make.
@@ -76,7 +76,7 @@ export const McpServer = z.object({
 
 // Look and feel. A wallpaper turns every card into frosted glass over it.
 export const Appearance = z.object({
-  wallpaper: z.string().optional(),        // local file path (served by Atrium) or an image URL
+  wallpaper: z.string().optional(),        // local file path (served by Valet) or an image URL
   dim: z.number().min(0).max(0.9).default(0.35),
   blur: z.number().min(0).max(40).default(0),
 }).strict();
@@ -87,10 +87,10 @@ export const Auth = z.object({
   mode: z.enum(['none', 'local', 'proxy', 'oidc']).default('none'),
   sessionDays: z.number().int().min(1).max(365).default(30),   // how long "keep me signed in" lasts
   secureCookie: z.boolean().default(true),                     // false only when serving over plain http
-  // with mode: none, Atrium is read-only (no buttons, no assistant tools that add or change things) unless you say the
+  // with mode: none, Valet is read-only (no buttons, no assistant tools that add or change things) unless you say the
   // network itself is the lock, e.g. it's only reachable over your VPN/tailnet or behind a sign-in proxy
   trustNetwork: z.boolean().default(false),
-  // mode: oidc. Register Atrium at your provider with the redirect URL https://<atrium>/api/auth/oidc/callback
+  // mode: oidc. Register Valet at your provider with the redirect URL https://<valet>/api/auth/oidc/callback
   oidc: z.object({
     issuer: z.string().url(),                                  // e.g. https://auth.example.com (it must serve /.well-known/openid-configuration)
     clientId: z.string(),
@@ -99,7 +99,7 @@ export const Auth = z.object({
     claim: z.string().default('preferred_username'),           // which claim is the person's name here
     scope: z.string().default('openid profile email'),
     allow: z.array(z.string()).default([]),                    // only these names or emails may sign in (empty: anyone the provider lets through)
-    redirectUrl: z.string().url().optional(),                  // if Atrium can't tell its own address (an odd proxy setup)
+    redirectUrl: z.string().url().optional(),                  // if Valet can't tell its own address (an odd proxy setup)
   }).optional(),
   proxy: z.object({
     header: z.string().default('Remote-User'),                 // the header your proxy puts the signed-in user in
@@ -110,7 +110,7 @@ export const Auth = z.object({
 
 export const Config = z.object({
   auth: Auth,
-  // the names Atrium answers to besides localhost and IP addresses, e.g. [atrium.example.com, "*.home.example.com"].
+  // the names Valet answers to besides localhost and IP addresses, e.g. [valet.example.com, "*.home.example.com"].
   // Anything else is refused, so a web page elsewhere can't reach it through your browser (DNS rebinding).
   allowedHosts: z.array(z.string()).default([]),
   // community integrations: npm packages to load (files in data/integrations/ load on their own);
@@ -157,7 +157,7 @@ export const Config = z.object({
 }).strict();
 export type Config = z.infer<typeof Config>;
 
-/** every value a ${…} was replaced with: Atrium redacts these from anything it sends out */
+/** every value a ${…} was replaced with: Valet redacts these from anything it sends out */
 export const usedSecrets: string[] = [];
 const readSecret = (path: string, what: string) => {
   try { return readFileSync(path, 'utf8').trim(); }

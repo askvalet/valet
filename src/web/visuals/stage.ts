@@ -22,7 +22,7 @@ export interface StageOptions { turn?: number; tilt?: number; draggable?: boolea
 export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOptions = {}) {
   const { turn = 0, tilt = 0, draggable = true, remember, onPick } = opts;
   // a view you dragged to sticks (this browser only); otherwise the configured angles
-  const saved = (() => { try { return remember ? JSON.parse(localStorage.getItem(`atrium-view:${remember}`) ?? 'null') : null; } catch { return null; } })();
+  const saved = (() => { try { return remember ? JSON.parse(localStorage.getItem(`valet-view:${remember}`) ?? 'null') : null; } catch { return null; } })();
   const [W, H] = scene.size, [cx, cy, cz] = scene.center;
   const lim = scene.limits ?? { tilt: [-18, 24], turn: [-55, 55] };
   box.classList.add('stage', scene.scope);
@@ -87,7 +87,7 @@ export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOpt
     if (c) { c.style.transition = 'none'; c.style.transform = c.style.transform.replace(/rotateX\([^)]*\) rotateY\([^)]*\)/, `rotateX(${cam.rx}deg) rotateY(${cam.ry}deg)`); }
   };
   const up = () => {
-    if (start && dragged) { aim(); try { if (remember) localStorage.setItem(`atrium-view:${remember}`, JSON.stringify({ rx: cam.rx, ry: cam.ry })); } catch {} }
+    if (start && dragged) { aim(); try { if (remember) localStorage.setItem(`valet-view:${remember}`, JSON.stringify({ rx: cam.rx, ry: cam.ry })); } catch {} }
     start = null; box.classList.remove('dragging');
   };
   if (draggable) {

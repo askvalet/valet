@@ -1,5 +1,5 @@
 // Any JSON API as a card, from YAML alone: name a URL, say where the numbers are. The no-code way to add a service
-// Atrium doesn't know. Fields are a path into the response (`data.speed`, `items[0].name`, `$` for the whole thing),
+// Valet doesn't know. Fields are a path into the response (`data.speed`, `items[0].name`, `$` for the whole thing),
 // optionally through formats (`size|bytes`, `ratio|pct`, `started|ago`, `speed|round:1`). A string with braces is a
 // template: "{used|bytes} of {total|bytes}". docs/configuration.md has worked examples.
 import { z } from 'zod';

@@ -1,6 +1,6 @@
 // The PC as a live 3D model (CSS 3D, no WebGL): a dual-chamber glass case, its fans, cooler, board, RAM and GPU, lit
 // the colours they really are. What's in it (fan counts, AIO or air cooler, sticks, the text on the board and the card)
-// comes from a `build` description in the config, so it can look like anyone's PC. Framework-free: Atrium's card and rgb-control's page both mount it with
+// comes from a `build` description in the config, so it can look like anyone's PC. Framework-free: Valet's card and rgb-control's page both mount it with
 // createViewer(). rgb-control gets a bundled copy (npm run export:pc-model).
 import './pc-case.css';
 import { createStage, type Scene, type StageOptions } from './stage.ts';
@@ -79,7 +79,7 @@ function block(add: (e: HTMLElement) => HTMLElement, x: number, y: number, w: nu
   return faces[2];
 }
 const part = (cls: string, id: string, html = '', zone?: number) => { const e = mk('part ' + cls, html); e.dataset.part = id; if (zone != null) e.dataset.zone = String(zone); return e; };
-/** a lit element that Atrium can't read the state of (e.g. RAM before OpenRGB can reach it): drawn the white it ships as */
+/** a lit element that Valet can't read the state of (e.g. RAM before OpenRGB can reach it): drawn the white it ships as */
 const unread = (cls: string, html = '') => { const e = mk(cls + ' m-static', html); e.style.setProperty('--lc', '#fff'); e.style.setProperty('--lb', '#fff'); e.style.setProperty('--lo', '1'); return e; };
 
 // honeycomb steel (the rear panel and the slot area): hexagonal holes showing the room behind

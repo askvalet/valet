@@ -20,7 +20,7 @@ export default defineIntegration({
     async function quotes(): Promise<Quote[]> {
       return (await Promise.all(cfg.symbols.map(async s => {
         try {
-          const r = await ctx.http<any>(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s.symbol)}?range=${cfg.range}&interval=${interval}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Atrium)' }, timeout: 10_000 });
+          const r = await ctx.http<any>(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s.symbol)}?range=${cfg.range}&interval=${interval}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Valet)' }, timeout: 10_000 });
           const res = r.chart?.result?.[0], m = res?.meta;
           if (!m) throw new Error(r.chart?.error?.description ?? 'no data');
           const closes = ((res.indicators?.quote?.[0]?.close ?? []) as (number | null)[]).filter((x): x is number => x != null);

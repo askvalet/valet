@@ -10,7 +10,7 @@ import { Hono } from 'hono';
 import { MockLanguageModelV4 } from 'ai/test';
 import { z } from 'zod';
 
-process.env.ATRIUM_DATA = await mkdtemp(join(tmpdir(), 'atrium-chat-'));
+process.env.VALET_DATA = await mkdtemp(join(tmpdir(), 'valet-chat-'));
 const { chatRoute } = await import('../src/server/chat.ts');
 const { Config } = await import('../src/server/config.ts');
 const { Activity } = await import('../src/server/activity.ts');

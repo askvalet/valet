@@ -33,7 +33,7 @@ export function SignIn({ setup, wallpaper, onDone, provider }: { setup: boolean;
       body: JSON.stringify(setup ? { code, name, password } : { name, password, remember }) }).catch(() => null);
     const j = await r?.json().catch(() => ({}));
     setBusy(false);
-    if (r?.ok) onDone(j.user.name); else setError(j?.error ?? 'Couldn\'t reach Atrium.');
+    if (r?.ok) onDone(j.user.name); else setError(j?.error ?? 'Couldn\'t reach Valet.');
   };
   // OpenID Connect: one button; the provider does the rest and sends the person back signed in
   if (provider) return (

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Atrium agent: lets Atrium read the status and logs of systemd services on this machine.
+"""Valet agent: lets Valet read the status and logs of systemd services on this machine.
 
 One file, Python's standard library, nothing to install. It can only look: it has no way to start, stop or change
 anything. It answers only with a token, and only about the services you list. Read it; it's short.
 
-  ATRIUM_AGENT_TOKEN   required, at least 24 characters
-  ATRIUM_AGENT_UNITS   comma-separated services; user:name for a user service, e.g. "radarr,sonarr,user:ninfer"
-  ATRIUM_AGENT_BIND    address:port to listen on (default 127.0.0.1:7576)
+  VALET_AGENT_TOKEN   required, at least 24 characters
+  VALET_AGENT_UNITS   comma-separated services; user:name for a user service, e.g. "radarr,sonarr,user:ninfer"
+  VALET_AGENT_BIND    address:port to listen on (default 127.0.0.1:7576)
 
 GET /health                                    alive, no token needed
 GET /services                                  each listed service: state, since when, restarts, last result, memory
@@ -16,9 +16,9 @@ import hmac, json, os, re, subprocess, sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-TOKEN = os.environ.get("ATRIUM_AGENT_TOKEN", "")
-UNITS = [u.strip() for u in os.environ.get("ATRIUM_AGENT_UNITS", "").split(",") if u.strip()]
-BIND = os.environ.get("ATRIUM_AGENT_BIND", "127.0.0.1:7576")
+TOKEN = os.environ.get("VALET_AGENT_TOKEN", "")
+UNITS = [u.strip() for u in os.environ.get("VALET_AGENT_UNITS", "").split(",") if u.strip()]
+BIND = os.environ.get("VALET_AGENT_BIND", "127.0.0.1:7576")
 VALID = re.compile(r"^(user:)?[A-Za-z0-9@_.:-]{1,100}$")
 FIELDS = ["ActiveState", "SubState", "Result", "NRestarts", "ExecMainStatus", "ActiveEnterTimestamp", "InactiveEnterTimestamp", "MemoryCurrent", "Description"]
 
@@ -60,7 +60,7 @@ def logs(unit, lines, minutes, match):
 
 
 class Agent(BaseHTTPRequestHandler):
-    server_version = "atrium-agent"
+    server_version = "valet-agent"
     sys_version = ""
 
     def send(self, code, body):
@@ -104,12 +104,12 @@ class Agent(BaseHTTPRequestHandler):
 
 def main():
     if len(TOKEN) < 24:
-        sys.exit("atrium-agent: set ATRIUM_AGENT_TOKEN to at least 24 characters")
+        sys.exit("valet-agent: set VALET_AGENT_TOKEN to at least 24 characters")
     bad = [u for u in UNITS if not VALID.match(u)]
     if not UNITS or bad:
-        sys.exit(f"atrium-agent: ATRIUM_AGENT_UNITS needs service names (bad: {bad})")
+        sys.exit(f"valet-agent: VALET_AGENT_UNITS needs service names (bad: {bad})")
     host, port = BIND.rsplit(":", 1)
-    print(f"atrium-agent on {BIND}: {', '.join(UNITS)}", flush=True)
+    print(f"valet-agent on {BIND}: {', '.join(UNITS)}", flush=True)
     ThreadingHTTPServer((host, int(port)), Agent).serve_forever()
 
 

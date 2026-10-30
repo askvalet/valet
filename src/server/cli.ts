@@ -1,5 +1,5 @@
-// `node dist/server.js config check|print|schema`: validate a config, show what Atrium made of it, or print the
-// JSON schema (for editors and agents: `# yaml-language-server: $schema=./atrium.schema.json` at the top of the file).
+// `node dist/server.js config check|print|schema`: validate a config, show what Valet made of it, or print the
+// JSON schema (for editors and agents: `# yaml-language-server: $schema=./valet.schema.json` at the top of the file).
 import { stringify } from 'yaml';
 import { z } from 'zod';
 import { Config, loadConfig, usedSecrets } from './config.ts';
@@ -27,5 +27,5 @@ export async function configCommand(args: string[], path: string, registry: Reco
 export function schema(registry: Record<string, Integration>) {
   const blocks = Object.values(registry).map(i => (i.config as z.ZodObject).extend({ type: z.literal(i.type) }));
   const full = Config.extend({ integrations: z.record(z.string(), z.union(blocks as unknown as [z.ZodType, ...z.ZodType[]])).default({}) });
-  return { $schema: 'https://json-schema.org/draft/2020-12/schema', title: 'Atrium config.yaml', ...z.toJSONSchema(full, { io: 'input', unrepresentable: 'any' }) };
+  return { $schema: 'https://json-schema.org/draft/2020-12/schema', title: 'Valet config.yaml', ...z.toJSONSchema(full, { io: 'input', unrepresentable: 'any' }) };
 }
