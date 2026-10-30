@@ -116,13 +116,10 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
 
   // failed sign-ins slow down per address: 5 free, then a growing wait (up to 15 minutes)
   const fails = new Map<string, { n: number; until: number }>();
-  // behind a trusted reverse proxy, the client is the first X-Forwarded-For hop, not the proxy (or one attacker
-  // would lock everyone out)
+  // behind a trusted reverse proxy the client is in X-Forwarded-For, not the socket (or one attacker would lock
+  // everyone out). Read it from the right: proxies append, so the leftmost hops are whatever the client sent.
   const trusted = new Set(config.auth.proxy.trusted);
-  const ipOf = (c: Context) => {
-    const sock = (getConnInfo(c).remote.address ?? '?').replace(/^::ffff:/, '');
-    return trusted.has(sock) ? c.req.header('x-forwarded-for')?.split(',')[0].trim() || sock : sock;
-  };
+  const ipOf = (c: Context) => clientIp((getConnInfo(c).remote.address ?? '?').replace(/^::ffff:/, ''), c.req.header('x-forwarded-for'), trusted);
   const throttled = (ip: string) => { const f = fails.get(ip); return f && f.until > Date.now() ? Math.ceil((f.until - Date.now()) / 1000) : 0; };
   const failed = (ip: string) => {
     if (fails.size > 5000) for (const [k, v] of fails) if (v.until < Date.now()) fails.delete(k);   // stays bounded
@@ -179,6 +176,14 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
   });
 
   return async (c, next) => ((await session(c)) ? next() : c.json({ error: 'not signed in' }, 401));
+}
+
+/** The client's address: the socket, or behind trusted proxies the rightmost X-Forwarded-For hop that isn't one. */
+export function clientIp(sock: string, xff: string | undefined, trusted: Set<string>) {
+  if (!trusted.has(sock) || !xff) return sock;
+  const hops = xff.split(',').map(h => h.trim().replace(/^::ffff:/, '')).filter(Boolean);
+  for (let i = hops.length - 1; i >= 0; i--) if (!trusted.has(hops[i])) return hops[i];
+  return hops[0] ?? sock;
 }
 
 /** Requests that change something must come from this page: a browser on another site can't forge the Origin. */

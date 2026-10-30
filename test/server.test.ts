@@ -9,7 +9,7 @@ import { Hono } from 'hono';
 
 // auth.ts reads ATRIUM_DATA when it loads, so point it at a scratch folder first
 process.env.ATRIUM_DATA = await mkdtemp(join(tmpdir(), 'atrium-srv-'));
-const { setupAuth, sameOrigin } = await import('../src/server/auth.ts');
+const { setupAuth, sameOrigin, clientIp } = await import('../src/server/auth.ts');
 const { Config, loadConfig, usedSecrets } = await import('../src/server/config.ts');
 const { Hub } = await import('../src/server/hub.ts');
 const { guardCards } = await import('../src/server/plugins.ts');
@@ -75,6 +75,14 @@ test('auth (proxy): the user header counts only from a trusted proxy', async () 
   const h = { headers: { 'remote-user': 'me' } };
   assert.equal((await app.request('/api/x', h, from('10.0.0.1'))).status, 200);
   assert.equal((await app.request('/api/x', h, from('10.0.0.66'))).status, 401);   // anyone can send the header
+});
+
+test('client address: behind a trusted proxy, the hop the proxy saw, not one the client made up', () => {
+  const proxy = new Set(['10.0.0.1']);
+  assert.equal(clientIp('10.0.0.1', '6.6.6.6, 203.0.113.9', proxy), '203.0.113.9');   // client forged the first hop
+  assert.equal(clientIp('10.0.0.1', '203.0.113.9, 10.0.0.1', proxy), '203.0.113.9'); // skips trusted hops
+  assert.equal(clientIp('198.51.100.7', '1.2.3.4', proxy), '198.51.100.7');          // not from the proxy: ignored
+  assert.equal(clientIp('10.0.0.1', undefined, proxy), '10.0.0.1');
 });
 
 test('same origin: changes from another site are refused, reads and same-site posts pass', async () => {

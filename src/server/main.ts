@@ -3,7 +3,7 @@ import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { extname, resolve } from 'node:path';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { bodyLimit } from 'hono/body-limit';
 import { sameOrigin, setupAuth, userCommand } from './auth.ts';
@@ -84,7 +84,12 @@ app.get('/healthz', c => c.json({ ok: true, widgets: hub.snapshot().filter(s => 
 
 // Sign-in first: /api/auth/* are open; the wallpaper and icons too (the sign-in screen uses them); everything else
 // under /api needs a session. Anything that changes something must also come from this page's origin.
+const tooBig = (c: Context) => c.json({ error: 'request too large' }, 413);
+const small = bodyLimit({ maxSize: 256 * 2 ** 10, onError: tooBig }), chatSize = bodyLimit({ maxSize: 8 * 2 ** 20, onError: tooBig });   // a chat carries its history
 app.use('/api/*', sameOrigin);                 // before the auth routes, so sign-in is covered too
+// JSON bodies are small; only uploads are big. Capping before anything reads a body means nobody, signed in or not,
+// can make the server buffer megabytes (sign-in routes included).
+app.use('/api/*', async (c, next) => c.req.path === '/api/files' ? next() : c.req.path === '/api/chat' ? chatSize(c, next) : small(c, next));
 const signedIn = await setupAuth(app, config);
 app.use('/api/*', async (c, next) => {
   const p = c.req.path;
