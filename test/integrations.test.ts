@@ -245,6 +245,8 @@ test('home assistant: buttons only do what cards offer, never an arbitrary servi
 test('custom api: paths, formats, templates, thresholds, and each way of showing it', async () => {
   const { default: api, pick, fill } = await import('../src/integrations/api.ts');
   assert.equal(pick({ a: { b: [{ c: 1 }] } }, 'a.b[0].c'), 1);
+  assert.equal(pick({ a: { b: 1 } }, '$.a.b'), 1);                          // JSONPath habits are fine
+  assert.equal(pick({ a: 2 }, '$a'), 2);
   assert.equal(pick({ a: 1 }, 'constructor'), undefined);                   // only the data's own properties
   assert.equal(fill('size|bytes', { size: 2048 }), '2.0 KB');
   assert.equal(fill('ratio|pct', { ratio: .42 }), '42%');

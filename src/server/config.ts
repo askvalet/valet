@@ -23,6 +23,9 @@ export const AssistantConfig = z.object({
   access: z.record(z.string(), Access).default({ default: 'read' }),
   maxSteps: z.number().int().min(1).max(20).default(6),
   // questions offered on an empty chat and in ⌘K
+  // what it does on its own: a morning brief, and spotting a shared cause when several things break at once. These get
+  // no tools, so they can only say something. perDay caps the model calls they make.
+  background: z.object({ watch: z.boolean().default(true), brief: z.boolean().default(true), perDay: z.number().int().min(1).max(500).default(24) }).default({ watch: true, brief: true, perDay: 24 }),
   suggestions: z.array(z.string()).default(['Is anything down?', 'How are my downloads doing?', "What's playing on Plex?", 'Show me the GPU and Plex side by side']),
 }).strict();
 
@@ -184,7 +187,7 @@ export function startConfig(path: string): { config: Config; saved: boolean } {
 
 export function loadConfig(path: string): Config { return parseConfig(readFileSync(path, 'utf8')); }
 
-function parseConfig(yaml: string): Config {
+export function parseConfig(yaml: string): Config {
   const raw = substitute(parse(yaml) ?? {});
   const r = Config.safeParse(raw);
   if (!r.success) throw new Error('config.yaml:\n' + r.error.issues.map(i => `  ${i.path.join('.')}: ${i.message}`).join('\n'));

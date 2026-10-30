@@ -1,7 +1,5 @@
 // The assistant: one streaming endpoint. It gets a tool for every integration tool its access level allows; write
 // tools (adding things) just run, control tools always ask the person first. The model sees each tool's compact `data`; the person sees its card.
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import {
   convertToModelMessages, createUIMessageStreamResponse, isStepCount, streamText, tool, toUIMessageStream,
   type ToolSet, type UIMessage,
@@ -12,15 +10,14 @@ import { z } from 'zod';
 import type { Config } from './config.ts';
 import type { Instance, Integration } from './core.ts';
 import { mcpTools } from './mcp.ts';
+import { makeModel } from './model.ts';
 
 const rank = { none: 0, read: 1, write: 2, control: 3 } as const;
 
 export function chatRoute(config: Config, instances: Map<string, Instance>, meta: Map<string, { type: string; name: string; integration: Integration }>,
   safety: { acting: boolean; redact: (s: string) => string } = { acting: true, redact: s => s }) {
   const a = config.assistant!;
-  const model = a.provider === 'anthropic'
-    ? createAnthropic({ apiKey: a.apiKey, baseURL: a.baseURL })(a.model)
-    : createOpenAICompatible({ name: 'assistant', baseURL: a.baseURL ?? 'http://localhost:11434/v1', apiKey: a.apiKey, includeUsage: true, headers: { 'User-Agent': 'Atrium' } })(a.model);
+  const model = makeModel(a);
 
   // what the person wrote in their latest message (set per request; write tools check their inputs against it)
   let said = '';
@@ -53,6 +50,28 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       else if (t.access === 'write' && t.fromPerson?.length) approval[key] = ((input: Record<string, unknown>) =>
         t.fromPerson!.every(f => input[f] == null || personSaid(String(input[f]))) ? 'not-applicable' : 'user-approval') as any;
     }
+  }
+
+  // Built-in: one search across everything searchable it may read, for when it doesn't know where something lives.
+  const finders = [...instances].flatMap(([id, inst]) => (rank[a.access[id] ?? a.access.default ?? 'read'] >= rank.read
+    ? Object.entries(inst.tools ?? {}).filter(([, t]) => t.find && t.access === 'read') : []).map(([name, t]) => ({ source: `${meta.get(id)!.name}: ${name}`, t })));
+  if (finders.length > 1) {
+    tools.search_everything = tool({
+      description: `Search all of these at once: ${finders.map(f => f.source).join(', ')}. Use when you don't know where something is, or the question could be in more than one place.`,
+      inputSchema: z.object({ query: z.string() }),
+      execute: async ({ query }) => {
+        const found = await Promise.all(finders.map(async ({ source, t }) => {
+          try {
+            const out = await Promise.race([t.run(t.input.parse({ [t.find!]: query })), new Promise<never>((_, no) => setTimeout(() => no(new Error('timed out')), 10_000).unref())]);
+            const text = JSON.stringify(out.data ?? null);
+            return { source, found: text.length > 1500 ? `${text.slice(0, 1500)}…` : text };
+          } catch { return { source, found: 'could not be searched' }; }
+        }));
+        return JSON.parse(safety.redact(JSON.stringify({ data: found.filter(f => !['[]', 'null', '{}'].includes(f.found)) })));
+      },
+      toModelOutput: ({ output }) => ({ type: 'json', value: (output as { data: any }).data }),
+    });
+    catalog.push('- search_everything: one search across documents, links, photos and more');
   }
 
   // Built-in: lay out any widgets the assistant may read, as live cards side by side or stacked.

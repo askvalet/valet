@@ -230,6 +230,7 @@ export default defineIntegration({
       },
       tools: {
         home_find: {
+          find: 'query',
           label: 'Looked up the home',
           followUps: ['Which lights are on?', 'Turn off all lights'],
           description: 'Search Home Assistant entities (lights, switches, sensors, media players, scenes…) by name, area word or domain. Returns current state and key attributes. Use this before controlling anything.',

@@ -11,7 +11,7 @@ import type { Card, Summary } from '../shared/cards.ts';
 export function pick(data: unknown, path: string): unknown {
   if (path === '$' || path === '') return data;
   let v: any = data;
-  for (const k of path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean)) {
+  for (const k of path.replace(/^\$\.?/, '').replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean)) {
     if (v == null || typeof v !== 'object' || !Object.hasOwn(v, k)) return undefined;
     v = v[k];
   }

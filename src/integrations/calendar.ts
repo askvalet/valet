@@ -118,6 +118,7 @@ export default defineIntegration({
       },
       tools: {
         calendar_upcoming: {
+          find: 'query',
           label: 'Checked the calendar',
           followUps: ['What\'s on tomorrow?', 'Am I free this weekend?'],
           description: `What's on the person's calendar in the coming days (${cfg.calendars.map(c => c.name ?? 'a calendar').join(', ')}): title, start, end, location. Use for "what's on", "am I free", "when is…".`,

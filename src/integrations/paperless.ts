@@ -47,6 +47,7 @@ export default defineIntegration({
       },
       tools: {
         docs_search: {
+          find: 'query',
           label: 'Searched documents',
           followUps: ['Summarize these', 'Anything due soon?'],
           description: 'Search the person\'s documents in Paperless (full text: letters, bills, receipts, contracts, statements, IDs…). Returns the best matches with a snippet of where the words appear. Use it before answering any question about their documents, then docs_read the most relevant to answer precisely.',

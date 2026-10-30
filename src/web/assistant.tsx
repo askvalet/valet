@@ -4,7 +4,7 @@ import { Chat, useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
 import {
   Activity, ArrowDown, ArrowUp, Bookmark, Check, ChevronDown, ChevronRight, Copy, CornerDownRight, FileText, Lightbulb, Loader2, Paperclip, RotateCcw,
-  Search, Square, X, Zap,
+  Pin, Search, Square, X, Zap,
 } from 'lucide-react';
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
@@ -77,12 +77,13 @@ const ICON = { read: Search, write: Bookmark, control: Zap } as const;
 const verbOf = (name: string, tools: Record<string, ToolInfo>) => {
   const t = tools[name];
   if (name === 'show') return ['Laid out cards', Lightbulb] as const;
+  if (name === 'search_everything') return ['Searched everything', Search] as const;
   return [t?.label ?? toolLabel(name).replace(/^\w/, c => c.toUpperCase()), t ? ICON[t.access] : Activity] as const;
 };
 const argOf = (input: any) => {
   if (!input || typeof input !== 'object') return '';
-  const v = input.query ?? input.url ?? input.entity_id ?? input.title ?? input.id ?? input.text ?? Object.values(input)[0];
-  const t = Array.isArray(v) ? v.join(', ') : v == null ? '' : String(v);
+  const v = input.summary ?? input.query ?? input.url ?? input.entity_id ?? input.title ?? input.id ?? input.text ?? Object.values(input).find(x => typeof x !== 'object');
+  const t = Array.isArray(v) ? v.filter(x => typeof x !== 'object').join(', ') : v == null || typeof v === 'object' ? '' : String(v);
   try { if (input.url) return new URL(t).hostname.replace(/^www\./, ''); } catch {}
   return t.length > 36 ? t.slice(0, 34) + '…' : t;
 };
@@ -119,13 +120,34 @@ function ToolChips({ parts, settled, tools }: { parts: any[]; settled: boolean; 
   );
 }
 
-function ToolPart({ p, approve }: { p: any; approve: (id: string, ok: boolean) => void }) {
+/** Keep this card on the page: it stays live by re-running the tool, with no model involved. */
+function PinButton({ tool, input }: { tool: string; input: unknown }) {
+  const [state, setState] = useState<'idle' | 'busy' | 'done' | 'failed'>('idle');
+  const pin = async () => {
+    setState('busy');
+    const r = await fetch('/api/pins', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool, input }) }).catch(() => null);
+    setState(r?.ok ? 'done' : 'failed');
+  };
+  return (
+    <button onClick={pin} disabled={state === 'busy' || state === 'done'} data-done={state === 'done' || undefined} aria-label="Keep on the page" title={state === 'failed' ? "Couldn't pin that" : 'Keep on the page'}
+      className="chat-pin chat-icon glass-round rounded-lg!">{state === 'done' ? <Check className="morph size-3.5 text-good" /> : state === 'busy' ? <Loader2 className="size-3.5 animate-spin" /> : <Pin className={cn('size-3.5', state === 'failed' && 'text-bad')} />}</button>
+  );
+}
+
+function ToolPart({ p, approve, tools = {}, canPin }: { p: any; approve: (id: string, ok: boolean) => void; tools?: Record<string, ToolInfo>; canPin?: boolean }) {
   const label = toolLabel(p.type === 'dynamic-tool' ? p.toolName : p.type);
+  const name = p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, '');
   if (p.state === 'approval-requested' && !p.approval?.isAutomatic) return (
     <div className="chat-card rounded-2xl border bg-card p-4 shadow-card">
       <div className="mb-0.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Needs your OK</div>
-      <div className="text-sm font-medium first-letter:uppercase">{label}?</div>
-      {p.input && Object.keys(p.input).length > 0 && <div className="mt-1 break-all text-xs text-muted-foreground">{Object.entries(p.input).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(' · ')}</div>}
+      <div className="text-sm font-medium first-letter:uppercase">{p.input?.ops ? 'Save this change to your config?' : `${label}?`}</div>
+      {p.input?.ops ? (
+        // a change to the config: what it means, then exactly what it writes
+        <div className="mt-1 space-y-1.5 text-xs text-muted-foreground">
+          {p.input.summary && <div>{p.input.summary}</div>}
+          <pre className="max-h-48 overflow-auto rounded-lg bg-white/[.06] p-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-all">{p.input.ops.map((o: any) => `${o.op} ${o.path.join('.')}${o.value === undefined ? '' : ` = ${JSON.stringify(o.value)}`}`).join('\n')}</pre>
+        </div>
+      ) : p.input && Object.keys(p.input).length > 0 && <div className="mt-1 break-all text-xs text-muted-foreground">{Object.entries(p.input).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(' · ')}</div>}
       <div className="mt-3 flex gap-2">
         <Button size="sm" className="max-sm:h-10 max-sm:flex-1" onClick={() => approve(p.approval.id, true)}>Approve</Button>
         <Button size="sm" variant="outline" className="max-sm:h-10 max-sm:flex-1" onClick={() => approve(p.approval.id, false)}>Don't</Button>
@@ -134,7 +156,12 @@ function ToolPart({ p, approve }: { p: any; approve: (id: string, ok: boolean) =
   );
   if (p.state === 'output-available') {
     const card = p.output?.card as Card | undefined;
-    if (card) return <div className="chat-card"><Widget card={card} compact /></div>;
+    if (card) return (
+      <div className="chat-card chat-pinnable relative">
+        <Widget card={card} compact />
+        {canPin && (name === 'show' || (tools[name]?.access === 'read' && !name.startsWith('config__'))) && <PinButton tool={name} input={p.input ?? {}} />}
+      </div>
+    );
     const mcp = Array.isArray(p.output?.content) ? p.output.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n') : '';
     if (mcp) return (
       <details className="group rounded-xl border bg-card px-4 py-3 text-sm">
@@ -149,8 +176,35 @@ function ToolPart({ p, approve }: { p: any; approve: (id: string, ok: boolean) =
   return null;
 }
 
-export default function Assistant({ name, model, ask, suggestions, tools = {}, onAsk, onClose }: {
+/** A question answered in ⌘K: the same tools, approvals and cards as the chat, in one short reply. */
+export function InlineAnswer({ text, tools, onMore }: { text: string; tools: Record<string, ToolInfo>; onMore: () => void }) {
+  const [one] = useState(() => new Chat({ transport: new DefaultChatTransport({ api: '/api/chat' }), sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses }));
+  const { messages, sendMessage, status, addToolApprovalResponse, error } = useChat({ chat: one });
+  const started = useRef(0);
+  useEffect(() => { if (!started.current) { started.current = Date.now(); sendMessage({ text }); } }, [sendMessage, text]);
+  const reply = messages.filter(m => m.role === 'assistant').at(-1), busy = status === 'submitted' || status === 'streaming';
+  const said = (reply?.parts ?? []).filter((p: any) => p.type === 'text').map((p: any) => splitThink(p.text).said).join('\n\n').trim();
+  const steps = (reply?.parts ?? []).filter((p: any) => p.type.startsWith('tool-') || p.type === 'dynamic-tool');
+  return (
+    <div className="space-y-3">
+      <div className="text-[13px] text-muted-foreground">{text}</div>
+      {steps.length > 0 && <ToolChips parts={steps} tools={tools} settled={!busy} />}
+      {steps.map((p: any, i) => <ToolPart key={i} p={p} tools={tools} approve={(id, ok) => addToolApprovalResponse({ id, approved: ok })} />)}
+      {said && <Text text={said} />}
+      {busy && !said && <Pending since={started.current || Date.now()} />}
+      {error && <div className="text-sm text-bad">Couldn't reach the model: {error.message}</div>}
+      {!busy && reply && (
+        <button onClick={() => { chat.messages = [...chat.messages, ...one.messages]; onMore(); }} className="press flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+          <CornerDownRight className="size-3.5" />Continue in chat
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function Assistant({ name, model, ask, suggestions, tools = {}, onAsk, onClose, canPin }: {
   name: string; model: string; ask: { text: string; n: number } | null; suggestions: string[]; tools?: Record<string, ToolInfo>; onAsk: (t: string) => void;
+  canPin?: boolean;
   onClose?: () => void;   // shown as a phone sheet: a grabber to drag it away, and room for fingers and the keyboard
 }) {
   const sheet = !!onClose;
@@ -255,7 +309,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
           // a reply: runs of tool calls become one chip list, followed by any cards they returned, then the words
           const isLast = mi === messages.length - 1, live = isLast && busy;
           const blocks: ReactNode[] = [], thoughts: string[] = []; let run: any[] = [], thinking = false;
-          const flush = (k: string) => { if (run.length) { const r = run; blocks.push(<ToolChips key={`c${k}`} parts={r} tools={tools} settled={!live || m.parts.some((p: any) => p.type === 'text' && p.text.trim())} />, ...r.map((p, j) => <ToolPart key={`p${k}.${j}`} p={p} approve={(id, ok) => addToolApprovalResponse({ id, approved: ok })} />)); run = []; } };
+          const flush = (k: string) => { if (run.length) { const r = run; blocks.push(<ToolChips key={`c${k}`} parts={r} tools={tools} settled={!live || m.parts.some((p: any) => p.type === 'text' && p.text.trim())} />, ...r.map((p, j) => <ToolPart key={`p${k}.${j}`} p={p} tools={tools} canPin={canPin} approve={(id, ok) => addToolApprovalResponse({ id, approved: ok })} />)); run = []; } };
           m.parts.forEach((p: any, i) => {
             if (p.type.startsWith('tool-') || p.type === 'dynamic-tool') run.push(p);
             else if (p.type === 'reasoning') { thoughts.push(p.text ?? ''); thinking ||= live && p.state === 'streaming'; }

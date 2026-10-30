@@ -53,6 +53,9 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   (the CLI and tests use it alone); `buildSite()` adds the hub. `main.ts` keeps one `site` and swaps it when
   config.yaml changes, so routes read `site.x` at request time, never a captured copy.
 
+- **AI is everywhere and required nowhere.** Without an `assistant:` block the page loses nothing. Rules decide when a
+  model is worth asking; if a rule can do the job, no model runs. What it does unasked (`src/server/insight.ts`, through
+  `brain.ts`) gets no tools. What it builds (pins, config edits in `setup.ts`) runs without it afterwards.
 - **Personal things live in config, never in code.** Hardware builds (`build:`), rooms and lights, services, layout,
   angles: the repo ships generic defaults and a documented `config.example.yaml`. Before committing, grep for anything
   that names the author's hardware, hosts or people.

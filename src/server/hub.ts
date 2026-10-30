@@ -17,6 +17,8 @@ export class Hub {
   private instances: Map<string, Instance>;
   private onChange?: Change;
   private history?: History;
+  /** Called after any change, errors included (onChange skips those). */
+  watch?: () => void;
   constructor(instances: Map<string, Instance>, onChange?: Change, history?: History) { this.instances = instances; this.onChange = onChange; this.history = history; }
 
   /** Sample every widget every `ms` even with nobody watching, so history has no gaps. */
@@ -59,6 +61,7 @@ export class Hub {
     if (!prev || JSON.stringify(prev.card) !== JSON.stringify(next.card) || prev.error !== next.error) {
       if (!next.error) this.onChange?.(key, prev, next);
       for (const l of this.listeners) l(next);
+      this.watch?.();
     }
     if (this.again.delete(key)) await this.refresh(key);
   }

@@ -34,6 +34,7 @@ export default defineIntegration({
       },
       tools: {
         bookmarks_search: {
+          find: 'query',
           label: 'Searched saved links',
           followUps: ['Summarize the newest one', 'What else did I save this week?'],
           description: 'Search the person\'s saved links and notes in Karakeep (titles, page text, AI summaries, tags). Use for "that article about…", "what did I save on…".',

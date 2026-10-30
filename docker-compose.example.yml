@@ -7,7 +7,7 @@ services:
     environment: { TZ: America/Toronto }   # your time zone, for times the server writes
     env_file: .env                    # secrets referenced as ${NAME} in config.yaml
     volumes:
-      - ./config:/config:ro              # a folder, not the file: edits to config.yaml then show up live
+      - ./config:/config                 # a folder, not the file: edits show up live. Add :ro if the assistant should never save config changes
       - ./data:/app/data              # wallpaper, icon cache, uploads, accounts
     ports:
       - 127.0.0.1:7575:7575         # this machine only; "7575:7575" for your whole network

@@ -1,6 +1,6 @@
 // Renders any card from the shared catalog with shadcn/ui primitives. The homepage and the assistant both use this,
 // so a generated card looks exactly like the widget it came from.
-import { Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
+import { X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
   Activity, ArrowUpRight, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
   type LucideIcon,
 } from 'lucide-react';
@@ -106,6 +106,7 @@ function List({ card }: { card: ListCard }) {
             <div className="flex items-baseline gap-3">
               <div className={cn('min-w-0 flex-1 font-medium', dense ? 'text-[13px]' : 'text-sm', it.href && !dense ? 'line-clamp-2 leading-snug' : 'truncate')}>{it.title}</div>
               {it.meta && <div className="shrink-0 text-xs tabular text-muted-foreground">{it.meta}</div>}
+              {(it.tone === 'warn' || it.tone === 'bad') && <WhyChip about={`${it.title}: ${it.subtitle ?? ''} ${it.meta ?? ''}`} />}
               {it.href && <ArrowUpRight className="row-arrow size-3.5 shrink-0 text-muted-foreground" />}
             </div>
             {it.subtitle && <div className={cn('truncate text-xs', it.tone && it.tone !== 'neutral' ? toneText[it.tone] : 'text-muted-foreground')}>{it.subtitle}</div>}
@@ -114,6 +115,29 @@ function List({ card }: { card: ListCard }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+// "Why?": any widget in trouble can be asked about. The answer shows at the foot of its card.
+export type Explain = (about?: string) => Promise<string>;
+const WhyAsk = createContext<((about?: string) => void) | null>(null);
+function useWhy(explain?: Explain) {
+  const [note, setNote] = useState<{ busy: boolean; text?: string } | null>(null);
+  const ask = (about?: string) => { setNote({ busy: true }); explain?.(about).then(text => setNote({ busy: false, text })).catch(e => setNote({ busy: false, text: e.message })); };
+  return { ask: explain ? ask : null, note, close: () => setNote(null) };
+}
+function WhyChip({ about }: { about?: string }) {
+  const ask = useContext(WhyAsk);
+  if (!ask) return null;
+  return <button type="button" className="why-chip" onClick={e => { e.preventDefault(); e.stopPropagation(); ask(about); }}>Why?</button>;
+}
+function WhyNote({ note, close }: { note: { busy: boolean; text?: string } | null; close: () => void }) {
+  if (!note) return null;
+  return (
+    <div className="why-note mt-3 flex items-start gap-2 rounded-xl bg-white/[.06] px-3 py-2 text-[13px] leading-relaxed">
+      <span className={cn('min-w-0 flex-1', note.busy && 'chat-shimmer')}>{note.busy ? 'Looking into it' : note.text}</span>
+      {!note.busy && <button type="button" aria-label="Dismiss" onClick={close} className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"><X className="size-3.5" /></button>}
+    </div>
   );
 }
 
@@ -133,6 +157,7 @@ function ServiceRow({ s, minimal }: { s: StatusCard['items'][number]; minimal?: 
       <AppIcon src={s.icon} name={s.name} small />
       <span className="min-w-0 flex-1 truncate text-[13px]">{s.name}</span>
       {!s.ok && !s.quiet && <span className="truncate text-[11px] text-bad">{s.detail}</span>}
+      {!s.ok && !s.quiet && <WhyChip about={`${s.name} is down: ${s.detail ?? ''}`} />}
       <span className={cn('dot size-1.5', s.ok ? 'dot-good' : s.quiet ? 'bg-muted-foreground/40' : 'dot-bad')} />
     </a>
   );
@@ -678,7 +703,8 @@ export const TileSkeleton = () => (
   <Card className="relative h-[136px] gap-0 py-0 shadow-card"><div className="flex h-full flex-col justify-between p-4"><Skeleton className="h-3.5 w-2/3" /><Skeleton className="h-7 w-1/2" /></div></Card>
 );
 
-function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, kind }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; kind?: string }) {
+function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, kind, explain, failed }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; kind?: string; explain?: Explain; failed?: string }) {
+  const why = useWhy(explain);
   // artwork-led cards sit directly on the page, without a card frame
   if (card?.type === 'shelf') return <div className="fade-in-soft min-w-0"><Shelf card={card} small={compact} header={<BareHeader card={card} title={title} status={status} />} /></div>;
   if (card?.type === 'photos') return (
@@ -690,13 +716,14 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
   const t = card?.title ?? title;
   const bare = card?.type === 'group';
   return (
-    <Dense.Provider value={!!compact}>
+    <Dense.Provider value={!!compact}><WhyAsk.Provider value={why.ask}>
     <Card className={cn('@container/card min-w-0 shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'lift gap-4 py-5', bare && 'border-0 bg-transparent py-0 shadow-none')}>
       {t && !bare && !headless && (
         <CardHeader className={cn('flex items-center gap-2', compact ? 'px-3.5' : 'px-5')}>
           {card?.icon && (compact ? <Icon name={card.icon} className="size-3.5 text-muted-foreground" /> : <span className="icon-tile"><Icon name={card.icon} /></span>)}
           <CardTitle className={cn('truncate', compact ? 'text-[13px]' : 'text-[15px]')}>{t}</CardTitle>
           {status}
+          {failed && <WhyChip about={`It can't be reached: ${failed}`} />}
           <CardAction className="flex items-center gap-2 self-center">
             {card?.note && <span className="truncate text-xs tabular text-muted-foreground">{card.note}</span>}
             {card?.href && (
@@ -710,9 +737,10 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
       <CardContent className={cn(bare ? 'p-0' : compact ? 'px-3.5' : 'px-5')}>
         {card ? <div className="fade-in-soft"><CardBody card={card} run={run} large={large} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /></div> : <CardSkeleton kind={kind} />}
         {card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null}
+        <WhyNote note={why.note} close={why.close} />
       </CardContent>
     </Card>
-    </Dense.Provider>
+    </WhyAsk.Provider></Dense.Provider>
   );
 }
 
@@ -747,7 +775,9 @@ function TileGraph({ points }: { points: number[] }) {
 }
 
 /** Headline tile for the overview's top row: label and context up top, the value at the bottom, a live graph behind. */
-function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
+function SummaryTileView({ s, href, explain }: { s: Summary; href?: string; explain?: Explain }) {
+  const why = useWhy(explain);
+  const trouble = why.ask && (s.tone === 'bad' || s.tone === 'warn');
   const body = (
     <Card className="@container/tile lift relative h-[136px] gap-0 overflow-hidden py-0 shadow-card">
       <div className="text-foreground"><TileGraph points={s.trend ?? []} /></div>
@@ -763,8 +793,15 @@ function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
         <div className="mt-auto flex min-w-0 items-baseline justify-between gap-3">
           <div className={cn('metric min-w-0 shrink-0 truncate text-[20px] leading-none @[200px]/tile:text-[22px]', toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}>{s.value}</div>
           {s.detail && <div className="hidden min-w-0 truncate text-xs tabular text-muted-foreground @[200px]/tile:block">{s.detail}</div>}
+          {trouble && !why.note && <button type="button" className="why-chip" onClick={e => { e.preventDefault(); e.stopPropagation(); why.ask!(`${s.label}: ${s.value} ${s.sub ?? ''}`); }}>Why?</button>}
         </div>
       </div>
+      {why.note && (
+        <div className="why-note absolute inset-0 flex items-start gap-2 overflow-y-auto bg-card/95 p-3.5 text-[13px] leading-snug" onClick={e => e.preventDefault()}>
+          <span className={cn('min-w-0 flex-1', why.note.busy && 'chat-shimmer')}>{why.note.busy ? 'Looking into it' : why.note.text}</span>
+          {!why.note.busy && <button type="button" aria-label="Dismiss" onClick={e => { e.preventDefault(); why.close(); }} className="shrink-0 text-muted-foreground"><X className="size-3.5" /></button>}
+        </div>
+      )}
     </Card>
   );
   return href ? <a href={href} target="_blank" rel="noreferrer" className="block min-w-0">{body}</a> : <div className="min-w-0">{body}</div>;

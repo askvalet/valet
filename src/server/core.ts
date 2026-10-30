@@ -32,6 +32,8 @@ export interface Tool<A = any> {
   label?: string;
   /** A couple of natural next questions to offer after an answer that used it. */
   followUps?: string[];
+  /** The input field that takes search words, if this tool searches: it then joins the assistant's search_everything. */
+  find?: string;
   /** For 'write' tools: input fields that must come word for word from the person's own latest message for the tool to
    *  run without asking (e.g. the link they pasted). Otherwise, say when a document or web page suggested it, it asks. */
   fromPerson?: string[];

@@ -7,7 +7,8 @@ import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import Island, { type Live, type Notice } from './island.tsx';
 import { SignIn, useMe } from './signin.tsx';
-import { Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, shapeOf, TileSkeleton, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
+import { suggest } from './suggest.ts';
+import { type Explain, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, shapeOf, TileSkeleton, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
 
 // The assistant (and the AI SDK client) loads only when someone asks something.
 const Assistant = lazy(() => import('./assistant.tsx'));
@@ -19,6 +20,7 @@ interface Page {
   appearance: { wallpaper?: string; dim: number; blur: number };
   assistant: { name: string; model: string; suggestions: string[]; tools: Record<string, ToolInfo> } | null;
   search?: string;
+  insight?: string;
   welcome?: { path: string; saved: boolean };
   menubar?: string[];
   nav?: { side: 'left' | 'right' | 'top' | 'bottom' };
@@ -33,20 +35,25 @@ function useLive() {
   const [online, setOnline] = useState(true);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [generation, setGeneration] = useState(0);   // bumps when the server's config was reloaded
+  const [insight, setInsight] = useState<string | null | undefined>(undefined);   // undefined: nothing new since the page loaded
   useEffect(() => {
     const es = new EventSource('/api/events');
-    es.addEventListener('notice', e => setNotice({ ...JSON.parse((e as MessageEvent).data), n: Date.now() }));
+    es.addEventListener('notice', e => {
+      const n = JSON.parse((e as MessageEvent).data);
+      if (n.key === 'insight') setInsight(n.text || null);     // what several problems have in common; empty once they've cleared
+      if (n.text) setNotice({ ...n, n: Date.now() });
+    });
     es.addEventListener('widget', e => {
       const s = JSON.parse((e as MessageEvent).data) as WidgetState;
       setState(prev => ({ ...prev, [s.key]: s }));
     });
     // the config changed: drop what we know and come back for the new layout (the stream ends; this effect reruns)
-    es.addEventListener('reload', () => { es.close(); setState({}); setGeneration(g => g + 1); });
+    es.addEventListener('reload', () => { es.close(); setState({}); setInsight(undefined); setGeneration(g => g + 1); });
     es.onopen = () => setOnline(true);
     es.onerror = () => setOnline(false);
     return () => es.close();
   }, [generation]);
-  return { state, online, notice, generation };
+  return { state, online, notice, generation, insight };
 }
 
 function useClock() {
@@ -159,7 +166,8 @@ export function App() {
 
 function Home({ account }: { account: boolean }) {
   const [page, setPage] = useState<Page | null>(null);
-  const { state, notice, generation } = useLive();
+  const { state, notice, generation, insight: liveInsight } = useLive();
+  const [brief, setBrief] = useState<string | null>(null);
   const now = useClock();
   const theme = useTheme();
   const [view, setView] = useState<string>('all');   // 'all' (the overview) or a tab's name
@@ -181,6 +189,7 @@ function Home({ account }: { account: boolean }) {
 
   useEffect(() => { fetch(`/api/page?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`).then(r => r.json()).then(setPage); }, [generation]);
   useEffect(() => { if (page) document.title = page.title; }, [page]);
+  useEffect(() => { if (page?.assistant) fetch('/api/brief').then(r => r.json()).then(b => setBrief(b.text)).catch(() => {}); }, [!!page?.assistant]);
   // A wallpaper means glass over a photo: always the dark material, so text stays legible on any image.
   const wall = page?.appearance?.wallpaper;
   useEffect(() => {
@@ -210,7 +219,22 @@ function Home({ account }: { account: boolean }) {
     if (!f) runners.current.set(key, f = (action, args) => runAction(key, action, args));
     return f;
   };
+  // "why?" for a widget: stable per widget, like the action runners
+  const explainers = useRef(new Map<string, Explain>());
+  const explainFor = (key: string) => {
+    if (!page?.assistant) return undefined;
+    let f = explainers.current.get(key);
+    if (!f) explainers.current.set(key, f = async about => {
+      const r = await fetch('/api/why', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, about }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error ?? 'No answer just now.');
+      return j.text;
+    });
+    return f;
+  };
   const p = pulse(state);
+  const cause = liveInsight === undefined ? page?.insight : liveInsight;
+  const questions = page?.assistant ? suggest(state, page.assistant.suggestions) : [];
   // every card's quick actions, for ⌘K: "pause" finds "Pi-hole · Pause 5 min"
   const actions = page?.canAct === false ? [] : Object.values(state).flatMap(w => (w.card?.buttons ?? []).map(b => ({ key: w.key, b, card: w.card!.title ?? page?.widgets[w.key]?.title ?? w.key })));
   // every service from the status cards, for ⌘K: type a name, open it
@@ -240,7 +264,8 @@ function Home({ account }: { account: boolean }) {
   const hero = view === 'all' && (
           <header className="wall-text mx-auto w-full max-w-[720px] pt-8 text-center xl:pt-10">
             <div className="text-[22px] font-semibold tracking-tight">{greet(now.getHours())}{page?.greeting ? `, ${page.greeting}` : ''}</div>
-            {p.text && <div className={cn('mt-0.5 text-[13px]', p.tone)}>{p.text}</div>}
+            {cause ? <div className="brief-in mt-0.5 text-[13px] text-warn">{cause}</div> : p.text && <div className={cn('mt-0.5 text-[13px]', p.tone)}>{p.text}</div>}
+            {brief && !cause && !p.text && <div className="brief-in mx-auto mt-1 max-w-[560px] text-[13.5px] text-muted-foreground">{brief}</div>}
             {page?.assistant && (
               <form className="glass-round mt-5 flex items-center gap-2.5 rounded-[26px] py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
@@ -261,7 +286,7 @@ function Home({ account }: { account: boolean }) {
               <div className="fade-x no-scrollbar mt-2.5 overflow-x-auto">
                 {/* centred when it fits, scrolls from the start when it doesn't */}
                 <div className="mx-auto flex w-max gap-1.5">
-                  {page.assistant.suggestions.slice(0, 3).map(s => (
+                  {questions.slice(0, 3).map(s => (
                     <button key={s} onClick={() => ask(s)} className="shrink-0 rounded-full px-2.5 py-1 text-[12.5px] text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground">{s}</button>
                   ))}
                 </div>
@@ -298,7 +323,7 @@ function Home({ account }: { account: boolean }) {
                   {sec.widgets.flatMap(key => {
                     const c = state[key]?.card;
                     if (!c) return [<TileSkeleton key={key} />];
-                    return (c.summaries ?? (c.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} className="fade-in-soft min-w-0"><SummaryTile s={t} href={c.href} /></div>);
+                    return (c.summaries ?? (c.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} className="fade-in-soft min-w-0"><SummaryTile s={t} href={c.href} explain={explainFor(key)} /></div>);
                   })}
                 </div>
               )
@@ -307,7 +332,7 @@ function Home({ account }: { account: boolean }) {
                   const keys = sec.widgets.filter(key => state[key] ? !isEmpty(state[key].card) : !shapeOf(key)?.empty);
                   const widget = (key: string, large = false) => {
                     const s = state[key];
-                    return <Shaped key={key} id={key} card={s?.card}><Widget large={large} card={s?.card} kind={shapeOf(key)?.t} title={page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={(sec.variant === 'minimal' || phone) && view === 'all'} headless={sec.header === false && view === 'all'}
+                    return <Shaped key={key} id={key} card={s?.card}><Widget large={large} card={s?.card} kind={shapeOf(key)?.t} explain={explainFor(key)} failed={s?.error} title={page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={(sec.variant === 'minimal' || phone) && view === 'all'} headless={sec.header === false && view === 'all'}
                       status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
                       run={page?.canAct === false ? undefined : runFor(key)} /></Shaped>;
                   };
@@ -316,7 +341,7 @@ function Home({ account }: { account: boolean }) {
                     <div className="grid grid-flow-row-dense items-start gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 170px), 1fr))' }}>
                       {keys.map((key, j) => {
                         const size = sec.sizes![key], c = state[key]?.card, beat = { '--i': Math.min(j, 8) } as React.CSSProperties;
-                        if (size === 'small' && c?.summary) return <div key={key} className="settle-card min-w-0" style={beat}><SummaryTile s={c.summary} href={c.href} /></div>;
+                        if (size === 'small' && c?.summary) return <div key={key} className="settle-card min-w-0" style={beat}><SummaryTile s={c.summary} href={c.href} explain={explainFor(key)} /></div>;
                         return <div key={key} style={beat} className={cn('settle-card col-span-full min-w-0 @xl/main:col-span-2', size === 'large' && '@5xl/main:col-span-4')}>{widget(key, size === 'large')}</div>;
                       })}
                     </div>
@@ -400,7 +425,7 @@ function Home({ account }: { account: boolean }) {
         {!phone && chatTab && view === chatTab && page?.assistant && (
           <div data-slot="card" className="h-[min(78vh,900px)] min-h-[520px] overflow-hidden rounded-[calc(var(--radius)*1.4)] border bg-card shadow-card">
             <Suspense fallback={null}>
-              <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={page.assistant.suggestions} tools={page.assistant.tools} onAsk={ask} />
+              <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} canPin={page.canAct !== false} onAsk={ask} />
             </Suspense>
           </div>
         )}
@@ -434,8 +459,9 @@ function Home({ account }: { account: boolean }) {
       </nav>
 
       {page && palette && (
-        <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} ask={ask} actions={actions} account={account}
-          runAction={runAction} services={services} SUGGESTIONS={page.assistant?.suggestions ?? []} setView={setView} nav={nav} sectionIcon={sectionIcon} search={page.search} /></Suspense>
+        <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} ask={ask} actions={actions} account={account} tools={page.assistant?.tools}
+          openChat={() => { setPalette(false); if (phone || !(chatTab && view === chatTab)) setChatOpen(true); }}
+          runAction={runAction} services={services} SUGGESTIONS={questions} setView={setView} nav={nav} sectionIcon={sectionIcon} search={page.search} /></Suspense>
       )}
 
       {page?.assistant && (
@@ -446,7 +472,7 @@ function Home({ account }: { account: boolean }) {
             <DialogDescription className="sr-only">Ask about your homelab</DialogDescription>
             {chatOpen && (
               <Suspense fallback={null}>
-                <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={page.assistant.suggestions} tools={page.assistant.tools} onAsk={ask} onClose={phone ? () => setChatOpen(false) : undefined} />
+                <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} canPin={page.canAct !== false} onAsk={ask} onClose={phone ? () => setChatOpen(false) : undefined} />
               </Suspense>
             )}
           </DialogContent>

@@ -286,6 +286,17 @@
 /* services: two tight columns even on a phone */
 .status-tight { column-width: 165px; } .status-wide { column-width: 220px; }
 @container card (max-width: 440px) { .status-tight { column-width: auto; column-count: 2; } }
+/* "why?": a small question that opens a line of explanation at the foot of the card */
+.why-chip { flex: none; border-radius: 99px; padding: 1px 7px; font-size: 11px; line-height: 16px; color: var(--muted-foreground); background: rgb(255 255 255 / .08); transition: color 150ms var(--ease-out), background-color 150ms var(--ease-out); }
+@media (hover: hover) and (pointer: fine) { .why-chip:hover { color: var(--foreground); background: rgb(255 255 255 / .14); } }
+.why-note { animation: why-note 320ms var(--ease-out) both; }
+@keyframes why-note { from { opacity: 0; transform: translateY(-4px); filter: blur(2px); } }
+/* the brief under the greeting arrives when it's ready, without moving anything */
+.brief-in { animation: fade-in-soft 700ms var(--ease-out) both; }
+/* a pin on chat cards: visible when asked for, always there for fingers */
+.chat-pin { position: absolute; top: 8px; right: 8px; z-index: 2; opacity: 0; transition: opacity 160ms var(--ease-out); }
+.chat-pinnable:hover .chat-pin, .chat-pin:focus-visible, .chat-pin[data-done] { opacity: 1; }
+@media (pointer: coarse) { .chat-pin { opacity: 1; } }
 /* a theme switch: the sun and moon turn into each other */
 .spin-in { animation: spin-in 360ms var(--ease-out) both; }
 @keyframes spin-in { from { opacity: 0; transform: rotate(-90deg) scale(.6); } }

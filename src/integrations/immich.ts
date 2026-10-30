@@ -50,6 +50,7 @@ export default defineIntegration({
       },
       tools: {
         photos_search: {
+          find: 'query',
           label: 'Searched photos',
           followUps: ['Only the ones with people', 'Same place, other years'],
           description: 'Search the person\'s photos and videos in Immich by what\'s in them (smart search: "sunset at the beach", "birthday cake", "dog in snow"), optionally narrowed to people (by name), a date range or a city. Results show as a photo stack. For "photos from <date>" with no subject, leave query empty and set the dates.',

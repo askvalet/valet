@@ -25,6 +25,12 @@ the damage if something goes wrong, and how to give it as little power as possib
   `read`, `write` (may add things, like saving a link, without asking) or `control` (may change or remove things, and
   you approve each one). A document or web page the assistant reads can't talk it into acting: anything with
   consequences needs your click.
+- **What the assistant does unasked can only talk.** The morning brief, the shared-cause line and "Why?" call the model
+  with no tools at all, so a poisoned feed title can at worst make it say something odd. They have a daily budget, and
+  the model is only consulted when rules say it's worth it (one problem never is).
+- **It can't give itself more power.** Editing the config needs `assistant.access.config`, and each save needs your
+  approval. Sign-in, plugins, MCP, allowed hosts and its own access are off limits, and secrets can't be written.
+- **Pins only look.** Only `read` tools can be pinned, and no model runs after that.
 - **Browser hardening.** A strict content-security policy (only Atrium's own scripts run), no framing, same-origin
   referrers, microphone only for Atrium, and every request that changes something must come from Atrium's own origin.
 - **The container is locked down** in the example compose file: not root, read-only filesystem, no Linux capabilities,

@@ -73,9 +73,20 @@ In Docker, prefix these with `docker exec -it atrium`.
 | `model` | required | |
 | `name` | `Assistant` | what it's called on the page |
 | `instructions` | none | added to the system prompt |
-| `access` | `{ default: read }` | per integration (by its id): `none`, `read`, `write` (adds things, like saving a link) or `control` (changes or removes things; asks you every time) |
+| `access` | `{ default: read }` | per integration (by its id): `none`, `read`, `write` (adds things, like saving a link) or `control` (changes or removes things; asks you every time). `config: control` lets it edit this file: see below |
 | `maxSteps` | `6` | tool calls per answer, 1–20 |
-| `suggestions` | four examples | questions offered on an empty chat and in ⌘K |
+| `suggestions` | four examples | questions offered on an empty chat and in ⌘K, after any drawn from what's happening |
+| `background` | `{ watch: true, brief: true, perDay: 24 }` | what it does unasked. `watch`: when two or more things break, say what they share, if the data shows it. `brief`: one line each morning. `perDay` caps these model calls. They get no tools |
+
+**Setting up by talking.** With `access: { config: control }` you can say "add a card for http://box/status". It reads
+this file and the integration's options, tries the change without saving (a diff, problems, and the real card in chat),
+and saves only when you approve; hot reload does the rest. It changes only the lines it must. It can't touch `auth`,
+`assistant`, `mcp`, `plugins` or `allowedHosts`, and it refuses to write a secret: it asks you to put `${NAME}` in `.env`.
+Mount the config folder read-only and it hands you the diff to paste instead.
+
+**On the page, not in chat:** "Why?" on anything in trouble, a line under the greeting, ⌘K answers and approvals in
+place, and pin on a chat card to keep it on the page. A pin re-runs the same tool, so no model is involved after that;
+pins live in `data/pins.json`.
 
 ## `mcp`
 

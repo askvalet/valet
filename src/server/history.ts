@@ -36,6 +36,9 @@ export class History {
     this.dirty = false;   // only once it's safely on disk
   }
 
+  /** The last few samples of each of a widget's headlines, for explaining a change. */
+  recent(key: string, n = 12) { return [...this.series].filter(([k]) => k.startsWith(`${key}#`)).map(([, v]) => v.slice(-n).map(p => p[1])); }
+
   /** Record this card's headline numbers, then give back the card with a day of history on any headline that has no
    *  graph of its own. */
   apply(key: string, card: Card): Card {

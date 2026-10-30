@@ -94,6 +94,7 @@ export default defineIntegration({
       },
       tools: {
         library_lookup: {
+          find: 'title',
           label: 'Checked the library',
           description: 'Is a show or movie in the library (Sonarr/Radarr), and how complete: episodes downloaded of total, or whether the movie file is there. Use for "do I have X", "how many episodes of Y".',
           access: 'read', input: z.object({ title: z.string() }),

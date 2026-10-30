@@ -71,6 +71,7 @@ export default defineIntegration({
       },
       tools: {
         feed_read: {
+          find: 'query',
           label: 'Read the feeds',
           followUps: ['Summarize the top three', 'Anything about self-hosting?'],
           description: `Latest entries across the person's feeds (${cfg.feeds.map(f => f.name ?? new URL(f.url).hostname).join(', ')}): title, source, link, when, and a short summary. Use for "what's new", "anything interesting today".`,

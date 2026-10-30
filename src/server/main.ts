@@ -8,9 +8,11 @@ import { Hono, type Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { bodyLimit } from 'hono/body-limit';
 import { sameOrigin, setupAuth, userCommand } from './auth.ts';
-import { loadConfig, startConfig, validZone } from './config.ts';
+import { loadConfig, startConfig, validZone, type Config } from './config.ts';
 import { headers, hostGuard } from './security.ts';
 import { UPLOAD_DIR } from './core.ts';
+import { dailyBrief, whyPrompt } from './insight.ts';
+import { loadPins, newPin, pinnedCard, savePins } from './pins.ts';
 import { loadPlugins } from './plugins.ts';
 import { buildSite, type Site } from './site.ts';
 import { registry } from '../integrations/index.ts';
@@ -25,6 +27,8 @@ if (process.argv[2] === 'new-integration') process.exit(await (await import('./p
 if (process.argv[2] === 'user') process.exit(await userCommand(process.argv.slice(3)).catch(e => { console.error(String(e.message ?? e)); return 1; }));
 if (process.argv[2] === 'config') process.exit(await (await import('./cli.ts')).configCommand(process.argv.slice(3), CONFIG, registry));
 
+const sseClients = new Set<() => void>();
+
 // one bad promise in an integration shouldn't take the whole page down: log it and carry on
 process.on('unhandledRejection', e => console.error('unhandled:', e instanceof Error ? e.message : e));
 
@@ -34,12 +38,19 @@ const { config, saved } = startConfig(CONFIG);
 let zoneKnown = !!(config.timezone || process.env.TZ);
 if (config.timezone) process.env.TZ = config.timezone;
 const fromPlugins = await loadPlugins(registry, config.plugins.packages, config.plugins.replace);
-let site: Site = await buildSite(config, registry, fromPlugins);
+const opts = { path: CONFIG, rebuild: () => swap(site.config) };
+let site: Site = await buildSite(config, registry, fromPlugins, opts);
+// A new site takes over from the old one, and every open page refetches and reconnects.
+async function swap(next: Config) {
+  const old = site;
+  site = await buildSite(next, registry, fromPlugins, opts, old); chat = undefined;
+  old.hub.dispose(); old.watcher?.stop();
+  for (const tell of sseClients) tell();
+}
 for (const sig of ['SIGTERM', 'SIGINT'] as const) process.once(sig, async () => { try { await site.history?.save(); } finally { process.exit(0); } });
 
 // Edits to config.yaml apply live. A broken edit is reported and the last good config keeps running; sign-in
 // settings and plugins are read once, so those still need a restart.
-const sseClients = new Set<() => void>();
 if (config.reload) {
   let timer: NodeJS.Timeout | undefined;
   const reload = async () => {
@@ -47,11 +58,8 @@ if (config.reload) {
     if (JSON.stringify(next) === JSON.stringify(site.config)) return;
     if (JSON.stringify(next.auth) !== JSON.stringify(site.config.auth) || JSON.stringify(next.plugins) !== JSON.stringify(site.config.plugins)) console.log('config: auth and plugins changes take effect after a restart');
     if (next.timezone) { process.env.TZ = next.timezone; zoneKnown = true; }
-    const fresh = await buildSite(next, registry, fromPlugins, site);
-    const old = site; site = fresh; chat = undefined;
-    old.hub.dispose();
+    await swap(next);
     console.log(`config: reloaded · ${site.instances.size} integrations · ${site.placed.size} widgets${site.problems.length ? ` · ${site.problems.length} problems` : ''}`);
-    for (const tell of sseClients) tell();   // every open page refetches and reconnects
   };
   // editors save by replacing the file, which some watchers see as a delete; watch the folder and settle for 300ms
   try { watch(resolve(CONFIG, '..'), (_, f) => { if (f && resolve(CONFIG, '..', f) === resolve(CONFIG)) { clearTimeout(timer); timer = setTimeout(reload, 300); } }); }
@@ -132,9 +140,10 @@ app.get('/api/page', c => {
     nav: config.nav,
     island: config.island && { ...config.island, activities: config.island.activities.filter(k => hub.widget(k)) },
     weather: config.weather && hub.widget(config.weather) ? config.weather : undefined,
-    sections: config.layout.map(s => ({ title: s.title, columns: s.columns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat,
+    insight: site.watcher?.insight?.text,
+    sections: [...(site.pins.length ? [{ widgets: site.pins.map(p => `pins.${p.id}`).filter(k => hub.widget(k)), display: 'cards', place: 'main', overview: true, sizes: {} }] : []), ...config.layout.map(s => ({ title: s.title, columns: s.columns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat,
       widgets: s.widgets.map(w => w.widget).filter(k => hub.widget(k)),
-      sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium').map(w => [w.widget, w.size])) })),
+      sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium').map(w => [w.widget, w.size])) }))],
     widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
   });
 });
@@ -221,6 +230,49 @@ app.get('/api/image/:inst', async c => {
     return new Response(res.body, { headers: { 'Content-Type': type, 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff',
       'Content-Security-Policy': "sandbox; default-src 'none'", 'Content-Disposition': 'inline' } });
   } catch { return c.body(null, 502); }
+});
+
+// Things the page asks the model by itself. No tools here: see brain.ts.
+const whyCache = new Map<string, { at: number; text: string }>();
+app.post('/api/why', async c => {
+  const { key, about } = await c.req.json().catch(() => ({} as any));
+  if (!site.ask) return c.json({ error: 'no assistant configured' }, 404);
+  const widget = typeof key === 'string' ? site.hub.widget(key) : undefined;
+  if (!widget) return c.json({ error: 'no such widget' }, 404);
+  const id = `${key}|${String(about ?? '').slice(0, 200)}`, hit = whyCache.get(id);
+  if (hit && Date.now() - hit.at < 60_000) return c.json({ text: hit.text });
+  if (!site.hub.snapshot().some(s => s.key === key)) await site.hub.refresh(key);   // nobody's been watching it
+  const all = site.hub.snapshot(), p = whyPrompt(widget.title, about == null ? undefined : String(about), all.find(s => s.key === key), site.history?.recent(key) ?? [], all);
+  const text = await site.ask(p.system, p.prompt, 'asked');
+  if (!text) return c.json({ error: "The assistant couldn't answer just now." }, 503);
+  const clean = site.redact(text);
+  whyCache.set(id, { at: Date.now(), text: clean });
+  if (whyCache.size > 60) whyCache.delete(whyCache.keys().next().value!);
+  return c.json({ text: clean });
+});
+app.get('/api/brief', async c => {
+  if (!site.ask || !site.config.assistant?.background.brief) return c.json({ text: null });
+  // the page has just opened, so give its widgets a moment to report in
+  for (let i = 0; i < 12 && site.hub.snapshot().length < site.placed.size * .6; i++) await new Promise(r => setTimeout(r, 500));
+  const b = await dailyBrief(site.ask, site.journal.slice(-40), site.hub.snapshot());
+  return c.json({ text: b ? site.redact(b.text) : null });
+});
+
+// Keep a chat card on the page. It must really produce a card now, from a tool that only looks.
+app.post('/api/pins', async c => {
+  if (!site.acting) return c.json({ error: 'Atrium is read-only' }, 403);
+  const { tool, input } = await c.req.json().catch(() => ({} as any));
+  if (typeof tool !== 'string' || !input || typeof input !== 'object') return c.json({ error: 'bad pin' }, 400);
+  if (!site.config.assistant) return c.json({ error: 'no assistant configured' }, 404);
+  const pins = await loadPins();
+  if (pins.length >= 24) return c.json({ error: 'that\'s plenty of pins; unpin one first' }, 409);
+  if (pins.some(p => p.tool === tool && JSON.stringify(p.input) === JSON.stringify(input))) return c.json({ ok: true });
+  try {
+    const card = await pinnedCard({ tool, input }, site.instances);
+    await savePins([...pins, newPin(tool, input, card.title ?? 'Pinned')]);
+    await swap(site.config);
+    return c.json({ ok: true });
+  } catch (e) { return c.json({ error: site.redact((e as Error).message) }, 400); }
 });
 
 // The AI SDK, providers and MCP client load on the first question, so an unused assistant costs no memory.
