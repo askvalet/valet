@@ -24,7 +24,8 @@ const Section = z.object({
   widgets: z.array(z.string()),            // "instance.widget"
   columns: z.number().int().min(1).max(4).optional(),
   // tiles: headline tiles with live graphs · rings: the same as ring gauges coloured by health · cards: full cards
-  display: z.enum(['cards', 'tiles', 'rings']).default('cards'),
+  // media: every item of the section's media cards (streams, downloads…) as artwork tiles in one grid
+  display: z.enum(['cards', 'tiles', 'rings', 'media']).default('cards'),
 }).strict();
 
 // An MCP server whose tools the assistant may use. `access: read` offers only the tools the server marks read-only

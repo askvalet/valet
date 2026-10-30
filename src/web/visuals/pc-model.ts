@@ -1,6 +1,6 @@
-// The PC as a live 3D model (CSS 3D, no WebGL), modelled on the real build: a Lian Li case with a 360 radiator up top,
-// an ASUS ProArt board, the pump head with its screen, four G.Skill sticks, an MSI SUPRIM card and three floor fans.
-// Lights take the colours they really are. Framework-free: Atrium's card and rgb-control's page both mount it with
+// The PC as a live 3D model (CSS 3D, no WebGL): a dual-chamber glass case, its fans, cooler, board, RAM and GPU, lit
+// the colours they really are. What's in it (fan counts, AIO or air cooler, sticks, the text on the board and the card)
+// comes from a `build` description in the config, so it can look like anyone's PC. Framework-free: Atrium's card and rgb-control's page both mount it with
 // createViewer(). rgb-control gets a bundled copy (npm run export:pc-model).
 import './pc-case.css';
 import { createStage, type Scene, type StageOptions } from './stage.ts';
@@ -16,7 +16,27 @@ export interface ModelData {
   view?: { turn: number; tilt: number; draggable: boolean };
   controls?: boolean;
   screen?: string;                                         // the pump screen's picture
+  build?: Partial<PcBuild>;
 }
+
+/** What's in the case. Everything is optional; the defaults are a generic build with no brand text. */
+export interface PcBuild {
+  radiatorFans: number;                                    // fans on a top radiator, 0–3 (0: no radiator)
+  floorFans: number;                                       // intake fans on the floor, 0–3
+  cooler: 'aio' | 'air';                                   // aio: a pump head (shows the screen picture if there is one); air: a tower
+  ram: number;                                             // sticks, 0–4
+  ramLabel: string;                                        // text on the sticks' heat spreaders
+  board: { label: string; plate: string; accent: string }; // text on the VRM heatsink and M.2 plate; the line-art colour
+  gpu: { label: string; badge: string } | null;            // engraved name and the lit badge on its edge; null: no card
+  strip: boolean;                                          // a light strip down the front edge
+}
+export const DEFAULT_BUILD: PcBuild = {
+  radiatorFans: 3, floorFans: 3, cooler: 'aio', ram: 4, ramLabel: '',
+  board: { label: '', plate: '', accent: '#8a8f98' }, gpu: { label: '', badge: '' }, strip: true,
+};
+const buildOf = (d: ModelData): PcBuild => ({ ...DEFAULT_BUILD, ...d.build,
+  board: { ...DEFAULT_BUILD.board, ...d.build?.board }, gpu: d.build?.gpu === null ? null : { ...DEFAULT_BUILD.gpu!, ...d.build?.gpu } });
+const txt = (s: string) => s.replace(/[<>&"]/g, '');
 
 // The case interior in model units: width × height on the motherboard wall, depth out to the front glass.
 export const CW = 600, CH = 520, CD = 320;
@@ -76,6 +96,8 @@ const svg = (paths: string) => `<svg width="${CW}" height="${CH}" viewBox="0 0 $
 
 export function build(world: HTMLElement, d: ModelData) {
   world.innerHTML = '';
+  const B = buildOf(d), gold = B.board.accent;
+  const nRad = Math.max(0, Math.min(3, B.radiatorFans)), nFloor = Math.max(0, Math.min(3, B.floorFans)), nRam = Math.max(0, Math.min(4, B.ram));
   const has = (id: string) => d.parts.some(p => p.id === id);
   const cam = mk('cam'); world.appendChild(cam);
   const add = (e: HTMLElement) => (cam.appendChild(e), e);
@@ -91,34 +113,38 @@ export function build(world: HTMLElement, d: ModelData) {
   rear.insertAdjacentHTML('beforeend', [0, 1, 2, 3, 4, 5, 6].map(i => `<i class="slotcover" style="top:${262 + i * 22}px"></i>`).join(''));
   add(face(mk('mesh'), CD, CH, `translateX(${CW / 2}px) rotateY(90deg)`));
   add(face(mk('floor'), CW, CD, `translateY(${CH / 2}px) rotateX(90deg)`));
-  // three intake fans on the floor: the same pack as the radiator's (same frames, same thickness), just unlit
+  // intake fans on the floor: the same pack as the radiator's (same frames, same thickness), just unlit
   const FY = CH - 34;   // their top face
-  const floorTop = lid(mk('fanunder floorpack'), 16, FY, 468, 280, 14);
-  floorTop.innerHTML = [0, 1, 2].map(i => `<i class="fanframe" style="left:${8 + i * 154}px;top:62px"></i>`
+  if (nFloor) {
+  const FW = 6 + nFloor * 154;
+  const floorTop = lid(mk('fanunder floorpack'), 16, FY, FW, 280, 14);
+  floorTop.innerHTML = Array.from({ length: nFloor }, (_, i) => i).map(i => `<i class="fanframe" style="left:${8 + i * 154}px;top:62px"></i>`
     + `<i class="fan dark" style="left:${15 + i * 154}px;top:69px"><i class="blades" style="animation-delay:${-i * .41}s"></i><i class="hub"></i></i>`).join('');
-  const floorFront = mk('fanrow dark', [0, 1, 2].map(i => `<i class="fanedge" style="left:${6 + i * 154}px"></i>`).join(''));
-  for (const f of [floorTop, side(mk('fanpack rside'), 16, FY, 280, 34, 14), at(floorFront, 16, FY, 468, 34, 294)]) { f.dataset.of = 'floor'; add(f); }
+  const floorFront = mk('fanrow dark', Array.from({ length: nFloor }, (_, i) => `<i class="fanedge" style="left:${6 + i * 154}px"></i>`).join(''));
+  for (const f of [floorTop, side(mk('fanpack rside'), 16, FY, 280, 34, 14), at(floorFront, 16, FY, FW, 34, 294)]) { f.dataset.of = 'floor'; add(f); }
   // their daisy-chained cable off the right end, back into the cable grommets
-  add(at(mk('braids layer', svg(braid(`M484 ${FY + 18} C 520 ${FY + 10}, 540 ${FY - 40}, 520 ${FY - 120}`, 3.2, 2, 2))), 0, 0, CW, CH, 160)).dataset.of = 'floor';
+  add(at(mk('braids layer', svg(braid(`M${16 + FW} ${FY + 18} C 520 ${FY + 10}, 540 ${FY - 40}, 520 ${FY - 120}`, 3.2, 2, 2))), 0, 0, CW, CH, 160)).dataset.of = 'floor';
+  }
   add(face(mk('ceiling'), CW, CD, `translateY(${-CH / 2}px) rotateX(90deg)`));
 
-  // ── motherboard (ASUS ProArt): dark board, gold line-art heatsinks, M.2 plate
+  // ── motherboard: dark board, line-art heatsinks in the board's accent, M.2 plate
   add(at(mk('board', svg(
-    '<path d="M18 40 A 60 60 0 0 1 60 160 M12 120 A 90 90 0 0 0 40 230" stroke="#b08d57" stroke-width=".8" opacity=".55"/>'
-    + '<path d="M210 222 h86 v40 h-86 z M232 222 v40 M254 222 v40 M210 242 h86 M276 222 A 20 20 0 0 1 296 242" stroke="#b08d57" stroke-width=".7" opacity=".6"/>')
-    + '<i class="sock"></i><i class="pcie" style="top:236px"></i><i class="m2plate"><span>Power Up Your Imagination</span></i>'
+    `<path d="M18 40 A 60 60 0 0 1 60 160 M12 120 A 90 90 0 0 0 40 230" stroke="${gold}" stroke-width=".8" opacity=".55"/>`
+    + `<path d="M210 222 h86 v40 h-86 z M232 222 v40 M254 222 v40 M210 242 h86 M276 222 A 20 20 0 0 1 296 242" stroke="${gold}" stroke-width=".7" opacity=".6"/>`)
+    + `<i class="sock"></i><i class="pcie" style="top:236px"></i><i class="m2plate"><span style="color:${gold}">${txt(B.board.plate)}</span></i>`
     + [[6, 6], [246, 6], [6, 246], [246, 246], [126, 120]].map(([x, y]) => `<i class="screw" style="left:${x}px;top:${y}px"></i>`).join('')), 80, 78, 258, 252, 1));
-  // VRM heatsinks: the tall "ProArt" block on the left and the bar across the top
-  block(add, 82, 80, 44, 162, 2, 26, 'sink', mk('sink front', '<span class="proart">ProArt</span><svg width="44" height="162"><path d="M4 30 Q 40 60 8 120 M14 4 Q 44 40 30 150" stroke="#b08d57" stroke-width=".8" fill="none" opacity=".7"/></svg>'));
-  block(add, 128, 86, 150, 24, 2, 18, 'sink', mk('sink front', '<svg width="150" height="24"><path d="M10 20 Q 70 -6 140 18" stroke="#b08d57" stroke-width=".8" fill="none" opacity=".6"/></svg>'));
+  // VRM heatsinks: the tall block on the left (with the board's name) and the bar across the top
+  block(add, 82, 80, 44, 162, 2, 26, 'sink', mk('sink front', `<span class="boardname" style="color:${gold}">${txt(B.board.label)}</span><svg width="44" height="162"><path d="M4 30 Q 40 60 8 120 M14 4 Q 44 40 30 150" stroke="${gold}" stroke-width=".8" fill="none" opacity=".7"/></svg>`));
+  block(add, 128, 86, 150, 24, 2, 18, 'sink', mk('sink front', `<svg width="150" height="24"><path d="M10 20 Q 70 -6 140 18" stroke="${gold}" stroke-width=".8" fill="none" opacity=".6"/></svg>`));
   block(add, 106, 270, 86, 22, 2, 8, 'chipset');
 
-  // RAM: four G.Skill Trident Z5 sticks, lit along their whole length
+  // RAM: sticks lit along their whole length
   const ram = d.parts.find(p => p.id === 'ram');
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < nRam; i++) {
     const x = 258 + i * 11;
     add(lid(mk('ramtop'), x, 98, 7, 30, 2)).dataset.of = 'ram';
-    const sideEl = ram ? mk('ramside', '<i class="wash light lin"></i><b>G.SKILL</b>') : unread('ramside', '<i class="wash light lin"></i><b>G.SKILL</b>');
+    const label = `<i class="wash light lin"></i><b>${txt(B.ramLabel)}</b>`;
+    const sideEl = ram ? mk('ramside', label) : unread('ramside', label);
     if (ram) sideEl.dataset.tint = 'ram';
     add(side(sideEl, x, 98, 30, 140, 2)).dataset.of = 'ram';
     const front = ram ? part('ram', 'ram', '<i class="glow light lin"></i><i class="bar light lin"></i>', i) : unread('ram', '<i class="glow light lin"></i><i class="bar light lin"></i>');
@@ -130,37 +156,48 @@ export function build(world: HTMLElement, d: ModelData) {
   // CPU power up the top-left into the ceiling
   add(at(mk('braids layer', svg(braid('M96 82 C 92 50, 60 30, 58 -4', 3.6, 5, 2.4))), 0, 0, CW, CH, 22));
 
+  if (B.cooler === 'air') {
+    // an air cooler: a finned tower standing off the socket with a fan on its face
+    block(add, 150, 120, 100, 130, 2, 120, 'tower', mk('tower front', '<i class="towerfan"><i class="blades"></i><i class="hub"></i></i>'), 'pump');
+  } else {
   // pump head: a black block with the live screen between two lit strips, one down each side
   const pump = has('pump') ? part('pumpface', 'pump', '<i class="edge-l light"></i><i class="edge-r light"></i><i class="halo l light"></i><i class="halo r light"></i><div class="scr"><img alt=""></div>') : mk('pumpface', '<div class="scr"><img alt=""></div>');
   block(add, 160, 146, 76, 80, 2, 48, 'pump', pump, 'pump');
 
   // the two radiator hoses: down out of the pump, a wide sweep right, then up to the radiator at the top right
-  add(at(mk('braids layer hose' /* pump */, svg(braid('M184 226 C 186 280, 250 292, 330 268 S 470 210, 478 64', 10) + braid('M206 226 C 210 270, 268 278, 340 252 S 456 196, 492 64', 10))), 0, 0, CW, CH, 40));
+  if (nRad) add(at(mk('braids layer hose' /* pump */, svg(braid('M184 226 C 186 280, 250 292, 330 268 S 470 210, 478 64', 10) + braid('M206 226 C 210 270, 268 278, 340 252 S 456 196, 492 64', 10))), 0, 0, CW, CH, 40));
+  }
 
-  // the GPU (MSI SUPRIM): a long slab across the lower slot, SUPRIM badge and the emblem lit on its edge
-  const gpu = has('gpu');
-  add(lid(mk('gputop', '<span class="rtx">GEFORCE RTX</span><i class="emb"></i>'), 40, 312, 404, 170, 0)).dataset.of = 'gpu';
+  // the GPU: a long slab across the lower slot, its name engraved, a lit badge and emblem on its edge
+  if (B.gpu) {
+  const gpu = has('gpu'), G = B.gpu;
+  const edge = `<i class="badgeglow light lin"></i><span class="rtx">${txt(G.label)}</span>${G.badge ? `<i class="badge light lin"><b>${txt(G.badge)}</b></i>` : ''}<i class="logo light lin"></i>`;
+  add(lid(mk('gputop', `<span class="rtx">${txt(G.label)}</span><i class="emb"></i>`), 40, 312, 404, 170, 0)).dataset.of = 'gpu';
   add(side(mk('gpuend'), 40, 312, 170, 44)).dataset.of = 'gpu';
-  add(at(gpu ? part('gpufront', 'gpu', '<i class="badgeglow light lin"></i><span class="rtx">GEFORCE RTX</span><i class="badge light lin"><b>SUPRIM</b></i><i class="logo light lin"></i>')
-    : unread('gpufront', '<i class="badgeglow light lin"></i><span class="rtx">GEFORCE RTX</span><i class="badge light lin"><b>SUPRIM</b></i><i class="logo light lin"></i>'), 40, 312, 404, 44, 170)).dataset.of = 'gpu';
+  add(at(gpu ? part('gpufront', 'gpu', edge) : unread('gpufront', edge), 40, 312, 404, 44, 170)).dataset.of = 'gpu';
   // its power cable: off the top, across and down to the floor
   add(at(mk('braids layer', svg(braid('M300 312 C 330 300, 420 300, 470 340 S 500 470, 520 520', 3.4, 6, 2.2))), 0, 0, CW, CH, 150));
+  }
 
-  // radiator up top; its three fans hang beneath it, seen from below: lit rings and spinning blades
-  add(lid(mk('radiator'), 16, 0, 468, 290, 20));
-  add(at(mk('radfront'), 16, 0, 468, 30, 310));
+  // radiator up top; its fans hang beneath it, seen from below: lit rings and spinning blades
+  if (nRad) {
+  const RW = 6 + nRad * 154;
+  add(lid(mk('radiator'), 16, 0, RW, 290, 20));
+  add(at(mk('radfront'), 16, 0, RW, 30, 310));
   const fanId = top?.id ?? 'fans0';
   const fans = top ? part('fanrow', top.id) : mk('fanrow');
-  fans.innerHTML = [0, 1, 2].map(i => `<i class="fanbar" data-zone="${i}" style="left:${6 + i * 154}px"><i class="lb glow light lin"></i><i class="lb core light lin"></i><i class="lens"></i></i>`).join('');
+  const idx = Array.from({ length: nRad }, (_, i) => i);
+  fans.innerHTML = idx.map(i => `<i class="fanbar" data-zone="${i}" style="left:${6 + i * 154}px"><i class="lb glow light lin"></i><i class="lb core light lin"></i><i class="lens"></i></i>`).join('');
   const under = top ? part('fanunder', top.id) : mk('fanunder');
-  under.innerHTML = [0, 1, 2].map(i => `<i class="fanframe" style="left:${8 + i * 154}px"></i>`
+  under.innerHTML = idx.map(i => `<i class="fanframe" style="left:${8 + i * 154}px"></i>`
     + `<i class="fan" data-zone="${i}" style="left:${15 + i * 154}px"><i class="glow light spin"></i><i class="r1 light spin"></i><i class="r2 light spin"></i><i class="r3 light spin"></i>`
     + `<i class="blades" style="animation-delay:${-i * .37}s"></i><i class="hub"></i></i>`).join('');
-  for (const f of [lid(mk('fanpack top'), 16, 30, 468, 280, 30), side(mk('fanpack rside'), 16, 30, 280, 34, 30), lid(under, 16, 64, 468, 280, 30), at(fans, 16, 30, 468, 34, 310)]) { f.dataset.of = fanId; add(f); }
-  block(add, 470, 40, 36, 30, 220, 60, 'fitting');
+  for (const f of [lid(mk('fanpack top'), 16, 30, RW, 280, 30), side(mk('fanpack rside'), 16, 30, 280, 34, 30), lid(under, 16, 64, RW, 280, 30), at(fans, 16, 30, RW, 34, 310)]) { f.dataset.of = fanId; add(f); }
+  if (B.cooler === 'aio') block(add, 470, 40, 36, 30, 220, 60, 'fitting');
+  }
 
   // the case's own light strip down the front edge (white, set by the case)
-  add(at(mk('strip', '<i class="glow"></i><i class="bar"></i>'), 595, 96, 2.5, 330, CD - 4)).dataset.of = 'strip';
+  if (B.strip) add(at(mk('strip', '<i class="glow"></i><i class="bar"></i>'), 595, 96, 2.5, 330, CD - 4)).dataset.of = 'strip';
   add(face(mk('pane'), CW, CH, `translateZ(${CD / 2}px)`));
 }
 
@@ -198,7 +235,7 @@ export const topFans = (d: ModelData) => d.parts.find(p => isFanUnit(p.id) && (d
 export const pcScene: Scene<ModelData> = {
   scope: 'pcx', size: [720, 430], center: [CW / 2, CH / 2, CD / 2],
   frame: '.wall, .rear, .mesh, .floor, .ceiling, .pane',
-  shape: d => JSON.stringify([d.parts.map(p => [p.id, p.zones.length]), d.layout]),
+  shape: d => JSON.stringify([d.parts.map(p => [p.id, p.zones.length]), d.layout, d.build]),
   build, paint,
   pickOf: id => isFanUnit(id) ? 'fans' : PICKS.some(p => p.id === id) ? id : null,
   facesOf: (pick, d) => pick === 'fans' ? [topFans(d)] : [pick],

@@ -1,6 +1,5 @@
 import { ArrowUp, LayoutGrid, Moon, Sparkles, Sun } from 'lucide-react';
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -8,7 +7,7 @@ import type { ForecastCard, StatusCard, WidgetState } from '../shared/cards.ts';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import Island, { type Live } from './island.tsx';
-import { Icon, isEmpty, MiniRing, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
+import { Icon, NowPlaying, isEmpty, MiniRing, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
 
 // The assistant (and the AI SDK client) loads only when someone asks something.
 const Assistant = lazy(() => import('./assistant.tsx'));
@@ -20,7 +19,7 @@ interface Page {
   menubar?: string[];
   island?: { activities: string[]; idle: 'notch' | 'hide' };
   weather?: string;
-  sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings'; widgets: string[] }[];
+  sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
 }
 
@@ -107,15 +106,7 @@ export function App() {
   const [chat, setChat] = useState<{ text: string; n: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const wide = useWide();
-  // At the top of the page the island floats level with the top bar; scrolled, it tucks up into a notch.
   const bar = useRef<HTMLDivElement>(null);
-  const [atTop, setAtTop] = useState(true), [lift, setLift] = useState(0);
-  useEffect(() => { const on = () => setAtTop(scrollY < 24); on(); addEventListener('scroll', on, { passive: true }); return () => removeEventListener('scroll', on); }, []);
-  useLayoutEffect(() => {
-    const el = bar.current; if (!el) return;
-    const measure = () => { const r = el.getBoundingClientRect(); setLift(Math.max(0, r.top + scrollY + r.height / 2 - 20)); };
-    measure(); const ro = new ResizeObserver(measure); ro.observe(el); return () => ro.disconnect();
-  }, [page]);
   const [draft, setDraft] = useState('');
   const [query, setQuery] = useState('');
 
@@ -138,6 +129,11 @@ export function App() {
   }, []);
 
   const p = pulse(state);
+  // every item of a section's media cards, in the config's order: what's playing, then what's downloading…
+  const mediaOf = (keys: string[]) => keys.flatMap(key => {
+    const c = state[key]?.card;
+    return c?.type === 'media' ? c.items.map((m, i) => ({ m, href: c.href, k: `${key}:${i}` })) : [];
+  });
   // what's live right now, most important first (the config's order)
   const live: Live[] = (page?.island?.activities ?? []).flatMap(key => {
     const c = state[key]?.card;
@@ -174,7 +170,7 @@ export function App() {
 
       {/* top-right: the menubar rings, weather and time (and the theme switch when there's no wallpaper).
           Below lg it sits at the top of the page instead, centred and wrapping, so phones see it too. */}
-      {page?.island && <Island live={live} idle={page.island.idle} docked={wide} lift={atTop ? lift : 0} />}
+      {page?.island && <Island live={live} idle={page.island.idle} docked={wide} />}
       {/* phones: one row, condensed; wide screens: top right, level with the island */}
       <div ref={bar} className="wall-text z-20 flex items-center justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:right-5 xl:gap-4 xl:p-0">
         {!!page?.menubar?.length && (
@@ -225,10 +221,18 @@ export function App() {
           </header>
         )}
 
-        {sections.filter(sec => sec.display !== 'cards' || sec.widgets.some(k => !isEmpty(state[k]?.card))).map(sec => (
+        {sections.filter(sec => sec.display === 'media' ? mediaOf(sec.widgets).length > 0 : sec.display !== 'cards' || sec.widgets.some(k => !isEmpty(state[k]?.card))).map(sec => (
           <section key={sec.i} className="space-y-3">
-            {sec.title && sec.display === 'cards' && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title) && <h2 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h2>}
-            {sec.display === 'rings'
+            {sec.title && (sec.display === 'cards' || sec.display === 'media') && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title) && <h2 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h2>}
+            {sec.display === 'media'
+              ? (
+                <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${sec.columns ? Math.floor(1200 / sec.columns) - 40 : 420}px), 1fr))` }}>
+                  {mediaOf(sec.widgets).map(({ m, href, k }) => (
+                    <a key={k} href={href} target="_blank" rel="noreferrer" className="block min-w-0 transition-transform duration-300 hover:-translate-y-0.5"><NowPlaying m={m} compact /></a>
+                  ))}
+                </div>
+              )
+              : sec.display === 'rings'
               ? (
                 <Card className="py-5 shadow-card">
                   <div className="grid gap-y-5 px-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))' }}>

@@ -137,12 +137,19 @@ function Status({ card }: { card: StatusCard }) {
       {card.items.map(s => <ServiceRow key={s.name} s={s} />)}
     </div>
   );
+  // a long group (more than six) runs on into a second column beside itself, under the same heading
+  const blocks = groups.flatMap(g => {
+    const items = card.items.filter(i => (i.group ?? '') === g);
+    if (items.length <= 6) return [{ g, label: g, items }];
+    const half = Math.ceil(items.length / 2);
+    return [{ g, label: g, items: items.slice(0, half) }, { g: `${g}·2`, label: '', items: items.slice(half) }];
+  });
   return (
     <div className="-mx-2 gap-x-4" style={{ columnWidth: '220px' }}>
-      {groups.map(g => (
-        <div key={g} className="mb-3 break-inside-avoid">
-          {g && <div className="px-2 pt-1 pb-1.5 text-xs font-medium text-muted-foreground">{g}</div>}
-          {card.items.filter(i => (i.group ?? '') === g).map(s => <ServiceRow key={s.name} s={s} />)}
+      {blocks.map(b => (
+        <div key={b.g} className="mb-3 break-inside-avoid">
+          {groups.some(Boolean) && <div className="px-2 pt-1 pb-1.5 text-xs font-medium text-muted-foreground">{b.label || '\u00a0'}</div>}
+          {b.items.map(s => <ServiceRow key={s.name} s={s} />)}
         </div>
       ))}
     </div>
@@ -158,7 +165,7 @@ function Art({ src, className, alt = '' }: { src?: string; className?: string; a
 }
 
 /** One stream as a cinematic tile: the backdrop is the card, details float over a soft scrim. */
-function NowPlaying({ m, compact }: { m: MediaItem; compact?: boolean }) {
+export function NowPlaying({ m, compact }: { m: MediaItem; compact?: boolean }) {
   return (
     <div className={cn('@container/np relative isolate w-full overflow-hidden rounded-2xl bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/0.55)]',
       compact ? 'aspect-[16/9] min-h-[190px]' : 'aspect-[16/9] max-h-[260px] min-h-[200px] @3xl/main:aspect-[3/1]')}>

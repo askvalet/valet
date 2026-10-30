@@ -11,6 +11,17 @@ export default defineIntegration({
     href: z.string().optional(),               // where the card links to
     interval: z.number().default(10_000),
     presets: z.boolean().default(true),        // show the lighting presets when no part is selected
+    // what's in the case, so the model looks like your PC (all optional; defaults are a generic build)
+    build: z.object({
+      radiatorFans: z.number().int().min(0).max(3).optional(),
+      floorFans: z.number().int().min(0).max(3).optional(),
+      cooler: z.enum(['aio', 'air']).optional(),
+      ram: z.number().int().min(0).max(4).optional(),
+      ramLabel: z.string().optional(),
+      board: z.object({ label: z.string().optional(), plate: z.string().optional(), accent: z.string().optional() }).optional(),
+      gpu: z.object({ label: z.string().optional(), badge: z.string().optional() }).nullable().optional(),
+      strip: z.boolean().optional(),
+    }).default({}),
     controls: z.boolean().default(true),       // allow changing lights from the card (false: look, don't touch)
     view: z.object({                           // the model's starting angle; drag to look around
       turn: z.number().default(-27),           // degrees left/right
@@ -50,7 +61,7 @@ export default defineIntegration({
             return {
               type: 'showcase', title: 'Desktop', icon: 'cpu', href: cfg.href ?? cfg.url, wide: true,
               // the screen preview changes every minute; the minute in the ref busts the browser cache
-              visual: { kind: 'pc-case', data: { parts, layout: s.layout, fans, metrics, view: cfg.view, controls: cfg.controls,
+              visual: { kind: 'pc-case', data: { parts, layout: s.layout, fans, metrics, view: cfg.view, controls: cfg.controls, build: cfg.build,
                 presets: cfg.presets && cfg.controls ? s.presets : undefined, screen: ctx.image(`lcd:${Math.floor(Date.now() / 60_000)}`) } },
               items: [],
             };

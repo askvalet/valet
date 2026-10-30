@@ -25,7 +25,7 @@
 .pcx .sink.front { border-radius: 3px; background: linear-gradient(100deg, #1b1c20, #26282d 40%, #15161a); box-shadow: inset 0 0 0 1px #34363c, inset 0 1px 0 #44474e; }
 .pcx .sink.top { background: linear-gradient(0deg, #2d2f35, #1a1b1f); }
 .pcx .sink.rside { background: linear-gradient(90deg, #1d1e22, #101114); }
-.pcx .proart { left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-90deg); font: 600 13px/1 "Geist Variable", sans-serif; letter-spacing: .5px; color: #a58857; opacity: .85; white-space: nowrap; }
+.pcx .boardname { left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-90deg); font: 600 13px/1 "Geist Variable", sans-serif; letter-spacing: .5px; opacity: .85; white-space: nowrap; }
 .pcx .chipset.front { border-radius: 2px; background: linear-gradient(160deg, #1c1d22, #101114); box-shadow: inset 0 0 0 1px #2e3036; }
 .pcx .chipset.top, .pcx .chipset.rside { background: #1a1b1f; }
 
@@ -130,3 +130,11 @@
 .pcx .fanedge { position: absolute; top: 5px; width: 146px; height: 24px; border-radius: 3px; background: linear-gradient(180deg, #202227, #121316); box-shadow: inset 0 0 0 1px #2c2f35, inset 0 1px 0 #3a3d44; }
 .pcx .fanedge::before, .pcx .fanedge::after { content: ""; position: absolute; top: 7px; width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #5a5e66, #1c1e22); }
 .pcx .fanedge::before { left: 8px; } .pcx .fanedge::after { right: 8px; }
+
+/* an air cooler: a finned tower with a fan on its face */
+.pcx .tower.front { border-radius: 4px; background: repeating-linear-gradient(0deg, #2a2c31 0 2px, #16171a 2px 5px); box-shadow: inset 0 0 0 1px #3a3d44; }
+.pcx .tower.top { background: repeating-linear-gradient(90deg, #3a3d44 0 2px, #1d1e22 2px 5px); }
+.pcx .tower.rside { background: linear-gradient(90deg, #26282d, #121316); }
+.pcx .towerfan { left: 8px; top: 13px; width: 84px; height: 84px; border-radius: 12px; background: #0e0f12; box-shadow: inset 0 0 0 2px #24272d; }
+.pcx .towerfan .blades { position: absolute; inset: 8%; border-radius: 50%; background: repeating-conic-gradient(from 0deg, #2b2e34 0 24deg, #111216 24deg 45deg); animation: pcx-spin var(--fan, 1s) linear infinite; }
+.pcx .towerfan .hub { position: absolute; inset: 38%; border-radius: 50%; background: #2c2e33; }

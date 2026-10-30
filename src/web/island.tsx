@@ -55,7 +55,7 @@ function Badge({ a, size }: { a: Live; size: number }) {
   );
 }
 
-export default function Island({ live, idle, docked, lift = 0 }: { live: Live[]; idle: 'notch' | 'hide'; docked: boolean; lift?: number }) {
+export default function Island({ live, idle, docked }: { live: Live[]; idle: 'notch' | 'hide'; docked: boolean }) {
   const [open, setOpen] = useState(false);
   const small = useRef<HTMLDivElement>(null), big = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
@@ -77,15 +77,14 @@ export default function Island({ live, idle, docked, lift = 0 }: { live: Live[];
   const layer = 'absolute top-0 left-1/2 w-max -translate-x-1/2 transition-[opacity,filter,scale] ease-out';
 
   return (
-    <div className={cn('z-40 flex justify-center', docked ? 'island-dock fixed top-0 left-1/2' : 'relative pt-3')}
-      style={docked ? { transform: `translate(-50%, ${lift}px)` } : undefined}
+    <div className={cn('z-40 flex justify-center', docked ? 'fixed top-0 left-1/2 -translate-x-1/2' : 'sticky top-2 pt-1')}
       onPointerEnter={e => { if (e.pointerType === 'mouse') { clearTimeout(timer.current); timer.current = setTimeout(() => setOpen(true), 90); } }}
       onPointerLeave={e => { if (e.pointerType === 'mouse') { clearTimeout(timer.current); timer.current = setTimeout(() => setOpen(false), 220); } }}>
       <div className="flex items-start gap-2">
         <div role={live.length ? 'button' : undefined} tabIndex={live.length ? 0 : -1} aria-expanded={expanded} aria-label={live.length ? 'Live activities' : undefined}
           onClick={e => { if ((e.nativeEvent as PointerEvent).pointerType !== 'mouse') setOpen(o => !o); }}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o); } if (e.key === 'Escape') setOpen(false); }}
-          className={cn('island relative overflow-hidden bg-black text-white outline-none', docked && !lift ? 'island-docked' : 'rounded-[22px]', expanded && 'island-open', live.length && 'cursor-pointer')}
+          className={cn('island relative overflow-hidden bg-black text-white outline-none', docked ? 'island-docked' : 'rounded-[22px]', expanded && 'island-open', live.length && 'cursor-pointer')}
           style={size ? { width: size.w, height: size.h } : undefined}>
           {/* compact: the most important activity */}
           <div ref={small} aria-hidden={expanded}
@@ -125,7 +124,7 @@ export default function Island({ live, idle, docked, lift = 0 }: { live: Live[];
         {rest.slice(0, 2).map(a => (
           <div key={a.key} title={`${a.title}${a.trailing ? ` · ${a.trailing}` : ''}`}
             className={cn('island-bubble grid shrink-0 place-items-center rounded-full bg-black text-white transition-[opacity,scale] duration-300',
-              docked && !lift ? 'mt-1 size-[36px]' : docked ? 'size-[40px]' : 'size-[42px]', expanded && 'pointer-events-none scale-50 opacity-0')}>
+              docked ? 'mt-1 size-[36px]' : 'size-[42px]', expanded && 'pointer-events-none scale-50 opacity-0')}>
             <Badge a={a} size={docked ? 34 : 36} />
           </div>
         ))}

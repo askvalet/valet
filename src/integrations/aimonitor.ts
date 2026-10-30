@@ -19,6 +19,29 @@ export default defineIntegration({
     const heat = (t: number) => t >= 85 ? 'bad' : t >= 75 ? 'warn' : 'neutral';
 
     const widgets = {
+      // the day at a glance: cost, requests, tokens and power, each with its last 24 hours drawn behind it
+      usage: {
+        title: 'Local AI usage', interval: 60_000,
+        async fetch() {
+          const [h, c, j] = await Promise.all([ctx.http<any>(`${base}/api/history`), ctx.http<any>(`${base}/api/cost`), live()]);
+          const buckets = (h.gpu as number[][]).map(r => r[0]);
+          const per = (i: 2 | 3) => buckets.map(ts => (h.requests as any[]).filter(r => r[0] === ts).reduce((s, r) => s + r[i], 0));
+          const today = c.days.at(-1) ?? { cost: 0, tokens: 0 };
+          const tok = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n);
+          return {
+            type: 'stats', title: 'Local AI usage', icon: 'sparkle', href: cfg.href, items: [],
+            summaries: [
+              { label: 'Cost today', icon: 'sparkle', value: `${Math.round(today.cost * 100)}¢`, sub: `${Math.round(c.month * 100)}¢ this month`,
+                detail: `${today.kwh?.toFixed(2) ?? '–'} kWh`, trend: c.days.map((d: any) => d.cost) },
+              { label: 'Requests', icon: 'pulse', value: j.today.requests.toLocaleString(), sub: 'today',
+                detail: `${Math.round(h.totals.avg_tok_s ?? 0)} tok/s avg`, trend: per(2) },
+              { label: 'Tokens', icon: 'sparkle', value: tok(today.tokens), sub: 'generated today', detail: `${tok(h.totals.prompt_tokens)} read`, trend: per(3) },
+              { label: 'Power', icon: 'gpu', value: `${Math.round(j.gpu.power)} W`, sub: j.model.name, detail: `${Math.round(j.gpu.temp)}°C`,
+                trend: (h.gpu as number[][]).map(r => r[2]), tone: (j.running?.length ?? 0) > 0 ? 'accent' : 'neutral' },
+            ],
+          };
+        },
+      },
       gpu: {
         title: 'Local AI', interval: 5000,
         async fetch() {
