@@ -14,6 +14,7 @@ import { UPLOAD_DIR } from './core.ts';
 import { dailyBrief, whyPrompt } from './insight.ts';
 import { loadPins, newPin, pinnedCard, savePins } from './pins.ts';
 import { loadPlugins } from './plugins.ts';
+import { chatAgent } from './model.ts';
 import { buildSite, type Site } from './site.ts';
 import { registry } from '../integrations/index.ts';
 
@@ -125,6 +126,7 @@ app.get('/api/favicon/:host', async c => {
 
 app.get('/api/page', c => {
   const { config, instances, hub, placed } = site;
+  const agent = config.assistant && chatAgent(config.assistant, site.acting);
   const tz = c.req.query('tz');
   if (!zoneKnown && tz && validZone(tz)) { process.env.TZ = tz; zoneKnown = true; console.log(`time zone: ${tz} (from the browser; set timezone in config.yaml to fix it)`); }
   return c.json({
@@ -132,8 +134,7 @@ app.get('/api/page', c => {
     welcome: config.welcome ? { path: CONFIG, saved } : undefined,
     // ?v= the file's mtime: replacing the wallpaper changes the URL, so browsers never show a stale cached one
     appearance: { ...config.appearance, wallpaper: site.wallpaperFile ? `/api/wallpaper?v=${site.wallpaperVersion}` : config.appearance.wallpaper },
-    assistant: config.assistant ? { name: config.assistant.name, model: config.assistant.model, suggestions: config.assistant.suggestions,
-      agents: site.acting ? config.assistant.agents.map(a => ({ id: a.id, name: a.name, model: a.model })) : [],
+    assistant: config.assistant ? { ...(agent ? { name: agent.name, model: agent.model, external: true } : { name: config.assistant.name, model: config.assistant.model }), suggestions: config.assistant.suggestions,
       // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>")
       tools: Object.fromEntries([...instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {})
         .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access }]))) } : null,

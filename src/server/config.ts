@@ -23,11 +23,9 @@ export const AssistantConfig = z.object({
   access: z.record(z.string(), Access).default({ default: 'read' }),
   maxSteps: z.number().int().min(1).max(20).default(6),
   // questions offered on an empty chat and in ⌘K
-  // other agents you can talk to from the chat (Hermes, say): anything with an OpenAI-compatible API. They run their own
-  // tools, so Atrium's access levels and approvals don't apply to them, and a read-only page refuses them.
-  agents: z.array(z.object({
-    id: z.string().regex(/^[a-z0-9-]+$/), name: z.string(), baseURL: z.string().url(), apiKey: z.string().optional(), model: z.string(),
-  }).strict()).default([]),
+  // hand the chat to another agent (Hermes, say): anything with an OpenAI-compatible API. It runs its own tools, so
+  // Atrium's access levels and approvals don't apply to it, and a read-only page stays on Atrium's own assistant.
+  agent: z.object({ name: z.string(), baseURL: z.string().url(), apiKey: z.string().optional(), model: z.string() }).strict().optional(),
   // what it does on its own: a morning brief, and spotting a shared cause when several things break at once. These get
   // no tools, so they can only say something. perDay caps the model calls they make.
   background: z.object({ watch: z.boolean().default(true), brief: z.boolean().default(true), perDay: z.number().int().min(1).max(500).default(24) }).default({ watch: true, brief: true, perDay: 24 }),

@@ -10,7 +10,7 @@ import { z } from 'zod';
 import type { Config } from './config.ts';
 import type { Instance, Integration } from './core.ts';
 import { mcpTools } from './mcp.ts';
-import { makeAgentModel, makeModel } from './model.ts';
+import { chatAgent, makeAgentModel, makeModel } from './model.ts';
 
 const rank = { none: 0, read: 1, write: 2, control: 3 } as const;
 
@@ -111,12 +111,9 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   ].join('\n');
 
   return async (c: HonoContext) => {
-    const { messages: all_, agent } = await c.req.json<{ messages: UIMessage[]; agent?: string }>();
-    if (agent) {
-      const other = a.agents.find(x => x.id === agent);
-      if (!other) return c.json({ error: `no agent ${agent}` }, 404);
-      // it can act with tools of its own, so a page that may only look can't reach it
-      if (!safety.acting) return c.json({ error: 'Atrium is read-only: other agents are off' }, 403);
+    const { messages: all_ } = await c.req.json<{ messages: UIMessage[] }>();
+    const other = chatAgent(a, safety.acting);
+    if (other) {
       const plain = all_.slice(-24).filter(m => m.role !== 'system')
         .map(m => ({ ...m, parts: m.parts.flatMap((p: any) => p.type === 'text' && splitThink(p.text).said ? [{ type: 'text' as const, text: splitThink(p.text).said }] : []) }))
         .filter(m => m.parts.length);

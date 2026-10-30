@@ -12,13 +12,13 @@ import { type Explain, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, s
 
 // The assistant (and the AI SDK client) loads only when someone asks something.
 const Assistant = lazy(() => import('./assistant.tsx'));
-import type { Agent, ToolInfo } from './assistant.tsx';
+import type { ToolInfo } from './assistant.tsx';
 const Palette = lazy(() => import('./palette.tsx'));
 
 interface Page {
   title: string; greeting?: string; location?: string; canAct?: boolean;
   appearance: { wallpaper?: string; dim: number; blur: number };
-  assistant: { name: string; model: string; suggestions: string[]; tools: Record<string, ToolInfo>; agents: Agent[] } | null;
+  assistant: { name: string; model: string; suggestions: string[]; tools: Record<string, ToolInfo>; external?: boolean } | null;
   search?: string;
   insight?: string;
   welcome?: { path: string; saved: boolean };
@@ -425,7 +425,7 @@ function Home({ account }: { account: boolean }) {
         {!phone && chatTab && view === chatTab && page?.assistant && (
           <div data-slot="card" className="h-[min(78vh,900px)] min-h-[520px] overflow-hidden rounded-[calc(var(--radius)*1.4)] border bg-card shadow-card">
             <Suspense fallback={null}>
-              <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} agents={page.assistant.agents} canPin={page.canAct !== false} onAsk={ask} />
+              <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} canPin={page.canAct !== false} onAsk={ask} />
             </Suspense>
           </div>
         )}
@@ -472,7 +472,7 @@ function Home({ account }: { account: boolean }) {
             <DialogDescription className="sr-only">Ask about your homelab</DialogDescription>
             {chatOpen && (
               <Suspense fallback={null}>
-                <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} agents={page.assistant.agents} canPin={page.canAct !== false} onAsk={ask} onClose={phone ? () => setChatOpen(false) : undefined} />
+                <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} canPin={page.canAct !== false} onAsk={ask} onClose={phone ? () => setChatOpen(false) : undefined} />
               </Suspense>
             )}
           </DialogContent>

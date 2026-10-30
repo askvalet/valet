@@ -176,13 +176,12 @@ test('thinking: reasoning left in a reply is split from the answer', async () =>
   assert.deepEqual(splitThink('one</think>two</think>three'), { thought: 'onetwo', said: 'three', thinking: false });
 });
 
-test('other agents: chosen by id, and a read-only page refuses them', async () => {
-  const { chatRoute } = await import('../src/server/chat.ts');
-  const config = Config.parse({ assistant: { model: 'm', agents: [{ id: 'hermes', name: 'Hermes', baseURL: 'http://x/v1', model: 'h' }] } });
-  const route = (acting: boolean) => { const app = new Hono(); app.post('/chat', chatRoute(config, new Map(), new Map(), { acting, redact: s => s })); return app; };
-  const send = (app: Hono, agent: string) => app.request('/chat', { method: 'POST', body: JSON.stringify({ agent, messages: [] }) });
-  assert.equal((await send(route(false), 'hermes')).status, 403);
-  assert.equal((await send(route(true), 'nobody')).status, 404);
+test('another agent: the config hands it the chat, but never on a read-only page', async () => {
+  const { chatAgent } = await import('../src/server/model.ts');
+  const a = Config.parse({ assistant: { model: 'm', agent: { name: 'Hermes', baseURL: 'http://x/v1', model: 'h' } } }).assistant!;
+  assert.equal(chatAgent(a, true)?.name, 'Hermes');
+  assert.equal(chatAgent(a, false), undefined);
+  assert.equal(chatAgent(Config.parse({ assistant: { model: 'm' } }).assistant!, true), undefined);
 });
 
 test('agent streams: named events are dropped, even split across chunks; ordinary frames pass', async () => {
