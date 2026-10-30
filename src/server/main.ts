@@ -10,6 +10,7 @@ import { loadConfig } from './config.ts';
 import { makeContext, UPLOAD_DIR, type Instance, type Integration } from './core.ts';
 import { Hub } from './hub.ts';
 import { noticesFor, type Notice } from './notices.ts';
+import { History } from './history.ts';
 import { registry } from '../integrations/index.ts';
 
 const CONFIG = process.env.ATRIUM_CONFIG ?? 'config.yaml';
@@ -43,6 +44,10 @@ for (const key of placed) {
   const [inst, w] = key.split('.');
   if (!instances.get(inst)?.widgets[w]) console.error(`config: layout: no widget "${key}"`);
 }
+const history = config.history ? new History(config.history.hours, config.history.every * 60_000) : undefined;
+await history?.load();
+process.once('SIGTERM', async () => { await history?.save(); process.exit(0); });
+
 // notices go to every open page; the last few are replayed to a page that opens within a minute of them
 const noticeListeners = new Set<(n: Notice) => void>(), recent: Notice[] = [];
 const hub = new Hub(new Map([...instances].map(([id, i]) => [id, {
@@ -52,7 +57,8 @@ const hub = new Hub(new Map([...instances].map(([id, i]) => [id, {
     recent.push(n); if (recent.length > 5) recent.shift();
     for (const l of noticeListeners) l(n);
   }
-});
+}, history);
+if (history && config.history && config.history.background) hub.sampleInBackground(config.history.every * 60_000);
 
 const app = new Hono();
 

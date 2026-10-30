@@ -72,6 +72,13 @@ export const Auth = z.object({
 
 export const Config = z.object({
   auth: Auth,
+  // remember each widget's headline numbers so tiles can show a graph even for services that only report "now".
+  // `background` keeps sampling while nobody has the page open (one quiet request per widget per `every` minutes).
+  history: z.union([z.literal(false), z.object({
+    hours: z.number().min(1).max(168).default(24),
+    every: z.number().min(1).max(60).default(5),            // minutes between samples
+    background: z.boolean().default(true),
+  })]).default({ hours: 24, every: 5, background: true }),
   title: z.string().default('Home'),
   greeting: z.string().optional(),         // name to greet, e.g. "Ibrahim"
   location: z.string().optional(),

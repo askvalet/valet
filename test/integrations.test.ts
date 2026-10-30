@@ -139,3 +139,14 @@ test('notices: only configured changes, never on first load, quiet services stay
   assert.deepEqual(down.map(n => n.text), ['Plex is down']);                   // Clock is quiet
   assert.deepEqual(noticesFor('x', dl(true), dl(false), rules), []);           // no rule for this widget
 });
+
+test('history: reads numbers out of headlines, and gives a graph to headlines that have none', async () => {
+  const { History, numberOf } = await import('../src/server/history.ts');
+  assert.deepEqual(['13%', '62 W', '1.38M', '4,452', 7, 'Healthy', 'Fajr'].map(numberOf), [13, 62, 1.38e6, 4452, 7, null, null]);
+  const h = new History(24, 0);
+  let card: any;
+  for (const v of ['10%', '12%', '15%']) card = h.apply('w', { type: 'text', text: '', summary: { label: 'x', value: v } } as any);
+  assert.deepEqual(card.summary.trend, [10, 12, 15]);
+  const own = h.apply('w', { type: 'text', text: '', summary: { label: 'x', value: '16%', trend: [1, 2] } } as any) as any;
+  assert.deepEqual(own.summary.trend, [1, 2]);   // a service's own graph wins
+});

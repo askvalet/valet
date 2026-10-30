@@ -1,6 +1,7 @@
 // Live widget data. One poller per widget, shared by every open tab, and only running while at least one tab is
 // connected: an idle homepage makes zero requests to your services.
 import type { Instance } from './core.ts';
+import type { History } from './history.ts';
 import type { WidgetState } from '../shared/cards.ts';
 
 type Listener = (s: WidgetState) => void;
@@ -14,7 +15,15 @@ export class Hub {
 
   private instances: Map<string, Instance>;
   private onChange?: Change;
-  constructor(instances: Map<string, Instance>, onChange?: Change) { this.instances = instances; this.onChange = onChange; }
+  private history?: History;
+  constructor(instances: Map<string, Instance>, onChange?: Change, history?: History) { this.instances = instances; this.onChange = onChange; this.history = history; }
+
+  /** Sample every widget every `ms` even with nobody watching, so history has no gaps. */
+  sampleInBackground(ms: number) {
+    for (const [inst, i] of this.instances) for (const name of Object.keys(i.widgets)) {
+      setInterval(() => { if (!this.listeners.size) this.refresh(`${inst}.${name}`); }, ms).unref();
+    }
+  }
 
   widget(key: string) {
     const [inst, name] = key.split('.');
@@ -35,7 +44,7 @@ export class Hub {
     if (!w || this.inflight.has(key)) return;
     this.inflight.add(key);
     let next: WidgetState;
-    try { next = { key, card: await w.fetch(), at: Date.now() }; }
+    try { const card = await w.fetch(); next = { key, card: this.history ? this.history.apply(key, card) : card, at: Date.now() }; }
     catch (e) { next = { key, error: (e as Error).message, at: Date.now(), card: this.state.get(key)?.card }; }
     finally { this.inflight.delete(key); }
     const prev = this.state.get(key);
