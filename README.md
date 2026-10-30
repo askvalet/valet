@@ -46,10 +46,24 @@ npm start
 |---|---|
 | `glances` | CPU, memory, GPU, temperatures, uptime, disks |
 | `http` | Up/down and response time for any list of URLs |
-| `qbittorrent` | Active downloads, speeds, pause/resume |
+| `qbittorrent` | Active downloads with posters (matched through Sonarr/Radarr), speeds, pause/resume |
 | `tautulli` | What's playing on Plex (with posters), recently added, watch history |
-| `homeassistant` | Cards of entities as live controls (lights, switches, scenes, selects, vacuums, sensors), plus search and control tools for the assistant |
+| `homeassistant` | Cards of entities as live controls; a 3D floor plan from a robot vacuum's map with lights per room; schedules (e.g. prayer times) from timestamp sensors; search and control tools |
 | `aimonitor` | GPU load, power, VRAM and model status for a local-AI monitor |
+| `arr` | Sonarr/Radarr: episodes and movies coming up, as posters with the day |
+| `seerr` | Search and request movies and shows from chat; your requests as posters |
+| `immich` | Photo search by what's in a picture, by person, place or date; "On this day" flashbacks |
+| `paperless` | Ask about your documents; paste or attach to file one; recent documents |
+| `karakeep` | Send a link to save it; search what you've saved |
+| `pihole` | Share of traffic blocked, a day of queries, pause/resume |
+| `uptimekuma` | What's up or down, 30-day uptime, certificates about to expire |
+| `scrutiny` | Drive health, temperatures, age |
+| `romm` | Recently added games with box art |
+| `indexers` | Prowlarr indexer health, Bazarr missing subtitles |
+| `ollama` | Installed and loaded local models |
+| `rgb-control` | A live 3D model of your PC with its lighting and temperatures |
+| `weather` | Now, today's range and the next hours (Open-Meteo, no key) |
+| `quran` | A verse of the day from a self-hosted Quran site |
 
 Writing one is covered in [docs/integrations.md](docs/integrations.md).
 
