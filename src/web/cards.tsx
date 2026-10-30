@@ -7,7 +7,6 @@ import {
 import { createContext, Fragment, lazy, Suspense, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
@@ -28,7 +27,7 @@ export function Icon({ name, className }: { name?: string; className?: string })
 }
 
 const toneText: Record<Tone, string> = { neutral: '', good: 'text-good', warn: 'text-warn', bad: 'text-bad', accent: 'text-primary' };
-const toneBar: Record<Tone, string> = { neutral: '', good: '[&>div]:bg-good', warn: '[&>div]:bg-warn', bad: '[&>div]:bg-bad', accent: '' };
+const toneBar: Record<Tone, string> = { neutral: '', good: 'bg-good', warn: 'bg-warn', bad: 'bg-bad', accent: '' };
 const toneVar = (t?: Tone) => (t && t !== 'neutral' && t !== 'accent' ? `var(--${t})` : 'var(--primary)');
 
 // Cards in chat are dense: same content, about half the height (smaller numbers, tighter rows, a smaller header)
@@ -49,8 +48,11 @@ function Spark({ points, tone }: { points: number[]; tone?: Tone }) {
   );
 }
 
-const Bar = ({ pct, tone }: { pct: number; tone?: Tone }) =>
-  <Progress value={Math.max(1.5, Math.min(100, pct * 100))} className={cn('h-1', toneBar[tone ?? 'neutral'])} />;
+const Bar = ({ pct, tone }: { pct: number; tone?: Tone }) => (
+  <div role="progressbar" aria-valuenow={Math.round(pct * 100)} aria-valuemin={0} aria-valuemax={100} className="h-1 overflow-hidden rounded-full bg-primary/20">
+    <div className={cn('h-full rounded-full bg-primary transition-[width] duration-700 ease-out', toneBar[tone ?? 'neutral'])} style={{ width: `${Math.max(1.5, Math.min(100, pct * 100))}%` }} />
+  </div>
+);
 
 /** One point per card: the first item is the hero (large number, its label, one sparkline); the rest become a quiet
  *  footer of at most three small facts, divided by hairlines. */
