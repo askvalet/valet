@@ -82,9 +82,10 @@ app.get('/api/page', c => c.json({
   appearance: { ...config.appearance, wallpaper: wallpaperFile ? `/api/wallpaper?v=${wallpaperVersion}` : wallpaper },
   assistant: config.assistant ? { name: config.assistant.name, model: config.assistant.model } : null,
   menubar: config.menubar.filter(k => hub.widget(k)),
+  nav: config.nav,
   island: config.island && { ...config.island, activities: config.island.activities.filter(k => hub.widget(k)) },
   weather: config.weather && hub.widget(config.weather) ? config.weather : undefined,
-  sections: config.layout.map(s => ({ title: s.title, columns: s.columns, display: s.display, widgets: s.widgets.filter(k => hub.widget(k)) })),
+  sections: config.layout.map(s => ({ title: s.title, columns: s.columns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, widgets: s.widgets.filter(k => hub.widget(k)) })),
   widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
 }));
 

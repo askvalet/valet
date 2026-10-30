@@ -71,6 +71,14 @@ menubar: [system.tiles]
 # A ring beside the clock: where the temperature sits between today's low and high.
 weather: weather.now
 
+nav: { side: left }               # where the tab buttons sit: left, right, top or bottom
+# Each layout section is a tab in the rail. Per section:
+#   display: cards | tiles | rings | media    how its widgets are drawn
+#   columns: n          cards per row (in a sidebar: the list's columns)
+#   place: left|right   a sidebar beside the rest of the page
+#   variant: minimal    tighter rows, just the essentials (services: icon, name, dot)
+#   header: false       its cards drop their title bar
+#   overview: false     only on its own tab, not the overview
 layout:
   - title: Now
     widgets: [system.overview, downloads.active]

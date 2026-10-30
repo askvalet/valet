@@ -26,6 +26,12 @@ const Section = z.object({
   // tiles: headline tiles with live graphs · rings: the same as ring gauges coloured by health · cards: full cards
   // media: every item of the section's media cards (streams, downloads…) as artwork tiles in one grid
   display: z.enum(['cards', 'tiles', 'rings', 'media']).default('cards'),
+  // left / right: a sidebar beside the rest of the page (on wide screens), e.g. services as a tall list.
+  // `columns` then sets how many columns its list uses.
+  place: z.enum(['main', 'left', 'right']).default('main'),
+  overview: z.boolean().default(true),    // false: only on its own tab in the rail, not on the overview
+  variant: z.enum(['full', 'minimal']).default('full'),
+  header: z.boolean().default(true),      // false: the cards in this section drop their title bar   // minimal: smaller rows, just the essentials (e.g. services: icon, name, dot)
 }).strict();
 
 // An MCP server whose tools the assistant may use. `access: read` offers only the tools the server marks read-only
@@ -56,9 +62,10 @@ export const Config = z.object({
   mcp: z.record(z.string(), McpServer).default({}),
   layout: z.array(Section).default([]),
   menubar: z.array(z.string()).default([]),
+  nav: z.object({ side: z.enum(['left', 'right', 'top', 'bottom']).default('left') }).default({ side: 'left' }),   // where the tab buttons sit (wide screens; phones always bottom)
   // the island: a black notch at the top that comes alive with whatever's happening (plays, downloads, a robot
   // cleaning), in this order of importance. idle: keep a small empty notch, or hide it when nothing's live.
-  island: z.object({ activities: z.array(z.string()).default([]), idle: z.enum(['notch', 'hide']).default('notch') }).optional(),
+  island: z.object({ activities: z.array(z.string()).default([]), idle: z.enum(['hide', 'notch']).default('hide') }).optional(),
   weather: z.string().optional(),               // a widget key (e.g. weather.now) shown as a ring beside the clock   // widget keys whose headline numbers sit as small rings in the top bar
 }).strict();
 export type Config = z.infer<typeof Config>;

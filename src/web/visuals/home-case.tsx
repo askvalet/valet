@@ -100,7 +100,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
         {room && (
           <div key={room.id} className="space-y-2.5 animate-in fade-in slide-in-from-bottom-1 duration-300">
             <div className={row}>
-              <button onClick={() => choose(null)} aria-label="Back" className="-ml-1 grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"><ChevronLeft className="size-4" /></button>
+              <button onClick={() => choose(null)} aria-label="Back" className="grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"><ChevronLeft className="size-4" /></button>
               <span className="shrink-0 text-[15px] font-semibold">{room.name}</span>
               {room.lights.length > 0 && <Switch className="shrink-0" checked={room.lights.some(l => l.on)} onCheckedChange={on => set(room.lights.filter(l => l.available), { on })} aria-label="Whole room" />}
               {room.lights.some(l => l.on && l.dims) && (<>
@@ -135,7 +135,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
         {sel === 'robot' && r && (
           <div key="robot" className="space-y-2.5 animate-in fade-in slide-in-from-bottom-1 duration-300">
             <div className={row}>
-              <button onClick={() => choose(null)} aria-label="Back" className="-ml-1 grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"><ChevronLeft className="size-4" /></button>
+              <button onClick={() => choose(null)} aria-label="Back" className="grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"><ChevronLeft className="size-4" /></button>
               <span className="shrink-0 text-[15px] font-semibold">Vacuum</span>
               <span className={cn('shrink-0 text-xs', r.error ? 'text-bad' : 'text-muted-foreground')}>{r.error ?? pretty(r.status ?? r.state)}</span>
               <span className="ml-auto flex shrink-0 gap-1.5">

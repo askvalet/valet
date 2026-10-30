@@ -70,7 +70,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
     run('light', { part: light, state: st }).catch(() => setDraft(d => { const { [light]: _, ...rest } = d; return rest; }));
   };
 
-  const row = 'no-scrollbar flex h-9 items-center gap-2 overflow-x-auto';
+  const row = 'no-scrollbar flex h-9 items-center gap-1.5 overflow-x-auto px-0.5';
   return (
     <div className="space-y-3">
       <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-xl" aria-label="3D model of the PC. Select a part to see it and change its lighting." role="img" />
@@ -95,7 +95,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
         ) : (
           <div key={pick.id} className="space-y-2.5 animate-in fade-in slide-in-from-bottom-1 duration-300">
             <div className={row}>
-              <button onClick={() => choose(null)} aria-label="Back" className="-ml-1 grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"><ChevronLeft className="size-4" /></button>
+              <button onClick={() => choose(null)} aria-label="Back" className="grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"><ChevronLeft className="size-4" /></button>
               <span className="shrink-0 text-[15px] font-semibold">{pick.name}</span>
               <span className="ml-auto flex shrink-0 items-center gap-4 pl-3">{metrics.map(m => <MiniGauge key={m.label} m={m} />)}</span>
             </div>
@@ -106,9 +106,9 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
                 {SWATCHES.map(c => {
                   const on = lp.zones[0]?.mode !== 'Off' && hex(lp.zones[0]?.color) === c;
                   return <button key={c} aria-label={NAMES[c]} title={NAMES[c]} onClick={() => set({ color: rgbOf(c), mode: ['Off', 'Rainbow', 'RainbowMorph', 'ColorCycle'].includes(lp.zones[0]?.mode ?? '') ? 'Static' : lp.zones[0]?.mode })}
-                    className={cn('size-5 shrink-0 rounded-full transition-transform hover:scale-110', on && 'ring-2 ring-white ring-offset-1 ring-offset-transparent')} style={{ background: c, boxShadow: 'inset 0 0 0 1px rgb(0 0 0 / .2)' }} />;
+                    className={cn('size-[18px] shrink-0 rounded-full transition-transform hover:scale-110', on && 'ring-2 ring-white ring-offset-1 ring-offset-transparent')} style={{ background: c, boxShadow: 'inset 0 0 0 1px rgb(0 0 0 / .2)' }} />;
                 })}
-                <label className="relative size-5 shrink-0 cursor-pointer overflow-hidden rounded-full" title="Any colour" style={{ background: 'conic-gradient(#ff3b30, #ffd60a, #34c759, #00e0c6, #0a84ff, #bf5af2, #ff2d92, #ff3b30)' }}>
+                <label className="relative size-[18px] shrink-0 cursor-pointer overflow-hidden rounded-full" title="Any colour" style={{ background: 'conic-gradient(#ff3b30, #ffd60a, #34c759, #00e0c6, #0a84ff, #bf5af2, #ff2d92, #ff3b30)' }}>
                   <input type="color" className="absolute inset-0 cursor-pointer opacity-0" aria-label="Any colour" value={hex(lp.zones[0]?.color)} onChange={e => set({ color: rgbOf(e.target.value), mode: 'Static' })} />
                 </label>
                 {lp.modes && lp.modes.length > 1 && (
@@ -117,9 +117,8 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
                     <SelectContent>{lp.modes.map(m => <SelectItem key={m} value={m}>{pretty(m)}</SelectItem>)}</SelectContent>
                   </Select>
                 )}
-                <Slider className="min-w-20 flex-1" aria-label="Brightness" value={[lp.zones[0]?.brightness ?? 100]} min={5} max={100} step={5}
+                <Slider className="mr-2 min-w-16 flex-1" aria-label={`Brightness ${lp.zones[0]?.brightness ?? 100}%`} value={[lp.zones[0]?.brightness ?? 100]} min={5} max={100} step={5}
                   onValueChange={([b]) => setDraft(d => ({ ...d, [light!]: { ...(lp.zones[0] ?? {}), brightness: b } }))} onValueCommit={([b]) => set({ brightness: b })} />
-                <span className="w-9 shrink-0 text-right text-xs tabular text-muted-foreground">{lp.zones[0]?.brightness ?? 100}%</span>
               </>)}
             </div>
           </div>

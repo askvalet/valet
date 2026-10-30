@@ -32,7 +32,7 @@ function Bars({ a }: { a: Live }) {
 }
 function Art({ a, size }: { a: Live; size: number }) {
   return a.image
-    ? <img src={a.image} alt="" className="shrink-0 rounded-[7px] object-cover" style={{ width: size, height: size }} />
+    ? <img src={a.image} alt="" className="shrink-0 object-cover" style={{ width: size, height: size, borderRadius: size * .28 }} />
     : <span className="grid shrink-0 place-items-center rounded-full" style={{ width: size, height: size, background: `color-mix(in srgb, ${tint(a)} 22%, transparent)`, color: tint(a) }}>
         <Icon name={a.icon} className="size-[55%]" />
       </span>;
@@ -89,11 +89,11 @@ export default function Island({ live, idle, docked }: { live: Live[]; idle: 'no
           {/* compact: the most important activity */}
           <div ref={small} aria-hidden={expanded}
             className={cn(layer, 'duration-200', expanded ? 'pointer-events-none scale-95 opacity-0 blur-[3px]' : 'opacity-100 delay-100 duration-300')}>
-            <div className={cn('flex items-center gap-2.5 pr-3.5 pl-2', docked ? 'h-[40px]' : 'h-[42px]', !live.length && 'h-[30px] w-[170px] p-0')}>
+            <div className={cn('flex h-[44px] items-center gap-3 pr-4 pl-2', !live.length && 'h-[30px] w-[170px] p-0')}>
               {main && (<>
-                <Art a={main} size={26} />
-                <span className="max-w-[220px] truncate text-[13.5px] font-medium">{main.title}</span>
-                <span className="ml-1">{main.icon === 'play' ? <Bars a={main} /> : main.pct != null ? <Progress a={main} /> : main.trailing && <span className="text-[11.5px] tabular text-white/60">{main.trailing}</span>}</span>
+                <Art a={main} size={28} />
+                <span className="max-w-[220px] truncate text-[14px] font-medium tracking-[-.01em]">{main.title}</span>
+                <span className="ml-2 flex items-center">{main.icon === 'play' ? <Bars a={main} /> : main.pct != null ? <Progress a={main} /> : main.trailing && <span className="text-[11.5px] tabular text-white/60">{main.trailing}</span>}</span>
               </>)}
             </div>
           </div>

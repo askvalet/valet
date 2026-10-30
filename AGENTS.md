@@ -41,6 +41,15 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - **Server stays small.** Hono + node-server, bundled with esbuild into `dist/server.js`. No database: state lives in
   the services Atrium talks to.
 
+- **Personal things live in config, never in code.** Hardware builds (`build:`), rooms and lights, services, layout,
+  angles: the repo ships generic defaults and a documented `config.example.yaml`. Before committing, grep for anything
+  that names the author's hardware, hosts or people.
+- **Layout is data.** Sections choose how they draw (`display`), where they sit (`place`), how dense they are
+  (`variant`, `header`, `columns`) and whether they're on the overview (`overview`); the tab buttons' side is `nav.side`.
+  A new arrangement is a new option with a default, never a fork of the page.
+- **Live things announce themselves.** A card sets `activity` only while something's happening; the island shows the
+  live ones in the config's order and disappears when nothing is live.
+
 ### Design
 - **Apple-grade restraint.** System tokens (`styles.css`): one accent (system blue), green/orange/red only for
   status, monochrome icons. Geist for text; tabular numerals for numbers.
@@ -51,6 +60,7 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   the shape; labels stay quiet.
 - **Motion is short and purposeful.** ~300 ms fades and scales for popovers; ~900 ms ease-out for a camera flying to
   a part. Respect `prefers-reduced-motion`.
+- **Things don't jump.** Controls that change with a selection live in fixed-height rows; panels never resize their card.
 - **Pointer on everything clickable** (global rule in `styles.css`); hover gives a slight lift, never a jump.
 - **3D models are faithful to the real thing.** Model from photos of the user's hardware, keep proportions honest, and
   light parts in the colours they really are. If a state can't be read, draw what the hardware ships as and say so.
@@ -61,7 +71,7 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - Verify UI changes by looking at them: build, run, and screenshot the page (a headless Chrome over CDP works; set
   `Emulation.setEmulatedMedia` `hover: hover` to test hover states). Check desktop and phone widths.
 - Keep comments sparse and about *why*. Match the surrounding code's density and idiom.
-- Commits: one logical change each, a short summary line, a few bullets for anything non-obvious.
+- Commits: one logical change each, a short summary line, a few bullets for anything non-obvious. No AI co-author trailers.
 
 ## Gotchas
 

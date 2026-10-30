@@ -109,15 +109,26 @@ function List({ card }: { card: ListCard }) {
 }
 
 /** An app icon that falls back to the service's initial if no icon exists. */
-function AppIcon({ src, name }: { src?: string; name: string }) {
+function AppIcon({ src, name, small }: { src?: string; name: string; small?: boolean }) {
   const [failed, setFailed] = useState(false);
-  if (!src || failed) return <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-secondary text-xs font-semibold text-muted-foreground">{name[0]}</span>;
-  return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className="size-7 shrink-0 object-contain" />;
+  const size = small ? 'size-[18px]' : 'size-7';
+  if (!src || failed) return <span className={cn(size, 'grid shrink-0 place-items-center rounded-md bg-secondary font-semibold text-muted-foreground', small ? 'text-[10px]' : 'text-xs')}>{name[0]}</span>;
+  return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className={cn(size, 'shrink-0 object-contain')} />;
 }
 
-function ServiceRow({ s }: { s: StatusCard['items'][number] }) {
+function ServiceRow({ s, minimal }: { s: StatusCard['items'][number]; minimal?: boolean }) {
+  // minimal: one tight line, icon, name and the dot; trouble still says what's wrong
+  if (minimal) return (
+    <a href={s.href} target="_blank" rel="noreferrer" title={s.ok ? `${s.name} · ${s.ms ?? ''} ms` : `${s.name} · ${s.quiet ? 'offline' : s.detail}`}
+      className="flex min-w-0 break-inside-avoid items-center gap-2.5 rounded-lg px-2 py-[5px] transition-colors hover:bg-accent">
+      <AppIcon src={s.icon} name={s.name} small />
+      <span className="min-w-0 flex-1 truncate text-[13px]">{s.name}</span>
+      {!s.ok && !s.quiet && <span className="truncate text-[11px] text-bad">{s.detail}</span>}
+      <span className={cn('dot size-1.5', s.ok ? 'dot-good' : s.quiet ? 'bg-muted-foreground/40' : 'dot-bad')} />
+    </a>
+  );
   return (
-    <a href={s.href} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-accent">
+    <a href={s.href} target="_blank" rel="noreferrer" className="flex min-w-0 break-inside-avoid items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-accent">
       <AppIcon src={s.icon} name={s.name} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">{s.name}</div>
@@ -130,26 +141,27 @@ function ServiceRow({ s }: { s: StatusCard['items'][number] }) {
 
 /** Services in columns. With groups, each group is a block (heading + its services) and the blocks flow into as
  *  many columns as fit, so a long list stays short. */
-function Status({ card }: { card: StatusCard }) {
+function Status({ card, columns, minimal }: { card: StatusCard; columns?: number; minimal?: boolean }) {
   const groups = [...new Set(card.items.map(i => i.group ?? ''))];
   if (groups.length === 1 && !groups[0]) return (
     <div className="-mx-2 grid gap-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-      {card.items.map(s => <ServiceRow key={s.name} s={s} />)}
+      {card.items.map(s => <ServiceRow key={s.name} s={s} minimal={minimal} />)}
     </div>
   );
   // a long group (more than six) runs on into a second column beside itself, under the same heading
   const blocks = groups.flatMap(g => {
     const items = card.items.filter(i => (i.group ?? '') === g);
-    if (items.length <= 6) return [{ g, label: g, items }];
+    if (items.length <= 6 || columns) return [{ g, label: g, items }];
     const half = Math.ceil(items.length / 2);
     return [{ g, label: g, items: items.slice(0, half) }, { g: `${g}·2`, label: '', items: items.slice(half) }];
   });
   return (
-    <div className="-mx-2 gap-x-4" style={{ columnWidth: '220px' }}>
+    <div className="-mx-2 gap-x-4" style={columns ? { columnCount: columns } : { columnWidth: '220px' }}>
       {blocks.map(b => (
-        <div key={b.g} className="mb-3 break-inside-avoid">
-          {groups.some(Boolean) && <div className="px-2 pt-1 pb-1.5 text-xs font-medium text-muted-foreground">{b.label || '\u00a0'}</div>}
-          {b.items.map(s => <ServiceRow key={s.name} s={s} />)}
+        // with a set column count (a sidebar list) groups flow on across columns; otherwise each stays whole
+        <div key={b.g} className={cn(minimal ? 'mb-2' : 'mb-3', columns ? 'break-inside-auto' : 'break-inside-avoid')}>
+          {groups.some(Boolean) && <div className={cn('break-after-avoid px-2 font-medium text-muted-foreground', minimal ? 'pt-1 pb-0.5 text-[11px]' : 'pt-1 pb-1.5 text-xs')}>{b.label || '\u00a0'}</div>}
+          {b.items.map(s => <ServiceRow key={s.name} s={s} minimal={minimal} />)}
         </div>
       ))}
     </div>
@@ -338,13 +350,13 @@ function Showcase({ card, run }: { card: ShowcaseCard; run?: RunAction }) {
   );
 }
 
-export function CardBody({ card, run }: { card: CardT; run?: RunAction }): ReactNode {
+export function CardBody({ card, run, columns, minimal }: { card: CardT; run?: RunAction; columns?: number; minimal?: boolean }): ReactNode {
   switch (card.type) {
     case 'showcase': return <Showcase card={card} run={run} />;
     case 'forecast': return <Forecast card={card} />;
     case 'stats': return <Stats card={card} />;
     case 'list': return <List card={card} />;
-    case 'status': return <Status card={card} />;
+    case 'status': return <Status card={card} columns={columns} minimal={minimal} />;
     case 'media': return <Media card={card} />;
     case 'shelf': return <Shelf card={card} />;
     case 'chart': return <Chart card={card} />;
@@ -371,7 +383,7 @@ function BareHeader({ card, title, status }: { card?: CardT; title?: string; sta
   );
 }
 
-export function Widget({ card, run, title, status, compact }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean }) {
+export function Widget({ card, run, title, status, compact, columns, minimal, headless }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean }) {
   // artwork-led cards sit directly on the page, without a card frame
   if (card?.type === 'shelf') return <Shelf card={card} header={<BareHeader card={card} title={title} status={status} />} />;
   if (card?.type === 'media') return (
@@ -381,7 +393,7 @@ export function Widget({ card, run, title, status, compact }: { card?: CardT; ru
   const bare = card?.type === 'group';
   return (
     <Card className={cn('@container/card min-w-0 gap-4 shadow-card', compact ? 'py-4 shadow-none' : 'py-5', bare && 'border-0 bg-transparent py-0 shadow-none')}>
-      {t && !bare && (
+      {t && !bare && !headless && (
         <CardHeader className={cn('flex items-center gap-2', compact ? 'px-4' : 'px-5')}>
           {card?.icon && <span className="icon-tile"><Icon name={card.icon} /></span>}
           <CardTitle className="truncate text-[15px]">{t}</CardTitle>
@@ -397,7 +409,7 @@ export function Widget({ card, run, title, status, compact }: { card?: CardT; ru
         </CardHeader>
       )}
       <CardContent className={cn(bare ? 'p-0' : compact ? 'px-4' : 'px-5')}>
-        {card ? <CardBody card={card} run={run} /> : <div className="space-y-3"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-4 w-3/5" /></div>}
+        {card ? <CardBody card={card} run={run} columns={columns} minimal={minimal} /> : <div className="space-y-3"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-4 w-3/5" /></div>}
       </CardContent>
     </Card>
   );

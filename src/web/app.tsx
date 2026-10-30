@@ -17,9 +17,10 @@ interface Page {
   appearance: { wallpaper?: string; dim: number; blur: number };
   assistant: { name: string; model: string } | null;
   menubar?: string[];
+  nav?: { side: 'left' | 'right' | 'top' | 'bottom' };
   island?: { activities: string[]; idle: 'notch' | 'hide' };
   weather?: string;
-  sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; widgets: string[] }[];
+  sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
 }
 
@@ -75,7 +76,7 @@ async function runAction(key: string, action: string, args?: Record<string, unkn
 const SUGGESTIONS = ['Is anything down?', 'How are my downloads doing?', "What's playing on Plex?", 'Show me the GPU and Plex side by side'];
 
 /** A round glass button for the floating rail and corners. Active is solid white, like a selected tab. */
-function RoundButton({ label, active, onClick, children }: { label: string; active?: boolean; onClick: () => void; children: React.ReactNode }) {
+function RoundButton({ label, active, onClick, children, tip = 'right' }: { label: string; active?: boolean; onClick: () => void; children: React.ReactNode; tip?: 'left' | 'right' | 'top' | 'bottom' }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -85,7 +86,7 @@ function RoundButton({ label, active, onClick, children }: { label: string; acti
           {children}
         </button>
       </TooltipTrigger>
-      <TooltipContent side="right">{label}</TooltipContent>
+      <TooltipContent side={tip}>{label}</TooltipContent>
     </Tooltip>
   );
 }
@@ -139,61 +140,15 @@ export function App() {
     const c = state[key]?.card;
     return c?.activity ? [{ ...c.activity, key, href: c.href }] : [];
   });
-  const sections = page?.sections.map((s, i) => ({ ...s, i })).filter(s => view === 'all' || s.i === view) ?? [];
+  const sections = page?.sections.map((s, i) => ({ ...s, i })).filter(s => view === 'all' ? s.overview !== false : s.i === view) ?? [];
   const sectionIcon = (s: Page['sections'][number]) => state[s.widgets[0]]?.card?.icon;
+  const navSide = page?.nav?.side ?? 'left';
+  const hasSide = !!page?.sections.some(x => (x.place === 'left' || x.place === 'right') && (view === 'all' ? x.overview !== false : true));
+  const tip = ({ left: 'right', right: 'left', top: 'bottom', bottom: 'top' } as const)[navSide];
   const nav = page?.sections.map((s, i) => ({ ...s, i })).filter(s => s.title) ?? [];
 
-  return (
-    <TooltipProvider delayDuration={300}>
-      {wall && (
-        <div className="wallpaper" style={{ '--wall-dim': page!.appearance.dim } as React.CSSProperties} aria-hidden>
-          <img src={wall} alt="" style={page!.appearance.blur ? { filter: `blur(${page!.appearance.blur}px)` } : undefined} />
-        </div>
-      )}
-
-      {/* top-left: the home's name */}
-      <div className="glass-bar absolute top-5 left-5 z-20 hidden items-center gap-3 rounded-full border py-1.5 pr-5 pl-1.5 md:flex">
-        <span className="icon-tile size-11! rounded-full!">
-          <svg viewBox="0 0 24 24" className="size-[18px]!" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" aria-hidden><path d="M5 19V10l7-5 7 5v9" /></svg>
-        </span>
-        <div className="wall-text leading-tight"><div className="text-sm font-semibold">{page?.title ?? 'Home'}</div><div className="text-xs text-muted-foreground">{online ? 'Live' : 'Reconnecting…'}</div></div>
-      </div>
-
-      {/* the floating rail: one round button per section */}
-      <nav aria-label="Sections" className="fixed top-1/2 left-5 z-20 hidden -translate-y-1/2 flex-col gap-3 md:flex">
-        <RoundButton label="Overview" active={view === 'all'} onClick={() => setView('all')}><LayoutGrid /></RoundButton>
-        {nav.map(s => (
-          <RoundButton key={s.i} label={s.title!} active={view === s.i} onClick={() => setView(s.i)}><Icon name={sectionIcon(s) ?? 'pulse'} /></RoundButton>
-        ))}
-        {page?.assistant && <RoundButton label={page.assistant.name} onClick={() => setChatOpen(true)}><Sparkles /></RoundButton>}
-      </nav>
-
-      {/* top-right: the menubar rings, weather and time (and the theme switch when there's no wallpaper).
-          Below lg it sits at the top of the page instead, centred and wrapping, so phones see it too. */}
-      {page?.island && <Island live={live} idle={page.island.idle} docked={wide} />}
-      {/* phones: one row, condensed; wide screens: top right, level with the island */}
-      <div ref={bar} className="wall-text z-20 flex items-center justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:right-5 xl:gap-4 xl:p-0">
-        {!!page?.menubar?.length && (
-          <div className="glass-bar relative flex shrink items-center gap-1 rounded-full border px-2 py-1 sm:gap-3 sm:px-4 sm:py-1.5">
-            {page.menubar.flatMap(key => {
-              const c = state[key]?.card;
-              return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <MiniRing key={`${key}${j}`} s={t} />);
-            })}
-          </div>
-        )}
-        <div className="glass-bar relative flex shrink-0 items-center gap-2.5 rounded-full border py-1 pr-3.5 pl-1.5 sm:gap-4 sm:py-1.5 sm:pr-5 sm:pl-2">
-          {page?.weather && state[page.weather]?.card?.type === 'forecast' && <WeatherRing card={state[page.weather]!.card as ForecastCard} />}
-          <div className="text-right leading-tight">
-          <div className="text-sm font-semibold tabular">{now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</div>
-          <div className="hidden text-xs text-muted-foreground sm:block">{now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-          </div>
-        </div>
-        {!wall && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={theme.toggle}>{theme.dark ? <Sun /> : <Moon />}</RoundButton>}
-      </div>
-
-      <main className="@container/main mx-auto flex max-w-[1320px] flex-col gap-8 px-4 pt-6 pb-28 md:pr-8 md:pl-24 md:pb-16 xl:pt-20">
-        {/* the hero: ask anything */}
-        {view === 'all' && (
+  // the hero: ask anything
+  const hero = view === 'all' && (
           <header className="wall-text mx-auto w-full max-w-[680px] text-center">
             <div className="text-[22px] font-semibold tracking-tight">{greet(now.getHours())}{page?.greeting ? `, ${page.greeting}` : ''}</div>
             {p.text && <div className={cn('mt-0.5 text-[13px]', p.tone)}>{p.text}</div>}
@@ -219,9 +174,9 @@ export function App() {
               </div>
             )}
           </header>
-        )}
+        );
 
-        {sections.filter(sec => sec.display === 'media' ? mediaOf(sec.widgets).length > 0 : sec.display !== 'cards' || sec.widgets.some(k => !isEmpty(state[k]?.card))).map(sec => (
+  const renderSection = (sec: (typeof sections)[number], aside = sec.place === 'left' || sec.place === 'right') => (
           <section key={sec.i} className="space-y-3">
             {sec.title && (sec.display === 'cards' || sec.display === 'media') && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title) && <h2 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h2>}
             {sec.display === 'media'
@@ -257,7 +212,7 @@ export function App() {
                   const keys = sec.widgets.filter(key => !isEmpty(state[key]?.card));
                   const widget = (key: string) => {
                     const s = state[key];
-                    return <Widget key={key} card={s?.card} title={page?.widgets[key]?.title}
+                    return <Widget key={key} card={s?.card} title={page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={sec.variant === 'minimal'} headless={sec.header === false}
                       status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
                       run={(action, args) => runAction(key, action, args)} />;
                   };
@@ -271,14 +226,85 @@ export function App() {
                     </div>
                   );
                   return (
-                    <div className="grid items-start gap-4" style={{ gridTemplateColumns: sec.columns ? `repeat(${sec.columns}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
+                    <div className="grid items-start gap-4" style={{ gridTemplateColumns: aside ? '1fr' : sec.columns ? `repeat(${sec.columns}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
                       {keys.map(widget)}
                     </div>
                   );
                 })()
               )}
           </section>
+  );
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      {wall && (
+        <div className="wallpaper" style={{ '--wall-dim': page!.appearance.dim } as React.CSSProperties} aria-hidden>
+          <img src={wall} alt="" style={page!.appearance.blur ? { filter: `blur(${page!.appearance.blur}px)` } : undefined} />
+        </div>
+      )}
+
+      {/* top-left: the home's name */}
+      <div className="glass-bar absolute top-5 left-5 z-20 hidden items-center gap-3 rounded-full border py-1.5 pr-5 pl-1.5 md:flex">
+        <span className="icon-tile size-11! rounded-full!">
+          <svg viewBox="0 0 24 24" className="size-[18px]!" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" aria-hidden><path d="M5 19V10l7-5 7 5v9" /></svg>
+        </span>
+        <div className="wall-text leading-tight"><div className="text-sm font-semibold">{page?.title ?? 'Home'}</div><div className="text-xs text-muted-foreground">{online ? 'Live' : 'Reconnecting…'}</div></div>
+      </div>
+
+      {/* the tab buttons, on whichever side the config says (wide screens); a column on the left/right, a dock at the top/bottom */}
+      <nav aria-label="Sections" className={cn('z-30 hidden gap-3 md:flex', {
+        left: 'fixed top-1/2 left-5 -translate-y-1/2 flex-col',
+        right: 'fixed top-1/2 right-5 -translate-y-1/2 flex-col',
+        bottom: 'glass-bar fixed bottom-5 left-1/2 -translate-x-1/2 rounded-full border p-1.5 gap-2',
+        top: 'glass-bar absolute top-24 left-1/2 -translate-x-1/2 rounded-full border p-1.5 gap-2',
+      }[navSide])}>
+        <RoundButton tip={tip} label="Overview" active={view === 'all'} onClick={() => setView('all')}><LayoutGrid /></RoundButton>
+        {nav.map(s => (
+          <RoundButton tip={tip} key={s.i} label={s.title!} active={view === s.i} onClick={() => setView(s.i)}><Icon name={sectionIcon(s) ?? 'pulse'} /></RoundButton>
         ))}
+        {page?.assistant && <RoundButton tip={tip} label={page.assistant.name} onClick={() => setChatOpen(true)}><Sparkles /></RoundButton>}
+      </nav>
+
+      {/* top-right: the menubar rings, weather and time (and the theme switch when there's no wallpaper).
+          Below lg it sits at the top of the page instead, centred and wrapping, so phones see it too. */}
+      {page?.island && <Island live={live} idle={page.island.idle} docked={wide} />}
+      {/* phones: one row, condensed; wide screens: top right, level with the island */}
+      <div ref={bar} className="wall-text z-20 flex items-center justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:right-5 xl:gap-4 xl:p-0">
+        {!!page?.menubar?.length && (
+          <div className="glass-bar relative flex shrink items-center gap-1 rounded-full border px-2 py-1 sm:gap-3 sm:px-4 sm:py-1.5">
+            {page.menubar.flatMap(key => {
+              const c = state[key]?.card;
+              return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <MiniRing key={`${key}${j}`} s={t} />);
+            })}
+          </div>
+        )}
+        <div className="glass-bar relative flex shrink-0 items-center gap-2.5 rounded-full border py-1 pr-3.5 pl-1.5 sm:gap-4 sm:py-1.5 sm:pr-5 sm:pl-2">
+          {page?.weather && state[page.weather]?.card?.type === 'forecast' && <WeatherRing card={state[page.weather]!.card as ForecastCard} />}
+          <div className="text-right leading-tight">
+          <div className="text-sm font-semibold tabular">{now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</div>
+          <div className="hidden text-xs text-muted-foreground sm:block">{now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+          </div>
+        </div>
+        {!wall && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={theme.toggle}>{theme.dark ? <Sun /> : <Moon />}</RoundButton>}
+      </div>
+
+      <main className={cn('@container/main mx-auto flex flex-col gap-8 px-4 pt-6 pb-28 xl:pt-20', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-40 xl:pt-40' }[navSide], page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[1720px]' : 'max-w-[1320px]')}>
+        {!hasSide && hero}
+
+        {(() => {
+          // sections placed left/right become a sidebar beside the rest on wide screens; stacked on smaller ones
+          const shown = sections.filter(sec => sec.display === 'media' ? mediaOf(sec.widgets).length > 0 : sec.display !== 'cards' || sec.widgets.some(k => !isEmpty(state[k]?.card)));
+          const side = shown.filter(x => x.place === 'left' || x.place === 'right'), rest = shown.filter(x => x.place !== 'left' && x.place !== 'right');
+          if (!side.length) return rest.map(x => renderSection(x));
+          // a sidebar runs the full height of the page; the greeting and the ask box move into the column beside it
+          const right = side.some(x => x.place === 'right');
+          return (
+            <div className="grid items-start gap-8" style={wide ? { gridTemplateColumns: (w => right ? `minmax(0,1fr) ${w}px` : `${w}px minmax(0,1fr)`)(side.every(x => x.variant === 'minimal') ? 230 * Math.max(1, ...side.map(x => x.columns ?? 1)) : 460) } : undefined}>
+              <aside className={cn('no-scrollbar flex flex-col gap-8 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto', right && 'xl:order-2')}>{side.map(x => renderSection(x))}</aside>
+              <div className="flex min-w-0 flex-col gap-8">{hero}{rest.map(x => renderSection(x))}</div>
+            </div>
+          );
+        })()}
       </main>
 
       {/* phones: the rail becomes a floating pill at the bottom */}
