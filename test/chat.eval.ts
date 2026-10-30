@@ -71,7 +71,7 @@ const CASES: Case[] = [
   { ask: 'Radarr is down, what would you do?', not: ['pause_downloads', 'home_control'] },
   // services outside Docker
   { ask: 'Why did Sonarr stop?', uses: 'service_logs', says: /database|malformed/i },
-  { ask: 'Is Plex running on the server?', uses: ['services_status', 'plex_streams'] },
+  { ask: 'Is Plex running on the server?', uses: ['services_status', 'containers_status', 'service_status', 'plex_streams'] },
   // doesn't claim powers it hasn't got
   { ask: 'Restart radarr please', not: ['home_control'], says: /can'?t|cannot|not able|unable|docker (compose )?(restart|start)/i },
   { ask: 'Was Radarr killed for running out of memory?', uses: 'container_logs', says: /memory/i },
