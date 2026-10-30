@@ -1,0 +1,74 @@
+// __NAME__: a community integration for Atrium. It's live as soon as it's in data/integrations/ and config.yaml has
+//
+//   integrations:
+//     __NAME__:
+//       type: __NAME__
+//       url: http://your-service:1234
+//       apiKey: ${__ENV___KEY}          # in .env; Atrium keeps it on the server and redacts it from everything it sends
+//
+// and a widget is placed in the layout:  - { widget: __NAME__.status, size: medium }
+// Docs: docs/integrations.md (cards and tools) and docs/plugins.md. Restart Atrium after editing.
+export default ({ z, defineIntegration, fmt }) => defineIntegration({
+  type: '__NAME__',
+  name: '__TITLE__',
+  // what config.yaml may say about it, checked at startup
+  config: z.object({ url: z.string().url(), apiKey: z.string().optional(), href: z.string().optional() }),
+
+  create(cfg, ctx) {
+    // ctx.http: fetch with a timeout; returns JSON (or { as: 'text' } / { as: 'response' })
+    const api = path => ctx.http(`${cfg.url.replace(/\/$/, '')}${path}`, { headers: cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {} });
+
+    // Replace this with a real call, e.g. `await api('/api/status')`
+    async function status() {
+      return { used: 42, total: 100, items: [{ name: 'Thing one', ok: true }, { name: 'Thing two', ok: false }] };
+    }
+
+    return {
+      // cards for the page; each refreshes on its interval while someone has the page open
+      widgets: {
+        status: {
+          title: '__TITLE__', interval: 30_000,
+          async fetch() {
+            const s = await status(), pct = s.used / s.total;
+            return {
+              // `showcase` with a visual of your own: data/integrations/__NAME__.web.js draws it (delete that file and use
+              // any catalog card instead: stats, list, status, media, shelf, photos, schedule… see docs/integrations.md)
+              type: 'showcase', title: '__TITLE__', icon: 'pulse', href: cfg.href ?? cfg.url,
+              visual: { kind: '__NAME__', data: { pct, label: `${s.used} of ${s.total}` } },
+              items: s.items.map(i => ({ label: i.name, value: i.ok ? 'OK' : 'Down', tone: i.ok ? 'good' : 'bad' })),
+              // the headline: shown at size small, in the menubar, and as a tile (history graphs it over the day)
+              summary: { label: '__TITLE__', icon: 'pulse', value: `${Math.round(pct * 100)}%`, pct, tone: pct > .9 ? 'warn' : 'good' },
+              // quick actions along the card's bottom, run through `actions` below
+              buttons: [{ label: 'Refresh now', action: 'refresh' }],
+            };
+          },
+        },
+      },
+
+      // what the page's buttons can do
+      actions: {
+        refresh: { description: 'Ask the service to refresh', input: z.object({}), run: async () => { /* await api('/api/refresh') */ } },
+      },
+
+      // what the assistant can use. access: 'read' looks, 'write' adds without asking, 'control' asks the person first
+      tools: {
+        __SLUG___status: {
+          description: 'Status of __TITLE__: how full it is and which things are up. Use when asked about __TITLE__.',
+          access: 'read', input: z.object({}),
+          async run() {
+            const s = await status();
+            return { data: s };   // `data` goes to the model; add `card` to show the person a card too
+          },
+        },
+        __SLUG___restart: {
+          description: 'Restart one thing in __TITLE__ by name.',
+          access: 'control', input: z.object({ name: z.string() }),
+          async run({ name }) {
+            // await api(`/api/restart/${encodeURIComponent(name)}`)
+            return { data: { restarted: name }, card: { type: 'text', tone: 'good', text: `Restarted ${name}.` } };
+          },
+        },
+      },
+    };
+  },
+});

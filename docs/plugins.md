@@ -47,3 +47,29 @@ Rules of the road:
   when to use it.
 - **Images go through `ctx.image(ref)`** and your `image(ref)` handler, so the browser never needs your service's key.
 - **A built-in type can't be replaced** unless the config lists it: `plugins: { replace: [tautulli] }`.
+
+## Start from a template
+
+```sh
+docker exec atrium node dist/server.js new-integration my-service     # from source: node dist/server.js new-integration my-service
+```
+
+writes `data/integrations/my-service.mjs` (a widget with a summary and a button, an action, a read tool and a control
+tool) and `my-service.web.js` (its visual), commented line by line. Point it at your service, add it to `config.yaml`
+(the file's first lines show how), restart, and it's on the page and in the assistant.
+
+## Visuals of your own
+
+The catalog covers most things, but a plugin can draw anything. Return a `showcase` card whose `visual.kind` is the
+plugin's name, and put a browser module next to it as `<kind>.web.js`. Atrium loads it and calls:
+
+```js
+export default function mount(box, data, { run }) {
+  // draw into `box` (plain DOM, canvas, SVG…); `run(action, args)` calls one of your actions
+  return { update(data) { /* new data arrived */ }, destroy() { /* the card went away */ } };
+}
+```
+
+It's the same contract as Atrium's own 3D models. Use the page's CSS variables (`var(--foreground)`, `var(--good)`,
+`var(--primary)`, `var(--muted-foreground)`) so it fits light and dark, and keep motion soft (see AGENTS.md). In
+chat, the assistant shows your visual whenever one of your tools returns that card, so generative UI comes for free.

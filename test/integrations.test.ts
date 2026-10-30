@@ -184,3 +184,19 @@ test('security: secrets are redacted, and Atrium is read-only without sign-in un
   assert.equal(canAct(cfg({ mode: 'none', trustNetwork: true })), true);
   assert.equal(canAct(cfg({ mode: 'local' })), true);
 });
+
+test('scaffold: new-integration writes a plugin that loads and whose cards and tools work', async () => {
+  const { mkdtemp } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  process.env.ATRIUM_DATA = await mkdtemp(join(tmpdir(), 'atrium-'));
+  const { scaffold, loadPlugins } = await import('../src/server/plugins.ts');
+  assert.equal(await scaffold('my-service'), 0);
+  assert.equal(await scaffold('my-service'), 1);   // won't overwrite
+  const registry: Record<string, any> = {};
+  await loadPlugins(registry, [], []);
+  const i = registry['my-service'];
+  const inst = i.create(i.config.parse({ url: 'http://x' }), { http: async () => ({}) });
+  valid(await inst.widgets.status.fetch());
+  assert.equal(inst.tools['my_service_restart'].access, 'control');
+});

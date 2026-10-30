@@ -1,0 +1,23 @@
+// The browser half of __NAME__: draws the `__NAME__` visual. Atrium calls mount(box, data, { run }) once, update(data)
+// when new data arrives, and destroy() when the card goes away. Plain DOM: no React, no build step. The page's
+// colours are CSS variables (var(--foreground), var(--good), var(--primary)…) so it matches light and dark.
+export default function mount(box, data) {
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px">
+      <svg viewBox="0 0 80 80" width="96" height="96" style="transform:rotate(-90deg)">
+        <circle cx="40" cy="40" r="32" fill="none" stroke="currentColor" stroke-opacity=".12" stroke-width="8"/>
+        <circle class="arc" cx="40" cy="40" r="32" fill="none" stroke="var(--good)" stroke-width="8" stroke-linecap="round"
+          stroke-dasharray="0 201" style="transition:stroke-dasharray .7s cubic-bezier(.23,1,.32,1)"/>
+      </svg>
+      <div><div class="pct" style="font-size:28px;font-weight:600;font-variant-numeric:tabular-nums"></div>
+        <div class="label" style="font-size:13px;color:var(--muted-foreground)"></div></div>
+    </div>`;
+  const arc = box.querySelector('.arc'), pct = box.querySelector('.pct'), label = box.querySelector('.label');
+  const update = d => {
+    arc.setAttribute('stroke-dasharray', `${Math.round(d.pct * 201)} 201`);
+    pct.textContent = `${Math.round(d.pct * 100)}%`;
+    label.textContent = d.label;
+  };
+  update(data);
+  return { update, destroy() { box.innerHTML = ''; } };
+}

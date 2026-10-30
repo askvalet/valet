@@ -10,11 +10,11 @@
   },
   "scripts": {
     "dev": "node --watch --env-file-if-exists=.env src/server/main.ts & vite",
-    "build": "vite build && esbuild src/server/main.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=dist/server.js --log-level=warning",
+    "build": "vite build && esbuild src/server/main.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=dist/server.js --loader:.txt=text --log-level=warning",
     "start": "node --env-file-if-exists=.env dist/server.js",
     "check": "tsc --noEmit && tsc --noEmit -p tsconfig.web.json",
     "export:pc-model": "esbuild src/web/visuals/pc-model.ts --bundle --format=esm --minify --outdir=${PC_MODEL_OUT:-dist/pc-model}",
-    "test": "esbuild test/*.test.ts test/*.test.tsx --bundle --platform=node --format=esm --outdir=.test --out-extension:.js=.test.mjs --packages=external --jsx=automatic --tsconfig=tsconfig.web.json --loader:.css=empty --log-level=warning && node --test .test/*.test.mjs",
+    "test": "esbuild test/*.test.ts test/*.test.tsx --bundle --platform=node --format=esm --outdir=.test --out-extension:.js=.test.mjs --packages=external --jsx=automatic --tsconfig=tsconfig.web.json --loader:.css=empty --loader:.txt=text --log-level=warning && node --test .test/*.test.mjs",
     "test:live": "esbuild test/live.ts --bundle --platform=node --format=esm --outfile=.test/live.mjs --packages=external --log-level=warning && node --env-file-if-exists=.env .test/live.mjs"
   },
   "devDependencies": {

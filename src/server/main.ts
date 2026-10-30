@@ -21,6 +21,7 @@ const PORT = Number(process.env.PORT ?? 7575);
 const HOST = process.env.HOST ?? '0.0.0.0';
 
 // `node dist/server.js user add <name>` and friends manage accounts, then exit
+if (process.argv[2] === 'new-integration') process.exit(await (await import('./plugins.ts')).scaffold(process.argv[3]));
 if (process.argv[2] === 'user') process.exit(await userCommand(process.argv.slice(3)).catch(e => { console.error(String(e.message ?? e)); return 1; }));
 
 const config = loadConfig(CONFIG);
@@ -211,6 +212,14 @@ if (config.assistant) {
     return handler(c);
   });
 }
+
+// Community visuals: the browser half of a plugin, data/integrations/<kind>.web.js, served as a module
+app.get('/plugins/:file', async c => {
+  const file = c.req.param('file');
+  if (!/^[a-z0-9][a-z0-9-]{0,63}\.web\.js$/.test(file)) return c.notFound();
+  const body = await readFile(resolve(process.env.ATRIUM_DATA ?? 'data', 'integrations', file)).catch(() => null);
+  return body ? c.body(body, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }) : c.notFound();
+});
 
 // Hashed assets never change, so they cache forever; the page itself is always revalidated, so a new build shows
 // up on the next load instead of whenever the browser's heuristic cache expires.

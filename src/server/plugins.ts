@@ -40,3 +40,20 @@ export async function loadPlugins(registry: Record<string, Integration>, package
   if (loaded.length) console.log(`plugins: ${loaded.join(', ')}`);
   return new Set(loaded);
 }
+
+/** `atrium new-integration <name>`: writes a working plugin (and its visual) into data/integrations/ to start from. */
+export async function scaffold(name: string) {
+  if (!/^[a-z][a-z0-9-]{1,40}$/.test(name ?? '')) { console.log('usage: new-integration <name>   (lowercase letters, digits, dashes)'); return 1; }
+  const { mkdir, writeFile, access } = await import('node:fs/promises');
+  const dir = resolve(process.env.ATRIUM_DATA ?? 'data', 'integrations');
+  const fill = (t: string) => t.replaceAll('__SLUG__', name.replace(/-/g, '_')).replaceAll('__NAME__', name).replaceAll('__TITLE__', name.replace(/(^|-)(\w)/g, (_, d, c) => (d ? ' ' : '') + c.toUpperCase()))
+    .replaceAll('__ENV__', name.toUpperCase().replace(/-/g, '_')).replaceAll('__SLUG__', name.replace(/-/g, '_'));
+  // the templates are bundled as text into dist/server.js (imported only here, so `npm run dev` never needs them)
+  const PLUGIN = (await import('./templates/plugin.mjs.txt')).default, VISUAL = (await import('./templates/visual.web.js.txt')).default;
+  const files = [[`${name}.mjs`, PLUGIN], [`${name}.web.js`, VISUAL]] as const;
+  await mkdir(dir, { recursive: true });
+  for (const [f] of files) if (await access(resolve(dir, f)).then(() => true, () => false)) { console.log(`${f} already exists in ${dir}`); return 1; }
+  for (const [f, t] of files) await writeFile(resolve(dir, f), fill(t));
+  console.log(`Wrote ${files.map(f => f[0]).join(' and ')} in ${dir}.\nNext: add it to config.yaml (the file's first lines show how), place ${name}.status in the layout, restart.`);
+  return 0;
+}

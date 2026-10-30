@@ -366,9 +366,28 @@ const VISUALS: Record<string, React.LazyExoticComponent<(p: { data: any; run?: R
   home: lazy(() => import('./visuals/home-case.tsx')),
 };
 
+/** A community visual: a browser module next to a plugin (data/integrations/<kind>.web.js), served at
+ *  /plugins/<kind>.web.js. Its default export mounts into a box: mount(el, data, { run }) → { update?(data), destroy?() }.
+ *  The same contract as Atrium's own 3D models, so a plugin can draw anything without React or a build step. */
+function PluginVisual({ kind, data, run }: { kind: string; data: unknown; run?: RunAction }) {
+  const box = useRef<HTMLDivElement>(null), inst = useRef<{ update?(d: unknown): void; destroy?(): void } | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let gone = false;
+    import(/* @vite-ignore */ `/plugins/${encodeURIComponent(kind)}.web.js`)
+      .then(m => { if (!gone && box.current) inst.current = m.default(box.current, data, { run }) ?? null; })
+      .catch(e => setError(`couldn't load the "${kind}" visual: ${e.message}`));
+    return () => { gone = true; inst.current?.destroy?.(); inst.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind]);
+  useEffect(() => { inst.current?.update?.(data); }, [data]);
+  return error ? <Empty text={error} /> : <div ref={box} className="min-w-0" />;
+}
+
 /** The visual on the left, its numbers stacked on the right: big values, quiet labels, nothing else. */
 function Showcase({ card, run }: { card: ShowcaseCard; run?: RunAction }) {
-  const V = VISUALS[card.visual.kind];
+  const builtIn = VISUALS[card.visual.kind];
+  const V = builtIn ?? (card.visual.kind !== 'image' ? (p: { data: any; run?: RunAction }) => <PluginVisual kind={card.visual.kind} {...p} /> : undefined);
   // an interactive visual with no numbers of its own beside it lays itself out
   if (V && !card.items.length) return <Suspense fallback={<Skeleton className="aspect-[4/3] w-full rounded-xl" />}><V data={card.visual.data} run={run} /></Suspense>;
   return (
