@@ -4,7 +4,7 @@ import { ArrowRight, Loader2 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-type Me = { mode: string; user: { name: string } | null; setup?: boolean };
+type Me = { mode: string; user: { name: string } | null; setup?: boolean; provider?: string };
 
 export function useMe() {
   const [me, setMe] = useState<Me | null>(null);
@@ -24,7 +24,7 @@ const Field = ({ label, ...p }: { label: string } & React.InputHTMLAttributes<HT
   </label>
 );
 
-export function SignIn({ setup, wallpaper, onDone }: { setup: boolean; wallpaper?: ReactNode; onDone: (name: string) => void }) {
+export function SignIn({ setup, wallpaper, onDone, provider }: { setup: boolean; wallpaper?: ReactNode; onDone: (name: string) => void; provider?: string }) {
   const [name, setName] = useState(''), [password, setPassword] = useState(''), [code, setCode] = useState('');
   const [remember, setRemember] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const submit = async (e: React.FormEvent) => {
@@ -35,6 +35,20 @@ export function SignIn({ setup, wallpaper, onDone }: { setup: boolean; wallpaper
     setBusy(false);
     if (r?.ok) onDone(j.user.name); else setError(j?.error ?? 'Couldn\'t reach Atrium.');
   };
+  // OpenID Connect: one button; the provider does the rest and sends the person back signed in
+  if (provider) return (
+    <div className="dark grid min-h-dvh place-items-center px-4 text-foreground">
+      {wallpaper}
+      <div className="settle glass w-full max-w-[360px] rounded-[28px] border p-7">
+        <div className="text-[22px] font-semibold tracking-tight">Sign in</div>
+        <p className="mt-1 text-[13.5px] text-muted-foreground">Your homelab is waiting.</p>
+        <a href={`/api/auth/oidc/start?to=${encodeURIComponent(location.pathname + location.hash)}`}
+          className="press mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white text-[15px] font-medium text-black">
+          Continue with {provider}<ArrowRight className="size-4" />
+        </a>
+      </div>
+    </div>
+  );
   return (
     <div className="dark grid min-h-dvh place-items-center px-4 text-foreground">
       {wallpaper}

@@ -6,6 +6,7 @@
 //   server log, so whoever reaches a fresh install first can't claim it.
 // proxy: an identity-aware proxy in front (Authelia, Authentik, Tailscale serve…) already signed the person in; trust
 //   its user header, but only from the proxy addresses you list.
+// oidc: sign in with an OpenID Connect provider (Authelia, Authentik, Keycloak, Pocket ID…); see oidc.ts.
 // none: no sign-in at all (only for a page that nothing but you can reach).
 import { createHmac, randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
@@ -90,28 +91,43 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
     return async (c, next) => (who(c) ? next() : c.json({ error: 'not signed in' }, 401));
   }
 
-  // ── local accounts
+  // ── a session cookie signed with a secret kept in data/secret, for local accounts and OIDC alike
   const key = await secret();
   const sign = (body: string) => createHmac('sha256', key).update(body).digest('base64url');
   const secure = config.auth.secureCookie;
+  const parse = (c: Context) => {
+    const raw = getCookie(c, COOKIE); if (!raw) return null;
+    const [body, mac] = raw.split('.');
+    if (!body || !mac || mac.length !== 43 || !timingSafeEqual(Buffer.from(mac), Buffer.from(sign(body)))) return null;
+    const [name, version, exp] = Buffer.from(body, 'base64url').toString().split('|');
+    return Date.now() > Number(exp) ? null : { name, version: Number(version) };
+  };
+  function start(c: Context, name: string, version: number, remember: boolean) {
+    const days = remember ? config.auth.sessionDays : 1;
+    const body = Buffer.from(`${name}|${version}|${Date.now() + days * 864e5}`).toString('base64url');
+    setCookie(c, COOKIE, `${body}.${sign(body)}`, { httpOnly: true, sameSite: 'Lax', secure, path: '/', maxAge: remember ? days * 86400 : undefined });
+  }
+
+  if (mode === 'oidc') {
+    const session = (c: Context) => parse(c)?.name ?? null;
+    app.get('/api/auth/me', c => { const u = session(c); return u ? c.json({ mode, user: { name: u } }) : c.json({ mode, user: null, provider: config.auth.oidc!.name }, 401); });
+    app.post('/api/auth/logout', c => { deleteCookie(c, COOKIE, { path: '/' }); return c.json({ ok: true }); });
+    const { setupOidc } = await import('./oidc.ts');
+    setupOidc(app, config, sign, (c, name) => start(c, name, 1, true));
+    console.log(`auth: OpenID Connect via ${config.auth.oidc!.issuer}`);
+    return async (c, next) => (session(c) ? next() : c.json({ error: 'not signed in' }, 401));
+  }
+
+  // ── local accounts
   let users = await load();
   // a fresh install: print a one-time code the first account must present
   let setupCode = users.length ? null : randomBytes(6).toString('hex').match(/.{4}/g)!.join('-');
   if (setupCode) console.log(`\n  auth: no accounts yet. Open the page and create one with this setup code:  ${setupCode}\n  (or: node dist/server.js user add <name>)\n`);
 
   async function session(c: Context) {
-    const raw = getCookie(c, COOKIE); if (!raw) return null;
-    const [body, mac] = raw.split('.');
-    if (!body || !mac || mac.length !== 43 || !timingSafeEqual(Buffer.from(mac), Buffer.from(sign(body)))) return null;
-    const [name, version, exp] = Buffer.from(body, 'base64url').toString().split('|');
-    if (Date.now() > Number(exp)) return null;
-    const u = users.find(x => x.name === name);
-    return u && u.version === Number(version) ? u : null;
-  }
-  function start(c: Context, u: User, remember: boolean) {
-    const days = remember ? config.auth.sessionDays : 1;
-    const body = Buffer.from(`${u.name}|${u.version}|${Date.now() + days * 864e5}`).toString('base64url');
-    setCookie(c, COOKIE, `${body}.${sign(body)}`, { httpOnly: true, sameSite: 'Lax', secure, path: '/', maxAge: remember ? days * 86400 : undefined });
+    const s = parse(c); if (!s) return null;
+    const u = users.find(x => x.name === s.name);
+    return u && u.version === s.version ? u : null;
   }
 
   // failed sign-ins slow down per address: 5 free, then a growing wait (up to 15 minutes)
@@ -142,7 +158,7 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
     const ok = u ? await verify(u, String(password ?? '')) : (await hash(String(password ?? '')), false);
     if (!ok) { failed(ip); failed(who); return c.json({ error: 'That name and password don\'t match.' }, 401); }
     fails.delete(ip); fails.delete(who);
-    start(c, u!, remember !== false);
+    start(c, u!.name, u!.version, remember !== false);
     return c.json({ user: { name: u!.name } });
   });
   app.post('/api/auth/setup', async c => {
@@ -155,7 +171,7 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
     if (String(password ?? '').length < 8) return c.json({ error: 'Use at least 8 characters.' }, 400);
     const u: User = { name, ...(await hash(password)), version: 1, created: new Date().toISOString() };
     users = [u]; await save(users); setupCode = null;
-    start(c, u, true);
+    start(c, u.name, u.version, true);
     return c.json({ user: { name } });
   });
   app.post('/api/auth/logout', async c => {
@@ -171,7 +187,7 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
     if (!(await verify(u, String(current ?? '')))) return c.json({ error: 'Current password is wrong.' }, 401);
     if (String(pw ?? '').length < 8) return c.json({ error: 'Use at least 8 characters.' }, 400);
     Object.assign(u, await hash(pw), { version: u.version + 1 }); await save(users);
-    start(c, u, true);   // this browser stays signed in; every other one is signed out
+    start(c, u.name, u.version, true);   // this browser stays signed in; every other one is signed out
     return c.json({ ok: true });
   });
 

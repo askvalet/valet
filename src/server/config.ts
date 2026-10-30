@@ -72,17 +72,29 @@ export const Appearance = z.object({
 export const Auth = z.object({
   // like other dashboards, no sign-in by default: keep it on a private network/VPN or behind your proxy's auth.
   // local: built-in accounts · proxy: trust the user header from an auth proxy (Authelia, Authentik…) · none
-  mode: z.enum(['none', 'local', 'proxy']).default('none'),
+  mode: z.enum(['none', 'local', 'proxy', 'oidc']).default('none'),
   sessionDays: z.number().int().min(1).max(365).default(30),   // how long "keep me signed in" lasts
   secureCookie: z.boolean().default(true),                     // false only when serving over plain http
   // with mode: none, Atrium is read-only (no buttons, no assistant tools that add or change things) unless you say the
   // network itself is the lock, e.g. it's only reachable over your VPN/tailnet or behind a sign-in proxy
   trustNetwork: z.boolean().default(false),
+  // mode: oidc. Register Atrium at your provider with the redirect URL https://<atrium>/api/auth/oidc/callback
+  oidc: z.object({
+    issuer: z.string().url(),                                  // e.g. https://auth.example.com (it must serve /.well-known/openid-configuration)
+    clientId: z.string(),
+    clientSecret: z.string(),
+    name: z.string().default('SSO'),                           // on the sign-in button
+    claim: z.string().default('preferred_username'),           // which claim is the person's name here
+    scope: z.string().default('openid profile email'),
+    allow: z.array(z.string()).default([]),                    // only these names or emails may sign in (empty: anyone the provider lets through)
+    redirectUrl: z.string().url().optional(),                  // if Atrium can't tell its own address (an odd proxy setup)
+  }).optional(),
   proxy: z.object({
     header: z.string().default('Remote-User'),                 // the header your proxy puts the signed-in user in
     trusted: z.array(z.string()).default(['127.0.0.1']),       // proxy addresses whose header is believed
   }).default({ header: 'Remote-User', trusted: ['127.0.0.1'] }),
-}).default({ mode: 'none', sessionDays: 30, secureCookie: true, trustNetwork: false, proxy: { header: 'Remote-User', trusted: ['127.0.0.1'] } });
+}).default({ mode: 'none', sessionDays: 30, secureCookie: true, trustNetwork: false, proxy: { header: 'Remote-User', trusted: ['127.0.0.1'] } })
+  .refine(a => a.mode !== 'oidc' || a.oidc, { message: 'auth.oidc (issuer, clientId, clientSecret) is needed for mode: oidc', path: ['oidc'] });
 
 export const Config = z.object({
   auth: Auth,

@@ -8,7 +8,7 @@ doing?", "is anything down?", "show me Plex and the GPU side by side". Answers c
 homepage uses, not walls of text.
 
 - **One YAML file.** Integrations, layout and the assistant live in `config.yaml`. Secrets come from the environment.
-- **Light.** One Node process, about 100 MB of RAM. The page is ~75 KB gzipped; the assistant loads only when you ask
+- **Light.** One Node process, about 35 MB of RAM, a 160 MB image. The page is ~95 KB gzipped; the assistant loads only when you ask
   something. Services are polled once, server-side, only while someone has the page open, and shared by every tab.
 - **Your model, your rules.** Use a local model (Ollama, llama.cpp, vLLM, LM Studio) or a hosted one (OpenRouter,
   OpenAI, Anthropic). Decide per integration whether the assistant can read it, control it, or not touch it. Anything
@@ -32,6 +32,8 @@ accounts and plugins. Publish the port on `127.0.0.1` (as above) when a reverse 
 
 Secrets never go in `config.yaml`: it refers to them as `${NAME}`, so you can share or commit your config safely.
 `npm run test:live` (or the startup log) tells you which integrations can't reach their service, and why.
+
+Config edits apply live, and `docker exec atrium node dist/server.js config check` names every problem in the file.
 
 From source (Node 22.18+):
 
@@ -72,6 +74,13 @@ changing anything. [SECURITY.md](SECURITY.md) has the details and the least-priv
 | `rgb-control` | A live 3D model of your PC with its lighting and temperatures |
 | `weather` | Now, today's range and the next hours (Open-Meteo, no key) |
 | `quran` | A verse of the day from a self-hosted Quran site |
+| `rss` | Any RSS or Atom feeds (blogs, news, YouTube channels, podcasts), as a list or a shelf of thumbnails |
+| `hackernews` | The front page |
+| `reddit` | Posts from your subreddits |
+| `releases` | Latest releases of the GitHub projects you run |
+| `markets` | Stocks, indices, currencies, crypto, with the day's line |
+| `calendar` | What's coming up, from any iCal link (Google, iCloud, Nextcloud, Outlook, Proton) |
+| `links` | Bookmarks, grouped, with favicons |
 
 Writing one is covered in [docs/integrations.md](docs/integrations.md). Community integrations are single files you drop
 into `data/integrations/`: see [docs/plugins.md](docs/plugins.md) and [`examples/hello-plugin.mjs`](examples/hello-plugin.mjs).

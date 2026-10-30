@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "node --watch --env-file-if-exists=.env src/server/main.ts & vite",
-    "build": "vite build && esbuild src/server/main.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=dist/server.js --loader:.txt=text --log-level=warning",
+    "build": "vite build && esbuild src/server/main.ts --bundle --splitting --platform=node --format=esm --target=node22 --outdir=dist/server --chunk-names=[name]-[hash] --loader:.txt=text --banner:js=\"import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);\" --log-level=warning && echo \"import './server/main.js';\" > dist/server.js",
     "start": "node --env-file-if-exists=.env dist/server.js",
     "check": "tsc --noEmit && tsc --noEmit -p tsconfig.web.json",
     "export:pc-model": "esbuild src/web/visuals/pc-model.ts --bundle --format=esm --minify --outdir=${PC_MODEL_OUT:-dist/pc-model}",

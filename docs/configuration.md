@@ -3,9 +3,15 @@
 Everything lives in one YAML file (`config.yaml`, or the path in `ATRIUM_CONFIG`). [`config.example.yaml`](../config.example.yaml)
 is a working starting point; this page lists every option. Anything you leave out takes the default shown.
 
-`${NAME}` anywhere in the file is replaced from the environment, and Atrium redacts each replaced value from anything
-it sends out. A misspelt top-level option stops startup with the path; an option an integration doesn't know is logged
-and ignored.
+`${NAME}` anywhere in the file is replaced from the environment, or from the file `NAME_FILE` points at (the Docker
+secrets convention). `${secret:name}` reads `/run/secrets/name` and `${file:/path}` any file; `\${…}` is left alone.
+Atrium redacts every replaced value from anything it sends out.
+
+Edits to the file apply live (`reload: true`): a broken edit is reported and the last good config keeps running, and
+open pages pick up the new layout. Sign-in settings and plugins are read once, so those need a restart. A misspelt
+top-level option is an error with its path; `node dist/server.js config check` lists every problem (unknown types,
+options and widget keys) without starting the server, and `config schema` prints a JSON schema editors and agents can
+work from (`# yaml-language-server: $schema=atrium.schema.json`).
 
 ## Environment and commands
 
@@ -16,6 +22,9 @@ and ignored.
 | `PORT` / `HOST` | `7575` / `0.0.0.0` | where it listens |
 
 ```sh
+node dist/server.js config check                            # every problem in config.yaml, or ✓
+node dist/server.js config print                            # the effective config, defaults filled in, secrets redacted
+node dist/server.js config schema > atrium.schema.json      # JSON schema of the whole file, every integration included
 node dist/server.js user add|passwd|remove|signout <name>   # local accounts (asks for the password)
 node dist/server.js new-integration <name>                  # scaffold a plugin in data/integrations/
 ```
@@ -36,12 +45,16 @@ In Docker, prefix these with `docker exec -it atrium`.
 | `menubar` | `[]` | widget keys whose headline numbers sit as small rings in the top bar |
 | `weather` | none | a widget key (e.g. `weather.now`) shown as a ring beside the clock |
 | `nav` | `{ side: left }` | where the tab buttons sit on wide screens: `left`, `right`, `top`, `bottom` (phones: bottom) |
+| `search` | none | web search from ⌘K: `duckduckgo`, `google`, `kagi`, `brave`, `startpage`, `searxng`, or a URL with `{q}` |
+| `links` | `{}` | bookmarks by group, each group a widget `links.<group-slug>`: `Media: [{ name, url, icon?, note? }]`. Without `icon`, the site's favicon (fetched by Atrium) |
+| `reload` | `true` | watch the file and apply edits live |
 
 ## `auth`
 
 | Option | Default | |
 |---|---|---|
-| `mode` | `none` | `none`, `local` (built-in accounts) or `proxy` (trust a sign-in proxy's user header) |
+| `mode` | `none` | `none`, `local` (built-in accounts), `proxy` (trust a sign-in proxy's user header) or `oidc` (OpenID Connect) |
+| `oidc` | — | for `mode: oidc`: `issuer`, `clientId`, `clientSecret`, `name` (on the button), `claim` (`preferred_username`), `scope`, `allow` (names or emails; empty: anyone the provider admits), `redirectUrl`. Register `https://<atrium>/api/auth/oidc/callback` at the provider |
 | `trustNetwork` | `false` | with `mode: none`, Atrium is read-only unless this is true (only your VPN/tailnet or a sign-in proxy reaches it) |
 | `sessionDays` | `30` | how long "keep me signed in" lasts |
 | `secureCookie` | `true` | `false` only when serving over plain http |
@@ -92,7 +105,7 @@ A list of sections; each is a tab in the rail.
 | Option | Default | |
 |---|---|---|
 | `title` | none | |
-| `widgets` | required | `instance.widget`, or `{ widget, size: small\|medium\|large }` |
+| `widgets` | required | `instance.widget`, or `{ widget, size: small\|medium\|large, every: 30s }` (`every` overrides how often it refreshes: seconds, or `30s`, `5m`, `1h`) |
 | `display` | `cards` | `cards`, `tiles`, `rings` or `media` |
 | `columns` | auto | cards per row (in a sidebar: the list's columns) |
 | `place` | `main` | `left` or `right` makes it a sidebar |
@@ -130,6 +143,13 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `tautulli` | `url`, `apiKey` | `streams`, `recent` |
 | `uptimekuma` | `url`, `username` (empty with an API key), `password` (or the key), `certWarnDays` (14) | `monitors` |
 | `weather` | `latitude`, `longitude`, `units` (`metric`), `interval` (600000 ms) | `now` |
+| `rss` | `feeds` (URLs, or `{ url, name }`; YouTube channels via `youtube.com/feeds/videos.xml?channel_id=…`), `limit` (12), `style` (`list` or `shelf` for thumbnails), `title`, `every` (900 s) | `latest` |
+| `hackernews` | `sort` (`top`, `new`, `best`), `limit` (10), `comments` (rows open the discussion) | `stories` |
+| `reddit` | `subreddits`, `sort` (`hot`), `limit` (10), `style` (`list` or `shelf`) | `posts` |
+| `releases` | `repos` (`owner/name`), `token` (optional, raises GitHub's rate limit), `limit`, `prereleases` | `latest` |
+| `markets` | `symbols` (`AAPL`, `BTC-USD`, `^GSPC`, `EURUSD=X`, or `{ symbol, name }`), `range` (`1d`), `title` | `quotes` |
+| `calendar` | `calendars` (iCal URLs, or `{ url, name }`), `days` (14), `limit` (10), `title` | `upcoming` |
+| `links` | (from the top-level `links:` block) | one per group |
 
 The comments in each integration's schema (`src/integrations/<type>.ts`, the `config:` block) explain the nested
 options (Home Assistant's `cards`, `schedules` and `floorplans`; the PC `build`). `/#gallery` shows every card type.

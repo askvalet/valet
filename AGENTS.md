@@ -47,8 +47,11 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   here and re-export; never fork it.
 - **Visuals are lazy**: registered in `VISUALS` in `cards.tsx` with `lazy(() => import(...))`, so a page without them
   never downloads them. A showcase card with no `items` hands the whole card to its visual.
-- **Server stays small.** Hono + node-server, bundled with esbuild into `dist/server.js`. No database: state lives in
-  the services Atrium talks to.
+- **Server stays small.** Hono + node-server, bundled with esbuild (dependencies included, so the image ships no
+  `node_modules`) into `dist/server/`. No database: state lives in the services Atrium talks to.
+- **A config is a Site** (`src/server/site.ts`): `check()` turns a config into instances and the list of problems
+  (the CLI and tests use it alone); `buildSite()` adds the hub. `main.ts` keeps one `site` and swaps it when
+  config.yaml changes, so routes read `site.x` at request time, never a captured copy.
 
 - **Personal things live in config, never in code.** Hardware builds (`build:`), rooms and lights, services, layout,
   angles: the repo ships generic defaults and a documented `config.example.yaml`. Before committing, grep for anything

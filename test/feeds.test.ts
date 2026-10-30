@@ -47,6 +47,6 @@ test('ics: single, all-day, weekly by day, daily with count, exdate, and a windo
   assert.deepEqual(names, ['Gym@29', 'Pills@29', 'Pills@30', 'Dentist, 3pm@30', 'Pills@31']);   // Gym on the 31st is excluded; Holiday is after the window
   const dentist = ev.find(e => e.title.startsWith('Dentist'))!;
   assert.deepEqual([dentist.allDay, dentist.location, dentist.calendar, dentist.end! - dentist.start], [false, 'Main St', 'Home', 3_600_000]);
-  const holiday = parseICS(ics, day(1), day(5), 'Home').find(e => e.title === 'Holiday')!;
+  const holiday = parseICS(ics, new Date(2025, 10, 1).getTime(), new Date(2025, 10, 5).getTime(), 'Home').find(e => e.title === 'Holiday')!;
   assert.equal(holiday.allDay, true);
 });

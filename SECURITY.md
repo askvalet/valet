@@ -5,7 +5,8 @@ the damage if something goes wrong, and how to give it as little power as possib
 
 ## What Atrium does with your keys
 
-- **They stay on the server.** Keys live in `.env`; `config.yaml` refers to them as `${NAME}`. Only Atrium's server talks
+- **They stay on the server.** Keys live in `.env` or Docker/Kubernetes secret files; `config.yaml` refers to them as
+  `${NAME}` (or `${secret:name}`, `${file:/path}`). Only Atrium's server talks
   to your services. The page gets finished cards, and pictures (posters, document pages, photos) come through Atrium's
   own image proxy, which only fetches the kinds of things each integration expects (it checks every request).
 - **They're scrubbed from everything that leaves the server.** Every value a `${NAME}` stood for is redacted from
@@ -18,7 +19,7 @@ the damage if something goes wrong, and how to give it as little power as possib
 
 - **Read-only unless you say otherwise.** With sign-in off (the default), Atrium only shows things: card buttons and
   controls are off, and the assistant only gets tools that look. It can change things only when sign-in is on
-  (`auth.mode: local` or `proxy`), or you set `auth.trustNetwork: true` because the network is the lock (a VPN or
+  (`auth.mode: local`, `oidc` or `proxy`), or you set `auth.trustNetwork: true` because the network is the lock (a VPN or
   tailnet, or a sign-in proxy in front).
 - **The assistant asks before it changes anything.** Each integration's access is set in `assistant.access`: `none`,
   `read`, `write` (may add things, like saving a link, without asking) or `control` (may change or remove things, and

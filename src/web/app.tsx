@@ -115,7 +115,7 @@ export function App() {
   if (!me) return null;
   if (me.user && hash === '#gallery') { document.documentElement.classList.add('dark'); return <Suspense fallback={null}><Gallery /></Suspense>; }
   if (!me.user) return (
-    <SignIn setup={!!me.setup} onDone={name => setMe({ ...me, user: { name } })}
+    <SignIn setup={!!me.setup} provider={me.provider} onDone={name => setMe({ ...me, user: { name } })}
       wallpaper={<div className="wallpaper" aria-hidden><img src="/api/wallpaper" alt="" style={{ filter: 'blur(6px)' }} onError={e => (e.currentTarget.style.display = 'none')} /></div>} />
   );
   return <Home />;
