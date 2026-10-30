@@ -71,6 +71,7 @@ export default defineIntegration({
       widgets,
       tools: {
         local_ai_status: {
+          live: true,
           label: 'Checked local AI',
           description: 'Status of the local AI server: GPU load, power draw, VRAM, temperature, which model is loaded (or swapping), anything running now, and today\'s requests, tokens and electricity cost.',
           access: 'read', input: z.object({}),

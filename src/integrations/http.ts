@@ -49,6 +49,7 @@ export default defineIntegration({
       },
       tools: {
         service_status: {
+          live: true,
           label: 'Checked services',
           followUps: ['How is the server doing?', 'Show downloads'],
           description: 'Whether each self-hosted service is up, with response time. Use for "is X down", "what is offline".',

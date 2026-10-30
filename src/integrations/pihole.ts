@@ -57,6 +57,7 @@ export default defineIntegration({
       },
       tools: {
         adblock_status: {
+          live: true,
           label: 'Checked ad blocking',
           description: 'Pi-hole: share of DNS queries blocked today, totals, whether blocking is on, and the most blocked domains.',
           access: 'read', input: z.object({}),

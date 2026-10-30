@@ -98,6 +98,7 @@ export default defineIntegration({
           },
         },
         plex_streams: {
+          live: true,
           label: 'Checked Plex',
           followUps: ['What was added recently?', 'Who watched the most this week?'],
           description: 'Who is watching what on Plex right now: title, user, device, progress, quality, direct play or transcode, bandwidth.',

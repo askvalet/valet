@@ -138,3 +138,15 @@ test('history: reasoning left in old replies isn\'t sent back, and only the last
   assert.ok(!prompt.includes('</think>') && !prompt.includes('secret plan'));
   assert.ok(prompt.includes('answer 39') && !prompt.includes('q0"'));
 });
+
+test('live cards: only tools that opted in are marked, and they must only look', async () => {
+  const { registry } = await import('../src/integrations/index.ts');
+  const ctx: any = { id: 't', http: async () => ({}), log() {}, image: (r: string) => r, upload: async () => ({}), session: () => ({ get: async () => '', reset() {} }) };
+  const sample: Record<string, object> = { http: { targets: [] }, weather: { latitude: 1, longitude: 2 } };
+  const live: string[] = [];
+  for (const [type, i] of Object.entries(registry)) {
+    let inst; try { inst = i.create(i.config.parse({ url: 'http://x', apiKey: 'k', token: 't', password: 'p', username: 'u', ...sample[type] }), ctx); } catch { continue; }
+    for (const [name, t] of Object.entries(inst.tools ?? {})) if ((t as any).live) { live.push(name); assert.equal(t.access, 'read', name); }
+  }
+  assert.ok(live.includes('downloads_status') && live.includes('plex_streams'));
+});

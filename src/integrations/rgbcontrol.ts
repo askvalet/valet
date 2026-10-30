@@ -121,6 +121,7 @@ export default defineIntegration({
           },
         },
         pc_status: {
+          live: true,
           label: 'Checked the PC',
           description: "The desktop's temperatures (CPU, GPU, coolant), pump and fan speeds, and what its lights are set to.",
           access: 'read', input: z.object({}),

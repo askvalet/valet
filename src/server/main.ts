@@ -137,7 +137,7 @@ app.get('/api/page', c => {
     assistant: config.assistant ? { ...(agent ? { name: agent.name, model: agent.model, external: true } : { name: config.assistant.name, model: config.assistant.model }), suggestions: config.assistant.suggestions,
       // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>")
       tools: Object.fromEntries([...instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {})
-        .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access }]))) } : null,
+        .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access, live: t.live }]))) } : null,
     menubar: config.menubar.filter(k => hub.widget(k)),
     nav: config.nav,
     island: config.island && { ...config.island, activities: config.island.activities.filter(k => hub.widget(k)) },
@@ -302,6 +302,26 @@ app.post('/api/pins', async c => {
     await swap(site.config);
     return c.json({ ok: true });
   } catch (e) { return c.json({ error: site.redact((e as Error).message) }, 400); }
+});
+
+// A chat card staying current: the same re-run a pin does, for tools that opted in, a few seconds apart at most.
+const liveCache = new Map<string, { at: number; card: unknown }>();
+app.post('/api/live', async c => {
+  const a = site.config.assistant, { tool, input } = await c.req.json().catch(() => ({} as any));
+  if (!a || typeof tool !== 'string' || !input || typeof input !== 'object') return c.json({ error: 'bad request' }, 400);
+  const allowed = (id: string) => (a.access[id] ?? a.access.default ?? 'read') !== 'none';
+  const [inst, name] = tool.split('__');
+  const ok = tool === 'show' ? Array.isArray(input.widgets) && input.widgets.every((k: unknown) => typeof k === 'string' && allowed(k.split('.')[0]))
+    : inst !== 'atrium' ? !!site.instances.get(inst)?.tools?.[name]?.live && allowed(inst) : !!site.instances.get(inst)?.tools?.[name]?.live;
+  if (!ok) return c.json({ error: 'not a live card' }, 403);
+  const id = JSON.stringify([tool, input]), hit = liveCache.get(id);
+  if (hit && Date.now() - hit.at < 5000) return c.json({ card: hit.card });
+  try {
+    const card = JSON.parse(site.redact(JSON.stringify(await pinnedCard({ tool, input }, site.instances))));
+    liveCache.set(id, { at: Date.now(), card });
+    if (liveCache.size > 40) liveCache.delete(liveCache.keys().next().value!);
+    return c.json({ card });
+  } catch (e) { return c.json({ error: site.redact((e as Error).message) }, 502); }
 });
 
 // The AI SDK, providers and MCP client load on the first question, so an unused assistant costs no memory.

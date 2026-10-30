@@ -116,6 +116,7 @@ export default defineIntegration({
           },
         },
         downloads_status: {
+          live: true,
           label: 'Checked downloads',
           followUps: ['When will it finish?', 'Pause downloads'],
           description: 'Torrents currently downloading with progress, speed, size left and ETA, plus total transfer speed.',

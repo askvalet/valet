@@ -70,6 +70,7 @@ answer that used it. Pick the narrowest `access`:
 - `write`: adds something the person asked for (save a link, file a document). List the inputs that must come from the
   person's own message in `fromPerson` (`['url']`): when they do, it runs without asking; when a page or document the
   assistant read put them there, it asks. That's what stops a web page from talking the assistant into acting.
+- Set `live: true` on a cheap look-only tool whose answer changes by itself, and its card keeps itself current in chat.
 - `control`: changes or removes something (pause, stop, turn off, request). Every call asks first, and it only exists
   for the assistant if the user grants `control`.
 

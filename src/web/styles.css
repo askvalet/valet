@@ -297,6 +297,9 @@
 .chat-pin { position: absolute; top: 8px; right: 8px; z-index: 2; opacity: 0; transition: opacity 160ms var(--ease-out); }
 .chat-pinnable:hover .chat-pin, .chat-pin:focus-visible, .chat-pin[data-done] { opacity: 1; }
 @media (pointer: coarse) { .chat-pin { opacity: 1; } }
+/* a chat card that's keeping itself current: one small breathing dot */
+.live-dot { position: absolute; top: 15px; right: 40px; z-index: 2; width: 6px; height: 6px; border-radius: 99px; background: var(--good); animation: live-dot 2.4s ease-in-out infinite; }
+@keyframes live-dot { 50% { opacity: .35; } }
 /* a chart's line draws itself in, once */
 .chart-draw { animation: chart-draw 900ms var(--ease-out) both; }
 @keyframes chart-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }

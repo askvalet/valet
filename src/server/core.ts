@@ -34,6 +34,9 @@ export interface Tool<A = any> {
   followUps?: string[];
   /** The input field that takes search words, if this tool searches: it then joins the assistant's search_everything. */
   find?: string;
+  /** Its card stays current in the chat: the page re-runs it every few seconds while it's on screen. Only for cheap,
+   *  look-only tools whose answer changes by itself. */
+  live?: boolean;
   /** The tool that reverses this one, given the same input: it adds Undo in the activity log. */
   undo?: string;
   /** For 'write' tools: input fields that must come word for word from the person's own latest message for the tool to

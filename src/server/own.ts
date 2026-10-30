@@ -34,6 +34,7 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
         },
       },
       metric_chart: {
+        live: true,
         label: 'Drew a graph', followUps: ['What caused the peak?'],
         description: 'A graph of any headline number Atrium tracks, over time: CPU, memory, GPU, disk, network, power, requests. Use for "graph", "chart", "show me X over the last day". The person can scrub across it. Use the unit it returns exactly; never assume one.',
         access: 'read', input: z.object({ name: z.string().describe('what to graph, e.g. "memory" or "GPU"'), hours: z.number().min(1).max(336).default(24) }),

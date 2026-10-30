@@ -131,6 +131,7 @@ export default defineIntegration({
           },
         },
         system_status: {
+          live: true,
           label: 'Checked the server',
           description: 'Current CPU, memory, CPU/GPU temperatures, GPU load and uptime of the server, plus disk usage.',
           access: 'read', input: z.object({}),

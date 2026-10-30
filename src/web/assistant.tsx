@@ -69,7 +69,39 @@ function Reasoning({ text, streaming, took }: { text: string; streaming: boolean
   );
 }
 
-export type ToolInfo = { label?: string; followUps?: string[]; access: 'read' | 'write' | 'control' };
+export type ToolInfo = { label?: string; followUps?: string[]; access: 'read' | 'write' | 'control'; live?: boolean };
+
+/** A card that keeps itself current while it's recent and on screen: downloads move, streams change. Nothing's sent when
+ *  the tab is hidden, and after ten minutes it settles as it is. */
+function useLive(first: Card, tool: string, input: unknown, on: boolean) {
+  const [card, setCard] = useState(first), [live, setLive] = useState(on);
+  useEffect(() => {
+    if (!on) { setLive(false); return; }
+    const started = Date.now();
+    setLive(true);
+    const t = setInterval(async () => {
+      if (Date.now() - started > 600_000) { clearInterval(t); setLive(false); return; }
+      if (document.hidden) return;
+      const r = await fetch('/api/live', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool, input }) }).catch(() => null);
+      if (!r?.ok) return;
+      const next = (await r.json()).card as Card;
+      setCard(c => JSON.stringify(c) === JSON.stringify(next) ? c : next);
+    }, 8000);
+    return () => clearInterval(t);
+  }, [on, tool, JSON.stringify(input)]);
+  return { card, live };
+}
+
+function ChatCard({ first, name, input, tools, canPin, fresh }: { first: Card; name: string; input: unknown; tools: Record<string, ToolInfo>; canPin?: boolean; fresh?: boolean }) {
+  const { card, live } = useLive(first, name, input ?? {}, !!fresh && (name === 'show' || !!tools[name]?.live));
+  return (
+    <div className="chat-card chat-pinnable relative">
+      <Widget card={card} compact />
+      {live && <span className="live-dot" title="Live" aria-label="Live" />}
+      {canPin && (name === 'show' || (tools[name]?.access === 'read' && !name.startsWith('config__'))) && <PinButton tool={name} input={input ?? {}} />}
+    </div>
+  );
+}
 
 // What a tool did, in words, with the thing it was given: "Searched documents · uber receipt". Integrations name it
 // (`label`); MCP tools and the built-in show fall back to their own names.
@@ -136,7 +168,7 @@ function PinButton({ tool, input }: { tool: string; input: unknown }) {
   );
 }
 
-function ToolPart({ p, approve, tools = {}, canPin }: { p: any; approve: (id: string, ok: boolean) => void; tools?: Record<string, ToolInfo>; canPin?: boolean }) {
+function ToolPart({ p, approve, tools = {}, canPin, fresh }: { p: any; approve: (id: string, ok: boolean) => void; tools?: Record<string, ToolInfo>; canPin?: boolean; fresh?: boolean }) {
   const label = toolLabel(p.type === 'dynamic-tool' ? p.toolName : p.type);
   const name = p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, '');
   if (p.state === 'approval-requested' && !p.approval?.isAutomatic) return (
@@ -170,12 +202,7 @@ function ToolPart({ p, approve, tools = {}, canPin }: { p: any; approve: (id: st
   );
   if (p.state === 'output-available') {
     const card = p.output?.card as Card | undefined;
-    if (card) return (
-      <div className="chat-card chat-pinnable relative">
-        <Widget card={card} compact />
-        {canPin && (name === 'show' || (tools[name]?.access === 'read' && !name.startsWith('config__'))) && <PinButton tool={name} input={p.input ?? {}} />}
-      </div>
-    );
+    if (card) return <ChatCard first={card} name={name} input={p.input} tools={tools} canPin={canPin} fresh={fresh} />;
     const mcp = Array.isArray(p.output?.content) ? p.output.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n') : '';
     if (mcp) return (
       <details className="group rounded-xl border bg-card px-4 py-3 text-sm">
@@ -325,7 +352,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
           // a reply: runs of tool calls become one chip list, followed by any cards they returned, then the words
           const isLast = mi === messages.length - 1, live = isLast && busy;
           const blocks: ReactNode[] = [], thoughts: string[] = []; let run: any[] = [], thinking = false;
-          const flush = (k: string) => { if (run.length) { const r = run; blocks.push(<ToolChips key={`c${k}`} parts={r} tools={tools} settled={!live || m.parts.some((p: any) => p.type === 'text' && p.text.trim())} />, ...r.map((p, j) => <ToolPart key={`p${k}.${j}`} p={p} tools={tools} canPin={canPin} approve={(id, ok) => addToolApprovalResponse({ id, approved: ok })} />)); run = []; } };
+          const flush = (k: string) => { if (run.length) { const r = run; blocks.push(<ToolChips key={`c${k}`} parts={r} tools={tools} settled={!live || m.parts.some((p: any) => p.type === 'text' && p.text.trim())} />, ...r.map((p, j) => <ToolPart key={`p${k}.${j}`} p={p} tools={tools} canPin={canPin} fresh={mi >= messages.length - 4} approve={(id, ok) => addToolApprovalResponse({ id, approved: ok })} />)); run = []; } };
           m.parts.forEach((p: any, i) => {
             if (p.type.startsWith('tool-') || p.type === 'dynamic-tool') run.push(p);
             else if (p.type === 'reasoning') { thoughts.push(p.text ?? ''); thinking ||= live && p.state === 'streaming'; }

@@ -312,3 +312,55 @@ test('host: services by name, quiet ones never alert, and logs say what\'s allow
   assert.deepEqual(((await h.tools!.service_logs.run({ name: 'ssh', lines: 50 })) as any).data.listed, ['radarr']);
   assert.ok(Object.values(h.tools!).every(t => t.access === 'read'));
 });
+
+test('updates: reading images and versions, and only comparing like with like', async () => {
+  const { listTags, newest, parseImage, warnings } = await import('../src/server/registry.ts');
+  assert.deepEqual(parseImage('ghcr.io/immich-app/immich-server:v3.3.5'), { registry: 'ghcr.io', repo: 'immich-app/immich-server', tag: 'v3.3.5' });
+  assert.deepEqual(parseImage('nginx'), { registry: 'registry-1.docker.io', repo: 'library/nginx', tag: 'latest' });
+  assert.deepEqual(parseImage('mccloud/subgen:2026.07.3'), { registry: 'registry-1.docker.io', repo: 'mccloud/subgen', tag: '2026.07.3' });
+  assert.deepEqual(parseImage('lscr.io/linuxserver/bazarr:1.5.2@sha256:abc'), { registry: 'lscr.io', repo: 'linuxserver/bazarr', tag: '1.5.2' });
+  assert.equal(parseImage('sha256:deadbeef'), null);
+
+  assert.deepEqual(newest('v1.2.3', ['v1.2.3', 'v1.2.4', 'v1.10.0', 'v1.9.9', '2.0.0-rc1', 'v2.0.0-beta']), { tag: 'v1.10.0', major: false });   // numbers, not text
+  assert.deepEqual(newest('15-alpine', ['15-alpine', '16-alpine', '17', '17-bookworm']), { tag: '16-alpine', major: true });                    // the same flavour
+  assert.equal(newest('1.2.3', ['1.2.2', '1.2.3', 'latest']), null);
+  assert.equal(newest('latest', ['1.2.3']), null);
+  assert.deepEqual(newest('2026.10.25-54ca1d9cf', ['2026.10.25-54ca1d9cf', '2026.10.29-aabbccd1']), { tag: '2026.10.29-aabbccd1', major: false }); // a hash isn't a flavour
+  assert.deepEqual(warnings('# 3.4\n- **Breaking**: config moved\n- faster search\n* Requires a database migration'), ['Breaking: config moved', 'Requires a database migration']);
+
+  // the anonymous token dance every registry shares
+  const seen: string[] = [];
+  const tags = await listTags({ registry: 'ghcr.io', repo: 'a/b', tag: '1' }, async (url, headers) => {
+    seen.push(url);
+    if (url.includes('/token')) return new Response(JSON.stringify({ token: 'T' }));
+    if (headers?.Authorization !== 'Bearer T') return new Response('', { status: 401, headers: { 'www-authenticate': 'Bearer realm="https://ghcr.io/token",service="ghcr.io",scope="repository:a/b:pull"' } });
+    return new Response(JSON.stringify({ tags: ['1', '2'] }));
+  });
+  assert.deepEqual(tags, ['1', '2']);
+  assert.match(seen[1], /token\?service=ghcr\.io&scope=repository%3Aa%2Fb%3Apull/);
+});
+
+test('docker updates: names what\'s behind, surfaces warnings, and caches registry checks', async () => {
+  const { default: docker } = await import('../src/integrations/docker.ts');
+  let registry = 0;
+  const list = [
+    { Id: '1', Names: ['/immich'], State: 'running', Status: 'Up', Image: 'ghcr.io/immich-app/immich-server:v3.3.5', Labels: {} },
+    { Id: '2', Names: ['/caddy'], State: 'running', Status: 'Up', Image: 'caddy:2.11.7', Labels: {} },
+    { Id: '3', Names: ['/watchtower'], State: 'running', Status: 'Up', Image: 'watchtower:latest', Labels: {} },
+  ];
+  const ctx = fake(url => {
+    if (url.includes('/tags/list')) { registry++; return new Response(JSON.stringify({ tags: url.includes('immich') ? ['v3.3.5', 'v3.4.0'] : ['2.11.7'] })); }
+    if (url.includes('/releases')) return [{ tag_name: 'v3.4.0', published_at: '2026-10-20', body: '- Breaking: run the database migration' }, { tag_name: 'v3.3.5', published_at: '2026-10-01', body: 'old' }];
+    return list;
+  });
+  const d = make(docker, { url: 'http://proxy:2375' }, ctx);
+  const c: any = await d.widgets.updates.fetch(); valid(c);
+  assert.deepEqual(c.items.map((i: any) => [i.title, i.subtitle, i.meta, i.tone]), [['immich', 'v3.3.5 → v3.4.0', 'Read first', 'warn']]);
+  assert.equal(c.summary.sub, '1 to read first');
+  const t: any = await d.tools!.updates_check.run({});
+  assert.deepEqual([t.data.upToDate, t.data.floatingTag], [1, ['watchtower']]);
+  assert.equal(t.data.behind[0].warnings[0], 'v3.4.0: Breaking: run the database migration');
+  assert.equal(registry, 2);                                                       // the second look used the cache
+  const n: any = await d.tools!.update_notes.run({ name: 'immich' });
+  assert.deepEqual(n.data.releases.map((r: any) => r.version), ['v3.4.0']);         // only what's new to you
+});

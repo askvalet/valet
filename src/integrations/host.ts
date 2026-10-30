@@ -32,6 +32,7 @@ export default defineIntegration({
       },
       tools: {
         services_status: {
+          live: true,
           label: 'Checked the services', followUps: ['Why did it stop?'],
           description: 'Services running directly on this machine rather than in Docker (systemd): state, since when, how many times they restarted, how they last ended, memory. You can only look: you cannot start, stop or restart them, so give the person the command instead.',
           access: 'read', input: z.object({}),
