@@ -245,4 +245,9 @@
 @keyframes chat-dot { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
 .chat-icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; }
 @media (hover: hover) and (pointer: fine) { .chat-icon:hover { background: rgb(255 255 255 / .07); color: var(--foreground); } }
-@media (prefers-reduced-motion: reduce) { .chat-word, .chat-card, .chat-in { animation: none; } .chat-shimmer { animation: none; color: var(--muted-foreground); } }
+/* a page or tab opening: sections settle in, a beat apart; a number that changes crossfades through a slight blur */
+.settle { animation: settle 420ms var(--ease-out) both; }
+@keyframes settle { from { opacity: 0; transform: translateY(10px); } }
+.tick { display: inline-block; animation: tick 260ms var(--ease-out) both; }
+@keyframes tick { from { opacity: 0; transform: translateY(2px) scale(.96); filter: blur(2px); } }
+@media (prefers-reduced-motion: reduce) { .settle, .tick { animation: none; } .chat-word, .chat-card, .chat-in { animation: none; } .chat-shimmer { animation: none; color: var(--muted-foreground); } }

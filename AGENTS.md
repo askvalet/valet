@@ -58,6 +58,13 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   popovers) is frostier than cards so it stays legible over content while scrolling.
 - **Numbers as shapes.** Health reads at a glance: rings coloured by tone, area graphs behind tiles. Values sit inside
   the shape; labels stay quiet.
+- **Motion follows one vocabulary** (`styles.css`, after Emil Kowalski's skills): `--ease-out` for arriving/leaving,
+  `--ease-in-out` for moving on screen, never ease-in; under ~300ms for UI; animate transform, opacity and small blurs
+  only; `scale(0.97)` press feedback; hover effects gated by `(hover: hover)`; nothing animates on keyboard actions;
+  `prefers-reduced-motion` drops movement. Name transitioned properties, never `transition: all`.
+- **Alive, not busy.** The chat shows work happening (a shimmering label with a timer, tool calls as chips that settle
+  into a collapsed "n steps"), words fade in as they stream, cards settle in. Sections settle in once per page or tab;
+  live numbers crossfade. Anything that happens many times a day stays still.
 - **Motion is short and purposeful.** ~300 ms fades and scales for popovers; ~900 ms ease-out for a camera flying to
   a part. Respect `prefers-reduced-motion`.
 - **Things don't jump.** Controls that change with a selection live in fixed-height rows; panels never resize their card.

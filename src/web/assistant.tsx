@@ -282,8 +282,8 @@ export default function Assistant({ name, model, ask, suggestions, onAsk }: {
             onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
             className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-1.5 text-[15px] outline-none field-sizing-content placeholder:text-muted-foreground" autoFocus />
           {busy
-            ? <Button type="button" size="icon" variant="secondary" className="size-8 rounded-full" onClick={stop} aria-label="Stop"><Square className="size-3 fill-current" /></Button>
-            : <Button type="submit" size="icon" className={cn('size-8 rounded-full')} disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp /></Button>}
+            ? <Button type="button" size="icon" variant="secondary" className="size-8 rounded-full" onClick={stop} aria-label="Stop"><Square className="tick size-3 fill-current" /></Button>
+            : <Button type="submit" size="icon" className={cn('size-8 rounded-full')} disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="tick" /></Button>}
         </div>
       </form>
     </div>
