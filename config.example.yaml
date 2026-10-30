@@ -10,9 +10,17 @@ assistant:
   baseURL: http://localhost:11434/v1   # Ollama
   model: qwen3:8b
   # what it may use: none | read | control. Control actions always ask you first.
-  access: { default: read, downloads: control }
+  access: { default: read, downloads: control, docs: write, bookmarks: write }   # none | read | write (adds things, no asking) | control (asks first)
 
 integrations:
+  docs:
+    type: paperless                # ask about your documents; paste or attach to file them
+    url: http://paperless:8000
+    token: ${PAPERLESS_TOKEN}
+  bookmarks:
+    type: karakeep                 # send a link to save it; ask about what you've saved
+    url: http://karakeep:3000
+    apiKey: ${KARAKEEP_KEY}
   pc:
     type: rgb-control              # github.com/<you>/rgb-control: a live 3D model of the PC with its lighting
     url: http://host:8098
@@ -79,6 +87,8 @@ nav: { side: left }               # where the tab buttons sit: left, right, top 
 #   variant: minimal    tighter rows, just the essentials (services: icon, name, dot)
 #   header: false       its cards drop their title bar
 #   overview: false     only on its own tab, not the overview
+#   tab: Name           share a tab with other sections (default: its title)
+#   chat: true          its tab also holds the assistant, full page
 layout:
   - title: Now
     widgets: [system.overview, downloads.active]
