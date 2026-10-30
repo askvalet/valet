@@ -216,3 +216,33 @@
 .island-bar { height: 4px; animation: island-eq .9s ease-in-out infinite alternate; }
 .island-bar:nth-child(2) { animation-duration: .7s; } .island-bar:nth-child(3) { animation-duration: 1.05s; } .island-bar:nth-child(4) { animation-duration: .8s; }
 @keyframes island-eq { to { height: 14px; } }
+
+/* ── Motion. One set of curves for the whole app (Emil Kowalski's): ease-out for things arriving or leaving,
+   ease-in-out for things moving on screen, never ease-in. UI motion stays under ~300ms; only transform, opacity and
+   small blurs animate. Keyboard actions don't animate. */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+/* press feedback: a slight give under the finger */
+.press, [data-slot="button"], .glass-round, .chat-icon { transition-property: transform, color, background-color, opacity, box-shadow; transition-duration: 160ms; transition-timing-function: var(--ease-out); }
+.press:active, [data-slot="button"]:active:not(:disabled), button.glass-round:active, .chat-icon:active { transform: scale(0.97); }
+
+/* chat: a message arrives, cards settle in, words fade up out of a slight blur as they stream */
+.chat-in { animation: chat-in 280ms var(--ease-out) both; transform-origin: bottom right; }
+@keyframes chat-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } }
+.chat-card { animation: chat-card 320ms var(--ease-out) both; }
+@keyframes chat-card { from { opacity: 0; transform: translateY(8px) scale(0.985); filter: blur(2px); } }
+.chat-word { animation: chat-word 420ms var(--ease-out) both; }
+@keyframes chat-word { from { opacity: 0; filter: blur(3px); } }
+/* thinking: light sweeping across the label, and a 3×3 grid of dots breathing in a diagonal wave */
+.chat-shimmer { background: linear-gradient(90deg, var(--muted-foreground) 0%, var(--muted-foreground) 35%, var(--foreground) 50%, var(--muted-foreground) 65%, var(--muted-foreground) 100%);
+  background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: chat-shimmer 1.8s linear infinite; }
+@keyframes chat-shimmer { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+.chat-dots { display: grid; grid-template-columns: repeat(3, 3px); gap: 2px; }
+.chat-dots i { width: 3px; height: 3px; border-radius: 1px; background: var(--primary); animation: chat-dot 1.2s ease-in-out infinite; }
+@keyframes chat-dot { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
+.chat-icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; }
+@media (hover: hover) and (pointer: fine) { .chat-icon:hover { background: rgb(255 255 255 / .07); color: var(--foreground); } }
+@media (prefers-reduced-motion: reduce) { .chat-word, .chat-card, .chat-in { animation: none; } .chat-shimmer { animation: none; color: var(--muted-foreground); } }

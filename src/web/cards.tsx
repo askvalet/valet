@@ -237,7 +237,7 @@ function Shelf({ card, header, small }: { card: ShelfCard; header?: ReactNode; s
     <div>
       <div className="mb-3 flex items-center gap-2">
         {header}
-        <div className="ml-auto hidden gap-1.5 sm:flex">
+        <div className={cn('ml-auto hidden gap-1.5', card.items.length > (small ? 4 : 6) && 'sm:flex')}>
           <button onClick={() => page(-1)} aria-label="Previous" className="grid size-7 place-items-center rounded-full bg-secondary text-muted-foreground transition-colors hover:text-foreground"><ChevronLeft className="size-4" /></button>
           <button onClick={() => page(1)} aria-label="Next" className="grid size-7 place-items-center rounded-full bg-secondary text-muted-foreground transition-colors hover:text-foreground"><ChevronRight className="size-4" /></button>
         </div>
