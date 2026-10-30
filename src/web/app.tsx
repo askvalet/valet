@@ -331,14 +331,6 @@ export function App() {
             <CommandEmpty>
               <button className="mx-auto flex items-center gap-2 text-sm" onClick={() => { ask(query); setQuery(''); }}><CornerDownLeft className="text-muted-foreground" />Ask “{query}”</button>
             </CommandEmpty>
-            {query.trim() && <CommandGroup heading="Ask"><CommandItem value={`ask ${query}`} onSelect={() => { ask(query); setQuery(''); }}><CornerDownLeft className="text-muted-foreground" />Ask “{query}”<CommandShortcut>↵</CommandShortcut></CommandItem></CommandGroup>}
-            <CommandGroup heading="Suggestions">
-              {SUGGESTIONS.map(s => <CommandItem key={s} onSelect={() => ask(s)}><CornerDownLeft className="text-muted-foreground" />{s}</CommandItem>)}
-            </CommandGroup>
-            <CommandGroup heading="Go to">
-              <CommandItem onSelect={() => { setView('all'); setPalette(false); }}><LayoutGrid />Overview</CommandItem>
-              {nav.map(s => <CommandItem key={s.key} onSelect={() => { setView(s.key); setPalette(false); }}><Icon name={s.chat ? 'chat' : sectionIcon(s) ?? 'pulse'} />{s.key}</CommandItem>)}
-            </CommandGroup>
             {services.length > 0 && (
               <CommandGroup heading="Open">
                 {services.map(sv => (
@@ -350,6 +342,14 @@ export function App() {
                 ))}
               </CommandGroup>
             )}
+            {query.trim() && <CommandGroup heading="Ask"><CommandItem value={`ask ${query}`} onSelect={() => { ask(query); setQuery(''); }}><CornerDownLeft className="text-muted-foreground" />Ask “{query}”<CommandShortcut>↵</CommandShortcut></CommandItem></CommandGroup>}
+            <CommandGroup heading="Suggestions">
+              {SUGGESTIONS.map(s => <CommandItem key={s} onSelect={() => ask(s)}><CornerDownLeft className="text-muted-foreground" />{s}</CommandItem>)}
+            </CommandGroup>
+            <CommandGroup heading="Go to">
+              <CommandItem onSelect={() => { setView('all'); setPalette(false); }}><LayoutGrid />Overview</CommandItem>
+              {nav.map(s => <CommandItem key={s.key} onSelect={() => { setView(s.key); setPalette(false); }}><Icon name={s.chat ? 'chat' : sectionIcon(s) ?? 'pulse'} />{s.key}</CommandItem>)}
+            </CommandGroup>
           </CommandList>
         </CommandDialog>
       )}
