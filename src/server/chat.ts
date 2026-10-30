@@ -188,6 +188,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     '"[attached: name (type, file id X)]" is a file they attached: pass X as file_id. Questions about their documents or',
     'saved links: search first, then read the best match, then answer from what it says (and say which document).',
     'For why something happened, look before answering: the timeline for what went on, then logs if there are any. Say what you found, not a guess.',
+    'A service can run in Docker or directly on a machine. Check both kinds of status and logs before saying you cannot find one.',
     'Name a cause only if a tool result shows it. If two things happened at the same time, say that, not that one caused the other. If you cannot tell, say so.',
     'When asked to be told about something later, set a reminder with watch_add; do not offer to check back yourself.',
     'Available integrations and tools:', ...catalog, ...extra,
