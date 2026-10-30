@@ -188,8 +188,8 @@ function ServiceRow({ s, minimal }: { s: StatusCard['items'][number]; minimal?: 
     <a href={s.href} target="_blank" rel="noreferrer" title={s.ok ? `${s.name} · ${s.ms ?? ''} ms` : `${s.name} · ${s.quiet ? 'offline' : s.detail}`}
       className="flex min-w-0 break-inside-avoid items-center gap-2.5 rounded-lg px-2 py-[5px] transition-colors hover:bg-accent">
       <AppIcon src={s.icon} name={s.name} small />
-      <span className="min-w-0 flex-1 truncate text-[13px]">{s.name}</span>
-      {!s.ok && !s.quiet && <span className="truncate text-[11px] text-bad">{s.detail}</span>}
+      <span className={cn('flex-1 truncate text-[13px]', s.ok || s.quiet ? 'min-w-0' : 'min-w-[60%]')}>{s.name}</span>
+      {!s.ok && !s.quiet && <span className="min-w-0 truncate text-[11px] text-bad">{s.detail}</span>}
       {!s.ok && !s.quiet && <WhyChip about={`${s.name} is down: ${s.detail ?? ''}`} />}
       <span className={cn('dot size-1.5', s.ok ? 'dot-good' : s.quiet ? 'bg-muted-foreground/40' : 'dot-bad')} />
     </a>
@@ -308,8 +308,8 @@ function Media({ card, compact }: { card: MediaCard; compact?: boolean }) {
     </div>
   );
   if (card.items.length === 1) return <NowPlaying m={card.items[0]} />;
-  // three or more would stack into a tower of banners, so they're rows
-  if (card.items.length > 2) return (
+  // banners suit something to watch; a pile of downloads, or three of anything, reads better as rows
+  if (card.items.length > 2 || card.items.every(m => m.icon === 'download')) return (
     <Card className="gap-0 divide-y divide-border py-1 shadow-card">
       {card.items.map((m, i) => (
         <div key={i} className="flex min-w-0 items-center gap-3 px-4 py-2.5">
@@ -318,7 +318,8 @@ function Media({ card, compact }: { card: MediaCard; compact?: boolean }) {
             <div className="truncate text-sm font-medium">{m.title}</div>
             <div className="truncate text-xs text-muted-foreground">{m.tags?.join(' · ') ?? m.subtitle}</div>
           </div>
-          {m.pct != null && <span className="shrink-0 text-xs tabular text-muted-foreground">{Math.floor(m.pct * 100)}%</span>}
+          {m.pct != null && <div className="w-20 shrink-0 text-right text-xs tabular text-muted-foreground">{Math.floor(m.pct * 100)}%
+            <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-primary transition-[width] duration-1000" style={{ width: `${m.pct * 100}%` }} /></div></div>}
         </div>
       ))}
     </Card>

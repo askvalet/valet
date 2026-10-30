@@ -141,6 +141,8 @@ test('suggestions: trouble first, then what\'s live, then the configured ones', 
   };
   assert.deepEqual(suggest(state, ['Is anything down?'], 12), ['Why is Radarr down?', 'When will Joker finish?', 'Is anything down?']);
   assert.deepEqual(suggest({}, ['A'], 12), ['A']);
+  const twice = { a: { key: 'a', at: 1, card: { type: 'status', items: [{ name: 'Mealie', ok: false }] } }, b: { key: 'b', at: 1, card: { type: 'status', items: [{ name: 'mealie', ok: false }] } } } as any;
+  assert.deepEqual(suggest(twice, [], 12), ['Why is Mealie down?']);                       // one problem, however many cards show it
   // the model's list replaces the guesses, but something newly down still comes first
   assert.deepEqual(suggest(state, ['Is anything down?'], 12, ['Which indexer is failing?']), ['Why is Radarr down?', 'Which indexer is failing?']);
 });

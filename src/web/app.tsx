@@ -79,7 +79,9 @@ const greet = (h: number) => h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h 
 function pulse(state: Record<string, WidgetState>) {
   const items = Object.values(state).map(s => s.card).filter((c): c is StatusCard => c?.type === 'status').flatMap(c => c.items);
   const down = items.filter(i => !i.ok && !i.quiet), errors = Object.values(state).filter(s => s.error);
-  if (down.length) return { text: `${down.map(d => d.name).join(', ')} ${down.length === 1 ? 'is' : 'are'} down`, tone: 'text-bad' };
+  // one service can show on several cards, spelled differently: it's still one problem
+  const names = [...new Map(down.map(d => [d.name.toLowerCase(), d.name] as const).reverse()).values()].reverse();
+  if (names.length) return { text: `${names.join(', ')} ${names.length === 1 ? 'is' : 'are'} down`, tone: 'text-bad' };
   if (errors.length) return { text: `${errors.length} widget${errors.length > 1 ? 's' : ''} can't reach ${errors.length > 1 ? 'their services' : 'its service'}`, tone: 'text-warn' };
   return { text: '', tone: '' };   // all well: say nothing
 }
