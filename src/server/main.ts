@@ -1,11 +1,12 @@
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { randomBytes } from 'node:crypto';
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { loadConfig } from './config.ts';
-import { makeContext, type Instance, type Integration } from './core.ts';
+import { makeContext, UPLOAD_DIR, type Instance, type Integration } from './core.ts';
 import { Hub } from './hub.ts';
 import { registry } from '../integrations/index.ts';
 
@@ -85,7 +86,7 @@ app.get('/api/page', c => c.json({
   nav: config.nav,
   island: config.island && { ...config.island, activities: config.island.activities.filter(k => hub.widget(k)) },
   weather: config.weather && hub.widget(config.weather) ? config.weather : undefined,
-  sections: config.layout.map(s => ({ title: s.title, columns: s.columns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, widgets: s.widgets.filter(k => hub.widget(k)) })),
+  sections: config.layout.map(s => ({ title: s.title, columns: s.columns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, tab: s.tab, chat: s.chat, widgets: s.widgets.filter(k => hub.widget(k)) })),
   widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
 }));
 
@@ -106,6 +107,26 @@ app.get('/api/events', c => streamSSE(c, async stream => {
 }));
 
 // Homepage controls: run an integration action, then refresh that integration's widgets right away.
+// Files attached in chat (pasted, dropped or picked): stored for a day so a tool can file them (to Paperless, say).
+// The browser gets back an id it puts in the message; nothing is served back out.
+app.post('/api/files', async c => {
+  const body = Buffer.from(await c.req.arrayBuffer());
+  if (!body.length) return c.json({ error: 'empty file' }, 400);
+  if (body.length > 50 * 2 ** 20) return c.json({ error: 'files are limited to 50 MB' }, 413);
+  const id = randomBytes(12).toString('hex');
+  const name = decodeURIComponent(c.req.header('x-file-name') ?? 'pasted').replace(/[\/\\]/g, '_').slice(0, 200);
+  const type = (c.req.header('content-type') ?? 'application/octet-stream').split(';')[0];
+  await mkdir(UPLOAD_DIR, { recursive: true });
+  await writeFile(resolve(UPLOAD_DIR, `${id}.bin`), body);
+  await writeFile(resolve(UPLOAD_DIR, `${id}.json`), JSON.stringify({ name, type, size: body.length }));
+  // sweep anything older than a day
+  for (const f of await readdir(UPLOAD_DIR).catch(() => [] as string[])) {
+    const st = await stat(resolve(UPLOAD_DIR, f)).catch(() => null);
+    if (st && Date.now() - st.mtimeMs > 864e5) await rm(resolve(UPLOAD_DIR, f), { force: true });
+  }
+  return c.json({ id, name, type, size: body.length });
+});
+
 app.post('/api/action/:inst/:action', async c => {
   const { inst, action } = c.req.param();
   const a = instances.get(inst)?.actions?.[action];

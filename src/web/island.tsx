@@ -89,11 +89,11 @@ export default function Island({ live, idle, docked }: { live: Live[]; idle: 'no
           {/* compact: the most important activity */}
           <div ref={small} aria-hidden={expanded}
             className={cn(layer, 'duration-200', expanded ? 'pointer-events-none scale-95 opacity-0 blur-[3px]' : 'opacity-100 delay-100 duration-300')}>
-            <div className={cn('flex h-[44px] items-center gap-3 pr-4 pl-2', !live.length && 'h-[30px] w-[170px] p-0')}>
+            <div className={cn('flex h-[44px] min-w-[280px] items-center gap-3 pr-4 pl-2', !live.length && 'h-[30px] w-[170px] min-w-0 p-0')}>
               {main && (<>
                 <Art a={main} size={28} />
-                <span className="max-w-[220px] truncate text-[14px] font-medium tracking-[-.01em]">{main.title}</span>
-                <span className="ml-2 flex items-center">{main.icon === 'play' ? <Bars a={main} /> : main.pct != null ? <Progress a={main} /> : main.trailing && <span className="text-[11.5px] tabular text-white/60">{main.trailing}</span>}</span>
+                <span className="max-w-[260px] flex-1 truncate text-[14px] font-medium tracking-[-.01em]">{main.title}</span>
+                <span className="ml-3 flex items-center">{main.icon === 'play' ? <Bars a={main} /> : main.pct != null ? <Progress a={main} /> : main.trailing && <span className="text-[11.5px] tabular text-white/60">{main.trailing}</span>}</span>
               </>)}
             </div>
           </div>

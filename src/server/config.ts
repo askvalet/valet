@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { parse } from 'yaml';
 import { z } from 'zod';
 
-const Access = z.enum(['none', 'read', 'control']);
+const Access = z.enum(['none', 'read', 'write', 'control']);   // write: may add things (save a link, file a doc) without asking
 
 export const AssistantConfig = z.object({
   // any OpenAI-compatible server (Ollama, llama.cpp, vLLM, OpenRouter, OpenAI…) or Anthropic
@@ -31,7 +31,9 @@ const Section = z.object({
   place: z.enum(['main', 'left', 'right']).default('main'),
   overview: z.boolean().default(true),    // false: only on its own tab in the rail, not on the overview
   variant: z.enum(['full', 'minimal']).default('full'),
-  header: z.boolean().default(true),      // false: the cards in this section drop their title bar   // minimal: smaller rows, just the essentials (e.g. services: icon, name, dot)
+  header: z.boolean().default(true),      // false: the cards in this section drop their title bar (on the overview)
+  tab: z.string().optional(),             // which tab in the rail it belongs to (default: its title); sections can share one
+  chat: z.boolean().default(false),       // its tab also holds the assistant, full page   // minimal: smaller rows, just the essentials (e.g. services: icon, name, dot)
 }).strict();
 
 // An MCP server whose tools the assistant may use. `access: read` offers only the tools the server marks read-only

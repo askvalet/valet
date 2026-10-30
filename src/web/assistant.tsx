@@ -2,7 +2,7 @@
 // homepage uses; anything that changes something waits for an explicit Approve.
 import { Chat, useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
-import { ArrowUp, Check, ChevronRight, Sparkles, Square } from 'lucide-react';
+import { ArrowUp, Check, ChevronRight, FileText, Loader2, Paperclip, Sparkles, Square, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -68,6 +68,19 @@ export default function Assistant({ name, model, ask, suggestions, onAsk }: {
 }) {
   const { messages, sendMessage, status, addToolApprovalResponse, error, stop } = useChat({ chat });
   const [draft, setDraft] = useState('');
+  // files pasted, dropped or picked: uploaded right away, then named in the message so a tool can file them
+  const [files, setFiles] = useState<{ key: number; name: string; id?: string; error?: string }[]>([]);
+  const [over, setOver] = useState(false);
+  const pick = useRef<HTMLInputElement>(null);
+  const attach = (list: FileList | File[]) => {
+    for (const f of Array.from(list)) {
+      const key = Math.random();
+      setFiles(fs => [...fs, { key, name: f.name || 'pasted' }]);
+      fetch('/api/files', { method: 'POST', headers: { 'Content-Type': f.type || 'application/octet-stream', 'X-File-Name': encodeURIComponent(f.name || 'pasted') }, body: f })
+        .then(r => r.json()).then(j => setFiles(fs => fs.map(x => x.key === key ? (j.id ? { ...x, id: j.id, name: j.name } : { ...x, error: j.error ?? 'upload failed' }) : x)))
+        .catch(() => setFiles(fs => fs.map(x => x.key === key ? { ...x, error: 'upload failed' } : x)));
+    }
+  };
   const sent = useRef(0);
   const end = useRef<HTMLDivElement>(null);
   const busy = status === 'submitted' || status === 'streaming';
@@ -76,7 +89,12 @@ export default function Assistant({ name, model, ask, suggestions, onAsk }: {
   useEffect(() => { if (ask && ask.n !== sent.current) { sent.current = ask.n; sendMessage({ text: ask.text }); } }, [ask, sendMessage]);
   useEffect(() => { end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [messages, status]);
 
-  const submit = () => { if (draft.trim() && !busy) { sendMessage({ text: draft.trim() }); setDraft(''); } };
+  const ready = files.filter(f => f.id), uploading = files.some(f => !f.id && !f.error);
+  const submit = () => {
+    if ((!draft.trim() && !ready.length) || busy || uploading) return;
+    const lines = ready.map(f => `[attached: ${f.name} (file id ${f.id})]`);
+    sendMessage({ text: [draft.trim() || 'File this.', ...lines].join('\n') }); setDraft(''); setFiles([]);
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -117,14 +135,30 @@ export default function Assistant({ name, model, ask, suggestions, onAsk }: {
         <div ref={end} />
       </div>
 
-      <form className="border-t p-3" onSubmit={e => { e.preventDefault(); submit(); }}>
-        <div className="flex items-end gap-2 rounded-2xl border bg-card px-3 py-2 shadow-card focus-within:ring-2 focus-within:ring-ring/30">
-          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={`Message ${name}`} aria-label="Message"
+      <form className="border-t p-3" onSubmit={e => { e.preventDefault(); submit(); }}
+        onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setOver(true); } }} onDragLeave={() => setOver(false)}
+        onDrop={e => { if (e.dataTransfer.files.length) { e.preventDefault(); setOver(false); attach(e.dataTransfer.files); } }}>
+        {files.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {files.map(f => (
+              <span key={f.key} className={cn('flex max-w-[220px] items-center gap-1.5 rounded-full bg-secondary py-1 pr-1.5 pl-2.5 text-xs', f.error && 'text-bad')}>
+                {f.id ? <FileText className="size-3.5 shrink-0" /> : f.error ? null : <Loader2 className="size-3.5 shrink-0 animate-spin" />}
+                <span className="truncate">{f.error ? `${f.name}: ${f.error}` : f.name}</span>
+                <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles(fs => fs.filter(x => x.key !== f.key))} className="grid size-4 place-items-center rounded-full hover:bg-white/10"><X className="size-3" /></button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className={cn('flex items-end gap-2 rounded-2xl border bg-card px-3 py-2 shadow-card focus-within:ring-2 focus-within:ring-ring/30', over && 'ring-2 ring-primary/60')}>
+          <input ref={pick} type="file" multiple hidden onChange={e => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
+          <button type="button" onClick={() => pick.current?.click()} aria-label="Attach a file" className="mb-0.5 grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"><Paperclip className="size-4" /></button>
+          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={`Message ${name}, paste a link or drop a file`} aria-label="Message"
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
+            onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
             className="max-h-32 min-h-6 flex-1 resize-none bg-transparent py-1 text-[15px] outline-none field-sizing-content placeholder:text-muted-foreground" autoFocus />
           {busy
             ? <Button type="button" size="icon" variant="secondary" className="size-8 rounded-full" onClick={stop} aria-label="Stop"><Square className="size-3 fill-current" /></Button>
-            : <Button type="submit" size="icon" className={cn('size-8 rounded-full')} disabled={!draft.trim()} aria-label="Send"><ArrowUp /></Button>}
+            : <Button type="submit" size="icon" className={cn('size-8 rounded-full')} disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp /></Button>}
         </div>
       </form>
     </div>

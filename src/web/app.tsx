@@ -20,7 +20,7 @@ interface Page {
   nav?: { side: 'left' | 'right' | 'top' | 'bottom' };
   island?: { activities: string[]; idle: 'notch' | 'hide' };
   weather?: string;
-  sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; widgets: string[] }[];
+  sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; tab?: string; chat?: boolean; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
 }
 
@@ -102,7 +102,7 @@ export function App() {
   const { state, online } = useLive();
   const now = useClock();
   const theme = useTheme();
-  const [view, setView] = useState<number | 'all'>('all');
+  const [view, setView] = useState<string>('all');   // 'all' (the overview) or a tab's name
   const [palette, setPalette] = useState(false);
   const [chat, setChat] = useState<{ text: string; n: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
@@ -124,10 +124,15 @@ export function App() {
     addEventListener('keydown', k); return () => removeEventListener('keydown', k);
   }, []);
 
+  // tabs: sections sharing a `tab` (or title) open together; the overview shows every section that's on it
+  const tabOf = (s: Page['sections'][number], i: number) => s.tab ?? s.title ?? `#${i}`;
+  const chatTab = page?.sections.map((s, i) => (s.chat ? tabOf(s, i) : null)).find(Boolean) ?? null;
   const ask = useCallback((text: string) => {
     if (!text.trim()) return;
-    setChat({ text: text.trim(), n: Date.now() }); setChatOpen(true); setPalette(false); setDraft('');
-  }, []);
+    setChat({ text: text.trim(), n: Date.now() }); setPalette(false); setDraft('');
+    // with an assistant tab, questions open it full page; otherwise the side sheet
+    if (chatTab) { setView(chatTab); scrollTo({ top: 0 }); } else setChatOpen(true);
+  }, [chatTab]);
 
   const p = pulse(state);
   // every item of a section's media cards, in the config's order: what's playing, then what's downloading…
@@ -140,18 +145,19 @@ export function App() {
     const c = state[key]?.card;
     return c?.activity ? [{ ...c.activity, key, href: c.href }] : [];
   });
-  const sections = page?.sections.map((s, i) => ({ ...s, i })).filter(s => view === 'all' ? s.overview !== false : s.i === view) ?? [];
+  const sections = page?.sections.map((s, i) => ({ ...s, i })).filter(s => view === 'all' ? s.overview !== false : tabOf(s, s.i) === view) ?? [];
   const sectionIcon = (s: Page['sections'][number]) => state[s.widgets[0]]?.card?.icon;
   const navSide = page?.nav?.side ?? 'left';
   const hasSide = !!page?.sections.some(x => (x.place === 'left' || x.place === 'right') && (view === 'all' ? x.overview !== false : true));
   const tip = ({ left: 'right', right: 'left', top: 'bottom', bottom: 'top' } as const)[navSide];
-  const nav = page?.sections.map((s, i) => ({ ...s, i })).filter(s => s.title) ?? [];
+  const nav = (page?.sections.map((s, i) => ({ ...s, i, key: tabOf(s, i) })).filter(s => s.title || s.tab) ?? [])
+    .filter((s, j, all) => all.findIndex(x => x.key === s.key) === j);
 
   // the hero: ask anything
   const hero = view === 'all' && (
-          <header className="wall-text mx-auto w-full max-w-[680px] text-center">
+          <header className="wall-text mx-auto w-full max-w-[680px] pt-8 text-center xl:pt-10">
             <div className="text-[22px] font-semibold tracking-tight">{greet(now.getHours())}{page?.greeting ? `, ${page.greeting}` : ''}</div>
-            {p.text && <div className={cn('mt-0.5 text-[13px]', p.tone)}>{p.text}</div>}
+            {(p.text || !online) && <div className={cn('mt-0.5 text-[13px]', online ? p.tone : 'text-muted-foreground')}>{online ? p.text : 'Reconnecting…'}</div>}
             {page?.assistant && (
               <form className="glass-round mt-5 flex items-center gap-2 rounded-[22px] py-1.5 pr-1.5 pl-4 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
@@ -212,7 +218,7 @@ export function App() {
                   const keys = sec.widgets.filter(key => !isEmpty(state[key]?.card));
                   const widget = (key: string) => {
                     const s = state[key];
-                    return <Widget key={key} card={s?.card} title={page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={sec.variant === 'minimal'} headless={sec.header === false}
+                    return <Widget key={key} card={s?.card} title={page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={sec.variant === 'minimal' && view === 'all'} headless={sec.header === false && view === 'all'}
                       status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
                       run={(action, args) => runAction(key, action, args)} />;
                   };
@@ -243,13 +249,6 @@ export function App() {
         </div>
       )}
 
-      {/* top-left: the home's name */}
-      <div className="glass-bar absolute top-5 left-5 z-20 hidden items-center gap-3 rounded-full border py-1.5 pr-5 pl-1.5 md:flex">
-        <span className="icon-tile size-11! rounded-full!">
-          <svg viewBox="0 0 24 24" className="size-[18px]!" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" aria-hidden><path d="M5 19V10l7-5 7 5v9" /></svg>
-        </span>
-        <div className="wall-text leading-tight"><div className="text-sm font-semibold">{page?.title ?? 'Home'}</div><div className="text-xs text-muted-foreground">{online ? 'Live' : 'Reconnecting…'}</div></div>
-      </div>
 
       {/* the tab buttons, on whichever side the config says (wide screens); a column on the left/right, a dock at the top/bottom */}
       <nav aria-label="Sections" className={cn('z-30 hidden gap-3 md:flex', {
@@ -260,9 +259,9 @@ export function App() {
       }[navSide])}>
         <RoundButton tip={tip} label="Overview" active={view === 'all'} onClick={() => setView('all')}><LayoutGrid /></RoundButton>
         {nav.map(s => (
-          <RoundButton tip={tip} key={s.i} label={s.title!} active={view === s.i} onClick={() => setView(s.i)}><Icon name={sectionIcon(s) ?? 'pulse'} /></RoundButton>
+          <RoundButton tip={tip} key={s.key} label={s.key} active={view === s.key} onClick={() => setView(s.key)}><Icon name={s.chat ? 'sparkle' : sectionIcon(s) ?? 'pulse'} /></RoundButton>
         ))}
-        {page?.assistant && <RoundButton tip={tip} label={page.assistant.name} onClick={() => setChatOpen(true)}><Sparkles /></RoundButton>}
+        {page?.assistant && !chatTab && <RoundButton tip={tip} label={page.assistant.name} onClick={() => setChatOpen(true)}><Sparkles /></RoundButton>}
       </nav>
 
       {/* top-right: the menubar rings, weather and time (and the theme switch when there's no wallpaper).
@@ -305,15 +304,22 @@ export function App() {
             </div>
           );
         })()}
+        {chatTab && view === chatTab && page?.assistant && (
+          <div data-slot="card" className="h-[min(78vh,900px)] min-h-[520px] overflow-hidden rounded-[calc(var(--radius)*1.4)] border bg-card shadow-card">
+            <Suspense fallback={null}>
+              <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={SUGGESTIONS} onAsk={ask} />
+            </Suspense>
+          </div>
+        )}
       </main>
 
       {/* phones: the rail becomes a floating pill at the bottom */}
       <nav aria-label="Sections" className="glass-round fixed inset-x-4 bottom-4 z-20 flex justify-around rounded-full p-1.5 md:hidden">
         <button onClick={() => setView('all')} aria-label="Overview" className={cn('grid size-10 place-items-center rounded-full', view === 'all' && 'bg-white text-black')}><LayoutGrid className="size-[18px]" /></button>
         {nav.map(s => (
-          <button key={s.i} onClick={() => setView(s.i)} aria-label={s.title} className={cn('grid size-10 place-items-center rounded-full', view === s.i && 'bg-white text-black')}><Icon name={sectionIcon(s) ?? 'pulse'} className="size-[18px]" /></button>
+          <button key={s.key} onClick={() => setView(s.key)} aria-label={s.key} className={cn('grid size-10 place-items-center rounded-full', view === s.key && 'bg-white text-black')}><Icon name={s.chat ? 'sparkle' : sectionIcon(s) ?? 'pulse'} className="size-[18px]" /></button>
         ))}
-        {page?.assistant && <button onClick={() => setChatOpen(true)} aria-label={page.assistant.name} className="grid size-10 place-items-center rounded-full"><Sparkles className="size-[18px]" /></button>}
+        {page?.assistant && !chatTab && <button onClick={() => setChatOpen(true)} aria-label={page.assistant.name} className="grid size-10 place-items-center rounded-full"><Sparkles className="size-[18px]" /></button>}
       </nav>
 
       {page?.assistant && (
@@ -330,7 +336,7 @@ export function App() {
             </CommandGroup>
             <CommandGroup heading="Go to">
               <CommandItem onSelect={() => { setView('all'); setPalette(false); }}><LayoutGrid />Overview</CommandItem>
-              {nav.map(s => <CommandItem key={s.i} onSelect={() => { setView(s.i); setPalette(false); }}><Icon name={sectionIcon(s) ?? 'pulse'} />{s.title}</CommandItem>)}
+              {nav.map(s => <CommandItem key={s.key} onSelect={() => { setView(s.key); setPalette(false); }}><Icon name={s.chat ? 'sparkle' : sectionIcon(s) ?? 'pulse'} />{s.key}</CommandItem>)}
             </CommandGroup>
           </CommandList>
         </CommandDialog>

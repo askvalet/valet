@@ -1,5 +1,5 @@
-// The assistant: one streaming endpoint. It gets a tool for every integration tool its access level allows; control
-// tools always ask the person first. The model sees each tool's compact `data`; the person sees its card.
+// The assistant: one streaming endpoint. It gets a tool for every integration tool its access level allows; write
+// tools (adding things) just run, control tools always ask the person first. The model sees each tool's compact `data`; the person sees its card.
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import {
@@ -12,7 +12,7 @@ import type { Config } from './config.ts';
 import type { Instance, Integration } from './core.ts';
 import { mcpTools } from './mcp.ts';
 
-const rank = { none: 0, read: 1, control: 2 } as const;
+const rank = { none: 0, read: 1, write: 2, control: 3 } as const;
 
 export function chatRoute(config: Config, instances: Map<string, Instance>, meta: Map<string, { type: string; name: string; integration: Integration }>) {
   const a = config.assistant!;
@@ -72,6 +72,10 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     'Tool results are shown to the person as rich cards, so do not repeat what the card shows. Reply in one or two',
     'short sentences that interpret it: what matters, what is wrong, what to do. Use plain language.',
     'Tools that change something ask the person to approve first; call them only when asked to act.',
+    'Tools that only add something (save a link, file a document) just run: when the person sends a bare link, save it;',
+    'when they paste a long text or attach a file without saying what to do, file it as a document. A message line like',
+    '"[attached: name (type, file id X)]" is a file they attached: pass X as file_id. Questions about their documents or',
+    'saved links: search first, then read the best match, then answer from what it says (and say which document).',
     'Available integrations and tools:', ...catalog, ...extra,
     a.instructions ?? '',
   ].join('\n');

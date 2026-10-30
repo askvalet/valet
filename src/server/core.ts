@@ -3,12 +3,15 @@
 // An integration turns one block of config.yaml into:
 //   widgets  cards for the homepage, refreshed on an interval while someone is looking
 //   actions  things the homepage controls can do (toggle a light, pause a download)
-//   tools    what the assistant may call; each is 'read' or 'control', and config decides which it gets
+//   tools    what the assistant may call; each is 'read', 'write' (adds something, e.g. saves a bookmark: runs without
+//            asking) or 'control' (changes or removes something: asks the person first). Config decides which it gets.
 // Everything runs on the server, so API keys and internal URLs never reach the browser.
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import type { z } from 'zod';
 import type { Card } from '../shared/cards.ts';
 
-export type Access = 'read' | 'control';
+export type Access = 'read' | 'write' | 'control';
 
 export interface Widget {
   title: string;
@@ -46,6 +49,8 @@ export interface Context {
   log(...args: unknown[]): void;
   /** URL for a card image served by this instance's image() */
   image(ref: string): string;
+  /** a file the person attached in chat (ids come from the message), for tools that file things away */
+  upload(id: string): Promise<{ name: string; type: string; data: Buffer }>;
 }
 
 export interface Integration<C = any> {
@@ -69,7 +74,16 @@ export function makeContext(id: string): Context {
     },
     log: (...a) => console.log(`[${id}]`, ...a),
     image: ref => `/api/image/${encodeURIComponent(id)}?ref=${encodeURIComponent(ref)}`,
+    upload: readUpload,
   };
+}
+
+// Files attached in chat: kept for a day under data/uploads, named <id>.<meta> and <id>.bin
+export const UPLOAD_DIR = resolve(process.env.ATRIUM_DATA ?? 'data', 'uploads');
+export async function readUpload(fileId: string) {
+  if (!/^[a-f0-9]{24}$/.test(fileId)) throw new Error('bad file id');
+  const meta = JSON.parse(await readFile(resolve(UPLOAD_DIR, `${fileId}.json`), 'utf8').catch(() => { throw new Error('that file has expired; attach it again'); }));
+  return { name: String(meta.name), type: String(meta.type), data: await readFile(resolve(UPLOAD_DIR, `${fileId}.bin`)) };
 }
 
 // Small formatting helpers integrations share, so numbers read the same everywhere.
