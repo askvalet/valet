@@ -1,7 +1,7 @@
 import { ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Sun } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ForecastCard, StatusCard, WidgetState } from '../shared/cards.ts';
 import { cn } from '@/lib/utils';
@@ -342,17 +342,18 @@ export function App() {
       )}
 
       {page?.assistant && (
-        <Sheet open={chatOpen} onOpenChange={setChatOpen}>
-          <SheetContent className="w-full gap-0 p-0 sm:max-w-[460px]">
-            <SheetTitle className="sr-only">{page.assistant.name}</SheetTitle>
-            <SheetDescription className="sr-only">Ask about your homelab</SheetDescription>
+        <Dialog open={chatOpen} onOpenChange={setChatOpen}>
+          {/* the chat pops out over the page: a tall window in the middle, frosted like everything else */}
+          <DialogContent showCloseButton={false} className="chat-pop flex h-[min(82vh,820px)] w-[min(760px,calc(100vw-1.5rem))] max-w-none flex-col gap-0 overflow-hidden rounded-[28px] p-0 sm:max-w-none">
+            <DialogTitle className="sr-only">{page.assistant.name}</DialogTitle>
+            <DialogDescription className="sr-only">Ask about your homelab</DialogDescription>
             {chatOpen && (
               <Suspense fallback={null}>
                 <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={SUGGESTIONS} onAsk={ask} />
               </Suspense>
             )}
-          </SheetContent>
-        </Sheet>
+          </DialogContent>
+        </Dialog>
       )}
     </TooltipProvider>
   );
