@@ -380,9 +380,9 @@ function Home({ account }: { account: boolean }) {
               : (
                 (() => {
                   const keys = sec.widgets.filter(key => state[key] ? !isEmpty(state[key].card) : !shapeOf(key)?.empty);
-                  const widget = (key: string, large = false, fill = false) => {
+                  const widget = (key: string, large = false, fill = false, dense = false) => {
                     const s = state[key];
-                    return <Shaped key={key} id={key} card={s?.card}><Widget large={large} fill={fill} card={s?.card} kind={shapeOf(key)?.t} explain={explainFor(key)} failed={s?.error} title={page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={(sec.variant === 'minimal' || phone) && view === 'all'} headless={sec.header === false && view === 'all'}
+                    return <Shaped key={key} id={key} card={s?.card}><Widget large={large} fill={fill} card={s?.card} kind={shapeOf(key)?.t} explain={explainFor(key)} failed={s?.error} title={page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={dense || sec.variant === 'minimal' || (phone && view === 'all')} headless={sec.header === false && view === 'all'}
                       status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
                       run={page?.canAct === false ? undefined : runFor(key)} /></Shaped>;
                   };
@@ -407,10 +407,10 @@ function Home({ account }: { account: boolean }) {
                       <div className="grid gap-4">{keys.filter(k => k !== hero).map(k => widget(k))}</div>
                     </div>
                   );
-                  // a long mix of cards packs into columns, so a tall one doesn't leave a hole beside it
+                  // a long mix of cards packs into columns with compact rows, and a very long card scrolls inside itself
                   if (!aside && !sec.columns && keys.length > 3) return (
                     <div className="columns-[340px] gap-4">
-                      {keys.map((k, j) => <div key={k} className="settle-card mb-4 min-w-0 break-inside-avoid" style={{ '--i': Math.min(j, 8) } as React.CSSProperties}>{widget(k)}</div>)}
+                      {keys.map((k, j) => <div key={k} className="card-cap settle-card mb-4 min-w-0 break-inside-avoid" style={{ '--i': Math.min(j, 8) } as React.CSSProperties}>{widget(k, false, false, true)}</div>)}
                     </div>
                   );
                   // a card that's come up empty gives its column back, and cards in a row share a height

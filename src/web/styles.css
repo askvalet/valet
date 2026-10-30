@@ -380,6 +380,9 @@
 @media (prefers-reduced-motion: reduce) { .stack-page, .stack-open { animation: none; transition: none; } }
 
 /* flashback photos: a slow crossfade with a gentle drift, so the card breathes without anything snapping */
+/* a long card in a packed section stays one screenful */
+.card-cap [data-slot="card-content"] { max-height: 420px; overflow-y: auto; scrollbar-width: thin; }
+
 /* tiles: the graph fades out behind the number and sweeps in; the bars rise; prayer-card stars breathe */
 .tile-graph { mask-image: linear-gradient(to right, transparent 22%, black 62%); animation: tile-sweep 1100ms var(--ease-out) both; }
 @keyframes tile-sweep { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }

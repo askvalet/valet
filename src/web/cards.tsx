@@ -209,7 +209,9 @@ function ServiceRow({ s, minimal }: { s: StatusCard['items'][number]; minimal?: 
 /** Services in columns. With groups, each group is a block (heading + its services) and the blocks flow into as
  *  many columns as fit, so a long list stays short. */
 function Status({ card, columns, minimal }: { card: StatusCard; columns?: number; minimal?: boolean }) {
-  const groups = [...new Set(card.items.map(i => i.group ?? ''))];
+  const named = [...new Set(card.items.map(i => i.group ?? ''))];
+  // headings only help when they gather things: a heading per item or two just doubles the list
+  const groups = card.items.length / named.length < 3 ? [''] : named;
   if (groups.length === 1 && !groups[0]) return (
     <div className="-mx-2 grid gap-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
       {card.items.map(s => <ServiceRow key={s.name} s={s} minimal={minimal} />)}
