@@ -130,9 +130,9 @@ export function App() {
   const ask = useCallback((text: string) => {
     if (!text.trim()) return;
     setChat({ text: text.trim(), n: Date.now() }); setPalette(false); setDraft('');
-    // with an assistant tab, questions open it full page; otherwise the side sheet
-    if (chatTab) { setView(chatTab); scrollTo({ top: 0 }); } else setChatOpen(true);
-  }, [chatTab]);
+    // on the assistant's own tab the answer appears on the page; anywhere else, in the side panel
+    if (!(chatTab && view === chatTab)) setChatOpen(true);
+  }, [chatTab, view]);
 
   const p = pulse(state);
   // every item of a section's media cards, in the config's order: what's playing, then what's downloading…
