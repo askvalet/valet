@@ -24,6 +24,9 @@ const HOST = process.env.HOST ?? '0.0.0.0';
 if (process.argv[2] === 'new-integration') process.exit(await (await import('./plugins.ts')).scaffold(process.argv[3]));
 if (process.argv[2] === 'user') process.exit(await userCommand(process.argv.slice(3)).catch(e => { console.error(String(e.message ?? e)); return 1; }));
 
+// one bad promise in an integration shouldn't take the whole page down: log it and carry on
+process.on('unhandledRejection', e => console.error('unhandled:', e instanceof Error ? e.message : e));
+
 const config = loadConfig(CONFIG);
 const redact = redactor(usedSecrets);
 const acting = canAct(config);
@@ -79,6 +82,8 @@ if (history && config.history && config.history.background) hub.sampleInBackgrou
 
 const app = new Hono();
 app.use('*', headers);
+// for Docker's healthcheck and uptime monitors: up, and how many widgets have a fresh card
+app.get('/healthz', c => c.json({ ok: true, widgets: hub.snapshot().filter(s => s.card && !s.error).length }));
 
 // Sign-in first: /api/auth/* are open; the wallpaper and icons too (the sign-in screen uses them); everything else
 // under /api needs a session. Anything that changes something must also come from this page's origin.
