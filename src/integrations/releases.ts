@@ -39,7 +39,9 @@ export default defineIntegration({
       cache = { at: Date.now(), list };
       return list;
     }
-    const row = (r: Rel): ListItem => ({ title: r.repo.split('/')[1], subtitle: [r.tag, r.name].filter(Boolean).join(' · '), meta: r.at ? fmt.relativeDay(r.at) : '', href: r.href, badge: r.prerelease ? 'pre' : undefined });
+    // "immich", but "home-assistant/core": a generic repo name needs its owner to mean anything
+    const label = (repo: string) => /^(core|server|app|main|web|api|backend|frontend|docker|src)$/i.test(repo.split('/')[1]) ? repo : repo.split('/')[1];
+    const row = (r: Rel): ListItem => ({ title: label(r.repo), subtitle: [r.tag, r.name].filter(Boolean).join(' · '), meta: r.at ? fmt.relativeDay(r.at) : '', href: r.href, badge: r.prerelease ? 'pre' : undefined });
     return {
       widgets: {
         latest: {
@@ -47,7 +49,7 @@ export default defineIntegration({
           async fetch() {
             const list = (await releases()).slice(0, cfg.limit);
             return { type: 'list', title: 'Releases', icon: 'tag', items: list.map(row), empty: 'No releases yet',
-              summary: list[0] ? { label: 'Releases', icon: 'tag', value: `${list[0].repo.split('/')[1]} ${list[0].tag}`, sub: list[0].at ? fmt.relativeDay(list[0].at) : undefined } : undefined };
+              summary: list[0] ? { label: 'Releases', icon: 'tag', value: `${label(list[0].repo)} ${list[0].tag}`, sub: list[0].at ? fmt.relativeDay(list[0].at) : undefined } : undefined };
           },
         },
       },

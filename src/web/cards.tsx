@@ -99,13 +99,14 @@ function List({ card }: { card: ListCard }) {
   return (
     <ul className="-my-1 divide-y">
       {card.items.map((it, i) => (
-        <li key={i} className={cn('flex min-w-0 items-center gap-3', dense ? 'py-1.5' : 'py-2.5', it.href && '-mx-2 rounded-lg px-2 transition-colors hover:bg-accent')}
+        <li key={i} className={cn('flex min-w-0 items-center gap-3', dense ? 'py-1.5' : 'py-2.5', it.href && 'row-link -mx-2 cursor-pointer rounded-lg px-2 transition-colors hover:bg-accent')}
           onClick={it.href ? () => window.open(it.href, '_blank', 'noopener') : undefined} role={it.href ? 'link' : undefined}>
           {it.image && <img src={it.image} alt="" loading="lazy" className={cn('shrink-0 rounded-md bg-muted object-cover', dense ? 'h-9 w-6' : 'h-12 w-8')} />}
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-3">
-              <div className={cn('min-w-0 flex-1 truncate font-medium', dense ? 'text-[13px]' : 'text-sm')}>{it.title}</div>
+              <div className={cn('min-w-0 flex-1 font-medium', dense ? 'text-[13px]' : 'text-sm', it.href && !dense ? 'line-clamp-2 leading-snug' : 'truncate')}>{it.title}</div>
               {it.meta && <div className="shrink-0 text-xs tabular text-muted-foreground">{it.meta}</div>}
+              {it.href && <ArrowUpRight className="row-arrow size-3.5 shrink-0 text-muted-foreground" />}
             </div>
             {it.subtitle && <div className={cn('truncate text-xs', it.tone && it.tone !== 'neutral' ? toneText[it.tone] : 'text-muted-foreground')}>{it.subtitle}</div>}
             {it.pct != null && <div className={dense ? 'mt-1' : 'mt-2'}><Bar pct={it.pct} tone={it.tone} /></div>}
@@ -237,8 +238,11 @@ export function NowPlaying({ m, compact }: { m: MediaItem; compact?: boolean }) 
 /** True when a card has nothing worth a slot on the page (e.g. Now Playing with nothing playing). */
 export const isEmpty = (card?: CardT) => (card?.type === 'media' || card?.type === 'photos') && !card.items.length;
 
-function Media({ card }: { card: MediaCard }) {
-  if (!card.items.length) return (
+function Media({ card, compact }: { card: MediaCard; compact?: boolean }) {
+  // in chat, an empty answer is one quiet line, not a big empty frame
+  if (!card.items.length) return compact
+    ? <div className="flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-[13px] text-muted-foreground"><Film className="size-4" />{card.empty ?? 'Nothing playing'}</div>
+    : (
     <div className="grid min-h-[180px] place-items-center rounded-2xl bg-card text-center shadow-card">
       <div><Film className="mx-auto mb-2 size-5 text-muted-foreground" /><div className="text-sm text-muted-foreground">{card.empty ?? 'Nothing playing'}</div></div>
     </div>
@@ -647,13 +651,13 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
     <div className="min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Photos card={card} large={large} /></div>
   );
   if (card?.type === 'media') return (
-    <div className="min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Media card={card} /></div>
+    <div className="min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Media card={card} compact={compact} /></div>
   );
   const t = card?.title ?? title;
   const bare = card?.type === 'group';
   return (
     <Dense.Provider value={!!compact}>
-    <Card className={cn('@container/card min-w-0 shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'gap-4 py-5', bare && 'border-0 bg-transparent py-0 shadow-none')}>
+    <Card className={cn('@container/card min-w-0 shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'lift gap-4 py-5', bare && 'border-0 bg-transparent py-0 shadow-none')}>
       {t && !bare && !headless && (
         <CardHeader className={cn('flex items-center gap-2', compact ? 'px-3.5' : 'px-5')}>
           {card?.icon && (compact ? <Icon name={card.icon} className="size-3.5 text-muted-foreground" /> : <span className="icon-tile"><Icon name={card.icon} /></span>)}
@@ -711,7 +715,7 @@ function TileGraph({ points }: { points: number[] }) {
 /** Headline tile for the overview's top row: label and context up top, the value at the bottom, a live graph behind. */
 function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
   const body = (
-    <Card className="@container/tile relative h-[136px] gap-0 overflow-hidden py-0 shadow-card transition-colors hover:bg-accent/30">
+    <Card className="@container/tile lift relative h-[136px] gap-0 overflow-hidden py-0 shadow-card">
       <div className="text-foreground"><TileGraph points={s.trend ?? []} /></div>
       <div className="relative flex h-full flex-col p-4">
         <div className="flex items-start gap-3">

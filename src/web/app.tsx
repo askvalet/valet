@@ -258,10 +258,10 @@ function Home() {
                   // sized: a grid of narrow tracks; small cards take one (as their headline tile), medium two, large four
                   if (sec.sizes && Object.keys(sec.sizes).length && !aside) return (
                     <div className="grid grid-flow-row-dense items-start gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 170px), 1fr))' }}>
-                      {keys.map(key => {
-                        const size = sec.sizes![key], c = state[key]?.card;
-                        if (size === 'small' && c?.summary) return <div key={key} className="min-w-0"><SummaryTile s={c.summary} href={c.href} /></div>;
-                        return <div key={key} className={cn('col-span-full min-w-0 @xl/main:col-span-2', size === 'large' && '@5xl/main:col-span-4')}>{widget(key, size === 'large')}</div>;
+                      {keys.map((key, j) => {
+                        const size = sec.sizes![key], c = state[key]?.card, beat = { '--i': Math.min(j, 8) } as React.CSSProperties;
+                        if (size === 'small' && c?.summary) return <div key={key} className="settle-card min-w-0" style={beat}><SummaryTile s={c.summary} href={c.href} /></div>;
+                        return <div key={key} style={beat} className={cn('settle-card col-span-full min-w-0 @xl/main:col-span-2', size === 'large' && '@5xl/main:col-span-4')}>{widget(key, size === 'large')}</div>;
                       })}
                     </div>
                   );
@@ -278,7 +278,7 @@ function Home() {
                     // a fixed column count applies from tablet width up; phones get one column
                     <div className={cn('grid items-start gap-4', sec.columns && !aside && 'grid-cols-1 @3xl/main:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))]')}
                       style={sec.columns && !aside ? { '--cols': sec.columns } as React.CSSProperties : { gridTemplateColumns: aside ? '1fr' : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
-                      {keys.map(k => widget(k))}
+                      {keys.map((k, j) => <div key={k} className="settle-card min-w-0" style={{ '--i': Math.min(j, 8) } as React.CSSProperties}>{widget(k)}</div>)}
                     </div>
                   );
                 })()
@@ -329,7 +329,7 @@ function Home() {
           <div className="hidden text-xs text-muted-foreground sm:block">{now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
           </div>
         </div>
-        {!wall && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={theme.toggle}>{theme.dark ? <Sun /> : <Moon />}</RoundButton>}
+        {!wall && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={theme.toggle}>{theme.dark ? <Sun key="sun" className="spin-in" /> : <Moon key="moon" className="spin-in" />}</RoundButton>}
       </div>
 
       <main className={cn('@container/main mx-auto flex flex-col gap-8 px-4 pt-6 pb-28 xl:pt-20', view !== 'all' && 'pt-10 xl:pt-32', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-40 xl:pt-40' }[navSide], page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[1720px]' : 'max-w-[1320px]')}>

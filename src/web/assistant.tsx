@@ -3,7 +3,7 @@
 import { Chat, useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
 import {
-  Activity, ArrowUp, Bookmark, Check, ChevronRight, Copy, CornerDownRight, FileText, Lightbulb, Loader2, Paperclip, RotateCcw,
+  Activity, ArrowDown, ArrowUp, Bookmark, Check, ChevronRight, Copy, CornerDownRight, FileText, Lightbulb, Loader2, Paperclip, RotateCcw,
   Search, Square, X, Zap,
 } from 'lucide-react';
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -47,6 +47,23 @@ function Pending({ since, label = 'Thinking' }: { since: number; label?: string 
       <span className="chat-dots" aria-hidden>{Array.from({ length: 9 }, (_, i) => <i key={i} style={{ animationDelay: `${(i % 3 + Math.floor(i / 3)) * 120}ms` }} />)}</span>
       <span className="chat-shimmer font-medium">{label}</span>
       <span className="tabular text-xs text-muted-foreground">{((now - since) / 1000).toFixed(1)}s</span>
+    </div>
+  );
+}
+
+/** The model's reasoning: "Thinking" while it streams, then "Thought for 3s" that opens to show the words. */
+function Reasoning({ text, streaming, took }: { text: string; streaming: boolean; took?: number }) {
+  const [open, setOpen] = useState(false);
+  if (!text.trim() && !streaming) return null;
+  return (
+    <div className="text-[13px]">
+      <button onClick={() => setOpen(o => !o)} className="flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground">
+        <ChevronRight className={cn('size-3.5 transition-transform duration-200', open && 'rotate-90')} />
+        <span className={cn(streaming && 'chat-shimmer')}>{streaming ? 'Thinking' : `Thought${took ? ` for ${(took / 1000).toFixed(took < 10_000 ? 1 : 0)}s` : ''}`}</span>
+      </button>
+      <div className={cn('grid transition-[grid-template-rows,opacity] duration-300 ease-out', open ? 'mt-1.5 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
+        <div className="overflow-hidden"><div className="border-l-2 border-white/10 pl-3 leading-relaxed whitespace-pre-wrap text-muted-foreground">{text.trim()}</div></div>
+      </div>
     </div>
   );
 }
@@ -165,11 +182,15 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
   };
   const sent = useRef(0);
   const end = useRef<HTMLDivElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+  // follow the reply as it streams, unless the person scrolled up to read; then offer a way back down
+  const [away, setAway] = useState(false);
+  const onScroll = () => { const el = scroller.current; if (el) setAway(el.scrollHeight - el.scrollTop - el.clientHeight > 80); };
   const busy = status === 'submitted' || status === 'streaming';
 
   // questions from the ⌘K palette arrive through `ask`
   useEffect(() => { if (ask && ask.n !== sent.current) { sent.current = ask.n; sendMessage({ text: ask.text }); } }, [ask, sendMessage]);
-  useEffect(() => { end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [messages, status]);
+  useEffect(() => { if (!away) end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [messages, status, away]);
 
   const ready = files.filter(f => f.id), uploading = files.some(f => !f.id && !f.error);
   const submit = () => {
@@ -179,7 +200,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       <header className="flex items-center gap-2.5 border-b px-5 py-4">
         <div className="min-w-0">
           <div className="text-sm font-semibold leading-tight">{name}</div>
@@ -187,12 +208,12 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
         </div>
       </header>
 
-      <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+      <div ref={scroller} onScroll={onScroll} className="relative flex-1 space-y-5 overflow-y-auto px-5 py-5">
         {!messages.length && (
           <div className="pt-10 text-center animate-in fade-in duration-500">
             <div className="text-lg font-semibold tracking-tight">What would you like to know?</div>
             <p className="mt-1 text-sm text-muted-foreground">Ask about anything on your homepage.</p>
-            <div className="mt-6 flex flex-col items-stretch gap-1.5">
+            <div className="mx-auto mt-6 grid max-w-[560px] gap-1.5 sm:grid-cols-2">
               {suggestions.map((s, i) => (
                 <button key={s} onClick={() => onAsk(s)} style={{ animationDelay: `${120 + i * 50}ms` }}
                   className="press flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-left text-sm text-foreground/85 transition-colors fill-mode-both hover:bg-white/[.07] hover:text-foreground animate-in fade-in slide-in-from-bottom-1 duration-300">
@@ -216,6 +237,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
           const flush = (k: string) => { if (run.length) { const r = run; blocks.push(<ToolChips key={`c${k}`} parts={r} tools={tools} settled={!live || m.parts.some((p: any) => p.type === 'text' && p.text.trim())} />, ...r.map((p, j) => <ToolPart key={`p${k}.${j}`} p={p} approve={(id, ok) => addToolApprovalResponse({ id, approved: ok })} />)); run = []; } };
           m.parts.forEach((p: any, i) => {
             if (p.type.startsWith('tool-') || p.type === 'dynamic-tool') run.push(p);
+            else if (p.type === 'reasoning') { flush(String(i)); blocks.push(<Reasoning key={i} text={p.text ?? ''} streaming={live && p.state === 'streaming'} took={took[m.id]} />); }
             else if (p.type === 'text' && p.text.trim()) { flush(String(i)); blocks.push(<Text key={i} text={p.text} />); }
           });
           flush('end');
@@ -226,7 +248,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
           return (
             <div key={m.id} className="space-y-3">
               {blocks}
-              {live && !text && !m.parts.some((p: any) => (p.type.startsWith('tool-') || p.type === 'dynamic-tool') && p.state !== 'output-available') && <Pending since={started.current || Date.now()} label={m.parts.length ? 'Writing' : 'Thinking'} />}
+              {live && !text && !m.parts.some((p: any) => ((p.type.startsWith('tool-') || p.type === 'dynamic-tool') && p.state !== 'output-available') || (p.type === 'reasoning' && p.state === 'streaming')) && <Pending since={started.current || Date.now()} label={m.parts.length ? 'Writing' : 'Thinking'} />}
               {!live && text && (
                 <div className="flex items-center gap-1 text-muted-foreground animate-in fade-in duration-500">
                   <button aria-label="Copy" title="Copy" onClick={() => { navigator.clipboard?.writeText(text); setCopied(m.id); setTimeout(() => setCopied(null), 1400); }}
@@ -249,9 +271,20 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
           );
         })}
         {status === 'submitted' && messages.at(-1)?.role === 'user' && <Pending since={started.current || Date.now()} />}
-        {error && <div className="text-sm text-bad">Couldn't reach the model: {error.message}</div>}
+        {error && (
+          <div className="chat-error flex items-center gap-3 rounded-2xl border border-bad/20 bg-bad/[.06] px-4 py-3 text-sm">
+            <span className="min-w-0 flex-1"><span className="font-medium">Couldn't reach the model.</span> <span className="text-muted-foreground">{error.message}</span></span>
+            <button onClick={() => regenerate()} className="press shrink-0 rounded-full bg-white/10 px-3 py-1 text-[12.5px] transition-colors hover:bg-white/15">Try again</button>
+          </div>
+        )}
         <div ref={end} />
       </div>
+      {away && (
+        <button onClick={() => { setAway(false); end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }} aria-label="Jump to the latest"
+          className="to-latest glass-round absolute bottom-[88px] left-1/2 z-10 flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-full px-3 text-[12.5px] text-foreground/85">
+          <ArrowDown className="size-3.5" />{busy ? 'Writing…' : 'Latest'}
+        </button>
+      )}
 
       <form className="border-t p-3" onSubmit={e => { e.preventDefault(); submit(); }}
         onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setOver(true); } }} onDragLeave={() => setOver(false)}
@@ -267,7 +300,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
             ))}
           </div>
         )}
-        <div className={cn('flex items-end gap-2 rounded-2xl border bg-card px-3 py-2 shadow-card focus-within:ring-2 focus-within:ring-ring/30', over && 'ring-2 ring-primary/60')}>
+        <div className={cn('composer flex items-end gap-2 rounded-2xl border bg-card px-3 py-2 shadow-card', over && 'ring-2 ring-primary/60')}>
           <input ref={pick} type="file" multiple hidden onChange={e => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
           <button type="button" onClick={() => pick.current?.click()} aria-label="Attach a file" className="mb-0.5 grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"><Paperclip className="size-4" /></button>
           <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={`Message ${name}, paste a link or drop a file`} aria-label="Message"
@@ -275,8 +308,8 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, o
             onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
             className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-1.5 text-[15px] outline-none field-sizing-content placeholder:text-muted-foreground" autoFocus />
           {busy
-            ? <Button type="button" size="icon" variant="secondary" className="size-8 rounded-full" onClick={stop} aria-label="Stop"><Square className="tick size-3 fill-current" /></Button>
-            : <Button type="submit" size="icon" className={cn('size-8 rounded-full')} disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="tick" /></Button>}
+            ? <Button type="button" size="icon" variant="secondary" className="size-8 rounded-full" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" /></Button>
+            : <Button type="submit" size="icon" className="size-8 rounded-full transition-opacity duration-200" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
         </div>
       </form>
     </div>

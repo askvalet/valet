@@ -245,12 +245,38 @@
 @keyframes chat-dot { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
 .chat-icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; }
 @media (hover: hover) and (pointer: fine) { .chat-icon:hover { background: rgb(255 255 255 / .07); color: var(--foreground); } }
-/* a page or tab opening: sections settle in, a beat apart; a number that changes crossfades through a slight blur */
+/* a page or tab opening: sections settle in, a beat apart, and each card inside a section a beat after the last;
+   a number that changes crossfades through a slight blur */
 .settle { animation: settle 420ms var(--ease-out) both; }
 @keyframes settle { from { opacity: 0; transform: translateY(10px); } }
+.settle-card { animation: settle-card 520ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 40ms); }
+@keyframes settle-card { from { opacity: 0; transform: translateY(8px) scale(.992); } }
+/* cards lift a touch under the pointer: the shadow deepens, nothing jumps */
+@media (hover: hover) and (pointer: fine) {
+  .lift { transition: transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out); }
+  .lift:hover { transform: translateY(-1px); box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 14px 32px -12px rgb(0 0 0 / .22); }
+  .has-wallpaper .lift:hover, .dark .lift:hover { box-shadow: inset 0 1px 0 rgb(255 255 255 / .14), 0 28px 56px -24px rgb(0 0 0 / .75); }
+}
+/* a theme switch: the sun and moon turn into each other */
+.spin-in { animation: spin-in 360ms var(--ease-out) both; }
+@keyframes spin-in { from { opacity: 0; transform: rotate(-90deg) scale(.6); } }
+/* a row that opens somewhere shows its arrow only when asked */
+.row-arrow { opacity: 0; transform: translateX(-3px); transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out); }
+@media (hover: hover) and (pointer: fine) { .row-link:hover .row-arrow { opacity: 1; transform: none; } }
 .tick { display: inline-block; animation: tick 260ms var(--ease-out) both; }
 @keyframes tick { from { opacity: 0; transform: translateY(2px) scale(.96); filter: blur(2px); } }
-@media (prefers-reduced-motion: reduce) { .settle, .tick { animation: none; } .chat-word, .chat-card, .chat-in { animation: none; } .chat-shimmer { animation: none; color: var(--muted-foreground); } }
+@media (prefers-reduced-motion: reduce) { .settle, .settle-card, .tick, .spin-in { animation: none; } .chat-word, .chat-card, .chat-in { animation: none; } .chat-shimmer { animation: none; color: var(--muted-foreground); } .lift, .lift:hover { transform: none; } }
+/* the composer glows awake when it has focus; the send button morphs into the stop square and back */
+.composer { transition: box-shadow 220ms var(--ease-out), border-color 220ms var(--ease-out), background-color 220ms var(--ease-out); }
+.composer:focus-within { border-color: rgb(255 255 255 / .22); box-shadow: 0 0 0 4px rgb(255 255 255 / .06), 0 10px 30px -16px rgb(0 0 0 / .6); }
+:root:not(.dark) .composer:focus-within { border-color: rgb(0 0 0 / .18); box-shadow: 0 0 0 4px rgb(0 0 0 / .04), 0 10px 30px -16px rgb(0 0 0 / .18); }
+.morph { animation: morph 240ms var(--ease-out) both; }
+@keyframes morph { from { opacity: 0; transform: scale(.5) rotate(-60deg); } }
+/* "new messages below": a pill that floats up when the person has scrolled away from the latest reply */
+.to-latest { animation: to-latest 240ms var(--ease-out) both; }
+@keyframes to-latest { from { opacity: 0; transform: translate(-50%, 8px) scale(.9); } }
+/* a reply that failed: a quiet card with a way back */
+.chat-error { animation: chat-card 320ms var(--ease-out) both; }
 
 /* the chat window: rises in from slightly below and smaller, eased out; leaves faster than it came */
 .chat-pop[data-state="open"] { animation: chat-pop-in 280ms var(--ease-out) both; }
