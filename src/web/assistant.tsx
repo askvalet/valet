@@ -6,7 +6,7 @@ import {
   Activity, ArrowUp, Bookmark, Check, ChevronRight, Copy, CornerDownRight, FileText, Film, Lightbulb, Loader2, Paperclip, RotateCcw,
   Search, Square, X, Zap,
 } from 'lucide-react';
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Card } from '../shared/cards.ts';
