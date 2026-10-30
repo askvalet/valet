@@ -228,11 +228,11 @@ function Media({ card }: { card: MediaCard }) {
 }
 
 /** A row of artwork, like the Apple TV app: snap-scrolling, no borders, arrows to page through on desktop. */
-function Shelf({ card, header }: { card: ShelfCard; header?: ReactNode }) {
+function Shelf({ card, header, small }: { card: ShelfCard; header?: ReactNode; small?: boolean }) {
   const row = useRef<HTMLDivElement>(null);
   const page = (dir: number) => row.current?.scrollBy({ left: dir * row.current.clientWidth * 0.85, behavior: 'smooth' });
   const ratio = card.aspect === 'square' ? 'aspect-square' : card.aspect === 'wide' ? 'aspect-video' : 'aspect-[2/3]';
-  const width = card.aspect === 'wide' ? 'w-[240px] @3xl/main:w-[280px]' : 'w-[128px] @3xl/main:w-[150px]';
+  const width = small ? (card.aspect === 'wide' ? 'w-[180px]' : 'w-[92px]') : card.aspect === 'wide' ? 'w-[240px] @3xl/main:w-[280px]' : 'w-[128px] @3xl/main:w-[150px]';
   return (
     <div>
       <div className="mb-3 flex items-center gap-2">
@@ -385,7 +385,7 @@ function BareHeader({ card, title, status }: { card?: CardT; title?: string; sta
 
 export function Widget({ card, run, title, status, compact, columns, minimal, headless }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean }) {
   // artwork-led cards sit directly on the page, without a card frame
-  if (card?.type === 'shelf') return <Shelf card={card} header={<BareHeader card={card} title={title} status={status} />} />;
+  if (card?.type === 'shelf') return <Shelf card={card} small={compact} header={<BareHeader card={card} title={title} status={status} />} />;
   if (card?.type === 'media') return (
     <div className="min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Media card={card} /></div>
   );
@@ -409,7 +409,7 @@ export function Widget({ card, run, title, status, compact, columns, minimal, he
         </CardHeader>
       )}
       <CardContent className={cn(bare ? 'p-0' : compact ? 'px-4' : 'px-5')}>
-        {card ? <CardBody card={card} run={run} columns={columns} minimal={minimal} /> : <div className="space-y-3"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-4 w-3/5" /></div>}
+        {card ? <CardBody card={card} run={run} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /> : <div className="space-y-3"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-4 w-3/5" /></div>}
       </CardContent>
     </Card>
   );

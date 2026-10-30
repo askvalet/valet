@@ -53,7 +53,8 @@ export default defineIntegration({
           access: 'read', input: z.object({}),
           async run() {
             const items = await check();
-            return { data: items.map(({ href, icon, ...i }) => i), card: { type: 'status', title: 'Services', items } };
+            // quiet services are expected to be offline at times: say so, so it isn't reported as a problem
+            return { data: items.map(({ href, icon, quiet, ...i }) => (quiet && !i.ok ? { ...i, note: 'off on purpose at times; not a problem' } : i)), card: { type: 'status', title: 'Services', items } };
           },
         },
       },
