@@ -11,6 +11,8 @@ import { makeContext, UPLOAD_DIR, type Instance, type Integration } from './core
 import { Hub } from './hub.ts';
 import { noticesFor, type Notice } from './notices.ts';
 import { History } from './history.ts';
+import { loadPlugins } from './plugins.ts';
+import { checkCard } from '../shared/cards.schema.ts';
 import { registry } from '../integrations/index.ts';
 
 const CONFIG = process.env.ATRIUM_CONFIG ?? 'config.yaml';
@@ -21,6 +23,7 @@ const HOST = process.env.HOST ?? '0.0.0.0';
 if (process.argv[2] === 'user') process.exit(await userCommand(process.argv.slice(3)).catch(e => { console.error(String(e.message ?? e)); return 1; }));
 
 const config = loadConfig(CONFIG);
+const fromPlugins = await loadPlugins(registry, config.plugins.packages, config.plugins.replace);
 
 // Build every integration instance from config. A broken block is reported and skipped, not fatal.
 const instances = new Map<string, Instance>();
@@ -34,7 +37,17 @@ for (const [id, block] of Object.entries(config.integrations)) {
     console.error(`config: integrations.${id}:\n` + parsed.error.issues.map(i => `  ${i.path.join('.')}: ${i.message}`).join('\n'));
     continue;
   }
-  instances.set(id, integration.create(parsed.data, makeContext(id)));
+  const inst = integration.create(parsed.data, makeContext(id));
+  // a plugin's cards are checked against the catalog, so a mistake shows as the widget's error, not a broken page
+  if (fromPlugins.has(block.type)) for (const w of Object.values(inst.widgets)) {
+    const fetch = w.fetch.bind(w);
+    w.fetch = async () => {
+      const card = await fetch(), r = checkCard(card);
+      if (!r.success) throw new Error(`card doesn't match the catalog: ${r.error.issues.slice(0, 2).map(i => `${i.path.join('.') || 'card'}: ${i.message}`).join('; ')}`);
+      return card;
+    };
+  }
+  instances.set(id, inst);
   meta.set(id, { type, name: integration.name, integration });
 }
 

@@ -65,7 +65,8 @@ npm start
 | `weather` | Now, today's range and the next hours (Open-Meteo, no key) |
 | `quran` | A verse of the day from a self-hosted Quran site |
 
-Writing one is covered in [docs/integrations.md](docs/integrations.md).
+Writing one is covered in [docs/integrations.md](docs/integrations.md). Community integrations are single files you drop
+into `data/integrations/`: see [docs/plugins.md](docs/plugins.md) and [`examples/hello-plugin.mjs`](examples/hello-plugin.mjs).
 
 ## Cards
 

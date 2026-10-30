@@ -150,3 +150,25 @@ test('history: reads numbers out of headlines, and gives a graph to headlines th
   const own = h.apply('w', { type: 'text', text: '', summary: { label: 'x', value: '16%', trend: [1, 2] } } as any) as any;
   assert.deepEqual(own.summary.trend, [1, 2]);   // a service's own graph wins
 });
+
+test('plugins: a one-file plugin loads, can\'t silently take a built-in name, and a broken one is skipped', async () => {
+  const { mkdtemp, mkdir, writeFile } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const dir = await mkdtemp(join(tmpdir(), 'atrium-'));
+  process.env.ATRIUM_DATA = dir;
+  await mkdir(join(dir, 'integrations'));
+  const plugin = (type: string) => `export default ({ z, defineIntegration }) => defineIntegration({ type: '${type}', name: 'P', config: z.object({}),
+    create: () => ({ widgets: { w: { title: 'W', fetch: async () => ({ type: 'text', text: 'hi' }) } } }) })`;
+  await writeFile(join(dir, 'integrations', 'a.mjs'), plugin('hello'));
+  await writeFile(join(dir, 'integrations', 'b.mjs'), plugin('tautulli'));          // a built-in name
+  await writeFile(join(dir, 'integrations', 'c.mjs'), 'export default 42');         // not an integration
+  await writeFile(join(dir, 'integrations', 'd.mjs'), 'throw new Error("boom")');   // crashes on load
+  const { loadPlugins } = await import('../src/server/plugins.ts');
+  const registry: Record<string, any> = { tautulli: { type: 'tautulli', builtin: true } };
+  const loaded = await loadPlugins(registry, [], []);
+  assert.deepEqual([...loaded], ['hello']);
+  assert.equal(registry.tautulli.builtin, true);
+  const card = await registry.hello.create({}, {}).widgets.w.fetch();
+  assert.equal(card.text, 'hi');
+});

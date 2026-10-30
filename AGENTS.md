@@ -32,6 +32,10 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   `image()` for proxied pictures. Register it in `src/integrations/index.ts`. Nothing else should need to change.
 - **Widgets summarise themselves.** A card may carry `summary`/`summaries` (label, value, tone, trend, pct) so the same
   data can appear as a tile, a ring in the menubar, or a full card, chosen in YAML.
+- **Community integrations are plugins** (`src/server/plugins.ts`, docs/plugins.md): the same integration shape, one
+  file in `data/integrations/` or an npm package, handed Atrium's toolkit so it needs no imports. Their cards are
+  checked against the catalog at runtime. A new built-in should be writable as a plugin too: if it needs something
+  the toolkit or `Context` doesn't offer, add it there rather than special-casing the built-in.
 - **Rich visuals are framework-free modules** (`src/web/visuals/*-model.ts`): a `createViewer(box, options)` that
   builds DOM, takes `update(data)` and `select(id)`, and owns its own camera and interaction. React wraps it with a
   thin panel. That's what lets the PC model run unchanged on another app (`npm run export:pc-model`). Edit the model
