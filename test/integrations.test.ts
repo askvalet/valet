@@ -300,3 +300,15 @@ test('docker: reads frames and plain logs, names what\'s down, and offers no way
   assert.equal(d.actions, undefined);
   assert.ok(calls.every(u => !/\/(restart|stop|start|exec|create)\b/.test(u)));
 });
+
+test('host: services by name, quiet ones never alert, and logs say what\'s allowed', async () => {
+  const { default: host } = await import('../src/integrations/host.ts');
+  const services = [{ unit: 'radarr', name: 'radarr', state: 'failed', result: 'exit-code', restarts: 3 }, { unit: 'sonarr', name: 'sonarr', state: 'active' }, { unit: 'user:job', name: 'job', state: 'inactive' }];
+  const h = make(host, { url: 'http://agent:7576/', token: 'tok', quiet: ['job'] }, fake(url => url.includes('/logs') ? new Response(JSON.stringify(url.includes('ssh') ? { error: 'not a listed service', listed: ['radarr'] } : { lines: ['boom'] }), { status: url.includes('ssh') ? 404 : 200 }) : { host: 'nas', services }));
+  const c: any = await h.widgets.services.fetch(); valid(c);
+  assert.deepEqual(c.items.map((i: any) => [i.name, i.ok, i.detail, i.quiet]), [['radarr', false, 'failed (exit-code)', false], ['sonarr', true, undefined, false], ['job', false, 'inactive', true]]);
+  assert.equal(c.summary.value, '1 down');
+  assert.deepEqual(((await h.tools!.service_logs.run({ name: 'radarr.service', lines: 50 })) as any).data.lines, ['boom']);
+  assert.deepEqual(((await h.tools!.service_logs.run({ name: 'ssh', lines: 50 })) as any).data.listed, ['radarr']);
+  assert.ok(Object.values(h.tools!).every(t => t.access === 'read'));
+});

@@ -186,9 +186,42 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `releases` | `repos` (`owner/name`), `token` (optional, raises GitHub's rate limit), `limit`, `prereleases` | `latest` |
 | `markets` | `symbols` (`AAPL`, `BTC-USD`, `^GSPC`, `EURUSD=X`, or `{ symbol, name }`), `range` (`1d`), `title` | `quotes` |
 | `docker` | `url` (a read-only socket proxy, never the raw socket), `hide` (names to leave out, e.g. containers that are meant to stay stopped) | `containers` |
+| `host` | `url` (the Atrium agent), `token`, `title`, `quiet` (services often off on purpose) | `services` |
 | `api` | `url`, `headers`, `method`, `body`, `every` (60s), `title`, `icon`, `href`, `about`, and one of `stats`, `list`, `rows`, `status` (see below) | `data` |
 | `calendar` | `calendars` (iCal URLs, or `{ url, name }`), `days` (14), `limit` (10), `title` | `upcoming` |
 | `links` | (from the top-level `links:` block) | one per group |
+
+### Services outside Docker: `type: host`
+
+Atrium runs in a locked-down container, so it can't see the machine it's on, or any other. For systemd services, run the
+Atrium agent on each machine: [`agent/atrium-agent.py`](../agent/atrium-agent.py), one file of Python's standard library
+with nothing to install. It needs a token, answers only about the services you list, and can only look.
+
+```sh
+# on each machine
+install -m 755 agent/atrium-agent.py ~/.local/bin/
+install -Dm 644 agent/atrium-agent.service ~/.config/systemd/user/atrium-agent.service
+mkdir -p ~/.config/atrium-agent && install -m 600 /dev/null ~/.config/atrium-agent/env
+cat >> ~/.config/atrium-agent/env <<X
+ATRIUM_AGENT_TOKEN=$(openssl rand -hex 32)
+ATRIUM_AGENT_UNITS=radarr,sonarr,plexmediaserver,user:myjob
+ATRIUM_AGENT_BIND=172.17.0.1:7576
+X
+systemctl --user enable --now atrium-agent
+loginctl enable-linger $USER
+```
+
+```yaml
+integrations:
+  nas:
+    type: host
+    url: http://172.17.0.1:7576     # or the machine's tailnet address
+    token: ${NAS_AGENT_TOKEN}
+    title: NAS
+```
+
+Bind it to the Docker bridge for the machine Atrium is on, or a tailnet address for another; never a public one. Reading
+system services' logs needs your user in the `systemd-journal` group.
 
 ### Any JSON API: `type: api`
 

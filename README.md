@@ -83,6 +83,7 @@ changing anything. [SECURITY.md](SECURITY.md) has the details and the least-priv
 | `calendar` | What's coming up, from any iCal link (Google, iCloud, Nextcloud, Outlook, Proton) |
 | `links` | Bookmarks, grouped, with favicons |
 | `docker` | Containers, why they stopped, logs and resource use, through a read-only socket proxy |
+| `host` | systemd services on any machine, with logs, through a small read-only agent |
 | `api` | Any JSON API as a card, from YAML alone: numbers, a list, a table or up/down |
 
 Writing one is covered in [docs/integrations.md](docs/integrations.md). Community integrations are single files you drop

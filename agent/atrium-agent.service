@@ -1,0 +1,20 @@
+# Copy to ~/.config/systemd/user/ with the agent in ~/.local/bin, put the settings in ~/.config/atrium-agent/env, then:
+#   systemctl --user enable --now atrium-agent
+#   loginctl enable-linger $USER      # keeps it running without a login
+# Reading system services' logs needs your user in the systemd-journal group (or wheel, on most distros).
+[Unit]
+Description=Atrium agent (read-only service status and logs)
+After=network-online.target docker.service
+
+[Service]
+EnvironmentFile=%h/.config/atrium-agent/env
+ExecStart=/usr/bin/python3 %h/.local/bin/atrium-agent.py
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

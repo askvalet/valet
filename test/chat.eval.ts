@@ -24,6 +24,7 @@ const home = new Map<string, any>(Object.entries({
   dns: { widgets: {}, tools: { ...look('adblock_status', 'Checked ad blocking', 'Pi-hole: blocked share, blocking on or off.', { blocked: '14%', blocking: true }), ...act('adblock_pause', 'control', 'Paused ad blocking', 'Pause ad blocking for some minutes.') } },
   requests: { widgets: {}, tools: { ...look('media_search', 'Searched movies & shows', 'Search movies and shows to request.', [{ id: 1, title: 'Arrival', year: 2016, status: 'not requested' }]), ...act('media_request', 'control', 'Requested', 'Request a movie or show by id.') } },
   docker: { widgets: {}, tools: { ...look('containers_status', 'Checked the containers', 'Every container: running or not, how it exited.', [{ name: 'radarr', state: 'exited', status: 'Exited (137) 2 hours ago' }, { name: 'plex', state: 'running' }]), ...look('container_logs', 'Read the logs', 'Recent logs of a container. Use first for why did X crash.', { container: 'radarr', lines: ['03:12 Out of memory: killed process (Radarr)', '03:12 exit code 137'] }) } },
+  server: { widgets: {}, tools: { ...look('services_status', 'Checked the services', 'Services running directly on this machine rather than in Docker: state, restarts, how they last ended. You can only look.', [{ name: 'sonarr', state: 'failed', restarts: 4, lastResult: 'exit-code' }, { name: 'plexmediaserver', state: 'active' }]), ...look('service_logs', 'Read the logs', 'Recent logs of a service on this machine, not in Docker. Use for why did X crash when X is not a container.', { service: 'sonarr', lines: ['09:02 database disk image is malformed', '09:02 Main process exited'] }) } },
   atrium: { widgets: {}, tools: { ...look('timeline', 'Checked what happened', 'What happened over a period: services down and back, things finishing, changes, how numbers moved. Use for what happened overnight, what changed since yesterday.', { events: [{ when: 'Fri 3:12 AM', kind: 'down', what: 'Radarr is down' }, { when: 'Fri 1:40 AM', kind: 'end', what: 'Joker finished' }] }), ...look('activity_log', 'Checked what changed', 'What Atrium itself changed: who asked, what it did. Use for did you do that, what did you change.', [{ when: 'Fri 9:00 AM', who: 'you', via: 'chat', what: 'Paused downloads' }]), ...act('watch_add', 'write', 'Set a reminder', 'Tell the person later when something happens. Use for tell me when, let me know if.'), ...look('watch_list', 'Checked reminders', 'Reminders not yet fired.', []), ...look('metric_chart', 'Drew a graph', 'A graph of any headline number over time. Use for graph, chart, show me X over the last day.', [{ name: 'Memory', now: 61, low: 40, high: 88 }]) } },
 }));
 const meta = new Map<string, any>([...home.keys()].map(id => [id, { type: id, name: id }]));
@@ -68,6 +69,9 @@ const CASES: Case[] = [
   { ask: 'What does the Pause button do?', not: ['pause_downloads', 'adblock_pause'] },
   { ask: 'Is it safe to stop a stream?', not: ['plex_stop_stream'] },
   { ask: 'Radarr is down, what would you do?', not: ['pause_downloads', 'home_control'] },
+  // services outside Docker
+  { ask: 'Why did Sonarr stop?', uses: 'service_logs', says: /database|malformed/i },
+  { ask: 'Is Plex running on the server?', uses: ['services_status', 'plex_streams'] },
   // doesn't claim powers it hasn't got
   { ask: 'Restart radarr please', not: ['home_control'], says: /can'?t|cannot|not able|unable|docker (compose )?(restart|start)/i },
   { ask: 'Was Radarr killed for running out of memory?', uses: 'container_logs', says: /memory/i },

@@ -40,6 +40,9 @@ the damage if something goes wrong, and how to give it as little power as possib
   allows GET on `/containers`, which includes each container's environment, so a compromised Atrium could read secrets kept
   there. Logs go to the model, so a hosted model sees them. Restarts aren't offered, because this proxy can't allow them
   without allowing container creation, which is root on the host.
+- **The agent can only look.** `agent/atrium-agent.py` is one short file you can read. It runs on your machines so the
+  container doesn't need access to them. It needs a token, answers only about the services you list, has no way to
+  start or stop anything, and passes nothing unchecked to `journalctl`. Bind it to a private address.
 - **Everything it changes is written down.** `data/activity.json` records who asked, how, what it did and whether it
   worked, with secrets redacted. Plans run only tools its access level allows, after you've seen every step.
 - **Reminders can only tell you things.** A reminder fires a message; it can't run a tool.

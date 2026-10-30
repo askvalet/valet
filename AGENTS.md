@@ -56,6 +56,9 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - **AI is everywhere and required nowhere.** Without an `assistant:` block the page loses nothing. Rules decide when a
   model is worth asking; if a rule can do the job, no model runs. What it does unasked (`src/server/insight.ts`, through
   `brain.ts`) gets no tools. What it builds (pins, config edits in `setup.ts`) runs without it afterwards.
+- **Atrium stays in its box; agents go on the machines.** The container never gets the host. Anything from outside it
+  comes through a narrow read-only door: a socket proxy for Docker, `agent/atrium-agent.py` for systemd. Keep the agent one
+  file of Python's standard library, and keep it unable to change anything: `test/agent.test.ts` enforces that.
 - **Personal things live in config, never in code.** Hardware builds (`build:`), rooms and lights, services, layout,
   angles: the repo ships generic defaults and a documented `config.example.yaml`. Before committing, grep for anything
   that names the author's hardware, hosts or people.
