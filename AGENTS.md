@@ -47,6 +47,8 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - **Layout is data.** Sections choose how they draw (`display`), where they sit (`place`), how dense they are
   (`variant`, `header`, `columns`) and whether they're on the overview (`overview`); the tab buttons' side is `nav.side`.
   A new arrangement is a new option with a default, never a fork of the page.
+- **Sizes are the layout's job.** Every card works small (its `summary` as a tile), medium, large (two columns, more room)
+  and dense in chat. Integrations give a good `summary`; they don't pick sizes.
 - **Live things announce themselves.** A card sets `activity` only while something's happening; the island shows the
   live ones in the config's order and disappears when nothing is live.
 
@@ -73,6 +75,14 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   light parts in the colours they really are. If a state can't be read, draw what the hardware ships as and say so.
 
 ## Working on it
+
+- **Every card type is tested.** `src/shared/cards.schema.ts` is the catalog as a strict schema; `src/web/samples.ts` has
+  a made-up sample of every type. `npm test` validates the samples, renders each in every size (medium, large, chat)
+  and as a tile, and runs integration logic against made-up responses (`test/integrations.test.ts`: a fake `ctx.http`).
+  Adding a card type means: the type in `cards.ts`, its schema, a renderer, a sample, and the type in the test's list.
+- `npm run test:live` checks every widget in your `config.yaml` against your real services. `/#gallery` shows the whole
+  library, including the island and its notices.
+- Integration tests use made-up data only. Never commit recorded responses from real services (they carry personal data).
 
 - `npm run dev` (server with `--watch` + Vite), `npm run check` (both tsconfigs), `npm run build`, `npm start`.
 - Verify UI changes by looking at them: build, run, and screenshot the page (a headless Chrome over CDP works; set
