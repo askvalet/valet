@@ -39,11 +39,26 @@ export default defineIntegration({
               summary: { label: 'Indexers', icon: 'search', value: s.indexers ? `${s.indexers.length - bad.length}/${s.indexers.length}` : '–', tone: bad.length ? 'warn' : 'good',
                 sub: bad.length ? `${bad.map(b => b.name).join(', ')} failing` : 'All working', detail: s.subs ? (missing ? `${missing} subs missing` : 'subs complete') : undefined },
               items: (s.indexers ?? []).map(i => ({ name: i.name, ok: i.ok, detail: i.ok ? undefined : until(i.until), quiet: !i.ok })),
+              buttons: bad.length && cfg.prowlarr ? [{ label: 'Test again', action: 'retest' }] : undefined,
             };
           },
         },
       },
+      actions: {
+        retest: { description: 'Test every indexer again', input: z.object({}),
+          run: () => ctx.http(`${cfg.prowlarr!.url.replace(/\/$/, '')}/api/v1/indexer/testall`, { method: 'POST', headers: { 'X-Api-Key': cfg.prowlarr!.apiKey }, as: 'response' }) },
+      },
       tools: {
+        indexers_retest: {
+          description: 'Ask Prowlarr to test every indexer again (clears failures that have recovered).',
+          access: 'control', input: z.object({}),
+          async run() {
+            if (!cfg.prowlarr) return { data: { error: 'Prowlarr is not configured' } };
+            await ctx.http(`${cfg.prowlarr.url.replace(/\/$/, '')}/api/v1/indexer/testall`, { method: 'POST', headers: { 'X-Api-Key': cfg.prowlarr.apiKey }, as: 'response' });
+            const s = await state();
+            return { data: s, card: { type: 'status', title: 'Indexers', icon: 'search', items: (s.indexers ?? []).map(i => ({ name: i.name, ok: i.ok })) } };
+          },
+        },
         indexer_health: {
           description: 'Which torrent indexers (Prowlarr) are working or failing, and how many episodes/movies still lack subtitles (Bazarr). Use when downloads aren\'t being found.',
           access: 'read', input: z.object({}),

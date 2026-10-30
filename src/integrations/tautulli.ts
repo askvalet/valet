@@ -85,6 +85,17 @@ export default defineIntegration({
         return ctx.http<Response>(`${base}/api/v2?${q}`, { as: 'response' });
       },
       tools: {
+        plex_stop_stream: {
+          description: 'Stop someone\'s Plex stream, with a short message they\'ll see. Identify it by the user\'s name or the title (from plex_streams).',
+          access: 'control', input: z.object({ who: z.string().describe('user name or title'), message: z.string().default('Stopped by the server owner.') }),
+          async run({ who, message }) {
+            const a = await activity(), w = who.toLowerCase();
+            const s = a.sessions.find(x => String(x.friendly_name).toLowerCase().includes(w) || String(x.full_title).toLowerCase().includes(w));
+            if (!s) return { data: { error: `no stream matches ${who}` } };
+            await api('terminate_session', { session_key: s.session_key, message });
+            return { data: { stopped: s.full_title, user: s.friendly_name }, card: { type: 'text', tone: 'warn', text: `Stopped ${s.friendly_name}'s ${s.full_title}.` } };
+          },
+        },
         plex_streams: {
           description: 'Who is watching what on Plex right now: title, user, device, progress, quality, direct play or transcode, bandwidth.',
           access: 'read', input: z.object({}),

@@ -105,6 +105,18 @@ export default defineIntegration({
           run: ({ hash }) => api('torrents/start', { method: 'POST', body: new URLSearchParams({ hashes: hash }) }) },
       },
       tools: {
+        torrent_control: {
+          description: 'Pause, resume or remove ONE torrent (by part of its name, from downloads_status). Removing keeps the downloaded files.',
+          access: 'control', input: z.object({ name: z.string(), do: z.enum(['pause', 'resume', 'remove']) }),
+          async run({ name, do: what }) {
+            const all = await api<any[]>('torrents/info'), q = name.toLowerCase();
+            const t = all.find(x => String(x.name).toLowerCase().includes(q));
+            if (!t) return { data: { error: `no torrent matches ${name}` } };
+            const paths: Record<string, string> = { pause: 'torrents/stop', resume: 'torrents/start', remove: 'torrents/delete' }, path = paths[what];
+            await api(path, { method: 'POST', body: new URLSearchParams({ hashes: t.hash, ...(what === 'remove' ? { deleteFiles: 'false' } : {}) }) });
+            return { data: { done: what, torrent: t.name }, card: { type: 'text', tone: 'good', text: `${what === 'remove' ? 'Removed' : what === 'pause' ? 'Paused' : 'Resumed'} ${t.name}.` } };
+          },
+        },
         downloads_status: {
           description: 'Torrents currently downloading with progress, speed, size left and ETA, plus total transfer speed.',
           access: 'read', input: z.object({}),

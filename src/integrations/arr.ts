@@ -24,6 +24,26 @@ export default defineIntegration({
   }),
   create(cfg, ctx) {
     const get = (s: { url: string; apiKey: string }, path: string) => ctx.http<any>(`${s.url.replace(/\/$/, '')}/api/v3/${path}`, { headers: { 'X-Api-Key': s.apiKey }, timeout: 10_000 });
+    const command = (s: { url: string; apiKey: string }, body: object) => ctx.http<any>(`${s.url.replace(/\/$/, '')}/api/v3/command`,
+      { method: 'POST', headers: { 'X-Api-Key': s.apiKey, 'Content-Type': 'application/json' }, body: JSON.stringify(body), timeout: 10_000 });
+    const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    // the library, cached for a few minutes: is a title already there, and how complete is it
+    let lib: { shows: any[]; films: any[]; at: number } | null = null;
+    async function library() {
+      if (lib && Date.now() - lib.at < 300_000) return lib;
+      const [shows, films]: any[][] = await Promise.all([cfg.sonarr ? get(cfg.sonarr, "series") : [], cfg.radarr ? get(cfg.radarr, "movie") : []]);
+      return (lib = { shows, films, at: Date.now() });
+    }
+    async function find(title: string) {
+      const l = await library(), q = norm(title);
+      const score = (t: string) => norm(t) === q ? 2 : norm(t).includes(q) ? 1 : 0;
+      return [
+        ...l.shows.filter(s => score(s.title)).map(s => ({ kind: 'show' as const, id: s.id, title: s.title, year: s.year, score: score(s.title),
+          have: s.statistics?.episodeFileCount ?? 0, of: s.statistics?.episodeCount ?? 0, monitored: s.monitored, image: img(s.images) })),
+        ...l.films.filter(m => score(m.title)).map(m => ({ kind: 'movie' as const, id: m.id, title: m.title, year: m.year, score: score(m.title),
+          have: m.hasFile ? 1 : 0, of: 1, monitored: m.monitored, image: img(m.images) })),
+      ].sort((a, b) => b.score - a.score).slice(0, 6);
+    }
     const img = (images: any[] = [], type = 'poster') => images.find(i => i.coverType === type)?.remoteUrl?.replace('/original/', '/w342/');
     const day = (n: number) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
 
@@ -57,11 +77,40 @@ export default defineIntegration({
             const list = await upcoming(cfg.days);
             const next = list.find(x => !x.have);
             return { type: 'shelf', title: 'Coming up', icon: 'film', aspect: 'poster', items: list.map(({ at, kind, have, ...s }) => s), empty: 'Nothing scheduled',
+              buttons: [{ label: 'Search for missing', action: 'search_missing' }],
               summary: { label: 'Coming up', icon: 'film', value: next ? next.badge! : 'Nothing', sub: next ? `${next.title}` : `next ${cfg.days} days` } };
           },
         },
       },
+      actions: {
+        search_missing: { description: 'Search for every missing episode and movie', input: z.object({}),
+          async run() {
+            await Promise.all([cfg.sonarr && command(cfg.sonarr, { name: 'MissingEpisodeSearch' }), cfg.radarr && command(cfg.radarr, { name: 'MissingMoviesSearch' })]);
+          } },
+      },
       tools: {
+        library_lookup: {
+          description: 'Is a show or movie in the library (Sonarr/Radarr), and how complete: episodes downloaded of total, or whether the movie file is there. Use for "do I have X", "how many episodes of Y".',
+          access: 'read', input: z.object({ title: z.string() }),
+          async run({ title }) {
+            const hits = await find(title);
+            return { data: hits.map(({ image, score, ...h }) => h),
+              card: hits.length ? { type: 'shelf', title: `In the library · “${title}”`, icon: 'film', aspect: 'poster',
+                items: hits.map(h => ({ title: h.title, subtitle: h.kind === 'show' ? `${h.have} of ${h.of} episodes` : h.have ? 'Downloaded' : 'Not downloaded yet', image: h.image, badge: h.have >= h.of && h.of ? 'Complete' : undefined })) }
+                : { type: 'text', text: `“${title}” isn't in the library. It can be requested.` } };
+          },
+        },
+        library_search: {
+          description: 'Ask Sonarr/Radarr to search now for what\'s missing of one show or movie in the library (by title), e.g. when an episode didn\'t download.',
+          access: 'control', input: z.object({ title: z.string() }),
+          async run({ title }) {
+            const h = (await find(title))[0];
+            if (!h) return { data: { error: `${title} isn't in the library` } };
+            if (h.kind === 'show') await command(cfg.sonarr!, { name: 'SeriesSearch', seriesId: h.id });
+            else await command(cfg.radarr!, { name: 'MoviesSearch', movieIds: [h.id] });
+            return { data: { searching: h.title }, card: { type: 'text', tone: 'good', text: `Searching for ${h.title}. New downloads show up under Downloading.` } };
+          },
+        },
         upcoming_media: {
           description: 'Episodes airing and movies being released soon for shows and films the person follows (Sonarr/Radarr), and whether each is already downloaded.',
           access: 'read', input: z.object({ days: z.number().int().min(1).max(60).default(14) }),

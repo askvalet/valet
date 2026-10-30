@@ -98,6 +98,27 @@ export default defineIntegration({
         },
       },
       tools: {
+        pc_lighting: {
+          description: 'Change the PC\'s lighting: one part (fans, pump, ram, gpu, or "all") to a colour (hex like #0a84ff, or a name you turn into hex), an effect (Static, Breathing, Rainbow, …) and/or brightness 0-100; or apply a preset by name (e.g. "Ocean", "All white", "All off").',
+          access: 'control',
+          input: z.object({ part: z.string().default('all'), color: z.string().optional(), effect: z.string().optional(), brightness: z.number().min(0).max(100).optional(), preset: z.string().optional() }),
+          async run({ part, color, effect, brightness, preset }) {
+            if (!cfg.controls) return { data: { error: 'controls are off in the config' } };
+            const s = await get(), post = (path: string, body: unknown) => fetch(`${cfg.url}${path}`, { method: 'POST', headers: { 'X-RGB': '1', 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(8000) });
+            if (preset) {
+              const p = (s.presets ?? []).find((x: any) => x.name.toLowerCase() === preset.toLowerCase() || x.id === preset.toLowerCase());
+              if (!p) return { data: { error: `no preset ${preset}; there are ${(s.presets ?? []).map((x: any) => x.name).join(', ')}` } };
+              await post('/api/preset', { id: p.id });
+              return { data: { applied: p.name }, card: { type: 'text', tone: 'good', text: `Lighting set to ${p.name}.` } };
+            }
+            const hex = color?.match(/^#?([0-9a-f]{6})$/i)?.[1];
+            const state = { ...(hex ? { color: [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16)) } : {}), ...(effect ? { mode: effect } : hex ? { mode: 'Static' } : {}), ...(brightness != null ? { brightness } : {}) };
+            const ids = (s.cards as any[]).filter(c => c.zones && !c.error && (part === 'all' || c.id === part || c.title.toLowerCase().includes(part.toLowerCase())));
+            if (!ids.length) return { data: { error: `no part ${part}; parts are ${(s.cards as any[]).filter(c => c.zones).map(c => c.id).join(', ')}` } };
+            await post('/api/zones', { zones: ids.flatMap(c => c.zones.map((z: any) => z.id)), state });
+            return { data: { changed: ids.map(c => c.title), state }, card: { type: 'text', tone: 'good', text: `Updated ${ids.map(c => c.title.toLowerCase()).join(', ')}.` } };
+          },
+        },
         pc_status: {
           description: "The desktop's temperatures (CPU, GPU, coolant), pump and fan speeds, and what its lights are set to.",
           access: 'read', input: z.object({}),

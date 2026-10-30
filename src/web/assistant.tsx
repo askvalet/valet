@@ -55,6 +55,11 @@ function Pending({ since, label = 'Thinking' }: { since: number; label?: string 
 const VERB: [RegExp, string, typeof Search][] = [
   [/docs_search/, 'Searched documents', Search], [/docs_read/, 'Read a document', FileText], [/docs_add/, 'Filed a document', FileText],
   [/bookmarks_search/, 'Searched saved links', Search], [/bookmark_read/, 'Read a bookmark', Bookmark], [/bookmark_save/, 'Saved a link', Bookmark],
+  [/pc_lighting/, 'Changed the lights', Zap], [/top_programs/, 'Checked what\'s running', Activity], [/plex_stop/, 'Stopped a stream', Film],
+  [/library_lookup/, 'Checked the library', Search], [/library_search/, 'Searched for it', Search], [/torrent_control/, 'Changed a download', Zap],
+  [/ollama_unload/, 'Unloaded a model', Zap], [/indexers_retest/, 'Retested indexers', Activity], [/adblock/, 'Checked ad blocking', Activity],
+  [/uptime_history/, 'Checked uptime', Activity], [/drive_health/, 'Checked the drives', Activity], [/upcoming_media/, 'Checked what\'s coming', Film],
+  [/games/, 'Looked at games', Search], [/quran_verse/, 'Read a verse', FileText],
   [/photos_search/, 'Searched photos', Search], [/photos_people/, 'Checked people', Search],
   [/media_search/, 'Searched movies & shows', Search], [/media_request$/, 'Requested', Film], [/media_requests/, 'Checked requests', Film],
   [/plex|streams|recently_added|history/, 'Checked Plex', Film], [/service_status/, 'Checked services', Activity], [/downloads/, 'Checked downloads', Activity],

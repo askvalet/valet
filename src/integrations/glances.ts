@@ -116,6 +116,17 @@ export default defineIntegration({
     return {
       widgets,
       tools: {
+        top_programs: {
+          description: 'What is using the server right now: the programs using the most CPU or memory (grouped by program name). Use for "why is the fan loud", "what is eating my RAM".',
+          access: 'read', input: z.object({ by: z.enum(['cpu', 'memory']).default('cpu'), limit: z.number().int().min(1).max(20).default(8) }),
+          async run({ by, limit }) {
+            const list = (await api('programlist') as any[]).map(p => ({ name: p.name, cpu: Math.round(p.cpu_percent * 10) / 10, memPct: Math.round((p.memory_percent ?? 0) * 10) / 10,
+              mem: p.memory_info?.rss ?? 0, procs: p.nprocs })).sort((a, b) => by === 'cpu' ? b.cpu - a.cpu : b.mem - a.mem).slice(0, limit);
+            return { data: list.map(p => ({ ...p, mem: fmt.bytes(p.mem) })),
+              card: { type: 'list', title: by === 'cpu' ? 'Using the CPU' : 'Using memory', icon: by === 'cpu' ? 'cpu' : 'memory',
+                items: list.map(p => ({ title: p.name, subtitle: `${p.procs} process${p.procs > 1 ? 'es' : ''}`, meta: by === 'cpu' ? `${p.cpu}%` : fmt.bytes(p.mem), pct: by === 'cpu' ? Math.min(1, p.cpu / 100) : Math.min(1, p.memPct / 100) })) } };
+          },
+        },
         system_status: {
           description: 'Current CPU, memory, CPU/GPU temperatures, GPU load and uptime of the server, plus disk usage.',
           access: 'read', input: z.object({}),
