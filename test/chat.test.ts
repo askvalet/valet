@@ -150,3 +150,24 @@ test('live cards: only tools that opted in are marked, and they must only look',
   }
   assert.ok(live.includes('downloads_status') && live.includes('plex_streams'));
 });
+
+test('steps: the last one is for answering, so running out never means saying nothing', async () => {
+  const model = scripted([['dl__status', {}]], [['dl__status', {}]], [['dl__status', {}]], [['dl__status', {}]], [['dl__status', {}]], 'here is the answer');
+  const r = await talk(model, say('dig into it'));
+  assert.equal(model.doStreamCalls.length, 6);
+  assert.equal(model.doStreamCalls[5].toolChoice?.type, 'none');
+  assert.equal(model.doStreamCalls[4].toolChoice?.type ?? 'auto', 'auto');
+  assert.match(r.text, /here is the answer/);
+});
+
+test('long chats: old tool results shrink, recent ones stay whole, and it says it shortened them', async () => {
+  const { trimHistory } = await import('../src/server/chat.ts');
+  const big = 'x'.repeat(5000), reply = (id: string) => ({ id, role: 'assistant', parts: [{ type: 'tool-a__b', toolCallId: id, state: 'output-available', input: {}, output: { data: big } }] }) as any;
+  const trimmed = trimHistory([reply('old'), ...Array.from({ length: 6 }, (_, i) => reply(`new${i}`))]);
+  assert.ok(JSON.stringify((trimmed[0].parts[0] as any).output).length < 1400);
+  assert.match(JSON.stringify((trimmed[0].parts[0] as any).output), /shortened/);
+  assert.equal((trimmed[6].parts[0] as any).output.data.length, 5000);
+  const model = scripted('fine');
+  await talk(model, [{ id: 'u', role: 'user', parts: [{ type: 'text', text: 'a' }] }, { id: 'a', role: 'assistant', parts: [{ type: 'text', text: 'thinking aloud</think>b' }] }, ...say('c')]);
+  assert.ok(!JSON.stringify(model.doStreamCalls[0].prompt).includes('thinking aloud'));
+});

@@ -16,6 +16,24 @@ import { checkCard } from '../shared/cards.schema.ts';
 
 const rank = { none: 0, read: 1, write: 2, control: 3 } as const;
 
+/** What goes back to the model: reasoning left in old replies comes out, and tool results from earlier turns shrink to a
+ *  preview. It keeps the thread of the conversation; a question about old logs can look again. Without this a chat's
+ *  prompt grows by a whole set of logs each turn and every answer gets slower. */
+export function trimHistory(messages: UIMessage[], keep = 6, limit = 1200) {
+  return messages.map((m, i) => {
+    if (m.role !== 'assistant') return m;
+    const old = i < messages.length - keep;
+    return { ...m, parts: m.parts.map((p: any) => {
+      if (p.type === 'text') return { ...p, text: splitThink(p.text).said };
+      if (old && p.output?.data !== undefined) {
+        const text = JSON.stringify(p.output.data);
+        if (text.length > limit) return { ...p, output: { data: { earlierResult: `${text.slice(0, limit)}…`, note: 'shortened; call the tool again for all of it' } } };
+      }
+      return p;
+    }) };
+  });
+}
+
 export function chatRoute(config: Config, instances: Map<string, Instance>, meta: Map<string, { type: string; name: string; integration: Integration }>,
   safety: { acting: boolean; redact: (s: string) => string; activity?: Activity; model?: LanguageModel } = { acting: true, redact: s => s }) {
   const a = config.assistant!;
@@ -170,6 +188,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     '"[attached: name (type, file id X)]" is a file they attached: pass X as file_id. Questions about their documents or',
     'saved links: search first, then read the best match, then answer from what it says (and say which document).',
     'For why something happened, look before answering: the timeline for what went on, then logs if there are any. Say what you found, not a guess.',
+    'Name a cause only if a tool result shows it. If two things happened at the same time, say that, not that one caused the other. If you cannot tell, say so.',
     'When asked to be told about something later, set a reminder with watch_add; do not offer to check back yourself.',
     'Available integrations and tools:', ...catalog, ...extra,
     a.instructions ?? '',
@@ -190,7 +209,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     said = (lastUser?.parts ?? []).map((p: any) => p.type === 'text' ? p.text : '').join('\n');
     // the model gets the last 24 messages: enough context for a conversation, bounded cost for a long one
     // and without any reasoning that leaked into earlier replies
-    const messages = all_.slice(-24).map(m => m.role !== 'assistant' ? m : { ...m, parts: m.parts.map((p: any) => p.type === 'text' ? { ...p, text: splitThink(p.text).said } : p) });
+    const messages = trimHistory(all_.slice(-24));
     const m = await mcp();
     // MCP results pass through the redactor too (their headers can hold keys)
     const mcp_ = Object.fromEntries(Object.entries(m.tools).map(([k, t]: [string, any]) => [k, { ...t, execute: async (...args: any[]) => {
@@ -207,6 +226,8 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       tools: all,
       toolApproval: approvals,
       stopWhen: isStepCount(a.maxSteps),
+      // the last step is for answering: a model still looking things up when its steps run out would otherwise say nothing
+      prepareStep: ({ stepNumber }) => stepNumber >= a.maxSteps - 1 ? { toolChoice: 'none' as const } : undefined,
     });
     // a tool that throws past runTool (a failed input check, say): the log and the page should both say what happened
     const failed = (e: unknown) => { const m = safety.redact((e as Error)?.message ?? String(e)); console.error(`assistant: ${m}`); return m; };

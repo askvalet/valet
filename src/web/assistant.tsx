@@ -6,7 +6,7 @@ import {
   Activity, ArrowDown, ArrowUp, Bookmark, Check, ChevronDown, ChevronRight, Copy, CornerDownRight, FileText, Lightbulb, Loader2, Paperclip, RotateCcw,
   Pin, Search, Square, X, Zap,
 } from 'lucide-react';
-import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Card } from '../shared/cards.ts';
@@ -14,8 +14,10 @@ import { splitThink } from '../shared/think.ts';
 import { Widget } from './cards.tsx';
 
 // One conversation for the whole page session, so closing and reopening the panel keeps it.
+// a long chat's early messages stay on screen, but only the recent ones are sent: the server would drop the rest anyway
+const lastOnly = ({ messages, body, id }: any) => ({ body: { ...body, id, messages: messages.slice(-24) } });
 const chat = new Chat({
-  transport: new DefaultChatTransport({ api: '/api/chat' }),
+  transport: new DefaultChatTransport({ api: '/api/chat', prepareSendMessagesRequest: lastOnly }),
   sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
 });
 
@@ -24,8 +26,9 @@ const toolLabel = (name: string) => name.replace(/^tool-/, '').replace(/^mcp_/, 
 
 /** Just enough markdown for chat replies: paragraphs, **bold**, *italic*, `code`, line breaks. While a reply streams,
  *  each new word fades up out of a slight blur; words already shown keep their keys, so only new ones animate. */
-function Text({ text }: { text: string }) {
-  const words = (t: string, k: string) => t.split(/(\s+)/).map((w, i) => /^\s+$/.test(w) || !w ? w : <span key={`${k}.${i}`} className="chat-word">{w}</span>);
+function TextView({ text, live }: { text: string; live?: boolean }) {
+  // only a reply still arriving gets a span per word; a finished one is plain text, so old messages cost nothing
+  const words = (t: string, k: string) => !live ? t : t.split(/(\s+)/).map((w, i) => /^\s+$/.test(w) || !w ? w : <span key={`${k}.${i}`} className="chat-word">{w}</span>);
   return (
     <div className="prose-chat text-[15px] leading-relaxed">
       {text.split(/\n{2,}/).map((para, i) => (
@@ -38,6 +41,8 @@ function Text({ text }: { text: string }) {
     </div>
   );
 }
+
+const Text = memo(TextView);
 
 /** "Thinking" with a light sweeping across it and the seconds ticking, like a model that's actually working. */
 function Pending({ since, label = 'Thinking' }: { since: number; label?: string }) {
@@ -243,6 +248,63 @@ export function InlineAnswer({ text, tools, onMore }: { text: string; tools: Rec
   );
 }
 
+/** One message. Memoised, so a reply streaming in doesn't re-render everything above it. */
+const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, since, tools, canPin, act }: { m: any; isLast: boolean; busy: boolean; tookMs?: number; fresh: boolean; since: number; tools: Record<string, ToolInfo>; canPin?: boolean; act: { approve: (id: string, ok: boolean) => void; regenerate: () => void; ask: (t: string) => void } }) {
+  const [copied, setCopied] = useState(false);
+  if (m.role === 'user') return (
+    <div className="chat-msg flex justify-end">
+      <div className="chat-in max-w-[85%] rounded-[20px] rounded-br-md bg-primary px-3.5 py-2 text-[15px] text-primary-foreground">
+        {m.parts.map((p: any, i: number) => p.type === 'text' ? <span key={i} className="whitespace-pre-wrap">{p.text.replace(/\n?\[attached: ([^(\]]+) \(file id [a-f0-9]+\)\]/g, '\n📎 $1')}</span> : null)}
+      </div>
+    </div>
+  );
+  // a reply: runs of tool calls become one chip list, followed by any cards they returned, then the words
+  const live = isLast && busy;
+  const blocks: ReactNode[] = [], thoughts: string[] = []; let run: any[] = [], thinking = false;
+  const flush = (k: string) => { if (run.length) { const r = run; blocks.push(<ToolChips key={`c${k}`} parts={r} tools={tools} settled={!live || m.parts.some((p: any) => p.type === 'text' && p.text.trim())} />, ...r.map((p, j) => <ToolPart key={`p${k}.${j}`} p={p} tools={tools} canPin={canPin} fresh={fresh} approve={act.approve} />)); run = []; } };
+  m.parts.forEach((p: any, i: number) => {
+    if (p.type.startsWith('tool-') || p.type === 'dynamic-tool') run.push(p);
+    else if (p.type === 'reasoning') { thoughts.push(p.text ?? ''); thinking ||= live && p.state === 'streaming'; }
+    else if (p.type === 'text' && p.text.trim()) {
+      // reasoning a model left in its reply goes with the rest of its reasoning
+      const t = splitThink(p.text);
+      if (t.thought) thoughts.push(t.thought);
+      thinking ||= live && t.thinking;
+      if (t.said) { flush(String(i)); blocks.push(<Text key={i} text={t.said} live={live} />); }
+    }
+  });
+  if (thoughts.some(t => t.trim()) || thinking) blocks.unshift(<Reasoning key="thought" text={thoughts.join('\n\n')} streaming={thinking} took={tookMs} />);
+  flush('end');
+  const text = m.parts.filter((p: any) => p.type === 'text').map((p: any) => splitThink(p.text).said).join('\n\n').trim();
+  // the last tool it used that suggests next questions
+  const used = m.parts.filter((p: any) => p.type.startsWith('tool-') || p.type === 'dynamic-tool').map((p: any) => p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, ''));
+  const follow = isLast && !busy ? used.map((t: string) => tools[t]?.followUps).filter(Boolean).at(-1)?.slice(0, 2) ?? [] : [];
+  return (
+    <div className="chat-msg space-y-3">
+      {blocks}
+      {live && !text && !m.parts.some((p: any) => ((p.type.startsWith('tool-') || p.type === 'dynamic-tool') && p.state !== 'output-available') || (p.type === 'reasoning' && p.state === 'streaming')) && !thinking && <Pending since={since || Date.now()} label={m.parts.length ? 'Writing' : 'Thinking'} />}
+      {!live && text && (
+        <div className="flex items-center gap-1 text-muted-foreground animate-in fade-in duration-500">
+          <button aria-label="Copy" title="Copy" onClick={() => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1400); }}
+            className="chat-icon">{copied ? <Check className="size-3.5 text-good" /> : <Copy className="size-3.5" />}</button>
+          {isLast && <button aria-label="Ask again" title="Ask again" onClick={act.regenerate} className="chat-icon"><RotateCcw className="size-3.5" /></button>}
+          {tookMs != null && <span className="ml-1 text-[11.5px] tabular">Worked for {(tookMs / 1000).toFixed(tookMs < 10_000 ? 1 : 0)}s</span>}
+        </div>
+      )}
+      {follow.length > 0 && (
+        <div className="space-y-0.5 pt-1">
+          {follow.map((f: string, k: number) => (
+            <button key={f} onClick={() => act.ask(f)} style={{ animationDelay: `${150 + k * 60}ms` }}
+              className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left max-sm:py-2.5 text-[13.5px] text-muted-foreground transition-colors fill-mode-both hover:bg-white/[.05] hover:text-foreground animate-in fade-in slide-in-from-bottom-1 duration-300">
+              <CornerDownRight className="size-3.5 shrink-0 opacity-60" />{f}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
+
 export default function Assistant({ name, model, ask, suggestions, tools = {}, external, onAsk, onClose, canPin }: {
   name: string; model: string; ask: { text: string; n: number } | null; suggestions: string[]; tools?: Record<string, ToolInfo>; onAsk: (t: string) => void;
   canPin?: boolean;
@@ -265,7 +327,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
       p.el.style.transition = 'transform 280ms var(--ease-drawer)'; p.el.style.transform = '';
     },
   };
-  const { messages, sendMessage, status, addToolApprovalResponse, error, stop, regenerate } = useChat({ chat });
+  const { messages, sendMessage, status, addToolApprovalResponse, error, stop, regenerate } = useChat({ chat, experimental_throttle: 60 });
   // how long each answer took, measured from the question to the last word
   const started = useRef(0);
   const [took, setTook] = useState<Record<string, number>>({});
@@ -279,8 +341,10 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
       started.current = 0;
     }
   }, [busyNow, messages]);
-  const [copied, setCopied] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  // the same three functions for every message, whatever else changes, so finished messages don't re-render
+  const latest = useRef({ addToolApprovalResponse, regenerate, onAsk }); latest.current = { addToolApprovalResponse, regenerate, onAsk };
+  const act = useRef({ approve: (id: string, ok: boolean) => { latest.current.addToolApprovalResponse({ id, approved: ok }); }, regenerate: () => { latest.current.regenerate(); }, ask: (t: string) => latest.current.onAsk(t) }).current;
   // files pasted, dropped or picked: uploaded right away, then named in the message so a tool can file them
   const [files, setFiles] = useState<{ key: number; name: string; id?: string; error?: string }[]>([]);
   const [over, setOver] = useState(false);
@@ -304,7 +368,8 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
 
   // questions from the ⌘K palette arrive through `ask`
   useEffect(() => { if (ask && ask.n !== sent.current) { sent.current = ask.n; sendMessage({ text: ask.text }); } }, [ask, sendMessage]);
-  useEffect(() => { if (!away) end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [messages, status, away]);
+  // follows without animating while words arrive: a smooth scroll per token never finishes and stutters on phones
+  useEffect(() => { if (!away) end.current?.scrollIntoView({ block: 'end', behavior: status === 'streaming' ? 'auto' : 'smooth' }); }, [messages, status, away]);
 
   const ready = files.filter(f => f.id), uploading = files.some(f => !f.id && !f.error);
   const submit = () => {
@@ -341,60 +406,9 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
             </div>
           </div>
         )}
-        {messages.map((m, mi) => {
-          if (m.role === 'user') return (
-            <div key={m.id} className="flex justify-end">
-              <div className="chat-in max-w-[85%] rounded-[20px] rounded-br-md bg-primary px-3.5 py-2 text-[15px] text-primary-foreground">
-                {m.parts.map((p, i) => p.type === 'text' ? <span key={i} className="whitespace-pre-wrap">{p.text.replace(/\n?\[attached: ([^(\]]+) \(file id [a-f0-9]+\)\]/g, '\n📎 $1')}</span> : null)}
-              </div>
-            </div>
-          );
-          // a reply: runs of tool calls become one chip list, followed by any cards they returned, then the words
-          const isLast = mi === messages.length - 1, live = isLast && busy;
-          const blocks: ReactNode[] = [], thoughts: string[] = []; let run: any[] = [], thinking = false;
-          const flush = (k: string) => { if (run.length) { const r = run; blocks.push(<ToolChips key={`c${k}`} parts={r} tools={tools} settled={!live || m.parts.some((p: any) => p.type === 'text' && p.text.trim())} />, ...r.map((p, j) => <ToolPart key={`p${k}.${j}`} p={p} tools={tools} canPin={canPin} fresh={mi >= messages.length - 4} approve={(id, ok) => addToolApprovalResponse({ id, approved: ok })} />)); run = []; } };
-          m.parts.forEach((p: any, i) => {
-            if (p.type.startsWith('tool-') || p.type === 'dynamic-tool') run.push(p);
-            else if (p.type === 'reasoning') { thoughts.push(p.text ?? ''); thinking ||= live && p.state === 'streaming'; }
-            else if (p.type === 'text' && p.text.trim()) {
-              // reasoning a model left in its reply goes with the rest of its reasoning
-              const t = splitThink(p.text);
-              if (t.thought) thoughts.push(t.thought);
-              thinking ||= live && t.thinking;
-              if (t.said) { flush(String(i)); blocks.push(<Text key={i} text={t.said} />); }
-            }
-          });
-          if (thoughts.some(t => t.trim()) || thinking) blocks.unshift(<Reasoning key="thought" text={thoughts.join('\n\n')} streaming={thinking} took={took[m.id]} />);
-          flush('end');
-          const text = m.parts.filter((p: any) => p.type === 'text').map((p: any) => splitThink(p.text).said).join('\n\n').trim();
-          // the last tool it used that suggests next questions
-          const used = m.parts.filter((p: any) => p.type.startsWith('tool-') || p.type === 'dynamic-tool').map((p: any) => p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, ''));
-          const follow = isLast && !busy ? used.map((t: string) => tools[t]?.followUps).filter(Boolean).at(-1)?.slice(0, 2) ?? [] : [];
-          return (
-            <div key={m.id} className="space-y-3">
-              {blocks}
-              {live && !text && !m.parts.some((p: any) => ((p.type.startsWith('tool-') || p.type === 'dynamic-tool') && p.state !== 'output-available') || (p.type === 'reasoning' && p.state === 'streaming')) && !thinking && <Pending since={started.current || Date.now()} label={m.parts.length ? 'Writing' : 'Thinking'} />}
-              {!live && text && (
-                <div className="flex items-center gap-1 text-muted-foreground animate-in fade-in duration-500">
-                  <button aria-label="Copy" title="Copy" onClick={() => { navigator.clipboard?.writeText(text); setCopied(m.id); setTimeout(() => setCopied(null), 1400); }}
-                    className="chat-icon">{copied === m.id ? <Check className="size-3.5 text-good" /> : <Copy className="size-3.5" />}</button>
-                  {isLast && <button aria-label="Ask again" title="Ask again" onClick={() => regenerate()} className="chat-icon"><RotateCcw className="size-3.5" /></button>}
-                  {took[m.id] != null && <span className="ml-1 text-[11.5px] tabular">Worked for {(took[m.id] / 1000).toFixed(took[m.id] < 10_000 ? 1 : 0)}s</span>}
-                </div>
-              )}
-              {follow.length > 0 && (
-                <div className="space-y-0.5 pt-1">
-                  {follow.map((f, k) => (
-                    <button key={f} onClick={() => onAsk(f)} style={{ animationDelay: `${150 + k * 60}ms` }}
-                      className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left max-sm:py-2.5 text-[13.5px] text-muted-foreground transition-colors fill-mode-both hover:bg-white/[.05] hover:text-foreground animate-in fade-in slide-in-from-bottom-1 duration-300">
-                      <CornerDownRight className="size-3.5 shrink-0 opacity-60" />{f}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {messages.map((m, mi) => (
+          <MessageRow key={m.id} m={m} isLast={mi === messages.length - 1} busy={busy} tookMs={took[m.id]} fresh={mi >= messages.length - 4} since={started.current} tools={tools} canPin={canPin} act={act} />
+        ))}
         {status === 'submitted' && messages.at(-1)?.role === 'user' && <Pending since={started.current || Date.now()} />}
         {error && (
           <div className="chat-error flex items-center gap-3 rounded-2xl border border-bad/20 bg-bad/[.06] px-4 py-3 text-sm">

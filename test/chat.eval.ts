@@ -29,7 +29,7 @@ const home = new Map<string, any>(Object.entries({
 }));
 const meta = new Map<string, any>([...home.keys()].map(id => [id, { type: id, name: id }]));
 
-interface Case { ask: string; uses?: string | string[]; asks?: string; not?: string[]; says?: RegExp; plain?: boolean }
+interface Case { ask: string; uses?: string | string[]; asks?: string | string[]; not?: string[]; says?: RegExp; plain?: boolean }
 const CASES: Case[] = [
   // the right tool
   { ask: 'Is anything down?', uses: 'service_status', says: /radarr/i },
@@ -56,7 +56,7 @@ const CASES: Case[] = [
   { ask: 'Pause the ad blocker for 5 minutes', asks: 'adblock_pause' },
   { ask: 'Start the vacuum', asks: 'home_control' },
   { ask: 'Request Arrival', asks: 'media_request' },
-  { ask: 'Pause downloads and turn off the office light', asks: 'plan' },
+  { ask: 'Pause downloads and turn off the office light', asks: ['plan', 'pause_downloads', 'home_control'] },   // one approval or two: both ask
   // write tools run alone
   { ask: 'Save https://example.com/great-article', uses: 'bookmark_save' },
   { ask: 'Tell me when Dune Part Two finishes downloading', uses: 'watch_add' },
@@ -82,6 +82,8 @@ const CASES: Case[] = [
   { ask: 'Graph memory over the last day', uses: 'metric_chart' },
   { ask: 'Show me GPU usage this week as a chart', uses: 'metric_chart' },
   { ask: 'Put what people watched yesterday in a table', uses: 'present' },
+  // doesn't invent a cause
+  { ask: 'What made the GPU spike at 4am?', not: ['home_control'], says: /can'?t|cannot|don'?t (see|know|have)|no (record|sign|evidence|data)|not (sure|clear|shown)|unclear|nothing/i },
   // no tool needed, and no invented facts
   { ask: 'Hi there!', plain: true },
   { ask: 'What can you help with?', plain: true },
@@ -107,7 +109,7 @@ async function run(c: Case) {
   const used = [...called.values()], fails: string[] = [];
   const wanted = [c.uses ?? []].flat();
   if (wanted.length && !wanted.some(w => used.includes(w))) fails.push(`wanted ${wanted.join(' or ')}`);
-  if (c.asks && !asked.includes(c.asks)) fails.push(`wanted approval for ${c.asks}`);
+  if (c.asks && ![c.asks].flat().some(x => asked.includes(x))) fails.push(`wanted approval for ${[c.asks].flat().join(' or ')}`);
   for (const n of c.not ?? []) if (used.includes(n)) fails.push(`must not use ${n}`);
   if (c.says && !c.says.test(said)) fails.push(`answer lacks ${c.says}`);
   if (c.plain && used.length) fails.push('needed no tool');

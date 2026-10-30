@@ -235,7 +235,7 @@
 .chat-card { animation: chat-card 320ms var(--ease-out) both; }
 @keyframes chat-card { from { opacity: 0; transform: translateY(8px) scale(0.985); filter: blur(2px); } }
 .chat-word { animation: chat-word 420ms var(--ease-out) both; }
-@keyframes chat-word { from { opacity: 0; filter: blur(3px); } }
+@keyframes chat-word { from { opacity: 0; } }
 /* thinking: light sweeping across the label, and a 3×3 grid of dots breathing in a diagonal wave */
 .chat-shimmer { background: linear-gradient(90deg, var(--muted-foreground) 0%, var(--muted-foreground) 35%, var(--foreground) 50%, var(--muted-foreground) 65%, var(--muted-foreground) 100%);
   background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: chat-shimmer 1.8s linear infinite; }
@@ -297,6 +297,8 @@
 .chat-pin { position: absolute; top: 8px; right: 8px; z-index: 2; opacity: 0; transition: opacity 160ms var(--ease-out); }
 .chat-pinnable:hover .chat-pin, .chat-pin:focus-visible, .chat-pin[data-done] { opacity: 1; }
 @media (pointer: coarse) { .chat-pin { opacity: 1; } }
+/* a long chat: what's scrolled out of view isn't laid out or painted */
+.chat-msg { content-visibility: auto; contain-intrinsic-size: auto 120px; }
 /* a chat card that's keeping itself current: one small breathing dot */
 .live-dot { position: absolute; top: 15px; right: 40px; z-index: 2; width: 6px; height: 6px; border-radius: 99px; background: var(--good); animation: live-dot 2.4s ease-in-out infinite; }
 @keyframes live-dot { 50% { opacity: .35; } }

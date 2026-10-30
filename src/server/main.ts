@@ -259,20 +259,22 @@ app.post('/api/why', async c => {
 });
 // the page has just opened, so give its widgets a moment to report in
 const settled = async () => { for (let i = 0; i < 12 && site.hub.snapshot().length < site.placed.size * .6; i++) await new Promise(r => setTimeout(r, 500)); };
-// Suggestions are rewritten when what's going on changes (or every half hour), never more than every five minutes.
+// Suggestions are rewritten when something the person cares about changes, at most every twenty minutes, and at least
+// twice a day. Each rewrite takes the GPU for a while, and a chat question would queue behind it, so they're on the daily
+// budget. The assistant's own work must not count as news: its activity would set off the next rewrite.
 const OUTSIDE = new Set(['rss', 'hackernews', 'reddit']);   // written by strangers: see suggestPrompt
 let tailored: { at: number; mood: string; list: string[] | null } | undefined, tailoring: Promise<void> | undefined;
 app.get('/api/suggest', async c => {
   if (!site.ask || !site.config.assistant?.background.suggest) return c.json({ list: null });
   await settled();
   const states = site.hub.snapshot().filter(s => !OUTSIDE.has(site.meta.get(s.key.split('.')[0])?.type ?? ''));
-  const mood = JSON.stringify([troubles(states).map(t => t.id).sort(), states.flatMap(s => s.card?.activity?.title ?? []).sort()]);
+  const mood = JSON.stringify([troubles(states).map(t => t.id).sort(), states.flatMap(s => ['play', 'download'].includes(s.card?.activity?.icon ?? '') ? [s.card!.activity!.title] : []).sort()]);
   const age = Date.now() - (tailored?.at ?? 0);
-  if (!tailored || (mood !== tailored.mood && age > 300_000) || age > 1_800_000) {
+  if (!tailored || (mood !== tailored.mood && age > 1_200_000) || age > 6 * 36e5) {
     tailoring ??= (async () => {
       const tools = [...site.instances].flatMap(([, i]) => Object.values(i.tools ?? {}).filter(t => t.access !== 'control').flatMap(t => t.label ?? []));
       const p = suggestPrompt(states, site.timeline.lines(6 * 36e5, 10), tools);
-      const list = parseSuggestions(await site.ask!(p.system, p.prompt, 'asked'));
+      const list = parseSuggestions(await site.ask!(p.system, p.prompt, 'background'));
       tailored = { at: Date.now(), mood, list: list ?? tailored?.list ?? null };
     })().finally(() => { tailoring = undefined; });
     await tailoring;
