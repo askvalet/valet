@@ -95,7 +95,11 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   a made-up sample of every type. `npm test` validates the samples, renders each in every size (medium, large, chat)
   and as a tile, and runs integration logic against made-up responses (`test/integrations.test.ts`: a fake `ctx.http`).
   Adding a card type means: the type in `cards.ts`, its schema, a renderer, a sample, and the type in the test's list.
-  `test/server.test.ts` covers sign-in, the hub, config loading and plugin card checks.
+  `test/server.test.ts` covers sign-in, the hub, config loading and plugin card checks. `test/chat.test.ts` drives the
+  chat with a scripted model: what it's offered, what asks first, what's redacted, what's logged. New safety rule, new test.
+- `npm run eval:chat` asks a real model real questions against a made-up homelab (`test/chat.eval.ts`), so nothing real is
+  touched. It catches what scripted tests can't: the wrong tool, a claim it can't back up, a poisoned document. When the
+  assistant gets something wrong in real use, add it as a case. Run it after changing a tool description or the prompt.
 - `npm run test:live` checks every widget in your `config.yaml` against your real services. `/#gallery` shows the whole
   library, including the island and its notices.
 - Integration tests use made-up data only. Never commit recorded responses from real services (they carry personal data).

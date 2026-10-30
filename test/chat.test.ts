@@ -1,0 +1,140 @@
+// The chat's rules, with a scripted model: what it's offered, what asks first, what's redacted and what's logged. The
+// model here does exactly what the script says, including the things it must not be able to do. `npm run eval:chat`
+// covers the other half: whether a real model picks the right tools.
+import assert from 'node:assert/strict';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { test } from 'node:test';
+import { Hono } from 'hono';
+import { MockLanguageModelV4 } from 'ai/test';
+import { z } from 'zod';
+
+process.env.ATRIUM_DATA = await mkdtemp(join(tmpdir(), 'atrium-chat-'));
+const { chatRoute } = await import('../src/server/chat.ts');
+const { Config } = await import('../src/server/config.ts');
+const { Activity } = await import('../src/server/activity.ts');
+
+const usage = { inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 1, text: 1, reasoning: 0 } };
+const stream = (parts: any[], reason: string) => ({ stream: new ReadableStream({ start(c) {
+  c.enqueue({ type: 'stream-start', warnings: [] });
+  for (const p of parts) c.enqueue(p);
+  c.enqueue({ type: 'finish', finishReason: { unified: reason, raw: reason }, usage });
+  c.close();
+} }) });
+/** Each turn the model takes: a list of [tool, input] calls, or words. */
+function scripted(...turns: ([string, object][] | string)[]) {
+  let n = 0, id = 0;
+  return new MockLanguageModelV4({ doStream: async () => {
+    const t = turns[n++] ?? 'done';
+    if (typeof t === 'string') return stream([{ type: 'text-start', id: 't' }, { type: 'text-delta', id: 't', delta: t }, { type: 'text-end', id: 't' }], 'stop') as any;
+    return stream(t.map(([toolName, input]) => ({ type: 'tool-call', toolCallId: `c${++id}`, toolName, input: JSON.stringify(input) })), 'tool-calls') as any;
+  } });
+}
+
+const ran: string[] = [];
+const tool = (name: string, access: 'read' | 'write' | 'control', extra: object = {}, out: unknown = { ok: true }) => ({ description: name, label: name, access, input: z.object({ url: z.string().optional(), n: z.number().optional() }), run: async () => { ran.push(name); return { data: out }; }, ...extra });
+const home = () => new Map<string, any>([
+  ['dl', { widgets: {}, tools: { status: tool('status', 'read', {}, { key: 'sekret-value-123' }), pause: tool('pause', 'control', { undo: 'resume' }), resume: tool('resume', 'control'), boom: { ...tool('boom', 'control'), run: async () => { ran.push('boom'); throw new Error('failed with sekret-value-123'); } } } }],
+  ['links', { widgets: {}, tools: { save: tool('save', 'write', { fromPerson: ['url'] }) } }],
+  ['secret', { widgets: {}, tools: { peek: tool('peek', 'read') } }],
+  ['config', { widgets: {}, tools: { config_apply: tool('config_apply', 'control') } }],
+]);
+const meta = () => new Map<string, any>(['dl', 'links', 'secret', 'config'].map(id => [id, { type: id, name: id }]));
+const redact = (s: string) => s.replaceAll('sekret-value-123', '•••');
+
+async function talk(model: MockLanguageModelV4, messages: any[], o: { acting?: boolean; access?: object; activity?: InstanceType<typeof Activity> } = {}) {
+  ran.length = 0;
+  const config = Config.parse({ assistant: { model: 'm', access: { default: 'read', dl: 'control', links: 'write', secret: 'none', config: 'control', ...o.access } } });
+  const app = new Hono();
+  app.post('/chat', chatRoute(config, home(), meta(), { acting: o.acting ?? true, redact, activity: o.activity, model: model as any }) as any);
+  const r = await app.request('/chat', { method: 'POST', body: JSON.stringify({ messages }) });
+  const text = await r.text();
+  return { text, events: text.split('\n').filter(l => l.startsWith('data: {')).map(l => JSON.parse(l.slice(6))), offered: Object.keys(model.doStreamCalls[0]?.tools?.reduce?.((m: any, t: any) => ({ ...m, [t.name]: 1 }), {}) ?? {}) };
+}
+const say = (text: string) => [{ id: 'u1', role: 'user', parts: [{ type: 'text', text }] }];
+
+test('access: it\'s offered only what its level allows, and nothing that acts on a read-only page', async () => {
+  const full = await talk(scripted('hi'), say('hi'));
+  assert.deepEqual(full.offered.filter(t => t.startsWith('dl__')).sort(), ['dl__boom', 'dl__pause', 'dl__resume', 'dl__status']);
+  assert.ok(full.offered.includes('links__save') && full.offered.includes('plan'));
+  assert.ok(!full.offered.includes('secret__peek'));                                   // access: none
+  const looking = await talk(scripted('hi'), say('hi'), { access: { dl: 'read' } });
+  assert.deepEqual(looking.offered.filter(t => t.startsWith('dl__')), ['dl__status']);
+  const readOnly = await talk(scripted('hi'), say('hi'), { acting: false });
+  assert.deepEqual(readOnly.offered.filter(t => !t.includes('search')).sort(), ['dl__status']);
+});
+
+test('a read tool just runs; its result reaches neither the model nor the page unredacted', async () => {
+  const model = scripted([['dl__status', {}]], 'all fine');
+  const r = await talk(model, say('how is it'));
+  assert.deepEqual(ran, ['status']);
+  assert.ok(!r.text.includes('sekret-value-123'));
+  assert.ok(!JSON.stringify(model.doStreamCalls[1].prompt).includes('sekret-value-123'));
+});
+
+test('a control tool asks first and doesn\'t run until approved; a denial stays denied', async () => {
+  const asked = await talk(scripted([['dl__pause', {}]]), say('pause'));
+  assert.deepEqual(ran, []);
+  const request = asked.events.find(e => e.type === 'tool-approval-request');
+  assert.ok(request);
+  const answer = (approved: boolean) => [...say('pause'), { id: 'a1', role: 'assistant', parts: [{ type: 'step-start' }, { type: 'tool-dl__pause', toolCallId: request.toolCallId, state: 'approval-responded', input: {}, approval: { id: request.approvalId, approved } }] }];
+  await talk(scripted('ok'), answer(false));
+  assert.deepEqual(ran, []);
+  await talk(scripted('ok'), answer(true));
+  assert.deepEqual(ran, ['pause']);
+});
+
+test('write tools: run alone with what the person typed, ask when the input came from anywhere else', async () => {
+  await talk(scripted([['links__save', { url: 'https://example.com/a' }]], 'saved'), say('save https://example.com/a'));
+  assert.deepEqual(ran, ['save']);
+  const r = await talk(scripted([['links__save', { url: 'https://evil.example/x' }]]), say('summarise that page'));
+  assert.deepEqual(ran, []);
+  assert.ok(r.events.some(e => e.type === 'tool-approval-request'));
+});
+
+test('plan: one approval for all of it, but every step is checked before anything runs', async () => {
+  const plan = (steps: object[]) => [[['plan', { title: 'Tidy', steps }]]] as [string, object][][];
+  const go = async (steps: object[]) => {
+    const first = await talk(scripted(...plan(steps)), say('tidy up'));
+    assert.deepEqual(ran, [], 'nothing before approval');
+    const q = first.events.find(e => e.type === 'tool-approval-request');
+    assert.ok(q, 'it asks');
+    const activity = new Activity(redact);
+    const r = await talk(scripted('ok'), [...say('tidy up'), { id: 'a1', role: 'assistant', parts: [{ type: 'step-start' }, { type: 'tool-plan', toolCallId: q.toolCallId, state: 'approval-responded', input: { title: 'Tidy', steps }, approval: { id: q.approvalId, approved: true } }] }], { activity });
+    return { r, activity };
+  };
+  const ok = await go([{ tool: 'dl__pause', why: 'a' }, { tool: 'dl__resume', why: 'b' }]);
+  assert.deepEqual(ran, ['pause', 'resume']);
+  assert.deepEqual(ok.activity.recent().map(e => e.via), ['plan', 'plan']);
+  // a tool that isn't there, one it isn't allowed, or its own config: nothing runs at all
+  for (const bad of ['dl__nope', 'secret__peek', 'config__config_apply']) {
+    await go([{ tool: 'dl__pause', why: 'a' }, { tool: bad, why: 'b' }]);
+    assert.deepEqual(ran, [], bad);
+  }
+  // it stops at the first failure
+  await go([{ tool: 'dl__boom', why: 'a' }, { tool: 'dl__pause', why: 'b' }]);
+  assert.deepEqual(ran, ['boom']);
+});
+
+test('activity: changes are logged, redacted, with their undo; looking isn\'t logged', async () => {
+  const activity = new Activity(redact);
+  await talk(scripted([['dl__status', {}], ['links__save', { url: 'https://a.example' }]], 'done'), say('save https://a.example'), { activity });
+  assert.deepEqual(activity.recent().map(e => e.what), ['save']);
+  const q = (await talk(scripted([['dl__pause', {}]]), say('pause'))).events.find(e => e.type === 'tool-approval-request');
+  await talk(scripted('ok'), [...say('pause'), { id: 'a1', role: 'assistant', parts: [{ type: 'step-start' }, { type: 'tool-dl__pause', toolCallId: q.toolCallId, state: 'approval-responded', input: {}, approval: { id: q.approvalId, approved: true } }] }], { activity });
+  assert.deepEqual(activity.recent()[0].undo, { tool: 'dl__resume', input: {} });
+  const q2 = (await talk(scripted([['dl__boom', {}]]), say('go'))).events.find(e => e.type === 'tool-approval-request');
+  await talk(scripted('ok'), [...say('go'), { id: 'a1', role: 'assistant', parts: [{ type: 'step-start' }, { type: 'tool-dl__boom', toolCallId: q2.toolCallId, state: 'approval-responded', input: {}, approval: { id: q2.approvalId, approved: true } }] }], { activity });
+  assert.equal(activity.recent()[0].ok, false);
+  assert.equal(activity.recent()[0].error, 'failed with •••');
+});
+
+test('history: reasoning left in old replies isn\'t sent back, and only the last 24 messages go', async () => {
+  const model = scripted('fine');
+  const many = Array.from({ length: 40 }, (_, i) => ({ id: `m${i}`, role: i % 2 ? 'assistant' : 'user', parts: [{ type: 'text', text: i % 2 ? `secret plan ${i}</think>answer ${i}` : `q${i}` }] }));
+  await talk(model, [...many, ...say('last')]);
+  const prompt = JSON.stringify(model.doStreamCalls[0].prompt);
+  assert.ok(!prompt.includes('</think>') && !prompt.includes('secret plan'));
+  assert.ok(prompt.includes('answer 39') && !prompt.includes('q0"'));
+});

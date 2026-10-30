@@ -190,3 +190,69 @@ test('agent streams: named events are dropped, even split across chunks; ordinar
   const body = new ReadableStream<Uint8Array>({ start(c) { for (const p of parts) c.enqueue(new TextEncoder().encode(p)); c.close(); } });
   assert.equal(await new Response(plainEvents(body)).text(), 'data: {"a":1}\n\ndata: {"a":2}\n\nevent: message\ndata: {"a":3}\n\ndata: [DONE]\n\n');
 });
+
+test('notify: each service gets the request it expects, and one failing leaves the others alone', async () => {
+  const { push, request, Channel } = await import('../src/server/notify.ts');
+  const m = { title: 'Joker finished', text: 'Ready to watch', urgent: true };
+  const body = (c: any) => JSON.parse(String(request(Channel.parse(c), m).init.body));
+  const ntfy = request(Channel.parse({ type: 'ntfy', url: 'https://ntfy.example/home', token: 't' }), m);
+  assert.deepEqual([ntfy.url, ntfy.init.body, (ntfy.init.headers as any).Priority, (ntfy.init.headers as any).Authorization], ['https://ntfy.example/home', 'Ready to watch', '4', 'Bearer t']);
+  assert.equal(request(Channel.parse({ type: 'telegram', token: 'T', chat: 5 }), m).url, 'https://api.telegram.org/botT/sendMessage');
+  assert.deepEqual(body({ type: 'telegram', token: 'T', chat: 5 }), { chat_id: 5, text: 'Joker finished\nReady to watch' });
+  assert.equal((request(Channel.parse({ type: 'gotify', url: 'https://g.example/', token: 'k' }), m).init.headers as any)['X-Gotify-Key'], 'k');
+  assert.equal(request(Channel.parse({ type: 'gotify', url: 'https://g.example/', token: 'k' }), m).url, 'https://g.example/message');
+  assert.equal(body({ type: 'discord', url: 'https://d.example/w' }).content, 'Joker finished\nReady to watch');
+  assert.equal(body({ type: 'slack', url: 'https://s.example/w' }).text, 'Joker finished\nReady to watch');
+  assert.equal(body({ type: 'pushover', token: 't', user: 'u' }).priority, 1);
+  assert.deepEqual(body({ type: 'apprise', url: 'http://a/notify/k' }), { title: 'Joker finished', body: 'Ready to watch', type: 'warning' });
+  assert.throws(() => Channel.parse({ type: 'carrier-pigeon' }));
+  const sent: string[] = [], err = console.error; console.error = () => {};
+  await push([{ type: 'slack', url: 'https://bad.example/' }, { type: 'discord', url: 'https://good.example/' }], m, (async (u: string) => { sent.push(u); if (u.includes('bad')) throw new Error('nope'); return new Response('{}'); }) as any);
+  console.error = err;
+  assert.deepEqual(sent, ['https://bad.example/', 'https://good.example/']);
+});
+
+test('reminders: fire once on the change asked for, thresholds must hold, and they expire', async () => {
+  const { fires, reading, Watches } = await import('../src/server/watches.ts');
+  const card = (titles: string[]): any => ({ type: 'media', items: titles.map(title => ({ title })), activity: titles[0] ? { title: titles[0] } : undefined });
+  const w = (x: object): any => ({ id: 'a', widget: 'd.x', minutes: 0, say: 'hi', until: Infinity, ...x });
+  const held = new Map<string, number>();
+  assert.equal(fires(w({ on: 'ends', name: 'joker' }), card(['Joker', 'Dune']), card(['Dune']), held), true);
+  assert.equal(fires(w({ on: 'ends', name: 'joker' }), card(['Joker', 'Dune']), card(['Joker']), held), false);
+  assert.equal(fires(w({ on: 'ends' }), card(['Joker']), card([]), held), true);
+  assert.equal(fires(w({ on: 'starts' }), card([]), card(['Joker']), held), true);
+  assert.equal(fires(w({ on: 'ends' }), undefined, card([]), held), false);              // first sight isn't news
+  const status = (ok: boolean): any => ({ type: 'status', items: [{ name: 'Radarr', ok }] });
+  assert.equal(fires(w({ on: 'up', name: 'radarr' }), status(false), status(true), held), true);
+  assert.equal(fires(w({ on: 'down', name: 'radarr' }), status(true), status(true), held), false);
+  const temp = (v: string): any => ({ type: 'stats', items: [{ label: 'Temperature', value: v }] });
+  assert.equal(reading(temp('61°C'), 'temp'), 61);
+  const hot = w({ on: 'above', name: 'temp', value: 55, minutes: 10 });
+  assert.equal(fires(hot, undefined, temp('60'), held, 0), false);                       // crossed, not held yet
+  assert.equal(fires(hot, undefined, temp('50'), held, 300_000), false);                 // dropped: the clock resets
+  assert.equal(fires(hot, undefined, temp('60'), held, 400_000), false);
+  assert.equal(fires(hot, undefined, temp('60'), held, 1_000_001), true);
+
+  const fired: string[] = [];
+  const list = new Watches([w({ on: 'ends' }), w({ id: 'b', on: 'ends', until: 5, say: 'old' })], x => fired.push(x.say));
+  const at = (t: string[], key = 'd.x') => [{ key, at: 1, card: card(t) }];
+  list.check(at(['Joker']), 1); list.check(at([]), 2); list.check(at([]), 3);
+  assert.deepEqual(fired, ['hi', 'old']);                                                 // both ended; each once
+  assert.equal(list.list.length, 0);
+  const late = new Watches([w({ on: 'starts', until: 5 })], x => fired.push(x.say));
+  late.check(at([]), 10);
+  assert.equal(late.list.length, 0);                                                      // past its date: dropped quietly
+});
+
+test('timeline and history: what happened, and how the numbers moved', async () => {
+  const { Timeline } = await import('../src/server/timeline.ts');
+  const { History } = await import('../src/server/history.ts');
+  const t = new Timeline();
+  t.add('down', 'Radarr is down', 's.status', Date.now() - 2 * 36e5); t.add('up', 'Radarr is back', 's.status');
+  assert.equal(t.since(36e5).length, 1);
+  assert.match(t.lines(3 * 36e5)[0], /down: Radarr is down/);
+  const h = new History(24, 0);
+  for (const v of ['10%', '90%', '20%']) { h.apply('a.b', { type: 'text', text: '', summary: { label: 'CPU', value: v } }); await new Promise(r => setTimeout(r, 2)); }
+  const [m] = h.overview(36e5);
+  assert.deepEqual([m.name, m.now, m.low, m.high], ['CPU (a.b)', 20, 10, 90]);
+});

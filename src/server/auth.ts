@@ -88,7 +88,7 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
       return trusted.has(ip.replace(/^::ffff:/, '')) ? c.req.header(header) ?? null : null;
     };
     app.get('/api/auth/me', c => { const u = who(c); return u ? c.json({ mode, user: { name: u } }) : c.json({ mode, user: null }, 401); });
-    return async (c, next) => (who(c) ? next() : c.json({ error: 'not signed in' }, 401));
+    return async (c, next) => { const u = who(c); if (!u) return c.json({ error: 'not signed in' }, 401); (c.set as any)('user', u); return next(); };
   }
 
   // ── a session cookie signed with a secret kept in data/secret, for local accounts and OIDC alike
@@ -115,7 +115,7 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
     const { setupOidc } = await import('./oidc.ts');
     setupOidc(app, config, sign, (c, name) => start(c, name, 1, true));
     console.log(`auth: OpenID Connect via ${config.auth.oidc!.issuer}`);
-    return async (c, next) => (session(c) ? next() : c.json({ error: 'not signed in' }, 401));
+    return async (c, next) => { const u = session(c); if (!u) return c.json({ error: 'not signed in' }, 401); (c.set as any)('user', u); return next(); };
   }
 
   // ── local accounts
@@ -191,7 +191,7 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
     return c.json({ ok: true });
   });
 
-  return async (c, next) => ((await session(c)) ? next() : c.json({ error: 'not signed in' }, 401));
+  return async (c, next) => { const u = await session(c); if (!u) return c.json({ error: 'not signed in' }, 401); (c.set as any)('user', u.name); return next(); };
 }
 
 /** The client's address: the socket, or behind trusted proxies the rightmost X-Forwarded-For hop that isn't one. */

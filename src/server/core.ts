@@ -34,6 +34,8 @@ export interface Tool<A = any> {
   followUps?: string[];
   /** The input field that takes search words, if this tool searches: it then joins the assistant's search_everything. */
   find?: string;
+  /** The tool that reverses this one, given the same input: it adds Undo in the activity log. */
+  undo?: string;
   /** For 'write' tools: input fields that must come word for word from the person's own latest message for the tool to
    *  run without asking (e.g. the link they pasted). Otherwise, say when a document or web page suggested it, it asks. */
   fromPerson?: string[];

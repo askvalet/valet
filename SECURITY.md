@@ -35,6 +35,14 @@ the damage if something goes wrong, and how to give it as little power as possib
 - **Another agent is its own thing.** If `assistant.agent` hands the chat to one (Hermes, say), it gets the conversation
   and nothing else from Atrium: no tools, no keys. But it runs its own tools, so everything above about access levels and
   approvals is about Atrium's assistant, not it. The chat says so, and a read-only page stays on Atrium's assistant.
+- **Docker is read-only, and it has to be.** Point the integration at a socket proxy with `POST=0`, on a network only
+  Atrium shares, as in `docker-compose.example.yml`; never mount the socket itself. Know what that still reads: the proxy
+  allows GET on `/containers`, which includes each container's environment, so a compromised Atrium could read secrets kept
+  there. Logs go to the model, so a hosted model sees them. Restarts aren't offered, because this proxy can't allow them
+  without allowing container creation, which is root on the host.
+- **Everything it changes is written down.** `data/activity.json` records who asked, how, what it did and whether it
+  worked, with secrets redacted. Plans run only tools its access level allows, after you've seen every step.
+- **Reminders can only tell you things.** A reminder fires a message; it can't run a tool.
 - **Pins only look.** Only `read` tools can be pinned, and no model runs after that.
 - **Browser hardening.** A strict content-security policy (only Atrium's own scripts run), no framing, same-origin
   referrers, microphone only for Atrium, and every request that changes something must come from Atrium's own origin.

@@ -131,6 +131,7 @@ export default defineIntegration({
           },
         },
         pause_downloads: {
+          undo: 'resume_downloads',
           label: 'Paused downloads',
           followUps: ['Resume downloads'],
           description: 'Pause downloading. Pass a torrent hash from downloads_status to pause one, or nothing to pause all.',
@@ -141,6 +142,7 @@ export default defineIntegration({
           },
         },
         resume_downloads: {
+          undo: 'pause_downloads',
           label: 'Resumed downloads',
           description: 'Resume downloading. Pass a torrent hash to resume one, or nothing to resume all.',
           access: 'control', input: z.object({ hash: z.string().optional() }),

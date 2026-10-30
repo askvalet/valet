@@ -1,0 +1,33 @@
+// What happened and when, kept for a couple of weeks in data/timeline.json: things starting and ending, services going
+// down and coming back, problems appearing and clearing, what was changed. It's what lets the assistant answer "what
+// happened last night" rather than only "what's happening now".
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+
+export interface Event { at: number; kind: string; widget?: string; text: string }
+const FILE = () => resolve(process.env.ATRIUM_DATA ?? 'data', 'timeline.json');
+const KEEP_MS = 14 * 864e5, KEEP_N = 4000;
+
+export class Timeline {
+  events: Event[] = [];
+  private timer?: NodeJS.Timeout;
+  async load() { this.events = await readFile(FILE(), 'utf8').then(JSON.parse).catch(() => []); return this; }
+  add(kind: string, text: string, widget?: string, at = Date.now()) {
+    this.events.push({ at, kind, widget, text });
+    const cutoff = Date.now() - KEEP_MS;
+    if (this.events.length > KEEP_N || this.events[0].at < cutoff) this.events = this.events.filter(e => e.at >= cutoff).slice(-KEEP_N);
+    // written shortly after, so a burst of changes is one write
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => void this.save(), 2000);
+    this.timer.unref?.();
+  }
+  async save() {
+    await mkdir(dirname(FILE()), { recursive: true });
+    await writeFile(`${FILE()}.tmp`, JSON.stringify(this.events)); await rename(`${FILE()}.tmp`, FILE());
+  }
+  since(ms: number) { const from = Date.now() - ms; return this.events.filter(e => e.at >= from); }
+  /** One line each, for prompts. */
+  lines(ms: number, n = 40) {
+    return this.since(ms).slice(-n).map(e => `${new Date(e.at).toLocaleString('en', { weekday: 'short', hour: 'numeric', minute: '2-digit' })} ${e.kind}: ${e.text}`);
+  }
+}

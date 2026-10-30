@@ -273,3 +273,30 @@ test('custom api: paths, formats, templates, thresholds, and each way of showing
   assert.throws(() => make(api, { url: 'http://x/' }, ctx), /exactly one of/);
   await assert.rejects(make(api, { url: 'http://x/', list: { items: 'name', title: 'n' } }, ctx).widgets.data.fetch(), /isn't a list/);
 });
+
+test('docker: reads frames and plain logs, names what\'s down, and offers no way to change anything', async () => {
+  const { default: docker, parseLogs, tidyLogs } = await import('../src/integrations/docker.ts');
+  const frame = (s: string) => { const b = Buffer.from(s), h = Buffer.alloc(8); h[0] = 1; h.writeUInt32BE(b.length, 4); return Buffer.concat([h, b]); };
+  assert.equal(parseLogs(Buffer.concat([frame('one\n'), frame('two\n')])), 'one\ntwo\n');
+  assert.equal(parseLogs(Buffer.from('plain tty log line\n')), 'plain tty log line\n');
+  assert.deepEqual(tidyLogs('\u001b[31mERROR\u001b[0m out of memory\nok fine\n\n', 'error'), ['ERROR out of memory']);
+  const list = [
+    { Id: '1', Names: ['/radarr'], State: 'exited', Status: 'Exited (137) 2 hours ago', Labels: { 'com.docker.compose.project': 'media' } },
+    { Id: '2', Names: ['/plex'], State: 'running', Status: 'Up 3 days (unhealthy)', Labels: {} },
+    { Id: '3', Names: ['/backup'], State: 'exited', Status: 'Exited (0) 1 hour ago', Labels: {} },
+    { Id: '4', Names: ['/caddy'], State: 'running', Status: 'Up 3 days', Labels: {} },
+    { Id: '5', Names: ['/hidden'], State: 'running', Status: 'Up', Labels: {} },
+  ];
+  const calls: string[] = [];
+  const ctx = fake(url => { calls.push(url); return url.includes('/logs') ? new Response(frame('2026 boom\n')) : list; });
+  const d = make(docker, { url: 'http://proxy:2375', hide: ['hidden'] }, ctx);
+  const c: any = await d.widgets.containers.fetch(); valid(c);
+  assert.deepEqual(c.items.map((i: any) => [i.name, i.ok, i.detail, i.quiet]), [['backup', false, 'exited (0)', true], ['caddy', true, undefined, false], ['plex', false, 'unhealthy', false], ['radarr', false, 'exited (137)', false]]);
+  assert.equal(c.summary.value, '2 down');
+  const logs: any = await d.tools!.container_logs.run({ name: 'rad', lines: 50 });
+  assert.deepEqual(logs.data.lines, ['2026 boom']);
+  await assert.rejects(d.tools!.container_logs.run({ name: 'nothing', lines: 50 }), /no container like/);
+  assert.ok(Object.values(d.tools!).every(t => t.access === 'read'));
+  assert.equal(d.actions, undefined);
+  assert.ok(calls.every(u => !/\/(restart|stop|start|exec|create)\b/.test(u)));
+});

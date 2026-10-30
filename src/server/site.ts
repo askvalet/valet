@@ -1,6 +1,6 @@
 // Everything built from a config: the integration instances, which widgets are placed, the hub that polls them, and
 // the notices they raise. Built once at startup and again on every config reload (main.ts swaps the site in place).
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { usedSecrets, type Config } from './config.ts';
 import { makeContext, type Instance, type Integration } from './core.ts';
@@ -11,7 +11,12 @@ import { guardCards } from './plugins.ts';
 import { canAct, redactor } from './security.ts';
 import { links } from '../integrations/links.ts';
 import { makeAsk, type Ask } from './brain.ts';
-import { Watcher } from './insight.ts';
+import { Activity } from './activity.ts';
+import { troubles, Watcher } from './insight.ts';
+import { push, type Message } from './notify.ts';
+import { ownInstance } from './own.ts';
+import { Timeline } from './timeline.ts';
+import { loadWatches, Watches } from './watches.ts';
 import { loadPins, pinsInstance, savePins, type Pin } from './pins.ts';
 import { setupTools } from './setup.ts';
 
@@ -32,10 +37,12 @@ export interface Site {
   pins: Pin[];
   ask?: Ask;
   watcher?: Watcher;
-  journal: string[];      // what's happened lately, in a line each, for the morning brief
+  timeline: Timeline;
+  activity: Activity;
+  watches: Watches;
+  push: (m: Message) => void;
 }
 
-const JOURNAL = () => resolve(process.env.ATRIUM_DATA ?? 'data', 'journal.json');
 const EVERYTHING = ['start', 'end', 'down', 'up'] as const;
 
 /** Check a config against the registry without starting anything: every problem, in order, with its path. */
@@ -47,6 +54,7 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   if (Object.keys(config.links).length) blocks.links = { type: 'links', groups: config.links };
   for (const [id, block] of Object.entries(blocks)) {
     if (!/^[a-z0-9][a-z0-9_-]*$/i.test(id)) { problems.push(`integrations.${id}: names are letters, numbers, - and _`); continue; }
+    if (['atrium', 'pins', 'config'].includes(id)) { problems.push(`integrations.${id}: that name is taken by Atrium itself`); continue; }
     const integration = block.type === 'links' ? links : registry[block.type];
     if (!integration) { problems.push(`integrations.${id}: unknown type "${block.type}"`); continue; }
     const { type, ...rest } = block;
@@ -66,9 +74,10 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   const placed = new Set([...config.layout.flatMap(s => s.widgets.map(w => w.widget)), ...config.menubar, ...(config.weather ? [config.weather] : []), ...(config.island?.activities ?? [])]);
   for (const key of placed) {
     const [inst, w] = key.split('.');
+    if (inst === 'atrium') continue;      // Atrium's own widgets exist once the site is built
     if (!instances.get(inst)?.widgets[w]) problems.push(`layout: no widget "${key}"${instances.has(inst) ? ` (${inst} has: ${Object.keys(instances.get(inst)!.widgets).join(', ')})` : ''}`);
   }
-  for (const [id] of Object.entries(config.assistant?.access ?? {})) if (id !== 'default' && id !== 'config' && !instances.has(id)) problems.push(`assistant.access.${id}: no such integration`);
+  for (const [id] of Object.entries(config.assistant?.access ?? {})) if (!['default', 'config', 'atrium'].includes(id) && !instances.has(id)) problems.push(`assistant.access.${id}: no such integration`);
   for (const n of config.island?.notify ?? []) if (!placed.has(n.widget)) problems.push(`island.notify: "${n.widget}" isn't placed on the page`);
   return { problems, instances, meta, placed };
 }
@@ -96,7 +105,29 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   for (const s of config.layout) for (const w of s.widgets) if (w.every) every.set(w.widget, Math.min(w.every, every.get(w.widget) ?? Infinity));
 
   const recent: Notice[] = previous?.recent ?? [], noticeListeners = previous?.noticeListeners ?? new Set<(n: Notice) => void>();
-  const journal: string[] = previous?.journal ?? await readFile(JOURNAL(), 'utf8').then(JSON.parse).catch(() => []);
+  const timeline = previous?.timeline ?? await new Timeline().load();
+  const activity = previous?.activity ?? await new Activity(s => redactor(usedSecrets)(s)).load();
+  // reminders, and Atrium's own tools
+  const watches = new Watches(await loadWatches(), w => {
+    const n: Notice = { key: w.widget, text: w.say, icon: 'pulse', tone: 'accent', at: Date.now() };
+    recent.push(n); if (recent.length > 5) recent.shift();
+    for (const l of noticeListeners) l(n);
+    timeline.add('reminder', w.say, w.widget);
+    sendPush({ title: w.say });
+  });
+  const undo = async (id: number) => {
+    const e = activity.entries.find(x => x.id === id);
+    if (!e?.undo || e.undone) throw new Error('nothing to undo there');
+    const [inst, name] = e.undo.tool.split('__'), t = instances.get(inst)?.tools?.[name];
+    if (!t) throw new Error('that tool is gone');
+    await t.run(t.input.parse(e.undo.input));
+    e.undone = true;
+    activity.add({ who: e.who, via: 'page', what: `Undid: ${e.what}`, ok: true });
+    return 'done';
+  };
+  instances.set('atrium', ownInstance({ timeline, activity, watches, hub: () => hub, widgets: [...placed], history, undo }));
+  meta.set('atrium', { type: 'atrium', name: 'Atrium', integration: { type: 'atrium', name: 'Atrium' } as Integration });
+
   const hub = new Hub(new Map([...instances].map(([id, i]) => [id, {
     ...i, widgets: Object.fromEntries(Object.entries(i.widgets).filter(([w]) => placed.has(`${id}.${w}`))
       .map(([w, def]) => [w, every.has(`${id}.${w}`) ? { ...def, interval: every.get(`${id}.${w}`) } : def])),
@@ -105,20 +136,36 @@ export async function buildSite(config: Config, registry: Record<string, Integra
       recent.push(n); if (recent.length > 5) recent.shift();
       for (const l of noticeListeners) l(n);
     }
-    // everything that came or went goes in the journal, announced or not
-    for (const on of EVERYTHING) for (const n of noticesFor(key, prev?.card, next.card, [{ widget: key, on }])) journal.push(`${new Date(n.at).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })} ${on}: ${n.text}${n.sub ? ` (${n.sub})` : ''}`);
-    if (journal.length > 120) journal.splice(0, journal.length - 120);
-    void mkdir(resolve(JOURNAL(), '..'), { recursive: true }).then(() => writeFile(JOURNAL(), JSON.stringify(journal))).catch(() => {});
+    // everything that came or went goes on the timeline, announced or not
+    for (const on of EVERYTHING) for (const n of noticesFor(key, prev?.card, next.card, [{ widget: key, on }])) timeline.add(on, `${n.text}${n.sub ? ` (${n.sub})` : ''}`, key);
+    // and rules that asked for it reach your phone
+    for (const r of config.island?.notify ?? []) if (r.push && r.widget === key) for (const n of noticesFor(key, prev?.card, next.card, [r])) sendPush({ title: n.text, text: n.sub, urgent: n.tone === 'bad' });
   }, history);
+
+  const sendPush = (m: Message) => { void push(config.notify.channels, m, fetch, redactNow); };
+  const redactNow = redactor(usedSecrets);
 
   // the assistant's own background work, if there's an assistant
   const ask = config.assistant ? makeAsk(config.assistant) : undefined;
   const watcher = ask && config.assistant!.background.watch ? new Watcher(ask, i => {
     const n: Notice = { key: 'insight', text: i?.text ?? '', icon: 'pulse', tone: 'warn', at: Date.now() };
     for (const l of noticeListeners) l(n);
+    if (i) { timeline.add('insight', i.text); if (config.notify.insights) sendPush({ title: 'Your homelab', text: i.text, urgent: true }); }
   }) : undefined;
-  if (watcher) hub.watch = () => watcher.see(hub.snapshot());
+  // problems appearing and clearing go on the timeline, whether or not the model has anything to add
+  // A widget's first report isn't news: a service found down at startup went down at some earlier time, and the timeline
+  // only records what it actually saw change.
+  let open = new Map<string, string>(), known = new Set<string>();
+  hub.watch = () => {
+    const states = hub.snapshot(), now = new Map(troubles(states).map(t => [t.id, t.text] as const));
+    for (const [id, text] of now) if (!open.has(id) && [...known].some(k => id.startsWith(`${k}:`))) timeline.add('problem', text);
+    for (const [id, text] of open) if (!now.has(id)) timeline.add('cleared', text);
+    open = now; known = new Set(states.map(s => s.key));
+    watcher?.see(states);
+  };
+
   if (history && config.history && config.history.background) hub.sampleInBackground(config.history.every * 60_000);
+  watches.start(() => hub.snapshot(), key => void hub.refresh(key));
 
   // a local wallpaper file is served by Atrium; a URL is handed to the browser as is
   const wallpaper = config.appearance.wallpaper;
@@ -126,6 +173,6 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   const wallpaperVersion = wallpaperFile ? Math.round((await stat(wallpaperFile).catch(() => ({ mtimeMs: 0 }))).mtimeMs) : 0;
 
   // the redactor knows every secret any config used, so a value from before a reload stays covered
-  return { config, instances, meta, placed, hub, history, acting: canAct(config), redact: redactor(usedSecrets), wallpaperFile, wallpaperVersion, recent, noticeListeners, problems, pins, ask, watcher, journal };
+  return { config, instances, meta, placed, hub, history, acting: canAct(config), redact: redactor(usedSecrets), wallpaperFile, wallpaperVersion, recent, noticeListeners, problems, pins, ask, watcher, timeline, activity, watches, push: sendPush };
 }
 

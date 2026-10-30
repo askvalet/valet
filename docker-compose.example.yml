@@ -15,3 +15,19 @@ services:
     tmpfs: [/tmp]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
+
+  # Optional, for `type: docker`: containers and logs, read-only. Give Atrium the `docker-proxy` network too (networks:
+  # [default, docker-proxy]) and use url: http://atrium-dockerproxy:2375. Never mount the socket into Atrium itself.
+  # atrium-dockerproxy:
+  #   image: tecnativa/docker-socket-proxy:v0.5.0
+  #   environment: { CONTAINERS: 1, POST: 0 }
+  #   volumes: [/var/run/docker.sock:/var/run/docker.sock:ro]
+  #   read_only: true
+  #   tmpfs: [/run, /tmp, /var/lib/haproxy]
+  #   cap_drop: [ALL]
+  #   security_opt: [no-new-privileges:true]
+  #   networks: [docker-proxy]
+
+# networks:
+#   docker-proxy:
+#     internal: true

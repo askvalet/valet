@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { parse } from 'yaml';
 import { z } from 'zod';
+import { Channel } from './notify.ts';
 import { STARTER } from './starter.ts';
 
 /** an IANA name Node knows, e.g. America/Toronto */
@@ -119,10 +120,10 @@ export const Config = z.object({
   // remember each widget's headline numbers so tiles can show a graph even for services that only report "now".
   // `background` keeps sampling while nobody has the page open (one quiet request per widget per `every` minutes).
   history: z.union([z.literal(false), z.object({
-    hours: z.number().min(1).max(168).default(24),
+    hours: z.number().min(1).max(336).default(72),
     every: z.number().min(1).max(60).default(5),            // minutes between samples
     background: z.boolean().default(true),
-  })]).default({ hours: 24, every: 5, background: true }),
+  })]).default({ hours: 72, every: 5, background: true }),
   title: z.string().default('Home'),
   greeting: z.string().optional(),         // name to greet, e.g. "Sam"
   location: z.string().optional(),
@@ -140,13 +141,17 @@ export const Config = z.object({
     activities: z.array(z.string()).default([]), idle: z.enum(['hide', 'notch']).default('hide'),
     // short notices when things change, e.g. { widget: downloads.active, on: end, text: "{title} finished" }:
     // start/end of a widget's live activity, a service going down/up (status cards). {title}, {name} fill in.
-    notify: z.array(z.object({ widget: z.string(), on: z.enum(['start', 'end', 'down', 'up']), text: z.string().optional() })).default([]),
+    // push: true sends it to your notification channels as well
+    notify: z.array(z.object({ widget: z.string(), on: z.enum(['start', 'end', 'down', 'up']), text: z.string().optional(), push: z.boolean().default(false) })).default([]),
   }).optional(),
   weather: z.string().optional(),               // a widget key (e.g. weather.now) shown as a ring beside the clock
   // web search from ⌘K: a provider name, or a URL with {q} for the words
   search: z.union([z.enum(['duckduckgo', 'google', 'kagi', 'brave', 'startpage', 'searxng']), z.string().url()]).optional(),
   // links on the page, grouped: `links.<group>` is a widget key, e.g. links: { Media: [{ name: Plex, url: https://… }] }
   links: z.record(z.string(), z.array(z.object({ name: z.string(), url: z.string().url(), icon: z.string().optional(), note: z.string().optional() }))).default({}),
+  // where "tell me when" reminders go when you're not looking (ntfy, gotify, telegram, discord, slack, pushover, apprise,
+  // webhook). insights: also push the assistant's shared-cause line.
+  notify: z.object({ channels: z.array(Channel).default([]), insights: z.boolean().default(false) }).default({ channels: [], insights: false }),
   welcome: z.boolean().default(false),          // the getting-started card (a fresh config turns it on)
   reload: z.boolean().default(true),            // watch config.yaml and apply edits live (a bad edit keeps the last good one)
 }).strict();

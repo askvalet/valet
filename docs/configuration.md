@@ -41,13 +41,14 @@ In Docker, prefix these with `docker exec -it atrium`.
 | `timezone` | `TZ`, else the first browser's | an IANA name like `America/Toronto`. Times the server writes (assistant answers, watch history) use it; containers default to UTC |
 | `appearance` | `{ dim: 0.35, blur: 0 }` | `wallpaper` (a file in the data folder or an image URL), `dim` 0–0.9, `blur` 0–40 px |
 | `allowedHosts` | `[]` | names Atrium answers to besides localhost and IP addresses, e.g. `[atrium.example.com, "*.home.example.com"]`. Others get 421 (DNS-rebinding protection) |
-| `history` | `{ hours: 24, every: 5, background: true }` | remember headline numbers so tiles can draw a graph. `every` is minutes between samples; `background` keeps sampling while nobody has the page open; `false` turns it off |
+| `history` | `{ hours: 72, every: 5, background: true }` | remember headline numbers, so tiles can draw a graph and the assistant can say how they moved. `every` is minutes between samples; `background` keeps sampling while nobody has the page open; `false` turns it off |
 | `plugins` | `[]` | npm packages of community integrations, or `{ packages, replace }` where `replace` lets a plugin take over a built-in type. Files in `data/integrations/` load on their own |
 | `menubar` | `[]` | widget keys whose headline numbers sit as small rings in the top bar |
 | `weather` | none | a widget key (e.g. `weather.now`) shown as a ring beside the clock |
 | `nav` | `{ side: left }` | where the tab buttons sit on wide screens: `left`, `right`, `top`, `bottom` (phones: bottom) |
 | `search` | none | web search from ⌘K: `duckduckgo`, `google`, `kagi`, `brave`, `startpage`, `searxng`, or a URL with `{q}` |
 | `links` | `{}` | bookmarks by group, each group a widget `links.<group-slug>`: `Media: [{ name, url, icon?, note? }]`. Without `icon`, the site's favicon (fetched by Atrium) |
+| `notify` | `{ channels: [] }` | where reminders go when you're not looking: see below. `insights: true` also pushes the shared-cause line |
 | `reload` | `true` | watch the file and apply edits live |
 | `welcome` | `false` | the getting-started card; a fresh starter config turns it on |
 
@@ -89,6 +90,28 @@ Mount the config folder read-only and it hands you the diff to paste instead.
 place, and pin on a chat card to keep it on the page. A pin re-runs the same tool, so no model is involved after that;
 pins live in `data/pins.json`.
 
+**Tell me when.** "Tell me when Dune finishes" or "warn me if the drive stays above 55° for 10 minutes" sets a one-off
+reminder. A plain rule checks it every half minute, with no model, even with the page closed. Add `atrium.activity` to the
+layout for a card of everything Atrium changed, with Undo where a change can be reversed.
+
+**Several changes at once.** The assistant can propose a plan: every step listed, one approval, stopping at the first
+failure. Each step is still a tool its access level allows.
+
+## `notify`
+
+```yaml
+notify:
+  channels:
+    - { type: ntfy, url: https://ntfy.sh/my-topic, token: "${NTFY_TOKEN}" }
+    - { type: gotify, url: http://gotify:8080, token: "${GOTIFY_TOKEN}" }
+    - { type: telegram, token: "${TELEGRAM_TOKEN}", chat: "${TELEGRAM_CHAT}" }
+    - { type: discord, url: "${DISCORD_WEBHOOK}" }
+    - { type: slack, url: "${SLACK_WEBHOOK}" }
+    - { type: pushover, token: "${PUSHOVER_TOKEN}", user: "${PUSHOVER_USER}" }
+    - { type: apprise, url: http://apprise:8000/notify/mykey }     # reaches dozens more services
+    - { type: webhook, url: http://anything/hook, headers: { X-Key: "${KEY}" } }
+```
+
 ## `mcp`
 
 Each entry is an MCP server whose tools the assistant may use, under the same rules.
@@ -110,7 +133,7 @@ The black notch at the top that shows what's happening.
 |---|---|---|
 | `activities` | `[]` | widget keys, most important first |
 | `idle` | `hide` | `notch` keeps a small empty notch when nothing is live |
-| `notify` | `[]` | short notices: `{ widget, on: start\|end\|down\|up, text }`; `{title}` and `{name}` fill in |
+| `notify` | `[]` | short notices: `{ widget, on: start\|end\|down\|up, text, push }`; `{title}` and `{name}` fill in; `push: true` also sends it to your channels |
 
 ## `layout`
 
@@ -162,6 +185,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `reddit` | `subreddits`, `sort` (`hot`), `limit` (10), `style` (`list` or `shelf`) | `posts` |
 | `releases` | `repos` (`owner/name`), `token` (optional, raises GitHub's rate limit), `limit`, `prereleases` | `latest` |
 | `markets` | `symbols` (`AAPL`, `BTC-USD`, `^GSPC`, `EURUSD=X`, or `{ symbol, name }`), `range` (`1d`), `title` | `quotes` |
+| `docker` | `url` (a read-only socket proxy, never the raw socket), `hide` | `containers` |
 | `api` | `url`, `headers`, `method`, `body`, `every` (60s), `title`, `icon`, `href`, `about`, and one of `stats`, `list`, `rows`, `status` (see below) | `data` |
 | `calendar` | `calendars` (iCal URLs, or `{ url, name }`), `days` (14), `limit` (10), `title` | `upcoming` |
 | `links` | (from the top-level `links:` block) | one per group |

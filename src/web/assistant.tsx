@@ -78,6 +78,7 @@ const verbOf = (name: string, tools: Record<string, ToolInfo>) => {
   const t = tools[name];
   if (name === 'show') return ['Laid out cards', Lightbulb] as const;
   if (name === 'search_everything') return ['Searched everything', Search] as const;
+  if (name === 'plan') return ['Made a plan', Zap] as const;
   return [t?.label ?? toolLabel(name).replace(/^\w/, c => c.toUpperCase()), t ? ICON[t.access] : Activity] as const;
 };
 const argOf = (input: any) => {
@@ -140,8 +141,20 @@ function ToolPart({ p, approve, tools = {}, canPin }: { p: any; approve: (id: st
   if (p.state === 'approval-requested' && !p.approval?.isAutomatic) return (
     <div className="chat-card rounded-2xl border bg-card p-4 shadow-card">
       <div className="mb-0.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Needs your OK</div>
-      <div className="text-sm font-medium first-letter:uppercase">{p.input?.ops ? 'Save this change to your config?' : `${label}?`}</div>
-      {p.input?.ops ? (
+      <div className="text-sm font-medium first-letter:uppercase">{p.input?.steps ? p.input.title : p.input?.ops ? 'Save this change to your config?' : `${label}?`}</div>
+      {p.input?.steps ? (
+        // a plan: every step, in order, before any of them runs
+        <ol className="mt-2 space-y-2">
+          {p.input.steps.map((s: any, i: number) => (
+            <li key={i} className="flex gap-2.5 text-[13px]">
+              <span className="mt-px grid size-5 shrink-0 place-items-center rounded-full bg-white/10 text-[11px] font-semibold tabular">{i + 1}</span>
+              <span className="min-w-0"><span className="font-medium">{tools[s.tool]?.label ?? toolLabel(s.tool)}</span>
+                {Object.keys(s.input ?? {}).length > 0 && <span className="ml-1.5 break-all text-xs text-muted-foreground">{Object.values(s.input).map(v => typeof v === 'object' ? JSON.stringify(v) : String(v)).join(', ')}</span>}
+                <span className="block text-xs text-muted-foreground">{s.why}</span></span>
+            </li>
+          ))}
+        </ol>
+      ) : p.input?.ops ? (
         // a change to the config: what it means, then exactly what it writes
         <div className="mt-1 space-y-1.5 text-xs text-muted-foreground">
           {p.input.summary && <div>{p.input.summary}</div>}

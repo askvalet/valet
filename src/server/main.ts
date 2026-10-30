@@ -45,7 +45,7 @@ let site: Site = await buildSite(config, registry, fromPlugins, opts);
 async function swap(next: Config) {
   const old = site;
   site = await buildSite(next, registry, fromPlugins, opts, old); chat = undefined;
-  old.hub.dispose(); old.watcher?.stop();
+  old.hub.dispose(); old.watcher?.stop(); old.watches.stop();
   for (const tell of sseClients) tell();
 }
 for (const sig of ['SIGTERM', 'SIGINT'] as const) process.once(sig, async () => { try { await site.history?.save(); } finally { process.exit(0); } });
@@ -212,11 +212,16 @@ app.post('/api/action/:inst/:action', async c => {
   if (!a) return c.json({ error: `no action ${inst}.${action}` }, 404);
   const args = a.input.safeParse(await c.req.json().catch(() => ({})));
   if (!args.success) return c.json({ error: args.error.issues[0]?.message }, 400);
+  const who = (c.get as (k: string) => string | undefined)('user') ?? 'you', what = `${site.meta.get(inst)?.name ?? inst}: ${a.description ?? action}`;
   try {
     const result = await a.run(args.data);
     setTimeout(() => hub.refreshInstance(inst), 300);
+    site.activity.add({ who, via: 'page', what, input: args.data, ok: true });
     return c.json(JSON.parse(redact(JSON.stringify({ ok: true, result: result ?? null }))));
-  } catch (e) { return c.json({ error: redact((e as Error).message) }, 502); }
+  } catch (e) {
+    site.activity.add({ who, via: 'page', what, input: args.data, ok: false, error: redact((e as Error).message) });
+    return c.json({ error: redact((e as Error).message) }, 502);
+  }
 });
 
 app.get('/api/image/:inst', async c => {
@@ -266,7 +271,7 @@ app.get('/api/suggest', async c => {
   if (!tailored || (mood !== tailored.mood && age > 300_000) || age > 1_800_000) {
     tailoring ??= (async () => {
       const tools = [...site.instances].flatMap(([, i]) => Object.values(i.tools ?? {}).filter(t => t.access !== 'control').flatMap(t => t.label ?? []));
-      const p = suggestPrompt(states, site.journal, tools);
+      const p = suggestPrompt(states, site.timeline.lines(6 * 36e5, 10), tools);
       const list = parseSuggestions(await site.ask!(p.system, p.prompt, 'asked'));
       tailored = { at: Date.now(), mood, list: list ?? tailored?.list ?? null };
     })().finally(() => { tailoring = undefined; });
@@ -277,7 +282,7 @@ app.get('/api/suggest', async c => {
 app.get('/api/brief', async c => {
   if (!site.ask || !site.config.assistant?.background.brief) return c.json({ text: null });
   await settled();
-  const b = await dailyBrief(site.ask, site.journal.slice(-40), site.hub.snapshot());
+  const b = await dailyBrief(site.ask, site.timeline.lines(16 * 36e5), site.hub.snapshot());
   return c.json({ text: b ? site.redact(b.text) : null });
 });
 
@@ -293,6 +298,7 @@ app.post('/api/pins', async c => {
   try {
     const card = await pinnedCard({ tool, input }, site.instances);
     await savePins([...pins, newPin(tool, input, card.title ?? 'Pinned')]);
+    site.activity.add({ who: (c.get as (k: string) => string | undefined)('user') ?? 'you', via: 'pin', what: `Pinned ${card.title ?? 'a card'}`, ok: true });
     await swap(site.config);
     return c.json({ ok: true });
   } catch (e) { return c.json({ error: site.redact((e as Error).message) }, 400); }
@@ -302,7 +308,7 @@ app.post('/api/pins', async c => {
 let chat: ((c: any) => Promise<Response>) | undefined;
 app.post('/api/chat', async c => {
   if (!site.config.assistant) return c.json({ error: 'no assistant configured' }, 404);
-  chat ??= (await import('./chat.ts')).chatRoute(site.config, site.instances, site.meta, { acting: site.acting, redact: site.redact });
+  chat ??= (await import('./chat.ts')).chatRoute(site.config, site.instances, site.meta, { acting: site.acting, redact: site.redact, activity: site.activity });
   return chat(c);
 });
 
