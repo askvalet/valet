@@ -1,0 +1,128 @@
+// Integrations against made-up service responses: the cards they produce validate, and the logic that's easy to get
+// wrong (sign-in reuse, parsing, roll-over to tomorrow, picking a verse) does what it says.
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { Config } from '../src/server/config.ts';
+import type { Context, Instance } from '../src/server/core.ts';
+import { checkCard } from '../src/shared/cards.schema.ts';
+import arr from '../src/integrations/arr.ts';
+import homeassistant from '../src/integrations/homeassistant.ts';
+import pihole from '../src/integrations/pihole.ts';
+import quran from '../src/integrations/quran.ts';
+import scrutiny from '../src/integrations/scrutiny.ts';
+import uptimekuma from '../src/integrations/uptimekuma.ts';
+
+type Handler = (url: string, init: RequestInit) => unknown;
+function fake(handler: Handler): Context & { calls: string[] } {
+  const calls: string[] = [];
+  return {
+    id: 't', calls, log() {}, image: r => `/img/${r}`, upload: async () => ({ name: 'f', type: 'text/plain', data: Buffer.from('') }),
+    async http(url: string, init: any = {}) {
+      calls.push(`${init.method ?? 'GET'} ${url}`);
+      const out = await handler(url, init);
+      if (init.as === 'response') return out instanceof Response ? out : new Response(JSON.stringify(out), { status: 200 });
+      if (out instanceof Response) { if (!out.ok) throw new Error(`answered ${out.status}`); return init.as === 'text' ? out.text() : out.json(); }
+      return out as any;
+    },
+  } as any;
+}
+const make = <C>(i: { config: any; create(c: C, ctx: Context): Instance }, cfg: unknown, ctx: Context) => i.create(i.config.parse(cfg), ctx);
+const valid = (card: unknown) => { const r = checkCard(card); assert.ok(r.success, r.success ? '' : JSON.stringify(r.error.issues.slice(0, 3))); };
+
+test('config: widgets take a size, plain names default to medium', () => {
+  const c = Config.parse({ layout: [{ widgets: ['a.b', { widget: 'c.d', size: 'small' }] }] });
+  assert.deepEqual(c.layout[0].widgets, [{ widget: 'a.b', size: 'medium' }, { widget: 'c.d', size: 'small' }]);
+  assert.equal(c.auth.mode, 'none');
+});
+
+test('pihole: parallel requests share one sign-in, and an expired session signs in again once', async () => {
+  let logins = 0, expired = false;
+  const ctx = fake(url => {
+    if (url.endsWith('/api/auth')) { logins++; return { session: { valid: true, sid: `s${logins}` } }; }
+    if (expired) { expired = false; return new Response('{}', { status: 401 }); }
+    if (url.includes('summary')) return { queries: { total: 1000, blocked: 140, percent_blocked: 14 }, clients: { active: 9 } };
+    if (url.includes('history')) return { history: [{ blocked: 1 }, { blocked: 3 }] };
+    if (url.includes('blocking')) return { blocking: 'enabled', timer: null };
+    return { domains: [{ domain: 'ads.example', count: 9 }] };
+  });
+  const p = make(pihole, { url: 'http://pi', password: 'x' }, ctx);
+  const card = await p.widgets.stats.fetch();
+  valid(card);
+  assert.equal(logins, 1, 'four parallel calls should share one sign-in');
+  expired = true;
+  await p.widgets.stats.fetch();
+  assert.equal(logins, 2);
+  assert.equal((card as any).summary.value, '14%');
+});
+
+test('uptime kuma: parses metrics; a down monitor makes the summary red', async () => {
+  const metrics = [
+    'monitor_status{monitor_id="1",monitor_name="Plex",monitor_type="http"} 1',
+    'monitor_status{monitor_id="2",monitor_name="Router",monitor_type="ping"} 0',
+    'monitor_response_time{monitor_id="1",monitor_name="Plex"} 12',
+    'monitor_uptime_ratio{monitor_id="1",monitor_name="Plex",window="30d"} 0.999',
+    'monitor_uptime_ratio{monitor_id="2",monitor_name="Router",window="30d"} 0.95',
+    'monitor_cert_days_remaining{monitor_id="1",monitor_name="Plex"} 9',
+  ].join('\n');
+  const k = make(uptimekuma, { url: 'http://kuma', password: 'x' }, fake(() => new Response(metrics)));
+  const card: any = await k.widgets.monitors.fetch();
+  valid(card);
+  assert.equal(card.items.length, 2);
+  assert.equal(card.summary.tone, 'bad');
+  assert.match(card.summary.value, /1 down/);
+});
+
+test('scrutiny: a failing drive is called out', async () => {
+  const s = make(scrutiny, { url: 'http://s' }, fake(() => ({ data: { summary: {
+    a: { device: { device_name: 'sda', model_name: 'Disk A', device_status: 0 }, smart: { temp: 40, power_on_hours: 9000 } },
+    b: { device: { device_name: 'sdb', model_name: 'Disk B', device_status: 2 }, smart: { temp: 61, power_on_hours: 20 } } } } })));
+  const card: any = await s.widgets.drives.fetch();
+  valid(card);
+  assert.equal(card.summary.value, '1 failing');
+  assert.equal(card.items[1].tone, 'bad');
+});
+
+test('arr: episodes and movies come out in date order with friendly days', async () => {
+  const soon = (d: number) => new Date(Date.now() + d * 864e5).toISOString();
+  const a = make(arr, { sonarr: { url: 'http://s', apiKey: 'k' }, radarr: { url: 'http://r', apiKey: 'k' } }, fake(url => url.startsWith('http://s')
+    ? [{ airDateUtc: soon(3), seasonNumber: 1, episodeNumber: 2, title: 'Two', hasFile: false, series: { title: 'Show', images: [] } }]
+    : [{ title: 'Film', year: 2026, digitalRelease: soon(1), hasFile: false, images: [{ coverType: 'poster', remoteUrl: 'https://img/original/x.jpg' }] }]));
+  const card: any = await a.widgets.upcoming.fetch();
+  valid(card);
+  assert.deepEqual(card.items.map((i: any) => i.title), ['Film', 'Show']);
+  assert.equal(card.items[0].badge, 'Tomorrow');
+  assert.equal(card.items[0].image, 'https://img/w342/x.jpg');
+});
+
+test('home assistant schedule: next time rolls to tomorrow, and shows in the island when close', async () => {
+  const t = (mins: number) => new Date(Date.now() + mins * 60_000).toISOString();
+  const states = [
+    { entity_id: 'sensor.a', state: t(-300), attributes: {} },   // already passed today
+    { entity_id: 'sensor.b', state: t(10), attributes: {} },     // in 10 minutes
+    { entity_id: 'sensor.c', state: t(-100), attributes: {} },   // muted
+  ];
+  const ha = make(homeassistant, { url: 'http://ha', token: 'x', schedules: { p: { title: 'Prayers', soon: 15,
+    entities: [{ id: 'sensor.a', name: 'A' }, { id: 'sensor.b', name: 'B' }, { id: 'sensor.c', name: 'C', muted: true }] } } }, fake(() => states));
+  const card: any = await ha.widgets.p.fetch();
+  valid(card);
+  assert.equal(card.summary.value, 'B');
+  assert.ok(card.activity?.title.startsWith('B in'));
+  states[1].state = t(-5);   // B passed too: next is A, tomorrow; nothing close
+  const later: any = await ha.widgets.p.fetch();
+  assert.equal(later.summary.value, 'A');
+  assert.equal(later.activity, undefined);
+});
+
+test('quran: picks a verse that reads on its own, and keeps the Arabic clean', async () => {
+  const words = (s: string) => s.split(' ').map(w => [[w, null]]).concat([[['', null]]]);
+  const data: Record<string, unknown> = {
+    'index.json': { surahs: [{ n: 1, ar: 'x', en: 'Test', meaning: 'Testing', verses: 3 }] },
+    's/1.json': [[1, words('كلمة'), {}], [2, words('كلمة اخرى'), {}], [3, words('ثالثة'), {}]],
+    'en/1.json': { v: ['and then', 'Indeed, this is a complete sentence that is long enough to stand on its own as a verse.', 'short'] },
+  };
+  const q = make(quran, { url: 'http://q' }, fake(url => data[url.split('/data/')[1]]));
+  const card: any = await q.widgets.today.fetch();
+  valid(card);
+  assert.equal(card.reference, 'Test 1:2');
+  assert.equal(card.arabic, 'كلمة اخرى');
+});

@@ -4,3 +4,4 @@ config.yaml
 .env
 data
 docker-compose.yml
+.test

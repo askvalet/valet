@@ -99,10 +99,15 @@ function useWide(query = '(min-width: 1280px)') {
 }
 
 /** Signed in? Show the page; otherwise the sign-in screen (over the wallpaper, which needs no session). */
+const Gallery = lazy(() => import('./gallery.tsx'));
+
 export function App() {
   const { me, setMe } = useMe();
+  const [hash, setHash] = useState(location.hash);
+  useEffect(() => { const on = () => setHash(location.hash); addEventListener('hashchange', on); return () => removeEventListener('hashchange', on); }, []);
   useEffect(() => { if (me && !me.user) document.documentElement.classList.add('dark', 'has-wallpaper'); }, [me]);
   if (!me) return null;
+  if (me.user && hash === '#gallery') { document.documentElement.classList.add('dark'); return <Suspense fallback={null}><Gallery /></Suspense>; }
   if (!me.user) return (
     <SignIn setup={!!me.setup} onDone={name => setMe({ ...me, user: { name } })}
       wallpaper={<div className="wallpaper" aria-hidden><img src="/api/wallpaper" alt="" style={{ filter: 'blur(6px)' }} onError={e => (e.currentTarget.style.display = 'none')} /></div>} />
