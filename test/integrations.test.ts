@@ -4,9 +4,12 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Config } from '../src/server/config.ts';
 import { session, type Context, type Instance } from '../src/server/core.ts';
+import { Timeline } from '../src/server/timeline.ts';
 import { checkCard } from '../src/shared/cards.schema.ts';
 import arr from '../src/integrations/arr.ts';
+import docker from '../src/integrations/docker.ts';
 import homeassistant from '../src/integrations/homeassistant.ts';
+import http from '../src/integrations/http.ts';
 import pihole from '../src/integrations/pihole.ts';
 import quran from '../src/integrations/quran.ts';
 import scrutiny from '../src/integrations/scrutiny.ts';
@@ -72,6 +75,29 @@ test('uptime kuma: parses metrics; a down monitor makes the summary red', async 
   assert.equal(card.items.length, 2);
   assert.equal(card.summary.tone, 'bad');
   assert.match(card.summary.value, /1 down/);
+});
+
+test('docker: a container that was made and never run is not down', async () => {
+  const d = make(docker, { url: 'http://d' }, fake(() => [
+    { Id: '1', Names: ['/musing_chaum'], State: 'created', Status: 'Created', Labels: {} },
+    { Id: '2', Names: ['/radarr'], State: 'exited', Status: 'Exited (137) 2 hours ago', Labels: {} }]));
+  const c: any = await d.widgets.containers.fetch();
+  assert.deepEqual(c.items.map((i: any) => [i.name, i.detail, i.quiet]), [['musing_chaum', 'never started', true], ['radarr', 'exited (137)', false]]);
+  assert.equal(c.summary.value, '1 down');
+});
+
+test('http: one failed answer gets a second look before it counts as down', async () => {
+  let n = 0;
+  const h = make(http, { targets: [{ name: 'Quran', url: 'https://q' }] }, fake(() => { if (!n++) throw new Error('slow DNS'); return new Response('ok'); }));
+  const c: any = await h.widgets.status.fetch();
+  assert.deepEqual([c.items[0].ok, n], [true, 2]);
+});
+
+test('timeline: a problem never cleared stays unresolved until it is', async () => {
+  const t = new Timeline();
+  t.add('problem', 'Quran is down'); t.add('problem', 'Plex is down'); t.add('cleared', 'Plex is down');
+  assert.deepEqual(t.unresolved(), ['Quran is down']);
+  assert.deepEqual(t.lines(36e5, 40, true).map(l => l.split(' ').at(-1)), ['down']);       // only the "cleared" line
 });
 
 test('scrutiny: a failing drive is called out', async () => {

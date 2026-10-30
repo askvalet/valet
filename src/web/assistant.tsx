@@ -16,6 +16,8 @@ import { Widget } from './cards.tsx';
 // One conversation for the whole page session, so closing and reopening the panel keeps it.
 // a long chat's early messages stay on screen, but only the recent ones are sent: the server would drop the rest anyway
 const lastOnly = ({ messages, body, id }: any) => ({ body: { ...body, id, messages: messages.slice(-24) } });
+// the last question from `ask` already sent; kept with the chat because the panel remounts on every navigation
+let lastAsk = 0;
 const chat = new Chat({
   transport: new DefaultChatTransport({ api: '/api/chat', prepareSendMessagesRequest: lastOnly }),
   sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
@@ -354,7 +356,6 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
         .catch(() => setFiles(fs => fs.map(x => x.key === key ? { ...x, error: 'upload failed' } : x)));
     }
   };
-  const sent = useRef(0);
   const scroller = useRef<HTMLDivElement>(null);
   // Stay pinned to the newest words unless the person scrolled up; the moment they scroll back to the bottom, pin again.
   // Direct scrollTop rather than smooth scrolling: a smooth scroll restarted on every token never lands, and fights the
@@ -374,7 +375,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
   const busy = status === 'submitted' || status === 'streaming';
 
   // questions from the ⌘K palette arrive through `ask`
-  useEffect(() => { if (ask && ask.n !== sent.current) { sent.current = ask.n; following.current = true; sendMessage({ text: ask.text }); } }, [ask, sendMessage]);
+  useEffect(() => { if (ask && ask.n !== lastAsk) { lastAsk = ask.n; following.current = true; sendMessage({ text: ask.text }); } }, [ask, sendMessage]);
   useLayoutEffect(pin, [messages, status]);
   // cards and images that finish loading change the height too
   useEffect(() => {

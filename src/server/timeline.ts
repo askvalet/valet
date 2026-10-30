@@ -26,8 +26,14 @@ export class Timeline {
     await writeFile(`${FILE()}.tmp`, JSON.stringify(this.events)); await rename(`${FILE()}.tmp`, FILE());
   }
   since(ms: number) { const from = Date.now() - ms; return this.events.filter(e => e.at >= from); }
-  /** One line each, for prompts. */
-  lines(ms: number, n = 40) {
-    return this.since(ms).slice(-n).map(e => `${new Date(e.at).toLocaleString('en', { weekday: 'short', hour: 'numeric', minute: '2-digit' })} ${e.kind}: ${e.text}`);
+  /** Problems logged and never cleared. A restart forgets what's open, so the next run has to settle these. */
+  unresolved() {
+    const open = new Set<string>();
+    for (const e of this.events) { if (e.kind === 'problem') open.add(e.text); else if (e.kind === 'cleared') open.delete(e.text); }
+    return [...open];
+  }
+  /** One line each, for prompts. `news` leaves out what went wrong: that may be over, and the prompt has what's wrong now. */
+  lines(ms: number, n = 40, news = false) {
+    return this.since(ms).filter(e => !news || (e.kind !== 'problem' && e.kind !== 'down')).slice(-n).map(e => `${new Date(e.at).toLocaleString('en', { weekday: 'short', hour: 'numeric', minute: '2-digit' })} ${e.kind}: ${e.text}`);
   }
 }

@@ -14,6 +14,7 @@ export interface Trouble { id: string; name: string; text: string }
 export function troubles(states: WidgetState[]): Trouble[] {
   const out: Trouble[] = [];
   for (const s of states) {
+    if (s.key === 'valet.activity') continue;   // a log: an action that failed earlier isn't something wrong now
     const c = s.card, title = clip(c?.title ?? s.key, 40);
     if (s.error) out.push({ id: `${s.key}:error`, name: title, text: `${title} can't be reached: ${clip(s.error)}` });
     if (c?.type === 'status') for (const i of c.items) if (!i.ok && !i.quiet) out.push({ id: `${s.key}:${i.name}`, name: i.name, text: `${i.name} is down${i.detail ? ` (${clip(i.detail, 60)})` : ''}` });
@@ -98,14 +99,16 @@ export function parseSuggestions(reply: string | null) {
 
 // ── the line under the greeting
 const FILE = () => resolve(process.env.VALET_DATA ?? 'data', 'brief.json');
-export interface Brief { text: string; at: number }
+export interface Brief { text: string; at: number; wrong?: string }
 let making: Promise<Brief | null> | undefined;
 
 /** One line on how things are, kept for half an hour. Pages ask whenever they open, and it's only rewritten once it's old,
  *  so any number of open pages costs the same. */
 export async function statusLine(ask: Ask, recent: string[], states: WidgetState[], now = new Date()): Promise<Brief | null> {
   const saved: Brief | null = await readFile(FILE(), 'utf8').then(JSON.parse).catch(() => null);
-  if (saved?.at && now.getTime() - saved.at < 1_800_000) return saved;
+  // rewritten every half hour, or within five minutes of what's wrong changing, so it never reports what's over
+  const wrong = troubles(states).map(t => t.id).sort().join(), age = saved?.at ? now.getTime() - saved.at : Infinity;
+  if (age < 300_000 || (age < 1_800_000 && (!states.length || wrong === (saved?.wrong ?? '')))) return saved;
   if (!states.length) return saved;
   return making ??= (async () => {
     try {
@@ -113,7 +116,7 @@ export async function statusLine(ask: Ask, recent: string[], states: WidgetState
         `Write one short line, at most 10 words, telling the owner of a homelab how things are right now. Lead with anything that needs them. Skip routine activity and AI requests. Plain and calm, no greeting, no full stop. Mention only what the data shows. If all is quiet, say so in a few words.\n${SEP}`,
         `It's ${now.toLocaleString('en', { weekday: 'long', hour: 'numeric', minute: '2-digit' })}.\n\nWrong right now:\n${troubles(states).map(t => `- ${t.text}`).join('\n') || '(nothing)'}\n\nLately:\n${recent.join('\n') || '(nothing recorded)'}\n\nThe page:\n${digest(states)}`);
       if (!text) return saved;
-      const brief = { text: clip(text, 90).replace(/\.$/, ''), at: now.getTime() };
+      const brief = { text: clip(text, 90).replace(/\.$/, ''), at: now.getTime(), wrong };
       await mkdir(dirname(FILE()), { recursive: true });
       await writeFile(`${FILE()}.tmp`, JSON.stringify(brief)); await rename(`${FILE()}.tmp`, FILE());
       return brief;

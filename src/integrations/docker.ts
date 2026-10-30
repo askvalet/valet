@@ -45,8 +45,10 @@ export default defineIntegration({
         .filter(c => !cfg.hide.includes(c.name)).sort((a, b) => a.name.localeCompare(b.name));
     }
     const healthy = (c: C) => c.state === 'running' && !c.unhealthy;
-    const item = (c: C): StatusItem => ({ name: c.name, icon: iconFor(c.name), ok: healthy(c), detail: healthy(c) ? undefined : c.unhealthy ? 'unhealthy' : c.exit != null ? `exited (${c.exit})` : c.state, group: c.project,
-      quiet: c.exit === 0 });   // finished cleanly: a one-off job, not a problem
+    // finished cleanly, or made and never run: a one-off job, not a problem
+    const idle = (c: C) => c.exit === 0 || c.state === 'created';
+    const item = (c: C): StatusItem => ({ name: c.name, icon: iconFor(c.name), ok: healthy(c), detail: healthy(c) ? undefined : c.unhealthy ? 'unhealthy' : c.exit != null ? `exited (${c.exit})` : c.state === 'created' ? 'never started' : c.state, group: c.project,
+      quiet: idle(c) });
     const find = async (name: string) => {
       const all = await containers(), n = name.toLowerCase();
       const c = all.find(x => x.name.toLowerCase() === n) ?? all.find(x => x.name.toLowerCase().includes(n));
@@ -115,7 +117,7 @@ export default defineIntegration({
         containers: {
           title: 'Containers', interval: 30_000,
           async fetch() {
-            const list = await containers(), bad = list.filter(c => !healthy(c) && c.exit !== 0);
+            const list = await containers(), bad = list.filter(c => !healthy(c) && !idle(c));
             return { type: 'status', title: 'Containers', icon: 'disk', items: list.map(item),
               summary: { label: 'Containers', icon: 'disk', value: bad.length ? `${bad.length} down` : `${list.filter(c => c.state === 'running').length} up`, tone: bad.length ? 'bad' : 'good' } };
           },

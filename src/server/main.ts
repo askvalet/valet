@@ -281,7 +281,7 @@ app.get('/api/suggest', async c => {
   if (!tailored || (mood !== tailored.mood && age > 600_000) || age > 1_800_000) {
     tailoring ??= (async () => {
       const tools = [...site.instances].flatMap(([, i]) => Object.values(i.tools ?? {}).filter(t => t.access !== 'control').flatMap(t => t.label ?? []));
-      const p = suggestPrompt(states, site.timeline.lines(6 * 36e5, 10), tools);
+      const p = suggestPrompt(states, site.timeline.lines(6 * 36e5, 10, true), tools);
       const list = parseSuggestions(await site.ask!(p.system, p.prompt, 'background'));
       tailored = { at: Date.now(), mood, list: list ?? tailored?.list ?? null };
     })().finally(() => { tailoring = undefined; });
@@ -292,7 +292,7 @@ app.get('/api/suggest', async c => {
 app.get('/api/brief', async c => {
   if (!site.ask || !site.config.assistant?.background.brief) return c.json({ text: null });
   await settled();
-  const b = await statusLine(site.ask, site.timeline.lines(8 * 36e5), site.hub.snapshot());
+  const b = await statusLine(site.ask, site.timeline.lines(8 * 36e5, 40, true), site.hub.snapshot());
   return c.json({ text: b ? site.redact(b.text) : null });
 });
 

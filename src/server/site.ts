@@ -157,8 +157,16 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   // A widget's first report isn't news: a service found down at startup went down at some earlier time, and the timeline
   // only records what it actually saw change.
   let open = new Map<string, string>(), known = new Set<string>();
+  // what the last run left open gets settled once every widget has had time to report
+  let leftOpen = timeline.unresolved();
+  const settleAt = Date.now() + 120_000;
   hub.watch = () => {
     const states = hub.snapshot(), now = new Map(troubles(states).map(t => [t.id, t.text] as const));
+    if (leftOpen.length && Date.now() > settleAt) {
+      const still = new Set(now.values());
+      for (const text of leftOpen) if (!still.has(text)) timeline.add('cleared', text);
+      leftOpen = [];
+    }
     for (const [id, text] of now) if (!open.has(id) && [...known].some(k => id.startsWith(`${k}:`))) timeline.add('problem', text);
     for (const [id, text] of open) if (!now.has(id)) timeline.add('cleared', text);
     open = now; known = new Set(states.map(s => s.key));

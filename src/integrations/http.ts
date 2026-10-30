@@ -21,18 +21,18 @@ export default defineIntegration({
     const lat: number[] = [];
     const icon = (t: (typeof cfg.targets)[number]) => t.icon?.includes('/') ? t.icon
       : `/api/icon/${t.icon ?? t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
-    async function check() {
-      return Promise.all(cfg.targets.map(async t => {
-        const t0 = performance.now();
-        try {
-          const res = await ctx.http<Response>(t.url, { as: 'response', timeout: 5000, redirect: 'manual' });
-          const ok = t.expect ? t.expect.includes(res.status) : res.status < 400 || res.status === 401;
-          return { name: t.name, ok, ms: Math.round(performance.now() - t0), detail: ok ? undefined : `HTTP ${res.status}`, href: t.href ?? t.url, icon: icon(t), group: t.group, quiet: t.quiet };
-        } catch (e) {
-          return { name: t.name, ok: false, detail: (e as Error).name === 'TimeoutError' ? 'timed out' : 'unreachable', href: t.href ?? t.url, icon: icon(t), group: t.group, quiet: t.quiet };
-        }
-      }));
+    async function probe(t: (typeof cfg.targets)[number]) {
+      const t0 = performance.now();
+      try {
+        const res = await ctx.http<Response>(t.url, { as: 'response', timeout: 5000, redirect: 'manual' });
+        const ok = t.expect ? t.expect.includes(res.status) : res.status < 400 || res.status === 401;
+        return { name: t.name, ok, ms: Math.round(performance.now() - t0), detail: ok ? undefined : `HTTP ${res.status}`, href: t.href ?? t.url, icon: icon(t), group: t.group, quiet: t.quiet };
+      } catch (e) {
+        return { name: t.name, ok: false, detail: (e as Error).name === 'TimeoutError' ? 'timed out' : 'unreachable', href: t.href ?? t.url, icon: icon(t), group: t.group, quiet: t.quiet };
+      }
     }
+    // a second look before calling anything down: one slow DNS answer shouldn't read as an outage
+    const check = () => Promise.all(cfg.targets.map(async t => { const r = await probe(t); return r.ok ? r : probe(t); }));
     return {
       widgets: {
         status: {

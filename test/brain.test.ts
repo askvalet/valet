@@ -57,6 +57,19 @@ test('digest stays compact, and the status line is written at most every half ho
   assert.equal((await statusLine(async () => null, [], states, at(59 + 40)))?.text, 'Quiet, nothing needs you 2');   // no answer: keep the last
 });
 
+test('status line: rewritten soon after what\'s wrong changes, and a failed action in the log isn\'t trouble', async () => {
+  let n = 0; const ask = async () => `Line ${++n}`;
+  const at = (m: number) => new Date(2026, 10, 2, 8, m);
+  await statusLine(ask, [], down('Quran'), at(0));
+  await statusLine(ask, [], down('Quran'), at(3));
+  await statusLine(ask, [], down('Plex'), at(3));
+  assert.equal(n, 1);                                                                     // not more than once in five minutes
+  assert.equal((await statusLine(ask, [], down('Plex'), at(6)))?.text, 'Line 2');
+  assert.equal((await statusLine(ask, [], down('Plex'), at(12)))?.text, 'Line 2');        // same trouble: leave it
+  const log = { key: 'valet.activity', at: 1, card: { type: 'list', title: 'Activity', items: [{ title: 'Changed the lights', tone: 'bad' }] } };
+  assert.deepEqual(troubles([log] as any), []);
+});
+
 test('setup: edits keep comments; it can\'t touch sign-in or its own access, or write a secret into the file', async () => {
   const text = '# my page\ntitle: Home   # keep me\nintegrations:\n  w: { type: weather, latitude: 1, longitude: 2 }\nlayout:\n  - title: A\n    widgets: [w.now]\n';
   const after = applyOps(text, [{ op: 'set', path: ['integrations', 'hn'], value: { type: 'hackernews' } }, { op: 'append', path: ['layout', 0, 'widgets'], value: 'hn.stories' }]);
