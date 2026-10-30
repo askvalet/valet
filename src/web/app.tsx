@@ -1,4 +1,4 @@
-import { ArrowUp, LayoutGrid, Moon, Sparkles, Sun } from 'lucide-react';
+import { ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Sun } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
@@ -161,7 +161,6 @@ export function App() {
             {page?.assistant && (
               <form className="glass-round mt-5 flex items-center gap-2.5 rounded-[26px] py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
-                <Sparkles className="size-[18px] shrink-0 text-muted-foreground" />
                 <input value={draft} onChange={e => setDraft(e.target.value)} aria-label={`Ask ${page.assistant.name}`} placeholder={`Ask ${page.assistant.name} anything…`}
                   className="h-11 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground" />
                 {!draft.trim() && <kbd className="hidden rounded-md border border-white/15 px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground sm:block">⌘K</kbd>}
@@ -259,9 +258,9 @@ export function App() {
       }[navSide])}>
         <RoundButton tip={tip} label="Overview" active={view === 'all'} onClick={() => setView('all')}><LayoutGrid /></RoundButton>
         {nav.map(s => (
-          <RoundButton tip={tip} key={s.key} label={s.key} active={view === s.key} onClick={() => setView(s.key)}><Icon name={s.chat ? 'sparkle' : sectionIcon(s) ?? 'pulse'} /></RoundButton>
+          <RoundButton tip={tip} key={s.key} label={s.key} active={view === s.key} onClick={() => setView(s.key)}><Icon name={s.chat ? 'chat' : sectionIcon(s) ?? 'pulse'} /></RoundButton>
         ))}
-        {page?.assistant && !chatTab && <RoundButton tip={tip} label={page.assistant.name} onClick={() => setChatOpen(true)}><Sparkles /></RoundButton>}
+        {page?.assistant && !chatTab && <RoundButton tip={tip} label={page.assistant.name} onClick={() => setChatOpen(true)}><MessageCircle /></RoundButton>}
       </nav>
 
       {/* top-right: the menubar rings, weather and time (and the theme switch when there's no wallpaper).
@@ -317,9 +316,9 @@ export function App() {
       <nav aria-label="Sections" className="glass-round fixed inset-x-4 bottom-4 z-20 flex justify-around rounded-full p-1.5 md:hidden">
         <button onClick={() => setView('all')} aria-label="Overview" className={cn('grid size-10 place-items-center rounded-full', view === 'all' && 'bg-white text-black')}><LayoutGrid className="size-[18px]" /></button>
         {nav.map(s => (
-          <button key={s.key} onClick={() => setView(s.key)} aria-label={s.key} className={cn('grid size-10 place-items-center rounded-full', view === s.key && 'bg-white text-black')}><Icon name={s.chat ? 'sparkle' : sectionIcon(s) ?? 'pulse'} className="size-[18px]" /></button>
+          <button key={s.key} onClick={() => setView(s.key)} aria-label={s.key} className={cn('grid size-10 place-items-center rounded-full', view === s.key && 'bg-white text-black')}><Icon name={s.chat ? 'chat' : sectionIcon(s) ?? 'pulse'} className="size-[18px]" /></button>
         ))}
-        {page?.assistant && !chatTab && <button onClick={() => setChatOpen(true)} aria-label={page.assistant.name} className="grid size-10 place-items-center rounded-full"><Sparkles className="size-[18px]" /></button>}
+        {page?.assistant && !chatTab && <button onClick={() => setChatOpen(true)} aria-label={page.assistant.name} className="grid size-10 place-items-center rounded-full"><CornerDownLeft className="text-muted-foreground" /></button>}
       </nav>
 
       {page?.assistant && (
@@ -328,15 +327,15 @@ export function App() {
             onKeyDown={e => { if (e.key === 'Enter' && query.trim() && !document.querySelector('[cmdk-item][data-selected="true"]')) { ask(query); setQuery(''); } }} />
           <CommandList>
             <CommandEmpty>
-              <button className="mx-auto flex items-center gap-2 text-sm" onClick={() => { ask(query); setQuery(''); }}><Sparkles className="size-4 text-primary" />Ask “{query}”</button>
+              <button className="mx-auto flex items-center gap-2 text-sm" onClick={() => { ask(query); setQuery(''); }}><CornerDownLeft className="text-muted-foreground" />Ask “{query}”</button>
             </CommandEmpty>
-            {query.trim() && <CommandGroup heading="Ask"><CommandItem value={`ask ${query}`} onSelect={() => { ask(query); setQuery(''); }}><Sparkles className="text-primary" />Ask “{query}”<CommandShortcut>↵</CommandShortcut></CommandItem></CommandGroup>}
+            {query.trim() && <CommandGroup heading="Ask"><CommandItem value={`ask ${query}`} onSelect={() => { ask(query); setQuery(''); }}><CornerDownLeft className="text-muted-foreground" />Ask “{query}”<CommandShortcut>↵</CommandShortcut></CommandItem></CommandGroup>}
             <CommandGroup heading="Suggestions">
-              {SUGGESTIONS.map(s => <CommandItem key={s} onSelect={() => ask(s)}><Sparkles className="text-muted-foreground" />{s}</CommandItem>)}
+              {SUGGESTIONS.map(s => <CommandItem key={s} onSelect={() => ask(s)}><CornerDownLeft className="text-muted-foreground" />{s}</CommandItem>)}
             </CommandGroup>
             <CommandGroup heading="Go to">
               <CommandItem onSelect={() => { setView('all'); setPalette(false); }}><LayoutGrid />Overview</CommandItem>
-              {nav.map(s => <CommandItem key={s.key} onSelect={() => { setView(s.key); setPalette(false); }}><Icon name={s.chat ? 'sparkle' : sectionIcon(s) ?? 'pulse'} />{s.key}</CommandItem>)}
+              {nav.map(s => <CommandItem key={s.key} onSelect={() => { setView(s.key); setPalette(false); }}><Icon name={s.chat ? 'chat' : sectionIcon(s) ?? 'pulse'} />{s.key}</CommandItem>)}
             </CommandGroup>
           </CommandList>
         </CommandDialog>

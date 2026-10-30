@@ -4,7 +4,7 @@ import { Chat, useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
 import {
   Activity, ArrowUp, Bookmark, Check, ChevronRight, Copy, CornerDownRight, FileText, Film, Lightbulb, Loader2, Paperclip, RotateCcw,
-  Search, Sparkles, Square, X, Zap,
+  Search, Square, X, Zap,
 } from 'lucide-react';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
@@ -56,7 +56,7 @@ const VERB: [RegExp, string, typeof Search][] = [
   [/docs_search/, 'Searched documents', Search], [/docs_read/, 'Read a document', FileText], [/docs_add/, 'Filed a document', FileText],
   [/bookmarks_search/, 'Searched saved links', Search], [/bookmark_read/, 'Read a bookmark', Bookmark], [/bookmark_save/, 'Saved a link', Bookmark],
   [/plex|streams|recently_added|history/, 'Checked Plex', Film], [/service_status/, 'Checked services', Activity], [/downloads/, 'Checked downloads', Activity],
-  [/home_find/, 'Looked up the home', Search], [/home_control|light|press/, 'Changed the home', Zap], [/show/, 'Laid out cards', Sparkles],
+  [/home_find/, 'Looked up the home', Search], [/home_control|light|press/, 'Changed the home', Zap], [/show/, 'Laid out cards', Lightbulb],
   [/status|local_ai|pc_status|system/, 'Checked status', Activity],
 ];
 const verbOf = (name: string) => VERB.find(([re]) => re.test(name)) ?? [/./, toolLabel(name).replace(/^\w/, c => c.toUpperCase()), Lightbulb] as const;
@@ -187,7 +187,6 @@ export default function Assistant({ name, model, ask, suggestions, onAsk }: {
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-2.5 border-b px-5 py-4">
-        <div className="grid size-8 place-items-center rounded-full bg-primary/10"><Sparkles className="size-4 text-primary" /></div>
         <div className="min-w-0">
           <div className="text-sm font-semibold leading-tight">{name}</div>
           <div className="truncate text-xs text-muted-foreground">{model}</div>
@@ -197,14 +196,13 @@ export default function Assistant({ name, model, ask, suggestions, onAsk }: {
       <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
         {!messages.length && (
           <div className="pt-10 text-center animate-in fade-in duration-500">
-            <div className="mx-auto mb-4 grid size-12 place-items-center rounded-2xl bg-primary/10"><Sparkles className="size-5 text-primary" /></div>
             <div className="text-lg font-semibold tracking-tight">What would you like to know?</div>
             <p className="mt-1 text-sm text-muted-foreground">Ask about anything on your homepage.</p>
             <div className="mt-6 flex flex-col items-stretch gap-1.5">
               {suggestions.map((s, i) => (
                 <button key={s} onClick={() => onAsk(s)} style={{ animationDelay: `${120 + i * 50}ms` }}
                   className="press flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-left text-sm text-foreground/85 transition-colors fill-mode-both hover:bg-white/[.07] hover:text-foreground animate-in fade-in slide-in-from-bottom-1 duration-300">
-                  <Sparkles className="size-3.5 shrink-0 text-primary" />{s}
+                  {s}
                 </button>
               ))}
             </div>

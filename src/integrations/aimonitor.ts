@@ -29,13 +29,13 @@ export default defineIntegration({
           const today = c.days.at(-1) ?? { cost: 0, tokens: 0 };
           const tok = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n);
           return {
-            type: 'stats', title: 'Local AI usage', icon: 'sparkle', href: cfg.href, items: [],
+            type: 'stats', title: 'Local AI usage', icon: 'gpu', href: cfg.href, items: [],
             summaries: [
-              { label: 'Cost today', icon: 'sparkle', value: `${Math.round(today.cost * 100)}¢`, sub: `${Math.round(c.month * 100)}¢ this month`,
+              { label: 'Cost today', icon: 'coins', value: `${Math.round(today.cost * 100)}¢`, sub: `${Math.round(c.month * 100)}¢ this month`,
                 detail: `${today.kwh?.toFixed(2) ?? '–'} kWh`, trend: c.days.map((d: any) => d.cost) },
               { label: 'Requests', icon: 'pulse', value: j.today.requests.toLocaleString(), sub: 'today',
                 detail: `${Math.round(h.totals.avg_tok_s ?? 0)} tok/s avg`, trend: per(2) },
-              { label: 'Tokens', icon: 'sparkle', value: tok(today.tokens), sub: 'generated today', detail: `${tok(h.totals.prompt_tokens)} read`, trend: per(3) },
+              { label: 'Tokens', icon: 'text', value: tok(today.tokens), sub: 'generated today', detail: `${tok(h.totals.prompt_tokens)} read`, trend: per(3) },
               { label: 'Power', icon: 'gpu', value: `${Math.round(j.gpu.power)} W`, sub: j.model.name, detail: `${Math.round(j.gpu.temp)}°C`,
                 trend: (h.gpu as number[][]).map(r => r[2]), tone: (j.running?.length ?? 0) > 0 ? 'accent' : 'neutral' },
             ],
@@ -53,8 +53,8 @@ export default defineIntegration({
             summary: { label: 'Local AI', icon: 'gpu', value: m.swapping ? 'Loading' : working ? 'Working' : 'Idle', sub: m.name,
               detail: `${Math.round(g.power)} W · ${Math.round(g.temp)}°C`, trend: [...hist.power], tone: working ? 'accent' : 'neutral' },
             note: m.swapping ? `loading ${m.swapping}…` : `${m.name}${working ? ' · working' : ' · idle'}`,
-            activity: m.swapping ? { title: 'Loading model', subtitle: m.swapping, icon: 'sparkle', tone: 'accent' }
-              : working ? { title: 'Local AI', subtitle: `${j.running[0]?.app ? `${j.running[0].app} · ` : ''}${m.name}`, icon: 'sparkle', trailing: `${Math.round(g.power)} W`,
+            activity: m.swapping ? { title: 'Loading model', subtitle: m.swapping, icon: 'gpu', tone: 'accent' }
+              : working ? { title: 'Local AI', subtitle: `${j.running[0]?.app ? `${j.running[0].app} · ` : ''}${m.name}`, icon: 'gpu', trailing: `${Math.round(g.power)} W`,
                 tone: 'accent', count: j.running.length } : undefined,
             items: [
               { label: 'GPU', value: Math.round(g.util), unit: '%', trend: [...hist.util], sub: `${Math.round(g.temp)}°C`, tone: heat(g.temp) },
