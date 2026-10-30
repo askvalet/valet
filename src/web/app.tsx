@@ -26,7 +26,7 @@ interface Page {
   nav?: { side: 'left' | 'right' | 'top' | 'bottom' };
   island?: { activities: string[]; idle: 'notch' | 'hide' };
   weather?: string;
-  sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; sizes?: Record<string, 'small' | 'large'>; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; widgets: string[] }[];
+  sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; sizes?: Record<string, 'small' | 'wide' | 'tall' | 'large'>; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
 }
 
@@ -380,19 +380,21 @@ function Home({ account }: { account: boolean }) {
               : (
                 (() => {
                   const keys = sec.widgets.filter(key => state[key] ? !isEmpty(state[key].card) : !shapeOf(key)?.empty);
-                  const widget = (key: string, large = false) => {
+                  const widget = (key: string, large = false, fill = false) => {
                     const s = state[key];
-                    return <Shaped key={key} id={key} card={s?.card}><Widget large={large} card={s?.card} kind={shapeOf(key)?.t} explain={explainFor(key)} failed={s?.error} title={page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={(sec.variant === 'minimal' || phone) && view === 'all'} headless={sec.header === false && view === 'all'}
+                    return <Shaped key={key} id={key} card={s?.card}><Widget large={large} fill={fill} card={s?.card} kind={shapeOf(key)?.t} explain={explainFor(key)} failed={s?.error} title={page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={(sec.variant === 'minimal' || phone) && view === 'all'} headless={sec.header === false && view === 'all'}
                       status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
                       run={page?.canAct === false ? undefined : runFor(key)} /></Shaped>;
                   };
-                  // sized: a grid of narrow tracks; small cards take one (as their headline tile), medium two, large four
+                  // sized: a bento of 2, 4 or 6 tracks, so rows end flush at any width. Small cards take one track as their
+                  // headline tile, wide takes two, medium is the card at two, tall is that over two rows, large four.
                   if (sec.sizes && Object.keys(sec.sizes).length && !aside) return (
-                    <div className="grid grid-flow-row-dense items-start gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 170px), 1fr))' }}>
+                    <div className="grid grid-flow-row-dense grid-cols-2 gap-4 @2xl/main:grid-cols-4 @5xl/main:grid-cols-6">
                       {keys.map((key, j) => {
                         const size = sec.sizes![key], c = state[key]?.card, beat = { '--i': Math.min(j, 8) } as React.CSSProperties;
-                        if (size === 'small' && c?.summary) return <div key={key} className="settle-card min-w-0" style={beat}><SummaryTile s={c.summary} href={c.href} explain={explainFor(key)} /></div>;
-                        return <div key={key} style={beat} className={cn('settle-card col-span-full min-w-0 @xl/main:col-span-2', size === 'large' && '@5xl/main:col-span-4')}>{widget(key, size === 'large')}</div>;
+                        const span = cn(size !== 'small' && 'col-span-2', size === 'tall' && 'row-span-2', size === 'large' && 'col-span-full @5xl/main:col-span-4');
+                        if ((size === 'small' || size === 'wide') && c?.summary) return <div key={key} className={cn('settle-card min-w-0', span)} style={beat}><SummaryTile s={c.summary} href={c.href} explain={explainFor(key)} /></div>;
+                        return <div key={key} style={beat} className={cn('settle-card min-w-0', size === 'small' ? 'col-span-2' : span)}>{widget(key, size === 'large', true)}</div>;
                       })}
                     </div>
                   );

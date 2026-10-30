@@ -15,7 +15,12 @@ export interface Summary {
   trend?: number[];       // recent values, drawn as a live area graph behind the tile
   pct?: number;           // 0..1, for ring gauges
   ring?: string;          // the number shown inside a ring gauge, if different from `value` (e.g. "23%")
+  image?: string;         // artwork that fills the tile, with the text over it
+  marks?: Mark[];         // one small bar per thing the tile counts, e.g. a bar for each drive
 }
+
+/** One thing in a tile's row of bars: `pct` sets the height, `tone` the colour, `label` the tooltip. */
+export interface Mark { pct?: number; tone?: Tone; label?: string }
 
 /** Something happening right now, for the island at the top of the page: a stream, a download, a robot cleaning.
  *  A card carries one only while it's live; the island shows the live ones in the order the config lists them. */

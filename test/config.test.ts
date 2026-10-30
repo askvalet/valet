@@ -18,6 +18,12 @@ test('substitute: env, NAME_FILE, file:, escaped, and a clear error when missing
   assert.throws(() => substitute('${file:/nonexistent/x}'), /can't read/);
 });
 
+test('layout: tall and wide are sizes, anything else is refused', () => {
+  const sizes = (size: string) => Config.safeParse({ layout: [{ widgets: [{ widget: 'a.b', size }] }] });
+  for (const s of ['small', 'wide', 'medium', 'tall', 'large']) assert.ok(sizes(s).success, s);
+  assert.equal(sizes('huge').success, false);
+});
+
 test('durations: seconds, 30s, 5m, 2h', () => {
   assert.deepEqual([10, '30s', '5m', '2h', '1d'].map(v => Every.parse(v)), [10_000, 30_000, 300_000, 7_200_000, 86_400_000]);
   assert.throws(() => Every.parse('soon'));

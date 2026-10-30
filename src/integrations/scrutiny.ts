@@ -25,10 +25,12 @@ export default defineIntegration({
           title: 'Drives', interval: 600_000,
           async fetch() {
             const list = await drives(), bad = list.filter(d => d.failed), warm = list.filter(d => d.hot);
+            const temps = list.flatMap(d => d.temp != null ? [d.temp] : []);
             return {
               type: 'list', title: 'Drives', icon: 'disk', href: cfg.href ?? cfg.url,
-              summary: { label: 'Drives', icon: 'disk', value: bad.length ? `${bad.length} failing` : 'Healthy', tone: bad.length ? 'bad' : warm.length ? 'warn' : 'good',
-                sub: `${list.length} drives`, detail: list.length ? `${Math.max(...list.map(d => d.temp ?? 0))}°C max` : undefined },
+              summary: { label: 'Drives', icon: 'disk', value: bad.length ? `${bad.length} failing` : temps.length ? `${Math.max(...temps)}°C` : 'Healthy', tone: bad.length ? 'bad' : warm.length ? 'warn' : 'good',
+                sub: bad.length ? `of ${list.length} drives` : warm.length ? `${warm.length} of ${list.length} running hot` : `All ${list.length} healthy`,
+                marks: list.map(d => ({ pct: d.temp != null ? Math.max(0, Math.min(1, (d.temp - 20) / 40)) : undefined, tone: d.failed ? 'bad' as const : d.hot ? 'warn' as const : undefined, label: [d.model, d.temp != null && `${d.temp}°C`].filter(Boolean).join(' · ') })) },
               items: list.map(d => ({ title: d.model, subtitle: [d.temp != null && `${d.temp}°C`, age(d.hours)].filter(Boolean).join(' · '),
                 meta: d.failed ? 'Failing' : d.hot ? 'Hot' : undefined, dot: d.failed ? 'bad' : d.hot ? 'warn' : 'good', tone: d.failed ? 'bad' : d.hot ? 'warn' : 'neutral' })),
             };

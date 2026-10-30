@@ -53,7 +53,8 @@ test('pihole: parallel requests share one sign-in, and an expired session signs 
   expired = true;
   await p.widgets.stats.fetch();
   assert.equal(logins, 2);
-  assert.equal((card as any).summary.value, '14%');
+  assert.equal((card as any).summary.value, '140');
+  assert.equal((card as any).summary.ring, '14%');
 });
 
 test('uptime kuma: parses metrics; a down monitor makes the summary red', async () => {
@@ -80,19 +81,22 @@ test('scrutiny: a failing drive is called out', async () => {
   const card: any = await s.widgets.drives.fetch();
   valid(card);
   assert.equal(card.summary.value, '1 failing');
+  assert.deepEqual(card.summary.marks.map((m: any) => m.tone), [undefined, 'bad']);   // one bar per drive
   assert.equal(card.items[1].tone, 'bad');
 });
 
 test('arr: episodes and movies come out in date order with friendly days', async () => {
   const soon = (d: number) => new Date(Date.now() + d * 864e5).toISOString();
   const a = make(arr, { sonarr: { url: 'http://s', apiKey: 'k' }, radarr: { url: 'http://r', apiKey: 'k' } }, fake(url => url.startsWith('http://s')
-    ? [{ airDateUtc: soon(3), seasonNumber: 1, episodeNumber: 2, title: 'Two', hasFile: false, series: { title: 'Show', images: [] } }]
-    : [{ title: 'Film', year: 2026, digitalRelease: soon(1), hasFile: false, images: [{ coverType: 'poster', remoteUrl: 'https://img/original/x.jpg' }] }]));
+    ? [{ airDateUtc: soon(3), seasonNumber: 1, episodeNumber: 2, title: 'Two', hasFile: false, series: { title: 'Show', images: [{ coverType: 'fanart', remoteUrl: 'https://artworks.thetvdb.com/banners/fanart/original/1.jpg' }] } }]
+    : [{ title: 'Film', year: 2026, digitalRelease: soon(1), hasFile: false, images: [{ coverType: 'poster', remoteUrl: 'https://image.tmdb.org/t/p/original/x.jpg' }, { coverType: 'fanart', remoteUrl: 'https://image.tmdb.org/t/p/original/y.jpg' }] }]));
   const card: any = await a.widgets.upcoming.fetch();
   valid(card);
   assert.deepEqual(card.items.map((i: any) => i.title), ['Film', 'Show']);
   assert.equal(card.items[0].badge, 'Tomorrow');
-  assert.equal(card.items[0].image, 'https://img/w342/x.jpg');
+  assert.equal(card.items[0].image, 'https://image.tmdb.org/t/p/w342/x.jpg');
+  assert.deepEqual([card.summary.value, card.summary.sub, card.summary.image], ['Film', 'Tomorrow', 'https://image.tmdb.org/t/p/w780/y.jpg']);
+  assert.equal(card.items[1].backdrop, 'https://artworks.thetvdb.com/banners/fanart/original/1.jpg');   // only TMDB has sized copies
 });
 
 test('home assistant schedule: next time rolls to tomorrow, and shows in the island when close', async () => {

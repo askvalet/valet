@@ -43,10 +43,10 @@ export const Every = z.union([z.number().positive(), z.string().regex(/^\d+(\.\d
 
 const Section = z.object({
   title: z.string().optional(),
-  // "instance.widget", or { widget, size } to pick a size: small (its headline as a tile), medium (the card),
-  // large (the card across two columns, with room for more)
+  // "instance.widget", or { widget, size } to pick a size: small (its headline as a tile), wide (that tile at twice the
+  // width), medium (the card), tall (the card over two rows), large (the card across two columns, with room for more)
   // `every` overrides how often it refreshes while someone's looking: seconds, or "30s", "5m", "1h"
-  widgets: z.array(z.union([z.string(), z.object({ widget: z.string(), size: z.enum(['small', 'medium', 'large']).default('medium'), every: Every.optional() })]))
+  widgets: z.array(z.union([z.string(), z.object({ widget: z.string(), size: z.enum(['small', 'wide', 'medium', 'tall', 'large']).default('medium'), every: Every.optional() })]))
     .transform(ws => ws.map(w => typeof w === 'string' ? { widget: w, size: 'medium' as const } : w)),
   columns: z.number().int().min(1).max(4).optional(),
   // tiles: headline tiles with live graphs · rings: the same as ring gauges coloured by health · cards: full cards

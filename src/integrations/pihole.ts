@@ -39,8 +39,8 @@ export default defineIntegration({
               note: off ? (timer ? `paused · ${Math.ceil(timer / 60)} min left` : 'blocking off') : undefined,
               buttons: off ? [{ label: 'Resume blocking', action: 'pause', args: { minutes: 0 } }]
                 : [{ label: 'Pause 5 min', action: 'pause', args: { minutes: 5 } }, { label: 'Pause 1 hour', action: 'pause', args: { minutes: 60 } }],
-              summary: { label: 'Ads blocked', icon: 'shield', value: off ? 'Paused' : pct(s.queries.percent_blocked), tone: off ? 'warn' : 'good',
-                sub: `${s.queries.blocked.toLocaleString()} today`, trend: history.map(x => x.blocked), pct: s.queries.percent_blocked / 100 },
+              summary: { label: 'Ads blocked', icon: 'shield', value: off ? 'Paused' : s.queries.blocked.toLocaleString(), tone: off ? 'warn' : 'good', ring: pct(s.queries.percent_blocked),
+                sub: `${pct(s.queries.percent_blocked)} of queries`, trend: history.map(x => x.blocked), pct: s.queries.percent_blocked / 100 },
               items: [
                 { label: off ? 'Blocking paused' : 'Blocked', value: off ? 'Off' : pct(s.queries.percent_blocked), tone: off ? 'warn' : 'good', trend: history.map(x => x.blocked), sub: top[0] ? `most: ${top[0].domain}` : undefined },
                 { label: 'Queries', value: s.queries.total.toLocaleString() },

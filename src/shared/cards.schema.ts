@@ -11,6 +11,7 @@ const nums = z.array(z.number().refine(Number.isFinite, 'not a finite number'));
 export const Summary = z.object({
   label: z.string(), value: z.union([z.string(), z.number()]), sub: z.string().optional(), detail: z.string().optional(),
   tone: Tone.optional(), icon: z.string().optional(), trend: nums.optional(), pct: z.number().optional(), ring: z.string().optional(),
+  image: z.string().optional(), marks: z.array(z.object({ pct: z.number().optional(), tone: Tone.optional(), label: z.string().optional() }).strict()).optional(),
 }).strict();
 export const Activity = z.object({
   title: z.string(), subtitle: z.string().optional(), image: z.string().optional(), icon: z.string().optional(), pct: z.number().optional(),

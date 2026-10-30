@@ -48,7 +48,7 @@ export default defineIntegration({
           have: m.hasFile ? 1 : 0, of: 1, monitored: m.monitored, image: img(m.images) })),
       ].sort((a, b) => b.score - a.score).slice(0, 6);
     }
-    const img = (images: any[] = [], type = 'poster') => images.find(i => i.coverType === type)?.remoteUrl?.replace('/original/', '/w342/');
+    const img = (images: any[] = [], type = 'poster') => images.find(i => i.coverType === type)?.remoteUrl?.replace(/(image\.tmdb\.org\/t\/p)\/original\//, `$1/${type === 'fanart' ? 'w780' : 'w342'}/`);
     const day = (n: number) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
 
     async function upcoming(days: number) {
@@ -58,7 +58,7 @@ export default defineIntegration({
         const web = (cfg.sonarr.href ?? cfg.sonarr.url).replace(/\/$/, '');
         for (const e of eps) out.push({ at: e.airDateUtc, kind: 'episode', have: e.hasFile, title: e.series?.title ?? e.title,
           subtitle: `S${String(e.seasonNumber).padStart(2, '0')}E${String(e.episodeNumber).padStart(2, '0')}${e.title ? ` · ${e.title}` : ''}`,
-          image: img(e.series?.images), href: `${web}/series/${e.series?.titleSlug ?? ''}`, badge: e.hasFile ? 'Ready' : when(e.airDateUtc) });
+          image: img(e.series?.images), backdrop: img(e.series?.images, 'fanart'), href: `${web}/series/${e.series?.titleSlug ?? ''}`, badge: e.hasFile ? 'Ready' : when(e.airDateUtc) });
       }
       if (cfg.radarr) {
         const films = await get(cfg.radarr, `calendar?start=${day(-1)}&end=${day(days * 2)}`);
@@ -67,7 +67,7 @@ export default defineIntegration({
           const at = [m.digitalRelease, m.physicalRelease].filter(Boolean).sort().find(d => d >= day(-1)) ?? m.digitalRelease ?? m.inCinemas;
           if (!at) continue;
           out.push({ at, kind: 'movie', have: m.hasFile, title: m.title, subtitle: `${m.year ?? ''} · Movie`.replace(/^ · /, ''),
-            image: img(m.images), href: `${web}/movie/${m.titleSlug ?? m.tmdbId}`, badge: m.hasFile ? 'Ready' : when(at) });
+            image: img(m.images), backdrop: img(m.images, 'fanart'), href: `${web}/movie/${m.titleSlug ?? m.tmdbId}`, badge: m.hasFile ? 'Ready' : when(at) });
         }
       }
       return out.sort((a, b) => a.at.localeCompare(b.at));
@@ -82,7 +82,7 @@ export default defineIntegration({
             const next = list.find(x => !x.have);
             return { type: 'shelf', title: 'Coming up', icon: 'film', aspect: 'poster', layout: 'week', source: { name: 'Sonarr & Radarr', icon: '/api/icon/sonarr' }, items: list.map(({ at, kind, have, ...s }) => s), empty: 'Nothing scheduled',
               buttons: [{ label: 'Search for missing', action: 'search_missing' }],
-              summary: { label: 'Coming up', icon: 'film', value: next ? next.badge! : 'Nothing', sub: next ? `${next.title}` : `next ${cfg.days} days` } };
+              summary: { label: 'Coming up', icon: 'film', value: next ? next.title : 'Nothing', sub: next ? next.badge : `next ${cfg.days} days`, image: next?.backdrop ?? next?.image } };
           },
         },
       },

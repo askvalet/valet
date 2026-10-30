@@ -142,7 +142,7 @@ A list of sections; each is a tab in the rail.
 | Option | Default | |
 |---|---|---|
 | `title` | none | |
-| `widgets` | required | `instance.widget`, or `{ widget, size: small\|medium\|large, every: 30s }` (`every` overrides how often it refreshes: seconds, or `30s`, `5m`, `1h`) |
+| `widgets` | required | `instance.widget`, or `{ widget, size: small\|wide\|medium\|tall\|large, every: 30s }` (`every` overrides how often it refreshes: seconds, or `30s`, `5m`, `1h`) |
 | `display` | `cards` | `cards`, `tiles`, `rings` or `media` |
 | `columns` | auto | cards per row (in a sidebar: the list's columns) |
 | `place` | `main` | `left` or `right` makes it a sidebar |

@@ -251,10 +251,10 @@ function Links({ card }: { card: LinksCard }) {
 }
 
 /** Artwork that fades in once decoded, so nothing pops. */
-function Art({ src, className, alt = '' }: { src?: string; className?: string; alt?: string }) {
+function Art({ src, className, alt = '', style, onLoaded }: { src?: string; className?: string; alt?: string; style?: React.CSSProperties; onLoaded?: (img: HTMLImageElement) => void }) {
   const [ready, setReady] = useState(false);
   if (!src) return null;
-  return <img src={src} alt={alt} loading="lazy" decoding="async" onLoad={() => setReady(true)}
+  return <img src={src} alt={alt} loading="lazy" decoding="async" style={style} onLoad={e => { setReady(true); onLoaded?.(e.currentTarget); }}
     className={cn('transition-opacity duration-700 ease-out', ready ? 'opacity-100' : 'opacity-0', className)} />;
 }
 
@@ -671,15 +671,46 @@ function Showcase({ card, run }: { card: ShowcaseCard; run?: RunAction }) {
   );
 }
 
+/** Geometric star lattice, the kind that frames a mushaf page, fading out from the card's corner. */
+function Lattice() {
+  return (
+    <svg className="verse-lattice pointer-events-none absolute inset-0 -z-10 size-full text-foreground" aria-hidden>
+      <defs><pattern id="lattice" width="56" height="56" patternUnits="userSpaceOnUse">
+        <g fill="none" stroke="currentColor" strokeWidth=".8"><rect x="17" y="17" width="22" height="22" /><rect x="17" y="17" width="22" height="22" transform="rotate(45 28 28)" /><path d="M0 0 12.4 12.4M56 0 43.6 12.4M0 56l12.4-12.4M56 56 43.6 43.6" /></g>
+      </pattern></defs>
+      <rect width="100%" height="100%" fill="url(#lattice)" />
+    </svg>
+  );
+}
+
 /** A verse: the Arabic large and right-to-left, its meaning beneath, the reference quietly at the end. */
 function Verse({ card }: { card: VerseCard }) {
   const dense = useContext(Dense);
   return (
-    <a href={card.href} target="_blank" rel="noreferrer" className="block space-y-3">
+    <a href={card.href} target="_blank" rel="noreferrer" className="flex flex-1 flex-col gap-3">
       {card.arabic && <p dir="rtl" lang="ar" className={cn('verse-ar leading-[2.1] text-foreground', dense ? 'text-[20px]' : 'text-[26px]')}>{card.arabic}</p>}
       <p className={cn('leading-relaxed text-foreground/80', dense ? 'text-[13px]' : 'text-[14.5px]')}>{card.english.replace(/[˹˺]/g, '')}</p>
-      <p className="text-[12px] text-muted-foreground">{card.reference}{card.meaning ? ` · ${card.meaning}` : ''}</p>
+      <p className="mt-auto text-[12px] text-muted-foreground">{card.reference}{card.meaning ? ` · ${card.meaning}` : ''}</p>
     </a>
+  );
+}
+
+/** The card's backdrop is the sky outside right now: dawn, day, golden hour, dusk or a night with stars. It needs a
+ *  sunrise and a sunset in the times; any other schedule stays plain. */
+function SkyWash({ card }: { card: ScheduleCard }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 60_000); return () => clearInterval(t); }, []);
+  const time = (re: RegExp) => { const x = card.items.find(i => re.test(i.name)); return x ? Date.parse(x.at) : NaN; };
+  const rise = time(/sunrise/i), set = time(/maghrib|sunset/i), min = 60_000;
+  if (Number.isNaN(rise) || Number.isNaN(set)) return null;
+  const sky = Math.abs(now - rise) < 50 * min ? ['#ff8a5c', '#6a5ae0'] : Math.abs(now - set) < 50 * min && now >= set ? ['#c2487f', '#2f2a7a']
+    : now > set - 80 * min && now < set ? ['#ffab4d', '#c2557a'] : now > rise && now < set ? ['#4fb0ff', '#2a6fd6'] : ['#26338a', '#0d1140'];
+  const night = now < rise - 50 * min || now > set + 50 * min;
+  return (
+    <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
+      <div className="absolute inset-0 opacity-30 transition-[background] duration-1000" style={{ background: `radial-gradient(120% 90% at 50% 112%, ${sky[0]}, ${sky[1]} 52%, transparent 82%)` }} />
+      {night && [[8, 12], [17, 34], [26, 9], [38, 22], [49, 7], [61, 30], [72, 12], [83, 26], [92, 8], [13, 56], [88, 52]].map(([x, y], i) => <span key={i} className="twinkle absolute size-[2px] rounded-full bg-white" style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${i * .7}s` }} />)}
+    </div>
   );
 }
 
@@ -703,7 +734,7 @@ function Sky({ card }: { card: ScheduleCard }) {
   const path = Array.from({ length: 61 }, (_, i) => { const p = point(rise - .22 * (set - rise) + (i / 60) * 1.44 * (set - rise)); return `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`; }).join('');
   const clock = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   return (
-    <div className="space-y-2">
+    <div className="flex flex-1 flex-col justify-between gap-2">
       <div className="flex items-end justify-between">
         <div><div className="metric text-[24px] leading-none">{next.name}</div><div className="mt-1.5 text-[13px] text-muted-foreground tabular">{clock(next.t)}</div></div>
         <div className="text-right"><div className={cn('metric text-[22px] tabular leading-none', mins <= 15 && 'text-good')}><span key={mins} className="tick">{mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`}</span></div>
@@ -716,14 +747,19 @@ function Sky({ card }: { card: ScheduleCard }) {
         </defs>
         <line x1="0" x2={W} y1={base} y2={base} stroke="currentColor" strokeOpacity=".14" strokeDasharray="2 5" />
         <path d={path} fill="none" stroke="url(#sky-path)" strokeWidth="2.2" strokeLinecap="round" opacity=".75" />
-        {items.map(x => { const p = point(x.t), isNext = x.name === next.name; return (
-          <g key={x.name} opacity={x.muted ? .45 : 1}>
-            <circle cx={p.x} cy={p.y} r={isNext ? 5 : 3.5} fill={isNext ? '#fff' : 'currentColor'} fillOpacity={isNext ? 1 : .55} />
-            {/* labels sit outside the arc: above it by day, below it by night */}
-            <text x={p.x} y={p.y + (p.up ? -33 : 26)} textAnchor="middle" className="fill-current text-[20px] font-medium" opacity={isNext ? 1 : .7}>{x.name}</text>
-            <text x={p.x} y={p.y + (p.up ? -13 : 46)} textAnchor="middle" className="fill-current text-[17px] tabular" opacity=".6">{clock(x.t)}</text>
-          </g>
-        ); })}
+        {items.map(x => {
+          const p = point(x.t), isNext = x.name === next.name, off = Math.abs(p.x - cx);
+          // labels sit outside the arc: above it by day, below it by night, and out to the side where it runs steep
+          const side = p.up && off > r * .9, anchor = side ? (p.x < cx ? 'end' : 'start') : 'middle';
+          const lx = side ? p.x + (p.x < cx ? -14 : 14) : p.x + (p.up ? (p.x - cx) * .12 : 0), ly = side ? p.y - 8 : p.y + (p.up ? -33 : 26);
+          return (
+            <g key={x.name} opacity={x.muted ? .45 : 1}>
+              <circle cx={p.x} cy={p.y} r={isNext ? 5 : 3.5} fill={isNext ? '#fff' : 'currentColor'} fillOpacity={isNext ? 1 : .55} />
+              <text x={lx} y={ly} textAnchor={anchor} className="fill-current text-[20px] font-medium" opacity={isNext ? 1 : .7}>{x.name}</text>
+              <text x={lx} y={ly + 20} textAnchor={anchor} className="fill-current text-[17px] tabular" opacity=".6">{clock(x.t)}</text>
+            </g>
+          );
+        })}
         <circle cx={sun.x} cy={sun.y} r="22" fill="url(#sky-sun)" className="transition-all duration-1000" />
         <circle cx={sun.x} cy={sun.y} r="6.5" fill={sun.up ? '#ffe680' : '#e8edff'} className="transition-all duration-1000" />
       </svg>
@@ -778,10 +814,27 @@ function Schedule({ card }: { card: ScheduleCard }) {
   );
 }
 
+/** The black bars baked into a video still or a widescreen edit, as fractions of its height. Both edges must be black,
+ *  so a photo that's merely dark at the top keeps its sky. Images from another origin can't be read, and stay as they are. */
+function letterbox(img: HTMLImageElement): [number, number] | undefined {
+  try {
+    const W = 24, H = 96, c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const x = c.getContext('2d', { willReadFrequently: true })!;
+    x.drawImage(img, 0, 0, W, H);
+    const d = x.getImageData(0, 0, W, H).data;
+    const black = (y: number) => Array.from({ length: W }, (_, i) => (y * W + i) * 4).every(k => d[k] + d[k + 1] + d[k + 2] < 36);
+    let top = 0, bottom = 0;
+    while (top < H / 3 && black(top)) top++;
+    while (bottom < H / 3 && black(H - 1 - bottom)) bottom++;
+    return top >= 3 && bottom >= 3 ? [(top + 1) / H, (bottom + 1) / H] : undefined;
+  } catch { return undefined; }
+}
+
 /** Flashback: one photo at a time, filling the card, crossfading slowly with a gentle drift; the moment's caption
  *  ("3 years ago · Lisbon") sits over the bottom. Mosaic: one large photo and four small ones. Hover pauses. */
-function Photos({ card, large }: { card: PhotosCard; large?: boolean }) {
-  const items = card.items, [i, setI] = useState(0), [paused, setPaused] = useState(false);
+function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?: boolean; fill?: boolean; label?: string; status?: ReactNode }) {
+  const items = card.items, [i, setI] = useState(0), [paused, setPaused] = useState(false), [bars, setBars] = useState<Record<number, [number, number]>>({});
   useEffect(() => {
     if (items.length < 2 || paused || (large && card.style !== 'flashback')) return;
     const t = setInterval(() => setI(n => (n + 1) % items.length), 7000);
@@ -801,18 +854,21 @@ function Photos({ card, large }: { card: PhotosCard; large?: boolean }) {
       </div>
     );
   }
-  const cur = items[i];
+  const cur = items[i], [lead, ...rest] = [cur.badge, cur.title, cur.subtitle].filter(Boolean);
   return (
     <a href={cur.href} target="_blank" rel="noreferrer" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
-      className="relative isolate block aspect-[4/3] overflow-hidden rounded-2xl bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/.55)]">
+      className={cn('lift relative isolate block overflow-hidden rounded-[calc(var(--radius)*1.6)] bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/.55)]', fill ? 'h-full min-h-[280px]' : 'aspect-[4/3]')}>
       {items.map((p, k) => (
-        <Art key={k} src={p.image} alt={p.title ?? ''} className={cn('photo-slide absolute inset-0 -z-10 size-full object-cover', k === i && 'is-on')} />
+        <Art key={k} src={p.image} alt={p.title ?? ''} className={cn('photo-slide absolute inset-0 -z-10 size-full object-cover', k === i && 'is-on')}
+          style={bars[k] && { height: `${100 / (1 - bars[k][0] - bars[k][1])}%`, top: `${-100 * bars[k][0] / (1 - bars[k][0] - bars[k][1])}%` }}
+          onLoaded={img => { const b = letterbox(img); if (b) setBars(s => ({ ...s, [k]: b })); }} />
       ))}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
+      <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_top,rgb(0_0_0/.72),rgb(0_0_0/.08)_38%,transparent_60%,rgb(0_0_0/.5))]" />
+      {label && <div className="absolute inset-x-0 top-0 flex items-center gap-2 p-5 text-[15px] font-semibold [text-shadow:0_1px_8px_rgb(0_0_0/.45)]"><span className="min-w-0 truncate">{label}</span>{status}</div>}
+      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-5">
         <div key={i} className="min-w-0 tick">
-          {cur.badge && <div className="text-[22px] font-semibold tracking-tight">{cur.badge}</div>}
-          <div className="truncate text-[13px] text-white/75">{[cur.title, cur.subtitle].filter(Boolean).join(' · ')}</div>
+          {lead && <div className="truncate text-[21px] font-semibold tracking-tight">{lead}</div>}
+          {rest.length > 0 && <div className="truncate text-[13px] text-white/75">{rest.join(' · ')}</div>}
         </div>
         {items.length > 1 && (
           <div className="mb-1 flex shrink-0 gap-1">
@@ -908,7 +964,7 @@ export function Shaped({ id, card, children }: { id: string; card?: CardT; child
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => { if (card && box.current?.offsetHeight) noteShape(id, { t: card.type, h: box.current.offsetHeight }); }, [id, card?.type, !card]);
   const h = !card ? shapes[id]?.h : undefined;
-  return <div ref={box} className="min-w-0" style={h ? { minHeight: h } : undefined}>{children}</div>;
+  return <div ref={box} className="h-full min-w-0" style={h ? { minHeight: h } : undefined}>{children}</div>;
 }
 
 /** A placeholder that looks like the card that's coming. */
@@ -925,11 +981,15 @@ export const TileSkeleton = () => (
   <Card className="relative h-[136px] gap-0 py-0 shadow-card"><div className="flex h-full flex-col justify-between p-4"><Skeleton className="h-3.5 w-2/3" /><Skeleton className="h-7 w-1/2" /></div></Card>
 );
 
-function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, kind, explain, failed }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; kind?: string; explain?: Explain; failed?: string }) {
+function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, fill, kind, explain, failed }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; fill?: boolean; kind?: string; explain?: Explain; failed?: string }) {
   const why = useWhy(explain);
   // artwork-led cards sit directly on the page, without a card frame
   const actions = card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null;
   if (card?.type === 'shelf') return <div className="fade-in-soft min-w-0"><Shelf card={card} small={compact} header={<BareHeader card={card} title={title} status={status} />} />{actions}</div>;
+  // a flashback is all picture: its heading sits on the photo, so the card's edges line up with its neighbours
+  if (card?.type === 'photos' && card.items.length && !large && card.style !== 'mosaic') return (
+    <div className="fade-in-soft h-full min-w-0"><Photos card={card} fill={fill} label={card.title ?? title} status={status} />{actions}</div>
+  );
   if (card?.type === 'photos') return (
     <div className="fade-in-soft min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Photos card={card} large={large} />{actions}</div>
   );
@@ -938,9 +998,11 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
   );
   const t = card?.title ?? title;
   const bare = card?.type === 'group';
+  const scene = !compact && card ? card.type === 'schedule' ? <SkyWash card={card} /> : card.type === 'verse' && card.arabic ? <Lattice /> : null : null;
   return (
     <Dense.Provider value={!!compact}><WhyAsk.Provider value={why.ask}>
-    <Card className={cn('@container/card min-w-0 shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'lift gap-4 py-5', bare && 'border-0 bg-transparent py-0 shadow-none')}>
+    <Card className={cn('@container/card min-w-0 shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'lift gap-4 py-5', bare && 'border-0 bg-transparent py-0 shadow-none', fill && 'h-full', scene && 'relative isolate overflow-hidden')}>
+      {scene}
       {t && !bare && !headless && (
         <CardHeader className={cn('flex items-center gap-2', compact ? 'px-3.5' : 'px-5')}>
           {card?.icon && (compact ? <Icon name={card.icon} className="size-3.5 text-muted-foreground" /> : <span className="icon-tile"><Icon name={card.icon} /></span>)}
@@ -958,8 +1020,8 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
           </CardAction>
         </CardHeader>
       )}
-      <CardContent className={cn(bare ? 'p-0' : compact ? 'px-3.5' : 'px-5')}>
-        {card ? <div className="fade-in-soft"><CardBody card={card} run={run} large={large} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /></div> : <CardSkeleton kind={kind} />}
+      <CardContent className={cn(bare ? 'p-0' : compact ? 'px-3.5' : 'px-5', fill && 'flex flex-1 flex-col')}>
+        {card ? <div className={cn('fade-in-soft', fill && 'flex flex-1 flex-col')}><CardBody card={card} run={run} large={large} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /></div> : <CardSkeleton kind={kind} />}
         {card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null}
         <WhyNote note={why.note} close={why.close} />
       </CardContent>
@@ -979,43 +1041,61 @@ function smooth(pts: [number, number][]) {
   return d;
 }
 
-/** The live graph behind a summary tile: a soft filled area across the lower part of the tile. */
+// a tile's own colour, stable for its icon so integrations get one for free; none of them read as a status colour
+const TINTS = ['#64d2ff', '#7d7aff', '#bf8bff', '#ff8ac4', '#5ee0c5', '#ffc266'];
+const tintOf = (key: string) => TINTS[[...key].reduce((h, c) => (h * 17 + c.charCodeAt(0)) >>> 0, 11) % TINTS.length];
+
+/** A bar for each thing a tile counts: it shows at a glance what a word like "Healthy" only tells you. */
+function TileMarks({ marks }: { marks: NonNullable<Summary['marks']> }) {
+  return (
+    <div className="flex h-8 shrink-0 items-end gap-1" role="img" aria-label={marks.map(m => m.label).filter(Boolean).join(', ')}>
+      {marks.slice(0, 12).map((m, i) => <span key={i} title={m.label} className="tile-mark w-[7px] rounded-full" style={{ height: `${28 + (m.pct ?? .5) * 72}%`, background: m.tone && m.tone !== 'neutral' ? toneVar(m.tone) : 'var(--tint)', animationDelay: `${i * 60}ms` }} />)}
+    </div>
+  );
+}
+
+/** The live graph behind a summary tile: a soft filled area across the lower part of the tile, fading out on the
+ *  left so the number there stays clear of it. */
 function TileGraph({ points }: { points: number[] }) {
   if (points.length < 2) return null;
   const w = 200, h = 60, max = Math.max(...points), min = Math.min(...points), span = max - min || Math.max(1, max);
   const pts = points.map((p, i) => [(i / (points.length - 1)) * w, h - 4 - ((p - min) / span) * (h - 14)] as [number, number]);
   const line = smooth(pts);
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="pointer-events-none absolute inset-x-0 bottom-0 h-[58%] w-full" aria-hidden>
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="tile-graph pointer-events-none absolute inset-x-0 bottom-0 h-[62%] w-full" aria-hidden>
       <defs>
         <linearGradient id="tileFill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="currentColor" stopOpacity=".16" /><stop offset="1" stopColor="currentColor" stopOpacity="0" />
+          <stop offset="0" stopColor="currentColor" stopOpacity=".24" /><stop offset="1" stopColor="currentColor" stopOpacity="0" />
         </linearGradient>
       </defs>
       <path d={`${line}L${w},${h}L0,${h}Z`} fill="url(#tileFill)" />
-      <path d={line} fill="none" stroke="currentColor" strokeOpacity=".38" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
+      <path d={line} fill="none" stroke="currentColor" strokeOpacity=".7" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
 
-/** Headline tile for the overview's top row: label and context up top, the value at the bottom, a live graph behind. */
+/** Headline tile for the overview's top row: label and context up top, the value at the bottom. What's behind them
+ *  depends on what the tile knows: artwork, a live graph, or a bar for each thing it counts. */
 function SummaryTileView({ s, href, explain }: { s: Summary; href?: string; explain?: Explain }) {
   const why = useWhy(explain);
   const trouble = why.ask && (s.tone === 'bad' || s.tone === 'warn');
+  const art = !!s.image;
   const body = (
-    <Card className="@container/tile lift relative h-[136px] gap-0 overflow-hidden py-0 shadow-card">
-      <div className="text-foreground"><TileGraph points={s.trend ?? []} /></div>
-      <div className="relative flex h-full flex-col p-4">
-        <div className="flex items-start gap-3">
-          {s.icon && <Icon name={s.icon} className="mt-0.5 size-[18px] shrink-0 text-muted-foreground" />}
+    <Card className={cn('@container/tile lift relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', art && 'border-transparent text-white')} style={{ '--tint': `color-mix(in oklab, ${tintOf(s.icon ?? s.label)} 80%, var(--foreground))` } as React.CSSProperties}>
+      {art && <><Art src={s.image} className="absolute inset-0 -z-10 size-full object-cover transition-transform duration-700 ease-out group-hover/tile:scale-[1.03]" /><div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(0_0_0/.78),rgb(0_0_0/.42)_38%,transparent_72%)]" /></>}
+      {!art && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} /></div>}
+      <div className={cn('relative flex flex-1 flex-col p-4', art && '[text-shadow:0_1px_10px_rgb(0_0_0/.7)]')}>
+        <div className="flex items-center gap-2.5">
+          {s.icon && <span className={cn('grid size-8 shrink-0 place-items-center rounded-[10px]', art ? 'bg-white/15 backdrop-blur-md' : 'bg-[color-mix(in_oklab,var(--tint)_16%,transparent)] text-[var(--tint)]')}><Icon name={s.icon} className="size-[17px]" /></span>}
           <div className="min-w-0">
             <div className="truncate text-[14px] font-semibold leading-tight @[200px]/tile:text-[15px]">{s.label}</div>
-            {s.sub && <div className="truncate text-[13px] text-muted-foreground">{s.sub}</div>}
+            {s.sub && <div className={cn('truncate text-[13px] leading-tight', art ? 'text-white/75' : 'text-muted-foreground')}>{s.sub}</div>}
           </div>
-          {s.tone && (s.tone === 'good' || s.tone === 'bad') && <span className={cn('dot ml-auto mt-1.5', s.tone === 'good' ? 'dot-good' : 'dot-bad')} />}
+          {s.tone === 'bad' && <span className="dot dot-bad ml-auto" />}
         </div>
-        <div className="mt-auto flex min-w-0 items-baseline justify-between gap-3">
-          <div className={cn('metric min-w-0 shrink-0 truncate text-[20px] leading-none @[200px]/tile:text-[22px]', toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}>{s.value}</div>
+        <div className={cn('mt-auto flex min-w-0 justify-between gap-3 pt-3', s.marks ? 'items-end' : 'items-baseline')}>
+          <div className={cn('metric min-w-0 truncate text-[20px] leading-none @[200px]/tile:text-[22px]', !art && toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}>{s.value}</div>
+          {s.marks?.length ? <TileMarks marks={s.marks} /> : null}
           {s.detail && <div className="hidden min-w-0 truncate text-xs tabular text-muted-foreground @[200px]/tile:block">{s.detail}</div>}
           {trouble && !why.note && <button type="button" className="why-chip" onClick={e => { e.preventDefault(); e.stopPropagation(); why.ask!(`${s.label}: ${s.value} ${s.sub ?? ''}`); }}>Why?</button>}
         </div>
@@ -1028,7 +1108,7 @@ function SummaryTileView({ s, href, explain }: { s: Summary; href?: string; expl
       )}
     </Card>
   );
-  return href ? <a href={href} target="_blank" rel="noreferrer" className="block min-w-0">{body}</a> : <div className="min-w-0">{body}</div>;
+  return href ? <a href={href} target="_blank" rel="noreferrer" className="group/tile block h-full min-w-0">{body}</a> : <div className="group/tile h-full min-w-0">{body}</div>;
 }
 
 /** A ring gauge: a ¾ circle (gap at the bottom), the number in the middle, coloured by health. */

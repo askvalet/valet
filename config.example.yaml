@@ -139,8 +139,9 @@ nav: { side: left }               # where the tab buttons sit: left, right, top 
 #   tab: Name           share a tab with other sections (default: its title)
 #   chat: true          its tab also holds the assistant, full page
 #   heading: false      no title above it on the page (it still names its tab)
-# A widget is "instance.widget", or { widget: instance.widget, size: small | medium | large }:
-#   small = its headline as a tile, medium = the card, large = two columns wide with room for more
+# A widget is "instance.widget", or { widget: instance.widget, size: small | wide | medium | tall | large }:
+#   small = its headline as a tile, wide = that tile at twice the width, medium = the card,
+#   tall = the card over two rows (a photo card as the centrepiece), large = wider, with room for more
 layout:
   - title: Now
     widgets: [system.overview, downloads.active]
