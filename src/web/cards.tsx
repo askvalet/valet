@@ -1,7 +1,7 @@
 // Renders any card from the shared catalog with shadcn/ui primitives. The homepage and the assistant both use this,
 // so a generated card looks exactly like the widget it came from.
 import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
-  Activity, ArrowUpRight, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
+  Activity, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
   type LucideIcon,
 } from 'lucide-react';
 import { createContext, Fragment, lazy, memo, Suspense, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -17,14 +17,14 @@ import type { CodeCard, RankedCard, TableCard, LinksCard, Card as CardT, VerseCa
 // Icon names cards may use (docs/integrations.md lists them; keep the two in step). Anything else: a URL or a path.
 const ICONS: Record<string, LucideIcon> = {
   cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
-  bulb: Lightbulb, home: House, shield: Shield, chat: MessageCircle, image: ImageIcon, clock: Clock, crescent: MoonIcon, game: Gamepad2, book: BookOpen, coins: Coins, text: Type,
+  search: Search, bulb: Lightbulb, home: House, shield: Shield, chat: MessageCircle, image: ImageIcon, clock: Clock, crescent: MoonIcon, game: Gamepad2, book: BookOpen, coins: Coins, text: Type,
   file: FileText, bookmark: Bookmark, rss: Rss, news: Newspaper, reddit: MessagesSquare, tag: Tag, chart: TrendingUp, calendar: Calendar, sun: Sun, moon: Moon, cloud: Cloud, 'cloud-sun': CloudSun, 'cloud-moon': CloudMoon, rain: CloudRain, snow: CloudSnow, fog: CloudFog, storm: CloudLightning,
 };
 export function Icon({ name, className }: { name?: string; className?: string }) {
   if (!name) return null;
   if (name.startsWith('http') || name.startsWith('/')) return <img src={name} alt="" className={cn('size-4', className)} />;
-  const I = ICONS[name];
-  return I ? <I className={cn('size-4', className)} aria-hidden /> : null;
+  const I = ICONS[name] ?? Activity;   // a name we don't know still fills its tile
+  return <I className={cn('size-4', className)} aria-hidden />;
 }
 
 const toneText: Record<Tone, string> = { neutral: '', good: 'text-good', warn: 'text-warn', bad: 'text-bad', accent: 'text-primary' };
@@ -177,7 +177,8 @@ function WhyNote({ note, close }: { note: { busy: boolean; text?: string } | nul
 function AppIcon({ src, name, small }: { src?: string; name: string; small?: boolean }) {
   const [failed, setFailed] = useState(false);
   const size = small ? 'size-[18px]' : 'size-7';
-  if (!src || failed) return <span className={cn(size, 'shrink-0')} aria-hidden />;   // no icon: just the space, so names still line up
+  if (!src) return null;
+  if (failed) return <span className={cn(size, 'shrink-0')} aria-hidden />;   // no icon found: just the space, so names still line up
   return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className={cn(size, 'shrink-0 object-contain')} />;
 }
 
@@ -305,6 +306,21 @@ function Media({ card, compact }: { card: MediaCard; compact?: boolean }) {
     </div>
   );
   if (card.items.length === 1) return <NowPlaying m={card.items[0]} />;
+  // three or more would stack into a tower of banners, so they're rows
+  if (card.items.length > 2) return (
+    <Card className="gap-0 divide-y divide-border py-1 shadow-card">
+      {card.items.map((m, i) => (
+        <div key={i} className="flex min-w-0 items-center gap-3 px-4 py-2.5">
+          <Art src={m.image} className="h-12 w-8 shrink-0 rounded-md object-cover" />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-medium">{m.title}</div>
+            <div className="truncate text-xs text-muted-foreground">{m.tags?.join(' · ') ?? m.subtitle}</div>
+          </div>
+          {m.pct != null && <span className="shrink-0 text-xs tabular text-muted-foreground">{Math.floor(m.pct * 100)}%</span>}
+        </div>
+      ))}
+    </Card>
+  );
   return (
     <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))' }}>
       {card.items.map((m, i) => <NowPlaying key={i} m={m} compact />)}
@@ -857,7 +873,7 @@ function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?
   const cur = items[i], [lead, ...rest] = [cur.badge, cur.title, cur.subtitle].filter(Boolean);
   return (
     <a href={cur.href} target="_blank" rel="noreferrer" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
-      className={cn('lift relative isolate block overflow-hidden rounded-[calc(var(--radius)*1.6)] bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/.55)]', fill ? 'h-full min-h-[280px]' : 'aspect-[4/3]')}>
+      className={cn('lift relative isolate block overflow-hidden rounded-[calc(var(--radius)*1.6)] bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/.55)]', fill ? 'h-full min-h-[280px]' : 'aspect-[4/3] max-h-[460px] w-full')}>
       {items.map((p, k) => (
         <Art key={k} src={p.image} alt={p.title ?? ''} className={cn('photo-slide absolute inset-0 -z-10 size-full object-cover', k === i && 'is-on')}
           style={bars[k] && { height: `${100 / (1 - bars[k][0] - bars[k][1])}%`, top: `${-100 * bars[k][0] / (1 - bars[k][0] - bars[k][1])}%` }}
@@ -1057,8 +1073,8 @@ function TileMarks({ marks }: { marks: NonNullable<Summary['marks']> }) {
 /** The live graph behind a summary tile: a soft filled area across the lower part of the tile, fading out on the
  *  left so the number there stays clear of it. */
 function TileGraph({ points }: { points: number[] }) {
-  if (points.length < 2) return null;
   const w = 200, h = 60, max = Math.max(...points), min = Math.min(...points), span = max - min || Math.max(1, max);
+  if (points.length < 2 || max - min <= Math.abs(max) * .01) return null;   // a count that barely moves has no story to draw
   const pts = points.map((p, i) => [(i / (points.length - 1)) * w, h - 4 - ((p - min) / span) * (h - 14)] as [number, number]);
   const line = smooth(pts);
   return (
@@ -1083,7 +1099,7 @@ function SummaryTileView({ s, href, explain }: { s: Summary; href?: string; expl
   const body = (
     <Card className={cn('@container/tile lift relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', art && 'border-transparent text-white')} style={{ '--tint': `color-mix(in oklab, ${tintOf(s.icon ?? s.label)} 80%, var(--foreground))` } as React.CSSProperties}>
       {art && <><Art src={s.image} className="absolute inset-0 -z-10 size-full object-cover transition-transform duration-700 ease-out group-hover/tile:scale-[1.03]" /><div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(0_0_0/.78),rgb(0_0_0/.42)_38%,transparent_72%)]" /></>}
-      {!art && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} /></div>}
+      {!art && !s.marks && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} /></div>}
       <div className={cn('relative flex flex-1 flex-col p-4', art && '[text-shadow:0_1px_10px_rgb(0_0_0/.7)]')}>
         <div className="flex items-center gap-2.5">
           {s.icon && <span className={cn('grid size-8 shrink-0 place-items-center rounded-[10px]', art ? 'bg-white/15 backdrop-blur-md' : 'bg-[color-mix(in_oklab,var(--tint)_16%,transparent)] text-[var(--tint)]')}><Icon name={s.icon} className="size-[17px]" /></span>}

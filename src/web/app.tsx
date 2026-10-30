@@ -407,11 +407,19 @@ function Home({ account }: { account: boolean }) {
                       <div className="grid gap-4">{keys.filter(k => k !== hero).map(k => widget(k))}</div>
                     </div>
                   );
+                  // a long mix of cards packs into columns, so a tall one doesn't leave a hole beside it
+                  if (!aside && !sec.columns && keys.length > 3) return (
+                    <div className="columns-[340px] gap-4">
+                      {keys.map((k, j) => <div key={k} className="settle-card mb-4 min-w-0 break-inside-avoid" style={{ '--i': Math.min(j, 8) } as React.CSSProperties}>{widget(k)}</div>)}
+                    </div>
+                  );
+                  // a card that's come up empty gives its column back, and cards in a row share a height
+                  const cols = Math.min(sec.columns ?? keys.length, keys.length), row = !aside && keys.length > 1;
                   return (
                     // a fixed column count applies from tablet width up; phones get one column
-                    <div className={cn('grid items-start gap-4', sec.columns && !aside && 'grid-cols-1 @3xl/main:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))]')}
-                      style={sec.columns && !aside ? { '--cols': sec.columns } as React.CSSProperties : { gridTemplateColumns: aside ? '1fr' : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
-                      {keys.map((k, j) => <div key={k} className="settle-card min-w-0" style={{ '--i': Math.min(j, 8) } as React.CSSProperties}>{widget(k)}</div>)}
+                    <div className={cn('grid gap-4', aside && 'items-start', sec.columns && !aside && 'grid-cols-1 @3xl/main:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))]')}
+                      style={sec.columns && !aside ? { '--cols': cols } as React.CSSProperties : { gridTemplateColumns: aside ? '1fr' : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
+                      {keys.map((k, j) => <div key={k} className="settle-card min-w-0" style={{ '--i': Math.min(j, 8) } as React.CSSProperties}>{widget(k, false, row)}</div>)}
                     </div>
                   );
                 })()

@@ -33,11 +33,14 @@ export default defineIntegration({
       return (text.startsWith('{') || text.startsWith('[') ? JSON.parse(text) : text) as T;
     }
     async function state() {
-      const [info, torrents] = await Promise.all([api('transfer/info'), api<any[]>('torrents/info?filter=active&sort=eta')]);
-      const dl = torrents.filter(t => ['downloading', 'stalledDL', 'metaDL', 'forcedDL'].includes(t.state) || t.progress < 1);
-      return { info, dl };
+      // every torrent, not filter=active: that leaves out the stalled ones, which are the ones you'd want to know about
+      const [info, torrents] = await Promise.all([api('transfer/info'), api<any[]>('torrents/info?sort=eta')]);
+      const dl = torrents.filter(t => t.progress < 1);
+      return { info, dl, stuck: dl.filter(isStuck), moving: dl.filter(t => !isStuck(t) && !/paused|stopped/i.test(t.state)) };
     }
-    const label = (t: any) => [t.state === 'stalledDL' ? 'stalled' : fmt.rate(t.dlspeed), `${fmt.bytes(t.amount_left)} left`].join(' · ');
+    const isStuck = (t: any) => t.state === 'stalledDL' || t.state === 'metaDL';
+    const word = (t: any) => t.state === 'metaDL' ? 'Finding peers' : t.state === 'stalledDL' ? 'Stalled' : fmt.rate(t.dlspeed);
+    const label = (t: any) => [word(t), t.state !== 'metaDL' && `${fmt.bytes(t.amount_left)} left`].filter(Boolean).join(' · ');
 
     // Radarr/Sonarr queues → hash → what it is. Cached for a minute; the queues change slowly.
     type Known = { title: string; subtitle?: string; poster?: string; backdrop?: string; quality?: string };
@@ -66,7 +69,7 @@ export default defineIntegration({
       active: {
         title: 'Downloads', interval: 5000,
         async fetch() {
-          const { info, dl } = await state();
+          const { info, dl, stuck, moving } = await state();
           speeds.push(info.dl_info_speed); if (speeds.length > 40) speeds.shift();
           const k = await lookup();
           const items: MediaItem[] = dl.slice(0, 6).map(t => {
@@ -74,19 +77,21 @@ export default defineIntegration({
             return { title: m?.title ?? t.name, subtitle: m?.subtitle ?? label(t), image: m?.poster, backdrop: m?.backdrop, pct: t.progress,
               state: t.state === 'pausedDL' || t.state === 'stoppedDL' ? 'paused' : t.state === 'stalledDL' || t.state === 'metaDL' ? 'buffering' : 'playing',
               remaining: `${Math.floor(t.progress * 100)}%${t.eta < 8640000 ? ` · ${fmt.duration(t.eta)} left` : ''}`, icon: 'download',
-              tags: [m?.quality, t.state === 'stalledDL' ? 'Stalled' : fmt.rate(t.dlspeed), `${fmt.bytes(t.amount_left)} left`].filter(Boolean) as string[],
+              tags: [m?.quality, word(t), t.state !== 'metaDL' && `${fmt.bytes(t.amount_left)} left`].filter(Boolean) as string[],
               detail: label(t) };
           });
-          const first = items[0];
+          const first = items[dl.indexOf(moving[0])];
           return {
             type: 'media', title: 'Downloading', icon: 'download', href: cfg.href ?? cfg.url,
-            summary: { label: 'Downloads', icon: 'download', value: fmt.rate(info.dl_info_speed), sub: dl.length ? `${dl.length} active` : 'Idle',
-              detail: `↑ ${fmt.rate(info.up_info_speed)}`, trend: [...speeds] },
+            summary: { label: 'Downloads', icon: 'download', value: fmt.rate(info.dl_info_speed), sub: [moving.length && `${moving.length} active`, stuck.length && `${stuck.length} stuck`].filter(Boolean).join(' · ') || (dl.length ? `${dl.length} paused` : 'Idle'),
+              detail: `↑ ${fmt.rate(info.up_info_speed)}`, trend: [...speeds],
+              tone: stuck.some(t => t.added_on && Date.now() / 1000 - t.added_on > 3600) ? 'bad' as const : undefined },   // a minute finding peers is normal; hours isn't
             note: dl.length ? `${dl.length > 1 ? `${dl.length} downloads · ` : ''}↓ ${fmt.rate(info.dl_info_speed)}` : undefined,
             empty: 'Nothing downloading',
             buttons: dl.length ? (dl.every(t => /paused|stopped/i.test(t.state)) ? [{ label: 'Resume all', action: 'resume' }] : [{ label: 'Pause all', action: 'pause' }]) : undefined,
-            activity: first && { title: dl.length > 1 ? `${first.title} +${dl.length - 1}` : first.title, subtitle: `↓ ${fmt.rate(info.dl_info_speed)}`,
-              image: first.image, icon: 'download', pct: dl.reduce((s, t) => s + t.progress, 0) / dl.length, trailing: dl[0].eta < 8640000 ? `${fmt.duration(dl[0].eta)} left` : undefined, count: dl.length },
+            // the island is for what's moving: a dead torrent shouldn't sit there for days
+            activity: first && { title: moving.length > 1 ? `${first.title} +${moving.length - 1}` : first.title, subtitle: `↓ ${fmt.rate(info.dl_info_speed)}`,
+              image: first.image, icon: 'download', pct: moving.reduce((s, t) => s + t.progress, 0) / moving.length, trailing: moving[0].eta < 8640000 ? `${fmt.duration(moving[0].eta)} left` : undefined, count: moving.length },
             items,
           };
         },
@@ -119,14 +124,14 @@ export default defineIntegration({
           live: true,
           label: 'Checked downloads',
           followUps: ['When will it finish?', 'Pause downloads'],
-          description: 'Torrents currently downloading with progress, speed, size left and ETA, plus total transfer speed.',
+          description: 'Every unfinished torrent with progress, speed, size left and ETA, plus total transfer speed. `stuck` counts torrents getting nothing: stalled, or still looking for peers; `waitingHours` says how long each has been in the list.',
           access: 'read', input: z.object({}),
           async run() {
-            const { info, dl } = await state();
+            const { info, dl, stuck } = await state();
             return {
-              data: { down: fmt.rate(info.dl_info_speed), up: fmt.rate(info.up_info_speed), count: dl.length,
+              data: { down: fmt.rate(info.dl_info_speed), up: fmt.rate(info.up_info_speed), count: dl.length, stuck: stuck.length,
                       torrents: dl.slice(0, 25).map(t => ({ name: t.name, hash: t.hash, progress: fmt.pct(t.progress), state: t.state,
-                        speed: fmt.rate(t.dlspeed), left: fmt.bytes(t.amount_left), eta: fmt.duration(t.eta), seeds: t.num_seeds })) },
+                        speed: fmt.rate(t.dlspeed), left: fmt.bytes(t.amount_left), eta: fmt.duration(t.eta), seeds: t.num_seeds, stuck: isStuck(t), waitingHours: t.added_on ? Math.round((Date.now() / 1000 - t.added_on) / 3600) : undefined })) },
               card: await widgets.active.fetch(),
             };
           },

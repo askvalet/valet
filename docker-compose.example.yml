@@ -1,7 +1,7 @@
 # Valet with Docker Compose. Put config/config.yaml and .env next to this file, then: docker compose up -d
 services:
   valet:
-    image: ghcr.io/OWNER/valet:latest
+    image: ghcr.io/ibrahimirfan/valet:latest
     container_name: valet
     restart: unless-stopped
     environment: { TZ: America/Toronto }   # your time zone, for times the server writes

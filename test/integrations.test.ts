@@ -11,6 +11,7 @@ import docker from '../src/integrations/docker.ts';
 import homeassistant from '../src/integrations/homeassistant.ts';
 import http from '../src/integrations/http.ts';
 import pihole from '../src/integrations/pihole.ts';
+import qbittorrent from '../src/integrations/qbittorrent.ts';
 import quran from '../src/integrations/quran.ts';
 import scrutiny from '../src/integrations/scrutiny.ts';
 import uptimekuma from '../src/integrations/uptimekuma.ts';
@@ -98,6 +99,25 @@ test('timeline: a problem never cleared stays unresolved until it is', async () 
   t.add('problem', 'Quran is down'); t.add('problem', 'Plex is down'); t.add('cleared', 'Plex is down');
   assert.deepEqual(t.unresolved(), ['Quran is down']);
   assert.deepEqual(t.lines(36e5, 40, true).map(l => l.split(' ').at(-1)), ['down']);       // only the "cleared" line
+});
+
+test('qbittorrent: stuck torrents are reported, and stay out of the island', async () => {
+  const q = make(qbittorrent, { url: 'http://q', username: 'u', password: 'p' }, fake(url => {
+    if (url.includes('auth/login')) return new Response('Ok.', { headers: { 'set-cookie': 'SID=x; path=/' } });
+    if (url.includes('transfer/info')) return new Response(JSON.stringify({ dl_info_speed: 0, up_info_speed: 0 }));
+    assert.ok(!url.includes('filter=active'));                                              // that filter hides stalled torrents
+    return new Response(JSON.stringify([
+      { hash: 'a', name: 'Dead film', state: 'stalledDL', progress: 0, dlspeed: 0, amount_left: 2e9, eta: 8640000, num_seeds: 0, added_on: Date.now() / 1000 - 7200 },
+      { hash: 'b', name: 'No metadata', state: 'metaDL', progress: 0, dlspeed: 0, amount_left: 0, eta: 8640000, num_seeds: 0 },
+      { hash: 'c', name: 'Finished', state: 'uploading', progress: 1, dlspeed: 0, amount_left: 0, eta: 0, num_seeds: 3 }]));
+  }));
+  const card: any = await q.widgets.active.fetch();
+  valid(card);
+  assert.deepEqual([card.summary.sub, card.summary.tone], ['2 stuck', 'bad']);
+  assert.equal(card.activity, undefined);
+  assert.deepEqual(card.items.map((i: any) => i.detail), ['Stalled · 1.9 GB left', 'Finding peers']);
+  const { data }: any = await q.tools.downloads_status.run({}, {} as any);
+  assert.deepEqual([data.count, data.stuck, data.torrents[0].waitingHours], [2, 2, 2]);
 });
 
 test('scrutiny: a failing drive is called out', async () => {

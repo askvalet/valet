@@ -21,7 +21,7 @@ homepage uses, not walls of text.
 ```sh
 docker run -d --name valet -p 127.0.0.1:7575:7575 \
   -v ./config:/config -v ./data:/app/data --env-file .env \
-  ghcr.io/OWNER/valet:latest
+  ghcr.io/ibrahimirfan/valet:latest
 ```
 
 On first start Valet writes a starter `config/config.yaml` and the page walks you through it; or copy

@@ -118,7 +118,7 @@ export async function readUpload(fileId: string) {
 
 /** A service's icon from its name: "Uptime Kuma" → uptime-kuma. The server tries shorter forms when that's not an icon
  *  ("immich_postgres" finds immich), and a name with none shows no icon at all. */
-export const iconFor = (name: string) => `/api/icon/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 64)}`;
+export const iconFor = (name: string) => `/api/icon/${name.toLowerCase().replace(/^homeassistant$/, 'home-assistant').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 64)}`;
 
 // Small formatting helpers integrations share, so numbers read the same everywhere.
 export const fmt = {

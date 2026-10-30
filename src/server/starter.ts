@@ -32,7 +32,7 @@ integrations:
 
 links:
   Start:
-    - { name: Valet docs, url: https://github.com/, note: docs/configuration.md }
+    - { name: Valet docs, url: https://github.com/IbrahimIrfan/valet/blob/master/docs/configuration.md }
 
 layout:
   - title: Start
