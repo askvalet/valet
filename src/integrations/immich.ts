@@ -1,0 +1,82 @@
+// Immich: your photos. Ask for "the beach in Portugal" or "photos of Mom last Christmas" and they come back as a photo
+// stack (smart search understands what's in a picture; people and dates narrow it). The homepage shows today's
+// memories ("on this day"), or a handful of random photos when there are none.
+import { z } from 'zod';
+import { defineIntegration } from '../server/core.ts';
+import type { ShelfItem } from '../shared/cards.ts';
+
+export default defineIntegration({
+  type: 'immich',
+  name: 'Immich',
+  config: z.object({ url: z.string().url(), apiKey: z.string(), href: z.string().optional() }),
+  create(cfg, ctx) {
+    const base = cfg.url.replace(/\/$/, ''), web = (cfg.href ?? base).replace(/\/$/, '');
+    const headers = { 'x-api-key': cfg.apiKey, 'Content-Type': 'application/json' };
+    const api = <T = any>(path: string, init: RequestInit = {}) => ctx.http<T>(`${base}/api/${path}`, { ...init, headers, timeout: 20_000 });
+    const day = (s?: string) => s ? new Date(s).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined;
+    const place = (a: any) => [a.exifInfo?.city, a.exifInfo?.country].filter(Boolean).join(', ') || undefined;
+    const tile = (a: any): ShelfItem => ({ title: place(a) ?? day(a.localDateTime ?? a.fileCreatedAt) ?? 'Photo', subtitle: place(a) ? day(a.localDateTime) : undefined,
+      image: ctx.image(a.id), href: `${web}/photos/${a.id}`, badge: a.type === 'VIDEO' ? 'Video' : undefined });
+    const people = async (names: string[] = []) => {
+      const ids: string[] = [];
+      for (const n of names) { const hit = (await api<any[]>(`search/person?name=${encodeURIComponent(n)}`))[0]; if (hit) ids.push(hit.id); }
+      return ids;
+    };
+
+    return {
+      widgets: {
+        memories: {
+          title: 'On this day', interval: 3_600_000,
+          async fetch() {
+            const today = new Date().toISOString().slice(0, 10);
+            const mem = await api<any[]>(`memories?for=${today}`).catch(() => []);
+            const assets = mem.flatMap(m => (m.assets ?? []).map((a: any) => ({ a, years: m.data?.year ? new Date().getFullYear() - m.data.year : undefined })));
+            if (assets.length) return { type: 'shelf', title: 'On this day', icon: 'image', href: web, aspect: 'square',
+              items: assets.slice(0, 16).map(({ a, years }) => ({ ...tile(a), badge: years ? `${years} year${years > 1 ? 's' : ''} ago` : undefined })) };
+            const random = await api<any[]>('search/random', { method: 'POST', body: JSON.stringify({ size: 12, type: 'IMAGE', withExif: true }) });
+            return { type: 'shelf', title: 'From your library', icon: 'image', href: web, aspect: 'square', items: random.map(tile) };
+          },
+        },
+      },
+      tools: {
+        photos_search: {
+          description: 'Search the person\'s photos and videos in Immich by what\'s in them (smart search: "sunset at the beach", "birthday cake", "dog in snow"), optionally narrowed to people (by name), a date range or a city. Results show as a photo stack. For "photos from <date>" with no subject, leave query empty and set the dates.',
+          access: 'read',
+          input: z.object({
+            query: z.string().optional(), people: z.array(z.string()).optional(), city: z.string().optional(),
+            after: z.string().optional().describe('YYYY-MM-DD'), before: z.string().optional().describe('YYYY-MM-DD'), limit: z.number().int().min(1).max(60).default(24),
+          }),
+          async run({ query, people: names, city, after, before, limit }) {
+            const personIds = await people(names);
+            if (names?.length && !personIds.length) return { data: { error: `No one named ${names.join(', ')} in Immich's people.` } };
+            const filters = { ...(personIds.length ? { personIds } : {}), ...(city ? { city } : {}), ...(after ? { takenAfter: `${after}T00:00:00.000Z` } : {}),
+              ...(before ? { takenBefore: `${before}T23:59:59.999Z` } : {}), size: limit, withExif: true };
+            const r = query?.trim()
+              ? await api<any>('search/smart', { method: 'POST', body: JSON.stringify({ query, ...filters }) })
+              : await api<any>('search/metadata', { method: 'POST', body: JSON.stringify({ ...filters, order: 'desc', withPeople: true }) });
+            const items = r.assets?.items ?? [];
+            const label = [query, names?.join(' & '), city, after || before ? [after, before].filter(Boolean).join(' – ') : ''].filter(Boolean).join(' · ') || 'Photos';
+            return {
+              data: { found: r.assets?.total ?? items.length, shown: items.length,
+                photos: items.slice(0, 12).map((a: any) => ({ id: a.id, taken: a.localDateTime?.slice(0, 10), place: place(a), video: a.type === 'VIDEO' })) },
+              card: items.length ? { type: 'shelf', stack: true, title: label, icon: 'image', aspect: 'square', href: web, items: items.map(tile) }
+                : { type: 'text', text: `No photos match ${label}.` },
+            };
+          },
+        },
+        photos_people: {
+          description: 'The people Immich recognises (named faces), to search photos of someone.',
+          access: 'read', input: z.object({}),
+          async run() {
+            const r = await api<any>('people?size=200');
+            return { data: (r.people ?? []).filter((p: any) => p.name).map((p: any) => p.name) };
+          },
+        },
+      },
+      image(ref) {
+        if (!/^[0-9a-f-]{36}$/.test(ref)) throw new Error('bad image ref');
+        return fetch(`${base}/api/assets/${ref}/thumbnail?size=preview`, { headers: { 'x-api-key': cfg.apiKey }, signal: AbortSignal.timeout(15_000) });
+      },
+    };
+  },
+});

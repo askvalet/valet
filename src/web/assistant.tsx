@@ -55,6 +55,7 @@ function Pending({ since, label = 'Thinking' }: { since: number; label?: string 
 const VERB: [RegExp, string, typeof Search][] = [
   [/docs_search/, 'Searched documents', Search], [/docs_read/, 'Read a document', FileText], [/docs_add/, 'Filed a document', FileText],
   [/bookmarks_search/, 'Searched saved links', Search], [/bookmark_read/, 'Read a bookmark', Bookmark], [/bookmark_save/, 'Saved a link', Bookmark],
+  [/photos_search/, 'Searched photos', Search], [/photos_people/, 'Checked people', Search],
   [/media_search/, 'Searched movies & shows', Search], [/media_request$/, 'Requested', Film], [/media_requests/, 'Checked requests', Film],
   [/plex|streams|recently_added|history/, 'Checked Plex', Film], [/service_status/, 'Checked services', Activity], [/downloads/, 'Checked downloads', Activity],
   [/home_find/, 'Looked up the home', Search], [/home_control|light|press/, 'Changed the home', Zap], [/show/, 'Laid out cards', Lightbulb],
@@ -103,7 +104,7 @@ function ToolChips({ parts, settled }: { parts: any[]; settled: boolean }) {
 
 // After an answer, a couple of natural next questions, depending on what it just looked at
 const FOLLOW: [RegExp, string[]][] = [
-  [/docs_search|docs_read/, ['Summarize these', 'Anything due soon?']], [/bookmark/, ['Summarize the newest one', 'What else did I save this week?']],
+  [/photos_search/, ['Only the ones with people', 'Same place, other years']], [/docs_search|docs_read/, ['Summarize these', 'Anything due soon?']], [/bookmark/, ['Summarize the newest one', 'What else did I save this week?']],
   [/plex|streams/, ['What was added recently?', 'Who watched the most this week?']], [/service_status/, ['How is the server doing?', 'Show downloads']],
   [/downloads/, ['When will it finish?', 'Pause downloads']], [/home/, ['Which lights are on?', 'Turn off all lights']],
 ];

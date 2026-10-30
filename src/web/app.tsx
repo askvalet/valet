@@ -1,4 +1,4 @@
-import { ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Sun } from 'lucide-react';
+import { ArrowUp, CornerDownLeft, LayoutGrid, LogOut, MessageCircle, Moon, Sun } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -7,6 +7,7 @@ import type { ForecastCard, StatusCard, WidgetState } from '../shared/cards.ts';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import Island, { type Live } from './island.tsx';
+import { SignIn, signOut, useMe } from './signin.tsx';
 import { Icon, NowPlaying, isEmpty, MiniRing, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
 
 // The assistant (and the AI SDK client) loads only when someone asks something.
@@ -97,7 +98,19 @@ function useWide(query = '(min-width: 1280px)') {
   return wide;
 }
 
+/** Signed in? Show the page; otherwise the sign-in screen (over the wallpaper, which needs no session). */
 export function App() {
+  const { me, setMe } = useMe();
+  useEffect(() => { if (me && !me.user) document.documentElement.classList.add('dark', 'has-wallpaper'); }, [me]);
+  if (!me) return null;
+  if (!me.user) return (
+    <SignIn setup={!!me.setup} onDone={name => setMe({ ...me, user: { name } })}
+      wallpaper={<div className="wallpaper" aria-hidden><img src="/api/wallpaper" alt="" style={{ filter: 'blur(6px)' }} onError={e => (e.currentTarget.style.display = 'none')} /></div>} />
+  );
+  return <Home />;
+}
+
+function Home() {
   const [page, setPage] = useState<Page | null>(null);
   const { state } = useLive();
   const now = useClock();
@@ -349,6 +362,10 @@ export function App() {
             <CommandGroup heading="Go to">
               <CommandItem onSelect={() => { setView('all'); setPalette(false); }}><LayoutGrid />Overview</CommandItem>
               {nav.map(s => <CommandItem key={s.key} onSelect={() => { setView(s.key); setPalette(false); }}><Icon name={s.chat ? 'chat' : sectionIcon(s) ?? 'pulse'} />{s.key}</CommandItem>)}
+            </CommandGroup>
+            <CommandGroup heading="Account">
+              <CommandItem value="sign out" onSelect={() => signOut()}><LogOut />Sign out</CommandItem>
+              <CommandItem value="sign out everywhere" onSelect={() => signOut(true)}><LogOut />Sign out everywhere</CommandItem>
             </CommandGroup>
           </CommandList>
         </CommandDialog>

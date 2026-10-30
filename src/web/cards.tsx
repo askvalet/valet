@@ -1,7 +1,7 @@
 // Renders any card from the shared catalog with shadcn/ui primitives. The homepage and the assistant both use this,
 // so a generated card looks exactly like the widget it came from.
 import {
-  Activity, ArrowUpRight, Bookmark, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
+  Activity, ArrowUpRight, Bookmark, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
   type LucideIcon,
 } from 'lucide-react';
 import { createContext, Fragment, lazy, Suspense, useContext, useRef, useState, type ReactNode } from 'react';
@@ -17,7 +17,7 @@ import type { Card as CardT, ForecastCard, ShowcaseCard, ChartCard, Control, Con
 
 const ICONS: Record<string, LucideIcon> = {
   cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
-  bulb: Lightbulb, home: House, shield: Shield, chat: MessageCircle, coins: Coins, text: Type,
+  bulb: Lightbulb, home: House, shield: Shield, chat: MessageCircle, image: ImageIcon, coins: Coins, text: Type,
   file: FileText, bookmark: Bookmark, sun: Sun, moon: Moon, cloud: Cloud, 'cloud-sun': CloudSun, 'cloud-moon': CloudMoon, rain: CloudRain, snow: CloudSnow, fog: CloudFog, storm: CloudLightning,
 };
 export function Icon({ name, className }: { name?: string; className?: string }) {
@@ -236,7 +236,7 @@ function Media({ card }: { card: MediaCard }) {
  *  click opens the full row. One page is just that page, held up a little. */
 function Stack({ card, header, onOpen }: { card: ShelfCard; header?: ReactNode; onOpen: () => void }) {
   const pile = card.items.slice(0, 4), more = card.items.length - pile.length;
-  const one = card.items.length === 1, top = card.items[0];
+  const one = card.items.length === 1, top = card.items[0], photo = card.aspect === 'square';
   const rest = [[-7, -10], [6, 8], [-3, -4], [0, 0]].slice(4 - pile.length);   // [rotate°, x px] from back to front
   const open = one ? () => top.href && window.open(top.href, '_blank', 'noopener') : onOpen;
   return (
@@ -247,10 +247,11 @@ function Stack({ card, header, onOpen }: { card: ShelfCard; header?: ReactNode; 
         {pile.slice().reverse().map((it, i) => {
           const [r, x] = rest[i], depth = pile.length - 1 - i;
           return (
-            <div key={i} className="stack-page absolute top-2.5 left-3 aspect-[3/4] h-[176px] origin-bottom-left overflow-hidden rounded-[10px] bg-white shadow-[0_10px_30px_-10px_rgb(0_0_0/.6),0_0_0_1px_rgb(0_0_0/.08)]"
+            <div key={i} className={cn('stack-page absolute top-2.5 left-3 h-[176px] origin-bottom-left overflow-hidden shadow-[0_10px_30px_-10px_rgb(0_0_0/.6),0_0_0_1px_rgb(0_0_0/.08)]',
+              photo ? 'aspect-square rounded-[16px] bg-muted ring-[3px] ring-white/90' : 'aspect-[3/4] rounded-[10px] bg-white')}
               style={{ '--r': `${one ? -2 : r * .7}deg`, '--x': `${x + 10}px`, '--fan-x': `${depth ? (pile.length - 1 - depth) * 58 : (pile.length - 1) * 58}px`, '--fan-r': `${(i - (pile.length - 1)) * -2.5}deg`,
                 zIndex: i, filter: depth ? `brightness(${1 - depth * .06})` : undefined, animationDelay: `${i * 50}ms` } as React.CSSProperties}>
-              <Art src={it.image} alt="" className="size-full object-cover object-top" />
+              <Art src={it.image} alt="" className={cn('size-full object-cover', !photo && 'object-top')} />
             </div>
           );
         })}
@@ -258,7 +259,7 @@ function Stack({ card, header, onOpen }: { card: ShelfCard; header?: ReactNode; 
       </button>
       <div className="mt-2 pl-1">
         <div className="truncate text-[13px] font-medium">{top.title}</div>
-        <div className="truncate text-xs text-muted-foreground">{one ? top.subtitle : `${card.items.length} documents · tap to see all`}</div>
+        <div className="truncate text-xs text-muted-foreground">{one ? top.subtitle : `${card.items.length} ${photo ? 'photos' : 'documents'} · tap to see all`}</div>
       </div>
     </div>
   );

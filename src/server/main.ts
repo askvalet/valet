@@ -5,6 +5,7 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
+import { sameOrigin, setupAuth, userCommand } from './auth.ts';
 import { loadConfig } from './config.ts';
 import { makeContext, UPLOAD_DIR, type Instance, type Integration } from './core.ts';
 import { Hub } from './hub.ts';
@@ -13,6 +14,9 @@ import { registry } from '../integrations/index.ts';
 const CONFIG = process.env.ATRIUM_CONFIG ?? 'config.yaml';
 const PORT = Number(process.env.PORT ?? 7575);
 const HOST = process.env.HOST ?? '0.0.0.0';
+
+// `node dist/server.js user add <name>` and friends manage accounts, then exit
+if (process.argv[2] === 'user') process.exit(await userCommand(process.argv.slice(3)).catch(e => { console.error(String(e.message ?? e)); return 1; }));
 
 const config = loadConfig(CONFIG);
 
@@ -43,6 +47,16 @@ const hub = new Hub(new Map([...instances].map(([id, i]) => [id, {
 }])));
 
 const app = new Hono();
+
+// Sign-in first: /api/auth/* are open; the wallpaper and icons too (the sign-in screen uses them); everything else
+// under /api needs a session. Anything that changes something must also come from this page's origin.
+app.use('/api/*', sameOrigin);                 // before the auth routes, so sign-in is covered too
+const signedIn = await setupAuth(app, config);
+app.use('/api/*', async (c, next) => {
+  const p = c.req.path;
+  if (p.startsWith('/api/auth/') || p === '/api/wallpaper' || p.startsWith('/api/icon/')) return next();
+  return signedIn(c, next);
+});
 
 // A local wallpaper file is served from here; a URL is handed to the browser as is.
 const wallpaper = config.appearance.wallpaper;

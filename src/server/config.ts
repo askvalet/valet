@@ -55,7 +55,18 @@ export const Appearance = z.object({
   blur: z.number().min(0).max(40).default(0),
 }).strict();
 
+export const Auth = z.object({
+  mode: z.enum(['local', 'proxy', 'none']).default('local'),   // local accounts, a sign-in proxy in front, or nothing
+  sessionDays: z.number().int().min(1).max(365).default(30),   // how long "keep me signed in" lasts
+  secureCookie: z.boolean().default(true),                     // false only when serving over plain http
+  proxy: z.object({
+    header: z.string().default('Remote-User'),                 // the header your proxy puts the signed-in user in
+    trusted: z.array(z.string()).default(['127.0.0.1']),       // proxy addresses whose header is believed
+  }).default({ header: 'Remote-User', trusted: ['127.0.0.1'] }),
+}).default({ mode: 'local', sessionDays: 30, secureCookie: true, proxy: { header: 'Remote-User', trusted: ['127.0.0.1'] } });
+
 export const Config = z.object({
+  auth: Auth,
   title: z.string().default('Home'),
   greeting: z.string().optional(),         // name to greet, e.g. "Ibrahim"
   location: z.string().optional(),

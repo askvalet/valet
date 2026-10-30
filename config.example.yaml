@@ -17,6 +17,10 @@ integrations:
     type: paperless                # ask about your documents; paste or attach to file them
     url: http://paperless:8000
     token: ${PAPERLESS_TOKEN}
+  photos:
+    type: immich                   # search photos by what's in them, by person or date; "on this day" on the page
+    url: http://immich:2283
+    apiKey: ${IMMICH_KEY}          # Immich → Account settings → API keys (read permissions are enough)
   requests:
     type: seerr                    # ask for a movie or show in chat and it's requested (asks you to confirm first)
     url: http://seerr:5055
