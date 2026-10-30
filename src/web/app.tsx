@@ -155,18 +155,18 @@ export function App() {
 
   // the hero: ask anything
   const hero = view === 'all' && (
-          <header className="wall-text mx-auto w-full max-w-[760px] pt-8 text-center xl:pt-10">
+          <header className="wall-text mx-auto w-full max-w-[720px] pt-8 text-center xl:pt-10">
             <div className="text-[22px] font-semibold tracking-tight">{greet(now.getHours())}{page?.greeting ? `, ${page.greeting}` : ''}</div>
             {p.text && <div className={cn('mt-0.5 text-[13px]', p.tone)}>{p.text}</div>}
             {page?.assistant && (
-              <form className="glass-round mt-6 flex items-center gap-3 rounded-[30px] py-2.5 pr-2.5 pl-6 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
+              <form className="glass-round mt-5 flex items-center gap-2.5 rounded-[26px] py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
-                <Sparkles className="size-5 shrink-0 text-muted-foreground" />
+                <Sparkles className="size-[18px] shrink-0 text-muted-foreground" />
                 <input value={draft} onChange={e => setDraft(e.target.value)} aria-label={`Ask ${page.assistant.name}`} placeholder={`Ask ${page.assistant.name} anything…`}
-                  className="h-12 min-w-0 flex-1 bg-transparent text-[17px] outline-none placeholder:text-muted-foreground" />
+                  className="h-11 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground" />
                 {!draft.trim() && <kbd className="hidden rounded-md border border-white/15 px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground sm:block">⌘K</kbd>}
                 <button type="submit" aria-label="Ask" disabled={!draft.trim()}
-                  className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-black transition-opacity disabled:opacity-25"><ArrowUp className="size-5" /></button>
+                  className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-black transition-opacity disabled:opacity-25"><ArrowUp className="size-[18px]" /></button>
               </form>
             )}
             {page?.assistant && (

@@ -155,7 +155,7 @@ export default function Assistant({ name, model, ask, suggestions, onAsk }: {
           <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={`Message ${name}, paste a link or drop a file`} aria-label="Message"
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
             onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
-            className="max-h-48 min-h-12 flex-1 resize-none bg-transparent py-2 text-[15px] outline-none field-sizing-content placeholder:text-muted-foreground" autoFocus />
+            className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-1.5 text-[15px] outline-none field-sizing-content placeholder:text-muted-foreground" autoFocus />
           {busy
             ? <Button type="button" size="icon" variant="secondary" className="size-8 rounded-full" onClick={stop} aria-label="Stop"><Square className="size-3 fill-current" /></Button>
             : <Button type="submit" size="icon" className={cn('size-8 rounded-full')} disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp /></Button>}
