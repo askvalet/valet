@@ -13,8 +13,8 @@ assistant:
   provider: openai-compatible
   baseURL: http://localhost:11434/v1   # Ollama
   model: qwen3:8b
-  # what it may use: none | read | control. Control actions always ask you first.
-  access: { default: read, downloads: control, docs: write, bookmarks: write }   # none | read | write (adds things, no asking) | control (asks first)
+  # what it may use, per integration: none | read | write (adds things, like saving a link) | control (asks you first)
+  access: { default: read, downloads: control, docs: write, bookmarks: write }
 
 integrations:
   docs:

@@ -19,14 +19,16 @@ homepage uses, not walls of text.
 ## Quick start
 
 ```sh
-docker run -d --name atrium -p 7575:7575 \
-  -v ./config:/config --env-file .env \
+docker run -d --name atrium -p 127.0.0.1:7575:7575 \
+  -v ./config:/config -v ./data:/app/data --env-file .env \
   ghcr.io/OWNER/atrium:latest
 ```
 
 Copy [`config.example.yaml`](config.example.yaml) to `config/config.yaml` and keep the integrations you use. Copy
 [`.env.example`](.env.example) to `.env` and fill in their keys: it says where each one is in that app's settings.
-Then open http://localhost:7575. A [`docker-compose.example.yml`](docker-compose.example.yml) is there too.
+Then open http://localhost:7575. A [`docker-compose.example.yml`](docker-compose.example.yml) is there too, and
+[docs/configuration.md](docs/configuration.md) lists every option. `./data` keeps the wallpaper, icon cache, history,
+accounts and plugins. Publish the port on `127.0.0.1` (as above) when a reverse proxy on the same host fronts it.
 
 Secrets never go in `config.yaml`: it refers to them as `${NAME}`, so you can share or commit your config safely.
 `npm run test:live` (or the startup log) tells you which integrations can't reach their service, and why.
@@ -76,8 +78,10 @@ into `data/integrations/`: see [docs/plugins.md](docs/plugins.md) and [`examples
 
 ## Cards
 
-Every widget and every assistant answer is built from one small catalog of cards (`stats`, `list`, `media`,
-`status`, `chart`, `controls`, `kv`, `text`, `group`), defined in [`src/shared/cards.ts`](src/shared/cards.ts).
+Every widget and every assistant answer is built from one small catalog of cards (`stats`, `list`, `media`, `shelf`,
+`status`, `chart`, `controls`, `showcase`, `forecast`, `photos`, `schedule`, `verse`, `kv`, `text`, `group`), defined
+in [`src/shared/cards.ts`](src/shared/cards.ts). Each works as a small tile, a card, a wide card and inside the chat;
+`/#gallery` shows them all.
 Integrations return plain data in these shapes; Atrium draws them. That's why a third-party integration looks native,
 and why the assistant can lay out cards from different integrations side by side.
 
@@ -88,8 +92,15 @@ assistant:
   access: { default: read, home: control, downloads: none }
 ```
 
-`read` tools fetch information. `control` tools change something, and each call waits for you to approve it in the
-chat. Atrium never hands the model your API keys; tools run on the server.
+`read` tools fetch information. `write` tools add something (save a link, file a document) without asking, but only
+with what you typed yourself: if a page or document it read suggested it, it asks. `control` tools change or remove
+something, and each call waits for you to approve it in the chat. Atrium never hands the model your API keys; tools run
+on the server.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: `npm install`, `npm run dev`, and `npm test` before a pull
+request.
 
 ## Licence
 

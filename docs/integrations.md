@@ -62,8 +62,16 @@ someone is looking (default 10 s). Widgets that aren't in the layout are never p
 flips a toggle, Atrium runs the action and refreshes the integration's widgets right away.
 
 **`tools`** are what the assistant may call. Write `description` for the model: what it returns and when to use it.
-Return `data` (compact JSON the model reads) and optionally a `card` (what the person sees). Mark anything that changes
-state `access: 'control'`: it only exists for the assistant if the user grants control, and every call asks first.
+Return `data` (compact JSON the model reads) and optionally a `card` (what the person sees). Give it a `label`: what it
+did, past tense, for its chip in chat ("Searched documents"); `followUps` offers a couple of next questions after an
+answer that used it. Pick the narrowest `access`:
+
+- `read`: only looks.
+- `write`: adds something the person asked for (save a link, file a document). List the inputs that must come from the
+  person's own message in `fromPerson` (`['url']`): when they do, it runs without asking; when a page or document the
+  assistant read put them there, it asks. That's what stops a web page from talking the assistant into acting.
+- `control`: changes or removes something (pause, stop, turn off, request). Every call asks first, and it only exists
+  for the assistant if the user grants `control`.
 
 **`image(ref)`** serves images (posters, snapshots) through Atrium so the browser never needs the service's key. Put
 `ctx.image(ref)` in a card; validate `ref` before fetching.
@@ -71,8 +79,13 @@ state `access: 'control'`: it only exists for the assistant if the user grants c
 ## Context
 
 `ctx.http(url, init)` fetches with a timeout and a readable error, and parses JSON unless you pass `as: 'text'` or
-`as: 'response'`. `ctx.log` prefixes output with the instance name. `fmt` (from `core.ts`) formats bytes, rates,
-durations and percentages consistently.
+`as: 'response'`. `ctx.log` prefixes output with the instance name. `ctx.session(login)` shares one sign-in between
+parallel requests (call `.get()` for the token, `.reset()` after a 401). `ctx.upload(id)` reads a file the person
+attached in chat. `fmt` (from `core.ts`) formats bytes, rates, speeds, durations, percentages, days (`fmt.day`,
+`fmt.relativeDay`: "Today", "Tomorrow", "Fri") and times consistently.
+
+Icons in cards are names: `cpu gpu memory wifi disk download pulse play film bulb home shield chat image clock crescent
+game book coins text file bookmark sun moon cloud cloud-sun cloud-moon rain snow fog storm`, or an image URL.
 
 ## Guidelines
 

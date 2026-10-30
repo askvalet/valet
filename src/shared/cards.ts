@@ -8,7 +8,7 @@ export type Tone = 'neutral' | 'good' | 'warn' | 'bad' | 'accent';
 export interface Summary {
   label: string;
   value: string | number;
-  sub?: string;           // under the label, e.g. "Ryzen 9 9950X3D"
+  sub?: string;           // under the label, e.g. "Ryzen 9"
   detail?: string;        // bottom right, e.g. "39°C"
   tone?: Tone;
   icon?: string;

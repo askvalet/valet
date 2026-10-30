@@ -57,7 +57,8 @@ And the general rules:
 
 Community integrations (see [docs/plugins.md](docs/plugins.md)) run inside Atrium with the same access as the built-in
 ones, including the keys you give them. Install only plugins you trust, and read them first: they're single files.
-Their cards are checked against the card catalog, but their code isn't sandboxed.
+Their cards are checked against the card catalog, but their code isn't sandboxed: anyone who can write to
+`data/integrations/` can run code as Atrium, so keep that folder (and the data volume) writable only by you.
 
 ## Reporting a problem
 

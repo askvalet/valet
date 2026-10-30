@@ -9,7 +9,7 @@ services:
       - ./config.yaml:/config/config.yaml:ro
       - ./data:/app/data              # wallpaper, icon cache, uploads, accounts
     ports:
-      - 7575:7575
+      - 127.0.0.1:7575:7575         # this machine only; "7575:7575" for your whole network
     read_only: true
     tmpfs: [/tmp]
     cap_drop: [ALL]

@@ -24,8 +24,9 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   (`src/server/security.ts`) on the way out; without sign-in Atrium is read-only unless `auth.trustNetwork`; strict CSP,
   so no inline scripts; image proxies validate every ref; new tools pick the narrowest access (`read` < `write` <
   `control`) and anything with consequences is `control`. Before committing: `npm audit --omit=dev` and the tests.
-- **The assistant reads freely and changes nothing without asking.** Tools are `read` or `control`; control tools need
-  the user's approval, and access is set per integration in YAML.
+- **The assistant reads freely and changes nothing without asking.** Tools are `read`, `write` or `control`. Control
+  tools need the user's approval; write tools run alone only with inputs the person typed (`fromPerson`). Access is set
+  per integration in YAML. Every tool has a `label` (its chip in chat) and may offer `followUps`.
 
 ### Architecture
 - **The card catalog is the contract** (`src/shared/cards.ts`). Integrations return plain data in these shapes; the web
@@ -88,10 +89,13 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   a made-up sample of every type. `npm test` validates the samples, renders each in every size (medium, large, chat)
   and as a tile, and runs integration logic against made-up responses (`test/integrations.test.ts`: a fake `ctx.http`).
   Adding a card type means: the type in `cards.ts`, its schema, a renderer, a sample, and the type in the test's list.
+  `test/server.test.ts` covers sign-in, the hub, config loading and plugin card checks.
 - `npm run test:live` checks every widget in your `config.yaml` against your real services. `/#gallery` shows the whole
   library, including the island and its notices.
 - Integration tests use made-up data only. Never commit recorded responses from real services (they carry personal data).
 
+- A new option goes in the schema with a comment and default, in `config.example.yaml` if it's common, and in
+  `docs/configuration.md`.
 - `npm run dev` (server with `--watch` + Vite), `npm run check` (both tsconfigs), `npm run build`, `npm start`.
 - Verify UI changes by looking at them: build, run, and screenshot the page (a headless Chrome over CDP works; set
   `Emulation.setEmulatedMedia` `hover: hover` to test hover states). Check desktop and phone widths.
