@@ -233,7 +233,7 @@
 .chat-in { animation: chat-in 280ms var(--ease-out) both; transform-origin: bottom right; }
 @keyframes chat-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } }
 .chat-card { animation: chat-card 320ms var(--ease-out) both; }
-@keyframes chat-card { from { opacity: 0; transform: translateY(8px) scale(0.985); filter: blur(2px); } }
+@keyframes chat-card { from { opacity: 0; transform: translateY(6px); } }
 .chat-word { animation: chat-word 420ms var(--ease-out) both; }
 @keyframes chat-word { from { opacity: 0; } }
 /* thinking: light sweeping across the label, and a 3×3 grid of dots breathing in a diagonal wave */
@@ -257,9 +257,14 @@
   .lift:hover { transform: translateY(-1px); box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 14px 32px -12px rgb(0 0 0 / .22); }
   .has-wallpaper .lift:hover, .dark .lift:hover { box-shadow: inset 0 1px 0 rgb(255 255 255 / .14), 0 28px 56px -24px rgb(0 0 0 / .75); }
 }
+/* the Mac dock: the size follows the pointer directly while it's over the rail, and eases back when it leaves */
+.dock button { width: calc(44px * var(--k, 1)); height: calc(44px * var(--k, 1)); transition: width 220ms var(--ease-out), height 220ms var(--ease-out), color 160ms var(--ease-out), background-color 160ms var(--ease-out); }
+.dock button svg { width: calc(18px * var(--k, 1)) !important; height: calc(18px * var(--k, 1)) !important; transition: width 220ms var(--ease-out), height 220ms var(--ease-out); }
+.dock.is-docking button, .dock.is-docking button svg { transition-duration: 70ms; }
+.dock.is-docking .nav-pill { transition: transform 90ms var(--ease-out), width 70ms linear, height 70ms linear; }
 /* the selected tab's pill slides from one button to the next */
 .nav-pill { position: absolute; top: 0; left: 0; border-radius: 999px; background: #fff; box-shadow: 0 8px 20px -8px rgb(0 0 0 / .5);
-  transition: transform 340ms var(--ease-drawer), width 340ms var(--ease-drawer); pointer-events: none; }
+  transition: transform 340ms var(--ease-drawer), width 240ms var(--ease-out), height 240ms var(--ease-out); pointer-events: none; }
 .glass-round.is-on { background: transparent !important; border-color: transparent; box-shadow: none; backdrop-filter: none; color: #000; }
 .fade-in-soft { animation: fade-in-soft 320ms var(--ease-out) both; }
 @keyframes fade-in-soft { from { opacity: 0; } }
@@ -297,21 +302,26 @@
 .chat-pin { position: absolute; top: 8px; right: 8px; z-index: 2; opacity: 0; transition: opacity 160ms var(--ease-out); }
 .chat-pinnable:hover .chat-pin, .chat-pin:focus-visible, .chat-pin[data-done] { opacity: 1; }
 @media (pointer: coarse) { .chat-pin { opacity: 1; } }
-/* cards in chat sit side by side at a sensible size, instead of each filling the conversation */
-.chat-cards { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); max-width: 820px; }
+/* cards in chat: side by side without holes, and never taller than a glance. Long ones scroll inside themselves. They
+   drop the frosted blur: every blurred card in a scrolling list is repainted each frame, and it shows as jitter. */
+.chat-cards { columns: 2 300px; column-gap: .75rem; }
 .chat-cards:empty { display: none; }
-.chat-cards:has(> :only-child) { max-width: 520px; }
+.chat-cards:has(> :only-child) { columns: 1; max-width: 560px; }
+.chat-cards > * { break-inside: avoid; margin-bottom: .75rem; }
+.chat-cards > :last-child { margin-bottom: 0; }
+.chat-card { max-height: 300px; overflow-y: auto; overscroll-behavior: auto; border-radius: 16px; scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / .16) transparent; }
+.chat-peek { max-width: 560px; }
+.chat-card [data-slot="card"], .chat-card .glass { backdrop-filter: none !important; background: rgb(255 255 255 / .05); box-shadow: none; }
+.chat-card [data-slot="card"]::before { display: none; }
 /* the numbers beside the chat, small */
 .chat-aside .grid { grid-template-columns: 1fr !important; gap: .5rem; }
 .chat-aside [data-slot="card"] { height: 84px; border-radius: 16px; }
 .chat-aside [data-slot="card"] > .relative { padding: .625rem .75rem; }
 .chat-aside .metric { font-size: 17px; }
-/* a long chat: what's scrolled out of view isn't laid out or painted */
-.chat-msg { content-visibility: auto; contain-intrinsic-size: auto 120px; }
 /* a ring's segments ease to their new size when the numbers change */
 .donut-seg { transition: stroke-dasharray 700ms var(--ease-in-out), stroke-dashoffset 700ms var(--ease-in-out); }
 /* a chat card that's keeping itself current: one small breathing dot */
-.live-dot { position: absolute; top: 15px; right: 40px; z-index: 2; width: 6px; height: 6px; border-radius: 99px; background: var(--good); animation: live-dot 2.4s ease-in-out infinite; }
+.live-dot { position: sticky; float: right; top: 14px; margin: 14px 14px -20px 0; left: auto; z-index: 2; width: 6px; height: 6px; border-radius: 99px; background: var(--good); animation: live-dot 2.4s ease-in-out infinite; }
 @keyframes live-dot { 50% { opacity: .35; } }
 /* a chart's line draws itself in, once */
 .chart-draw { animation: chart-draw 900ms var(--ease-out) both; }

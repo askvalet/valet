@@ -113,7 +113,40 @@ function useNavPill(view: string, count: number) {
     const el = box.current?.querySelector<HTMLElement>('[aria-current="page"]');
     setAt(el ? { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight } : null);
   }, [view, count]);
-  return { box, pill: at && <span className="nav-pill" aria-hidden style={{ width: at.w, height: at.h, transform: `translate(${at.x}px, ${at.y}px)` }} /> };
+  const sync = () => {
+    const el = box.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (el) setAt({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight });
+  };
+  return { box, sync, pill: at && <span className="nav-pill" aria-hidden style={{ width: at.w, height: at.h, transform: `translate(${at.x}px, ${at.y}px)` }} /> };
+}
+
+/** The Mac dock: buttons swell as the pointer nears them and settle when it leaves. Distances are measured from where the
+ *  buttons rest, so growing doesn't push the target around. Mouse only; movement is off if someone's asked for less. */
+function useDock(box: React.RefObject<HTMLElement | null>, side: 'left' | 'right' | 'top' | 'bottom', after: () => void) {
+  const rest = useRef<{ b: HTMLElement; at: number }[]>([]), frame = useRef(0);
+  const down = side === 'left' || side === 'right';
+  const enter = () => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    box.current?.classList.add('is-docking');
+    rest.current = [...(box.current?.querySelectorAll<HTMLElement>('button') ?? [])].map(b => { const r = b.getBoundingClientRect(); return { b, at: down ? r.top + r.height / 2 : r.left + r.width / 2 }; });
+  };
+  const move = (e: React.PointerEvent) => {
+    if (e.pointerType !== 'mouse' || !rest.current.length) return;
+    const p = down ? e.clientY : e.clientX;
+    cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => {
+      for (const { b, at } of rest.current) b.style.setProperty('--k', (1 + .5 * Math.exp(-((p - at) ** 2) / (2 * 62 ** 2))).toFixed(3));
+      after();
+    });
+  };
+  const leave = () => {
+    cancelAnimationFrame(frame.current);
+    for (const { b } of rest.current) b.style.removeProperty('--k');
+    rest.current = [];
+    box.current?.classList.remove('is-docking');
+    setTimeout(after, 240);
+  };
+  return { onPointerEnter: enter, onPointerMove: move, onPointerLeave: leave };
 }
 
 /** The wallpaper, fading up once it has decoded (at once if the browser already has it). */
@@ -272,6 +305,7 @@ function Home({ account }: { account: boolean }) {
   const nav = (page?.sections.map((s, i) => ({ ...s, i, key: tabOf(s, i) })).filter(s => s.title || s.tab) ?? [])
     .filter((s, j, all) => all.findIndex(x => x.key === s.key) === j);
   const rail = useNavPill(view, nav.length), dock = useNavPill(view, nav.length);
+  const swell = useDock(rail.box as React.RefObject<HTMLElement | null>, navSide, rail.sync);
   // remember what's empty (nothing playing), so it doesn't flash a placeholder on the next visit
   useEffect(() => { for (const [k, s] of Object.entries(state)) if (isEmpty(s.card)) noteShape(k, { empty: true }); }, [state]);
 
@@ -280,7 +314,7 @@ function Home({ account }: { account: boolean }) {
           <header className="wall-text mx-auto w-full max-w-[720px] pt-8 text-center xl:pt-10">
             <div className="text-[22px] font-semibold tracking-tight">{greet(now.getHours())}{page?.greeting ? `, ${page.greeting}` : ''}</div>
             {cause ? <div className="brief-in mt-0.5 text-[13px] text-warn">{cause}</div> : p.text && <div className={cn('mt-0.5 text-[13px]', p.tone)}>{p.text}</div>}
-            {brief && !cause && !p.text && <div key={brief} className="brief-in mx-auto mt-1 max-w-[560px] text-[13.5px] text-muted-foreground">{brief}</div>}
+            {brief && !cause && !p.text && <div key={brief} title={brief} className="brief-in mx-auto mt-1 max-w-full truncate text-[13.5px] text-muted-foreground">{brief}</div>}
             {page?.assistant && (
               <form className="glass-round mt-5 flex items-center gap-2.5 rounded-[26px] py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
@@ -393,9 +427,9 @@ function Home({ account }: { account: boolean }) {
 
 
       {/* the tab buttons, on whichever side the config says (wide screens); a column on the left/right, a dock at the top/bottom */}
-      <nav ref={rail.box as React.RefObject<HTMLElement>} aria-label="Sections" className={cn('z-30 hidden gap-3 md:flex', {
-        left: 'fixed top-1/2 left-5 -translate-y-1/2 flex-col',
-        right: 'fixed top-1/2 right-5 -translate-y-1/2 flex-col',
+      <nav ref={rail.box as React.RefObject<HTMLElement>} {...swell} aria-label="Sections" className={cn('dock z-30 hidden gap-3 md:flex', {
+        left: 'fixed top-1/2 left-5 -translate-y-1/2 flex-col items-start',
+        right: 'fixed top-1/2 right-5 -translate-y-1/2 flex-col items-end',
         bottom: 'glass-bar fixed bottom-5 left-1/2 -translate-x-1/2 rounded-full border p-1.5 gap-2',
         top: 'glass-bar absolute top-24 left-1/2 -translate-x-1/2 rounded-full border p-1.5 gap-2',
       }[navSide])}>
@@ -442,7 +476,7 @@ function Home({ account }: { account: boolean }) {
           <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_200px]">
           <div data-slot="card" className="h-[calc(100dvh-7.5rem)] min-h-[520px] overflow-hidden rounded-[calc(var(--radius)*1.4)] border bg-card shadow-card">
             <Suspense fallback={null}>
-              <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} canPin={page.canAct !== false} onAsk={ask} />
+              <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} onAsk={ask} />
             </Suspense>
           </div>
           {/* the tab's numbers sit small beside the chat, which gets the room */}
@@ -492,7 +526,7 @@ function Home({ account }: { account: boolean }) {
             <DialogDescription className="sr-only">Ask about your homelab</DialogDescription>
             {chatOpen && (
               <Suspense fallback={null}>
-                <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} canPin={page.canAct !== false} onAsk={ask} onClose={phone ? () => setChatOpen(false) : undefined} />
+                <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} onAsk={ask} onClose={phone ? () => setChatOpen(false) : undefined} />
               </Suspense>
             )}
           </DialogContent>

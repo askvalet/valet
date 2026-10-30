@@ -5,6 +5,7 @@ import { defineIntegration } from '../server/core.ts';
 import type { ShelfItem } from '../shared/cards.ts';
 
 // Seerr's media status: what's already in the library or on its way
+const TONE: Record<number, 'good' | 'warn' | 'accent'> = { 2: 'warn', 3: 'accent', 4: 'accent', 5: 'good' };
 const STATUS: Record<number, string> = { 2: 'Requested', 3: 'Downloading', 4: 'Partly available', 5: 'Available' };
 const REQUEST: Record<number, string> = { 1: 'Waiting for approval', 2: 'Approved', 3: 'Declined' };
 
@@ -20,7 +21,7 @@ export default defineIntegration({
     const year = (r: any) => (r.releaseDate ?? r.firstAirDate ?? '').slice(0, 4) || undefined;
     const tile = (r: any, status?: number): ShelfItem => ({
       title: r.title ?? r.name, subtitle: [year(r), r.mediaType === 'tv' ? 'Series' : 'Movie'].filter(Boolean).join(' · '),
-      image: poster(r.posterPath), badge: status ? STATUS[status] : undefined, href: `${web}/${r.mediaType === 'tv' ? 'tv' : 'movie'}/${r.id}`,
+      image: poster(r.posterPath), badge: status ? STATUS[status] : undefined, tone: status ? TONE[status] : undefined, href: `${web}/${r.mediaType === 'tv' ? 'tv' : 'movie'}/${r.id}`,
     });
     // a request's title lives on TMDB's record, which Seerr fetches per item
     // a title's details never change: remember up to 300 instead of fetching each request's every refresh
@@ -47,7 +48,7 @@ export default defineIntegration({
           title: 'Requests', interval: 300_000,
           async fetch() {
             const list = await requests(12);
-            return { type: 'shelf', title: 'Requested', icon: 'film', href: `${web}/requests`, aspect: 'poster', empty: 'No requests yet',
+            return { type: 'shelf', title: 'Requested', icon: 'film', href: `${web}/requests`, aspect: 'poster', layout: 'tickets', source: { name: 'Seerr', icon: '/api/icon/seerr' }, empty: 'No requests yet',
               items: list.map(({ q, d, title }) => ({ ...(d ? tile({ ...d, mediaType: q.type }, q.media?.status) : { title }), title })) };
           },
         },

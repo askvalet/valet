@@ -18,7 +18,7 @@ export default defineIntegration({
           title: 'Games', interval: 900_000,
           async fetch() {
             const [stats, roms] = await Promise.all([api<any>('stats'), api<any>('roms?limit=12&order_by=created_at&order_dir=desc')]);
-            return { type: 'shelf', title: 'Games', icon: 'game', href: web, aspect: 'square', note: `${stats.ROMS} games · ${stats.PLATFORMS} systems`, items: (roms.items ?? []).map(tile),
+            return { type: 'shelf', title: 'Games', icon: 'game', href: web, aspect: 'square', source: { name: 'RomM', icon: '/api/icon/romm' }, note: `${stats.ROMS} games · ${stats.PLATFORMS} systems`, items: (roms.items ?? []).map(tile),
               summary: { label: 'Games', icon: 'game', value: String(stats.ROMS), sub: `${stats.PLATFORMS} systems · ${fmt.bytes(stats.TOTAL_FILESIZE_BYTES, 0)}` } };
           },
         },

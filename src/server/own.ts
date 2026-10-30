@@ -43,7 +43,7 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
           if (!found.length) return { data: { error: `nothing tracked called "${name}"`, tracked: (o.history?.overview(hours * 36e5) ?? []).map(m => m.name).slice(0, 30) } };
           const from = Math.min(...found.map(s => s.points[0][0])), to = Math.max(...found.map(s => s.points.at(-1)![0]));
           return { data: found.map(s => { const v = s.points.map(p => p[1]); return { name: s.name, unit: s.unit ?? 'not known: state the numbers without a unit', now: v.at(-1), low: Math.min(...v), high: Math.max(...v) }; }),
-            card: { type: 'chart', title: found[0].name, unit: found.every(s => s.unit === found[0].unit) ? found[0].unit : undefined, from, to, span: `last ${hours} hours`, series: found.map(s => ({ name: s.name, points: s.points.map(p => p[1]) })) } };
+            card: { type: 'chart', title: found[0].name, unit: found.every(s => s.unit === found[0].unit) ? found[0].unit : undefined, from, to, span: hours === 1 ? 'last hour' : hours % 24 ? `last ${hours} hours` : hours === 24 ? 'last 24 hours' : `last ${hours / 24} days`, series: found.map(s => ({ name: s.name, points: s.points.map(p => p[1]) })) } };
         },
       },
       activity_log: {

@@ -110,10 +110,10 @@ export async function statusLine(ask: Ask, recent: string[], states: WidgetState
   return making ??= (async () => {
     try {
       const text = await ask(
-        `Write one sentence, at most 18 words, telling the owner of a homelab how things are right now: what's happened lately and whether anything needs them. Plain and calm, no greeting. Mention only what the data shows. If all is quiet, say so briefly.\n${SEP}`,
+        `Write one short line, at most 10 words, telling the owner of a homelab how things are right now. Lead with anything that needs them. Skip routine activity and AI requests. Plain and calm, no greeting, no full stop. Mention only what the data shows. If all is quiet, say so in a few words.\n${SEP}`,
         `It's ${now.toLocaleString('en', { weekday: 'long', hour: 'numeric', minute: '2-digit' })}.\n\nWrong right now:\n${troubles(states).map(t => `- ${t.text}`).join('\n') || '(nothing)'}\n\nLately:\n${recent.join('\n') || '(nothing recorded)'}\n\nThe page:\n${digest(states)}`);
       if (!text) return saved;
-      const brief = { text: clip(text, 200), at: now.getTime() };
+      const brief = { text: clip(text, 90).replace(/\.$/, ''), at: now.getTime() };
       await mkdir(dirname(FILE()), { recursive: true });
       await writeFile(`${FILE()}.tmp`, JSON.stringify(brief)); await rename(`${FILE()}.tmp`, FILE());
       return brief;

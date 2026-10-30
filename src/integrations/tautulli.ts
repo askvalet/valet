@@ -1,7 +1,7 @@
 // Tautulli (https://tautulli.com): who's watching what on Plex right now, what was added, and watch history.
 import { z } from 'zod';
 import { defineIntegration, fmt, type Instance } from '../server/core.ts';
-import type { MediaItem } from '../shared/cards.ts';
+import type { RankedItem, MediaItem } from '../shared/cards.ts';
 
 export default defineIntegration({
   type: 'tautulli',
@@ -43,7 +43,50 @@ export default defineIntegration({
         `${(Number(s.bandwidth) / 1000).toFixed(0)} Mbps`].filter(Boolean).join(' · '),
     });
 
+    const source = { name: 'Plex', icon: '/api/icon/plex' };
+    const stat = (stats: any[], id: string): any[] => stats.find(x => x.stat_id === id)?.rows ?? [];
+    const art = (r: any) => { const a = r.art || r.grandparent_art; return a ? ctx.image(a) : undefined; };
+    /** Films and shows together, by time watched. */
+    async function mostWatched(n: number): Promise<RankedItem[]> {
+      const home = await api('get_home_stats', { time_range: 30, stats_count: n }) as any[];
+      const rows = [...stat(home, 'top_movies').map(r => ({ ...r, kind: 'Movie' })), ...stat(home, 'top_tv').map(r => ({ ...r, kind: 'Show' }))].sort((a, b) => (b.total_duration ?? 0) - (a.total_duration ?? 0)).slice(0, n);
+      const top = Math.max(1, ...rows.map(r => r.total_duration ?? 0));
+      return rows.map(r => ({ title: r.title, subtitle: `${r.total_plays} play${r.total_plays === 1 ? '' : 's'}`, value: fmt.duration(r.total_duration ?? 0), image: r.thumb ? ctx.image(r.thumb) : undefined, backdrop: art(r), pct: (r.total_duration ?? 0) / top }));
+    }
+
     const widgets = {
+      library: {
+        title: 'Your library', interval: 3_600_000,
+        async fetch() {
+          const libs = await api('get_libraries') as any[], sum = (t: string, k: string) => libs.filter(l => l.section_type === t).reduce((n, l) => n + Number(l[k] ?? 0), 0);
+          const plays = await api('get_plays_by_date', { time_range: 30 }).catch(() => null);
+          const total = (plays?.series as any[] | undefined)?.find(x => x.name === 'Total')?.data as number[] | undefined;
+          const head = (label: string, n: number, icon: string, sub?: string) => ({ label, icon, value: n.toLocaleString(), sub });
+          return { type: 'stats', title: 'Your library', icon: 'film', href: cfg.href, source, items: [{ label: 'Movies', value: sum('movie', 'count').toLocaleString() }, { label: 'Shows', value: sum('show', 'count').toLocaleString() }, { label: 'Episodes', value: sum('show', 'child_count').toLocaleString() }],
+            summaries: [head('Movies', sum('movie', 'count'), 'film'), head('Shows', sum('show', 'count'), 'play', `${sum('show', 'parent_count').toLocaleString()} seasons`), head('Episodes', sum('show', 'child_count'), 'pulse'),
+              ...(total ? [{ ...head('Plays', total.reduce((a, b) => a + b, 0), 'chart', 'last 30 days'), trend: total }] : [])] };
+        },
+      },
+      top: {
+        title: 'Most watched', interval: 3_600_000,
+        async fetch() { return { type: 'ranked', title: 'Most watched', icon: 'film', source, note: 'last 30 days', items: await mostWatched(6), empty: 'Nothing watched yet' }; },
+      },
+      people: {
+        title: 'Who\'s watching', interval: 3_600_000,
+        async fetch() {
+          const rows = stat(await api('get_home_stats', { time_range: 30, stats_count: 6 }) as any[], 'top_users'), top = Math.max(1, ...rows.map(r => r.total_duration ?? 0));
+          return { type: 'list', title: 'Who\'s watching', icon: 'play', source, note: 'last 30 days', empty: 'Nobody yet',
+            items: rows.map(r => ({ title: r.friendly_name, subtitle: `${r.total_plays} plays`, meta: fmt.duration(r.total_duration ?? 0), pct: (r.total_duration ?? 0) / top })) };
+        },
+      },
+      plays: {
+        title: 'Plays', interval: 3_600_000,
+        async fetch() {
+          const d = await api('get_plays_by_date', { time_range: 30 }), series = (d.series as any[]).filter(x => x.name !== 'Total' && x.data.some((n: number) => n > 0));
+          const all = (d.series as any[]).find(x => x.name === 'Total')?.data as number[] | undefined;
+          return { type: 'chart', title: 'Plays', icon: 'chart', source, span: 'last 30 days', headline: all ? `${all.reduce((a, b) => a + b, 0)} plays` : undefined, labels: d.categories, series: series.map(x => ({ name: x.name, points: x.data })) };
+        },
+      },
       streams: {
         title: 'Now playing', interval: 10_000,
         async fetch() {
@@ -64,8 +107,9 @@ export default defineIntegration({
         title: 'Recently added', interval: 300_000,
         async fetch() {
           const d = await api('get_recently_added', { count: 12 });
-          return { type: 'shelf', title: 'Recently added', icon: 'film', href: cfg.href, aspect: 'poster',
+          return { type: 'shelf', title: 'Recently added', icon: 'film', href: cfg.href, aspect: 'poster', layout: 'spotlight', source,
             items: (d.recently_added as any[]).map(r => ({
+              backdrop: r.art || r.grandparent_art || r.parent_art ? ctx.image(r.art || r.grandparent_art || r.parent_art) : undefined,
               title: r.media_type === 'season' ? r.parent_title : r.media_type === 'episode' ? r.grandparent_title : r.title,
               subtitle: r.media_type === 'season' ? r.title : r.media_type === 'episode' ? `S${r.parent_media_index} · E${r.media_index}` : r.year ? String(r.year) : undefined,
               image: ctx.image(r.media_type === 'episode' ? (r.grandparent_thumb || r.thumb) : r.thumb || r.parent_thumb),
@@ -123,6 +167,16 @@ export default defineIntegration({
             const d = await api('get_recently_added', { count });
             const items = (d.recently_added as any[]).map(r => ({ title: r.full_title || r.title, type: r.media_type, added: new Date(Number(r.added_at) * 1000).toDateString() }));
             return { data: items, card: await widgets.recent.fetch() };
+          },
+        },
+        plex_stats: {
+          label: 'Checked what\'s popular', followUps: ['Who watched the most?', 'What should I watch next?'],
+          description: 'What\'s been watched most on Plex in the last 30 days, and who has watched the most. Use for "what do we watch", "most popular", "who watches the most".',
+          access: 'read', input: z.object({}),
+          async run() {
+            const items = await mostWatched(6), users = stat(await api('get_home_stats', { time_range: 30, stats_count: 6 }) as any[], 'top_users');
+            return { data: { mostWatched: items.map(i => ({ title: i.title, plays: i.subtitle, time: i.value })), people: users.map(u => ({ name: u.friendly_name, plays: u.total_plays, time: fmt.duration(u.total_duration ?? 0) })) },
+              card: { type: 'ranked', title: 'Most watched', icon: 'film', source, items } };
           },
         },
         plex_history: {

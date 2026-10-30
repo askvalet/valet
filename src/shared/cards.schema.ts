@@ -17,18 +17,19 @@ export const Activity = z.object({
   trailing: z.string().optional(), tone: Tone.optional(), count: z.number().optional(), paused: z.boolean().optional(),
 }).strict();
 const base = {
+  source: z.object({ name: z.string(), icon: z.string().optional() }).strict().optional(),
   title: z.string().optional(), icon: z.string().optional(), href: z.string().optional(), note: z.string().optional(),
   summary: Summary.optional(), summaries: z.array(Summary).optional(), wide: z.boolean().optional(), activity: Activity.optional(),
   buttons: z.array(z.object({ label: z.string(), action: z.string(), args: z.record(z.string(), z.unknown()).optional() }).strict()).optional(),
 };
 const StatItem = z.object({ label: z.string(), value: z.union([z.string(), z.number()]), unit: z.string().optional(), sub: z.string().optional(),
   tone: Tone.optional(), pct: z.number().optional(), trend: nums.optional() }).strict();
-const ListItem = z.object({ title: z.string(), href: z.string().optional(), dot: Tone.optional(), subtitle: z.string().optional(), meta: z.string().optional(), pct: unit.optional(), tone: Tone.optional(),
+const ListItem = z.object({ detail: z.string().optional(), title: z.string(), href: z.string().optional(), dot: Tone.optional(), subtitle: z.string().optional(), meta: z.string().optional(), pct: unit.optional(), tone: Tone.optional(),
   image: z.string().optional(), badge: z.string().optional() }).strict();
 const MediaItem = z.object({ title: z.string(), subtitle: z.string().optional(), image: z.string().optional(), backdrop: z.string().optional(), pct: unit.optional(),
   state: z.enum(['playing', 'paused', 'buffering']).optional(), user: z.string().optional(), device: z.string().optional(), detail: z.string().optional(),
   tags: z.array(z.string()).optional(), remaining: z.string().optional(), icon: z.string().optional() }).strict();
-const ShelfItem = z.object({ title: z.string(), subtitle: z.string().optional(), image: z.string().optional(), badge: z.string().optional(), href: z.string().optional() }).strict();
+const ShelfItem = z.object({ backdrop: z.string().optional(), tone: Tone.optional(), title: z.string(), subtitle: z.string().optional(), image: z.string().optional(), badge: z.string().optional(), href: z.string().optional() }).strict();
 const StatusItem = z.object({ name: z.string(), ok: z.boolean(), ms: z.number().optional(), detail: z.string().optional(), href: z.string().optional(),
   icon: z.string().optional(), group: z.string().optional(), quiet: z.boolean().optional() }).strict();
 const Control = z.object({ id: z.string(), label: z.string(), kind: z.enum(['toggle', 'slider', 'select', 'button', 'value']),
@@ -39,10 +40,10 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
   z.object({ ...base, type: z.literal('stats'), items: z.array(StatItem), pie: z.array(z.object({ label: z.string(), value: z.number(), tone: Tone.optional() }).strict()).optional(), pieCenter: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('list'), items: z.array(ListItem), empty: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('media'), items: z.array(MediaItem), empty: z.string().optional() }).strict(),
-  z.object({ ...base, type: z.literal('shelf'), items: z.array(ShelfItem), aspect: z.enum(['poster', 'square', 'wide']).optional(), empty: z.string().optional(), stack: z.boolean().optional() }).strict(),
+  z.object({ ...base, type: z.literal('shelf'), layout: z.enum(['row', 'spotlight', 'week', 'tickets']).optional(), items: z.array(ShelfItem), aspect: z.enum(['poster', 'square', 'wide']).optional(), empty: z.string().optional(), stack: z.boolean().optional() }).strict(),
   z.object({ ...base, type: z.literal('status'), items: z.array(StatusItem) }).strict(),
   z.object({ ...base, type: z.literal('links'), items: z.array(z.object({ name: z.string(), href: z.string(), icon: z.string().optional(), note: z.string().optional() }).strict()) }).strict(),
-  z.object({ ...base, type: z.literal('chart'), unit: z.string().optional(), max: z.number().optional(), span: z.string().optional(), from: z.number().optional(), to: z.number().optional(), labels: z.array(z.string()).optional(),
+  z.object({ ...base, type: z.literal('chart'), unit: z.string().optional(), headline: z.string().optional(), max: z.number().optional(), span: z.string().optional(), from: z.number().optional(), to: z.number().optional(), labels: z.array(z.string()).optional(),
     series: z.array(z.object({ name: z.string(), points: nums, tone: Tone.optional() }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('controls'), items: z.array(Control) }).strict(),
   z.object({ ...base, type: z.literal('showcase'), visual: z.object({ kind: z.string(), src: z.string().optional(), data: z.unknown().optional() }).strict(),
@@ -55,6 +56,7 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
   z.object({ ...base, type: z.literal('schedule'), muted: z.array(z.string()).optional(),
     items: z.array(z.object({ name: z.string(), at: z.string().refine(s => !Number.isNaN(Date.parse(s)), 'not a date') }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('verse'), arabic: z.string().optional(), english: z.string(), reference: z.string(), meaning: z.string().optional() }).strict(),
+  z.object({ ...base, type: z.literal('ranked'), empty: z.string().optional(), items: z.array(z.object({ title: z.string(), subtitle: z.string().optional(), value: z.string().optional(), image: z.string().optional(), backdrop: z.string().optional(), pct: unit.optional(), href: z.string().optional() }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('code'), lines: z.array(z.string()), diff: z.boolean().optional() }).strict(),
   z.object({ ...base, type: z.literal('table'), columns: z.array(z.string()), rows: z.array(z.array(z.union([z.string(), z.number()]))) }).strict(),
   z.object({ ...base, type: z.literal('kv'), rows: z.array(z.tuple([z.string(), z.string()])) }).strict(),

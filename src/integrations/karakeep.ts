@@ -1,7 +1,7 @@
 // Karakeep: bookmarks and read-later. Send the assistant a link and it's saved (Karakeep crawls it, tags and
 // summarises it); ask about what you've saved and it searches and reads them. Recent saves show as a shelf.
 import { z } from 'zod';
-import { defineIntegration } from '../server/core.ts';
+import { defineIntegration, fmt } from '../server/core.ts';
 import type { ShelfItem } from '../shared/cards.ts';
 
 export default defineIntegration({
@@ -24,6 +24,14 @@ export default defineIntegration({
 
     return {
       widgets: {
+        digest: {
+          title: 'Recently saved', interval: 300_000,
+          async fetch() {
+            const r = await api<any>('bookmarks?limit=8&sortOrder=desc');
+            return { type: 'list', title: 'Recently saved', icon: 'bookmark', href: web, source: { name: 'Karakeep', icon: '/api/icon/karakeep' }, empty: 'Nothing saved yet',
+              items: (r.bookmarks ?? []).map((b: any) => { const x = brief(b); return { title: x.title ?? x.url ?? 'Note', subtitle: [host(x.url), ...x.tags.slice(0, 2)].filter(Boolean).join(' · ') || undefined, detail: x.summary ? String(x.summary).slice(0, 500) : undefined, meta: fmt.relativeDay(b.createdAt), href: x.url ?? `${web}/dashboard/preview/${b.id}` }; }) };
+          },
+        },
         recent: {
           title: 'Saved', interval: 120_000,
           async fetch() {
@@ -44,6 +52,17 @@ export default defineIntegration({
             const list = r.bookmarks ?? [];
             return { data: list.map(brief),
               card: list.length ? { type: 'shelf', title: `Saved · “${query}”`, icon: 'bookmark', href: web, aspect: 'wide', items: shelf(list) } : { type: 'text', text: `Nothing saved matches “${query}”.` } };
+          },
+        },
+        bookmark_summarize: {
+          label: 'Summarized a bookmark', followUps: ['Summarize the next one'],
+          description: 'Have Karakeep write its AI summary of a saved link or note, by id (bookmarks_search finds the id). Use for "summarize that article I saved". If it has one already, that comes back. Answer from what it returns.',
+          access: 'write', input: z.object({ id: z.string() }),
+          async run({ id }) {
+            let b = await api<any>(`bookmarks/${encodeURIComponent(id)}`);
+            if (!b.summary) { await api(`bookmarks/${encodeURIComponent(id)}/summarize`, { method: 'POST' }); b = await api<any>(`bookmarks/${encodeURIComponent(id)}`); }
+            const x = brief(b);
+            return { data: { title: x.title, url: x.url, summary: x.summary ?? 'Karakeep has no summary for this yet' }, card: { type: 'kv', title: x.title ?? 'Bookmark', rows: [['Summary', String(x.summary ?? 'Not ready yet')]] } };
           },
         },
         bookmark_read: {

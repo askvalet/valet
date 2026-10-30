@@ -50,11 +50,11 @@ test('digest stays compact, and the status line is written at most every half ho
   let n = 0; const ask = async () => { n++; return `Quiet, nothing needs you ${n}.`; };
   const at = (m: number) => new Date(2026, 9, 30, 8, m), states = down('x');
   assert.equal(await statusLine(ask, [], [], at(0)), null);                              // nothing to go on yet
-  assert.equal((await statusLine(ask, [], states, at(0)))?.text, 'Quiet, nothing needs you 1.');
+  assert.equal((await statusLine(ask, [], states, at(0)))?.text, 'Quiet, nothing needs you 1');
   await statusLine(ask, [], states, at(10));
   assert.equal(n, 1);                                                                     // any number of opens, one rewrite
-  assert.equal((await statusLine(ask, [], states, at(31)))?.text, 'Quiet, nothing needs you 2.');
-  assert.equal((await statusLine(async () => null, [], states, at(59 + 40)))?.text, 'Quiet, nothing needs you 2.');   // no answer: keep the last
+  assert.equal((await statusLine(ask, [], states, at(31)))?.text, 'Quiet, nothing needs you 2');
+  assert.equal((await statusLine(async () => null, [], states, at(59 + 40)))?.text, 'Quiet, nothing needs you 2');   // no answer: keep the last
 });
 
 test('setup: edits keep comments; it can\'t touch sign-in or its own access, or write a secret into the file', async () => {

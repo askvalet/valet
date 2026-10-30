@@ -80,7 +80,7 @@ export default defineIntegration({
           async fetch() {
             const list = await upcoming(cfg.days);
             const next = list.find(x => !x.have);
-            return { type: 'shelf', title: 'Coming up', icon: 'film', aspect: 'poster', items: list.map(({ at, kind, have, ...s }) => s), empty: 'Nothing scheduled',
+            return { type: 'shelf', title: 'Coming up', icon: 'film', aspect: 'poster', layout: 'week', source: { name: 'Sonarr & Radarr', icon: '/api/icon/sonarr' }, items: list.map(({ at, kind, have, ...s }) => s), empty: 'Nothing scheduled',
               buttons: [{ label: 'Search for missing', action: 'search_missing' }],
               summary: { label: 'Coming up', icon: 'film', value: next ? next.badge! : 'Nothing', sub: next ? `${next.title}` : `next ${cfg.days} days` } };
           },

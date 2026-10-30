@@ -6,7 +6,7 @@ import {
   Activity, ArrowDown, ArrowUp, Bookmark, Check, ChevronDown, ChevronRight, Copy, CornerDownRight, FileText, Lightbulb, Loader2, Paperclip, RotateCcw,
   Pin, Search, Square, X, Zap,
 } from 'lucide-react';
-import { Fragment, memo, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Card } from '../shared/cards.ts';
@@ -97,13 +97,12 @@ function useLive(first: Card, tool: string, input: unknown, on: boolean) {
   return { card, live };
 }
 
-function ChatCard({ first, name, input, tools, canPin, fresh }: { first: Card; name: string; input: unknown; tools: Record<string, ToolInfo>; canPin?: boolean; fresh?: boolean }) {
+function ChatCard({ first, name, input, tools, fresh }: { first: Card; name: string; input: unknown; tools: Record<string, ToolInfo>; fresh?: boolean }) {
   const { card, live } = useLive(first, name, input ?? {}, !!fresh && (name === 'show' || !!tools[name]?.live));
   return (
-    <div className="chat-card chat-pinnable relative">
-      <Widget card={card} compact />
+    <div className="chat-card relative">
       {live && <span className="live-dot" title="Live" aria-label="Live" />}
-      {canPin && (name === 'show' || (tools[name]?.access === 'read' && !name.startsWith('config__'))) && <PinButton tool={name} input={input ?? {}} />}
+      <Widget card={card} compact />
     </div>
   );
 }
@@ -128,8 +127,9 @@ const argOf = (input: any) => {
 };
 
 /** A run of tool calls as compact chips: what it did, with what, and whether it worked. Collapses once the answer's in. */
-function ToolChips({ parts, settled, tools }: { parts: any[]; settled: boolean; tools: Record<string, ToolInfo> }) {
+function ToolChips({ parts, settled, tools, fresh }: { parts: any[]; settled: boolean; tools: Record<string, ToolInfo>; fresh?: boolean }) {
   const [open, setOpen] = useState<boolean | null>(null);
+  const [peek, setPeek] = useState<string | null>(null);   // a step's card, opened from its line
   const shown = open ?? !settled;
   const name = (p: any) => p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, '');
   return (
@@ -140,17 +140,20 @@ function ToolChips({ parts, settled, tools }: { parts: any[]; settled: boolean; 
         </button>
       )}
       <div className={cn('grid transition-[grid-template-rows,opacity] duration-300 ease-out', shown || parts.length === 1 ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
-        <div className="space-y-1 overflow-hidden">
+        <div className="max-w-[560px] space-y-1 overflow-hidden">
           {parts.map((p, i) => {
-            const [verb, I] = verbOf(name(p), tools), arg = argOf(p.input);
+            const [verb, I] = verbOf(name(p), tools), arg = argOf(p.input), card = p.output?.card as Card | undefined;
             const done = p.state === 'output-available', failed = p.state === 'output-error' || p.output?.data?.error, denied = p.state === 'output-denied';
             return (
-              <div key={i} className="flex min-w-0 items-center gap-2 text-muted-foreground animate-in fade-in slide-in-from-bottom-1 duration-300">
+              <Fragment key={i}>
+              <button type="button" disabled={!card} onClick={() => setPeek(x => x === p.toolCallId ? null : p.toolCallId)} className={cn('flex w-full min-w-0 items-center gap-2 text-left text-muted-foreground', card && 'transition-colors hover:text-foreground')}>
                 <I className="size-3.5 shrink-0" />
                 <span className={cn('shrink-0', !done && !failed && !denied && 'chat-shimmer')}>{denied ? `Skipped: ${verb.toLowerCase()}` : verb}</span>
                 {arg && <span className="truncate rounded-md bg-white/[.06] px-1.5 py-px font-mono text-[11.5px] text-foreground/75">{arg}</span>}
                 <span className="ml-auto shrink-0">{failed ? <X className="size-3.5 text-bad" /> : done ? <Check className="size-3.5 text-good" /> : denied ? null : <Loader2 className="size-3.5 animate-spin" />}</span>
-              </div>
+              </button>
+              {peek === p.toolCallId && card && <div className="chat-peek py-1"><ChatCard first={card} name={name(p)} input={p.input} tools={tools} fresh={fresh} /></div>}
+              </Fragment>
             );
           })}
         </div>
@@ -159,21 +162,7 @@ function ToolChips({ parts, settled, tools }: { parts: any[]; settled: boolean; 
   );
 }
 
-/** Keep this card on the page: it stays live by re-running the tool, with no model involved. */
-function PinButton({ tool, input }: { tool: string; input: unknown }) {
-  const [state, setState] = useState<'idle' | 'busy' | 'done' | 'failed'>('idle');
-  const pin = async () => {
-    setState('busy');
-    const r = await fetch('/api/pins', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool, input }) }).catch(() => null);
-    setState(r?.ok ? 'done' : 'failed');
-  };
-  return (
-    <button onClick={pin} disabled={state === 'busy' || state === 'done'} data-done={state === 'done' || undefined} aria-label="Keep on the page" title={state === 'failed' ? "Couldn't pin that" : 'Keep on the page'}
-      className="chat-pin chat-icon glass-round rounded-lg!">{state === 'done' ? <Check className="morph size-3.5 text-good" /> : state === 'busy' ? <Loader2 className="size-3.5 animate-spin" /> : <Pin className={cn('size-3.5', state === 'failed' && 'text-bad')} />}</button>
-  );
-}
-
-function ToolPart({ p, approve, tools = {}, canPin, fresh }: { p: any; approve: (id: string, ok: boolean) => void; tools?: Record<string, ToolInfo>; canPin?: boolean; fresh?: boolean }) {
+function ToolPart({ p, approve, tools = {}, fresh, shown = true }: { p: any; approve: (id: string, ok: boolean) => void; tools?: Record<string, ToolInfo>; fresh?: boolean; shown?: boolean }) {
   const label = toolLabel(p.type === 'dynamic-tool' ? p.toolName : p.type);
   const name = p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, '');
   if (p.state === 'approval-requested' && !p.approval?.isAutomatic) return (
@@ -207,7 +196,7 @@ function ToolPart({ p, approve, tools = {}, canPin, fresh }: { p: any; approve: 
   );
   if (p.state === 'output-available') {
     const card = p.output?.card as Card | undefined;
-    if (card) return <ChatCard first={card} name={name} input={p.input} tools={tools} canPin={canPin} fresh={fresh} />;
+    if (card) return shown ? <ChatCard first={card} name={name} input={p.input} tools={tools} fresh={fresh} /> : null;
     const mcp = Array.isArray(p.output?.content) ? p.output.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n') : '';
     if (mcp) return (
       <details className="group rounded-xl border bg-card px-4 py-3 text-sm">
@@ -249,7 +238,7 @@ export function InlineAnswer({ text, tools, onMore }: { text: string; tools: Rec
 }
 
 /** One message. Memoised, so a reply streaming in doesn't re-render everything above it. */
-const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, since, tools, canPin, act }: { m: any; isLast: boolean; busy: boolean; tookMs?: number; fresh: boolean; since: number; tools: Record<string, ToolInfo>; canPin?: boolean; act: { approve: (id: string, ok: boolean) => void; regenerate: () => void; ask: (t: string) => void } }) {
+const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, since, tools, act }: { m: any; isLast: boolean; busy: boolean; tookMs?: number; fresh: boolean; since: number; tools: Record<string, ToolInfo>; act: { approve: (id: string, ok: boolean) => void; regenerate: () => void; ask: (t: string) => void } }) {
   const [copied, setCopied] = useState(false);
   if (m.role === 'user') return (
     <div className="chat-msg flex justify-end">
@@ -261,9 +250,15 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
   // a reply: runs of tool calls become one chip list, followed by any cards they returned, then the words
   const live = isLast && busy;
   const blocks: ReactNode[] = [], thoughts: string[] = []; let run: any[] = [], thinking = false;
+  // A card that was asked for always shows. Lookups along the way don't: they stay in the steps, a tap away, so three
+  // lookups aren't three cards pushing the answer off the screen. Once it's done, one or two are shown as the result.
+  const toolName = (p: any) => p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, '');
+  const asked = (p: any) => ['show', 'present'].includes(toolName(p)) || toolName(p).endsWith('__metric_chart');
+  const withCards = m.parts.filter((p: any) => p.output?.card), plain = withCards.filter((p: any) => !asked(p) && !['text', 'code'].includes(p.output.card.type));
+  const shows = (p: any) => asked(p) || (!live && plain.length <= 2 && plain.includes(p));
   // keys come from the tool call, which never changes: keys based on position shifted as words arrived, so every card
   // was rebuilt and replayed its animation, which is what made the chat flicker
-  const flush = () => { if (run.length) { const r = run, id = r[0].toolCallId; blocks.push(<ToolChips key={`c${id}`} parts={r} tools={tools} settled={!live || m.parts.some((p: any) => p.type === 'text' && p.text.trim())} />, <div key={`g${id}`} className="chat-cards">{r.map(p => <ToolPart key={p.toolCallId} p={p} tools={tools} canPin={canPin} fresh={fresh} approve={act.approve} />)}</div>); run = []; } };
+  const flush = () => { if (run.length) { const r = run, id = r[0].toolCallId; blocks.push(<ToolChips key={`c${id}`} parts={r} tools={tools} fresh={fresh} settled={!live} />, <div key={`g${id}`} className="chat-cards">{r.map(p => <ToolPart key={p.toolCallId} p={p} tools={tools} fresh={fresh} shown={shows(p)} approve={act.approve} />)}</div>); run = []; } };
   m.parts.forEach((p: any, i: number) => {
     if (p.type.startsWith('tool-') || p.type === 'dynamic-tool') run.push(p);
     else if (p.type === 'reasoning') { thoughts.push(p.text ?? ''); thinking ||= live && p.state === 'streaming'; }
@@ -272,7 +267,7 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
       const t = splitThink(p.text);
       if (t.thought) thoughts.push(t.thought);
       thinking ||= live && t.thinking;
-      if (t.said) { flush(); blocks.push(<Text key={i} text={t.said} live={live} />); }
+      if (t.said) { flush(); const more = m.parts.slice(i + 1).some((x: any) => x.type.startsWith('tool-') || x.type === 'dynamic-tool'); blocks.push(more ? <div key={i} className="text-[13.5px] text-muted-foreground"><Text text={t.said} live={live} /></div> : <Text key={i} text={t.said} live={live} />); }
     }
   });
   if (thoughts.some(t => t.trim()) || thinking) blocks.unshift(<Reasoning key="thought" text={thoughts.join('\n\n')} streaming={thinking} took={tookMs} />);
@@ -307,9 +302,8 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
   );
 });
 
-export default function Assistant({ name, model, ask, suggestions, tools = {}, external, onAsk, onClose, canPin }: {
+export default function Assistant({ name, model, ask, suggestions, tools = {}, external, onAsk, onClose }: {
   name: string; model: string; ask: { text: string; n: number } | null; suggestions: string[]; tools?: Record<string, ToolInfo>; onAsk: (t: string) => void;
-  canPin?: boolean;
   external?: boolean;   // the chat is another agent's (assistant.agent), with tools of its own
   onClose?: () => void;   // shown as a phone sheet: a grabber to drag it away, and room for fingers and the keyboard
 }) {
@@ -361,28 +355,45 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
     }
   };
   const sent = useRef(0);
-  const end = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
-  // follow the reply as it streams, unless the person scrolled up to read; then offer a way back down
+  // Stay pinned to the newest words unless the person scrolled up; the moment they scroll back to the bottom, pin again.
+  // Direct scrollTop rather than smooth scrolling: a smooth scroll restarted on every token never lands, and fights the
+  // person's own scrolling, which was the jitter.
+  const following = useRef(true), lastTop = useRef(0), column = useRef<HTMLDivElement>(null);
   const [away, setAway] = useState(false);
-  const onScroll = () => { const el = scroller.current; if (el) setAway(el.scrollHeight - el.scrollTop - el.clientHeight > 80); };
+  const pin = () => { const el = scroller.current; if (el && following.current) { el.scrollTop = el.scrollHeight; lastTop.current = el.scrollTop; } };
+  const onScroll = () => {
+    const el = scroller.current; if (!el) return;
+    const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (el.scrollTop < lastTop.current - 2 && gap > 32) following.current = false;
+    if (gap < 24) following.current = true;
+    lastTop.current = el.scrollTop;
+    setAway(!following.current);
+  };
+  const toLatest = () => { following.current = true; setAway(false); scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' }); };
   const busy = status === 'submitted' || status === 'streaming';
 
   // questions from the ⌘K palette arrive through `ask`
-  useEffect(() => { if (ask && ask.n !== sent.current) { sent.current = ask.n; sendMessage({ text: ask.text }); } }, [ask, sendMessage]);
-  // follows without animating while words arrive: a smooth scroll per token never finishes and stutters on phones
-  useEffect(() => { if (!away) end.current?.scrollIntoView({ block: 'end', behavior: status === 'streaming' ? 'auto' : 'smooth' }); }, [messages, status, away]);
+  useEffect(() => { if (ask && ask.n !== sent.current) { sent.current = ask.n; following.current = true; sendMessage({ text: ask.text }); } }, [ask, sendMessage]);
+  useLayoutEffect(pin, [messages, status]);
+  // cards and images that finish loading change the height too
+  useEffect(() => {
+    const ro = new ResizeObserver(pin);
+    if (column.current) ro.observe(column.current);
+    return () => ro.disconnect();
+  }, []);
 
   const ready = files.filter(f => f.id), uploading = files.some(f => !f.id && !f.error);
   const submit = () => {
     if ((!draft.trim() && !ready.length) || busy || uploading) return;
     const lines = ready.map(f => `[attached: ${f.name} (file id ${f.id})]`);
+    following.current = true;
     sendMessage({ text: [draft.trim() || 'File this.', ...lines].join('\n') }); setDraft(''); setFiles([]);
   };
 
   return (
     <div className="relative flex h-full flex-col">
-      <header {...(sheet ? grab : {})} className={cn('relative flex items-center gap-2.5 border-b px-5', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'py-2.5')}>
+      <header {...(sheet ? grab : {})} className={cn('relative flex items-center gap-2.5 px-5', sheet ? 'border-b ' : '', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'py-2.5')}>
         {sheet && <span className="sheet-grip absolute top-[max(.4rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2" aria-hidden />}
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold leading-tight">{name}</div>
@@ -392,7 +403,8 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
       </header>
 
       {external && <div className="border-b px-5 py-2 text-[12.5px] text-muted-foreground">{name} runs its own tools. Valet's approvals and access levels don't apply, and answers are plain text.</div>}
-      <div ref={scroller} onScroll={onScroll} className={cn('relative flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5', sheet && !messages.length && 'flex flex-col justify-end')}>
+      <div ref={scroller} onScroll={onScroll} className={cn('relative flex-1 overflow-y-auto overscroll-contain px-5', sheet && !messages.length && 'flex flex-col justify-end')}>
+        <div ref={column} className="mx-auto w-full max-w-[820px] space-y-4 py-4">
         {!messages.length && (
           // on a phone the suggestions sit low, where the thumb is
           <div className={cn('text-center animate-in fade-in duration-500', !sheet && 'pt-10')}>
@@ -409,7 +421,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
           </div>
         )}
         {messages.map((m, mi) => (
-          <MessageRow key={m.id} m={m} isLast={mi === messages.length - 1} busy={busy} tookMs={took[m.id]} fresh={mi >= messages.length - 4} since={started.current} tools={tools} canPin={canPin} act={act} />
+          <MessageRow key={m.id} m={m} isLast={mi === messages.length - 1} busy={busy} tookMs={took[m.id]} fresh={mi >= messages.length - 4} since={started.current} tools={tools} act={act} />
         ))}
         {status === 'submitted' && messages.at(-1)?.role === 'user' && <Pending since={started.current || Date.now()} />}
         {error && (
@@ -418,16 +430,16 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
             <button onClick={() => regenerate()} className="press shrink-0 rounded-full bg-white/10 px-3 py-1 text-[12.5px] transition-colors hover:bg-white/15">Try again</button>
           </div>
         )}
-        <div ref={end} />
+        </div>
       </div>
       {away && (
-        <button onClick={() => { setAway(false); end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }} aria-label="Jump to the latest"
+        <button onClick={toLatest} aria-label="Jump to the latest"
           className="to-latest glass-round absolute bottom-[88px] left-1/2 z-10 flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-full px-3 text-[12.5px] text-foreground/85">
           <ArrowDown className="size-3.5" />{busy ? 'Writing…' : 'Latest'}
         </button>
       )}
 
-      <form className={cn('border-t p-3', sheet && 'pb-[max(.75rem,env(safe-area-inset-bottom))]')} onSubmit={e => { e.preventDefault(); submit(); }}
+      <form className={cn('mx-auto w-full max-w-[860px] p-3 pt-1', sheet && 'pb-[max(.75rem,env(safe-area-inset-bottom))]')} onSubmit={e => { e.preventDefault(); submit(); }}
         onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setOver(true); } }} onDragLeave={() => setOver(false)}
         onDrop={e => { if (e.dataTransfer.files.length) { e.preventDefault(); setOver(false); attach(e.dataTransfer.files); } }}>
         {files.length > 0 && (

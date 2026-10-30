@@ -32,6 +32,7 @@ export interface Activity {
 }
 
 interface Base {
+  source?: { name: string; icon?: string };   // where this comes from, shown beside the title: Plex, Seerr, RomM…
   title?: string;
   icon?: string;          // icon name from the built-in set, or a URL
   href?: string;          // "open the app" link
@@ -59,6 +60,7 @@ export interface ListItem {
   title: string;
   href?: string;           // the row opens this (a new tab)
   dot?: Tone;              // a status dot on the right, instead of a word
+  detail?: string;         // a couple of lines under the title, e.g. a summary
   subtitle?: string;
   meta?: string;          // right-aligned, e.g. "8 min left"
   pct?: number;           // 0..1 progress bar
@@ -85,8 +87,8 @@ export interface MediaItem {
 export interface MediaCard extends Base { type: 'media'; items: MediaItem[]; empty?: string }
 
 /** A horizontal shelf of artwork (posters, albums, photos), like a row in the Apple TV app. */
-export interface ShelfItem { title: string; subtitle?: string; image?: string; badge?: string; href?: string }
-export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string; stack?: boolean }   // stack: a pile of pages that fans out
+export interface ShelfItem { title: string; subtitle?: string; image?: string; badge?: string; href?: string; backdrop?: string; tone?: Tone }
+export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string; stack?: boolean; layout?: 'row' | 'spotlight' | 'week' | 'tickets' }   // stack: a pile of pages that fans out
 
 export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string; group?: string; quiet?: boolean }   // quiet: being down is expected, never an alert
 export interface StatusCard extends Base { type: 'status'; items: StatusItem[] }
@@ -99,6 +101,7 @@ export interface ChartCard extends Base {
   unit?: string;
   max?: number;
   series: { name: string; points: number[]; tone?: Tone }[];
+  headline?: string;      // the big number, when the latest point isn't it ("31 plays")
   span?: string;          // e.g. "last 10 min"
   from?: number;          // when the first point is (ms), so scrubbing can say when
   to?: number;            // when the last point is
@@ -162,7 +165,11 @@ export interface TextCard extends Base { type: 'text'; text: string; tone?: Tone
 
 export interface GroupCard extends Base { type: 'group'; cards: Card[]; layout?: 'row' | 'column' }
 
-export type Card = CodeCard | TableCard | LinksCard | VerseCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
+/** Who or what comes top: the leader gets its artwork, the rest a bar. */
+export interface RankedItem { title: string; subtitle?: string; value?: string; image?: string; backdrop?: string; pct?: number; href?: string }
+export interface RankedCard extends Base { type: 'ranked'; items: RankedItem[]; empty?: string }
+
+export type Card = RankedCard | CodeCard | TableCard | LinksCard | VerseCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
 
 /** One widget slot's live state, as pushed to the browser. */
 export interface WidgetState { key: string; card?: Card; error?: string; at: number; source?: string }

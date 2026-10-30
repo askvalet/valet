@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import type { CodeCard, TableCard, LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
+import type { CodeCard, RankedCard, TableCard, LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
 // Icon names cards may use (docs/integrations.md lists them; keep the two in step). Anything else: a URL or a path.
 const ICONS: Record<string, LucideIcon> = {
@@ -141,6 +141,7 @@ function List({ card }: { card: ListCard }) {
               {it.href && <ArrowUpRight className="row-arrow size-3.5 shrink-0 text-muted-foreground" />}
             </div>
             {it.subtitle && <div className={cn('truncate text-xs', it.tone && it.tone !== 'neutral' ? toneText[it.tone] : 'text-muted-foreground')}>{it.subtitle}</div>}
+            {it.detail && <div className="mt-1 line-clamp-2 text-[12.5px] leading-snug text-foreground/70">{it.detail}</div>}
             {it.pct != null && <div className={dense ? 'mt-1' : 'mt-2'}><Bar pct={it.pct} tone={it.tone} /></div>}
           </div>
         </li>
@@ -348,7 +349,115 @@ function Stack({ card, header, onOpen }: { card: ShelfCard; header?: ReactNode; 
 function Shelf({ card, header, small }: { card: ShelfCard; header?: ReactNode; small?: boolean }) {
   const [spread, setSpread] = useState(false);
   if (card.stack && !spread && card.items.length) return <Stack card={card} header={header} onOpen={() => setSpread(true)} />;
+  if (!small && card.layout === 'spotlight' && card.items.length) return <Spotlight card={card} header={header} />;
+  if (!small && card.layout === 'week') return <Week card={card} header={header} />;
+  if (!small && card.layout === 'tickets') return <Tickets card={card} header={header} />;
   return <div className={card.stack ? 'stack-open' : undefined}><ShelfRow card={card} header={header} small={small} /></div>;
+}
+
+const Tile = ({ href, className, children }: { href?: string; className?: string; children: ReactNode }) =>
+  href ? <a href={href} target="_blank" rel="noreferrer" className={className}>{children}</a> : <div className={className}>{children}</div>;
+
+/** The newest thing, large, with the rest running beside it. */
+function Spotlight({ card, header }: { card: ShelfCard; header?: ReactNode }) {
+  const [first, ...rest] = card.items;
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-2">{header}</div>
+      <div className="grid items-start gap-4 @4xl/main:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+        <Tile href={first.href} className="group relative block aspect-[16/9] overflow-hidden rounded-2xl bg-muted shadow-[0_18px_40px_-20px_rgb(0_0_0/.6)]">
+          <Art src={first.backdrop ?? first.image} alt={first.title} className="size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-4 text-white">
+            {first.backdrop && first.image && <Art src={first.image} alt="" className="h-[92px] w-[62px] shrink-0 rounded-lg object-cover shadow-lg" />}
+            <div className="min-w-0"><div className="text-[11px] font-medium tracking-wide text-white/70 uppercase">{first.badge ?? 'New'}</div>
+              <div className="truncate text-[20px] font-semibold tracking-tight">{first.title}</div>{first.subtitle && <div className="truncate text-[13px] text-white/75">{first.subtitle}</div>}</div>
+          </div>
+        </Tile>
+        {rest.length > 0 && <ShelfRow card={{ ...card, items: rest }} />}
+      </div>
+    </div>
+  );
+}
+
+/** What's coming, day by day, as a little week planner. */
+function Week({ card, header }: { card: ShelfCard; header?: ReactNode }) {
+  const days = [...new Set(card.items.map(i => i.badge ?? ''))];
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-2">{header}</div>
+      {!card.items.length ? <Empty text={card.empty ?? 'Nothing scheduled'} /> : (
+        <div className="no-scrollbar -mx-2 flex gap-3 overflow-x-auto px-2 pb-1">
+          {days.map((d, k) => (
+            <div key={d} className={cn('min-w-[210px] flex-1 rounded-2xl border bg-card p-3', k === 0 && 'border-white/20')}>
+              <div className={cn('mb-2 text-[12px] font-semibold', k === 0 ? 'text-foreground' : 'text-muted-foreground')}>{d || 'Later'}</div>
+              <div className="space-y-2">
+                {[...new Map(card.items.filter(i => (i.badge ?? '') === d).map(i => [i.title, i])).values()].slice(0, 4).map((it, i) => {
+                  // several episodes of one show on a day are one line
+                  const same = card.items.filter(x => (x.badge ?? '') === d && x.title === it.title).length;
+                  return (
+                    <Tile key={i} href={it.href} className="flex min-w-0 items-center gap-2.5">
+                      <Art src={it.image} alt={it.title} className="h-[52px] w-[35px] shrink-0 rounded-md object-cover" />
+                      <div className="min-w-0"><div className="truncate text-[13px] font-medium">{it.title}</div><div className="truncate text-[11.5px] text-muted-foreground">{same > 1 ? `${same} episodes` : it.subtitle}</div></div>
+                    </Tile>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Things in a queue, each with where it's got to. */
+function Tickets({ card, header }: { card: ShelfCard; header?: ReactNode }) {
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-2">{header}</div>
+      {!card.items.length ? <Empty text={card.empty ?? 'Nothing here yet'} /> : (
+        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 250px), 1fr))' }}>
+          {card.items.map((it, i) => (
+            <Tile key={i} href={it.href} className="lift flex min-w-0 items-center gap-3 rounded-xl border bg-card p-2 pr-3">
+              <Art src={it.image} alt={it.title} className="h-[54px] w-[36px] shrink-0 rounded-md object-cover" />
+              <div className="min-w-0 flex-1"><div className="truncate text-[13px] font-medium">{it.title}</div>{it.subtitle && <div className="truncate text-[11.5px] text-muted-foreground">{it.subtitle}</div>}</div>
+              {it.badge && <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', it.tone === 'good' ? 'bg-good/15 text-good' : it.tone === 'warn' ? 'bg-warn/15 text-warn' : it.tone === 'bad' ? 'bg-bad/15 text-bad' : 'bg-primary/15 text-primary')}>{it.badge}</span>}
+            </Tile>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A leaderboard: the winner in full colour, the rest measured against it. */
+function Ranked({ card }: { card: RankedCard }) {
+  if (!card.items.length) return <Empty text={card.empty ?? 'Nothing yet'} />;
+  const [first, ...rest] = card.items;
+  return (
+    <div className="space-y-3">
+      <Tile href={first.href} className="relative block h-[116px] overflow-hidden rounded-xl bg-muted">
+        {first.backdrop && <Art src={first.backdrop} alt="" className="absolute inset-0 size-full object-cover" />}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-transparent" />
+        <div className="absolute inset-0 flex items-center gap-3 p-3 text-white">
+          {first.image && <Art src={first.image} alt={first.title} className="h-[92px] w-[62px] shrink-0 rounded-lg object-cover shadow-lg" />}
+          <div className="min-w-0"><div className="text-[11px] font-medium text-white/65">No. 1</div>
+            <div className="truncate text-[17px] font-semibold tracking-tight">{first.title}</div>
+            <div className="truncate text-[12.5px] text-white/75">{[first.value, first.subtitle].filter(Boolean).join(' · ')}</div></div>
+        </div>
+      </Tile>
+      <ol className="space-y-2">
+        {rest.map((it, i) => (
+          <li key={i} className="flex min-w-0 items-center gap-2.5 text-[13px]">
+            <span className="w-3 shrink-0 text-right text-[11px] tabular text-muted-foreground">{i + 2}</span>
+            <div className="min-w-0 flex-1"><div className="flex items-baseline gap-2"><span className="min-w-0 flex-1 truncate font-medium">{it.title}</span><span className="shrink-0 text-xs tabular text-muted-foreground">{it.value}</span></div>
+              {it.pct != null && <div className="mt-1"><Bar pct={it.pct} /></div>}</div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
 }
 
 function ShelfRow({ card, header, small }: { card: ShelfCard; header?: ReactNode; small?: boolean }) {
@@ -358,7 +467,7 @@ function ShelfRow({ card, header, small }: { card: ShelfCard; header?: ReactNode
   const width = small ? (card.aspect === 'wide' ? 'w-[180px]' : 'w-[92px]') : card.aspect === 'wide' ? 'w-[240px] @3xl/main:w-[280px]' : 'w-[128px] @3xl/main:w-[150px]';
   return (
     <div>
-      <div className="mb-3 flex items-center gap-2">
+      <div className={cn('flex items-center gap-2', !!(header || card.items.length > (small ? 4 : 6)) && 'mb-3')}>
         {header}
         <div className={cn('ml-auto hidden gap-1.5', card.items.length > (small ? 4 : 6) && 'sm:flex')}>
           <button onClick={() => page(-1)} aria-label="Previous" className="grid size-7 place-items-center rounded-full bg-secondary text-muted-foreground transition-colors hover:text-foreground"><ChevronLeft className="size-4" /></button>
@@ -410,9 +519,9 @@ function Chart({ card }: { card: ChartCard }) {
   return (
     <div>
       <div className="mb-2 flex items-baseline gap-2">
-        <span className="metric text-[22px] leading-none">{shown != null ? num(shown) : '–'}</span>
+        <span className="metric text-[22px] leading-none">{at == null && card.headline ? card.headline : shown != null ? num(shown) : '–'}</span>
         <span className="min-w-0 truncate text-xs text-muted-foreground">
-          {at != null ? when(at) : move != null && Math.abs(move) >= .005 ? <span className={cn('tabular', lead.tone === 'bad' ? 'text-bad' : '')}>{move > 0 ? '+' : ''}{Math.round(move * 1000) / 10}%{card.span ? ` over the ${card.span.replace(/^last /, 'last ')}` : ''}</span> : card.span}
+          {at != null ? when(at) : card.headline ? card.span : move != null && Math.abs(move) >= .005 ? <span className={cn('tabular', lead.tone === 'bad' ? 'text-bad' : '')}>{move > 0 ? '+' : ''}{Math.round(move * 1000) / 10}%{card.span ? ` over the ${card.span}` : ''}</span> : card.span}
         </span>
       </div>
       <div className="chart-scrub relative touch-pan-y select-none" onPointerMove={scrub} onPointerDown={scrub} onPointerLeave={() => setAt(null)} onPointerUp={e => { if (e.pointerType !== 'mouse') setAt(null); }}>
@@ -433,8 +542,8 @@ function Chart({ card }: { card: ChartCard }) {
         )}
       </div>
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        {card.series.length > 1 && card.series.map(s => <span key={s.name} className="tabular">{s.name} {at != null && s.points[at] != null ? num(s.points[at]) : s.points.length ? num(s.points.at(-1)!) : ''}</span>)}
-        {card.span && <span className="ml-auto">{card.span}</span>}
+        {card.series.length > 1 && card.series.map(s => <span key={s.name} className="tabular">{s.name}{at != null && s.points[at] != null ? ` ${num(s.points[at])}` : card.headline ? '' : s.points.length ? ` ${num(s.points.at(-1)!)}` : ''}</span>)}
+        {card.span && !card.headline && <span className="ml-auto">{card.span}</span>}
       </div>
     </div>
   );
@@ -733,6 +842,7 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
     case 'shelf': return <Shelf card={card} />;
     case 'chart': return <Chart card={card} />;
     case 'code': return <Code card={card} />;
+    case 'ranked': return <Ranked card={card} />;
     case 'table': return <Table card={card} />;
     case 'controls': return <Controls card={card} run={run} />;
     case 'kv': return <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">{card.rows.map(([k, v]) => <Fragment key={k}><dt className="text-muted-foreground">{k}</dt><dd className="text-right tabular">{v}</dd></Fragment>)}</dl>;
@@ -750,12 +860,18 @@ function BareHeader({ card, title, status }: { card?: CardT; title?: string; sta
   return (
     <div className="flex min-w-0 items-center gap-2">
       <h3 className="truncate text-[15px] font-semibold tracking-tight">{card?.title ?? title}</h3>
+      <Source of={card?.source} />
       {status}
       {card?.note && <span className="truncate text-xs tabular text-muted-foreground">{card.note}</span>}
       {card?.href && <a href={card.href} target="_blank" rel="noreferrer" aria-label={`Open ${card.title ?? title}`} className="text-muted-foreground transition-colors hover:text-foreground"><ArrowUpRight className="size-4" /></a>}
     </div>
   );
 }
+
+/** Where a card comes from: the service's logo and name, quiet, beside the title. */
+const Source = ({ of }: { of?: CardT['source'] }) => !of ? null : (
+  <span className="flex shrink-0 items-center gap-1 text-[11.5px] text-muted-foreground">{of.icon && <img src={of.icon} alt="" className="size-3.5 object-contain" />}{of.name}</span>
+);
 
 /** Quick actions along a card's bottom: quiet pills that show they're working, then settle. */
 function CardButtons({ buttons, run }: { buttons: NonNullable<CardT['buttons']>; run: RunAction }) {
@@ -829,6 +945,7 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
         <CardHeader className={cn('flex items-center gap-2', compact ? 'px-3.5' : 'px-5')}>
           {card?.icon && (compact ? <Icon name={card.icon} className="size-3.5 text-muted-foreground" /> : <span className="icon-tile"><Icon name={card.icon} /></span>)}
           <CardTitle className={cn('truncate', compact ? 'text-[13px]' : 'text-[15px]')}>{t}</CardTitle>
+          <Source of={card?.source} />
           {status}
           {failed && <WhyChip about={`It can't be reached: ${failed}`} />}
           <CardAction className="flex items-center gap-2 self-center">

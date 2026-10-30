@@ -137,7 +137,8 @@ export async function buildSite(config: Config, registry: Record<string, Integra
       for (const l of noticeListeners) l(n);
     }
     // everything that came or went goes on the timeline, announced or not
-    for (const on of EVERYTHING) for (const n of noticesFor(key, prev?.card, next.card, [{ widget: key, on }])) timeline.add(on, `${n.text}${n.sub ? ` (${n.sub})` : ''}`, key);
+    // (not the AI's own comings and goings: they'd drown out everything else, and every summary would cause more)
+    if (meta.get(key.split('.')[0])?.type !== 'aimonitor') for (const on of EVERYTHING) for (const n of noticesFor(key, prev?.card, next.card, [{ widget: key, on }])) timeline.add(on, `${n.text}${n.sub ? ` (${n.sub})` : ''}`, key);
     // and rules that asked for it reach your phone
     for (const r of config.island?.notify ?? []) if (r.push && r.widget === key) for (const n of noticesFor(key, prev?.card, next.card, [r])) sendPush({ title: n.text, text: n.sub, urgent: n.tone === 'bad' });
   }, history);
