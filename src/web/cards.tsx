@@ -521,6 +521,24 @@ function BareHeader({ card, title, status }: { card?: CardT; title?: string; sta
   );
 }
 
+/** Quick actions along a card's bottom: quiet pills that show they're working, then settle. */
+function CardButtons({ buttons, run }: { buttons: NonNullable<CardT['buttons']>; run: RunAction }) {
+  const [busy, setBusy] = useState<string | null>(null), [done, setDone] = useState<string | null>(null);
+  return (
+    <div className="mt-3.5 flex flex-wrap gap-1.5">
+      {buttons.map(b => (
+        <button key={b.label} disabled={!!busy} onClick={async () => {
+          setBusy(b.label);
+          try { await run(b.action, b.args); setDone(b.label); setTimeout(() => setDone(null), 1600); } finally { setBusy(null); }
+        }} className="press flex h-7 items-center gap-1.5 rounded-full bg-white/[.07] px-3 text-[12px] text-foreground/85 transition-colors hover:bg-white/[.12] disabled:opacity-60">
+          {busy === b.label ? <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" /> : done === b.label ? <span className="tick">✓</span> : null}
+          {b.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function Widget({ card, run, title, status, compact, columns, minimal, headless, large }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean }) {
   // artwork-led cards sit directly on the page, without a card frame
   if (card?.type === 'shelf') return <Shelf card={card} small={compact} header={<BareHeader card={card} title={title} status={status} />} />;
@@ -552,6 +570,7 @@ export function Widget({ card, run, title, status, compact, columns, minimal, he
       )}
       <CardContent className={cn(bare ? 'p-0' : compact ? 'px-3.5' : 'px-5')}>
         {card ? <CardBody card={card} run={run} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /> : <div className="space-y-3"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-4 w-3/5" /></div>}
+        {card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null}
       </CardContent>
     </Card>
     </Dense.Provider>

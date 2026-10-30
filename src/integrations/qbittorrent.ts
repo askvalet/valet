@@ -87,6 +87,7 @@ export default defineIntegration({
               detail: `↑ ${fmt.rate(info.up_info_speed)}`, trend: [...speeds] },
             note: dl.length ? `${dl.length > 1 ? `${dl.length} downloads · ` : ''}↓ ${fmt.rate(info.dl_info_speed)}` : undefined,
             empty: 'Nothing downloading',
+            buttons: dl.length ? (dl.every(t => /paused|stopped/i.test(t.state)) ? [{ label: 'Resume all', action: 'resume' }] : [{ label: 'Pause all', action: 'pause' }]) : undefined,
             activity: first && { title: dl.length > 1 ? `${first.title} +${dl.length - 1}` : first.title, subtitle: `↓ ${fmt.rate(info.dl_info_speed)}`,
               image: first.image, icon: 'download', pct: dl.reduce((s, t) => s + t.progress, 0) / dl.length, trailing: dl[0].eta < 8640000 ? `${fmt.duration(dl[0].eta)} left` : undefined, count: dl.length },
             items,

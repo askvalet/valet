@@ -40,6 +40,7 @@ interface Base {
   summaries?: Summary[];  // several headline tiles from one card (e.g. CPU, memory, network, each disk)
   wide?: boolean;         // take two columns (and two rows) on wide screens
   activity?: Activity;    // set only while something's live
+  buttons?: { label: string; action: string; args?: Record<string, unknown> }[];   // quick actions along the bottom
 }
 
 export interface StatItem {
