@@ -21,6 +21,14 @@ export default defineIntegration({
     cards: z.record(z.string(), z.object({ title: z.string(), icon: z.string().optional(),
       entities: z.array(z.union([z.string(), z.object({ id: z.string(), name: z.string() })])) })).default({}),
     controllable: z.array(z.string()).default([]),   // extra entities the assistant may control (cards' entities always may)
+    // each entry becomes a schedule widget `<instance>.<key>`: timestamp sensors (e.g. Islamic Prayer Times) as a day's
+    // timeline with the next one counting down; within `soon` minutes it also shows in the island
+    schedules: z.record(z.string(), z.object({
+      title: z.string(),
+      icon: z.string().optional(),
+      entities: z.array(z.object({ id: z.string(), name: z.string(), muted: z.boolean().default(false) })),
+      soon: z.number().int().min(0).max(240).default(15),
+    })).default({}),
     // each entry becomes a 3D floor plan widget `<instance>.<key>`: rooms come from a robot vacuum's map camera
     // (e.g. Dreame's camera.*_map), lit by the lights you list per room; the robot and its dock sit where they are
     floorplans: z.record(z.string(), z.object({
@@ -77,6 +85,26 @@ export default defineIntegration({
           const byId = new Map((await states()).map(s => [s.entity_id, s]));
           return { type: 'controls', title: card.title, icon: card.icon ?? 'home', href: cfg.href,
             items: ids(card).map(id => byId.get(id) ? control(byId.get(id)) : { id, label: id, kind: 'value', value: 'not found' } as Control) };
+        },
+      };
+    }
+
+    // ── schedules: a day of timestamp sensors; times already past roll to tomorrow (same clock time) for "next"
+    for (const [key, sch] of Object.entries(cfg.schedules)) {
+      widgets[key] = {
+        title: sch.title, interval: 60_000,
+        async fetch() {
+          const byId = new Map((await states()).map(s => [s.entity_id, s]));
+          const items = sch.entities.map(e => ({ name: e.name, at: byId.get(e.id)?.state, muted: e.muted }))
+            .filter((x): x is { name: string; at: string; muted: boolean } => !!x.at && !Number.isNaN(Date.parse(x.at)))
+            .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+          const now = Date.now();
+          const nexts = items.filter(x => !x.muted).map(x => ({ ...x, t: Date.parse(x.at) <= now ? Date.parse(x.at) + 864e5 : Date.parse(x.at) })).sort((a, b) => a.t - b.t);
+          const next = nexts[0], mins = next ? Math.round((next.t - now) / 60_000) : 0;
+          const left = mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`;
+          return { type: 'schedule', title: sch.title, icon: sch.icon ?? 'clock', items: items.map(({ name, at }) => ({ name, at })), muted: items.filter(x => x.muted).map(x => x.name),
+            summary: next && { label: sch.title, icon: sch.icon ?? 'clock', value: next.name, sub: new Date(next.t).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }), detail: `in ${left}` },
+            activity: next && mins <= sch.soon ? { title: `${next.name} in ${left}`, subtitle: sch.title, icon: sch.icon ?? 'clock', tone: 'good', pct: 1 - mins / Math.max(1, sch.soon) } : undefined };
         },
       };
     }

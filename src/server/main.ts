@@ -37,7 +37,7 @@ for (const [id, block] of Object.entries(config.integrations)) {
 }
 
 // Only widgets placed in the layout are polled.
-const placed = new Set([...config.layout.flatMap(s => s.widgets), ...config.menubar, ...(config.weather ? [config.weather] : []), ...(config.island?.activities ?? [])]);
+const placed = new Set([...config.layout.flatMap(s => s.widgets.map(w => w.widget)), ...config.menubar, ...(config.weather ? [config.weather] : []), ...(config.island?.activities ?? [])]);
 for (const key of placed) {
   const [inst, w] = key.split('.');
   if (!instances.get(inst)?.widgets[w]) console.error(`config: layout: no widget "${key}"`);
@@ -100,7 +100,9 @@ app.get('/api/page', c => c.json({
   nav: config.nav,
   island: config.island && { ...config.island, activities: config.island.activities.filter(k => hub.widget(k)) },
   weather: config.weather && hub.widget(config.weather) ? config.weather : undefined,
-  sections: config.layout.map(s => ({ title: s.title, columns: s.columns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat, widgets: s.widgets.filter(k => hub.widget(k)) })),
+  sections: config.layout.map(s => ({ title: s.title, columns: s.columns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat,
+    widgets: s.widgets.map(w => w.widget).filter(k => hub.widget(k)),
+    sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium').map(w => [w.widget, w.size])) })),
   widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
 }));
 

@@ -30,11 +30,21 @@ export default defineIntegration({
           async fetch() {
             const today = new Date().toISOString().slice(0, 10);
             const mem = await api<any[]>(`memories?for=${today}`).catch(() => []);
-            const assets = mem.flatMap(m => (m.assets ?? []).map((a: any) => ({ a, years: m.data?.year ? new Date().getFullYear() - m.data.year : undefined })));
-            if (assets.length) return { type: 'shelf', title: 'On this day', icon: 'image', href: web, aspect: 'square',
-              items: assets.slice(0, 16).map(({ a, years }) => ({ ...tile(a), badge: years ? `${years} year${years > 1 ? 's' : ''} ago` : undefined })) };
-            const random = await api<any[]>('search/random', { method: 'POST', body: JSON.stringify({ size: 12, type: 'IMAGE', withExif: true }) });
-            return { type: 'shelf', title: 'From your library', icon: 'image', href: web, aspect: 'square', items: random.map(tile) };
+            const year = new Date().getFullYear();
+            let items = mem.flatMap(m => (m.assets ?? []).filter((a: any) => a.type === 'IMAGE').slice(0, 6).map((a: any) => {
+              const y = m.data?.year ?? Number(String(a.localDateTime).slice(0, 4)), ago = year - y;
+              return { image: ctx.image(a.id), badge: ago > 0 ? `${ago} year${ago > 1 ? 's' : ''} ago` : 'Today', title: place(a), subtitle: day(a.localDateTime), href: `${web}/photos/${a.id}` };
+            })).slice(0, 12);
+            const flashback = items.length > 0;
+            // no memories today: a few favourites (or anything) from the library instead
+            if (!flashback) {
+              const pick = await api<any[]>('search/random', { method: 'POST', body: JSON.stringify({ size: 10, type: 'IMAGE', withExif: true, isFavorite: true }) }).catch(() => []);
+              // photos first; a library of only videos still has thumbnails worth showing
+              const any = pick.length ? pick : await api<any[]>('search/random', { method: 'POST', body: JSON.stringify({ size: 10, withExif: true }) });
+              items = any.map(a => ({ image: ctx.image(a.id), badge: undefined as unknown as string, title: place(a), subtitle: day(a.localDateTime), href: `${web}/photos/${a.id}` }));
+            }
+            return { type: 'photos', style: 'flashback', title: flashback ? 'On this day' : 'From your library', icon: 'image', href: web, items, empty: 'No photos yet',
+              summary: { label: flashback ? 'On this day' : 'Photos', icon: 'image', value: flashback ? items[0].badge : `${items.length}`, sub: items[0]?.title ?? items[0]?.subtitle } };
           },
         },
       },

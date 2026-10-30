@@ -21,7 +21,7 @@ interface Page {
   nav?: { side: 'left' | 'right' | 'top' | 'bottom' };
   island?: { activities: string[]; idle: 'notch' | 'hide' };
   weather?: string;
-  sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; widgets: string[] }[];
+  sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; sizes?: Record<string, 'small' | 'large'>; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
 }
 
@@ -230,24 +230,34 @@ function Home() {
               : (
                 (() => {
                   const keys = sec.widgets.filter(key => !isEmpty(state[key]?.card));
-                  const widget = (key: string) => {
+                  const widget = (key: string, large = false) => {
                     const s = state[key];
-                    return <Widget key={key} card={s?.card} title={page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={sec.variant === 'minimal' && view === 'all'} headless={sec.header === false && view === 'all'}
+                    return <Widget key={key} large={large} card={s?.card} title={page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={sec.variant === 'minimal' && view === 'all'} headless={sec.header === false && view === 'all'}
                       status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
                       run={(action, args) => runAction(key, action, args)} />;
                   };
+                  // sized: a grid of narrow tracks; small cards take one (as their headline tile), medium two, large four
+                  if (sec.sizes && Object.keys(sec.sizes).length && !aside) return (
+                    <div className="grid grid-flow-row-dense items-start gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 170px), 1fr))' }}>
+                      {keys.map(key => {
+                        const size = sec.sizes![key], c = state[key]?.card;
+                        if (size === 'small' && c?.summary) return <div key={key} className="min-w-0"><SummaryTile s={c.summary} href={c.href} /></div>;
+                        return <div key={key} className={cn('min-w-0 @xl/main:col-span-2', size === 'large' && '@5xl/main:col-span-4')}>{widget(key, size === 'large')}</div>;
+                      })}
+                    </div>
+                  );
                   // a wide card (e.g. the 3D desktop) takes two thirds; the rest stack beside it
                   const hero = !sec.columns && keys.find(k => state[k]?.card?.wide);
                   if (hero && keys.length === 1) return widget(hero);
                   if (hero) return (
                     <div className="grid items-start gap-4 @5xl/main:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                       {widget(hero)}
-                      <div className="grid gap-4">{keys.filter(k => k !== hero).map(widget)}</div>
+                      <div className="grid gap-4">{keys.filter(k => k !== hero).map(k => widget(k))}</div>
                     </div>
                   );
                   return (
                     <div className="grid items-start gap-4" style={{ gridTemplateColumns: aside ? '1fr' : sec.columns ? `repeat(${sec.columns}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
-                      {keys.map(widget)}
+                      {keys.map(k => widget(k))}
                     </div>
                   );
                 })()

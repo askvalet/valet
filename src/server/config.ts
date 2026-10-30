@@ -21,7 +21,10 @@ export const AssistantConfig = z.object({
 
 const Section = z.object({
   title: z.string().optional(),
-  widgets: z.array(z.string()),            // "instance.widget"
+  // "instance.widget", or { widget, size } to pick a size: small (its headline as a tile), medium (the card),
+  // large (the card across two columns, with room for more)
+  widgets: z.array(z.union([z.string(), z.object({ widget: z.string(), size: z.enum(['small', 'medium', 'large']).default('medium') })]))
+    .transform(ws => ws.map(w => typeof w === 'string' ? { widget: w, size: 'medium' as const } : w)),
   columns: z.number().int().min(1).max(4).optional(),
   // tiles: headline tiles with live graphs · rings: the same as ring gauges coloured by health · cards: full cards
   // media: every item of the section's media cards (streams, downloads…) as artwork tiles in one grid

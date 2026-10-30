@@ -126,13 +126,28 @@ export interface ForecastCard extends Base {
   hours: { time: string; temp: number; icon: string; pop: number; mm?: number }[];   // pop: chance of precipitation, 0..100
 }
 
+/** Photos to look at, not browse: a slow crossfading flashback, or a mosaic. */
+export interface PhotosCard extends Base {
+  type: 'photos';
+  items: { image: string; title?: string; subtitle?: string; badge?: string; href?: string }[];
+  style?: 'flashback' | 'mosaic';
+  empty?: string;
+}
+
+/** A day's times (prayers, a timetable): the next one large with a live countdown, the rest on a timeline. */
+export interface ScheduleCard extends Base {
+  type: 'schedule';
+  items: { name: string; at: string }[];   // ISO times, in order
+  muted?: string[];                         // shown on the timeline but never "next" (e.g. sunrise)
+}
+
 export interface KVCard extends Base { type: 'kv'; rows: [string, string][] }
 
 export interface TextCard extends Base { type: 'text'; text: string; tone?: Tone }
 
 export interface GroupCard extends Base { type: 'group'; cards: Card[]; layout?: 'row' | 'column' }
 
-export type Card = ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
+export type Card = ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
 
 /** One widget slot's live state, as pushed to the browser. */
 export interface WidgetState { key: string; card?: Card; error?: string; at: number; source?: string }

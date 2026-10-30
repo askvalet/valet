@@ -1,10 +1,10 @@
 // Renders any card from the shared catalog with shadcn/ui primitives. The homepage and the assistant both use this,
 // so a generated card looks exactly like the widget it came from.
 import {
-  Activity, ArrowUpRight, Bookmark, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
+  Activity, ArrowUpRight, Bookmark, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
   type LucideIcon,
 } from 'lucide-react';
-import { createContext, Fragment, lazy, Suspense, useContext, useRef, useState, type ReactNode } from 'react';
+import { createContext, Fragment, lazy, Suspense, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -13,11 +13,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import type { Card as CardT, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
+import type { Card as CardT, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
 const ICONS: Record<string, LucideIcon> = {
   cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
-  bulb: Lightbulb, home: House, shield: Shield, chat: MessageCircle, image: ImageIcon, coins: Coins, text: Type,
+  bulb: Lightbulb, home: House, shield: Shield, chat: MessageCircle, image: ImageIcon, clock: Clock, crescent: MoonIcon, coins: Coins, text: Type,
   file: FileText, bookmark: Bookmark, sun: Sun, moon: Moon, cloud: Cloud, 'cloud-sun': CloudSun, 'cloud-moon': CloudMoon, rain: CloudRain, snow: CloudSnow, fog: CloudFog, storm: CloudLightning,
 };
 export function Icon({ name, className }: { name?: string; className?: string }) {
@@ -215,7 +215,7 @@ export function NowPlaying({ m, compact }: { m: MediaItem; compact?: boolean }) 
 }
 
 /** True when a card has nothing worth a slot on the page (e.g. Now Playing with nothing playing). */
-export const isEmpty = (card?: CardT) => card?.type === 'media' && !card.items.length;
+export const isEmpty = (card?: CardT) => (card?.type === 'media' || card?.type === 'photos') && !card.items.length;
 
 function Media({ card }: { card: MediaCard }) {
   if (!card.items.length) return (
@@ -393,9 +393,104 @@ function Showcase({ card, run }: { card: ShowcaseCard; run?: RunAction }) {
   );
 }
 
-export function CardBody({ card, run, columns, minimal }: { card: CardT; run?: RunAction; columns?: number; minimal?: boolean }): ReactNode {
+/** A day's times: the next one large, counting down live; all of them on a line with a dot for now. */
+function Schedule({ card }: { card: ScheduleCard }) {
+  const dense = useContext(Dense);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 15_000); return () => clearInterval(t); }, []);
+  const items = card.items.map(x => ({ ...x, t: Date.parse(x.at), muted: card.muted?.includes(x.name) }));
+  if (!items.length) return <Empty text="No times" />;
+  const roll = items.filter(x => !x.muted).map(x => ({ ...x, t: x.t <= now ? x.t + 864e5 : x.t })).sort((a, b) => a.t - b.t);
+  const next = roll[0], mins = Math.max(0, Math.round((next.t - now) / 60_000));
+  const clock = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  // markers sit evenly along the line (close times stay readable); now slides between its two neighbours
+  const n = items.length, pos = (k: number) => n > 1 ? k / (n - 1) : .5;
+  const at = (t: number) => {
+    if (t <= items[0].t) return 0;
+    const k = items.findIndex(x => x.t > t);
+    if (k === -1) return 1;
+    return pos(k - 1) + (pos(k) - pos(k - 1)) * (t - items[k - 1].t) / Math.max(1, items[k].t - items[k - 1].t);
+  };
+  return (
+    <div className={cn(dense ? 'space-y-3' : 'space-y-5')}>
+      <div className="flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          <div className={cn('metric leading-none', dense ? 'text-[24px]' : 'text-[34px]')}>{next.name}</div>
+          <div className="mt-1.5 text-[13px] text-muted-foreground tabular">{clock(next.t)}</div>
+        </div>
+        <div className="text-right">
+          <div className={cn('metric tabular leading-none', dense ? 'text-[18px]' : 'text-[22px]', mins <= 15 && 'text-good')}>
+            <span key={mins} className="tick">{mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`}</span>
+          </div>
+          <div className="mt-1.5 text-[12px] text-muted-foreground">to go</div>
+        </div>
+      </div>
+      <div className="relative pt-1 pb-7">
+        <div className="h-[3px] rounded-full bg-white/10" />
+        <div className="absolute top-1 left-0 h-[3px] rounded-full bg-gradient-to-r from-white/20 to-white/60 transition-[width] duration-1000" style={{ width: `${at(now) * 100}%` }} />
+        <span className="absolute top-[-1px] size-[11px] -translate-x-1/2 rounded-full bg-white shadow-[0_0_0_3px_rgb(255_255_255/.15)] transition-[left] duration-1000" style={{ left: `${at(now) * 100}%` }} />
+        {items.map((x, k) => (
+          <div key={x.name} className={cn('absolute top-3 text-center', k === 0 ? '' : k === n - 1 ? '-translate-x-full text-right' : '-translate-x-1/2')} style={{ left: `${pos(k) * 100}%` }}>
+            <div className={cn('text-[11px] font-medium', x.name === next.name ? 'text-foreground' : x.muted ? 'text-muted-foreground/50' : 'text-muted-foreground')}>{x.name}</div>
+            {!dense && <div className="text-[10.5px] tabular text-muted-foreground/70">{clock(x.t)}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Flashback: one photo at a time, filling the card, crossfading slowly with a gentle drift; the moment's caption
+ *  ("3 years ago · Lisbon") sits over the bottom. Mosaic: one large photo and four small ones. Hover pauses. */
+function Photos({ card, large }: { card: PhotosCard; large?: boolean }) {
+  const items = card.items, [i, setI] = useState(0), [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (items.length < 2 || paused || (large && card.style !== 'flashback')) return;
+    const t = setInterval(() => setI(n => (n + 1) % items.length), 7000);
+    return () => clearInterval(t);
+  }, [items.length, paused, large, card.style]);
+  if (!items.length) return <Empty text={card.empty ?? 'No photos'} />;
+  if (large || card.style === 'mosaic') {
+    const [first, ...rest] = items;
+    return (
+      <div className="grid aspect-[2/1] grid-cols-4 grid-rows-2 gap-1.5 overflow-hidden rounded-2xl">
+        {[first, ...rest.slice(0, 4)].map((p, k) => (
+          <a key={k} href={p.href} target="_blank" rel="noreferrer" className={cn('group/ph relative overflow-hidden bg-muted', k === 0 && 'col-span-2 row-span-2')}>
+            <Art src={p.image} alt={p.title ?? ''} className="size-full object-cover transition-transform duration-700 ease-out group-hover/ph:scale-[1.03]" />
+            {k === 0 && p.badge && <span className="absolute bottom-3 left-3 rounded-full bg-black/50 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md">{p.badge}</span>}
+          </a>
+        ))}
+      </div>
+    );
+  }
+  const cur = items[i];
+  return (
+    <a href={cur.href} target="_blank" rel="noreferrer" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
+      className="relative isolate block aspect-[4/3] overflow-hidden rounded-2xl bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/.55)]">
+      {items.map((p, k) => (
+        <Art key={k} src={p.image} alt={p.title ?? ''} className={cn('photo-slide absolute inset-0 -z-10 size-full object-cover', k === i && 'is-on')} />
+      ))}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
+        <div key={i} className="min-w-0 tick">
+          {cur.badge && <div className="text-[22px] font-semibold tracking-tight">{cur.badge}</div>}
+          <div className="truncate text-[13px] text-white/75">{[cur.title, cur.subtitle].filter(Boolean).join(' · ')}</div>
+        </div>
+        {items.length > 1 && (
+          <div className="mb-1 flex shrink-0 gap-1">
+            {items.slice(0, 8).map((_, k) => <span key={k} className={cn('h-1.5 rounded-full bg-white transition-all duration-500', k === i % 8 ? 'w-4 opacity-90' : 'w-1.5 opacity-40')} />)}
+          </div>
+        )}
+      </div>
+    </a>
+  );
+}
+
+export function CardBody({ card, run, columns, minimal, large }: { card: CardT; run?: RunAction; columns?: number; minimal?: boolean; large?: boolean }): ReactNode {
   switch (card.type) {
     case 'showcase': return <Showcase card={card} run={run} />;
+    case 'photos': return <Photos card={card} large={large} />;
+    case 'schedule': return <Schedule card={card} />;
     case 'forecast': return <Forecast card={card} />;
     case 'stats': return <Stats card={card} />;
     case 'list': return <List card={card} />;
@@ -426,9 +521,12 @@ function BareHeader({ card, title, status }: { card?: CardT; title?: string; sta
   );
 }
 
-export function Widget({ card, run, title, status, compact, columns, minimal, headless }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean }) {
+export function Widget({ card, run, title, status, compact, columns, minimal, headless, large }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean }) {
   // artwork-led cards sit directly on the page, without a card frame
   if (card?.type === 'shelf') return <Shelf card={card} small={compact} header={<BareHeader card={card} title={title} status={status} />} />;
+  if (card?.type === 'photos') return (
+    <div className="min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Photos card={card} large={large} /></div>
+  );
   if (card?.type === 'media') return (
     <div className="min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Media card={card} /></div>
   );
