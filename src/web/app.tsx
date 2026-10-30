@@ -135,6 +135,8 @@ export function App() {
   }, [chatTab, view]);
 
   const p = pulse(state);
+  // every service from the status cards, for ⌘K: type a name, open it
+  const services = Object.values(state).flatMap(w => w.card?.type === 'status' ? w.card.items.filter(i => i.href) : []);
   // every item of a section's media cards, in the config's order: what's playing, then what's downloading…
   const mediaOf = (keys: string[]) => keys.flatMap(key => {
     const c = state[key]?.card;
@@ -337,6 +339,17 @@ export function App() {
               <CommandItem onSelect={() => { setView('all'); setPalette(false); }}><LayoutGrid />Overview</CommandItem>
               {nav.map(s => <CommandItem key={s.key} onSelect={() => { setView(s.key); setPalette(false); }}><Icon name={s.chat ? 'chat' : sectionIcon(s) ?? 'pulse'} />{s.key}</CommandItem>)}
             </CommandGroup>
+            {services.length > 0 && (
+              <CommandGroup heading="Open">
+                {services.map(sv => (
+                  <CommandItem key={sv.name} value={`open ${sv.name} ${sv.group ?? ''}`} onSelect={() => { window.open(sv.href, '_blank', 'noopener'); setPalette(false); }}>
+                    {sv.icon ? <img src={sv.icon} alt="" className="size-4 object-contain" /> : <ArrowUp className="rotate-45 text-muted-foreground" />}
+                    {sv.name}
+                    <span className={cn('dot ml-auto size-1.5', sv.ok ? 'dot-good' : sv.quiet ? 'bg-muted-foreground/40' : 'dot-bad')} />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
           </CommandList>
         </CommandDialog>
       )}
