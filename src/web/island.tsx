@@ -56,7 +56,7 @@ function Badge({ a, size }: { a: Live; size: number }) {
   );
 }
 
-export default function Island({ live, idle, docked, notice }: { live: Live[]; idle: 'notch' | 'hide'; docked: boolean; notice?: Notice | null }) {
+export default function Island({ live, idle, docked, notice, position = 'top', label = true }: { live: Live[]; idle: 'notch' | 'hide'; docked: boolean; notice?: Notice | null; position?: 'top' | 'top-left' | 'top-right' | 'bottom'; label?: boolean }) {
   // a notice springs the island open for a few seconds, then it settles back to whatever's live
   const [shout, setShout] = useState<Notice | null>(null);
   useEffect(() => {
@@ -86,7 +86,7 @@ export default function Island({ live, idle, docked, notice }: { live: Live[]; i
   const layer = 'absolute top-0 left-1/2 w-max -translate-x-1/2 transition-[opacity,filter,scale] ease-out';
 
   return (
-    <div className={cn('z-40 flex justify-center', docked ? 'fixed top-0 left-1/2 -translate-x-1/2' : 'sticky top-2 pt-1')}
+    <div className={cn('island-wrap z-40 flex justify-center', position === 'bottom' ? 'fixed bottom-5 left-1/2 -translate-x-1/2' : !docked ? 'sticky top-2 pt-1' : { top: 'fixed top-0 left-1/2 -translate-x-1/2', 'top-left': 'fixed top-0 left-24', 'top-right': 'fixed top-0 right-24' }[position])}
       onPointerEnter={e => { if (e.pointerType === 'mouse') { clearTimeout(timer.current); timer.current = setTimeout(() => setOpen(true), 90); } }}
       onPointerLeave={e => { if (e.pointerType === 'mouse') { clearTimeout(timer.current); timer.current = setTimeout(() => setOpen(false), 220); } }}>
       <div className="flex items-start gap-2">
@@ -98,11 +98,11 @@ export default function Island({ live, idle, docked, notice }: { live: Live[]; i
           {/* compact: the most important activity */}
           <div ref={small} aria-hidden={expanded}
             className={cn(layer, 'duration-200', expanded || shout ? 'pointer-events-none scale-95 opacity-0 blur-[3px]' : 'opacity-100 delay-100 duration-300')}>
-            <div className={cn('flex h-[44px] min-w-[280px] items-center gap-3 pr-4 pl-2', !live.length && 'h-[30px] w-[170px] min-w-0 p-0')}>
+            <div className={cn('flex h-[44px] items-center gap-3 pr-4 pl-2', label && 'min-w-[280px]', !live.length && 'h-[30px] w-[170px] min-w-0 p-0')}>
               {main && (<>
                 <Art a={main} size={28} />
-                <span key={main.key} className="tick max-w-[260px] flex-1 truncate text-[14px] font-medium tracking-[-.01em]">{main.title}</span>
-                <span className="ml-3 flex items-center">{main.icon === 'play' ? <Bars a={main} /> : main.pct != null ? <Progress a={main} /> : main.trailing && <span className="text-[11.5px] tabular text-white/60">{main.trailing}</span>}</span>
+                {label && <span key={main.key} className="tick max-w-[260px] flex-1 truncate text-[14px] font-medium tracking-[-.01em]">{main.title}</span>}
+                <span className={cn('flex items-center', label && 'ml-3')}>{main.icon === 'play' ? <Bars a={main} /> : main.pct != null ? <Progress a={main} /> : main.trailing && <span className="text-[11.5px] tabular text-white/60">{main.trailing}</span>}</span>
               </>)}
             </div>
           </div>

@@ -15,14 +15,15 @@ export default defineIntegration({
   config: z.object({
     latitude: z.number(),
     longitude: z.number(),
-    units: z.enum(['metric', 'imperial']).default('metric'),
+    units: z.enum(['metric', 'imperial']).optional(),   // default: format.temperature, or metric
     interval: z.number().default(600_000),
   }),
   create(cfg, ctx) {
+    const units = cfg.units ?? (ctx.format?.temperature === 'f' ? 'imperial' : 'metric');
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${cfg.latitude}&longitude=${cfg.longitude}&timezone=auto&forecast_days=6`
       + '&current=temperature_2m,apparent_temperature,weather_code,is_day,precipitation&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max'
       + '&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,is_day&forecast_hours=13'
-      + (cfg.units === 'imperial' ? '&temperature_unit=fahrenheit' : '');
+      + (units === 'imperial' ? '&temperature_unit=fahrenheit' : '');
     const get = () => ctx.http<any>(url, { timeout: 8000 });
     return {
       widgets: {
@@ -32,10 +33,10 @@ export default defineIntegration({
             const w = await get(), t = w.current.temperature_2m, lo = w.daily.temperature_2m_min[0], hi = w.daily.temperature_2m_max[0];
             const look = (code: number, day: number) => { const [, w, i] = describe(code); return { words: w, icon: !day && i === 'sun' ? 'moon' : !day && i === 'cloud-sun' ? 'cloud-moon' : i }; };
             const { words, icon } = look(w.current.weather_code, w.current.is_day);
-            const c = cfg.units === 'imperial' ? (t - 32) / 1.8 : t;
+            const c = units === 'imperial' ? (t - 32) / 1.8 : t;
             const h = w.hourly;
             const hours = h.time.slice(1, 13).map((iso: string, i: number) => ({
-              time: new Date(iso).toLocaleTimeString('en', { hour: 'numeric', timeZone: w.timezone }).replace(' ', '').toLowerCase(),
+              time: new Date(iso).toLocaleTimeString('en', { hour: 'numeric', timeZone: w.timezone, ...(ctx.format?.clock === '24h' ? { hourCycle: 'h23' as const } : {}) }).replace(' ', '').toLowerCase(),
               temp: Math.round(h.temperature_2m[i + 1]), icon: look(h.weather_code[i + 1], h.is_day[i + 1]).icon,
               pop: h.precipitation_probability[i + 1] ?? 0, mm: h.precipitation[i + 1] ?? 0,
             }));

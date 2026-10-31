@@ -1,5 +1,6 @@
 // The cards that live in a house: weather, the family calendar and the thermostat. They draw their own frame edge to edge
 // (the glass comes from WidgetView), read their own size, and stretch to fill a bento row without leaving a gap.
+import { firstDay } from './format.ts';
 import { Armchair, ArrowUpDown, BedDouble, ChevronLeft, ChevronRight, Droplets, Fan, Flame, House, Leaf, Minus, Moon, Plane, Plus, Power, Snowflake, Sparkles, Thermometer, Zap, type LucideIcon } from 'lucide-react';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
@@ -241,7 +242,7 @@ function Agenda({ days, from, today, cap, empty }: { days: Map<string, CalendarE
 }
 
 function Month({ year, month, days, today, picked, pick }: { year: number; month: number; days: Map<string, CalendarEvent[]>; today: Date; picked: string; pick: (d: Date) => void }) {
-  const first = new Date(year, month, 1), lead = (first.getDay() + 6) % 7;   // Monday first; six rows always, so the card never moves
+  const first = new Date(year, month, 1), lead = (first.getDay() + 7 - firstDay()) % 7;   // six rows always, so the card never moves
   const cells = Array.from({ length: 42 }, (_, i) => new Date(year, month, 1 - lead + i)), now = keyOf(today);
   return (
     <div role="grid" aria-label={first.toLocaleDateString('en', { month: 'long', year: 'numeric' })} className="grid min-h-[216px] flex-1 grid-cols-7 grid-rows-6">
@@ -292,7 +293,7 @@ export function CalendarView({ card, large, dense }: { card: CalendarCard; large
               <button aria-label="Next month" disabled={!!high && new Date(y, m + 1, 1) > high} onClick={() => go(1)} className="press grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"><ChevronRight className="size-[17px]" /></button>
             </div>
           </div>
-          <div className="mb-1 grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground" aria-hidden>{['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((l, i) => <div key={i}>{l}</div>)}</div>
+          <div className="mb-1 grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground" aria-hidden>{Array.from({ length: 7 }, (_, i) => 'SMTWTFS'[(firstDay() + i) % 7]).map((l, i) => <div key={i}>{l}</div>)}</div>
           <div key={`${y}-${m}`} className="cal-page flex min-h-0 flex-1 flex-col" style={{ '--from': `${(view?.dir ?? 0) * 10}px` } as CSSProperties}><Month year={y} month={m} days={days} today={today} picked={key} pick={pick} /></div>
           {/* two quiet lines for the chosen day; always this tall, so choosing a day doesn't move anything */}
           <ul className="mt-2 h-[38px] space-y-0.5 overflow-hidden text-[11.5px] leading-[18px]">

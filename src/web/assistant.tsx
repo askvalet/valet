@@ -6,12 +6,17 @@ import {
   Activity, ArrowDown, ArrowUp, Bookmark, Check, ChevronDown, ChevronRight, Copy, CornerDownRight, FileText, Lightbulb, Loader2, Paperclip, RotateCcw,
   Pin, Search, Square, X, Zap,
 } from 'lucide-react';
-import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, Fragment, memo, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Card, Confirm } from '../shared/cards.ts';
 import { splitThink } from '../shared/think.ts';
 import { Icon, Widget } from './cards.tsx';
+import { label } from './format.ts';
+
+/** What `chat:` says about the window. */
+export interface ChatUi { steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string }
+const Ui = createContext<ChatUi>({ steps: true, thinking: 'collapsed', send: 'enter' });
 
 // One conversation for the whole page session, so closing and reopening the panel keeps it.
 // a long chat's early messages stay on screen, but only the recent ones are sent: the server would drop the rest anyway
@@ -47,13 +52,13 @@ function TextView({ text, live }: { text: string; live?: boolean }) {
 const Text = memo(TextView);
 
 /** "Thinking" with a light sweeping across it and the seconds ticking, like a model that's actually working. */
-function Pending({ since, label = 'Thinking' }: { since: number; label?: string }) {
+function Pending({ since, label: text = label('thinking') }: { since: number; label?: string }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 100); return () => clearInterval(t); }, []);
   return (
     <div className="flex items-center gap-2.5 text-sm animate-in fade-in duration-300">
       <span className="chat-dots" aria-hidden>{Array.from({ length: 9 }, (_, i) => <i key={i} style={{ animationDelay: `${(i % 3 + Math.floor(i / 3)) * 120}ms` }} />)}</span>
-      <span className="chat-shimmer font-medium">{label}</span>
+      <span className="chat-shimmer font-medium">{text}</span>
       <span className="tabular text-xs text-muted-foreground">{((now - since) / 1000).toFixed(1)}s</span>
     </div>
   );
@@ -61,13 +66,13 @@ function Pending({ since, label = 'Thinking' }: { since: number; label?: string 
 
 /** The model's reasoning: "Thinking" while it streams, then "Thought for 3s" that opens to show the words. */
 function Reasoning({ text, streaming, took }: { text: string; streaming: boolean; took?: number }) {
-  const [open, setOpen] = useState(false);
-  if (!text.trim() && !streaming) return null;
+  const ui = useContext(Ui), [open, setOpen] = useState(ui.thinking === 'open');
+  if ((!text.trim() && !streaming) || ui.thinking === 'hidden') return null;
   return (
     <div className="text-[13px]">
       <button onClick={() => setOpen(o => !o)} className="flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground">
         <ChevronRight className={cn('size-3.5 transition-transform duration-200', open && 'rotate-90')} />
-        <span className={cn(streaming && 'chat-shimmer')}>{streaming ? 'Thinking' : `Thought${took ? ` for ${(took / 1000).toFixed(took < 10_000 ? 1 : 0)}s` : ''}`}</span>
+        <span className={cn(streaming && 'chat-shimmer')}>{streaming ? label('thinking') : took ? label('thoughtFor', { n: (took / 1000).toFixed(took < 10_000 ? 1 : 0) }) : label('thought')}</span>
       </button>
       <div className={cn('grid transition-[grid-template-rows,opacity] duration-300 ease-out', open ? 'mt-1.5 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
         <div className="overflow-hidden"><div className="border-l-2 border-white/10 pl-3 leading-relaxed whitespace-pre-wrap text-muted-foreground">{text.trim()}</div></div>
@@ -135,12 +140,12 @@ function ToolChips({ parts: all, settled, tools, fresh }: { parts: any[]; settle
   const [peek, setPeek] = useState<string | null>(null);   // a step's card, opened from its line
   const shown = open ?? !settled;
   const name = (p: any) => p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, '');
-  if (!parts.length) return null;
+  if (!parts.length || !useContext(Ui).steps) return null;
   return (
     <div className="text-[13px]">
       {parts.length > 1 && (
         <button onClick={() => setOpen(!shown)} className="mb-1 flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
-          <ChevronRight className={cn('size-3.5 transition-transform duration-200', shown && 'rotate-90')} />{parts.length} steps
+          <ChevronRight className={cn('size-3.5 transition-transform duration-200', shown && 'rotate-90')} />{label('steps', { n: parts.length })}
         </button>
       )}
       <div className={cn('grid transition-[grid-template-rows,opacity] duration-300 ease-out', shown || parts.length === 1 ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
@@ -214,8 +219,8 @@ function Confirmation({ p, name, approve, tools }: { p: any; name: string; appro
   );
   function buttons() {
     return <>
-      <button onClick={() => approve(p.approval.id, false)} className="press h-9 flex-1 rounded-full px-4 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:flex-none">Not now</button>
-      <button onClick={() => approve(p.approval.id, true)} className={cn('press h-9 flex-1 rounded-full px-5 text-[14px] font-semibold sm:flex-none', said?.danger ? 'bg-bad text-white' : 'bg-white text-black')}>{said?.verb ?? 'Allow'}</button>
+      <button onClick={() => approve(p.approval.id, false)} className="press h-9 flex-1 rounded-full px-4 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:flex-none">{label('notNow')}</button>
+      <button onClick={() => approve(p.approval.id, true)} className={cn('press h-9 flex-1 rounded-full px-5 text-[14px] font-semibold sm:flex-none', said?.danger ? 'bg-bad text-white' : 'bg-white text-black')}>{said?.verb ?? label('allow')}</button>
     </>;
   }
 }
@@ -242,7 +247,7 @@ function ToolPart({ p, approve, tools = {}, fresh, shown = true }: { p: any; app
 }
 
 /** A question answered in ⌘K: the same tools, approvals and cards as the chat, in one short reply. */
-export function InlineAnswer({ text, tools, onMore }: { text: string; tools: Record<string, ToolInfo>; onMore: () => void }) {
+export function InlineAnswer({ text, tools, onMore, ui }: { text: string; tools: Record<string, ToolInfo>; onMore: () => void; ui?: ChatUi }) {
   const [one] = useState(() => new Chat({ transport: new DefaultChatTransport({ api: '/api/chat' }), sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses }));
   const { messages, sendMessage, status, addToolApprovalResponse, error } = useChat({ chat: one });
   const started = useRef(0);
@@ -251,7 +256,7 @@ export function InlineAnswer({ text, tools, onMore }: { text: string; tools: Rec
   const said = (reply?.parts ?? []).filter((p: any) => p.type === 'text').map((p: any) => splitThink(p.text).said).join('\n\n').trim();
   const steps = (reply?.parts ?? []).filter((p: any) => p.type.startsWith('tool-') || p.type === 'dynamic-tool');
   return (
-    <div className="space-y-3">
+    <Ui.Provider value={ui ?? { steps: true, thinking: 'collapsed', send: 'enter' }}><div className="space-y-3">
       <div className="text-[13px] text-muted-foreground">{text}</div>
       {steps.length > 0 && <ToolChips parts={steps} tools={tools} settled={!busy} />}
       {steps.map((p: any, i) => <ToolPart key={i} p={p} tools={tools} approve={(id, ok) => addToolApprovalResponse({ id, approved: ok })} />)}
@@ -263,16 +268,16 @@ export function InlineAnswer({ text, tools, onMore }: { text: string; tools: Rec
           <CornerDownRight className="size-3.5" />Continue in chat
         </button>
       )}
-    </div>
+    </div></Ui.Provider>
   );
 }
 
 /** One message. Memoised, so a reply streaming in doesn't re-render everything above it. */
 const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, since, tools, act }: { m: any; isLast: boolean; busy: boolean; tookMs?: number; fresh: boolean; since: number; tools: Record<string, ToolInfo>; act: { approve: (id: string, ok: boolean) => void; regenerate: () => void; ask: (t: string) => void } }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(false), ui = useContext(Ui);
   if (m.role === 'user') return (
     <div className="chat-msg flex justify-end">
-      <div className="chat-in max-w-[85%] rounded-[20px] rounded-br-md bg-primary px-3.5 py-2 text-[15px] text-primary-foreground">
+      <div className="chat-in chat-bubble max-w-[85%] rounded-[20px] rounded-br-md px-3.5 py-2 text-[15px]">
         {m.parts.map((p: any, i: number) => p.type === 'text' ? <span key={i} className="whitespace-pre-wrap">{p.text.replace(/\n?\[attached: ([^(\]]+) \(file id [a-f0-9]+\)\]/g, '\n📎 $1')}</span> : null)}
       </div>
     </div>
@@ -300,6 +305,7 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
       if (t.said) { flush(); const more = m.parts.slice(i + 1).some((x: any) => x.type.startsWith('tool-') || x.type === 'dynamic-tool'); blocks.push(more ? <div key={i} className="text-[13.5px] text-muted-foreground"><Text text={t.said} live={live} /></div> : <Text key={i} text={t.said} live={live} />); }
     }
   });
+  if (ui.thinking === 'hidden') thinking = false;
   if (thoughts.some(t => t.trim()) || thinking) blocks.unshift(<Reasoning key="thought" text={thoughts.join('\n\n')} streaming={thinking} took={tookMs} />);
   flush();
   const text = m.parts.filter((p: any) => p.type === 'text').map((p: any) => splitThink(p.text).said).join('\n\n').trim();
@@ -309,13 +315,13 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
   return (
     <div className="chat-msg space-y-3">
       {blocks}
-      {live && !text && !m.parts.some((p: any) => ((p.type.startsWith('tool-') || p.type === 'dynamic-tool') && p.state !== 'output-available') || (p.type === 'reasoning' && p.state === 'streaming')) && !thinking && <Pending since={since || Date.now()} label={m.parts.length ? 'Writing' : 'Thinking'} />}
+      {live && !text && !m.parts.some((p: any) => (ui.steps && (p.type.startsWith('tool-') || p.type === 'dynamic-tool') && p.state !== 'output-available') || (ui.thinking !== 'hidden' && p.type === 'reasoning' && p.state === 'streaming')) && !thinking && <Pending since={since || Date.now()} label={label(m.parts.length ? 'writing' : 'thinking')} />}
       {!live && text && (
         <div className="flex items-center gap-1 text-muted-foreground animate-in fade-in duration-500">
           <button aria-label="Copy" title="Copy" onClick={() => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1400); }}
             className="chat-icon">{copied ? <Check className="size-3.5 text-good" /> : <Copy className="size-3.5" />}</button>
           {isLast && <button aria-label="Ask again" title="Ask again" onClick={act.regenerate} className="chat-icon"><RotateCcw className="size-3.5" /></button>}
-          {tookMs != null && <span className="ml-1 text-[11.5px] tabular">Worked for {(tookMs / 1000).toFixed(tookMs < 10_000 ? 1 : 0)}s</span>}
+          {tookMs != null && <span className="ml-1 text-[11.5px] tabular">{label('worked', { n: (tookMs / 1000).toFixed(tookMs < 10_000 ? 1 : 0) })}</span>}
         </div>
       )}
       {follow.length > 0 && (
@@ -332,10 +338,13 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
   );
 });
 
-export default function Assistant({ name, model, ask, suggestions, tools = {}, external, onAsk, onClose }: {
+export default function Assistant({ name, model, ask, suggestions, tools = {}, external, onAsk, onClose, onDismiss, ui = { steps: true, thinking: 'collapsed', send: 'enter' }, attach: canAttach = true }: {
   name: string; model: string; ask: { text: string; n: number } | null; suggestions: string[]; tools?: Record<string, ToolInfo>; onAsk: (t: string) => void;
   external?: boolean;   // the chat is another agent's (assistant.agent), with tools of its own
   onClose?: () => void;   // shown as a phone sheet: a grabber to drag it away, and room for fingers and the keyboard
+  onDismiss?: () => void;   // a panel or a full page: a plain close button, there being no outside to click
+  ui?: ChatUi;
+  attach?: boolean;   // a read-only page takes no files
 }) {
   const sheet = !!onClose;
   // dragging the header pulls the sheet down with the finger; far or fast enough lets it go, otherwise it rides back
@@ -376,6 +385,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
   const [over, setOver] = useState(false);
   const filePicker = useRef<HTMLInputElement>(null);
   const attach = (list: FileList | File[]) => {
+    if (!canAttach) return;
     for (const f of Array.from(list)) {
       const key = Math.random();
       setFiles(fs => [...fs, { key, name: f.name || 'pasted' }]);
@@ -421,14 +431,16 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
   };
 
   return (
-    <div className="relative flex h-full flex-col">
+    <Ui.Provider value={ui}><div className="relative flex h-full flex-col">
       <header {...(sheet ? grab : {})} className={cn('relative flex items-center gap-2.5 px-5', sheet ? 'border-b ' : '', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'py-2.5')}>
         {sheet && <span className="sheet-grip absolute top-[max(.4rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2" aria-hidden />}
+        {ui.icon && <span className="icon-tile"><Icon name={ui.icon} /></span>}
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold leading-tight">{name}</div>
           <div className="truncate text-xs text-muted-foreground">{model}</div>
         </div>
         {sheet && <button onClick={onClose} onPointerDown={e => e.stopPropagation()} aria-label="Close" className="press grid size-9 place-items-center rounded-full bg-white/[.08]"><ChevronDown className="size-[18px]" /></button>}
+        {onDismiss && <button onClick={onDismiss} aria-label="Close" className="chat-icon text-muted-foreground"><X className="size-4" /></button>}
       </header>
 
       {external && <div className="border-b px-5 py-2 text-[12.5px] text-muted-foreground">{name} runs its own tools. Valet's approvals and access levels don't apply, and answers are plain text.</div>}
@@ -437,8 +449,8 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
         {!messages.length && (
           // on a phone the suggestions sit low, where the thumb is
           <div className={cn('text-center animate-in fade-in duration-500', !sheet && 'pt-10')}>
-            <div className="text-lg font-semibold tracking-tight">What would you like to know?</div>
-            <p className="mt-1 text-sm text-muted-foreground">Ask about anything on your homepage.</p>
+            <div className="text-lg font-semibold tracking-tight">{label('chatTitle')}</div>
+            <p className="mt-1 text-sm text-muted-foreground">{label('chatHint')}</p>
             <div className="mx-auto mt-6 grid max-w-[560px] gap-1.5 sm:grid-cols-2">
               {suggestions.map((s, i) => (
                 <button key={s} onClick={() => onAsk(s)} style={{ animationDelay: `${120 + i * 50}ms` }}
@@ -484,9 +496,9 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
         )}
         <div className={cn('composer flex items-end gap-2 rounded-2xl border bg-card px-3 py-2 shadow-card', over && 'ring-2 ring-primary/60')}>
           <input ref={filePicker} type="file" multiple hidden onChange={e => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
-          <button type="button" onClick={() => filePicker.current?.click()} aria-label="Attach a file" className={cn('mb-0.5 grid shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground', sheet ? 'size-8' : 'size-7')}><Paperclip className="size-4" /></button>
-          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={sheet || external ? `Message ${name}` : `Message ${name}, paste a link or drop a file`} aria-label="Message"
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
+ {canAttach && <button type="button" onClick={() => filePicker.current?.click()} aria-label="Attach a file" className={cn('mb-0.5 grid shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground', sheet ? 'size-8' : 'size-7')}><Paperclip className="size-4" /></button>}
+          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={label(sheet || external || !canAttach ? 'message' : 'messageHint', { name })} aria-label="Message"
+            onKeyDown={e => { if (e.key === 'Enter' && (ui.send === 'enter' ? !e.shiftKey : e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
             onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
             className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-1.5 text-[16px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-[15px]" autoFocus={!sheet} />
           {busy
@@ -494,6 +506,6 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
             : <Button type="submit" size="icon" className="size-8 rounded-full transition-opacity duration-200" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
         </div>
       </form>
-    </div>
+    </div></Ui.Provider>
   );
 }

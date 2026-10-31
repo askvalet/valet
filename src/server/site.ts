@@ -1,5 +1,6 @@
 // Everything built from a config: the integration instances, which widgets are placed, the hub that polls them, and
 // the notices they raise. Built once at startup and again on every config reload (main.ts swaps the site in place).
+import { createHash } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { usedSecrets, type Config } from './config.ts';
@@ -8,7 +9,9 @@ import { History } from './history.ts';
 import { Hub } from './hub.ts';
 import { noticesFor, type Notice } from './notices.ts';
 import { guardCards } from './plugins.ts';
-import { canAct, redactor } from './security.ts';
+import { allowFonts, canAct, fontOrigins, redactor } from './security.ts';
+import { inUnits } from './units.ts';
+import { isPaint, listOf } from '../shared/look.ts';
 import { links } from '../integrations/links.ts';
 import { makeAsk, type Ask } from './brain.ts';
 import { Activity } from './activity.ts';
@@ -30,8 +33,8 @@ export interface Site {
   history?: History;
   acting: boolean;
   redact: (s: string) => string;
-  wallpaperFile: string | null;
-  wallpaperVersion: number;
+  walls: { path: string; file: string; version: number }[];   // wallpapers on this disk, served by number
+  cssVersion?: string;
   recent: Notice[];
   noticeListeners: Set<(n: Notice) => void>;
   problems: string[];
@@ -65,14 +68,14 @@ export function check(config: Config, registry: Record<string, Integration>, fro
     const parsed = integration.config.safeParse(rest);
     if (!parsed.success) { problems.push(...parsed.error.issues.map(i => `integrations.${id}.${i.path.join('.')}: ${i.message}`)); continue; }
     try {
-      const inst = integration.create(parsed.data, makeContext(id));
+      const inst = inUnits(integration.create(parsed.data, makeContext(id, config.format)), config.format);
       if (fromPlugins.has(block.type)) guardCards(inst);   // a plugin's cards are checked against the catalog
       instances.set(id, inst);
       meta.set(id, { type, name: integration.name, integration });
     } catch (e) { problems.push(`integrations.${id}: ${(e as Error).message}`); }
   }
   // only widgets placed somewhere are polled; a key that points nowhere is a typo
-  const placed = new Set([...config.layout.flatMap(s => s.widgets.map(w => w.widget)), ...config.menubar, ...(config.weather ? [config.weather] : []), ...(config.island?.activities ?? [])]);
+  const placed = new Set([...config.layout.flatMap(s => s.widgets.map(w => w.widget)), ...config.menubar.widgets, ...(config.weather ? [config.weather] : []), ...(config.island?.activities ?? [])]);
   for (const key of placed) {
     const [inst, w] = key.split('.');
     if (inst === 'valet') continue;      // Valet's own widgets exist once the site is built
@@ -80,6 +83,9 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   }
   for (const [id] of Object.entries(config.assistant?.access ?? {})) if (!['default', 'config', 'valet'].includes(id) && !instances.has(id)) problems.push(`assistant.access.${id}: no such integration`);
   for (const n of config.island?.notify ?? []) if (!placed.has(n.widget)) problems.push(`island.notify: "${n.widget}" isn't placed on the page`);
+  const tabs = new Set(config.layout.flatMap(s => s.tab ?? s.title ?? []));
+  for (const t of Object.keys(config.appearance.wallpapers)) if (!tabs.has(t)) problems.push(`appearance.wallpapers: no tab "${t}" (the tabs are: ${[...tabs].join(', ')})`);
+  if (Array.isArray(config.appearance.wallpaper) && config.appearance.wallpaper.length > 1 && !config.appearance.rotate) problems.push('appearance.rotate: a list of wallpapers needs a time to take turns, like 10m (only the first shows)');
   return { problems, instances, meta, placed };
 }
 
@@ -177,12 +183,16 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   if (history && config.history && config.history.background) hub.sampleInBackground(config.history.every * 60_000);
   watches.start(() => hub.snapshot(), key => void hub.refresh(key));
 
-  // a local wallpaper file is served by Valet; a URL is handed to the browser as is
-  const wallpaper = config.appearance.wallpaper;
-  const wallpaperFile = wallpaper && !/^https?:\/\//.test(wallpaper) ? resolve(wallpaper) : null;
-  const wallpaperVersion = wallpaperFile ? Math.round((await stat(wallpaperFile).catch(() => ({ mtimeMs: 0 }))).mtimeMs) : 0;
+  // a local wallpaper is served by Valet; a URL is handed to the browser as is, and paint is CSS
+  const { appearance: a } = config;
+  const local = [...new Set([a.wallpaper, ...Object.values(a.wallpapers)].flatMap(w => listOf(w)).filter(w => !isPaint(w) && !/^https?:\/\//.test(w)))];
+  const walls = await Promise.all(local.map(async path => ({ path, file: resolve(path), version: Math.round((await stat(resolve(path)).catch(() => ({ mtimeMs: 0 }))).mtimeMs) })));
+  // ?v= changes with the CSS, so an open page swaps its stylesheet the moment you save
+  const cssStamp = a.cssFile && await stat(resolve(a.cssFile)).then(s => s.mtimeMs, () => 0);
+  const cssVersion = a.css || a.cssFile ? createHash('sha256').update(`${a.css}|${cssStamp}`).digest('hex').slice(0, 10) : undefined;
+  allowFonts(fontOrigins(a.font?.url));
 
   // the redactor knows every secret any config used, so a value from before a reload stays covered
-  return { config, instances, meta, placed, hub, history, acting: canAct(config), redact: redactor(usedSecrets), wallpaperFile, wallpaperVersion, recent, noticeListeners, problems, pins, ask, watcher, timeline, activity, watches, push: sendPush };
+  return { config, instances, meta, placed, hub, history, acting: canAct(config), redact: redactor(usedSecrets), walls, cssVersion, recent, noticeListeners, problems, pins, ask, watcher, timeline, activity, watches, push: sendPush };
 }
 

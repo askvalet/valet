@@ -10,7 +10,7 @@ import { makeContext, type Instance, type Integration, type Tool } from './core.
 import { check } from './site.ts';
 import type { Card } from '../shared/cards.ts';
 
-const EDITABLE = new Set(['integrations', 'layout', 'links', 'menubar', 'weather', 'island', 'nav', 'title', 'greeting', 'location', 'timezone', 'search', 'history', 'welcome']);
+const EDITABLE = new Set(['integrations', 'layout', 'links', 'menubar', 'weather', 'island', 'nav', 'hero', 'chat', 'format', 'labels', 'title', 'greeting', 'location', 'timezone', 'search', 'history', 'welcome']);
 const SECRET_KEY = /^(api[-_]?key|token|password|secret|client[-_]?secret|authorization|x-api-key)$/i;
 
 const Op = z.object({

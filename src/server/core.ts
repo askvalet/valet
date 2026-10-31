@@ -6,6 +6,7 @@
 //   tools    what the assistant may call; each is 'read', 'write' (adds something, e.g. saves a bookmark: runs without
 //            asking) or 'control' (changes or removes something: asks the person first). Config decides which it gets.
 // Everything runs on the server, so API keys and internal URLs never reach the browser.
+import type { Format } from './config.ts';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { z } from 'zod';
@@ -63,6 +64,7 @@ export interface Instance {
 
 export interface Context {
   id: string;                            // the instance's key in config.yaml, e.g. "downloads"
+  format?: Partial<Format>;              // the config's `format:`, for a service that can answer in the right units
   /** fetch with a timeout and a readable error; returns parsed JSON unless `as: 'text'` */
   http<T = any>(url: string, init?: RequestInit & { timeout?: number; as?: 'json' | 'text' | 'response'; insecure?: boolean }): Promise<T>;
   log(...args: unknown[]): void;
@@ -117,9 +119,9 @@ async function selfSigned(url: string, init: RequestInit, timeout: number) {
   });
 }
 
-export function makeContext(id: string): Context {
+export function makeContext(id: string, format?: Partial<Format>): Context {
   return {
-    id,
+    id, format,
     async http(url, init = {}) {
       const { timeout = 8000, as = 'json', insecure, ...rest } = init;
       const res = insecure && url.startsWith('https:') ? await selfSigned(url, rest, timeout) : await fetch(url, { ...rest, signal: AbortSignal.timeout(timeout) });

@@ -4,6 +4,7 @@ import { lazy, Suspense, useState } from 'react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import type { StatusItem } from '../shared/cards.ts';
+import type { ChatUi } from './assistant.tsx';
 import { Icon } from './cards.tsx';
 import { signOut } from './signin.tsx';
 
@@ -16,13 +17,14 @@ export interface PaletteProps {
   services: StatusItem[]; SUGGESTIONS: string[]; setView: (v: string) => void;
   nav: { key: string; chat?: boolean; icon?: string }[]; sectionIcon: (s: any) => string | undefined;
   search?: string;   // a provider name or a URL with {q}
+  placeholder?: string; ui?: ChatUi;
 }
 
 const PROVIDERS: Record<string, string> = { duckduckgo: 'https://duckduckgo.com/?q={q}', google: 'https://www.google.com/search?q={q}', kagi: 'https://kagi.com/search?q={q}',
   brave: 'https://search.brave.com/search?q={q}', startpage: 'https://www.startpage.com/do/search?q={q}', searxng: '/search?q={q}' };
 const searchUrl = (p: string, q: string) => (PROVIDERS[p] ?? p).replace('{q}', encodeURIComponent(q));
 
-export default function Palette({ palette, setPalette, assistantName, ask, actions, runAction, services, SUGGESTIONS, setView, nav, sectionIcon, search, account, tools, openChat }: PaletteProps) {
+export default function Palette({ palette, setPalette, assistantName, ask, actions, runAction, services, SUGGESTIONS, setView, nav, sectionIcon, search, account, tools, openChat, placeholder, ui }: PaletteProps) {
   const [query, setQuery] = useState('');
   // a question is answered right here; approvals too. Only a longer conversation needs the chat.
   const [inline, setInline] = useState<{ text: string; n: number } | null>(null);
@@ -31,11 +33,11 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
   return (
         <CommandDialog open={palette} onOpenChange={setPalette} title={assistantName ? `Ask ${assistantName}` : 'Search'} description="Ask a question or jump to a section"
           showCloseButton={false} className="palette-pop top-[18%] translate-y-0 rounded-[22px] sm:max-w-[600px]">
-          <CommandInput placeholder={assistantName ? `Ask ${assistantName} anything about your homelab…` : 'Search services, actions and pages…'} value={query} onValueChange={setQuery}
+          <CommandInput placeholder={placeholder ?? assistantName ? placeholder ?? `Ask ${assistantName} anything about your homelab…` : 'Search services, actions and pages…'} value={query} onValueChange={setQuery}
             onKeyDown={e => { if (assistantName && e.key === 'Enter' && query.trim() && (inline || !document.querySelector('[cmdk-item][data-selected="true"]'))) { e.preventDefault(); answer(query); } }} />
           {inline ? (
             <div className="max-h-[440px] overflow-y-auto p-4">
-              <Suspense fallback={null}><InlineAnswer key={inline.n} text={inline.text} tools={tools ?? {}} onMore={openChat} /></Suspense>
+              <Suspense fallback={null}><InlineAnswer key={inline.n} text={inline.text} tools={tools ?? {}} ui={ui} onMore={openChat} /></Suspense>
             </div>
           ) : (
           <CommandList>

@@ -15,6 +15,21 @@ export function redactor(secrets: string[]) {
   return (text: string) => (re ? text.replace(re, '•••') : text);
 }
 
+/** Someone's own CSS, made safe to sit in a stylesheet or a <style> tag: it can't close the tag or open a comment that
+ *  swallows what follows, and no tag can start. `< ` stays legal in media ranges; the rest becomes the CSS escape for the
+ *  same character. */
+export const cleanCss = (css: string) => css.replace(/\0/g, '').replace(/<(?=[a-z/!?])/gi, '\\3C ');
+
+/** Where a remote font lives: the only other place styles and fonts may come from, and it's the config that says so.
+ *  A Google Fonts stylesheet serves its files from gstatic. */
+export const fontOrigins = (url?: string) => {
+  if (!url || !/^https?:\/\//.test(url)) return [];
+  const { origin, hostname } = new URL(url);
+  return hostname === 'fonts.googleapis.com' ? [origin, 'https://fonts.gstatic.com'] : [origin];
+};
+let fonts: string[] = [];
+export const allowFonts = (origins: string[]) => { fonts = origins; };
+
 /** Headers for every response: only Valet's own scripts run, nothing frames it, referrers stay home. */
 const frames = new Set<string>();
 /** An address a card may embed, added by the iframe integration. Nothing can be framed otherwise. */
@@ -22,8 +37,8 @@ export const allowFrame = (origin: string) => { frames.add(origin); };
 export const headers: MiddlewareHandler = async (c, next) => {
   await next();
   c.header('Content-Security-Policy', [
-    "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'",   // React sets inline style attributes
-    "img-src 'self' data: blob: https:", "font-src 'self' data:", "connect-src 'self'", "media-src 'self' blob:",
+    "default-src 'self'", "script-src 'self'", ["style-src 'self' 'unsafe-inline'", ...fonts].join(' '),   // React sets inline style attributes
+    "img-src 'self' data: blob: https:", ["font-src 'self' data:", ...fonts].join(' '), "connect-src 'self'", "media-src 'self' blob:",
     `frame-src ${[...frames].join(' ') || "'none'"}`, "frame-ancestors 'none'", "base-uri 'none'", "form-action 'self'", "object-src 'none'",
   ].join('; '));
   c.header('X-Content-Type-Options', 'nosniff');
