@@ -1,7 +1,7 @@
 // Renders any card from the shared catalog with shadcn/ui primitives. The homepage and the assistant both use this,
 // so a generated card looks exactly like the widget it came from.
 import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
-  Activity, Archive, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Thermometer, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
+  Activity, Archive, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Thermometer, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Play, Shield, Wifi,
   Video, type LucideIcon,
 } from 'lucide-react';
 import { createContext, Fragment, lazy, memo, Suspense, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
@@ -14,8 +14,9 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
-import { clock as clockOf, num as written } from './format.ts';
-import type { ArticleCard, CodeCard, RankedCard, ShelfItem, StatusItem, TableCard, LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
+import { clock as clockOf, day as dayOf, num as written } from './format.ts';
+import { stateOf } from '../shared/cards.ts';
+import type { ServiceState, Banner, Stall, ArticleCard, CodeCard, RankedCard, ShelfItem, StatusItem, TableCard, LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
 // Icon names cards may use (docs/integrations.md lists them; keep the two in step). Anything else: a URL or a path.
 const ICONS: Record<string, LucideIcon> = {
@@ -157,17 +158,27 @@ function Headlines({ card }: { card: ListCard }) {
   );
 }
 
-/** A thermometer per drive: where it sits between cool and hot says more than the number. */
+/** A reading per drive: how far along it sits, against a faint band of what's normal. Nothing here moves by hand. */
 function Temps({ card }: { card: ListCard }) {
   return (
     <div className="space-y-3.5">
-      {card.items.map((it, i) => (
-        <div key={i} className="min-w-0">
-          <div className="flex items-baseline justify-between gap-3 text-sm"><span className="truncate font-medium">{it.title}</span><span className={cn('shrink-0 tabular', it.tone === 'bad' ? 'text-bad' : it.tone === 'warn' ? 'text-warn' : 'text-muted-foreground')}>{it.meta}</span></div>
-          <div className="temp-track mt-1.5"><i style={{ left: `${Math.round(Math.max(0, Math.min(1, it.pct ?? 0)) * 100)}%` }} /></div>
-          {it.subtitle && <div className="mt-1 text-xs text-muted-foreground">{it.subtitle}</div>}
-        </div>
-      ))}
+      {card.items.map((it, i) => {
+        const at = Math.max(0, Math.min(1, it.pct ?? 0)), [lo, hi] = it.band ?? [.125, .875];
+        return (
+          <div key={i} className="min-w-0">
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="truncate font-medium">{it.title}</span>
+              <span className="shrink-0 tabular"><span key={it.meta} className={cn('tick inline-block font-medium', toneText[it.tone ?? 'neutral'])}>{it.meta}</span> <span className="text-xs text-muted-foreground">now</span></span>
+            </div>
+            <div className="reading mt-1.5" role="meter" aria-label={`${it.title} temperature`} aria-valuenow={Math.round(at * 100)} aria-valuemin={0} aria-valuemax={100} aria-valuetext={it.meta}>
+              <b style={{ left: `${lo * 100}%`, width: `${(hi - lo) * 100}%` }} />
+              <i className={cn(it.tone === 'bad' ? 'bg-bad' : it.tone === 'warn' ? 'bg-warn' : 'bg-foreground/55')} style={{ width: `${at * 100}%` }} />
+            </div>
+            {it.subtitle && <div className={cn('mt-1 truncate text-xs', it.tone === 'bad' ? 'text-bad' : 'text-muted-foreground')}>{it.subtitle}</div>}
+          </div>
+        );
+      })}
+      <div className="text-[11.5px] text-muted-foreground">Shaded: the normal range</div>
     </div>
   );
 }
@@ -175,24 +186,41 @@ function Temps({ card }: { card: ListCard }) {
 /** Pills with the app's icon: a glance says who, the small print says what. */
 function Chips({ card }: { card: ListCard }) {
   const slug = (t: string) => /^[a-z0-9][a-z0-9-]{1,40}$/.test(t) ? t : null;
+  const [all, setAll] = useState(false), cap = card.limit && card.items.length > card.limit ? card.limit : 0;
   return (
     <div className="flex flex-wrap gap-2">
-      {card.items.map((it, i) => (
-        <a key={i} href={it.href} target="_blank" rel="noreferrer" className={cn('chip', it.tone === 'warn' && 'is-warn', !it.href && 'pointer-events-none')}>
+      {(cap && !all ? card.items.slice(0, cap) : card.items).map((it, i) => (
+        <a key={i} href={it.href} target="_blank" rel="noreferrer" className={cn('chip', !it.badge && it.tone === 'warn' && 'is-warn', !it.href && 'pointer-events-none', i >= (cap || Infinity) && 'chip-in')}>
           {(it.image || slug(it.title)) && <img src={it.image ?? `/api/icon/${slug(it.title)}`} alt="" className="size-[18px] rounded-[5px] object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />}
           <span className="font-medium">{it.title}</span>
           {(it.subtitle || it.meta) && <span className="max-w-[180px] truncate text-muted-foreground" title={it.subtitle}>{it.subtitle ?? it.meta}</span>}
+          {it.badge && <span className={cn('chip-mark', it.tone === 'warn' && 'text-warn')}>{it.badge}</span>}
         </a>
       ))}
+      {cap > 0 && <button type="button" className="chip chip-more" aria-expanded={all} onClick={() => setAll(a => !a)}>{all ? 'Fewer' : `${card.items.length} in all`}</button>}
     </div>
+  );
+}
+
+/** A summary: two lines, and the rest on a tap. Text that fits stays plain and lets the tap through to its link. The
+ *  ellipsis is the invitation: a "More" under every window would say it nine times. */
+function Clamp({ text, className }: { text: string; className?: string }) {
+  const box = useRef<HTMLSpanElement>(null), [open, setOpen] = useState(false), [more, setMore] = useState(false);
+  useEffect(() => { const b = box.current; if (b && !open) setMore(b.scrollHeight > b.clientHeight + 1); }, [text, open]);
+  const flip = (e: React.MouseEvent) => { if (more) { e.preventDefault(); e.stopPropagation(); setOpen(o => !o); } };
+  return (
+    <button type="button" aria-expanded={more ? open : undefined} tabIndex={more ? 0 : -1} onClick={flip} className={cn('clamp block w-full text-left', more && 'is-more', className)}>
+      <span ref={box} className={cn('block', !open && 'line-clamp-2')}>{text}</span>
+    </button>
   );
 }
 
 function Rows({ card, dense }: { card: ListCard; dense: boolean }) {
   return (
     <ul className="-my-1 divide-y">
-      {card.items.map((it, i) => (
-        <li key={i} className={cn('flex min-w-0 items-center gap-3', dense ? 'py-1.5' : 'py-2.5', it.href && 'row-link -mx-2 cursor-pointer px-2 transition-colors hover:bg-accent')}
+      {card.items.map((it, i) => <Fragment key={i}>
+        {it.section && it.section !== card.items[i - 1]?.section && <li className="pt-2.5 pb-1 text-xs font-medium text-muted-foreground first:pt-1">{it.section}</li>}
+        <li className={cn('flex min-w-0 items-center gap-3', dense ? 'py-1.5' : 'py-2.5', it.href && 'row-link -mx-2 cursor-pointer px-2 transition-colors hover:bg-accent')}
           onClick={it.href ? () => window.open(it.href, '_blank', 'noopener') : undefined} role={it.href ? 'link' : undefined}>
           {it.image && <img src={it.image} alt="" loading="lazy" className={cn('shrink-0 rounded-md bg-muted object-cover', dense ? 'h-9 w-6' : 'h-12 w-8')} />}
           <div className="min-w-0 flex-1">
@@ -204,11 +232,11 @@ function Rows({ card, dense }: { card: ListCard; dense: boolean }) {
               {it.href && <ArrowUpRight className="row-arrow size-3.5 shrink-0 text-muted-foreground" />}
             </div>
             {it.subtitle && <div className={cn('truncate text-xs', it.tone && it.tone !== 'neutral' ? toneText[it.tone] : 'text-muted-foreground')}>{it.subtitle}</div>}
-            {it.detail && <div className="mt-1 line-clamp-2 text-[12.5px] leading-snug text-foreground/70">{it.detail}</div>}
+            {it.detail && <Clamp text={it.detail} className="mt-1 text-[12.5px] leading-snug text-foreground/70" />}
             {it.pct != null && <div className={dense ? 'mt-1' : 'mt-2'}><Bar pct={it.pct} tone={it.tone} /></div>}
           </div>
         </li>
-      ))}
+      </Fragment>)}
     </ul>
   );
 }
@@ -245,25 +273,38 @@ function AppIcon({ src, name, small }: { src?: string; name: string; small?: boo
   return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className={cn(size, 'shrink-0 object-contain')} />;
 }
 
+const DOT: Record<ServiceState, string> = { up: 'dot-good', degraded: 'dot-warn', down: 'dot-bad', off: 'dot-off' };
+const STATE: Record<ServiceState, string> = { up: 'Up', degraded: 'Unhealthy', down: 'Down', off: 'Off by choice' };
+/** What a service's state is in words: answering, running or healthy when it's fine, and the reason when it isn't. */
+const stateLine = (s: StatusItem, st = stateOf(s)) => st === 'up' ? s.ms != null ? `${s.ms} ms` : s.detail ?? 'Up' : st === 'off' ? STATE.off : s.detail ?? STATE[st];
+const stateTip = (s: StatusItem, st = stateOf(s)) => [s.name, st === 'up' ? s.detail ?? (s.ms != null ? 'reachable' : 'running') : stateLine(s), st === 'up' && s.ms != null ? `${s.ms} ms` : undefined].filter(Boolean).join(' · ');
+
+/** The dots, explained: one quiet line, and only once one of them isn't green. */
+function Legend({ items }: { items: StatusItem[] }) {
+  const count = (st: ServiceState) => items.filter(i => stateOf(i) === st).length, odd = (['degraded', 'down', 'off'] as const).filter(count);
+  if (!odd.length) return null;
+  return <div className="state-legend">{(['up', ...odd] as const).map(st => count(st) > 0 && <span key={st}><i className={cn('dot size-1.5', DOT[st])} />{count(st)} {STATE[st].toLowerCase()}</span>)}</div>;
+}
+
 function ServiceRow({ s, minimal }: { s: StatusCard['items'][number]; minimal?: boolean }) {
+  const st = stateOf(s), dot = DOT[st];
   // minimal: one tight line, icon, name and the dot; hover says what's wrong
   if (minimal) return (
-    <a href={s.href} target="_blank" rel="noreferrer" title={s.ok ? `${s.name} · ${s.ms ?? ''} ms` : `${s.name} · ${s.quiet ? 'offline' : s.detail}`}
-      className="flex min-w-0 break-inside-avoid items-center gap-2.5 rounded-lg px-2 py-[5px] transition-colors hover:bg-accent">
+    <Tile href={s.href} title={stateTip(s)} className={cn('flex min-w-0 break-inside-avoid items-center gap-2.5 rounded-lg px-2 py-[5px] transition-colors', s.href && 'hover:bg-accent')}>
       <AppIcon src={s.icon} name={s.name} small />
       <span className="min-w-0 flex-1 truncate text-[13px]">{s.name}</span>
-      <span className={cn('dot size-1.5', s.ok ? 'dot-good' : s.quiet ? 'bg-muted-foreground/40' : 'dot-bad')} />
-    </a>
+      <span className={cn('dot size-1.5', dot)} />
+    </Tile>
   );
   return (
-    <a href={s.href} target="_blank" rel="noreferrer" className="flex min-w-0 break-inside-avoid items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-accent">
+    <Tile href={s.href} title={stateTip(s)} className={cn('flex min-w-0 break-inside-avoid items-center gap-3 rounded-xl px-2 py-2 transition-colors', s.href && 'hover:bg-accent')}>
       <AppIcon src={s.icon} name={s.name} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">{s.name}</div>
-        <div className={cn('truncate text-xs tabular', s.ok || s.quiet ? 'text-muted-foreground' : 'text-bad')}>{s.ok ? (s.ms != null ? `${s.ms} ms` : 'Up') : s.quiet ? 'Offline' : s.detail}</div>
+        <div className={cn('truncate text-xs tabular', st === 'down' ? 'text-bad' : st === 'degraded' ? 'text-warn' : 'text-muted-foreground')}>{stateLine(s)}</div>
       </div>
-      <span className={cn('dot', s.ok ? 'dot-good' : s.quiet ? 'bg-muted-foreground/40' : 'dot-bad')} />
-    </a>
+      <span className={cn('dot', dot)} />
+    </Tile>
   );
 }
 
@@ -274,20 +315,30 @@ function Glyph({ src, name }: { src?: string; name: string }) {
   return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className="object-contain" />;
 }
 
-/** Every container as its icon: the eye finds the one that's wrong, and only that one gets words. */
+/** Every container as its icon: the eye finds the one that's wrong, and only that one gets words. Containers that share
+ *  a first word (immich, immich-postgres, immich-redis) sit joined under the first, one tile each. */
 function Wall({ items }: { items: StatusItem[] }) {
-  const down = items.filter(i => !i.ok && !i.quiet);
+  const trouble = (s: StatusItem) => { const st = stateOf(s); return st === 'down' || st === 'degraded'; };
+  const family = new Map<string, StatusItem[]>();
+  for (const i of items) { const k = i.name.split(/[-_]/)[0].toLowerCase(); family.set(k, [...family.get(k) ?? [], i]); }
+  // what's wrong comes first: a wide tile anywhere else leaves a hole in the rows
+  const groups = [...family.values()].sort((a, b) => Number(b.some(trouble)) - Number(a.some(trouble)));
+  let n = 0;
   return (
     <div>
       <div className="wall">
-        {items.map((s, i) => (
-          <a key={s.name} href={s.href} target="_blank" rel="noreferrer" title={s.ok ? s.name : `${s.name} · ${s.quiet ? 'off' : s.detail ?? 'down'}`} aria-label={s.name}
-            className={cn('wall-tile', !s.ok && (s.quiet ? 'is-off' : 'is-down'))} style={{ '--i': i } as React.CSSProperties}>
-            <Glyph src={s.icon} name={s.name} />
-          </a>
-        ))}
+        {groups.flatMap(g => g.map((s, k) => {
+          const st = stateOf(s), wrong = trouble(s);
+          return (
+            <Tile key={s.name} href={s.href} title={stateTip(s)} className={cn('wall-tile', `is-${st}`, wrong && 'is-worded', k > 0 && 'is-joined')} style={{ '--i': n++ } as React.CSSProperties}>
+              <Glyph src={s.icon} name={s.name} />
+              {wrong && <div className="min-w-0"><div className="truncate text-[12.5px] leading-tight font-medium">{s.name}</div><div className={cn('truncate text-[11.5px] leading-tight', st === 'down' ? 'text-bad' : 'text-warn')}>{stateLine(s)}</div></div>}
+              {k === 0 && g.length > 1 && <i className="wall-count" aria-label={`${g.length} together`}>{g.length}</i>}
+            </Tile>
+          );
+        }))}
       </div>
-      {down.length > 0 && <div className="mt-3 text-[13px] text-bad">{down.map(d => `${d.name}${d.detail ? ` · ${d.detail}` : ''}`).join(', ')}</div>}
+      <Legend items={items} />
     </div>
   );
 }
@@ -300,12 +351,16 @@ function Status({ card, columns, minimal }: { card: StatusCard; columns?: number
   // headings only help when they gather things: a heading per item or two just doubles the list
   const groups = card.items.length / named.length < 3 ? [''] : named;
   if (groups.length === 1 && !groups[0]) return (
-    <div className="-mx-2 grid gap-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-      {card.items.map(s => <ServiceRow key={s.name} s={s} minimal={minimal} />)}
-    </div>
+    <>
+      <div className="-mx-2 grid gap-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+        {card.items.map(s => <ServiceRow key={s.name} s={s} minimal={minimal} />)}
+      </div>
+      <Legend items={card.items} />
+    </>
   );
-  if (!columns) return <Balanced groups={groups.map(g => ({ g, items: card.items.filter(i => (i.group ?? '') === g) }))} minimal={minimal} />;
+  if (!columns) return <><Balanced groups={groups.map(g => ({ g, items: card.items.filter(i => (i.group ?? '') === g) }))} minimal={minimal} /><Legend items={card.items} /></>;
   return (
+    <>
     <div className="-mx-2 gap-x-4" style={{ columnCount: columns }}>
       {groups.map(g => (
         // a sidebar list: groups flow on across its columns
@@ -315,6 +370,8 @@ function Status({ card, columns, minimal }: { card: StatusCard; columns?: number
         </div>
       ))}
     </div>
+    <Legend items={card.items} />
+    </>
   );
 }
 
@@ -344,27 +401,55 @@ function Balanced({ groups, minimal }: { groups: { g: string; items: StatusCard[
   );
 }
 
+/** Archiving at once, with a few seconds to take it back. It leaves by moving; a failed call puts it back. */
+function useArchive(run?: RunAction) {
+  const [gone, setGone] = useState<string[]>([]), [leaving, setLeaving] = useState<string[]>([]), [last, setLast] = useState<string | null>(null), [slip, setSlip] = useState('');
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const without = (id: string) => (l: string[]) => l.filter(x => x !== id);
+  const say = (id: string | null, words = '') => { clearTimeout(timer.current); setLast(id); setSlip(words); if (id || words) timer.current = setTimeout(() => { setLast(null); setSlip(''); }, 6000); };
+  return {
+    gone, leaving, last, slip,
+    archive(id: string) {
+      setLeaving(l => [...l, id]); say(id);
+      setTimeout(() => { setLeaving(without(id)); setGone(g => [...g, id]); }, 240);
+      run?.('archive', { id }).catch(() => { setLeaving(without(id)); setGone(without(id)); say(null, 'Couldn\'t archive that'); });
+    },
+    undo() {
+      const id = last; if (!id) return;
+      setLeaving(without(id)); setGone(without(id)); say(null);
+      run?.('unarchive', { id }).catch(() => { setGone(g => [...g, id]); say(null, 'Couldn\'t bring it back'); });
+    },
+  };
+}
+function UndoBar({ a }: { a: ReturnType<typeof useArchive> }) {
+  if (!a.last && !a.slip) return null;
+  return <div className="undo-bar" role="status">{a.slip || <>Archived<button type="button" onClick={a.undo}>Undo</button></>}</div>;
+}
+const SeeArchived = ({ href, className }: { href?: string; className?: string }) => href ? <a href={href} target="_blank" rel="noreferrer" className={cn('title-link text-xs text-muted-foreground', className)}>See archived</a> : null;
+
 /** Something saved to read, with the page itself filling the card. Hover and it scrolls by, as if you'd started reading;
  *  the controls step through the pile, or archive what's done with. */
 function Article({ card, run }: { card: ArticleCard; run?: RunAction }) {
-  const [at, setAt] = useState(0), [gone, setGone] = useState<string[]>([]);
-  const pile = (card.more?.length ? card.more : [card]).filter(a => !a.id || !gone.includes(a.id)), a = pile[Math.min(at, pile.length - 1)];
-  if (!a?.headline) return <div className="grid h-full min-h-[200px] place-items-center rounded-2xl bg-card text-sm text-muted-foreground shadow-card">{card.empty ?? 'Nothing saved to read'}</div>;
+  const [at, setAt] = useState(0), arch = useArchive(run);
+  const pile = (card.more?.length ? card.more : [card]).filter(a => !a.id || !arch.gone.includes(a.id)), now = Math.min(at, pile.length - 1), a = pile[now];
+  if (!a?.headline) return <div className="relative grid h-full min-h-[200px] place-items-center rounded-2xl bg-card text-sm text-muted-foreground shadow-card">{card.empty ?? 'Nothing saved to read'}<div className="article-corner"><UndoBar a={arch} /></div></div>;
   const n = pile.length, link = a.link ?? card.href;
   return (
-    <div className="article lift">
+    <div className={cn('article lift', a.id && arch.leaving.includes(a.id) && 'is-leaving')}>
       {a.image && <img key={a.image} src={a.image} alt="" className="article-page" />}
       {link && <a href={link} target="_blank" rel="noreferrer" aria-label={a.headline} className="article-open" />}
+      {arch.last || arch.slip ? <div className="article-corner"><UndoBar a={arch} /></div> : card.archived && run ? <div className="article-corner"><SeeArchived href={card.archived} className="article-chip" /></div> : null}
       {n > 1 || (run && a.id) ? <div className="article-tools">
-        {n > 1 && <button type="button" aria-label="Previous" title="Previous" onClick={() => setAt((at - 1 + n) % n)}><ChevronLeft className="size-4" /></button>}
-        {run && a.id && <button type="button" aria-label="Archive" title="Archive" onClick={() => { setGone(g => [...g, a.id!]); void run('archive', { id: a.id }); }}><Archive className="size-[15px]" /></button>}
+        {n > 1 && <button type="button" aria-label="Previous" title="Previous" disabled={now === 0} onClick={() => setAt(now - 1)}><ChevronLeft className="size-4" /></button>}
+        {run && a.id && <button type="button" aria-label="Archive" title="Archive" onClick={() => arch.archive(a.id!)}><Archive className="size-[15px]" /></button>}
         {link && <a href={link} target="_blank" rel="noreferrer" aria-label="Open" title="Open"><ArrowUpRight className="size-4" /></a>}
-        {n > 1 && <button type="button" aria-label="Next" title="Next" onClick={() => setAt((at + 1) % n)}><ChevronRight className="size-4" /></button>}
+        {n > 1 && <button type="button" aria-label="Next" title="Next" disabled={now === n - 1} onClick={() => setAt(now + 1)}><ChevronRight className="size-4" /></button>}
       </div> : null}
       <div key={a.headline} className="article-text tick">
-        <div className="flex items-center gap-1.5 text-[12px] font-medium text-white/70">{card.source?.icon && <img src={card.source.icon} alt="" className="size-3.5 object-contain" />}<span className="truncate">{[card.title, a.site].filter(Boolean).join(' · ')}</span>{n > 1 && <span className="ml-auto shrink-0 tabular">{Math.min(at, n - 1) + 1} of {n}</span>}</div>
+        <div className="flex items-center gap-1.5 text-[12px] font-medium text-white/70">{card.source?.icon && <img src={card.source.icon} alt="" className="size-3.5 object-contain" />}<span className="truncate">{[card.title, a.site].filter(Boolean).join(' · ')}</span>{n > 1 && <span className="ml-auto shrink-0 tabular">{now + 1} of {n}</span>}</div>
         <div className="mt-1 line-clamp-2 text-[19px] leading-tight font-semibold tracking-tight text-pretty text-white">{a.headline}</div>
-        {a.blurb && <p className="mt-1.5 line-clamp-3 text-[13.5px] leading-snug text-white/75">{a.blurb}</p>}
+        {a.blurb && <Clamp text={a.blurb} className="article-blurb mt-1.5 text-[13.5px] leading-snug text-white/75" />}
       </div>
     </div>
   );
@@ -421,7 +506,8 @@ export function NowPlaying({ m, compact, source }: { m: MediaItem; compact?: boo
           <div className="truncate text-xl font-semibold tracking-tight @md/np:text-2xl">{m.title}</div>
           {m.subtitle && <div className="truncate text-[15px] text-white/75">{m.subtitle}</div>}
           <div className="mt-4 flex items-center gap-3">
-            {m.state === 'paused' ? <Pause className="size-3.5 shrink-0 fill-white" /> : m.icon ? <Icon name={m.icon} className="size-3.5 shrink-0" /> : <Play className="size-3.5 shrink-0 fill-white" />}
+            {/* a status, not a button: nothing here controls the stream */}
+            {m.icon ? <Icon name={m.icon} className="size-3.5 shrink-0" /> : <span className={cn('np-state', m.state === 'paused' && 'is-paused')} role="img" aria-label={m.state === 'paused' ? 'Paused' : m.state === 'buffering' ? 'Buffering' : 'Playing'} />}
             <div className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/25">
               <div className="h-full rounded-full bg-white transition-[width] duration-1000" style={{ width: `${Math.round((m.pct ?? 0) * 100)}%` }} />
             </div>
@@ -437,7 +523,23 @@ export function NowPlaying({ m, compact, source }: { m: MediaItem; compact?: boo
 /** True when a card has nothing worth a slot on the page (e.g. Now Playing with nothing playing). */
 export const isEmpty = (card?: CardT) => (card?.type === 'media' || card?.type === 'photos') && !card.items.length;
 
-function Media({ card, compact }: { card: MediaCard; compact?: boolean }) {
+/** A download getting nowhere, whether its integration says so or only its state does. */
+const stallOf = (m: MediaItem): Stall | undefined => m.stall ?? (m.icon === 'download' && m.state === 'buffering' ? { word: m.tags?.find(t => /stalled|finding/i.test(t)) ?? 'Stalled' } : undefined);
+const heldFor = (since: number) => { const m = Math.max(1, Math.round((Date.now() - since) / 60_000)); return m < 60 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} days`; };
+function StallLine({ m, stall, card, run }: { m: MediaItem; stall: Stall; card: MediaCard; run?: RunAction }) {
+  const next = stall.next ?? (card.href ? { label: `Check in ${card.source?.name ?? 'the app'}`, href: card.href } : undefined), word = stall.word ?? 'Stalled';
+  const says = [`${word}${stall.since ? ` ${heldFor(stall.since)}` : ''}`, stall.why ?? (/stalled/i.test(word) ? 'nothing coming in' : undefined)].filter(Boolean).join(' · ');
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 text-xs">
+      <span className="truncate text-warn">{says}</span>
+      {next?.action && run ? <button type="button" className="title-link text-foreground/85" onClick={() => void run(next.action!, next.args)}>{next.label}</button>
+        : next?.href ? <a href={next.href} target="_blank" rel="noreferrer" className="title-link text-foreground/85">{next.label}</a> : null}
+      <WhyChip about={`${m.title}: ${says}`} />
+    </div>
+  );
+}
+
+function Media({ card, compact, run }: { card: MediaCard; compact?: boolean; run?: RunAction }) {
   // in chat, an empty answer is one quiet line, not a big empty frame
   if (!card.items.length) return compact
     ? <div className="flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-[13px] text-muted-foreground"><Film className="size-4" />{card.empty ?? 'Nothing playing'}</div>
@@ -446,21 +548,24 @@ function Media({ card, compact }: { card: MediaCard; compact?: boolean }) {
       <div><Film className="mx-auto mb-2 size-5 text-muted-foreground" /><div className="text-sm text-muted-foreground">{card.empty ?? 'Nothing playing'}</div></div>
     </div>
   );
-  if (card.items.length === 1) return <NowPlaying m={card.items[0]} source={card.source} />;
+  if (card.items.length === 1 && !stallOf(card.items[0])) return <NowPlaying m={card.items[0]} source={card.source} />;
   // banners suit something to watch; a pile of downloads, or three of anything, reads better as rows
   if (card.items.length > 2 || card.items.every(m => m.icon === 'download')) return (
     <Card className="flex-1 gap-0 divide-y divide-border overflow-hidden py-0 shadow-card">
-      {card.items.map((m, i) => (
-        <div key={i} className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden px-4 py-2.5">
-          {m.pct != null && <span className="absolute inset-y-0 left-0 -z-10 bg-primary/20 transition-[width] duration-1000 ease-out" style={{ width: `${m.pct * 100}%` }} />}
-          {m.image ? <Art src={m.image} className="h-12 w-8 shrink-0 rounded-md object-cover" /> : <span className="grid h-12 w-8 shrink-0 place-items-center rounded-md bg-white/10 text-muted-foreground"><Icon name={m.icon ?? 'film'} className="size-4" /></span>}
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium">{m.title}</div>
-            <div className="truncate text-xs text-muted-foreground">{m.tags?.join(' · ') ?? m.subtitle}</div>
+      {card.items.map((m, i) => {
+        const stall = stallOf(m);
+        return (
+          <div key={i} className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden px-4 py-2.5">
+            {m.pct != null && <span className={cn('absolute inset-y-0 left-0 -z-10 transition-[width] duration-1000 ease-out', stall ? 'bg-warn/15' : 'bg-primary/20')} style={{ width: `${m.pct * 100}%` }} />}
+            {m.image ? <Art src={m.image} className="h-12 w-8 shrink-0 rounded-md object-cover" /> : <span className="grid h-12 w-8 shrink-0 place-items-center rounded-md bg-white/10 text-muted-foreground"><Icon name={m.icon ?? 'film'} className="size-4" /></span>}
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium">{m.title}</div>
+              {stall ? <StallLine m={m} stall={stall} card={card} run={run} /> : <div className="truncate text-xs text-muted-foreground">{m.tags?.join(' · ') ?? m.subtitle}</div>}
+            </div>
+            {m.pct != null && <span className="shrink-0 text-sm font-medium tabular">{Math.floor(m.pct * 100)}%</span>}
           </div>
-          {m.pct != null && <span className="shrink-0 text-sm font-medium tabular">{Math.floor(m.pct * 100)}%</span>}
-        </div>
-      ))}
+        );
+      })}
     </Card>
   );
   return (
@@ -533,7 +638,7 @@ function Spotlight({ card, header }: { card: ShelfCard; header?: ReactNode }) {
       <div className="mb-3 flex items-center gap-2">{header}</div>
       <div className="grid gap-4 @4xl/main:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <Tile href={first.href} className="group relative block aspect-[16/9] overflow-hidden rounded-2xl @4xl/main:aspect-auto @4xl/main:h-full bg-muted shadow-[0_18px_40px_-20px_rgb(0_0_0/.6)]">
-          <Art src={first.backdrop ?? first.image} alt={first.title} className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]" />
+          <Art src={first.backdrop ?? first.image} alt={first.title} className={cn('absolute inset-0 size-full object-cover transition-transform duration-700 ease-out', first.href && 'group-hover:scale-[1.03]')} />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-4 text-white">
             {first.backdrop && first.image && <Art src={first.image} alt="" className="h-[92px] w-[62px] shrink-0 rounded-lg object-cover shadow-lg" />}
@@ -548,12 +653,42 @@ function Spotlight({ card, header }: { card: ShelfCard; header?: ReactNode }) {
 }
 
 const TILT = [-3, 1.6, -1.2, 2.4, -2, .8, -2.6, 1.8];
-/** Documents as paper: real pages dealt onto a desk. Hover picks one up. */
+const VIEW = 'valet-doc-view';
+/** The same documents as a list, for finding one rather than looking at them: the page, its full title, who, when, what. */
+function DocList({ items }: { items: ShelfItem[] }) {
+  return (
+    <ul className="-mx-2 mt-3 divide-y">
+      {items.map((d, i) => {
+        const [sender, date] = d.doc ? [d.doc.sender, d.doc.date] : (d.subtitle ?? '').split(' · ');
+        return (
+          <li key={i}>
+            <Tile href={d.href} className={cn('doc-row', d.href && 'is-link')}>
+              <Art src={d.image} className="doc-thumb" />
+              <span className="doc-title">{d.title}</span>
+              <span className="doc-cell">{sender}</span>
+              <span className="doc-cell tabular">{date}</span>
+              <span className="doc-cell">{d.doc?.type ?? d.badge}</span>
+            </Tile>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Documents as paper: real pages dealt onto a desk. Hover picks one up; the toggle lays them out as a list. */
 function Desk({ card, header }: { card: ShelfCard; header?: ReactNode }) {
+  const [list, setList] = useState(() => { try { return localStorage.getItem(VIEW) === 'list'; } catch { return false; } });
+  const pick = (v: boolean) => { setList(v); try { localStorage.setItem(VIEW, v ? 'list' : 'desk'); } catch { /* private mode */ } };
   return (
     <div>
-      {header}
-      <div className="desk">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">{header}</div>
+        <div className="seg" role="group" aria-label="View documents as">
+          {[false, true].map(v => <button key={String(v)} type="button" aria-pressed={list === v} onClick={() => pick(v)}>{v ? 'List' : 'Desk'}</button>)}
+        </div>
+      </div>
+      {list ? <DocList items={card.items} /> : <div className="desk">
         {card.items.slice(0, 8).map((d, i) => (
           <a key={i} href={d.href} target="_blank" rel="noreferrer" className="desk-page" style={{ '--tilt': `${TILT[i]}deg`, '--i': i } as React.CSSProperties}>
             <span className="desk-sheet"><Art src={d.image} className="size-full object-cover object-top" />{d.badge && <span className="desk-stamp">{d.badge}</span>}</span>
@@ -561,31 +696,32 @@ function Desk({ card, header }: { card: ShelfCard; header?: ReactNode }) {
             {d.subtitle && <span className="block truncate text-xs text-muted-foreground">{d.subtitle}</span>}
           </a>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }
 
 /** Saved pages as small browser windows, the page itself inside; hover and it scrolls by. */
 function Windows({ card, header, run }: { card: ShelfCard; header?: ReactNode; run?: RunAction }) {
-  const [gone, setGone] = useState<string[]>([]);
+  const arch = useArchive(run);
   const site = (s?: string) => s && /^[\w-]+(\.[\w-]+)+$/.test(s) ? s : undefined;
   return (
     <div>
-      {header}
+      <div className="flex items-center justify-between gap-3"><div className="min-w-0">{header}</div>{run && <SeeArchived href={card.archived} className="shrink-0" />}</div>
       <div className="windows">
-        {card.items.filter(w => !w.id || !gone.includes(w.id)).slice(0, 9).map((w, i) => (
-          <a key={w.id ?? i} href={w.href} target="_blank" rel="noreferrer" className="window relative" style={{ '--i': i } as React.CSSProperties}>
-            {run && w.id && <button type="button" aria-label="Archive" title="Archive" className="window-archive" onClick={e => { e.preventDefault(); e.stopPropagation(); setGone(g => [...g, w.id!]); void run('archive', { id: w.id }); }}><Archive className="size-3.5" /></button>}
+        {card.items.filter(w => !w.id || !arch.gone.includes(w.id)).slice(0, 9).map((w, i) => (
+          <a key={w.id ?? i} href={w.href} target="_blank" rel="noreferrer" className={cn('window relative', w.id && arch.leaving.includes(w.id) && 'gone')} style={{ '--i': i } as React.CSSProperties}>
+            {run && w.id && <button type="button" aria-label="Archive" title="Archive" className="window-archive" onClick={e => { e.preventDefault(); e.stopPropagation(); arch.archive(w.id!); }}><Archive className="size-3.5" /></button>}
             <span className="window-bar"><i /><i /><i />{site(w.subtitle) && <img src={`/api/favicon/${w.subtitle}`} alt="" className="ml-1.5 size-3.5 rounded-sm" onError={e => { e.currentTarget.style.display = 'none'; }} />}<span className="min-w-0 truncate">{w.subtitle}</span></span>
             <span className="window-page">{w.image ? <Art src={w.image} className="w-full" /> : <span className="grid h-full place-items-center bg-white/[.04]"><Bookmark className="size-5 text-muted-foreground" /></span>}</span>
             <span className="block p-3.5">
               <span className="line-clamp-2 text-sm leading-snug font-medium">{w.title}</span>
-              {w.note && <span className="mt-1 line-clamp-2 text-xs leading-snug text-muted-foreground">{w.note}</span>}
+              {w.note && <Clamp text={w.note} className="mt-1 text-xs leading-snug text-muted-foreground" />}
             </span>
           </a>
         ))}
       </div>
+      <div className="undo-dock"><UndoBar a={arch} /></div>
     </div>
   );
 }
@@ -618,36 +754,44 @@ function Ranked({ card }: { card: RankedCard }) {
 }
 
 function ShelfRow({ card, header, small, beside, lines }: { card: ShelfCard; header?: ReactNode; small?: boolean; beside?: boolean; lines?: boolean }) {
-  const row = useRef<HTMLDivElement>(null);
+  const row = useRef<HTMLDivElement>(null), [edge, setEdge] = useState({ start: true, end: false });
+  const measure = () => { const r = row.current; if (r) setEdge({ start: r.scrollLeft <= 2, end: r.scrollLeft + r.clientWidth >= r.scrollWidth - 2 }); };
+  useEffect(() => { const o = new ResizeObserver(measure); if (row.current) o.observe(row.current); return () => o.disconnect(); }, []);
   const page = (dir: number) => row.current?.scrollBy({ left: dir * row.current.clientWidth * 0.85, behavior: 'smooth' });
   const ratio = card.aspect === 'square' ? 'aspect-square' : card.aspect === 'wide' ? 'aspect-video' : 'aspect-[2/3]';
   const width = small ? (card.aspect === 'wide' ? 'w-[180px]' : 'w-[92px]') : card.aspect === 'wide' ? 'w-[240px] @3xl/main:w-[280px]' : 'w-[128px] @3xl/main:w-[150px]';
+  // aria-disabled, not disabled: an arrow that reaches the end keeps the keyboard's focus
+  const arrow = (dir: number, shut: boolean, label: string, I: LucideIcon) => <button type="button" onClick={() => { if (!shut) page(dir); }} aria-label={label} aria-disabled={shut} className="shelf-arrow"><I className="size-4" /></button>;
   return (
     <div className={cn(beside && 'relative min-w-0')}>
       <div className={cn('flex items-center gap-2', beside ? 'absolute -top-10 right-0 @max-4xl/main:hidden' : !!(header || card.items.length > (small ? 4 : 6)) && 'mb-3')}>
         {header}
-        <div className={cn('ml-auto hidden gap-1.5', card.items.length > (small ? 4 : 6) && 'sm:flex')}>
-          <button onClick={() => page(-1)} aria-label="Previous" className="grid size-7 place-items-center rounded-full bg-secondary text-muted-foreground transition-colors hover:text-foreground"><ChevronLeft className="size-4" /></button>
-          <button onClick={() => page(1)} aria-label="Next" className="grid size-7 place-items-center rounded-full bg-secondary text-muted-foreground transition-colors hover:text-foreground"><ChevronRight className="size-4" /></button>
+        <div className={cn('ml-auto hidden gap-1.5', card.items.length > (small ? 4 : 6) && !(edge.start && edge.end) && 'sm:flex')}>
+          {arrow(-1, edge.start, 'Previous', ChevronLeft)}
+          {arrow(1, edge.end, 'Next', ChevronRight)}
         </div>
       </div>
       {card.items.length === 0 ? <Empty text={card.empty ?? 'Nothing here yet'} /> : (
-        <div ref={row} className="-mx-2 -my-3 flex snap-x snap-mandatory scroll-px-2 gap-4 overflow-x-auto px-2 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div ref={row} onScroll={measure} onKeyDown={e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); page(e.key === 'ArrowRight' ? 1 : -1); } }}
+          className="-mx-2 -my-3 flex snap-x snap-mandatory scroll-px-2 gap-4 overflow-x-auto px-2 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {card.items.map((it, i) => {
+            const href = it.cta?.href ?? it.href;
             const inner = (
               <>
-                <div className={cn('relative overflow-hidden rounded-xl bg-muted shadow-[0_10px_24px_-12px_rgb(0_0_0/0.45)] transition-all duration-300 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_18px_32px_-12px_rgb(0_0_0/0.5)]', ratio)}>
+                <div className={cn('relative overflow-hidden rounded-xl bg-muted shadow-[0_10px_24px_-12px_rgb(0_0_0/0.45)] transition-all duration-300 ease-out', href && 'group-hover:-translate-y-1 group-hover:shadow-[0_18px_32px_-12px_rgb(0_0_0/0.5)]', ratio)}>
                   <Art src={it.image} alt={it.title} className="size-full object-cover" />
                   {it.badge && !lines && <span className={cn('absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[10.5px] font-medium text-white backdrop-blur-md', it.badge === 'Ready' ? 'bg-good/80' : it.badge === 'Today' ? 'bg-primary/85' : 'bg-black/55')}>{it.badge}</span>}
                   {lines && <i className={`ticket-line is-${lineOf(it)}`} />}
                 </div>
                 <div className="mt-2.5 truncate text-[13px] font-medium">{it.title}</div>
                 {(lines ? it.badge ?? it.subtitle : it.subtitle) && <div className="truncate text-xs text-muted-foreground">{lines ? it.badge ?? it.subtitle : it.subtitle}</div>}
+                {lines && it.note && <div className="truncate text-xs text-muted-foreground">{it.note}</div>}
+                {it.cta && <div className="mt-0.5 flex items-center gap-0.5 text-xs font-medium text-primary"><span className="truncate">{it.cta.label}</span><ArrowUpRight className="size-3 shrink-0" /></div>}
               </>
             );
-            return it.href
-              ? <a key={i} href={it.href} target="_blank" rel="noreferrer" className={cn('group shrink-0 snap-start', width)}>{inner}</a>
-              : <div key={i} className={cn('group shrink-0 snap-start', width)}>{inner}</div>;
+            return href
+              ? <a key={i} href={href} target="_blank" rel="noreferrer" className={cn('group shrink-0 snap-start', width)}>{inner}</a>
+              : <div key={i} className={cn('shrink-0 snap-start', width)}>{inner}</div>;
           })}
         </div>
       )}
@@ -661,13 +805,22 @@ function ShelfRow({ card, header, small, beside, lines }: { card: ShelfCard; hea
 function Columns({ card }: { card: ChartCard }) {
   const n = Math.max(...card.series.map(s => s.points.length), 0), [at, setAt] = useState<number | null>(null);
   const tops = Array.from({ length: n }, (_, i) => card.series.reduce((t, s) => t + (s.points[i] ?? 0), 0)), max = Math.max(...tops, 1);
-  const when = (i: number) => card.labels?.[i] ?? (card.from != null && card.to != null ? new Date(card.from + (i / Math.max(1, n - 1)) * (card.to - card.from)).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '');
-  const sum = (s: ChartCard['series'][number]) => s.points.reduce((a, b) => a + b, 0), whole = tops.reduce((a, b) => a + b, 0);
+  const long = card.from != null && card.to != null && card.to - card.from > 1296e5;   // past a day and a half, days say more than hours
+  const when = (i: number) => {
+    const l = card.labels?.[i];
+    if (l) return /^\d{4}-\d\d-\d\d/.test(l) ? dayOf(new Date(`${l.slice(0, 10)}T00:00`)) : l;
+    if (card.from == null || card.to == null) return '';
+    const t = card.from + (i / Math.max(1, n - 1)) * (card.to - card.from);
+    return long ? dayOf(t) : clockOf(t);
+  };
+  const live = !card.labels?.length && card.to != null && Date.now() - card.to < 72e5;
+  const ticks = n > 2 && (card.labels?.length || card.from != null) ? [0, (n - 1) >> 1, n - 1] : [];
+  const sum = (s: ChartCard['series'][number]) => s.total ?? s.points.reduce((a, b) => a + b, 0), whole = tops.reduce((a, b) => a + b, 0), spot = at != null ? (at + .5) / n : 0;
   return (
     <div>
       <div className="mb-3 flex items-baseline gap-2">
-        <span className="metric text-[28px] leading-none">{at != null ? written(tops[at]) : card.headline ?? written(whole)}</span>
-        <span className="min-w-0 truncate text-xs text-muted-foreground">{at != null ? `${when(at)} · ${card.series.map(s => `${written(s.points[at] ?? 0)} ${s.name.toLowerCase()}`).join(', ')}` : card.span}</span>
+        <span className="metric text-[28px] leading-none">{card.headline ?? written(whole)}</span>
+        <span className="min-w-0 truncate text-xs text-muted-foreground">{card.span}</span>
       </div>
       <div className="columns-chart" onPointerLeave={() => setAt(null)}>
         {tops.map((t, i) => (
@@ -675,14 +828,21 @@ function Columns({ card }: { card: ChartCard }) {
             {card.series.map(s => <i key={s.name} style={{ height: `${(s.points[i] ?? 0) / max * 100}%`, background: s.tone ? toneVar(s.tone) : 'rgb(255 255 255 / .22)' }} />)}
           </div>
         ))}
+        {/* the label leans away from the card's edge as the pointer nears it, so it never clips */}
+        {at != null && <div className="col-tip" style={{ left: `${spot * 100}%`, translate: `${-spot * 100}% 0` }}><b>{when(at)}</b>{card.series.map(s => ` · ${written(s.points[at] ?? 0)} ${s.name.toLowerCase()}`).join('')}</div>}
       </div>
+      {ticks.length > 0 && <div className="col-axis">{ticks.map((i, k) => <span key={i}>{k === 2 && live ? 'now' : when(i)}</span>)}</div>}
       <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
         {card.series.map(s => <span key={s.name} className="flex items-center gap-1.5 tabular"><i className="size-2 rounded-full" style={{ background: s.tone ? toneVar(s.tone) : 'rgb(255 255 255 / .22)' }} />{s.name} {written(sum(s))}</span>)}
+        {card.window && <span className="ml-auto shrink-0">{card.window}</span>}
       </div>
       {card.facts?.length ? (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {card.facts.map(f => <span key={f.label} className="fact"><span className="truncate">{f.label}</span>{f.value && <b>{f.value}</b>}</span>)}
-        </div>
+        <>
+          {card.factsNote && <div className="mt-3 text-xs text-muted-foreground">{card.factsNote}</div>}
+          <div className={cn('flex flex-wrap gap-1.5', card.factsNote ? 'mt-1.5' : 'mt-3')}>
+            {card.facts.map(f => <span key={f.label} className="fact"><span className="truncate">{f.label}</span>{f.value && <b>{f.value}</b>}</span>)}
+          </div>
+        </>
       ) : null}
     </div>
   );
@@ -991,7 +1151,7 @@ function Schedule({ card }: { card: ScheduleCard }) {
       <div className="relative pt-1 pb-7">
         <div className="h-[3px] rounded-full bg-white/10" />
         <div className="absolute top-1 left-0 h-[3px] rounded-full bg-gradient-to-r from-white/20 to-white/60 transition-[width] duration-1000" style={{ width: `${at(now) * 100}%` }} />
-        <span className="absolute top-[-1px] size-[11px] -translate-x-1/2 rounded-full bg-white shadow-[0_0_0_3px_rgb(255_255_255/.15)] transition-[left] duration-1000" style={{ left: `${at(now) * 100}%` }} />
+        <span className="absolute top-[-1px] h-[11px] w-[2px] -translate-x-1/2 rounded-full bg-white transition-[left] duration-1000" style={{ left: `${at(now) * 100}%` }} />
         {items.map((x, k) => x.muted
           // a moment that's never "next" is a notch on the line, not a word: hover says which
           ? <span key={x.name} title={`${x.name} · ${clock(x.t)}`} className="absolute top-[2px] h-[7px] w-px -translate-x-1/2 bg-white/35" style={{ left: `${pos(k) * 100}%` }} />
@@ -1089,7 +1249,7 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
     case 'list': return <List card={card} />;
     case 'status': return <Status card={card} columns={columns} minimal={minimal} />;
     case 'links': return <Links card={card} />;
-    case 'media': return <Media card={card} />;
+    case 'media': return <Media card={card} run={run} />;
     case 'shelf': return <Shelf card={card} />;
     case 'chart': return <Chart card={card} />;
     case 'code': return <Code card={card} />;
@@ -1113,6 +1273,19 @@ function BareHeader({ card, title, status }: { card?: CardT; title?: string; sta
       <h3 className="truncate text-[15px] font-semibold tracking-tight">{card?.href ? <a href={card.href} target="_blank" rel="noreferrer" className="title-link">{card?.title ?? title}</a> : card?.title ?? title}</h3>
       {status}
       {card?.note && <span className="truncate text-xs tabular text-muted-foreground">{card.note}</span>}
+    </div>
+  );
+}
+
+/** A state someone chose and shouldn't forget, with the way out beside it. It lapses by itself at `until`. */
+function BannerLine({ b, run }: { b: Banner; run?: RunAction }) {
+  const [busy, setBusy] = useState(false);
+  if (b.until && b.until < Date.now()) return null;
+  const go = async () => { setBusy(true); try { await run?.(b.button!.action, b.button!.args); } finally { setBusy(false); } };
+  return (
+    <div className={cn('card-banner mb-3', b.tone === 'bad' ? 'is-bad' : 'is-warn')} role="status">
+      <span className="min-w-0 flex-1 text-[14px] font-medium">{b.text}{b.until ? ` until ${clockOf(b.until)}` : ''}</span>
+      {b.button && run && <button type="button" disabled={busy} onClick={go} className="press flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-foreground/15 px-3 text-[12px] font-medium text-foreground transition-colors hover:bg-foreground/25 disabled:opacity-60">{busy && <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />}{b.button.label}</button>}
     </div>
   );
 }
@@ -1184,11 +1357,11 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
     <div className="fade-in-soft min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Photos card={card} large={large} />{actions}</div>
   );
   if (card?.type === 'media') return (
-    <div className={cn('fade-in-soft flex min-w-0 flex-col gap-3', fill && 'h-full')}><BareHeader card={card} title={title} status={status} /><Media card={card} compact={compact} />{actions}</div>
+    <WhyAsk.Provider value={why.ask}><div className={cn('fade-in-soft flex min-w-0 flex-col gap-3', fill && 'h-full')}><BareHeader card={card} title={title} status={status} /><Media card={card} compact={compact} run={run} />{actions}<WhyNote note={why.note} close={why.close} /></div></WhyAsk.Provider>
   );
   // the house's cards are glass edge to edge, with no header; in chat they're ordinary cards, below
   if (!compact && (card?.type === 'forecast' || card?.type === 'calendar' || card?.type === 'thermostat')) return (
-    <Card className={cn('lift fade-in-soft relative isolate min-w-0 gap-0 overflow-hidden py-0 shadow-card', fill && 'h-full')}>
+    <Card className={cn('fade-in-soft relative isolate min-w-0 gap-0 overflow-hidden py-0 shadow-card', fill && 'h-full')}>
       {status && <div className="absolute top-3 right-4 z-10">{status}</div>}
       {card.type === 'forecast' ? <WeatherCard card={card} /> : card.type === 'calendar' ? <CalendarView card={card} large={large} /> : <Thermostat card={card} run={run} />}
     </Card>
@@ -1198,7 +1371,7 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
   const scene = !compact && card ? card.type === 'schedule' ? <SkyWash card={card} /> : card.type === 'verse' && card.arabic ? <Lattice /> : null : null;
   return (
     <Dense.Provider value={!!compact}><WhyAsk.Provider value={why.ask}>
-    <Card className={cn('@container/card min-w-0 shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'lift gap-4 py-5', bare && 'border-0 bg-transparent py-0 shadow-none', fill && 'h-full', scene && 'relative isolate overflow-hidden')}>
+    <Card className={cn('@container/card min-w-0 shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'gap-4 py-5', !compact && card?.type === 'verse' && 'lift', bare && 'border-0 bg-transparent py-0 shadow-none', fill && 'h-full', scene && 'relative isolate overflow-hidden')}>
       {scene}
       {t && !bare && !headless && (
         <CardHeader className={cn('flex items-center gap-2', compact ? 'px-3.5' : 'px-5')}>
@@ -1211,6 +1384,7 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
         </CardHeader>
       )}
       <CardContent className={cn(bare ? 'p-0' : compact ? 'px-3.5' : 'px-5', fill && 'flex flex-1 flex-col')}>
+        {card?.banner && <BannerLine b={card.banner} run={run} />}
         {card ? <div className={cn('fade-in-soft', fill && 'flex flex-1 flex-col')}><CardBody card={card} run={run} large={large} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /></div> : <CardSkeleton kind={kind} />}
         {card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null}
         <WhyNote note={why.note} close={why.close} />
@@ -1272,8 +1446,8 @@ function SummaryTileView({ s, href, explain }: { s: Summary; href?: string; expl
   const trouble = why.ask && (s.tone === 'bad' || s.tone === 'warn');
   const art = !!s.image;
   const body = (
-    <Card className={cn('@container/tile lift relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', art && 'border-transparent text-white')} style={{ '--tint': `color-mix(in oklab, ${tintOf(s.icon ?? s.label)} 80%, var(--foreground))` } as React.CSSProperties}>
-      {art && <><Art src={s.image} className="absolute inset-0 -z-10 size-full object-cover transition-transform duration-700 ease-out group-hover/tile:scale-[1.03]" /><div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(0_0_0/.78),rgb(0_0_0/.42)_38%,transparent_72%)]" /></>}
+    <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift', art && 'border-transparent text-white')} style={{ '--tint': `color-mix(in oklab, ${tintOf(s.icon ?? s.label)} 80%, var(--foreground))` } as React.CSSProperties}>
+      {art && <><Art src={s.image} className={cn('absolute inset-0 -z-10 size-full object-cover transition-transform duration-700 ease-out', href && 'group-hover/tile:scale-[1.03]')} /><div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(0_0_0/.78),rgb(0_0_0/.42)_38%,transparent_72%)]" /></>}
       {!art && !s.marks && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} gauge={s.ring != null} /></div>}
       <div className={cn('relative flex flex-1 flex-col p-4', art && '[text-shadow:0_1px_10px_rgb(0_0_0/.7)]')}>
         <div className="flex items-center gap-2.5">
