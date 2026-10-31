@@ -1,0 +1,214 @@
+// The cameras card: a big live view, a pill per camera, what they've noticed lately. A video plays if there is one and a
+// snapshot refreshes about once a second if not, and both rest when the tab is hidden or the card has scrolled away.
+import { Expand, X } from 'lucide-react';
+import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
+import { cn } from '@/lib/utils';
+import type { Camera, CameraEvent, CamerasCard, Detection } from '../shared/cards.ts';
+import './cameras.css';
+
+type Box = [number, number, number, number];
+type Clock = MutableRefObject<() => number>;
+const seconds = () => Date.now() / 1000;
+const two = (n: number) => String(n).padStart(2, '0');
+const stamp = (d = new Date()) => `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+const clockTime = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+/** Where a detection is at `t`. A path wraps around its loop, so it can start before the end and finish after the start. */
+export function boxAt(d: Detection, t: number, loop = 0): Box | null {
+  const k = d.path;
+  if (!k?.length) return d.box ?? null;
+  const at = loop && t < k[0][0] ? t + loop : t;
+  if (at < k[0][0] || at > k[k.length - 1][0]) return null;
+  const i = Math.max(1, k.findIndex(p => p[0] >= at)), a = k[i - 1] ?? k[0], b = k[i] ?? a, u = b[0] > a[0] ? (at - a[0]) / (b[0] - a[0]) : 0;
+  return [1, 2, 3, 4].map(n => a[n] + (b[n] - a[n]) * u) as Box;
+}
+/** Has something just come into view? A box that's been there a while isn't news, so the pill's dot settles down again. */
+const justSeen = (c: Camera) => !!c.detections?.some(d => {
+  if (!d.path) return true;
+  const t = c.loop ? seconds() % c.loop : seconds(), first = d.path[0][0];
+  return !!boxAt(d, t, c.loop) && (c.loop && t < first ? t + c.loop : t) - first < 2.5;
+});
+
+/** Awake while the tab is showing and the element is on screen. */
+function useAwake(el: RefObject<HTMLElement | null>) {
+  const [awake, set] = useState(true);
+  useEffect(() => {
+    let seen = true;
+    const sync = () => set(seen && !document.hidden);
+    const io = new IntersectionObserver(([e]) => { seen = e.isIntersecting; sync(); });
+    if (el.current) io.observe(el.current);
+    document.addEventListener('visibilitychange', sync);
+    return () => { io.disconnect(); document.removeEventListener('visibilitychange', sync); };
+  }, []);
+  return awake;
+}
+
+/** A new picture about once a second, swapped in only once it has loaded, so it never flickers and a slow camera never queues. */
+function Snapshot({ src, every, on, shape, up }: { src: string; every: number; on: boolean; shape: (a: number) => void; up: (is: boolean) => void }) {
+  const [shown, setShown] = useState<string>();
+  useEffect(() => {
+    if (!on) return;
+    let timer: ReturnType<typeof setTimeout>, stop = false, misses = 0;
+    const next = () => {
+      const url = `${src}${src.includes('?') ? '&' : '?'}t=${Date.now()}`, img = new Image(), began = Date.now();
+      img.onload = () => { if (stop) return; misses = 0; setShown(url); up(true); shape(img.naturalWidth / img.naturalHeight); timer = setTimeout(next, Math.max(100, every * 1000 - (Date.now() - began))); };
+      img.onerror = () => { if (stop) return; if (++misses >= 2) up(false); timer = setTimeout(next, every * 1000 * Math.min(misses + 1, 6)); };
+      img.src = url;
+    };
+    next();
+    return () => { stop = true; clearTimeout(timer); };
+  }, [src, every, on]);
+  return shown ? <img src={shown} alt="" className="cam-media" /> : null;
+}
+
+/** A video, muted and inline so phones will play it. A loop stays in step with the clock, so everyone sees the same moment
+ *  and detections land on what they're about. */
+function Video({ cam, on, clock, shape, failed }: { cam: Camera; on: boolean; clock: Clock; shape: (a: number) => void; failed: () => void }) {
+  const v = useRef<HTMLVideoElement>(null), loop = cam.loop;
+  useEffect(() => {
+    const el = v.current;
+    if (!el) return;
+    // currentTime runs ahead of what's on screen, so read the frame actually shown where the browser says
+    let shown = -1, at = 0, frame = 0;
+    const tick: VideoFrameRequestCallback = (_, m) => { shown = m.mediaTime; at = performance.now(); frame = el.requestVideoFrameCallback(tick); };
+    if (loop) { clock.current = () => shown < 0 || el.paused ? el.currentTime : shown + Math.min(.1, (performance.now() - at) / 1000); frame = el.requestVideoFrameCallback?.(tick); }
+    const sync = () => { if (!loop || !el.duration) return; const want = seconds() % loop, off = Math.abs(el.currentTime - want); if (Math.min(off, loop - off) > .4) el.currentTime = want; };
+    el.muted = true;
+    if (!on) { el.pause(); el.cancelVideoFrameCallback?.(frame); return; }
+    sync();
+    const retry = () => { void el.play().catch(() => {}); };
+    void el.play().catch(() => document.addEventListener('pointerdown', retry, { once: true }));   // low power mode wants a tap first
+    el.addEventListener('loadedmetadata', sync);
+    const t = setInterval(sync, 3000);
+    return () => { clearInterval(t); el.cancelVideoFrameCallback?.(frame); el.removeEventListener('loadedmetadata', sync); document.removeEventListener('pointerdown', retry); };
+  }, [cam.id, on]);
+  return <video ref={v} className="cam-media" src={on || loop ? cam.video : undefined} poster={cam.poster} muted playsInline autoPlay loop={!!loop} preload="metadata"
+    onLoadedMetadata={e => { const m = e.currentTarget; if (m.videoHeight) shape(m.videoWidth / m.videoHeight); }} onError={failed} />;
+}
+
+/** Boxes around what's seen. They're moved straight from the clock, so following the picture never re-renders the card. */
+function Boxes({ cam, on, clock }: { cam: Camera; on: boolean; clock: Clock }) {
+  const shown = (cam.detections ?? []).filter(d => d.box || d.path), els = useRef<(HTMLDivElement | null)[]>([]);
+  useEffect(() => {
+    if (!shown.length) return;
+    let raf = 0;
+    const paint = () => {
+      const t = clock.current();
+      shown.forEach((d, i) => {
+        const el = els.current[i], b = boxAt(d, t, cam.loop);
+        if (!el) return;
+        if (!b) { if (el.dataset.on) delete el.dataset.on; return; }
+        el.style.cssText = `left:${b[0] * 100}%;top:${b[1] * 100}%;width:${b[2] * 100}%;height:${b[3] * 100}%`;
+        el.dataset.on = '1'; el.dataset.tight = b[1] < .1 ? '1' : '';
+      });
+      if (on && shown.some(d => d.path)) raf = requestAnimationFrame(paint);
+    };
+    paint();
+    return () => cancelAnimationFrame(raf);
+  }, [cam, on]);
+  return shown.map((d, i) => (
+    <div key={`${d.label}${i}`} ref={e => { els.current[i] = e; }} className="cam-box"><span className="cam-tag">{d.label}{d.score != null && <i>{Math.round(d.score * 100)}%</i>}</span></div>
+  ));
+}
+
+/** One camera's picture, with its own little on-screen display, as if the camera had burned it in. */
+function Feed({ cam, refresh, on, full, open }: { cam: Camera; refresh?: number; on: boolean; full?: boolean; open?: () => void }) {
+  const box = useRef<HTMLDivElement>(null), awake = useAwake(box), live = on && awake;
+  const clock = useRef(seconds), time = useRef<HTMLSpanElement>(null);
+  const [aspect, setAspect] = useState(16 / 9), [noVideo, setNoVideo] = useState(false), [up, setUp] = useState<boolean | null>(cam.offline ? false : null);   // null: not heard from yet
+  useEffect(() => {
+    if (!live) return;
+    const t = setInterval(() => { if (time.current) time.current.textContent = stamp(); }, 1000);
+    return () => clearInterval(t);
+  }, [live]);
+  const video = cam.video && !noVideo, still = !video && cam.image;
+  const props = open ? { role: 'button', tabIndex: 0, 'aria-label': `${cam.name}, full screen`, onClick: open, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } } } : {};
+  return (
+    <div ref={box} className={cn('cam-stage', full && 'is-full', open && 'is-open')} {...props}>
+      <div className="cam-frame" style={{ '--a': aspect } as React.CSSProperties}>
+        {cam.poster && !video && !still && <img src={cam.poster} alt="" className="cam-media" />}
+        {video && <Video cam={cam} on={live} clock={clock} shape={setAspect} failed={() => setNoVideo(true)} />}
+        {still && <Snapshot src={cam.image!} every={refresh ?? 1} on={live} shape={setAspect} up={setUp} />}
+        <Boxes cam={cam} on={live} clock={clock} />
+        {up === false && <div className="cam-off"><span>No signal</span></div>}
+        {up !== false && (video || up) && <div className="cam-osd cam-osd-top"><span className="cam-live"><i />LIVE</span><span ref={time}>{stamp()}</span></div>}
+        <div className="cam-osd cam-osd-end">{cam.name}</div>
+      </div>
+      {open && <span className="cam-expand" aria-hidden><Expand /></span>}
+    </div>
+  );
+}
+
+function Pills({ cameras, at, pick, busy, row }: { cameras: Camera[]; at: string; pick: (id: string) => void; busy: string[]; row?: boolean }) {
+  return (
+    <div role="tablist" aria-label="Cameras" className={cn('cam-pills no-scrollbar', row && 'is-row')}>
+      {cameras.map(c => (
+        <button key={c.id} role="tab" aria-selected={c.id === at} onClick={() => pick(c.id)} className={cn('cam-pill press', c.id === at && 'is-on')}>
+          {(c.poster ?? c.image) && <img src={c.poster ?? c.image} alt="" loading="lazy" onError={e => { e.currentTarget.removeAttribute('src'); }} />}
+          <span className="min-w-0 flex-1 truncate">{c.name}</span>
+          {busy.includes(c.id) && <i className="cam-ping" title="Just seen" />}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Events({ events, cameras, pick }: { events: CameraEvent[]; cameras: Camera[]; pick: (id: string) => void }) {
+  return (
+    <div className="cam-events no-scrollbar">
+      {events.map((e, i) => (
+        <button key={e.id ?? `${e.camera}${e.at}${i}`} onClick={() => pick(e.camera)} className="cam-event press">
+          {e.image && <img src={e.image} alt="" loading="lazy" />}
+          <span className="min-w-0"><b>{e.label}</b><small>{cameras.find(c => c.id === e.camera)?.name ?? e.camera} · {clockTime(e.at)}</small></span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Full screen. It lives on the body because glass makes a card the containing block for anything fixed inside it, and
+ *  it's its own overlay because iPhones won't put anything but a bare video in real full screen. */
+function Theatre({ card, at, pick, busy, close }: { card: CamerasCard; at: string; pick: (id: string) => void; busy: string[]; close: () => void }) {
+  const box = useRef<HTMLDivElement>(null), cam = card.cameras.find(c => c.id === at) ?? card.cameras[0];
+  useEffect(() => {
+    const el = box.current, step = (n: number) => pick(card.cameras[(card.cameras.findIndex(c => c.id === at) + n + card.cameras.length) % card.cameras.length].id);
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); if (e.key === 'ArrowRight') step(1); if (e.key === 'ArrowLeft') step(-1); };
+    const left = () => { if (!document.fullscreenElement) close(); };
+    document.addEventListener('keydown', key); document.addEventListener('fullscreenchange', left);
+    return () => { document.removeEventListener('keydown', key); document.removeEventListener('fullscreenchange', left); };
+  }, [at]);
+  useEffect(() => {
+    box.current?.focus();
+    void box.current?.requestFullscreen?.().catch(() => {});
+    return () => { if (document.fullscreenElement) void document.exitFullscreen().catch(() => {}); };
+  }, []);
+  return createPortal(
+    <div ref={box} role="dialog" aria-modal aria-label={cam.name} tabIndex={-1} className="cam-theatre">
+      <Feed key={cam.id} cam={cam} refresh={card.refresh} on full />
+      <button onClick={close} aria-label="Close" className="cam-close press"><X /></button>
+      {card.cameras.length > 1 && <div className="cam-dock"><Pills cameras={card.cameras} at={at} pick={pick} busy={busy} row /></div>}
+    </div>, document.body);
+}
+
+export function Cameras({ card }: { card: CamerasCard }) {
+  const [at, setAt] = useState(card.cameras[0]?.id ?? ''), [full, setFull] = useState(false), [busy, setBusy] = useState<string[]>([]);
+  const cam = card.cameras.find(c => c.id === at) ?? card.cameras[0], many = card.cameras.length > 1;
+  useEffect(() => {
+    const check = () => { const now = card.cameras.filter(justSeen).map(c => c.id); setBusy(b => b.join() === now.join() ? b : now); };
+    check();
+    const t = setInterval(check, 500);
+    return () => clearInterval(t);
+  }, [card.cameras]);
+  if (!cam) return <p className="py-6 text-center text-sm text-muted-foreground">{card.empty ?? 'No cameras'}</p>;
+  return (
+    <div className="cam-card @container">
+      <div className={cn('cam-grid', many && 'has-pills')}>
+        <Feed key={cam.id} cam={cam} refresh={card.refresh} on={!full} open={() => setFull(true)} />
+        {many && <Pills cameras={card.cameras} at={cam.id} pick={setAt} busy={busy} />}
+      </div>
+      {!!card.events?.length && <Events events={card.events} cameras={card.cameras} pick={setAt} />}
+      {full && <Theatre card={card} at={cam.id} pick={setAt} busy={busy} close={() => setFull(false)} />}
+    </div>
+  );
+}

@@ -1,6 +1,7 @@
 // Servers, storage and what watches over them. See media.ts for the shape of an entry.
 import { z } from 'zod';
 import { fmt, service, tally } from '../../server/service.ts';
+import { frigateCameras, frigateOptions } from '../frigate.ts';
 
 // For services that run open by default and only sometimes ask for a sign-in, so nothing here can be required.
 type Creds = { key?: string; username?: string; password?: string };
@@ -425,8 +426,8 @@ export default [
   }),
 
   // Smart home and energy
-  service({
-    type: 'frigate', name: 'Frigate', icon: 'image',   // the unauthenticated port, 5000
+  frigateCameras(service({
+    type: 'frigate', name: 'Frigate', icon: 'camera', options: frigateOptions,   // the unauthenticated port, 5000
     get: { stats: '/api/stats' },
     stats: d => {
       const speeds = Object.values<any>(d.stats?.detectors ?? {}).map(x => x?.inference_speed).filter(Number.isFinite);
@@ -435,7 +436,7 @@ export default [
     },
     sample: { stats: { detection_fps: 3.4, cameras: { door: { camera_fps: 5 }, garden: { camera_fps: 5 } }, detectors: { coral: { inference_speed: 8.5 } }, service: { uptime: 90000, version: '0.15.1' } } },
     expect: { Cameras: 2, Detections: 3.4, Inference: 8.5, Uptime: '1d' },
-  }),
+  })),
   service({
     type: 'homebridge', name: 'Homebridge', icon: 'home', auth: { login: '/api/auth/login', token: r => r.access_token },
     get: { status: '/api/status/homebridge', version: '/api/status/homebridge-version', plugins: '/api/plugins', bridges: { path: '/api/status/homebridge/child-bridges', optional: true } },

@@ -2,7 +2,7 @@
 
 Generated from the code by `npm run docs:services`: please don't edit by hand.
 
-185 integrations. If yours isn't here, `type: api` turns any JSON API into a card from YAML, and a new integration is
+186 integrations. If yours isn't here, `type: api` turns any JSON API into a card from YAML, and a new integration is
 usually about ten lines ([docs/plugins.md](plugins.md)).
 
 **How these are tested:** every service below runs in `npm test` against a sample of its API, which proves the card, the
@@ -17,6 +17,7 @@ Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to 
 |---|---|
 | APC UPS | `apcups` |
 | Calendar | `calendar` |
+| Camera | `camera` |
 | Custom API | `api` |
 | Docker | `docker` |
 | Embedded page | `iframe` |

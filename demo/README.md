@@ -3,7 +3,8 @@
 Real Valet, made-up homelab. The page runs the published code; the only stand-ins are one plugin
 (`integrations/homelab.mjs`, the invented house) and a scripted model (`mock-model.mjs`, the assistant).
 
-- **Nothing real:** no secrets, no real services. Every name and title is invented and every picture is drawn in code.
+- **Nothing real:** no secrets, no real services. Every name and title is invented and every picture is drawn in code,
+  except the camera footage, which is free and credited in `art/cameras/CREDITS.md`: no private homes, faces or plates.
 - **Sealed:** Valet and the model sit on an internal Docker network with no route to the internet, the LAN or the host.
   The small proxy is the only way in.
 - **No AI bill:** the chat calls the scripted model, so it costs nothing and can't be talked into anything. It never

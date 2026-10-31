@@ -86,7 +86,7 @@ attached in chat. `fmt` (from `core.ts`) formats bytes, rates, speeds, durations
 `fmt.relativeDay`: "Today", "Tomorrow", "Fri") and times consistently.
 
 Icons in cards are names: `cpu gpu memory wifi disk download pulse play film bulb home shield chat image clock crescent
-game book coins text file bookmark sun moon cloud cloud-sun cloud-moon rain snow fog storm thermometer`, or an image URL.
+game book coins text file bookmark camera sun moon cloud cloud-sun cloud-moon rain snow fog storm thermometer`, or an image URL.
 
 ## Guidelines
 
@@ -107,6 +107,7 @@ A widget returns one card from the catalog in `src/shared/cards.ts`. Pick the on
 | `media` | what's playing or downloading | full-bleed artwork; `tags`, progress, time left |
 | `shelf` | a row of artwork | `aspect` poster/square/wide; `stack: true` piles them up (documents, photos) |
 | `photos` | photos to look at | `flashback` crossfades; `mosaic` (or size large) tiles them |
+| `cameras` | live cameras | a big view, a pill per camera, `events` as a strip; each camera has an `image` (refreshed every `refresh` seconds, 1 by default) or a `video`, and `detections` draw a box that flashes as it lands. Goes full screen on a tap |
 | `schedule` | a day's times | next one counts down live; `muted` times show but are never "next" |
 | `forecast` | weather | a large glyph and temperature, high/low, the next `days`; more room adds the hours and range bars |
 | `calendar` | an agenda and a month | `events` with ISO times, or plain dates for all day; browsing a month happens in the browser, within `from`..`to` |
@@ -131,6 +132,34 @@ A `thermostat` with no `target` draws the room and no handle, and one with no `s
 
 Sizes are the layout's business, not the integration's: every card works as small (its summary), medium and large,
 and in chat (dense). Give a card a `summary` so the small size has something to show.
+
+## Cameras
+
+`cameras` is the card for anything with a picture and a name. Two integrations ship with it:
+
+```yaml
+integrations:
+  nvr:
+    type: frigate                 # nvr.status is its stats, nvr.cameras the live view
+    url: http://frigate:5000      # the port that needs no sign-in
+    cameras: [front, drive]       # optional: which ones, in this order
+    go2rtc: http://frigate:1984   # optional: smooth video instead of snapshots, if your cameras send H.264
+  yard:
+    type: camera                  # any camera that hands over a JPEG: Scrypted, ZoneMinder, Shinobi, an RTSP-to-JPEG bridge
+    title: Yard                   # optional, also: href, refresh (seconds), username, password, insecure
+    cameras:
+      - { name: Shed, url: http://192.168.1.20/snapshot.jpg }
+      - { name: Gate, url: http://192.168.1.21/snapshot.jpg, video: http://192.168.1.21/stream.mp4 }
+```
+
+Put it where it can be big: `{ widget: nvr.cameras, size: large }`, or a section of its own with `columns: 1`. Pictures
+come through Valet, so the browser never needs a camera's address or password, and they stop when the tab is hidden or the
+card scrolls away. `image()` answers only to cameras and events it already knows: a `ref` is a name or a position, never
+an address. The assistant gets `camera_events` for "was anyone at the door?".
+
+For a camera of your own, return a `cameras` card: `image` for a picture that's fetched again every `refresh` seconds,
+and `Cache-Control: no-store` on what your `image()` answers so the browser doesn't keep it. `detections` are the boxes,
+`box: [x, y, w, h]` in fractions of the picture; `events` are the strip below.
 
 ## Testing
 

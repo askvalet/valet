@@ -1,9 +1,11 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { Readable } from 'node:stream';
 import { readFile } from 'node:fs/promises';
 // A made-up homelab, for the public demo. Every number and person is invented; the films, albums and books are real ones
 // so the page reads like a real home, their art linked from art/art.json. It moves on its own (streams play, downloads fill, graphs
 // wander) from the clock alone, and whatever a visitor changes puts itself back after ten minutes.
+// The camera footage is real, free and credited too: art/cameras/CREDITS.md.
 const hash = s => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 const rng = seed => { let s = (hash(seed) % 2147483646) + 1; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
 const wave = (i, a, b) => a + (b - a) * (.5 + .32 * Math.sin(i / 3.1) + .18 * Math.sin(i / 1.3));
@@ -55,6 +57,33 @@ const NOW_AND_THEN = [['Dentist', 15, 0, 45, FAMILY], ['Vet check-up', 10, 30, 3
 const SERVICES = [['Plex', 'Media', 'plex'], ['Tautulli', 'Media', 'tautulli'], ['Sonarr', 'Media', 'sonarr'], ['Radarr', 'Media', 'radarr'], ['Prowlarr', 'Media', 'prowlarr'], ['Bazarr', 'Media', 'bazarr'], ['qBittorrent', 'Media', 'qbittorrent'],
   ['Home Assistant', 'Home', 'home-assistant'], ['Immich', 'Home', 'immich'], ['Paperless', 'Home', 'paperless'], ['Karakeep', 'Home', 'karakeep'], ['Mealie', 'Home', 'mealie'],
   ['Pi-hole', 'Network', 'pi-hole'], ['Caddy', 'Network', 'caddy'], ['Uptime Kuma', 'Network', 'uptime-kuma']];
+
+// [id, name, seconds, [[label, score, event thumbnail, logged every n loops, [t, x, y, w, h] traced over the clip]]]. Each clip
+// loops in step with the clock, so everyone sees the same moment and the boxes land on what's really there.
+const CAMERAS = [
+  ['street', 'Street', 12, [
+    ['Car', .94, 'ev-car', 5, [[1.2,.078,.604,.063,.083],[1.75,.115,.615,.078,.094],[2.25,.151,.62,.083,.104],[3,.208,.625,.099,.115],[3.75,.292,.635,.156,.135],[4.5,.396,.625,.208,.188],[4.75,.49,.635,.198,.208],[5.25,.677,.656,.292,.25],[5.5,.813,.667,.187,.26],[5.7,.938,.667,.062,.26]]],
+    ['Person', .81, 'ev-person', 7, [[6,0,.573,.052,.156],[7.5,.016,.568,.073,.156],[8.25,.083,.594,.073,.141],[9,.099,.604,.068,.13],[10,.151,.604,.073,.13],[10.75,.161,.604,.078,.13],[11.1,.177,.604,.078,.13]]],
+    ['Car', .91, null, 0, [[11,.375,.635,.146,.167],[11.25,.406,.646,.198,.198],[11.75,.542,.625,.312,.25],[12,.677,.656,.323,.26],[12.25,.844,.667,.156,.25],[12.5,.948,.667,.052,.25]]]]],
+  ['driveway', 'Driveway', 12, [
+    ['Car', .96, 'ev-driveway', 6, [[6.5,.69,.39,.06,.11],[7.5,.69,.39,.06,.11],[8.25,.66,.4,.08,.12],[8.5,.64,.4,.09,.14],[9,.6,.39,.13,.15],[9.25,.56,.36,.14,.21],[9.75,.46,.31,.2,.29],[10,.39,.35,.22,.25],[10.5,0,.31,.5,.47],[10.75,0,.22,.41,.66],[10.95,0,.2,.22,.7]]]]],
+  ['gate', 'Side gate', 12, [
+    ['Fox', .88, 'ev-fox', 9, [[0,.23,.48,.29,.46],[1.5,.24,.54,.32,.4],[2.5,.2,.63,.41,.32],[4,.22,.68,.41,.29],[5.25,.25,.61,.37,.33],[6.75,.25,.58,.37,.38],[7.5,.29,.5,.33,.47],[8.25,.46,.51,.2,.35],[9,.55,.48,.12,.34],[10,.53,.47,.12,.27],[10.75,.49,.47,.11,.22],[10.95,.49,.47,.11,.22]]],
+    ['Fox', .88, null, 0, [[11.45,.25,.46,.27,.46],[12,.23,.48,.29,.46]]]]],
+  ['backyard', 'Backyard', 12, [
+    ['Raccoon', .9, 'ev-raccoon', 13, [[11.45,.429,.412,.424,.588],[12,.418,.4,.4,.588],[13.5,.465,.412,.365,.576],[15,.406,.412,.447,.553],[16.75,.429,.412,.424,.553],[17.25,.429,.318,.412,.588],[18,.406,.4,.447,.576],[19,.418,.376,.459,.576],[19.75,.418,.329,.459,.576],[20.5,.382,.153,.529,.553],[21,.382,.176,.529,.588],[21.75,.441,.141,.482,.565],[22,.476,.212,.424,.576],[22.5,.641,.329,.341,.565],[22.75,.724,.341,.271,.553],[23.1,.794,.318,.206,.553]]]]],
+  ['feeder', 'Feeder', 11.5, [
+    ['Bird', .97, null, 0, [[10.95,.24,.083,.521,.833],[11.5,.271,.083,.49,.833],[12,.24,.146,.521,.542],[13.1,.24,.146,.521,.542]]],
+    ['Bird', .9, null, 0, [[13.9,.604,.083,.167,.344],[15.4,.625,.104,.146,.312]]],
+    ['Bird', .95, 'ev-bird', 8, [[4.6,.5,.167,.271,.479],[5.7,.438,.146,.333,.479],[6.2,.292,.167,.49,.542],[7,.24,.104,.521,.625],[7.7,.26,.042,.49,.854],[8.3,.24,.167,.521,.583],[9.2,.229,.208,.521,.479],[9.8,.271,.125,.49,.833],[10.2,.292,.188,.469,.625]]]]],
+];
+const CLIPS = new Set(CAMERAS.flatMap(([id, , , seen]) => [`${id}.mp4`, `${id}.jpg`, ...seen.flatMap(s => s[2] ? [`${s[2]}.jpg`] : [])]));
+/** What the cameras noticed: a row for each of the last few passes the clock says have happened. */
+const sightings = () => CAMERAS.flatMap(([camera, name, loop, seen]) => seen.flatMap(([label, score, image, every, keys]) => {
+  if (!image) return [];
+  const start = keys[0][0], period = every * loop, last = Math.floor((now() / 1000 - start) / period) * period + start;
+  return [0, 1].map(n => ({ camera, name, label, score, image, at: (last - n * period) * 1000 }));
+})).sort((a, b) => b.at - a.at).slice(0, 10);
 
 export default ({ z, defineIntegration }) => {
   // what visitors change, and when each change lapses. Shared by everyone looking, so nobody can leave it broken.
@@ -174,10 +203,15 @@ export default ({ z, defineIntegration }) => {
   return defineIntegration({
     type: 'demo-homelab',
     name: 'Made-up homelab',
-    config: z.object({}),
+    config: z.object({ art: z.string().default('/demo/art/cameras') }),
     create(cfg, ctx) {
       const w = (title, interval, fetch) => ({ title, interval, fetch: async () => fetch() });
+      const art = name => ctx.image?.(name) ?? name;
       const widgets = {
+        cameras: w('Cameras', 4_000, () => { const seen = sightings(); return { type: 'cameras', title: 'Cameras', icon: 'camera', source: { name: 'Frigate', icon: '/api/icon/frigate' },
+          cameras: CAMERAS.map(([id, name, loop, d]) => ({ id, name, loop, video: art(`${id}.mp4`), poster: art(`${id}.jpg`), detections: d.map(([label, score, , , path]) => ({ label, score, path })) })),
+          events: seen.map(({ name, image, ...e }) => ({ ...e, image: art(`${image}.jpg`) })),
+          summary: { label: 'Cameras', icon: 'camera', value: CAMERAS.length, sub: `${seen[0].label} · ${seen[0].name}` } }; }),
         services: w('Services', 15_000, () => { const s = services(), bad = s.filter(x => !x.ok); return { ...statusCard('Services', 'pulse', s),
           summary: { label: 'Services', icon: 'pulse', value: `${s.length - bad.length}/${s.length}`, tone: bad.length ? 'bad' : 'good', sub: bad.length ? `${bad.map(b => b.name).join(', ')} down` : 'All up' } }; }),
         uptime: w('Uptime', 60_000, () => ({ ...statusCard('Uptime', 'pulse', services().map(({ group, ...s }) => s)), note: '99.8% over 30 days' })),
@@ -230,6 +264,15 @@ export default ({ z, defineIntegration }) => {
       const textCard = text => ({ type: 'text', tone: 'good', text });
       return {
         widgets,
+        // the clips, with the byte ranges phones ask for. Nothing but the files named above can be reached
+        image(ref, range) {
+          const still = ref === 'article' ? 'article.jpg' : /^photo[0-3]$/.test(ref) ? `photos/${ref[5]}.jpg` : null;
+          if (still) return readFile(`${dir}/${still}`).then(b => new Response(b, { headers: { 'Content-Type': 'image/jpeg' } }));
+          if (!CLIPS.has(ref)) throw new Error('bad image ref');
+          const file = join(cfg.art, ref), size = statSync(file).size, [, a, b] = /^bytes=(\d+)-(\d*)/.exec(range ?? '') ?? [];
+          const start = Number(a ?? 0), end = Math.min(b ? Number(b) : size - 1, size - 1), headers = { 'Content-Type': ref.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg', 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1) };
+          return new Response(Readable.toWeb(createReadStream(file, { start, end })), { status: a ? 206 : 200, headers: a ? { ...headers, 'Content-Range': `bytes ${start}-${end}/${size}` } : headers });
+        },
         recap: async () => [
           { id: 'music.songs', theme: 'music', icon: 'play', show: { images: ART.albums, shape: 'square' }, kicker: 'Your music, on your own disks', value: '18,422', unit: 'songs', stat: 'Songs', score: 82, scope: 'All time', line: 'No subscription can take a single one of them away.' },
           { id: 'komga.books', theme: 'reading', icon: 'book', show: { images: ART.books }, kicker: 'On your shelves', value: '2,316', unit: 'books', stat: 'Books', score: 73, scope: 'All time', line: 'Across 214 series, and none of them can be pulled from a store.' },
@@ -258,7 +301,6 @@ export default ({ z, defineIntegration }) => {
           { id: 'ai.tokens', theme: 'ai', icon: 'gpu', kicker: 'Your own AI wrote', value: '2.1', unit: 'million tokens', stat: 'AI tokens', score: 58, scope: 'year', bars: [8, 12, 6, 15, 22, 9, 14].map((value, i) => ({ label: String(20 + i), value })), line: 'On your own graphics card, for 41¢ of electricity. Nobody else read a word of it.' },
           { id: 'watch.day', theme: 'media', icon: 'calendar', kicker: 'Your night in', value: 'Fridays', line: '312 of your 1,048 plays started on a Friday.', score: 60, scope: 'year', bars: [['Mon', 88], ['Tue', 96], ['Wed', 104], ['Thu', 121], ['Fri', 312], ['Sat', 214], ['Sun', 113]].map(([label, value]) => ({ label, value })) },
         ],
-        image: async ref => { const file = ref === 'article' ? 'article.jpg' : /^photo[0-3]$/.test(ref) ? `photos/${ref[5]}.jpg` : null; if (!file) throw new Error('bad image ref'); return new Response(await readFile(`${dir}/${file}`), { headers: { 'Content-Type': 'image/jpeg' } }); },
         actions: {
           preset: { description: 'Apply a lighting preset', input: z.object({ id: z.string() }), run: async ({ id }) => { if (PRESET_RGB[id]) { put('preset', id); for (const p of ['fans0', 'fans1', 'pump', 'ram', 'gpu']) changes.delete(`part.${p}`); } } },
           light: { description: 'Set a PC part or some home lights', input: z.object({ part: z.string().optional(), state: z.object({}).loose().optional(), entity_id: z.array(z.string()).optional() }).loose(),

@@ -11,7 +11,7 @@ import { byDay, CalendarView, span, Thermostat } from '../src/web/home-cards.tsx
 import Island from '../src/web/island.tsx';
 import { SAMPLES } from '../src/web/samples.ts';
 
-const TYPES = ['stats', 'list', 'media', 'shelf', 'status', 'links', 'chart', 'code', 'table', 'ranked', 'controls', 'showcase', 'forecast', 'calendar', 'thermostat', 'photos', 'schedule', 'verse', 'kv', 'text', 'group'];
+const TYPES = ['cameras', 'stats', 'list', 'media', 'shelf', 'status', 'links', 'chart', 'code', 'table', 'ranked', 'controls', 'showcase', 'forecast', 'calendar', 'thermostat', 'photos', 'schedule', 'verse', 'kv', 'text', 'group'];
 
 test('every card type has a sample', () => {
   const have = new Set(SAMPLES.map(s => s.card.type));
