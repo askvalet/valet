@@ -9,7 +9,7 @@ import { streamSSE } from 'hono/streaming';
 import { bodyLimit } from 'hono/body-limit';
 import { sameOrigin, setupAuth, userCommand } from './auth.ts';
 import { loadConfig, startConfig, validZone, type Config } from './config.ts';
-import { headers, hostGuard } from './security.ts';
+import { cleanCss, headers, hostGuard } from './security.ts';
 import { UPLOAD_DIR } from './core.ts';
 import { parseSuggestions, statusLine, suggestPrompt, troubles, whyPrompt } from './insight.ts';
 import { loadPins, newPin, pinnedCard, savePins } from './pins.ts';
@@ -18,6 +18,8 @@ import { chatAgent } from './model.ts';
 import { buildRecap, recapYear } from './recap.ts';
 import { buildSite, type Site } from './site.ts';
 import { registry } from '../integrations/index.ts';
+import { LABELS } from '../shared/labels.ts';
+import { cardLook, isPaint, listOf, lookOf } from '../shared/look.ts';
 
 const CONFIG = process.env.VALET_CONFIG ?? 'config.yaml';
 const DATA = resolve(process.env.VALET_DATA ?? 'data');
@@ -86,17 +88,29 @@ app.use('/api/*', async (c, next) => c.req.path === '/api/files' ? next() : c.re
 const signedIn = await setupAuth(app, config);
 app.use('/api/*', async (c, next) => {
   const p = c.req.path;
-  if (p.startsWith('/api/auth/') || p === '/api/wallpaper' || p.startsWith('/api/icon/') || p.startsWith('/api/favicon/')) return next();
+  if (p.startsWith('/api/auth/') || p.startsWith('/api/wallpaper') || p === '/api/custom.css' || p === '/api/font' || p.startsWith('/api/icon/') || p.startsWith('/api/favicon/')) return next();
   return signedIn(c, next);
 });
 
-app.get('/api/wallpaper', async c => {
-  const file = site.wallpaperFile;
-  if (!file) return c.notFound();
-  const type = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.avif': 'image/avif' }[extname(file).toLowerCase()];
+// by number, so only what the config lists can be asked for
+const IMAGES: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.avif': 'image/avif' };
+app.get('/api/wallpaper/:n?', async c => {
+  const wall = site.walls[Number(c.req.param('n') ?? 0)], type = wall && IMAGES[extname(wall.file).toLowerCase()];
   if (!type) return c.notFound();
-  site.wallpaperVersion = Math.round((await stat(file)).mtimeMs);
-  return c.body(await readFile(file), 200, { 'Content-Type': type, 'Cache-Control': 'public, max-age=31536000, immutable' });
+  return c.body(await readFile(wall.file), 200, { 'Content-Type': type, 'Cache-Control': 'public, max-age=31536000, immutable' });
+});
+// your own CSS and font: public like the wallpaper, because the sign-in screen wears them too
+app.get('/api/custom.css', async c => {
+  const { css, cssFile } = site.config.appearance;
+  if (!css && !cssFile) return c.notFound();
+  const file = cssFile ? await readFile(resolve(cssFile), 'utf8').catch(() => `/* can't read ${cssFile} */`) : '';
+  return c.body(cleanCss(site.redact(`${file}\n${css ?? ''}`)), 200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'no-cache' });
+});
+const FONTS: Record<string, string> = { '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.otf': 'font/otf' };
+app.get('/api/font', async c => {
+  const url = site.config.appearance.font?.url, type = url && !/^https?:/.test(url) && FONTS[extname(url).toLowerCase()];
+  const body = type && await readFile(resolve(url)).catch(() => null);
+  return body ? c.body(body, 200, { 'Content-Type': type as string, 'Cache-Control': 'no-cache' }) : c.notFound();
 });
 
 // Service icons from the open dashboard-icons set (the one Homepage uses), and sites' own favicons, fetched once by
@@ -135,6 +149,19 @@ app.get('/api/favicon/:host', async c => {
   return cached(resolve(ICON_DIR, 'sites', `${host}.ico`), `https://icons.duckduckgo.com/ip3/${host}.ico`, 'image/x-icon', c);
 });
 
+// ?v= the file's mtime: replacing a wallpaper changes the URL, so browsers never show a stale cached one
+const wallsOf = (w?: string | string[]) => listOf(w).map(v => {
+  if (isPaint(v)) return { paint: v };
+  const n = site.walls.findIndex(x => x.path === v);
+  return { image: n < 0 ? v : `/api/wallpaper/${n}?v=${site.walls[n].version}` };
+});
+/** a font to load, if the config names one: a stylesheet, or a file (remote, or Valet's own) */
+const fontOf = ({ appearance: { font } }: Config) => {
+  if (!font?.url) return undefined;
+  const remote = /^https?:/.test(font.url), file = /\.(woff2?|ttf|otf)(\?|$)/i.test(font.url);
+  return { family: font.family!.split(',')[0].replace(/["']/g, '').trim(), ...(file ? { file: remote ? font.url : '/api/font' } : { sheet: font.url }) };
+};
+
 app.get('/api/page', c => {
   const { config, instances, hub, placed } = site;
   const agent = config.assistant && chatAgent(config.assistant, site.acting);
@@ -143,20 +170,23 @@ app.get('/api/page', c => {
   return c.json({
     title: config.title, greeting: config.greeting, location: config.location, canAct: site.acting, search: config.search,
     welcome: config.welcome ? { path: CONFIG, saved } : undefined,
-    // ?v= the file's mtime: replacing the wallpaper changes the URL, so browsers never show a stale cached one
-    recap: config.recap, appearance: { ...config.appearance, wallpaper: site.wallpaperFile ? `/api/wallpaper?v=${site.wallpaperVersion}` : config.appearance.wallpaper },
+    recap: config.recap, hero: config.hero, labels: { ...LABELS, ...config.labels }, format: config.format,
+    appearance: { walls: wallsOf(config.appearance.wallpaper), tabWalls: Object.fromEntries(Object.entries(config.appearance.wallpapers).map(([t, w]) => [t, wallsOf(w)])), rotate: config.appearance.rotate, sizes: config.appearance.sizes },
+    look: { ...lookOf(config), theme: config.appearance.theme, css: site.cssVersion && `/api/custom.css?v=${site.cssVersion}`, font: fontOf(config) },
+    chat: config.chat,
     assistant: config.assistant ? { ...(agent ? { name: agent.name, model: agent.model, external: true } : { name: config.assistant.name, model: config.assistant.model }), suggestions: config.assistant.suggestions,
       // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>")
       tools: Object.fromEntries([...instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {})
         .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access, live: t.live }]))) } : null,
-    menubar: config.menubar.filter(k => hub.widget(k)),
+    menubar: { ...config.menubar, widgets: config.menubar.widgets.filter(k => hub.widget(k)) },
     nav: config.nav,
     island: config.island && { ...config.island, activities: config.island.activities.filter(k => hub.widget(k)) },
     weather: config.weather && hub.widget(config.weather) ? config.weather : undefined,
     insight: site.watcher?.insight?.text,
-    sections: [...(site.pins.length ? [{ widgets: site.pins.map(p => `pins.${p.id}`).filter(k => hub.widget(k)), display: 'cards', place: 'main', overview: true, sizes: {} }] : []), ...config.layout.map(s => ({ title: s.title, columns: s.columns, tabColumns: s.tabColumns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat,
+    sections: [...(site.pins.length ? [{ widgets: site.pins.map(p => `pins.${p.id}`).filter(k => hub.widget(k)), display: 'cards', place: 'main', overview: true, sizes: {} }] : []), ...config.layout.map(s => ({ title: s.title, columns: typeof s.columns === 'object' ? s.columns.desktop ?? s.columns.tablet ?? s.columns.phone : s.columns, grid: typeof s.columns === 'object' ? s.columns : undefined, gap: s.gap, tabColumns: s.tabColumns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat,
       widgets: s.widgets.map(w => w.widget).filter(k => hub.widget(k)),
-      sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium').map(w => [w.widget, w.size])) }))],
+      sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium').map(w => [w.widget, w.size])),
+      looks: Object.fromEntries(s.widgets.filter(w => 'title' in w || 'icon' in w || 'header' in w || cardLook(w)).map(w => [w.widget, { title: w.title, icon: w.icon, header: w.header, style: cardLook(w) }])) }))],
     widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
   });
 });
@@ -284,7 +314,7 @@ const settled = async () => { for (let i = 0; i < 12 && site.hub.snapshot().leng
 const OUTSIDE = new Set(['rss', 'hackernews', 'reddit']);   // written by strangers: see suggestPrompt
 let tailored: { at: number; mood: string; list: string[] | null } | undefined, tailoring: Promise<void> | undefined;
 app.get('/api/suggest', async c => {
-  if (!site.ask || !site.config.assistant?.background.suggest) return c.json({ list: null });
+  if (!site.ask || !site.config.assistant?.background.suggest || site.config.chat.suggestions !== 'ai') return c.json({ list: null });
   await settled();
   const states = site.hub.snapshot().filter(s => !OUTSIDE.has(site.meta.get(s.key.split('.')[0])?.type ?? ''));
   const mood = JSON.stringify([troubles(states).map(t => t.id).sort(), states.flatMap(s => ['play', 'download'].includes(s.card?.activity?.icon ?? '') ? [s.card!.activity!.title] : []).sort()]);

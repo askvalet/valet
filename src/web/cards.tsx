@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { clock as clockOf, num as written } from './format.ts';
 import type { ArticleCard, CodeCard, RankedCard, TableCard, LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
 // Icon names cards may use (docs/integrations.md lists them; keep the two in step). Anything else: a URL or a path.
@@ -78,7 +79,7 @@ function Donut({ slices, center }: { slices: NonNullable<StatsCard['pie']>; cent
           <li key={s.label} className="flex items-center gap-2">
             <span className="size-2 shrink-0 rounded-full" style={{ background: s.tone ? toneVar(s.tone) : colors[i % 4] }} />
             <span className="min-w-0 flex-1 truncate text-muted-foreground">{s.label}</span>
-            <span className="tabular">{s.value.toLocaleString()}</span>
+            <span className="tabular">{written(s.value)}</span>
           </li>
         ))}
       </ul>
@@ -560,7 +561,7 @@ function Chart({ card }: { card: ChartCard }) {
   const x = (i: number, n: number) => (i / Math.max(1, n - 1)) * w, y = (p: number) => h - 3 - ((p - min) / (max - min || 1)) * (h - 8);
   const [at, setAt] = useState<number | null>(null);
   const unit = card.unit ?? '';
-  const num = (v: number) => `${Math.abs(v) >= 100 ? Math.round(v).toLocaleString() : Math.round(v * 10) / 10}${unit && !/^\s/.test(unit) && unit.length > 2 ? ` ${unit}` : unit}`;
+  const num = (v: number) => `${Math.abs(v) >= 100 ? written(Math.round(v)) : Math.round(v * 10) / 10}${unit && !/^\s/.test(unit) && unit.length > 2 ? ` ${unit}` : unit}`;
   const lead = card.series[0], last = lead?.points.at(-1), first = lead?.points[0];
   const move = (first != null && last != null && first !== 0) ? (last - first) / Math.abs(first) : null;
   const when = (i: number) => card.labels?.[i] ?? (card.from != null && card.to != null ? new Date(card.from + (i / Math.max(1, count - 1)) * (card.to - card.from)).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : null);
@@ -785,7 +786,7 @@ function Sky({ card }: { card: ScheduleCard }) {
   const roll = items.filter(x => !x.muted).map(x => ({ ...x, t: x.t <= now ? x.t + 864e5 : x.t })).sort((a, b) => a.t - b.t);
   const next = roll[0], mins = Math.max(0, Math.round((next.t - now) / 60_000)), sun = point(now);
   const path = Array.from({ length: 61 }, (_, i) => { const p = point(rise - .22 * (set - rise) + (i / 60) * 1.44 * (set - rise)); return `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`; }).join('');
-  const clock = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const clock = clockOf;
   return (
     <div className="flex flex-1 flex-col justify-between gap-2">
       <div className="flex items-end justify-between">
@@ -829,7 +830,7 @@ function Schedule({ card }: { card: ScheduleCard }) {
   if (!items.length) return <Empty text="No times" />;
   const roll = items.filter(x => !x.muted).map(x => ({ ...x, t: x.t <= now ? x.t + 864e5 : x.t })).sort((a, b) => a.t - b.t);
   const next = roll[0], mins = Math.max(0, Math.round((next.t - now) / 60_000));
-  const clock = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const clock = clockOf;
   // markers sit evenly along the line (close times stay readable); now slides between its two neighbours
   const n = items.length, pos = (k: number) => n > 1 ? k / (n - 1) : .5;
   const at = (t: number) => {
