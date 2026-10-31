@@ -118,7 +118,7 @@ export default defineIntegration({
           title: 'Updates', interval: 3_600_000,
           async fetch() {
             const list = await updates(), behind = list.filter(u => u.state === 'behind'), risky = behind.filter(u => u.warnings?.length);
-            return { type: 'list', title: 'Updates', icon: 'tag', items: behind.slice(0, 12).map(row), empty: 'Everything is up to date', note: behind.length > 12 ? `${behind.length} in all` : undefined,
+            return { type: 'list', layout: 'chips', title: 'Updates', icon: 'tag', items: behind.slice(0, 12).map(row), empty: 'Everything is up to date', note: behind.length > 12 ? `${behind.length} in all` : undefined,
               summary: { label: 'Updates', icon: 'tag', value: behind.length ? String(behind.length) : 'Current', sub: risky.length ? `${risky.length} to read first` : behind.length ? 'available' : undefined, tone: risky.length ? 'warn' : 'good' } };
           },
         },
@@ -126,7 +126,7 @@ export default defineIntegration({
           title: 'Containers', interval: 30_000,
           async fetch() {
             const list = await containers(), bad = list.filter(c => !healthy(c) && !idle(c));
-            return { type: 'status', title: 'Containers', icon: 'disk', items: list.map(item),
+            return { type: 'status', layout: 'wall', title: 'Containers', icon: 'disk', items: list.map(item),
               summary: { label: 'Containers', icon: 'disk', value: bad.length ? `${bad.length} down` : `${list.filter(c => c.state === 'running').length} up`, tone: bad.length ? 'bad' : 'good' } };
           },
         },

@@ -43,19 +43,17 @@ export default defineIntegration({
           async fetch() {
             const { s, history, blocking, timer, top } = await stats();
             const off = blocking !== 'enabled';
+            const hist = history.filter(x => x.timestamp), total = s.queries.total as number;
             return {
-              type: 'stats', title: 'Pi-hole', icon: 'shield', pieCenter: off ? 'Off' : pct(s.queries.percent_blocked), pie: [{ label: 'Blocked', value: s.queries.blocked }, { label: 'Forwarded', value: s.queries.forwarded ?? 0 }, { label: 'Cached', value: s.queries.cached ?? 0 }], href: cfg.href ?? `${base}/admin`,
-              note: off ? (timer ? `paused · ${Math.ceil(timer / 60)} min left` : 'blocking off') : undefined,
+              // a day of columns, the blocked share in red: how much of the day's chatter never left the house
+              type: 'chart', style: 'bars', title: 'Pi-hole', icon: 'shield', ...(hist.length > 1 ? { from: hist[0].timestamp * 1000, to: hist.at(-1)!.timestamp * 1000 } : {}),
+              headline: off ? 'Off' : pct(s.queries.percent_blocked), span: off ? (timer ? `paused · ${Math.ceil(timer / 60)} min left` : 'blocking off') : `of ${total.toLocaleString()} queries today${s.clients?.active ? ` · ${s.clients.active} devices` : ''}`,
+              series: [{ name: 'Blocked', tone: 'bad', points: hist.map(x => x.blocked ?? 0) }, { name: 'Allowed', points: hist.map(x => Math.max(0, (x.total ?? 0) - (x.blocked ?? 0))) }],
+              facts: top.slice(0, 5).map(d => ({ label: d.domain, value: d.count.toLocaleString() })),
               buttons: off ? [{ label: 'Resume blocking', action: 'pause', args: { minutes: 0 } }]
                 : [{ label: 'Pause 5 min', action: 'pause', args: { minutes: 5 } }, { label: 'Pause 1 hour', action: 'pause', args: { minutes: 60 } }],
               summary: { label: 'Ads blocked', icon: 'shield', value: off ? 'Paused' : s.queries.blocked.toLocaleString(), tone: off ? 'warn' : 'good', ring: pct(s.queries.percent_blocked),
                 sub: `${pct(s.queries.percent_blocked)} of queries`, trend: history.map(x => x.blocked), pct: s.queries.percent_blocked / 100 },
-              items: [
-                { label: off ? 'Blocking paused' : 'Blocked', value: off ? 'Off' : pct(s.queries.percent_blocked), tone: off ? 'warn' : 'good', trend: history.map(x => x.blocked), sub: top[0] ? `most: ${top[0].domain}` : undefined },
-                { label: 'Queries', value: s.queries.total.toLocaleString() },
-                { label: 'Blocked', value: s.queries.blocked.toLocaleString() },
-                { label: 'Clients', value: s.clients?.active ?? '–' },
-              ],
             };
           },
         },

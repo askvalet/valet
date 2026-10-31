@@ -104,7 +104,7 @@ export interface ListItem {
   image?: string;
   badge?: string;
 }
-export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; layout?: 'shares' }   // shares: blocks sized by each item's pct
+export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; layout?: 'shares' | 'temps' | 'chips' }   // shares: blocks sized by pct · temps: a thermometer per row (pct along it, meta the reading) · chips: pills, an icon by name
 
 export interface MediaItem {
   title: string;
@@ -127,7 +127,7 @@ export interface ShelfItem { id?: string; title: string; subtitle?: string; note
 export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string; stack?: boolean; layout?: 'row' | 'spotlight' | 'week' | 'tickets' | 'desk' | 'windows' }   // stack: a pile of pages that fans out
 
 export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string; group?: string; quiet?: boolean }   // quiet: being down is expected, never an alert
-export interface StatusCard extends Base { type: 'status'; items: StatusItem[] }
+export interface StatusCard extends Base { type: 'status'; items: StatusItem[]; layout?: 'wall' }   // wall: a grid of icons, only trouble gets words
 
 export interface LinkItem { name: string; href: string; icon?: string; note?: string }
 export interface LinksCard extends Base { type: 'links'; items: LinkItem[] }   // bookmarks: a tidy list of places to go
@@ -142,6 +142,8 @@ export interface ChartCard extends Base {
   from?: number;          // when the first point is (ms), so scrubbing can say when
   to?: number;            // when the last point is
   labels?: string[];      // or a name per point, for charts that aren't over time
+  style?: 'line' | 'bars';   // bars: a column per point, the series stacked in order
+  facts?: { label: string; value?: string }[];   // quiet chips under the chart: what the number is made of
 }
 
 export interface CodeCard extends Base { type: 'code'; lines: string[]; diff?: boolean }   // logs, config: diff colours lines starting + and -

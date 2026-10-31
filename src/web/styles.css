@@ -530,3 +530,28 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 @media (hover: hover) and (pointer: fine) { .poster-bar:hover { transform: translateY(-3px); } }
 .motion-reduced .poster-bar { animation: none; }
 @media (prefers-reduced-motion: reduce) { .poster-bar { animation: none; } }
+
+/* stacked columns: the whole and its parts */
+.columns-chart { display: flex; align-items: flex-end; gap: 2px; height: 112px; }
+.columns-chart .col { display: flex; flex: 1 1 0; flex-direction: column-reverse; min-width: 0; height: 100%; border-radius: 3px 3px 0 0; overflow: hidden; transition: opacity 150ms; animation: col-rise 600ms var(--ease-out) calc(var(--i) * 6ms) backwards; transform-origin: bottom; }
+.columns-chart .col i { display: block; flex: none; min-height: 0; }
+.columns-chart:hover .col:not(.is-at) { opacity: .45; }
+@keyframes col-rise { from { transform: scaleY(0); } }
+.fact { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 9px; border-radius: 99px; font-size: 12px; color: var(--muted-foreground); background: rgb(255 255 255 / .07); }
+.fact b { font-weight: 500; color: var(--foreground); font-variant-numeric: tabular-nums; }
+/* the wall: icons, and only trouble gets a word */
+.wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 8px; }
+.wall-tile { position: relative; display: grid; place-items: center; aspect-ratio: 1; border-radius: 13px; background: rgb(255 255 255 / .07); transition: background 150ms, transform 200ms var(--ease-out); animation: desk-rise 420ms var(--ease-out) calc(var(--i) * 18ms) backwards; }
+.wall-tile img, .wall-tile > span { width: 22px; height: 22px; }
+.wall-tile::after { content: ''; position: absolute; right: 4px; bottom: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 2px var(--card); }
+.wall-tile.is-off { opacity: .4; } .wall-tile.is-off::after { background: rgb(255 255 255 / .3); }
+.wall-tile.is-down { background: color-mix(in srgb, var(--bad) 18%, transparent); box-shadow: inset 0 0 0 1.5px var(--bad); } .wall-tile.is-down::after { background: var(--bad); }
+@media (hover: hover) and (pointer: fine) { .wall-tile:hover { background: rgb(255 255 255 / .14); transform: translateY(-2px); } }
+/* a thermometer: cool at the left, hot at the right */
+.temp-track { position: relative; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #64d2ff, #ffd60a 55%, #ff453a); opacity: .9; }
+.temp-track i { position: absolute; top: 50%; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgb(0 0 0 / .5); transform: translateY(-50%); transition: left 700ms var(--ease-out); }
+.chip { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 6px 11px 6px 8px; border-radius: 99px; font-size: 13px; background: rgb(255 255 255 / .07); transition: background 150ms; }
+.chip.is-warn { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 50%, transparent); }
+@media (hover: hover) and (pointer: fine) { a.chip:hover { background: rgb(255 255 255 / .13); } }
+.motion-reduced :is(.columns-chart .col, .wall-tile) { animation: none; }
+@media (prefers-reduced-motion: reduce) { .columns-chart .col, .wall-tile { animation: none; } }

@@ -15,7 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
 import { clock as clockOf, num as written } from './format.ts';
-import type { ArticleCard, CodeCard, RankedCard, TableCard, LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
+import type { ArticleCard, CodeCard, RankedCard, StatusItem, TableCard, LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
 // Icon names cards may use (docs/integrations.md lists them; keep the two in step). Anything else: a URL or a path.
 const ICONS: Record<string, LucideIcon> = {
@@ -126,6 +126,37 @@ function Stats({ card }: { card: StatsCard }) {
 
 const Empty = ({ text }: { text: string }) => <p className="py-6 text-center text-sm text-muted-foreground">{text}</p>;
 
+/** A thermometer per drive: where it sits between cool and hot says more than the number. */
+function Temps({ card }: { card: ListCard }) {
+  return (
+    <div className="space-y-3.5">
+      {card.items.map((it, i) => (
+        <div key={i} className="min-w-0">
+          <div className="flex items-baseline justify-between gap-3 text-sm"><span className="truncate font-medium">{it.title}</span><span className={cn('shrink-0 tabular', it.tone === 'bad' ? 'text-bad' : it.tone === 'warn' ? 'text-warn' : 'text-muted-foreground')}>{it.meta}</span></div>
+          <div className="temp-track mt-1.5"><i style={{ left: `${Math.round(Math.max(0, Math.min(1, it.pct ?? 0)) * 100)}%` }} /></div>
+          {it.subtitle && <div className="mt-1 text-xs text-muted-foreground">{it.subtitle}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Pills with the app's icon: a glance says who, the small print says what. */
+function Chips({ card }: { card: ListCard }) {
+  const slug = (t: string) => /^[a-z0-9][a-z0-9-]{1,40}$/.test(t) ? t : null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {card.items.map((it, i) => (
+        <a key={i} href={it.href} target="_blank" rel="noreferrer" className={cn('chip', it.tone === 'warn' && 'is-warn', !it.href && 'pointer-events-none')}>
+          {(it.image || slug(it.title)) && <img src={it.image ?? `/api/icon/${slug(it.title)}`} alt="" className="size-[18px] rounded-[5px] object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />}
+          <span className="font-medium">{it.title}</span>
+          {(it.subtitle || it.meta) && <span className="text-muted-foreground">{it.meta ?? it.subtitle}</span>}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 /** Who took what share: blocks as wide as their part, so the answer is the shape and needs no reading. */
 function Shares({ card }: { card: ListCard }) {
   return (
@@ -144,6 +175,8 @@ function List({ card }: { card: ListCard }) {
   const dense = useContext(Dense);
   if (!card.items.length) return <Empty text={card.empty ?? 'Nothing here'} />;
   if (card.layout === 'shares' && !dense) return <Shares card={card} />;
+  if (card.layout === 'temps' && !dense) return <Temps card={card} />;
+  if (card.layout === 'chips' && !dense) return <Chips card={card} />;
   return (
     <ul className="-my-1 divide-y">
       {card.items.map((it, i) => (
@@ -222,9 +255,28 @@ function ServiceRow({ s, minimal }: { s: StatusCard['items'][number]; minimal?: 
   );
 }
 
+/** Every container as its icon: the eye finds the one that's wrong, and only that one gets words. */
+function Wall({ items }: { items: StatusItem[] }) {
+  const down = items.filter(i => !i.ok && !i.quiet);
+  return (
+    <div>
+      <div className="wall">
+        {items.map((s, i) => (
+          <a key={s.name} href={s.href} target="_blank" rel="noreferrer" title={s.ok ? s.name : `${s.name} · ${s.quiet ? 'off' : s.detail ?? 'down'}`} aria-label={s.name}
+            className={cn('wall-tile', !s.ok && (s.quiet ? 'is-off' : 'is-down'))} style={{ '--i': i } as React.CSSProperties}>
+            <AppIcon src={s.icon} name={s.name} />
+          </a>
+        ))}
+      </div>
+      {down.length > 0 && <div className="mt-3 text-[13px] text-bad">{down.map(d => `${d.name}${d.detail ? ` · ${d.detail}` : ''}`).join(', ')}</div>}
+    </div>
+  );
+}
+
 /** Services in columns. With groups, each group is a block (heading + its services) and the blocks flow into as
  *  many columns as fit, so a long list stays short. */
 function Status({ card, columns, minimal }: { card: StatusCard; columns?: number; minimal?: boolean }) {
+  if (card.layout === 'wall' && !minimal) return <Wall items={card.items} />;
   const named = [...new Set(card.items.map(i => i.group ?? ''))];
   // headings only help when they gather things: a heading per item or two just doubles the list
   const groups = card.items.length / named.length < 3 ? [''] : named;
@@ -643,7 +695,39 @@ function ShelfRow({ card, header, small, beside }: { card: ShelfCard; header?: R
 
 /** A line you can read with your finger: scrub across it for the exact value and when it was, and it says how far it's
  *  moved. The line draws itself in once. */
+/** Stacked columns, one per point: the whole and its parts in one shape. Hover a column and it says what it holds. */
+function Columns({ card }: { card: ChartCard }) {
+  const n = Math.max(...card.series.map(s => s.points.length), 0), [at, setAt] = useState<number | null>(null);
+  const tops = Array.from({ length: n }, (_, i) => card.series.reduce((t, s) => t + (s.points[i] ?? 0), 0)), max = Math.max(...tops, 1);
+  const when = (i: number) => card.labels?.[i] ?? (card.from != null && card.to != null ? new Date(card.from + (i / Math.max(1, n - 1)) * (card.to - card.from)).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '');
+  const sum = (s: ChartCard['series'][number]) => s.points.reduce((a, b) => a + b, 0), whole = tops.reduce((a, b) => a + b, 0);
+  return (
+    <div>
+      <div className="mb-3 flex items-baseline gap-2">
+        <span className="metric text-[28px] leading-none">{at != null ? written(tops[at]) : card.headline ?? written(whole)}</span>
+        <span className="min-w-0 truncate text-xs text-muted-foreground">{at != null ? `${when(at)} · ${card.series.map(s => `${written(s.points[at] ?? 0)} ${s.name.toLowerCase()}`).join(', ')}` : card.span}</span>
+      </div>
+      <div className="columns-chart" onPointerLeave={() => setAt(null)}>
+        {tops.map((t, i) => (
+          <div key={i} className={cn('col', at === i && 'is-at')} onPointerEnter={() => setAt(i)} style={{ '--i': i } as React.CSSProperties}>
+            {card.series.map(s => <i key={s.name} style={{ height: `${(s.points[i] ?? 0) / max * 100}%`, background: s.tone ? toneVar(s.tone) : 'rgb(255 255 255 / .22)' }} />)}
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+        {card.series.map(s => <span key={s.name} className="flex items-center gap-1.5 tabular"><i className="size-2 rounded-full" style={{ background: s.tone ? toneVar(s.tone) : 'rgb(255 255 255 / .22)' }} />{s.name} {written(sum(s))}</span>)}
+      </div>
+      {card.facts?.length ? (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {card.facts.map(f => <span key={f.label} className="fact"><span className="truncate">{f.label}</span>{f.value && <b>{f.value}</b>}</span>)}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function Chart({ card }: { card: ChartCard }) {
+  if (card.style === 'bars') return <Columns card={card} />;
   const w = 300, h = 96, count = Math.max(...card.series.map(s => s.points.length), 0);
   // the scale fits the data, so a number that moves a little still shows its shape; a fixed max (a percentage) keeps zero
   const all = card.series.flatMap(s => s.points), top = Math.max(...all, 0), low = Math.min(...all, top), pad = (top - low) * .2 || Math.abs(top) * .1 || 1;
