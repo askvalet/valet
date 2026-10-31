@@ -170,6 +170,7 @@ app.get('/api/page', c => {
   return c.json({
     title: config.title, greeting: config.greeting, location: config.location, canAct: site.acting, search: config.search,
     welcome: config.welcome ? { path: CONFIG, saved } : undefined,
+    footer: config.footer,
     recap: config.recap, hero: config.hero, labels: { ...LABELS, ...config.labels }, format: config.format,
     appearance: { walls: wallsOf(config.appearance.wallpaper), tabWalls: Object.fromEntries(Object.entries(config.appearance.wallpapers).map(([t, w]) => [t, wallsOf(w)])), rotate: config.appearance.rotate, sizes: config.appearance.sizes },
     look: { ...lookOf(config), theme: config.appearance.theme, css: site.cssVersion && `/api/custom.css?v=${site.cssVersion}`, font: fontOf(config) },

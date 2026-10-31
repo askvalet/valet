@@ -274,6 +274,7 @@ export const Config = z.object({
   // webhook). insights: also push the assistant's shared-cause line.
   notify: z.object({ channels: z.array(Channel).default([]), insights: z.boolean().default(false) }).default({ channels: [], insights: false }),
   recap: z.boolean().default(true),             // the year in review
+  footer: z.string().max(2000).optional(),      // a quiet line at the foot of every page, with [links](https://…) if you like: credits, a name, a note
   welcome: z.boolean().default(false),          // the getting-started card (a fresh config turns it on)
   reload: z.boolean().default(true),            // watch config.yaml and apply edits live (a bad edit keeps the last good one)
 }).strict();

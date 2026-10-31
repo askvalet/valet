@@ -992,12 +992,13 @@ function Schedule({ card }: { card: ScheduleCard }) {
         <div className="h-[3px] rounded-full bg-white/10" />
         <div className="absolute top-1 left-0 h-[3px] rounded-full bg-gradient-to-r from-white/20 to-white/60 transition-[width] duration-1000" style={{ width: `${at(now) * 100}%` }} />
         <span className="absolute top-[-1px] size-[11px] -translate-x-1/2 rounded-full bg-white shadow-[0_0_0_3px_rgb(255_255_255/.15)] transition-[left] duration-1000" style={{ left: `${at(now) * 100}%` }} />
-        {items.map((x, k) => (
-          <div key={x.name} className={cn('absolute top-3 text-center', k === 0 ? '' : k === n - 1 ? '-translate-x-full text-right' : '-translate-x-1/2')} style={{ left: `${pos(k) * 100}%` }}>
-            <div className={cn('text-[11px] font-medium', x.name === next.name ? 'text-foreground' : x.muted ? 'text-muted-foreground/50' : 'text-muted-foreground')}>{x.name}</div>
-            {!dense && <div className="text-[10.5px] tabular text-muted-foreground/70">{clock(x.t)}</div>}
-          </div>
-        ))}
+        {items.map((x, k) => x.muted
+          // a moment that's never "next" is a notch on the line, not a word: hover says which
+          ? <span key={x.name} title={`${x.name} · ${clock(x.t)}`} className="absolute top-[2px] h-[7px] w-px -translate-x-1/2 bg-white/35" style={{ left: `${pos(k) * 100}%` }} />
+          : <div key={x.name} className={cn('absolute top-3 text-center', k === 0 ? '' : k === n - 1 ? '-translate-x-full text-right' : '-translate-x-1/2')} style={{ left: `${pos(k) * 100}%` }}>
+              <div className={cn('text-[11px] font-medium', x.name === next.name ? 'text-foreground' : 'text-muted-foreground')}>{x.name}</div>
+              {!dense && <div className="text-[10.5px] tabular text-muted-foreground/70">{clock(x.t)}</div>}
+            </div>)}
       </div>
     </div>
   );
