@@ -2,7 +2,7 @@
 // entity and (with approval) control the ones you've put on the page or listed under `controllable`.
 import { z } from 'zod';
 import { defineIntegration, type Instance, type Widget } from '../server/core.ts';
-import type { Control } from '../shared/cards.ts';
+import type { Control, ThermostatCard, ThermostatMode } from '../shared/cards.ts';
 
 const PRESS = new Set(['scene', 'script', 'button', 'input_button', 'automation']);
 const TOGGLE = new Set(['light', 'switch', 'input_boolean', 'fan', 'media_player', 'climate', 'humidifier', 'siren', 'remote']);
@@ -28,6 +28,15 @@ export default defineIntegration({
       icon: z.string().optional(),
       entities: z.array(z.object({ id: z.string(), name: z.string(), muted: z.boolean().default(false) })),
       soon: z.number().int().min(0).max(240).default(15),
+    })).default({}),
+    // each entry becomes a thermostat widget `<instance>.<key>`: a dial for one climate entity. `modes` picks and orders
+    // the buttons (HVAC modes and presets, by Home Assistant's names); leave it out for all of them. `unit` is only needed
+    // if Home Assistant can't say which it uses
+    thermostats: z.record(z.string(), z.object({
+      entity: z.string().regex(/^climate\./, 'a climate entity'),
+      title: z.string().optional(),
+      modes: z.array(z.string()).optional(),
+      unit: z.enum(['C', 'F']).optional(),
     })).default({}),
     // each entry becomes a 3D floor plan widget `<instance>.<key>`: rooms come from a robot vacuum's map camera
     // (e.g. Dreame's camera.*_map), lit by the lights you list per room; the robot and its dock sit where they are
@@ -59,7 +68,7 @@ export default defineIntegration({
     const ids = (c: (typeof cfg.cards)[string]) => c.entities.map(e => typeof e === 'string' ? e : e.id);
     const names = new Map(Object.values(cfg.cards).flatMap(c => c.entities).flatMap(e => typeof e === 'string' ? [] : [[e.id, e.name] as const]));
     const planEntities = Object.values(cfg.floorplans).flatMap(f => [...Object.values(f.rooms).flat(), ...(f.vacuum ? [f.vacuum] : [])]);
-    const allowed = new Set([...Object.values(cfg.cards).flatMap(ids), ...cfg.controllable, ...planEntities]);
+    const allowed = new Set([...Object.values(cfg.cards).flatMap(ids), ...cfg.controllable, ...planEntities, ...Object.values(cfg.thermostats).map(t => t.entity)]);
     // "L50 Ultra  L50 Ultra" → "L50 Ultra"; a configured name always wins
     const nameOf = (e: any) => names.get(e.entity_id) ?? String(e.attributes?.friendly_name ?? e.entity_id).replace(/\s+/g, ' ').replace(/^(.+?) \1$/, '$1');
 
@@ -175,6 +184,63 @@ export default defineIntegration({
       };
     }
 
+    // ── thermostats: a climate entity as a dial. Its numbers are in Home Assistant's own unit, so that's the one to show
+    let system: 'C' | 'F' | undefined;
+    const unitOf = async (a: any, chosen?: 'C' | 'F') => {
+      if (chosen) return chosen;
+      system ??= await ctx.http<any>(`${base}/api/config`, { headers }).then(c => /F/.test(c?.unit_system?.temperature ?? '') ? 'F' as const : /C/.test(c?.unit_system?.temperature ?? '') ? 'C' as const : undefined, () => undefined);
+      return system ?? (Number(a.max_temp) > 50 ? 'F' : 'C');
+    };
+    const num = (v: unknown) => v !== null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined;
+    const worded = (s: string) => (s[0] ?? '').toUpperCase() + s.slice(1).replace(/_/g, ' ');
+    async function thermostat(e: any, t: { title?: string; modes?: string[]; unit?: 'C' | 'F' } = {}): Promise<ThermostatCard> {
+      const a = e.attributes ?? {}, id = e.entity_id, title = t.title ?? names.get(id) ?? nameOf(e), unit = await unitOf(a, t.unit);
+      const away = e.state === 'unavailable' || e.state === 'unknown', hvac: string[] = a.hvac_modes ?? [], presets: string[] = a.preset_modes ?? [];
+      const action = away ? undefined : a.hvac_action as string | undefined;
+      const mode = away || e.state === 'off' || action === 'off' ? 'off' : action === 'heating' || e.state === 'heat' ? 'heat' : action === 'cooling' || e.state === 'cool' ? 'cool' : 'auto';
+      const min = num(a.min_temp) ?? (unit === 'F' ? 45 : 7), max = Math.max(num(a.max_temp) ?? (unit === 'F' ? 95 : 35), min + 1), step = num(a.target_temp_step) || (unit === 'F' ? 1 : .5);
+      const target = away || e.state === 'off' ? undefined : num(a.temperature), current = num(a.current_temperature);
+      const low = num(a.target_temp_low), high = num(a.target_temp_high), range: [number, number] | undefined = !away && e.state !== 'off' && target == null && low != null && high != null ? [low, high] : undefined;
+      const entry = (id_: string, label: string, on: boolean, args: Record<string, unknown>): ThermostatMode => ({ id: id_, label, on, action: 'climate', args: { entity_id: id, ...args } });
+      const wake = hvac.find(m => m !== 'off');
+      const all = away ? [] : [
+        ...hvac.filter(m => m !== 'off' || wake).map(m => m === 'off' ? entry('off', e.state === 'off' ? 'Turn on' : 'Turn off', e.state === 'off', { hvac_mode: e.state === 'off' ? wake : 'off' }) : entry(m, worded(m), e.state === m, { hvac_mode: m })),
+        // pressing the active preset clears it, where the entity has a "none" to go back to
+        ...presets.filter(p => p !== 'none').map(p => entry(p, worded(p), a.preset_mode === p, { preset_mode: a.preset_mode === p && presets.includes('none') ? 'none' : p })),
+      ];
+      const modes = t.modes ? t.modes.flatMap(m => all.filter(x => x.id === m)) : all;
+      const show = (n: number) => `${n.toFixed(step < 1 ? 1 : 0)}°`, shown = target ?? current;
+      return { type: 'thermostat', title, icon: 'home', href: cfg.href, unit, state: away ? 'Unavailable' : worded(action ?? e.state), mode, current, target, range, min, max, step,
+        set: target != null ? { action: 'climate', args: { entity_id: id } } : undefined, modes: modes.length ? modes : undefined,
+        summary: { label: title, icon: 'thermometer', value: shown != null ? show(shown) : '–', sub: away ? 'Unavailable' : worded(action ?? e.state), detail: target != null && current != null ? `${show(current)} now` : undefined,
+          pct: target != null ? Math.max(0, Math.min(1, (target - min) / (max - min))) : undefined } };
+    }
+    for (const [key, t] of Object.entries(cfg.thermostats)) {
+      widgets[key] = {
+        title: t.title ?? 'Thermostat', interval: 10_000,
+        async fetch() {
+          const e = (await states()).find(s => s.entity_id === t.entity);
+          if (!e) throw new Error(`${t.entity} not found`);
+          return thermostat(e, t);
+        },
+      };
+    }
+    // one way in for the page and the assistant: what the entity itself says it can do is the limit, not the request
+    async function climate(entity_id: string, { temperature, hvac_mode, preset_mode }: { temperature?: number; hvac_mode?: string; preset_mode?: string }) {
+      if (!allowed.has(entity_id) || !entity_id.startsWith('climate.')) throw new Error(`${entity_id} isn't a thermostat on the page`);
+      if (temperature == null && !hvac_mode && !preset_mode) throw new Error('nothing to change');
+      const a = (await states()).find(s => s.entity_id === entity_id)?.attributes;
+      if (!a) throw new Error(`${entity_id} not found`);
+      if (hvac_mode && !a.hvac_modes?.includes(hvac_mode)) throw new Error(`${entity_id} has no mode "${hvac_mode}"`);
+      if (preset_mode && !a.preset_modes?.includes(preset_mode)) throw new Error(`${entity_id} has no preset "${preset_mode}"`);
+      if (temperature != null) {
+        if (num(a.min_temp) != null && temperature < a.min_temp || num(a.max_temp) != null && temperature > a.max_temp) throw new Error(`${temperature}° is outside ${a.min_temp}–${a.max_temp}°`);
+        await call('climate', 'set_temperature', { entity_id, temperature });
+      }
+      if (hvac_mode) await call('climate', 'set_hvac_mode', { entity_id, hvac_mode });
+      if (preset_mode) await call('climate', 'set_preset_mode', { entity_id, preset_mode });
+    }
+
     async function set(entity_id: string, value: boolean) {
       if (!allowed.has(entity_id)) throw new Error(`${entity_id} isn't on the page or in controllable`);
       const [domain] = entity_id.split('.');
@@ -224,6 +290,8 @@ export default defineIntegration({
             await call('light', on ? 'turn_on' : 'turn_off', { entity_id: list, ...(on && brightness != null ? { brightness_pct: brightness } : {}),
               ...(on && color ? { rgb_color: color } : {}), ...(on && kelvin ? { color_temp_kelvin: kelvin } : {}) });
           } },
+        climate: { description: 'Set a thermostat: target temperature, HVAC mode or preset', input: z.object({ entity_id: z.string(), temperature: z.number().optional(), hvac_mode: z.string().optional(), preset_mode: z.string().optional() }),
+          run: ({ entity_id, ...change }) => climate(entity_id, change) },
         vacuum: { description: 'Robot vacuum: start, pause, dock, locate, clean some rooms, or set suction',
           input: z.object({ entity_id: z.string(), command: z.enum(['start', 'pause', 'dock', 'locate', 'clean_rooms', 'fan_speed']),
             rooms: z.array(z.number().int()).optional(), fan_speed: z.string().optional() }),
@@ -252,9 +320,28 @@ export default defineIntegration({
               words.every(w => `${s.entity_id} ${s.attributes?.friendly_name ?? ''}`.toLowerCase().includes(w))).slice(0, 25);
             return {
               data: hits.map(s => ({ entity_id: s.entity_id, name: s.attributes?.friendly_name, state: s.state, unit: s.attributes?.unit_of_measurement,
-                brightnessPct: s.attributes?.brightness != null ? Math.round(s.attributes.brightness / 2.55) : undefined, controllable: allowed.has(s.entity_id) })),
+                brightnessPct: s.attributes?.brightness != null ? Math.round(s.attributes.brightness / 2.55) : undefined, controllable: allowed.has(s.entity_id),
+                ...(s.entity_id.startsWith('climate.') ? { current: s.attributes?.current_temperature, target: s.attributes?.temperature, hvac_modes: s.attributes?.hvac_modes, preset_modes: s.attributes?.preset_modes } : {}) })),
               card: hits.length ? { type: 'controls', title: 'Home', icon: 'home', items: hits.slice(0, 12).map(control) } : { type: 'text', text: `Nothing matches “${query}”.` },
             };
+          },
+        },
+        home_climate: {
+          label: 'Changed the thermostat',
+          async confirm({ entity_id, temperature, hvac_mode, preset_mode }) {
+            const e = (await states()).find(x => x.entity_id === entity_id), name = e?.attributes?.friendly_name ?? entity_id;
+            const to = [temperature != null ? `${temperature}°` : '', hvac_mode ? worded(String(hvac_mode)).toLowerCase() : '', preset_mode ? worded(String(preset_mode)).toLowerCase() : ''].filter(Boolean).join(', ');
+            return { title: `Set ${name} to ${to || 'the same'}?`, detail: e ? `It's ${e.attributes?.temperature != null ? `set to ${e.attributes.temperature}°` : e.state} now` : undefined, icon: 'thermometer', verb: 'Set' };
+          },
+          followUps: ['How warm is it inside?'],
+          description: 'Set a thermostat (a climate entity marked controllable by home_find): a target temperature in the unit Home Assistant uses, an HVAC mode (off, heat, cool, auto…) or a preset (home, sleep, away…).',
+          access: 'control',
+          input: z.object({ entity_id: z.string(), temperature: z.number().optional(), hvac_mode: z.string().optional(), preset_mode: z.string().optional() }),
+          async run({ entity_id, temperature, hvac_mode, preset_mode }) {
+            try { await climate(entity_id, { temperature, hvac_mode, preset_mode }); } catch (e) { return { data: { error: (e as Error).message } }; }
+            await new Promise(r => setTimeout(r, 600));
+            const s = (await states()).find(x => x.entity_id === entity_id);
+            return { data: { entity_id, state: s?.state, temperature: s?.attributes?.temperature }, card: s ? await thermostat(s, Object.values(cfg.thermostats).find(t => t.entity === entity_id)) : undefined };
           },
         },
         home_control: {
