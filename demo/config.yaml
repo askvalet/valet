@@ -50,8 +50,6 @@ layout:
       - { widget: lab.drives, size: medium }
       - { widget: lab.containers, size: large }
       - { widget: lab.updates, size: medium }
-      - { widget: lab.jobs, size: medium }
-      - { widget: lab.releases, size: medium }
   - title: AI
     display: tiles
     overview: false

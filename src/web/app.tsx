@@ -407,7 +407,7 @@ function Home({ account }: { account: boolean }) {
             {chips && (
               <div className="fade-x no-scrollbar mt-2.5 overflow-x-auto">
                 {/* centred when it fits, scrolls from the start when it doesn't */}
-                <div className={cn('flex w-max gap-1.5', h?.align === 'left' ? 'mr-auto' : h?.align === 'right' ? 'ml-auto' : 'mx-auto')}>
+                <div className={cn('flex max-w-full flex-wrap justify-center gap-1.5', h?.align === 'left' ? 'mr-auto' : h?.align === 'right' ? 'ml-auto' : 'mx-auto')}>
                   {questions.slice(0, 3).map(s => (
                     <button key={s} onClick={() => ask(s)} className="fade-in-soft shrink-0 rounded-full px-2.5 py-1 text-[12.5px] text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground">{s}</button>
                   ))}

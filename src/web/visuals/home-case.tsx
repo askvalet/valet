@@ -62,7 +62,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
   const r = data.robot;
   const busy = r && /clean|return|mop/i.test(r.state);
 
-  const row = 'no-scrollbar flex h-9 items-center gap-2 overflow-x-auto';
+  const row = 'no-scrollbar flex h-9 w-full min-w-0 max-w-full items-center gap-2 overflow-x-auto';
   const dot = (l?: { on: boolean; color?: string }) => ({ background: l?.on ? l.color ?? '#ffd8a8' : 'transparent', boxShadow: l?.on ? `0 0 8px ${l.color ?? '#ffd8a8'}` : 'inset 0 0 0 1px rgb(255 255 255 / .3)' });
   const roomLevel = room ? Math.max(0, ...room.lights.filter(l => l.on).map(l => l.level)) : 0;
   return (
