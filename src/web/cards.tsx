@@ -2,9 +2,10 @@
 // so a generated card looks exactly like the widget it came from.
 import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
   Activity, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
-  type LucideIcon,
+  Video, type LucideIcon,
 } from 'lucide-react';
 import { createContext, Fragment, lazy, memo, Suspense, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Cameras } from './cameras.tsx';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,7 +17,7 @@ import type { CodeCard, RankedCard, TableCard, LinksCard, Card as CardT, VerseCa
 
 // Icon names cards may use (docs/integrations.md lists them; keep the two in step). Anything else: a URL or a path.
 const ICONS: Record<string, LucideIcon> = {
-  cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
+  camera: Video, cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
   search: Search, bulb: Lightbulb, home: House, shield: Shield, chat: MessageCircle, image: ImageIcon, clock: Clock, crescent: MoonIcon, game: Gamepad2, book: BookOpen, coins: Coins, text: Type,
   file: FileText, bookmark: Bookmark, rss: Rss, news: Newspaper, reddit: MessagesSquare, tag: Tag, chart: TrendingUp, calendar: Calendar, sun: Sun, moon: Moon, cloud: Cloud, 'cloud-sun': CloudSun, 'cloud-moon': CloudMoon, rain: CloudRain, snow: CloudSnow, fog: CloudFog, storm: CloudLightning,
 };
@@ -904,6 +905,7 @@ function Times({ card }: { card: ScheduleCard }) { return useContext(Dense) ? <S
 
 export function CardBody({ card, run, columns, minimal, large }: { card: CardT; run?: RunAction; columns?: number; minimal?: boolean; large?: boolean }): ReactNode {
   switch (card.type) {
+    case 'cameras': return <Cameras card={card} />;
     case 'showcase': return <Showcase card={card} run={run} />;
     case 'photos': return <Photos card={card} large={large} />;
     case 'schedule': return <Times card={card} />;
@@ -993,7 +995,7 @@ function CardSkeleton({ kind }: { kind?: string }) {
   if (kind === 'stats') return <div className="grid grid-cols-2 gap-4">{[0, 1, 2, 3].map(i => <div key={i} className="space-y-2"><Skeleton className="h-2.5 w-1/2" /><Skeleton className="h-6 w-2/3" /></div>)}</div>;
   if (kind === 'status') return <div className="grid grid-cols-2 gap-3">{[0, 1, 2, 3, 4, 5].map(i => <div key={i} className="flex items-center gap-2.5"><Skeleton className="size-[18px] rounded-md" /><Skeleton className="h-3 flex-1" /></div>)}</div>;
   if (kind === 'shelf') return <div className="flex gap-3 overflow-hidden">{[0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="aspect-[2/3] w-[120px] shrink-0 rounded-xl" />)}</div>;
-  if (kind === 'media' || kind === 'photos' || kind === 'showcase') return <Skeleton className="aspect-[16/7] w-full rounded-xl" />;
+  if (kind === 'media' || kind === 'photos' || kind === 'showcase' || kind === 'cameras') return <Skeleton className="aspect-[16/7] w-full rounded-xl" />;
   if (kind === 'list' || kind === 'links') return <div className="space-y-4">{[0, 1, 2, 3].map(row)}</div>;
   return <div className="space-y-3"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-4 w-3/5" /></div>;
 }

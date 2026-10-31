@@ -9,7 +9,7 @@ import { streamSSE } from 'hono/streaming';
 import { bodyLimit } from 'hono/body-limit';
 import { sameOrigin, setupAuth, userCommand } from './auth.ts';
 import { loadConfig, startConfig, validZone, type Config } from './config.ts';
-import { headers, hostGuard } from './security.ts';
+import { headers, hostGuard, served } from './security.ts';
 import { UPLOAD_DIR } from './core.ts';
 import { parseSuggestions, statusLine, suggestPrompt, troubles, whyPrompt } from './insight.ts';
 import { loadPins, newPin, pinnedCard, savePins } from './pins.ts';
@@ -240,13 +240,11 @@ app.get('/api/image/:inst', async c => {
   const ref = c.req.query('ref');
   if (!inst?.image || !ref) return c.notFound();
   try {
-    const res = await inst.image(ref);
+    const res = await inst.image(ref, c.req.header('range'));
     if (!res.ok) return c.body(null, 502);
-    // images only: a service that answers with HTML or a PDF never gets it served from Valet's origin
-    const type = (res.headers.get('content-type') ?? '').split(';')[0].trim();
-    if (!/^image\/(?!svg)/.test(type)) { await res.body?.cancel(); return c.body(null, 415); }
-    return new Response(res.body, { headers: { 'Content-Type': type, 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff',
-      'Content-Security-Policy': "sandbox; default-src 'none'", 'Content-Disposition': 'inline' } });
+    const out = served(res);
+    if (!out) await res.body?.cancel();
+    return out ?? c.body(null, 415);
   } catch { return c.body(null, 502); }
 });
 

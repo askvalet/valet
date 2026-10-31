@@ -208,7 +208,24 @@ export interface RankedCard extends Base { type: 'ranked'; items: RankedItem[]; 
 /** A page inside a card, sandboxed. Only addresses the iframe integration allowed can load. */
 export interface EmbedCard extends Base { type: 'embed'; src: string; height: number; scripts?: boolean }
 
-export type Card = EmbedCard | RankedCard | CodeCard | TableCard | LinksCard | VerseCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
+/** Something a camera sees: `box` is [x, y, w, h] in fractions of the picture. A `path` moves it instead, as [t, x, y, w, h]
+ *  keyframes in seconds of the clock (or of the camera's loop), so the box glides between updates. */
+export interface Detection { label: string; score?: number; box?: [number, number, number, number]; path?: [number, number, number, number, number][] }
+export interface Camera {
+  id: string;
+  name: string;
+  image?: string;         // the current picture, fetched again about once a second while it's on screen
+  video?: string;         // a stream or file to play instead, muted; if it can't play, `image` takes over
+  poster?: string;        // a still for the pill, and to show until the video starts
+  loop?: number;          // `video` is a loop of this many seconds, kept in step with the clock
+  offline?: boolean;
+  detections?: Detection[];   // what it sees right now
+}
+export interface CameraEvent { id?: string; camera: string; label: string; at: number; image?: string; score?: number }   // camera: a Camera's id; at: ms
+/** A live view, a pill per camera, and what they've noticed lately. */
+export interface CamerasCard extends Base { type: 'cameras'; cameras: Camera[]; events?: CameraEvent[]; refresh?: number; empty?: string }   // refresh: seconds between pictures, 1 by default
+
+export type Card = CamerasCard | EmbedCard | RankedCard | CodeCard | TableCard | LinksCard | VerseCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
 
 /** One widget slot's live state, as pushed to the browser. */
 export interface WidgetState { key: string; card?: Card; error?: string; at: number; source?: string }

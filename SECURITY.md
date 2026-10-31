@@ -9,7 +9,8 @@ the damage if something goes wrong, and how to give it as little power as possib
 - **They stay on the server.** Keys live in `.env` or Docker/Kubernetes secret files; `config.yaml` refers to them as
   `${NAME}` (or `${secret:name}`, `${file:/path}`). Only Valet's server talks
   to your services. The page gets finished cards, and pictures (posters, document pages, photos) come through Valet's
-  own image proxy, which only fetches the kinds of things each integration expects (it checks every request).
+  own image proxy, which only fetches the kinds of things each integration expects (it checks every request), and only
+  passes on pictures and MP4 or WebM video. Camera refs are names and positions from the service or the config, never addresses.
 - **They're scrubbed from everything that leaves the server.** Every value a `${NAME}` stood for is redacted from
   widget errors, live updates, action errors and assistant tool results, in case a service echoes one back.
 - **The assistant never sees them.** It calls tools; the server makes the requests.

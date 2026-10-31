@@ -68,6 +68,11 @@ export const SAMPLES: { name: string; card: Card }[] = [
     buttons: [{ label: 'Pause 5 min', action: 'pause', args: { minutes: 5 } }, { label: 'Pause 1 hour', action: 'pause', args: { minutes: 60 } }] } },
   { name: 'activity', card: { type: 'media', title: 'Now playing', items: [], activity: { title: 'Joker', subtitle: 'someone · TV', icon: 'play', pct: .3, trailing: '1h left' } } },
   { name: 'stats · 2001 at', card: { type: 'stats', title: 'Edge cases', items: [{ label: 'Huge', value: '1,234,567,890', unit: 'requests' }, { label: 'Zero', value: 0 }, { label: '', value: '' }] } },
+  { name: 'cameras', card: { type: 'cameras', title: 'Cameras', icon: 'camera', summary: { label: 'Cameras', icon: 'camera', value: 3, sub: 'Person · Front', tone: 'warn' },
+    cameras: [{ id: 'front', name: 'Front', image: img('front', 1280, 720), detections: [{ label: 'Person', score: .92, box: [.4, .3, .15, .5] }] }, { id: 'street', name: 'Street', image: img('street', 1280, 720), video: '/street.mp4', poster: img('street', 320, 180), loop: 12, detections: [{ label: 'Car', path: [[1, .1, .5, .1, .1], [3, .5, .5, .2, .2]] }] }, { id: 'yard', name: 'Yard', image: img('yard', 1280, 720), offline: true }],
+    events: [{ camera: 'front', label: 'Person', at: Date.now() - 6e4, image: img('e1', 240, 150), score: .92 }, { camera: 'street', label: 'Package', at: Date.now() - 36e5 }] } },
+  { name: 'cameras · one', card: { type: 'cameras', title: 'Shed', cameras: [{ id: '0', name: 'Shed', image: img('shed', 1280, 720) }] } },
+  { name: 'cameras · none', card: { type: 'cameras', title: 'Cameras', cameras: [], empty: 'No cameras' } },
   { name: 'showcase · image', card: { type: 'showcase', title: 'Camera', visual: { kind: 'image', src: img('cam', 800, 450) }, items: [{ label: 'Motion', value: 'none' }], caption: 'Front door' } },
 ];
 

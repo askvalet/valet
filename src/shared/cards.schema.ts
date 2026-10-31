@@ -37,7 +37,13 @@ const Control = z.object({ id: z.string(), label: z.string(), kind: z.enum(['tog
   value: z.union([z.boolean(), z.number(), z.string()]).optional(), options: z.array(z.string()).optional(), min: z.number().optional(), max: z.number().optional(),
   step: z.number().optional(), color: z.string().optional(), action: z.string().optional(), sub: z.string().optional(), args: z.record(z.string(), z.unknown()).optional() }).strict();
 
+const Detection = z.object({ label: z.string(), score: unit.optional(), box: z.tuple([unit, unit, unit, unit]).optional(), path: z.array(z.tuple([z.number(), z.number(), z.number(), z.number(), z.number()])).optional() }).strict();
+const Camera = z.object({ id: z.string(), name: z.string(), image: z.string().optional(), video: z.string().optional(), poster: z.string().optional(), loop: z.number().positive().optional(),
+  offline: z.boolean().optional(), detections: z.array(Detection).optional() }).strict();
+
 export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('type', [
+  z.object({ ...base, type: z.literal('cameras'), cameras: z.array(Camera), refresh: z.number().positive().optional(), empty: z.string().optional(),
+    events: z.array(z.object({ id: z.string().optional(), camera: z.string(), label: z.string(), at: z.number(), image: z.string().optional(), score: unit.optional() }).strict()).optional() }).strict(),
   z.object({ ...base, type: z.literal('stats'), items: z.array(StatItem), pie: z.array(z.object({ label: z.string(), value: z.number(), tone: Tone.optional() }).strict()).optional(), pieCenter: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('list'), items: z.array(ListItem), empty: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('media'), items: z.array(MediaItem), empty: z.string().optional() }).strict(),

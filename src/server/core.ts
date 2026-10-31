@@ -54,9 +54,10 @@ export interface Instance {
   widgets: Record<string, Widget>;
   actions?: Record<string, Action>;
   tools?: Record<string, Tool>;
-  /** Serve an image (poster, camera snapshot) through Valet so the browser never needs the service's key.
-   *  Cards point at it with ctx.image(ref); validate `ref` before fetching. */
-  image?(ref: string): Promise<Response>;
+  /** Serve an image (poster, camera snapshot) or a video through Valet so the browser never needs the service's key.
+   *  Cards point at it with ctx.image(ref); validate `ref` before fetching. `range` is the browser's Range header, which
+   *  a video needs answered on phones. `Cache-Control: no-store` on the response keeps a picture that changes out of the cache. */
+  image?(ref: string, range?: string): Promise<Response> | Response;
   /** What this service can say about a stretch of time, for the year in review. Leave out anything it can't really know. */
   recap?(range: { year: number; from: number; to: number }): Promise<RecapSlide[]>;
 }

@@ -131,4 +131,9 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   per-face overlays.
 - **TypeScript 7**: no `baseUrl` (paths are relative); Node's type stripping needs `erasableSyntaxOnly` (no parameter
   properties, no enums).
+- **Video through the image proxy needs ranges.** Phones won't play a video from a server that ignores `Range`; `image(ref, range)`
+  gets the header and `served()` passes the answer on. A picture that changes needs `Cache-Control: no-store` on the
+  handler's response, or the browser keeps it for a day.
+- **Glass traps `position: fixed`.** `backdrop-filter` makes a card the containing block for anything fixed inside it. Full-screen
+  things go through a portal to the body (the cameras' theatre does).
 - **SSE keeps pages busy**: headless tools waiting for network idle never finish; wait a fixed time instead.

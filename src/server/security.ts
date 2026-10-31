@@ -15,6 +15,17 @@ export function redactor(secrets: string[]) {
   return (text: string) => (re ? text.replace(re, '•••') : text);
 }
 
+/** What the image proxy may pass on: pictures and video only, so a service that answers with HTML, a PDF or an SVG never
+ *  gets it served from Valet's origin. Null means refuse. */
+export function served(res: Response) {
+  const type = (res.headers.get('content-type') ?? '').split(';')[0].trim();
+  if (!/^(image\/(?!svg)|video\/(mp4|webm)$)/.test(type)) return null;
+  const h = new Headers({ 'Content-Type': type, 'Cache-Control': /no-store/.test(res.headers.get('cache-control') ?? '') ? 'no-store' : 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': "sandbox; default-src 'none'", 'Content-Disposition': 'inline' });
+  for (const k of ['accept-ranges', 'content-range', ...(res.headers.has('content-encoding') ? [] : ['content-length'])]) { const v = res.headers.get(k); if (v) h.set(k, v); }
+  return new Response(res.body, { status: res.status, headers: h });
+}
+
 /** Headers for every response: only Valet's own scripts run, nothing frames it, referrers stay home. */
 const frames = new Set<string>();
 /** An address a card may embed, added by the iframe integration. Nothing can be framed otherwise. */
