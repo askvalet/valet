@@ -45,10 +45,6 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   builds DOM, takes `update(data)` and `select(id)`, and owns its own camera and interaction. React wraps it with a
   thin panel. That's what lets the PC model run unchanged on another app (`npm run export:pc-model`). Edit the model
   here and re-export; never fork it.
-- **The home is the one WebGL model** (`home-gl.ts`, raw WebGL2, still no dependency): `home-plan.ts` turns a map's overlapping
-  room boxes into walls, doors, windows and lights on a grid, `home-mesh.ts` builds the furniture into one mesh, `home-robot.ts`
-  moves the robot. Shadows and occlusion are baked, so a frame stays cheap; it draws only when something changes, and sleeps
-  after 40 s alone. `home-model.ts` holds the data types and the CSS plan used where WebGL2 is missing.
 - **Visuals are lazy**: registered in `VISUALS` in `cards.tsx` with `lazy(() => import(...))`, so a page without them
   never downloads them. A showcase card with no `items` hands the whole card to its visual.
 - **Server stays small.** Hono + node-server, bundled with esbuild (dependencies included, so the image ships no

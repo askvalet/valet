@@ -1,9 +1,7 @@
-// The home's data, and the plan drawn with CSS 3D where WebGL2 isn't available: each room a floor with low glass walls,
-// lit by its real lights, furniture where the map has it, and the robot and dock where they are. Everywhere else the
-// model is the dollhouse in home-gl.ts.
+// The home as a 3D floor plan, drawn from the robot vacuum's room map: each room a floor with low glass walls, lit
+// by its real lights (colour and brightness), furniture where the map has it, and the robot and dock where they are.
 import './home.css';
-import { createDollhouse, glReady, type HomeOptions, type HomeStage } from './home-gl.ts';
-import { createStage, type Scene } from './stage.ts';
+import { createStage, type Scene, type StageOptions } from './stage.ts';
 
 export interface PlanLight { id: string; name: string; on: boolean; available: boolean; color?: string; level: number; kelvin?: number; canColor: boolean; canTemp: boolean; dims: boolean;
   at?: { x: number; z: number };                           // where it is; without one, lights spread evenly across the room
@@ -14,7 +12,7 @@ export interface PlanRobot { x?: number; z?: number; a?: number; id: string; sta
 export interface PlanData {
   view?: { turn: number; tilt: number };
   rooms: PlanRoom[];
-  furniture?: { type: string; room: number; angle: number; x: number; z: number; w: number; d: number }[];
+  furniture: { type: string; room: number; angle: number; x: number; z: number; w: number; d: number }[];
   dock?: { x: number; z: number; a: number };
   robot?: PlanRobot;
 }
@@ -122,7 +120,7 @@ export function build(world: HTMLElement, d: PlanData) {
       tag(flat(mk('orb', '<i class="core light"></i><i class="halo light"></i>'), x - 7, z - 7, 14, 14, y));
     }
   }
-  for (const f of d.furniture ?? []) {
+  for (const f of d.furniture) {
     // the piece in its own space, turned about its centre by the map's angle (quarter turns)
     const q = ((Math.round(f.angle / 90) % 4) + 4) % 4, U = f.w, V = f.d, cx = f.x + U / 2, cz = f.z + V / 2, of = `room:${f.room}`;
     const spin = (u: number, v: number) => { const a = u - U / 2, b = v - V / 2; return [[a, b], [-b, a], [-a, -b], [b, -a]][q]; };
@@ -184,7 +182,7 @@ export function paint(world: HTMLElement, d: PlanData) {
 export const homeScene: Scene<PlanData> = {
   scope: 'homex', size: [720, 430], center: [0, 0, 0],
   frame: '.slab',
-  shape: d => JSON.stringify([d.rooms.map(r => [r.id, Math.round(r.x), Math.round(r.z), r.lights.map(l => [l.id, l.kind, l.at?.x])]), d.furniture?.length, !!d.dock, !!d.robot]),
+  shape: d => JSON.stringify([d.rooms.map(r => [r.id, Math.round(r.x), Math.round(r.z), r.lights.map(l => [l.id, l.kind, l.at?.x])]), d.furniture.length, !!d.dock, !!d.robot]),
   build, paint,
   pickOf: id => id === 'robot' || id.startsWith('room:') ? id : null,
   facesOf: pick => [pick],
@@ -196,11 +194,4 @@ export const homeScene: Scene<PlanData> = {
   limits: { tilt: [-80, -18], turn: [-180, 180] },   // negative tilt looks down onto the plan
 };
 
-/** Phones drop a GL context whenever they like: when one comes back, the house is built again on a fresh one. */
-export function createHome(box: HTMLElement, opts: HomeOptions = {}): HomeStage {
-  if (!glReady()) return createStage(box, homeScene, opts);
-  let stage: HomeStage, data: PlanData | undefined, sel: string | null = null;
-  const make = () => createDollhouse(box, { ...opts, onLost() { stage.destroy(); stage = make(); if (data) stage.update(data); stage.select(sel); } });
-  stage = make();
-  return { update(d) { data = d; stage.update(d); }, select(id) { sel = id; stage.select(id); }, destroy() { stage.destroy(); } };
-}
+export const createHome = (box: HTMLElement, opts: StageOptions = {}) => createStage(box, homeScene, opts);

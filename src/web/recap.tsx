@@ -39,7 +39,7 @@ function Model({ visual }: { visual: NonNullable<RecapSlide['visual']> }) {
   useEffect(() => {
     let stage: { update(d: any): void; destroy(): void } | undefined, gone = false;
     void (visual.kind === 'home'
-      ? import('./visuals/home-model.ts').then(m => m.createHome(box.current!, { turn: -32, tilt: -46, draggable: false, fill: true, hour: 20.5 }))
+      ? import('./visuals/home-model.ts').then(m => m.createHome(box.current!, { turn: -32, tilt: -46, draggable: false }))
       : import('./visuals/pc-model.ts').then(m => m.createViewer(box.current!, { turn: -27, tilt: -14, draggable: false })))
       .then(s => { if (gone) return s.destroy(); stage = s as typeof stage; s.update(visual.data as never); });
     return () => { gone = true; stage?.destroy(); };

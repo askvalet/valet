@@ -42,8 +42,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
   const view = data.view ?? { turn: -40, tilt: -35 };
 
   useEffect(() => {
-    const s = createHome(box.current!, { ...view, remember: 'home', onPick: setSel,
-      onToggle: id => act.current.room(id), onLight: id => act.current.light(id) });
+    const s = createHome(box.current!, { ...view, remember: 'home', onPick: setSel });
     stage.current = s; return () => s.destroy();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view.turn, view.tilt]);
@@ -55,12 +54,6 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
     setDraft(d => ({ ...d, ...Object.fromEntries(list.map(x => [x.id, { on: s.on as boolean, ...(s.brightness ? { level: s.brightness as number } : {}),
       ...(s.rgb ? { color: '#' + (s.rgb as number[]).map(v => v.toString(16).padStart(2, '0')).join('') } : {}) }])) }));
     run?.('light', { entity_id: list.map(x => x.id), ...s });
-  };
-  // tapping the model again: the room you're in, or one of its lamps. Always against the latest state.
-  const act = useRef({ room: (_: number) => {}, light: (_: string) => {} });
-  act.current = {
-    room: id => { const rm = shown.rooms.find(x => x.id === id), list = rm?.lights.filter(l => l.available) ?? []; if (list.length) set(list, { on: !list.some(l => l.on) }); },
-    light: id => { const l = shown.rooms.flatMap(x => x.lights).find(x => x.id === id); if (l?.available) set(l, { on: !l.on }); },
   };
   const vac = (command: string, extra: Record<string, unknown> = {}) => data.robot && run?.('vacuum', { entity_id: data.robot.id, command, ...extra });
 
@@ -74,7 +67,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
   const roomLevel = room ? Math.max(0, ...room.lights.filter(l => l.on).map(l => l.level)) : 0;
   return (
     <div className="space-y-3">
-      <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-xl" role="img" aria-label="3D model of the home. Drag to look around; select a room or the robot, then tap it again for its lights." />
+      <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-xl" role="img" aria-label="3D floor plan. Drag to look around; select a room or the robot." />
       {/* the controls: two rows under the plan, always the same height, so picking a room never resizes the card */}
       <div className="h-[82px]">
         {!sel && (
