@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import type { Card, Confirm } from '../shared/cards.ts';
 import { splitThink } from '../shared/think.ts';
 import { Icon, Widget } from './cards.tsx';
+import { Hold } from './feel.tsx';
 import { label } from './format.ts';
 
 /** What `chat:` says about the window. */
@@ -226,7 +227,8 @@ function Confirmation({ p, name, approve, tools }: { p: any; name: string; appro
   function buttons() {
     return <>
       <button onClick={() => approve(p.approval.id, false)} className="press h-9 flex-1 rounded-full px-4 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:flex-none">{label('notNow')}</button>
-      <button onClick={() => approve(p.approval.id, true)} className={cn('press h-9 flex-1 rounded-full px-5 text-[14px] font-semibold sm:flex-none', said?.danger ? 'bg-bad text-white' : 'bg-white text-black')}>{said?.verb ?? label('allow')}</button>
+      {said?.danger ? <Hold verb={said.verb ?? label('allow')} onConfirm={() => approve(p.approval.id, true)} className="h-9 flex-1 rounded-full bg-bad px-5 text-[14px] font-semibold text-white sm:flex-none" />
+        : <button onClick={() => approve(p.approval.id, true)} className="press h-9 flex-1 rounded-full bg-white px-5 text-[14px] font-semibold text-black sm:flex-none">{said?.verb ?? label('allow')}</button>}
     </>;
   }
 }

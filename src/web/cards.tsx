@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn, useOnScreen } from '@/lib/utils';
+import { Arrows, Counter, Pile, toast, useRow } from './feel.tsx';
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
 import { clock as clockOf, day as dayOf, num as written } from './format.ts';
 import { stateOf } from '../shared/cards.ts';
@@ -400,57 +401,69 @@ function Balanced({ groups, minimal }: { groups: { g: string; items: StatusCard[
   );
 }
 
-/** Archiving at once, with a few seconds to take it back. It leaves by moving; a failed call puts it back. */
-function useArchive(run?: RunAction) {
-  const [gone, setGone] = useState<string[]>([]), [leaving, setLeaving] = useState<string[]>([]), [last, setLast] = useState<string | null>(null), [slip, setSlip] = useState('');
+/** Archiving at once, with a few seconds to take it back. It leaves by moving; a failed call puts it back. `shared` says so
+ *  in the page's stack, where each thing archived keeps its own Undo, instead of the card's single corner. */
+function useArchive(run?: RunAction, shared?: boolean) {
+  const [gone, setGone] = useState<string[]>([]), [leaving, setLeaving] = useState<string[]>([]), [last, setLast] = useState<string | null>(null), [slip, setSlip] = useState(''), [back, setBack] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   const without = (id: string) => (l: string[]) => l.filter(x => x !== id);
-  const say = (id: string | null, words = '') => { clearTimeout(timer.current); setLast(id); setSlip(words); if (id || words) timer.current = setTimeout(() => { setLast(null); setSlip(''); }, 6000); };
+  const say = (id: string | null, words = '') => {
+    if (shared) { if (words) toast('archive-slip', { text: words, tone: 'bad' }); return; }
+    clearTimeout(timer.current); setLast(id); setSlip(words); if (id || words) timer.current = setTimeout(() => { setLast(null); setSlip(''); }, 6000);
+  };
+  const undo = (id = last) => {
+    if (!id) return;
+    setLeaving(without(id)); setGone(without(id)); setBack(id); say(null);
+    run?.('unarchive', { id }).catch(() => { setGone(g => [...g, id]); say(null, 'Couldn\'t bring it back'); });
+  };
   return {
-    gone, leaving, last, slip,
-    archive(id: string) {
-      setLeaving(l => [...l, id]); say(id);
+    gone, leaving, last, slip, back, undo,
+    archive(id: string, by?: Element | null) {
+      setLeaving(l => [...l, id]); say(id); setBack(null);
+      if (shared) toast(`archive-${id}`, { text: 'Archived', undo: () => undo(id) }, { by });
       setTimeout(() => { setLeaving(without(id)); setGone(g => [...g, id]); }, 240);
-      run?.('archive', { id }).catch(() => { setLeaving(without(id)); setGone(without(id)); say(null, 'Couldn\'t archive that'); });
-    },
-    undo() {
-      const id = last; if (!id) return;
-      setLeaving(without(id)); setGone(without(id)); say(null);
-      run?.('unarchive', { id }).catch(() => { setGone(g => [...g, id]); say(null, 'Couldn\'t bring it back'); });
+      run?.('archive', { id }).catch(() => { setLeaving(without(id)); setGone(without(id)); if (shared) toast(`archive-${id}`, null); say(null, 'Couldn\'t archive that'); });
     },
   };
 }
 function UndoBar({ a }: { a: ReturnType<typeof useArchive> }) {
   if (!a.last && !a.slip) return null;
-  return <div className="undo-bar" role="status">{a.slip || <>Archived<button type="button" onClick={a.undo}>Undo</button></>}</div>;
+  return <div className="undo-bar" role="status">{a.slip || <>Archived<button type="button" onClick={() => a.undo()}>Undo</button></>}</div>;
 }
 const SeeArchived = ({ href, className }: { href?: string; className?: string }) => href ? <a href={href} target="_blank" rel="noreferrer" className={cn('title-link text-xs text-muted-foreground', className)}>See archived</a> : null;
 
-/** Something saved to read, with the page itself filling the card. Hover and it scrolls by, as if you'd started reading;
- *  the controls step through the pile, or archive what's done with. */
+/** The reading pile: each thing saved with the page itself filling the card, the next ones showing behind it. Flick through
+ *  it, or use the controls, which stay put while the cards change. Hover and the page scrolls by, as if you'd started reading. */
 function Article({ card, run }: { card: ArticleCard; run?: RunAction }) {
   const [at, setAt] = useState(0), arch = useArchive(run);
   const pile = (card.more?.length ? card.more : [card]).filter(a => !a.id || !arch.gone.includes(a.id)), now = Math.min(at, pile.length - 1), a = pile[now];
   if (!a?.headline) return <div className="relative grid h-full min-h-[200px] place-items-center rounded-2xl bg-card text-sm text-muted-foreground shadow-card">{card.empty ?? 'Nothing saved to read'}<div className="article-corner"><UndoBar a={arch} /></div></div>;
-  const n = pile.length, link = a.link ?? card.href;
+  const n = pile.length, top = a.link ?? card.href;
+  const face = (i: number) => {
+    const p = pile[i], link = p.link ?? card.href;
+    return (
+      <div className={cn('article', link && 'lift', p.id && arch.leaving.includes(p.id) && 'is-leaving', p.id && p.id === arch.back && 'is-back')}>
+        {p.image && <img src={p.image} alt="" draggable={false} className="article-page" />}
+        {link && <a href={link} target="_blank" rel="noreferrer" aria-label={p.headline} className="article-open" />}
+        <div className="article-text">
+          <div className="flex items-center gap-1.5 text-[12px] font-medium text-white/70">{card.source?.icon && <img src={card.source.icon} alt="" className="size-3.5 object-contain" />}<span className="truncate">{[card.title, p.site].filter(Boolean).join(' · ')}</span>{n > 1 && <span className="ml-auto shrink-0 tabular">{i + 1} of {n}</span>}</div>
+          <div className="mt-1 line-clamp-2 text-[19px] leading-tight font-semibold tracking-tight text-pretty text-white">{p.headline}</div>
+          {p.blurb && <Clamp text={p.blurb} className="article-blurb mt-1.5 text-[13.5px] leading-snug text-white/75" />}
+        </div>
+      </div>
+    );
+  };
   return (
-    <div className={cn('article', link && 'lift', a.id && arch.leaving.includes(a.id) && 'is-leaving')}>
-      {a.image && <img key={a.image} src={a.image} alt="" className="article-page" />}
-      {link && <a href={link} target="_blank" rel="noreferrer" aria-label={a.headline} className="article-open" />}
+    <Pile count={n} at={now} go={setAt} id={i => pile[i].id ?? pile[i].headline ?? String(i)} card={face} label={card.title ?? 'Reading'} status={n > 1 ? `${now + 1} of ${n}: ${a.headline}` : undefined} over={<>
       {arch.last || arch.slip ? <div className="article-corner"><UndoBar a={arch} /></div> : card.archived && run ? <div className="article-corner"><SeeArchived href={card.archived} className="article-chip" /></div> : null}
       {n > 1 || (run && a.id) ? <div className="article-tools">
-        {n > 1 && <button type="button" aria-label="Previous" title="Previous" disabled={now === 0} onClick={() => setAt(now - 1)}><ChevronLeft className="size-4" /></button>}
+        {n > 1 && <button type="button" aria-label="Previous" title="Previous" aria-disabled={now === 0} onClick={() => { if (now > 0) setAt(now - 1); }}><ChevronLeft className="size-4" /></button>}
         {run && a.id && <button type="button" aria-label="Archive" title="Archive" onClick={() => arch.archive(a.id!)}><Archive className="size-[15px]" /></button>}
-        {link && <a href={link} target="_blank" rel="noreferrer" aria-label="Open" title="Open"><ArrowUpRight className="size-4" /></a>}
-        {n > 1 && <button type="button" aria-label="Next" title="Next" disabled={now === n - 1} onClick={() => setAt(now + 1)}><ChevronRight className="size-4" /></button>}
+        {top && <a href={top} target="_blank" rel="noreferrer" aria-label="Open" title="Open"><ArrowUpRight className="size-4" /></a>}
+        {n > 1 && <button type="button" aria-label="Next" title="Next" aria-disabled={now === n - 1} onClick={() => { if (now < n - 1) setAt(now + 1); }}><ChevronRight className="size-4" /></button>}
       </div> : null}
-      <div key={a.headline} className="article-text tick">
-        <div className="flex items-center gap-1.5 text-[12px] font-medium text-white/70">{card.source?.icon && <img src={card.source.icon} alt="" className="size-3.5 object-contain" />}<span className="truncate">{[card.title, a.site].filter(Boolean).join(' · ')}</span>{n > 1 && <span className="ml-auto shrink-0 tabular">{now + 1} of {n}</span>}</div>
-        <div className="mt-1 line-clamp-2 text-[19px] leading-tight font-semibold tracking-tight text-pretty text-white">{a.headline}</div>
-        {a.blurb && <Clamp text={a.blurb} className="article-blurb mt-1.5 text-[13.5px] leading-snug text-white/75" />}
-      </div>
-    </div>
+    </>} />
   );
 }
 
@@ -562,7 +575,7 @@ function Media({ card, compact, run }: { card: MediaCard; compact?: boolean; run
               <div className="truncate text-sm font-medium">{m.title}</div>
               {stall ? <StallLine m={m} stall={stall} card={card} run={run} /> : <div className="truncate text-xs text-muted-foreground">{m.tags?.join(' · ') ?? m.subtitle}</div>}
             </div>
-            {m.pct != null && <span className="shrink-0 text-sm font-medium tabular">{Math.floor(m.pct * 100)}%</span>}
+            {m.pct != null && <Counter value={`${Math.floor(m.pct * 100)}%`} className="shrink-0 text-sm font-medium" />}
           </div>
         );
       })}
@@ -680,15 +693,17 @@ function DocList({ items }: { items: ShelfItem[] }) {
 function Desk({ card, header }: { card: ShelfCard; header?: ReactNode }) {
   const [list, setList] = useState(() => { try { return localStorage.getItem(VIEW) === 'list'; } catch { return false; } });
   const pick = (v: boolean) => { setList(v); try { localStorage.setItem(VIEW, v ? 'list' : 'desk'); } catch { /* private mode */ } };
+  const row = useRow();   // the desk has room on a large screen; on a small one it's a row to throw, without losing the tilt
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">{header}</div>
+        {!list && !(row.edge.start && row.edge.end) && <Arrows row={row} className="ml-auto hidden sm:flex" />}
         <div className="seg" role="group" aria-label="View documents as">
           {[false, true].map(v => <button key={String(v)} type="button" aria-pressed={list === v} onClick={() => pick(v)}>{v ? 'List' : 'Desk'}</button>)}
         </div>
       </div>
-      {list ? <DocList items={card.items} /> : <div className="desk">
+      {list ? <DocList items={card.items} /> : <div className="desk carousel" {...row.bind}>
         {card.items.slice(0, 8).map((d, i) => (
           <a key={i} href={d.href} target="_blank" rel="noreferrer" className="desk-page" style={{ '--tilt': `${TILT[i]}deg` } as React.CSSProperties}>
             <span className="desk-sheet"><Art src={d.image} className="size-full object-cover object-top" />{d.badge && <span className="desk-stamp">{d.badge}</span>}</span>
@@ -703,7 +718,7 @@ function Desk({ card, header }: { card: ShelfCard; header?: ReactNode }) {
 
 /** Saved pages as small browser windows, the page itself inside; hover and it scrolls by. */
 function Windows({ card, header, run }: { card: ShelfCard; header?: ReactNode; run?: RunAction }) {
-  const arch = useArchive(run);
+  const arch = useArchive(run, true);
   const site = (s?: string) => s && /^[\w-]+(\.[\w-]+)+$/.test(s) ? s : undefined;
   return (
     <div>
@@ -711,7 +726,7 @@ function Windows({ card, header, run }: { card: ShelfCard; header?: ReactNode; r
       <div className="windows">
         {card.items.filter(w => !w.id || !arch.gone.includes(w.id)).slice(0, 9).map((w, i) => (
           <a key={w.id ?? i} href={w.href} target="_blank" rel="noreferrer" className={cn('window relative', w.id && arch.leaving.includes(w.id) && 'gone')}>
-            {run && w.id && <button type="button" aria-label="Archive" title="Archive" className="window-archive" onClick={e => { e.preventDefault(); e.stopPropagation(); arch.archive(w.id!); }}><Archive className="size-3.5" /></button>}
+            {run && w.id && <button type="button" aria-label="Archive" title="Archive" className="window-archive" onClick={e => { e.preventDefault(); e.stopPropagation(); arch.archive(w.id!, e.currentTarget.closest('.window')); }}><Archive className="size-3.5" /></button>}
             <span className="window-bar"><i /><i /><i />{site(w.subtitle) && <img src={`/api/favicon/${w.subtitle}`} alt="" className="ml-1.5 size-3.5 rounded-sm" onError={e => { e.currentTarget.style.display = 'none'; }} />}<span className="min-w-0 truncate">{w.subtitle}</span></span>
             <span className="window-page">{w.image ? <Art src={w.image} className="w-full" /> : <span className="grid h-full place-items-center bg-white/[.04]"><Bookmark className="size-5 text-muted-foreground" /></span>}</span>
             <span className="block p-3.5">
@@ -721,7 +736,6 @@ function Windows({ card, header, run }: { card: ShelfCard; header?: ReactNode; r
           </a>
         ))}
       </div>
-      <div className="undo-dock"><UndoBar a={arch} /></div>
     </div>
   );
 }
@@ -754,30 +768,22 @@ function Ranked({ card }: { card: RankedCard }) {
 }
 
 function ShelfRow({ card, header, small, beside, lines }: { card: ShelfCard; header?: ReactNode; small?: boolean; beside?: boolean; lines?: boolean }) {
-  const row = useRef<HTMLDivElement>(null), [edge, setEdge] = useState({ start: true, end: false });
-  const measure = () => { const r = row.current; if (r) setEdge({ start: r.scrollLeft <= 2, end: r.scrollLeft + r.clientWidth >= r.scrollWidth - 2 }); };
-  useEffect(() => { const o = new ResizeObserver(measure); if (row.current) o.observe(row.current); return () => o.disconnect(); }, []);
-  const page = (dir: number) => row.current?.scrollBy({ left: dir * row.current.clientWidth * 0.85, behavior: 'smooth' });
+  const row = useRow();
   const ratio = card.aspect === 'square' ? 'aspect-square' : card.aspect === 'wide' ? 'aspect-video' : 'aspect-[2/3]';
   const width = small ? (card.aspect === 'wide' ? 'w-[180px]' : 'w-[92px]') : card.aspect === 'wide' ? 'w-[240px] @3xl/main:w-[280px]' : 'w-[128px] @3xl/main:w-[150px]';
-  // aria-disabled, not disabled: an arrow that reaches the end keeps the keyboard's focus
-  const arrow = (dir: number, shut: boolean, label: string, I: LucideIcon) => <button type="button" onClick={() => { if (!shut) page(dir); }} aria-label={label} aria-disabled={shut} className="shelf-arrow"><I className="size-4" /></button>;
   return (
     <div className={cn(beside && 'relative min-w-0')}>
       <div className={cn('flex items-center gap-2', beside ? 'absolute -top-10 right-0 @max-4xl/main:hidden' : !!(header || card.items.length > (small ? 4 : 6)) && 'mb-3')}>
         {header}
-        <div className={cn('ml-auto hidden gap-1.5', card.items.length > (small ? 4 : 6) && !(edge.start && edge.end) && 'sm:flex')}>
-          {arrow(-1, edge.start, 'Previous', ChevronLeft)}
-          {arrow(1, edge.end, 'Next', ChevronRight)}
-        </div>
+        <Arrows row={row} className={cn('ml-auto hidden', !(row.edge.start && row.edge.end) && 'sm:flex')} />
       </div>
       {card.items.length === 0 ? <Empty text={card.empty ?? 'Nothing here yet'} /> : (
-        <div ref={row} onScroll={measure} onKeyDown={e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); page(e.key === 'ArrowRight' ? 1 : -1); } }}
-          className="-mx-2 -my-3 flex snap-x snap-mandatory scroll-px-2 gap-4 overflow-x-auto px-2 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div {...row.bind} role="group" aria-label={card.title} tabIndex={card.items.some(it => it.cta?.href ?? it.href) ? undefined : 0}
+          className="carousel -mx-2 -my-3 flex scroll-px-2 gap-4 overflow-x-auto px-2 py-3">
           {card.items.map((it, i) => {
             const href = it.cta?.href ?? it.href;
             const inner = (
-              <>
+              <div className="carousel-face">
                 <div className={cn('relative overflow-hidden rounded-xl bg-muted shadow-[0_10px_24px_-12px_rgb(0_0_0/0.45)] transition-[translate,box-shadow] duration-(--dur-pop) ease-out', href && 'group-hover:-translate-y-1 group-hover:shadow-[0_18px_32px_-12px_rgb(0_0_0/0.5)]', ratio)}>
                   <Art src={it.image} alt={it.title} className="size-full object-cover" />
                   {it.badge && !lines && <span className={cn('absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[10.5px] font-medium text-white backdrop-blur-md', it.badge === 'Ready' ? 'bg-good/80' : it.badge === 'Today' ? 'bg-primary/85' : 'bg-black/55')}>{it.badge}</span>}
@@ -787,7 +793,7 @@ function ShelfRow({ card, header, small, beside, lines }: { card: ShelfCard; hea
                 {(lines ? it.badge ?? it.subtitle : it.subtitle) && <div className="truncate text-xs text-muted-foreground">{lines ? it.badge ?? it.subtitle : it.subtitle}</div>}
                 {lines && it.note && <div className="truncate text-xs text-muted-foreground">{it.note}</div>}
                 {it.cta && <div className="mt-0.5 flex items-center gap-0.5 text-xs font-medium text-primary"><span className="truncate">{it.cta.label}</span><ArrowUpRight className="size-3 shrink-0" /></div>}
-              </>
+              </div>
             );
             return href
               ? <a key={i} href={href} target="_blank" rel="noreferrer" className={cn('group shrink-0 snap-start', width)}>{inner}</a>
@@ -1086,7 +1092,7 @@ function Sky({ card }: { card: ScheduleCard }) {
     <div className="flex flex-1 flex-col justify-between gap-2">
       <div className="flex items-end justify-between">
         <div><div className="metric text-[24px] leading-none">{next.name}</div><div className="mt-1.5 text-[13px] text-muted-foreground tabular">{clock(next.t)}</div></div>
-        <div className="text-right"><div className={cn('metric text-[22px] tabular leading-none', mins <= 15 && 'text-good')}><span key={mins} className="tick">{mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`}</span></div>
+        <div className="text-right"><div className={cn('metric text-[22px] tabular leading-none', mins <= 15 && 'text-good')}><Counter value={mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`} /></div>
           <div className="mt-1.5 text-[12px] text-muted-foreground">to go</div></div>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block max-h-[150px] w-full overflow-visible" aria-hidden>
@@ -1143,7 +1149,7 @@ function Schedule({ card }: { card: ScheduleCard }) {
         </div>
         <div className="text-right">
           <div className={cn('metric tabular leading-none', dense ? 'text-[18px]' : 'text-[22px]', mins <= 15 && 'text-good')}>
-            <span key={mins} className="tick">{mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`}</span>
+            <Counter value={mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`} />
           </div>
           <div className="mt-1.5 text-[12px] text-muted-foreground">to go</div>
         </div>
@@ -1459,7 +1465,7 @@ function SummaryTileView({ s, href, explain }: { s: Summary; href?: string; expl
           {s.tone === 'bad' && <span className="dot dot-bad ml-auto" />}
         </div>
         <div className={cn('mt-auto flex min-w-0 justify-between gap-3 pt-3', s.marks ? 'items-end' : 'items-baseline')}>
-          <div className={cn('metric min-w-0 truncate text-[20px] leading-none @[200px]/tile:text-[22px]', !art && toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}>{s.value}</div>
+          <div className={cn('metric min-w-0 truncate text-[20px] leading-none @[200px]/tile:text-[22px]', !art && toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}><Counter value={s.value} /></div>
           {s.marks?.length ? <TileMarks marks={s.marks} /> : null}
           {s.detail && <div className="hidden min-w-0 truncate text-xs tabular text-muted-foreground @[200px]/tile:block">{s.detail}</div>}
           {trouble && !why.note && <button type="button" className="why-chip" onClick={e => { e.preventDefault(); e.stopPropagation(); why.ask!(`${s.label}: ${s.value} ${s.sub ?? ''}`); }}>Why?</button>}
@@ -1491,7 +1497,7 @@ export function Ring({ s }: { s: Summary }) {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <Icon name={s.icon} className="mb-0.5 size-4 text-muted-foreground" />
-          <div className="metric max-w-[76px] truncate text-[19px] leading-tight">{s.ring ?? s.value}</div>
+          <div className="metric max-w-[76px] truncate text-[19px] leading-tight"><Counter value={s.ring ?? s.value} /></div>
         </div>
       </div>
       <div className="mt-1 max-w-full truncate text-[13px] font-medium">{s.label}</div>
@@ -1541,7 +1547,7 @@ function MiniRingView({ s }: { s: Summary }) {
           <circle cx="19" cy="19" r={r} fill="none" stroke={color} strokeWidth="3.2" strokeLinecap="round"
             strokeDasharray={`${Math.max(0.001, pct) * arc} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move) ease-out" />
         </svg>
-        <div className="metric absolute inset-0 grid place-items-center text-[11px]">{n.length > 4 ? <Icon name={s.icon} className="size-3.5" /> : <span key={n} className="tick">{n}</span>}</div>
+        <div className="metric absolute inset-0 grid place-items-center text-[11px]">{n.length > 4 ? <Icon name={s.icon} className="size-3.5" /> : <Counter value={n} />}</div>
       </div>
       <div className="-mt-1 hidden max-w-[56px] truncate text-[10px] font-medium text-muted-foreground sm:block">{s.label}</div>
       <Popover group="ring" className="right-1/2 w-[260px] translate-x-1/2"><SummaryTile s={s} /></Popover>

@@ -276,7 +276,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
-  --ease-spring: cubic-bezier(.22, 1.2, .36, 1);   /* the island's overshoot, and nothing else's */
+  --ease-spring: cubic-bezier(.22, 1.2, .36, 1);   /* an overshoot: the island's, and a slider letting go */
   --dur-press: 160ms;    /* a press, a hover, a colour */
   --dur-pop: 200ms;      /* a popover or a small thing arriving */
   --dur-move: 280ms;     /* a panel opening, a value easing to its new size */
@@ -285,7 +285,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 }
 /* press feedback: a slight give under the finger */
 .press, [data-slot="button"], .glass-round, .chat-icon { transition-property: transform, color, background-color, opacity, box-shadow; transition-duration: var(--dur-press); transition-timing-function: var(--ease-out); }
-:is(.press, [data-slot="button"], button.glass-round, .chat-icon, .why-chip, .seg button, .shelf-arrow, .window-archive, .article-tools button, .article-tools a, .undo-bar button):active:not(:disabled) { transform: scale(calc(1 - .03 * var(--move))); }
+:is(.press, [data-slot="button"], button.glass-round, .chat-icon, .why-chip, .seg button, .shelf-arrow, .window-archive, .article-tools button, .article-tools a, .undo-bar button):active:not(:disabled, [aria-disabled="true"]) { transform: scale(calc(1 - .03 * var(--move))); }
 
 /* chat: a message arrives, cards settle in, words fade up out of a slight blur as they stream */
 .chat-in { animation: chat-in var(--dur-move) var(--ease-out) backwards; transform-origin: bottom right; }
@@ -503,24 +503,21 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 /* the reading card's controls: on hover, always on touch */
 .article-tools { position: absolute; top: 10px; right: 10px; z-index: 3; display: flex; gap: 2px; padding: 3px; border-radius: 99px; color: #fff; background: rgb(0 0 0 / .62); backdrop-filter: blur(14px); opacity: 0; translate: 0 -4px; transition: opacity var(--dur-pop) var(--ease-out), translate var(--dur-pop) var(--ease-out); }
 .article-tools button, .article-tools a { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; transition: background-color var(--dur-press) var(--ease-out), transform var(--dur-press) var(--ease-out); }
-.article-tools button:disabled { opacity: .35; }
-.article:focus-within .article-tools { opacity: 1; translate: 0; }
+.article-tools button[aria-disabled="true"] { opacity: .35; cursor: default; }
+.pile:focus-within .article-tools { opacity: 1; translate: 0; }
 @media (hover: hover) and (pointer: fine) {
-  .article:hover .article-tools { opacity: 1; translate: 0; }
+  .pile:hover .article-tools { opacity: 1; translate: 0; }
   .article-tools button:hover, .article-tools a:hover { background: rgb(255 255 255 / .16); }
 }
 .article-open { position: absolute; inset: 0; z-index: 2; }
 .article-text { position: relative; z-index: 3; pointer-events: none; }
 .article-blurb { pointer-events: auto; max-height: 11lh; overflow-y: auto; scrollbar-width: none; }
-.article.is-leaving .article-text, .article.is-leaving .article-page { opacity: 0; translate: 0 8px; transition: opacity var(--dur-pop) var(--ease-out), translate var(--dur-pop) var(--ease-out); }
 .article-corner { position: absolute; top: 10px; left: 10px; z-index: 3; }
 .article-chip { display: block; padding: 4px 10px; border-radius: 99px; color: #fff; background: rgb(0 0 0 / .55); backdrop-filter: blur(14px); }
-/* the moment after archiving: it says so, offers the way back, and goes by itself */
+/* the moment after archiving: it says so, offers the way back, and goes by itself. The same pill carries the page's notes (feel.tsx) */
 .undo-bar { display: inline-flex; align-items: center; gap: 10px; padding: 6px 7px 6px 14px; border-radius: 99px; font-size: 13px; color: #fff; background: rgb(20 20 24 / .86); backdrop-filter: blur(14px); box-shadow: 0 10px 28px -10px rgb(0 0 0 / .6); animation: desk-rise var(--dur-pop) var(--ease-out) backwards; }
 .undo-bar:not(:has(button)) { padding-right: 14px; }
 .undo-bar button { padding: 2px 10px; border-radius: 99px; font-weight: 500; color: #111; background: #fff; transition: transform var(--dur-press) var(--ease-out); }
-.undo-dock { position: sticky; z-index: 5; bottom: calc(env(safe-area-inset-bottom) + 84px); display: flex; justify-content: center; height: 0; overflow: visible; pointer-events: none; }
-.undo-dock > * { pointer-events: auto; translate: 0 -44px; height: max-content; }
 .clamp.is-more { cursor: pointer; }
 @media (hover: hover) and (pointer: fine) { .clamp.is-more:hover { color: var(--foreground); } }
 /* a pair of words that switches a view */

@@ -5,7 +5,8 @@ import { Armchair, ArrowUpDown, BedDouble, ChevronLeft, ChevronRight, Droplets, 
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import type { CalendarCard, CalendarEvent, ForecastCard, ThermostatCard, ThermostatMode } from '../shared/cards.ts';
-import { Cant, Roll } from './visuals/note.tsx';
+import { Counter } from './feel.tsx';
+import { Cant } from './visuals/note.tsx';
 import './home-cards.css';
 
 type Run = (action: string, args?: Record<string, unknown>) => Promise<void>;
@@ -442,7 +443,7 @@ export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: R
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pb-[8%] text-center">
             <div className={cn('font-medium', dense ? 'text-[12px]' : 'text-[14px]', oops ? 'text-bad' : 'text-muted-foreground')}>{oops ? "Couldn't set it" : card.state}</div>
             <div className={cn('mt-1 leading-[1.3] text-muted-foreground', dense ? 'text-[11px]' : 'text-[13px]')}>{value != null ? 'Set to' : 'Room'}</div>
-            <div className={cn('wx-temp', dense ? 'text-[36px]' : 'text-[58px]')}>{big != null ? <Roll value={big.toFixed(value != null ? dp : 1)} /> : '–'}<span className={cn('ml-1 font-medium tracking-normal text-foreground/75', dense ? 'text-[15px]' : 'text-[22px]')}>°{unit}</span></div>
+            <div className={cn('wx-temp', dense ? 'text-[36px]' : 'text-[58px]')}>{big != null ? <Counter value={big.toFixed(value != null ? dp : 1)} /> : '–'}<span className={cn('ml-1 font-medium tracking-normal text-foreground/75', dense ? 'text-[15px]' : 'text-[22px]')}>°{unit}</span></div>
             {value != null && room != null ? <div className={cn('mt-1 text-muted-foreground tabular', dense ? 'text-[12px]' : 'text-[14px]')}>Room {room.toFixed(Number.isInteger(room) ? 0 : 1)} °{unit}</div>
               : card.range ? <div className="mt-1 text-[14px] text-muted-foreground tabular">Set to {card.range[0]}–{card.range[1]} °{unit}</div> : null}
           </div>
