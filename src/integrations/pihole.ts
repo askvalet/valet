@@ -32,7 +32,10 @@ export default defineIntegration({
         const s = await api<any>(`stats/database/summary?from=${Math.floor(from / 1000)}&until=${Math.floor(to / 1000)}`);
         if (!s?.sum_blocked) return [];
         const covered = Number(s.total_clients ?? 0);
-        return [{ id: 'dns.blocked', kicker: 'Pi-hole stopped', value: Number(s.sum_blocked).toLocaleString('en'), unit: 'requests', stat: 'Ads blocked', score: 72, scope: 'As far back as Pi-hole keeps',
+        const left = Math.max(0, Number(s.sum_queries ?? 0) - Number(s.sum_blocked));
+        return [{ id: 'dns.blocked', section: 'Obituaries', kind: 'obituary', kicker: 'Pi-hole stopped', value: Number(s.sum_blocked).toLocaleString('en'), unit: 'requests', stat: 'Ads blocked', score: 72, scope: 'As far back as Pi-hole keeps',
+          headline: `${Number(s.sum_blocked).toLocaleString('en')} ADS`, story: `Died suddenly at the sinkhole, aged a few milliseconds.${left ? ` They are survived by ${left.toLocaleString('en')} queries.` : ''} In lieu of flowers, the family asks that you do not click anything.`,
+          correction: 'The ad count goes back only as far as Pi-hole keeps its records.',
           line: `That's ${Number(s.percent_blocked).toFixed(0)}% of everything your devices tried to look up${covered ? `, across ${covered} devices` : ''}.` }];
       },
       widgets: {

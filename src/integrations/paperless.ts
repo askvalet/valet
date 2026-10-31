@@ -38,7 +38,8 @@ export default defineIntegration({
       async recap({ year }) {
         const { count } = await api<any>(`documents/?added__date__gt=${year - 1}-12-31&added__date__lt=${year + 1}-01-01&page_size=1`);
         if (!count) return [];
-        return [{ id: 'docs', kicker: 'You filed away', value: Number(count).toLocaleString('en'), unit: 'documents', stat: 'Documents filed', score: 62, scope: 'year', line: 'Every one of them searchable, and not one in a shoebox.',
+        return [{ id: 'docs', section: 'Local', kicker: 'You filed away', value: Number(count).toLocaleString('en'), unit: 'documents', stat: 'Documents filed', score: 62, scope: 'year', headline: `${Number(count).toLocaleString('en')} DOCUMENTS FILED; SHOEBOX INDUSTRY IN RUINS`, line: 'Every one of them searchable, and not one in a shoebox.',
+          story: 'Residents can now find a three-year-old receipt in seconds, a skill for which nobody has ever asked.', correction: 'Documents are counted the day they were added, not the day they were written.',
           trait: { name: 'The Archivist', line: 'If it has ever been printed, emailed or scanned, you can find it in four seconds.', strength: Math.min(.8, count / 5000) } }];
       },
       widgets: {

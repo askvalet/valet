@@ -103,7 +103,8 @@ export default defineIntegration({
         const { server_state: s } = await api<any>('sync/maindata');
         if (!s?.alltime_dl) return [];
         const ratio = s.alltime_ul / s.alltime_dl;
-        return [{ id: 'seed.ratio', kicker: 'Your share ratio', value: ratio.toFixed(2), stat: 'Share ratio', score: 75, scope: 'All time',
+        return [{ id: 'seed.ratio', section: 'Business', kicker: 'Your share ratio', value: ratio.toFixed(2), stat: 'Share ratio', score: 75, scope: 'All time', facts: { uploadedBytes: s.alltime_ul, downloadedBytes: s.alltime_dl },
+          headline: `ASSETS UP ${ratio.toFixed(2)}-FOLD`, story: `For every byte taken from the swarm, ${ratio.toFixed(2)} went back. Shareholders, of whom there is one, received no dividend.`,
           line: `You took ${fmt.bytes(s.alltime_dl)} and gave ${fmt.bytes(s.alltime_ul)} back.${ratio >= 1 ? ' The swarm thanks you.' : ''}`,
           trait: { name: 'The Generous Seeder', line: 'You give back far more than you take, and somewhere a stranger finished their download because of you.', strength: Math.min(1, ratio / 4) } }];
       },

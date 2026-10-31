@@ -78,6 +78,10 @@ async recap({ year, from, to }) {
 - `score` orders the story (higher comes earlier, 50 by default), and `stat` puts the number on the shareable card.
 - `items` is a top five, with an optional `image`. Mark a slide `private: true` if it names people.
 - `trait` is a personality: the strongest across all services becomes who the person was this year.
+- Every slide becomes a story in the household's newspaper. Add `section`, `headline` (deadpan, and true) and `story` to
+  write it yourself; `kind` sets it as a `listing`, `table`, `obituary` or `classified`. Every number must be real, and a
+  `correction` says what a number really covers. `facts` shares raw numbers so Valet can write stories across services.
+- No model writes any of this. Don't add one: a paper of real numbers can't have one inventing a few.
 
 ## Visuals of your own
 

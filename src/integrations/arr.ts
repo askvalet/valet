@@ -80,7 +80,9 @@ export default defineIntegration({
         const newFilms = added(films), newShows = added(shows), n = newFilms.length + newShows.length;
         const size = [...films.map(f => f.sizeOnDisk ?? 0), ...shows.map(s => s.statistics?.sizeOnDisk ?? 0)].reduce((a, b) => a + b, 0);
         if (!n) return [];
-        return [{ id: 'library.added', kicker: 'Your library grew by', value: n.toLocaleString('en'), unit: 'titles', stat: 'Titles added', score: 80, scope: 'year',
+        const hours = (films.reduce((a, f) => a + (f.hasFile ? f.runtime ?? 0 : 0), 0) + shows.reduce((a, s) => a + (s.runtime ?? 0) * (s.statistics?.episodeFileCount ?? 0), 0)) / 60;
+        return [{ id: 'library.added', section: 'Real Estate', kicker: 'Your library grew by', value: n.toLocaleString('en'), unit: 'titles', stat: 'Titles added', score: 80, scope: 'year', facts: { libraryHours: hours },
+          headline: `LIBRARY ANNEXES ${n.toLocaleString('en')} NEW TITLES`, story: `The territory now spans ${fmt.bytes(size)}. Officials would not rule out further expansion.`,
           line: `${newFilms.length} films and ${newShows.length} shows joined. The whole collection now takes up ${fmt.bytes(size)}.`,
           trait: { name: 'The Curator', line: 'You never just watch something. You acquire it, label it and find it the right quality profile.', strength: Math.min(.85, n / 400) } }];
       },

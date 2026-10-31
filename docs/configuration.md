@@ -50,7 +50,7 @@ In Docker, prefix these with `docker exec -it valet`.
 | `links` | `{}` | bookmarks by group, each group a widget `links.<group-slug>`: `Media: [{ name, url, icon?, note? }]`. Without `icon`, the site's favicon (fetched by Valet) |
 | `notify` | `{ channels: [] }` | where reminders go when you're not looking: see below. `insights: true` also pushes the shared-cause line |
 | `reload` | `true` | watch the file and apply edits live |
-| `recap` | `true` | the year in review, at `#recap` and on the overview |
+| `recap` | `true` | the household newspaper, your year in review, at `#recap` and on the overview |
 | `welcome` | `false` | the getting-started card; a fresh starter config turns it on |
 
 ## `auth`

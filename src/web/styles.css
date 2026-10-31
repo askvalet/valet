@@ -380,19 +380,6 @@
 @media (prefers-reduced-motion: reduce) { .stack-page, .stack-open { animation: none; transition: none; } }
 
 /* flashback photos: a slow crossfade with a gentle drift, so the card breathes without anything snapping */
-/* the year in review: colour that drifts, numbers that land, a bar that fills */
-.recap { transition: background .9s var(--ease-in-out); touch-action: manipulation; }
-.recap-blob { position: absolute; width: 70vmax; height: 70vmax; right: -24vmax; top: -30vmax; border-radius: 50%; opacity: .55; filter: blur(90px); transition: background .9s var(--ease-in-out); animation: recap-drift 16s ease-in-out infinite alternate; }
-.recap-blob.b2 { right: auto; top: auto; left: -30vmax; bottom: -36vmax; opacity: .4; animation-duration: 21s; animation-direction: alternate-reverse; }
-@keyframes recap-drift { to { transform: translate3d(-9vmax, 7vmax, 0) scale(1.14); } }
-.recap-in { animation: recap-in 700ms var(--ease-out) both; }
-@keyframes recap-in { from { opacity: 0; transform: translateY(18px) scale(.985); } }
-.recap-row { animation: recap-row 520ms var(--ease-out) both; }
-@keyframes recap-row { from { opacity: 0; transform: translateX(-14px); } }
-.recap-fill { width: 0; animation: recap-fill linear forwards; }
-@keyframes recap-fill { to { width: 100%; } }
-@media (prefers-reduced-motion: reduce) { .recap-blob, .recap-in, .recap-row { animation: none; } }
-
 /* a long card in a packed section stays one screenful */
 .card-cap [data-slot="card-content"] { max-height: 420px; overflow-y: auto; scrollbar-width: thin; }
 

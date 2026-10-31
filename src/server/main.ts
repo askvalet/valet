@@ -299,7 +299,7 @@ app.get('/api/brief', async c => {
 
 app.get('/api/recap', async c => {
   if (!site.config.recap) return c.notFound();
-  const recap = await buildRecap(site.instances, recapYear(c.req.query('year')), site.ask && site.config.assistant?.background.brief ? site.ask : undefined);
+  const recap = await buildRecap(site.instances, recapYear(c.req.query('year')), new Date(), { title: site.config.title, editor: site.config.greeting });
   return c.json(JSON.parse(site.redact(JSON.stringify(recap))));
 });
 

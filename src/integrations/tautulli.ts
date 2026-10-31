@@ -39,15 +39,20 @@ export default defineIntegration({
       const when = (o: Intl.DateTimeFormatOptions) => rows.map(h => new Date(h.date * 1000).toLocaleString('en', o));
       const most = (l: string[]) => [...l.reduce((m, x) => m.set(x, (m.get(x) ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])[0];
       const [day, dayN] = most(when({ weekday: 'long' })), late = rows.filter(h => { const n = new Date(h.date * 1000).getHours(); return n >= 23 || n < 5; }).length / rows.length;
+      const pct = Math.round(dayN / rows.length * 100);
       const slides: RecapSlide[] = [
-        { id: 'watch.hours', kicker: 'You watched', value: hours.toLocaleString('en'), unit: 'hours', stat: 'Hours watched', score: 95, scope: 'year', line: `${rows.length} plays, all of it from your own server.`,
+        { id: 'watch.hours', section: 'Television', kicker: 'You watched', value: hours.toLocaleString('en'), unit: 'hours', stat: 'Hours watched', score: 95, scope: 'year', facts: { watchedHours: total / 3600 },
+          headline: `HOUSEHOLD SITS THROUGH ${hours.toLocaleString('en').toUpperCase()} HOURS OF TELEVISION`, line: `${rows.length} plays, all of it from a server in the house.`,
+          story: `Nobody paid a subscription for any of it, unless you count the hardware, the electricity and the weekends.`,
           trait: { name: 'The Projectionist', line: 'The lights go down, the server spins up, and the house gets exactly what it wanted to watch.', strength: Math.min(.9, hours / 500) } },
-        { id: 'watch.top', kicker: 'Your number one', value: titles[0][0], line: `${titles[0][1].n} ${titles[0][1].n === 1 ? 'play' : 'plays'} and ${hrs(titles[0][1].s)}, more time than anything else this year.`, score: 90, scope: 'year',
-          items: titles.slice(0, 5).map(([name, e]) => ({ name, value: hrs(e.s), image: poster(e.h) })) },
-        { id: 'watch.day', kicker: 'Your favourite night in', value: `${day}s`, line: `${dayN} of your ${rows.length} plays started on a ${day}.`, score: 60, scope: 'year' },
+        { id: 'watch.top', section: 'Arts & Leisure', kind: 'listing', kicker: 'Your number one', value: titles[0][0], line: `${titles[0][1].n} ${titles[0][1].n === 1 ? 'play' : 'plays'} and ${hrs(titles[0][1].s)}, more time than anything else this year.`, score: 90, scope: 'year',
+          headline: `\u201c${titles[0][0].toUpperCase()}\u201d HOLDS TOP SPOT`, items: titles.slice(0, 5).map(([name, e]) => ({ name, value: hrs(e.s), image: poster(e.h) })) },
+        { id: 'watch.day', section: 'Weather', kicker: 'Your favourite night in', value: `${pct}%`, line: `${dayN} of your ${rows.length} plays started on a ${day}.`, score: 60, scope: 'year',
+          headline: `${day.toUpperCase()}S: ${pct}% CHANCE OF PLEX`, story: `Conditions are expected to remain settled on the sofa, with scattered snacks. Outlook for the rest of the week: re-runs.` },
       ];
-      if (people.length > 1) slides.push({ id: 'watch.people', kicker: 'Who kept Plex busiest', value: people[0][0], line: `${hrs(people[0][1].s)} of the ${hrs(total)} everyone watched.`, score: 70, scope: 'year', private: true, items: people.slice(0, 5).map(([name, e]) => ({ name, value: hrs(e.s) })) });
-      if (late > .25) slides.push({ id: 'watch.late', kicker: 'After 11 PM', value: `${Math.round(late * 100)}%`, line: 'of everything you watched started when you should have been asleep.', score: 55, scope: 'year', trait: { name: 'The Night Owl', line: "The disks spin, the house sleeps, and you're still one more episode away from bed.", strength: late } });
+      if (people.length > 1) slides.push({ id: 'watch.people', section: 'Sports', kind: 'table', kicker: 'Who kept Plex busiest', value: people[0][0], line: `${hrs(people[0][1].s)} of the ${hrs(total)} everyone watched.`, score: 70, scope: 'year', private: true,
+        headline: `${people[0][0].toUpperCase()} TAKES THE LEAGUE`, items: people.slice(0, 5).map(([name, e]) => ({ name, value: hrs(e.s) })) });
+      if (late > .25) slides.push({ id: 'watch.late', section: 'Local', kicker: 'After 11 PM', value: `${Math.round(late * 100)}%`, line: 'of everything you watched started when you should have been asleep.', score: 55, scope: 'year', headline: `${Math.round(late * 100)}% OF VIEWING BEGINS AFTER BEDTIME`, trait: { name: 'The Night Owl', line: "The disks spin, the house sleeps, and you're still one more episode away from bed.", strength: late } });
       return slides;
     }
 

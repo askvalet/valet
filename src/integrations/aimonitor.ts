@@ -73,7 +73,8 @@ export default defineIntegration({
         const inRange = (days as any[]).filter(d => { const t = Date.parse(d.day); return t >= from && t < to; });
         const tokens = inRange.reduce((s, d) => s + (d.tokens ?? 0), 0), cost = inRange.reduce((s, d) => s + (d.cost ?? 0), 0);
         if (!tokens) return [];
-        return [{ id: 'ai.tokens', kicker: 'Your own AI wrote', value: tokens >= 1e6 ? (tokens / 1e6).toFixed(1) : tokens.toLocaleString('en'), unit: tokens >= 1e6 ? 'million tokens' : 'tokens', stat: 'AI tokens', score: 58, scope: `Since ${new Date(inRange[0].day).toLocaleDateString('en', { month: 'short', day: 'numeric' })}`,
+        const wrote = tokens >= 1e6 ? `${(tokens / 1e6).toFixed(1)} MILLION TOKENS` : `${tokens.toLocaleString('en')} TOKENS`, spent = cost >= 1 ? `$${cost.toFixed(2)}` : `${Math.max(1, Math.round(cost * 100))}\u00a2`;
+        return [{ id: 'ai.tokens', section: 'Science', headline: `HOUSEHOLD AI WRITES ${wrote} FOR ${spent}`, story: 'All of it on a graphics card in the house, paid for in electricity. Nobody else read a word.', correction: `AI figures begin ${new Date(inRange[0].day).toLocaleDateString('en', { month: 'long', day: 'numeric' })}, when anyone started counting.`, kicker: 'Your own AI wrote', value: tokens >= 1e6 ? (tokens / 1e6).toFixed(1) : tokens.toLocaleString('en'), unit: tokens >= 1e6 ? 'million tokens' : 'tokens', stat: 'AI tokens', score: 58, scope: `Since ${new Date(inRange[0].day).toLocaleDateString('en', { month: 'short', day: 'numeric' })}`,
           line: `On your own graphics card, for ${cost >= 1 ? `$${cost.toFixed(2)}` : `${Math.max(1, Math.round(cost * 100))}¢`} of electricity. Nobody else read a word of it.` }];
       },
       widgets,
