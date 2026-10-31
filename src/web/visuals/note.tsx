@@ -1,8 +1,9 @@
-// The small honest parts the house's controls share: what a control can't do here, what it just did, a number that
-// rolls, a word in a slot, a named swatch and the corner of a 3D model.
+// The small honest parts the house's controls share: what a control can't do here, what it just did, a word in a slot,
+// a named swatch and the corner of a 3D model.
 import { RotateCcw } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { mountToasts, toast } from '../feel.tsx';
 import './note.css';
 
 /** The one way anything says "not from here": a small lock and a few words, where the control would be. */
@@ -28,26 +29,22 @@ export function useNote() {
   return [note, say] as const;
 }
 const TONES = { busy: 'text-foreground', good: 'text-foreground', warn: 'text-warn', bad: 'text-bad' };
-/** What just happened, in the flow beside the control, with Undo while that's still possible. */
+/** What just happened, in the flow beside the control, with Undo while that's still possible. If its place is out of view
+ *  (a long room on a phone), it goes to the page's stack instead, so nothing is said where nobody can see it. */
 export function Said({ note, className }: { note: Note | null; className?: string }) {
+  const box = useRef<HTMLDivElement>(null), key = useId(), [away, setAway] = useState(0);
+  useEffect(mountToasts, []);
+  useLayoutEffect(() => {
+    const r = box.current?.getBoundingClientRect(), off = !!note && !!r && (r.bottom > innerHeight - 88 || r.top < 0);
+    setAway(off ? note.id : 0);
+    toast(key, off ? { text: note.text, tone: note.tone, undo: note.undo } : null, { ms: 9000 });
+  }, [note?.id]);
+  const here = note && note.id !== away ? note : null;
   return (
-    <div role="status" className={cn('flex min-h-8 min-w-0 items-center gap-2 text-[12.5px] leading-[1.35]', className)}>
-      {note && <span key={note.id} className={cn('min-w-0 animate-in fade-in duration-(--dur-pop)', TONES[note.tone ?? 'good'])}>{note.text}</span>}
-      {note?.undo && <button onClick={note.undo} className="h-8 flex-none rounded-full px-2.5 font-medium text-primary hover:bg-foreground/10">Undo</button>}
+    <div ref={box} role="status" className={cn('flex min-h-8 min-w-0 items-center gap-2 text-[12.5px] leading-[1.35]', className)}>
+      {here && <span key={here.id} className={cn('min-w-0 animate-in fade-in duration-(--dur-pop)', TONES[here.tone ?? 'good'])}>{here.text}</span>}
+      {here?.undo && <button onClick={here.undo} className="h-8 flex-none rounded-full px-2.5 font-medium text-primary hover:bg-foreground/10">Undo</button>}
     </div>
-  );
-}
-
-/** A number where only the digits that changed move. Keyed from the right, so 9 → 10 leaves nothing to chase. */
-export function Roll({ value, className }: { value: string; className?: string }) {
-  const was = useRef(value), first = useRef(true);
-  const from = [...was.current].reverse(), to = [...value];
-  useEffect(() => { was.current = value; first.current = false; }, [value]);
-  return (
-    <span className={cn('tabular whitespace-nowrap', !first.current && 'roll-on', className)}>
-      <span className="sr-only">{value}</span>
-      {to.map((c, i) => { const back = to.length - 1 - i; return <span key={`${back}:${c}`} aria-hidden className={cn('roll', from[back] !== c && 'roll-new')}>{c}</span>; })}
-    </span>
   );
 }
 

@@ -1,0 +1,79 @@
+/* The motion in feel.tsx. Everything here is transform and opacity; the reduced-motion rule in styles.css covers all of it. */
+
+/* A row of things. The edges fade where there's more, and something half out of view sits a little back until it arrives.
+   The scroll drives that on the compositor, with nothing written per frame; a browser that can't simply leaves it out. */
+@property --fade-start { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --fade-end { syntax: "<length>"; inherits: false; initial-value: 0px; }
+.carousel {
+  position: relative; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none;
+  --fade-start: 28px; --fade-end: 28px;
+  mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
+  transition: --fade-start var(--dur-pop) var(--ease-out), --fade-end var(--dur-pop) var(--ease-out), translate var(--dur-move) var(--ease-out);
+}
+.carousel::-webkit-scrollbar { display: none; }
+.carousel[data-start] { --fade-start: 0px; }
+.carousel[data-end] { --fade-end: 0px; }
+.carousel.is-held { scroll-snap-type: none; }
+.carousel.is-grabbed { cursor: grabbing; user-select: none; transition-property: --fade-start, --fade-end; }
+.carousel.is-grabbed > * { pointer-events: none; }
+@media (hover: hover) and (pointer: fine) { .carousel:not([data-start][data-end]) { cursor: grab; } }
+.desk.carousel { scroll-padding-left: 10px; }
+.desk.carousel > * { scroll-snap-align: start; }
+.carousel:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+@supports (animation-timeline: view()) {
+  .carousel-face { animation: carousel-face linear both; animation-timeline: view(inline); animation-range: entry 0% exit 100%; }
+  @keyframes carousel-face {
+    entry 0% { opacity: .7; transform: scale(.95); }
+    entry 100%, exit 0% { opacity: 1; transform: none; }
+    exit 100% { opacity: .7; transform: scale(.95); }
+  }
+}
+
+/* A pile of cards: the next ones show their real pages above the top one. Where each sits comes from `pose`; dragging writes
+   it directly and a card lets go of it by transition, from wherever it is. */
+.pile { position: relative; isolation: isolate; height: 100%; min-height: 256px; touch-action: pan-y; }
+.pile-card { position: absolute; inset: 16px 0 0; transform-origin: 50% 0; transition: transform var(--dur-move) var(--ease-out), opacity var(--dur-pop) var(--ease-out); }
+.pile-card::after { content: ""; position: absolute; inset: 0; border-radius: 1rem; background: #000; opacity: var(--dim, 0); pointer-events: none; transition: opacity var(--dur-move) var(--ease-out); }
+.pile-card[data-held], .pile[data-still] .pile-card, .pile-card[data-held]::after, .pile[data-still] .pile-card::after { transition: none; }
+.pile-card[data-held] { will-change: transform; }
+.pile-card[inert] { pointer-events: none; }
+.pile.is-single { min-height: 240px; }
+.pile.is-single .pile-card { inset: 0; }
+.pile-over { position: absolute; inset: 16px 0 0; z-index: 20; pointer-events: none; }
+.pile.is-single .pile-over { inset: 0; }
+.pile-over > * { pointer-events: auto; }
+.pile .article-open { -webkit-touch-callout: none; }
+.pile .article-page { user-select: none; -webkit-user-drag: none; }
+.article.is-leaving { opacity: 0; scale: .96; translate: 0 10px; transition: opacity var(--dur-pop) var(--ease-out), scale var(--dur-pop) var(--ease-out), translate var(--dur-pop) var(--ease-out); }
+.article.is-back { animation: desk-rise var(--dur-pop) var(--ease-out) backwards; }
+
+/* Hold to confirm: the fill crosses at the speed of the hold, in a straight line, and goes back quickly when let go. */
+.hold { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.hold-fill { position: absolute; inset: 0; transform: scaleX(0); transform-origin: left; background: rgb(255 255 255 / .28); transition: transform var(--dur-move) var(--ease-out); }
+.hold[data-held] .hold-fill { transform: none; transition: transform var(--hold) linear; }
+
+/* A slider that gives at its ends: pulled by the pointer, let go on the spring. */
+.elastic { display: flex; align-items: center; min-width: 0; }
+.elastic [data-slot="slider-track"] { transition: transform var(--dur-move) var(--ease-spring); }
+.elastic [data-slot="slider-thumb"] { transition: translate var(--dur-move) var(--ease-spring), scale var(--dur-press) var(--ease-out), box-shadow var(--dur-press) var(--ease-out); }
+.elastic.is-pulling [data-slot="slider-track"] { transition: none; }
+.elastic.is-pulling [data-slot="slider-thumb"] { transition: scale var(--dur-press) var(--ease-out), box-shadow var(--dur-press) var(--ease-out); scale: calc(1 + .15 * var(--move)); }
+
+/* A number: only the digits that changed move. The old digit leaves as the new one arrives, the last digit first. */
+.digit { position: relative; display: inline-block; }
+.digit-new { animation: digit-in var(--dur-move) var(--ease-out) calc(var(--i, 0) * 45ms) backwards; }
+.digit-new[data-was]::before { content: attr(data-was); position: absolute; inset: 0; opacity: 0; animation: digit-out var(--dur-pop) var(--ease-out) calc(var(--i, 0) * 45ms) backwards; }
+@keyframes digit-in { from { opacity: 0; transform: translateY(.42em); } }
+@keyframes digit-out { from { opacity: 1; transform: translateY(.42em); } to { opacity: 0; transform: translateY(-.42em); } }
+.digit-new.is-down { animation-name: digit-in-down; }
+.digit-new.is-down[data-was]::before { animation-name: digit-out-down; }
+@keyframes digit-in-down { from { opacity: 0; transform: translateY(-.42em); } }
+@keyframes digit-out-down { from { opacity: 1; transform: translateY(-.42em); } to { opacity: 0; transform: translateY(.42em); } }
+
+/* What just happened: at the bottom of the page, clear of the phone's section bar and the chat, or beside what it's about. */
+.toasts { position: fixed; z-index: 60; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 84px); display: flex; flex-direction: column; align-items: center; gap: 6px; translate: -50% 0; max-width: calc(100vw - 32px); pointer-events: none; }
+.toasts.is-near { bottom: auto; translate: -50% -50%; transition: left var(--dur-move) var(--ease-out), top var(--dur-move) var(--ease-out); }
+.toasts > * { pointer-events: auto; }
+.toasts .undo-bar.is-bad { color: color-mix(in srgb, var(--bad) 55%, #fff); }
+.toasts .undo-bar.is-warn { color: color-mix(in srgb, var(--warn) 55%, #fff); }
+.toasts .undo-bar.is-out { opacity: 0; scale: .96; transition: opacity var(--dur-pop) var(--ease-out), scale var(--dur-pop) var(--ease-out); }

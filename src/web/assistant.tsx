@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import type { Card, Confirm } from '../shared/cards.ts';
 import { splitThink } from '../shared/think.ts';
 import { Icon, Widget } from './cards.tsx';
+import { Hold } from './feel.tsx';
 import { label } from './format.ts';
 
 /** What `chat:` says about the window. */
@@ -181,7 +182,7 @@ const plainInput = (input: Record<string, unknown>) => Object.entries(input).fil
  *  (a plan or a config change lists its steps); until they arrive, the action's own name stands in. */
 function Confirmation({ p, name, approve, tools }: { p: any; name: string; approve: (id: string, ok: boolean) => void; tools: Record<string, ToolInfo> }) {
   const [said, setSaid] = useState<Confirm | null>(null), input = p.input ?? {}, listed = !!(input.steps || input.ops);
-  useEffect(() => { if (listed) return; let live = true; fetch('/api/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: name, input }) }).then(r => r.json()).then(c => { if (live) setSaid(c); }, () => {}); return () => { live = false; }; }, [name, listed]);
+  useEffect(() => { if (listed) return; let live = true; fetch('/api/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: name, input }) }).then(r => r.json()).then(c => { if (live) setSaid(c); }, () => { if (live) setSaid({} as Confirm); }); return () => { live = false; }; }, [name, listed]);
   const title = input.steps ? input.title : input.ops ? 'Save this change to your config?' : said?.title ?? `Allow this: ${(tools[name]?.label ?? toolLabel(name)).toLowerCase()}?`;
   const detail = listed ? undefined : said?.detail ?? (said?.title ? undefined : plainInput(input));
   return (
@@ -226,7 +227,9 @@ function Confirmation({ p, name, approve, tools }: { p: any; name: string; appro
   function buttons() {
     return <>
       <button onClick={() => approve(p.approval.id, false)} className="press h-9 flex-1 rounded-full px-4 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:flex-none">{label('notNow')}</button>
-      <button onClick={() => approve(p.approval.id, true)} className={cn('press h-9 flex-1 rounded-full px-5 text-[14px] font-semibold sm:flex-none', said?.danger ? 'bg-bad text-white' : 'bg-white text-black')}>{said?.verb ?? label('allow')}</button>
+      {said?.danger ? <Hold verb={said.verb ?? label('allow')} onConfirm={() => approve(p.approval.id, true)} className="h-9 flex-1 rounded-full bg-bad px-5 text-[14px] font-semibold text-white sm:flex-none" />
+        // waits for the words: until they arrive nobody knows yet whether this one needs holding
+        : <button disabled={!listed && !said} onClick={() => approve(p.approval.id, true)} className="press h-9 flex-1 rounded-full bg-white px-5 text-[14px] font-semibold text-black transition-opacity disabled:opacity-40 sm:flex-none">{said?.verb ?? label('allow')}</button>}
     </>;
   }
 }

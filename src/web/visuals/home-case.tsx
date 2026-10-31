@@ -5,11 +5,11 @@ import { ChevronLeft, Pause, Play, Power, Sparkles, Zap, type LucideIcon } from 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { batteryNote, createHome, heard, near, restoreGroups, unsettled, wearNote, type LightChange, type PlanData, type PlanLight, type PlanRobot } from './home-model.ts';
-import { Cant, Roll, Said, Slots, StageTools, Swatch, useNote } from './note.tsx';
+import { Counter, ElasticSlider } from '../feel.tsx';
+import { Cant, Said, Slots, StageTools, Swatch, useNote } from './note.tsx';
 
 type Run = (action: string, args?: Record<string, unknown>) => Promise<void>;
 const WARMTH: [string, number, string][] = [['Candle', 2200, '#ffb46b'], ['Warm', 2700, '#ffc98f'], ['Neutral', 4000, '#ffe8d1'], ['Daylight', 6500, '#e6efff']];
@@ -33,7 +33,7 @@ function Reading({ label, note, value, tone }: { label: string; note: string; va
       </svg>
       <span className="flex-none font-medium">{label}</span>
       <span className={cn('min-w-0 truncate', tone === 'bad' ? 'text-bad' : tone === 'warn' ? 'text-warn' : 'text-muted-foreground')}>{note}</span>
-      <Roll value={`${value}%`} className="metric ml-auto flex-none text-[13px]" />
+      <Counter value={`${value}%`} className="metric ml-auto flex-none text-[13px]" />
     </div>
   );
 }
@@ -47,7 +47,7 @@ function LightRow({ dot, name, state, label, middle, control }: { dot?: string; 
         <span className="truncate" title={name}>{name}</span>
       </span>
       <span className="min-w-0">{middle}</span>
-      <Roll value={state} className="text-right text-[12px] text-muted-foreground" />
+      <Counter value={state} className="text-right text-[12px] text-muted-foreground" />
       {control}
     </div>
   );
@@ -141,7 +141,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
         <div key="all" className="space-y-2 animate-in fade-in duration-(--dur-pop)">
           <div className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1.5">
             {note ? <Said note={note} /> : <>
-              <Roll value={String(lit.length)} className="metric text-[22px] leading-none" />
+              <Counter value={String(lit.length)} className="metric text-[22px] leading-none" />
               <span className="text-[12.5px] text-muted-foreground">{lit.length === 1 ? 'light on' : 'lights on'}</span>
               <Pill icon={Power} disabled={!canAct || !lit.length} onClick={() => flip(lit, false, `Turned off ${plural(lit.length, 'light')}`)}>All off</Pill>
             </>}
@@ -178,11 +178,11 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
           {!room.lights.length && <Cant>No lights in this room. Add them under <code className="text-[11px]">floorplans → rooms</code>.</Cant>}
           {room.lights.length > 0 && <>
             <LightRow name="Whole room" label="Whole room" dot={lamped[0]?.color} state={lamped.length ? `${roomLevel || 100}%` : 'Off'}
-              middle={dims.length > 0 ? <Slider aria-label="Room brightness" disabled={!canAct} value={[roomLevel || 1]} min={1} max={100} step={1} onValueChange={([v]) => slide(dims, v)} onValueCommit={([v]) => change(dims, { on: true, brightness: v })} /> : <Cant>On/off only</Cant>}
+              middle={dims.length > 0 ? <ElasticSlider aria-label="Room brightness" disabled={!canAct} value={[roomLevel || 1]} min={1} max={100} step={1} onValueChange={([v]) => slide(dims, v)} onValueCommit={([v]) => change(dims, { on: true, brightness: v })} /> : <Cant>On/off only</Cant>}
               control={<Switch className="tap flex-none" disabled={!canAct || !lamps.length} checked={lamped.length > 0} aria-label={`${room.name}: whole room`} onCheckedChange={on => flip(lamps, on, `${room.name} ${on ? 'on' : 'off'}, ${plural(lamps.length, 'light')}`)} />} />
             {room.lights.map(l => (
               <LightRow key={l.id} name={l.name} label={l.name} dot={l.on ? l.color ?? '#ffd8a8' : undefined} state={!l.available ? '' : !l.on ? 'Off' : l.dims ? `${l.level}%` : 'On'}
-                middle={!l.available ? <Cant>Unavailable</Cant> : !l.on || room.lights.length === 1 ? null : l.dims ? <Slider aria-label={`${l.name} brightness`} disabled={!canAct} value={[l.level]} min={1} max={100} step={1} onValueChange={([v]) => slide([l], v)} onValueCommit={([v]) => change(l, { on: true, brightness: v })} /> : <Cant>On/off only</Cant>}
+                middle={!l.available ? <Cant>Unavailable</Cant> : !l.on || room.lights.length === 1 ? null : l.dims ? <ElasticSlider aria-label={`${l.name} brightness`} disabled={!canAct} value={[l.level]} min={1} max={100} step={1} onValueChange={([v]) => slide([l], v)} onValueCommit={([v]) => change(l, { on: true, brightness: v })} /> : <Cant>On/off only</Cant>}
                 control={<Switch className="tap flex-none" disabled={!canAct || !l.available} checked={l.on} aria-label={l.name} onCheckedChange={on => change(l, { on })} />} />
             ))}
             <div className="flex flex-wrap items-center gap-x-3 pt-0.5">

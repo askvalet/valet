@@ -3,9 +3,9 @@
 import { ChevronLeft } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
-import { Cant, Roll, Said, StageTools, Swatch, useNote } from './note.tsx';
+import { Counter, ElasticSlider } from '../feel.tsx';
+import { Cant, Said, StageTools, Swatch, useNote } from './note.tsx';
 import { createViewer, hex, PICKS, topFans, type Light, type Metric, type ModelData } from './pc-model.ts';
 
 
@@ -26,7 +26,7 @@ function MiniGauge({ m }: { m: Metric }) {
         <circle cx="16" cy="16" r={r} fill="none" stroke="currentColor" strokeOpacity=".14" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} />
         <circle cx="16" cy="16" r={r} fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${Math.max(.001, pct) * arc} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move)" />
       </svg>
-      <span className="leading-[1.3]"><span className="metric flex items-baseline gap-0.5 text-[13px]"><Roll value={String(m.value)} /><span className="text-[11px] font-medium text-muted-foreground">{m.unit}</span></span>
+      <span className="leading-[1.3]"><span className="metric flex items-baseline gap-0.5 text-[13px]"><Counter value={String(m.value)} /><span className="text-[11px] font-medium text-muted-foreground">{m.unit}</span></span>
         <span className="block text-[11px] text-muted-foreground">{m.label}</span></span>
     </span>
   );
@@ -138,9 +138,9 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
                   </Select></span>
               ) : <Cant className="flex-none">One effect only</Cant>}
               <span className="flex min-w-40 flex-1 items-center gap-2 text-[12.5px]"><span className="flex-none font-medium">Brightness</span>
-                <Slider className="min-w-16 flex-1" aria-label="Brightness" value={[zone?.brightness ?? 100]} min={5} max={100} step={5}
+                <ElasticSlider className="min-w-16 flex-1" aria-label="Brightness" value={[zone?.brightness ?? 100]} min={5} max={100} step={5}
                   onValueChange={([b]) => setDraft(d => ({ ...d, [light!]: { ...(lp.zones[0] ?? {}), brightness: b } }))} onValueCommit={([b]) => set({ brightness: b })} />
-                <Roll value={`${zone?.brightness ?? 100}%`} className="w-9 flex-none text-right text-muted-foreground" /></span>
+                <Counter value={`${zone?.brightness ?? 100}%`} className="w-9 flex-none text-right text-muted-foreground" /></span>
             </div>
           </>)}
           <Said note={note} />

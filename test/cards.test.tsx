@@ -8,6 +8,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { stateOf } from '../src/shared/cards.ts';
 import { checkCard } from '../src/shared/cards.schema.ts';
 import { MiniRing, SummaryTile, Widget } from '../src/web/cards.tsx';
+import { Counter, ElasticSlider, Hold, landing, pose, rubber } from '../src/web/feel.tsx';
 import { byDay, CalendarView, headsUp, span, splitToday, Thermostat, WeatherCard } from '../src/web/home-cards.tsx';
 import HomeCase from '../src/web/visuals/home-case.tsx';
 import { batteryNote, heard, near, restoreGroups, restoreOf, unsettled, wearNote, type PlanData, type PlanLight } from '../src/web/visuals/home-model.ts';
@@ -293,4 +294,54 @@ test('heatmap, stream and waffle: integer counts, and nothing drawn from nothing
   assert.ok(chartless({ type: 'heatmap', from: '2026-03-01', days: [0, 0] }));
   assert.ok(chartless({ type: 'chart', style: 'stream', series: [{ name: 'TV', points: [0, 0] }] }));
   assert.ok(!chartless({ type: 'chart', style: 'bars', series: [{ name: 'TV', points: [0, 0] }] }));
+test('feel: a throw lands on the stop its speed reaches, and rubber never passes its limit', () => {
+  const stops = [0, 100, 200, 300];
+  assert.equal(landing(40, 0, stops), 0);
+  assert.equal(landing(60, 0, stops), 100);
+  assert.equal(landing(100, 2000, stops), 300);
+  assert.equal(landing(100, -2000, stops), 0);
+  assert.equal(rubber(0, 36), 0);
+  assert.ok(rubber(1e6, 36) < 36 && rubber(1e6, 36) > 35);
+  assert.ok(rubber(-40, 36) < 0 && rubber(-40, 36) > -40, 'it gives, but less than the pointer moved');
+});
+
+test('feel: a pile: on top nothing is moved or dimmed, behind is smaller, thrown is gone', () => {
+  const at = (p: number) => pose(p) as Record<string, unknown>;
+  assert.equal(at(0).opacity, 1); assert.equal(at(0)['--dim'], 0); assert.match(String(at(0).transform), /translateX\(0\.00%\)/);
+  assert.equal(at(-1).opacity, 0);
+  assert.equal(at(1).opacity, 1, 'depth is a dim, not see-through: the next card must not show through');
+  assert.ok(Number(at(2)['--dim']) > Number(at(1)['--dim']));
+  assert.equal(at(3).opacity, 0, 'the one waiting behind is mounted but not seen');
+  const card = { type: 'article', title: 'Reading', more: [{ id: 'a', headline: 'One', link: 'http://x/1' }, { id: 'b', headline: 'Two', link: 'http://x/2' }, { id: 'c', headline: 'Three', link: 'http://x/3' }] };
+  const out = html(card, { run: true });
+  assert.match(out, /class="pile"/); assert.match(out, /One/); assert.match(out, /Two/);
+  assert.equal(out.match(/inert=""/g)?.length, 2, 'only the top card can be reached');
+  for (const l of ['Previous', 'Archive', 'Open', 'Next']) assert.match(out, new RegExp(`aria-label="${l}"`));
+  assert.doesNotMatch(html({ type: 'article', headline: 'Alone' }), /aria-label="Next"/);
+  assert.match(html({ type: 'article', headline: 'Alone' }), /is-single/);
+});
+
+test('feel: a row: shelves throw, and the desk stays a desk', () => {
+  const items = [{ title: 'A', href: 'http://x/a' }, { title: 'B', href: 'http://x/b' }];
+  assert.match(html({ type: 'shelf', title: 'Shelf', items }), /class="carousel /);
+  assert.match(html({ type: 'shelf', title: 'Shelf', items }), /carousel-face/);
+  assert.match(html({ type: 'shelf', layout: 'desk', title: 'Docs', items }), /desk carousel/);
+  assert.match(html({ type: 'shelf', layout: 'desk', title: 'Docs', items }), /desk-page/);
+});
+
+test('feel: hold says what it does, keeps a way that needs no holding, and nothing fires on render', () => {
+  let fired = 0;
+  const out = renderToString(<Hold verb="Stop" onConfirm={() => fired++} />);
+  assert.match(out, /Hold to stop/); assert.match(out, /Press again/); assert.match(out, /aria-label="Stop\. Asks for a second press"/);
+  assert.match(out, /hold-fill/); assert.equal(fired, 0);
+});
+
+test('feel: the slider keeps its range and value, and a Counter says the whole number once, unanimated at first', () => {
+  const s = renderToString(<ElasticSlider value={[40]} min={1} max={100} onValueCommit={() => {}} aria-label="Brightness" />);
+  assert.match(s, /role="slider"/); assert.match(s, /aria-valuemax="100"/); assert.match(s, /class="elastic"/);
+  const n = renderToString(<Counter value="42%" />);
+  assert.match(n, /sr-only">42%/); assert.doesNotMatch(n, /digit-new/);
+  assert.equal(n.match(/class="digit"/g)?.length, 3);
+  const word = renderToString(<Counter value="Off" />);
+  assert.doesNotMatch(word, /digit/); assert.doesNotMatch(word, /tick/);
 });

@@ -101,8 +101,15 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   never `transition: all`. Reduced motion lives in one rule near the top of `styles.css`, not beside each animation: new
   motion needs nothing, and hover or press movement scales by `--move`. `stage.css` and `pc-case.css` keep their own
   media rule because they ship with the exported model.
+- **Feel lives in `feel.tsx`** (rewritten from Arc UI's free MIT items; nothing is imported, and the Pro items are unlicensed
+  here). `useRow` + `Arrows`: rows scroll natively, so touch keeps the phone's momentum and vertical scroll, and a mouse can
+  throw them; `Pile`: the reading card; `Hold`: anything `danger`, where a quick press asks for a second one, with no clock;
+  `ElasticSlider`: Radix's slider with give at the ends; `Counter`: every number that changes, still on first paint and
+  faster than 1.5 s; `toast(key, note)`: the page's stack, only for what piles up or a note whose place is out of view, with
+  `by` to stay beside the action on a large screen. A note beside its control stays there. A gesture writes transform and
+  opacity directly and hands off to a CSS transition, so it can be caught mid-flight; `still()` reads `--move` for what JS moves.
 - **Alive, not busy.** Motion explains a change. The chat shows work happening (a shimmering label with a timer, tool
-  calls as chips that settle into a collapsed "n steps"), words fade in as they stream. Live numbers crossfade. Anything
+  calls as chips that settle into a collapsed "n steps"), words fade in as they stream. Live numbers change digit by digit (`Counter`). Anything
   that happens many times a day stays still: no loops on status elements, no entrances on a tab or a load, no charts
   redrawing. A card fades up only from its skeleton. What must loop (a model's fans, a chat.beam someone asked for) rests
   off screen (`useOnScreen`, `.is-away`).
