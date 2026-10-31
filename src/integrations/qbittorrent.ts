@@ -101,7 +101,8 @@ export default defineIntegration({
               state: t.state === 'pausedDL' || t.state === 'stoppedDL' ? 'paused' : t.state === 'stalledDL' || t.state === 'metaDL' ? 'buffering' : 'playing',
               remaining: `${Math.floor(t.progress * 100)}%${t.eta < 8640000 ? ` · ${fmt.duration(t.eta)} left` : ''}`, icon: 'download',
               tags: [m?.subtitle, m?.quality, word(t), t.state !== 'metaDL' && `${fmt.bytes(t.amount_left)} left`].filter(Boolean) as string[],
-              detail: label(t) };
+              detail: label(t),
+              ...(isStuck(t) && { stall: { word: t.state === 'metaDL' ? 'Finding peers' : 'Stalled', since: t.last_activity ? t.last_activity * 1000 : undefined, why: t.num_seeds ? undefined : 'no peers' } }) };
           });
           const first = items[dl.indexOf(moving[0])];
           return {
