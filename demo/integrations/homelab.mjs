@@ -75,6 +75,10 @@ const WATCHED = [['Severance', 'tv', 1, [11, 5, 2]], ['The Bear', 'tv', .5, [12,
 const playsOf = kind => sum(WATCHED.filter(w => w[1] === kind).map(w => sum(w[3])));
 const hoursOf = viewer => sum(WATCHED.map(([, , h, by]) => h * by[viewer]));
 const LAST_30 = 'last 30 days';
+// The year behind it, for the race and the year in review: [title, hours a play, plays, how far through the year it peaked]. The last
+// step of each is its share of WATCHED above; the rest of the 612 hours went on titles that never reached the board.
+const YEAR = [['Severance', 1, 96, .76], ['The Bear', .5, 164, .52], ['Andor', .75, 88, .3], ['Shōgun', 1, 52, .08], ['Interstellar', 3, 9, .6], ['Arrival', 2, 12, .42], ['Spirited Away', 2, 10, .16], ['Blade Runner 2049', 3, 6, .68], ['The Grand Budapest Hotel', 1.5, 8, .24]];
+const YEAR_HOURS = 612, YEAR_PLAYS = 1048, WEEKDAYS = [113, 88, 96, 104, 121, 312, 214];   // Sunday first: more of the year's plays start on a Friday
 const UNSEEN = SHELF.find(t => !WATCHED.some(w => w[0] === t));
 // One pair of numbers for the Pi-hole card, its tile and the year in review
 const BLOCK_RATE = .14, blockPct = `${Math.round(BLOCK_RATE * 100)}%`, BLOCKED_YEAR = 6_204_118, OFFENDERS = [['ads.example.net', .31], ['telemetry.example.com', .22], ['tracker.example.org', .14], ['metrics.example.io', .07]];
@@ -83,6 +87,16 @@ const dnsDay = () => {
   const slot = Math.floor(now() / 18e5), asked = past(48, 400, 2600, 18e5).map(Math.round), total = sum(asked);
   const blocks = share(Math.round(total * BLOCK_RATE), asked.map((v, i) => v * (1 + .35 * Math.sin((slot + i) / 5))));
   return { asked, blocks, total, blocked: sum(blocks) };
+};
+/** The year as running hours per title, a step a month, from January to this month (or all of last year, when this one's barely begun). */
+const yearRace = () => {
+  const d = new Date(now()), n = d.getMonth() >= 2 ? d.getMonth() + 1 : 12, name = i => new Date(d.getFullYear(), i).toLocaleDateString('en', { month: 'short' });
+  const items = YEAR.map(([title, hours, plays, peak]) => {
+    const recent = sum(WATCHED.find(w => w[0] === title)?.[3] ?? []), early = share(plays - recent, Array.from({ length: n - 1 }, (_, i) => .015 + Math.exp(-1 * ((i + .5) / (n - 1) - peak) ** 2 / .0225)));
+    let run = 0;
+    return { title, image: poster(title), points: [...early, recent].map(p => (run += p) * hours) };
+  });
+  return { steps: Array.from({ length: n }, (_, i) => name(i)), items: items.sort((a, b) => b.points[n - 1] - a.points[n - 1]), unit: 'h' };
 };
 const MEMORY = [21, 64], STORAGE = [11.6, 20], gpuWatts = 38;
 const pctOf = ([used, all]) => Math.round(used / all * 100);
@@ -295,6 +309,7 @@ export default ({ z, defineIntegration }) => {
   const ymd = n => { const d = new Date(now() + n * 864e5); return [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(x => String(x).padStart(2, '0')).join('-'); };
   const inDays = n => new Date(now() + n * 864e5).toLocaleDateString('en', { month: 'short', day: 'numeric' });
   const drives = [['Backup 12 TB', 38, '3.1 years'], ['Media 8 TB', 41, '1.8 years'], ['System NVMe', 58, '244 days']], hottest = drives.reduce((a, b) => b[1] > a[1] ? b : a), HOT = 55;
+  const lastMonth = () => ({ tv: share(playsOf('tv'), past(30, .2, 4, 864e5)), movies: share(playsOf('movie'), past(30, .1, 2, 7e7)) });
   const statusCard = (title, icon, items) => ({ type: 'status', title, icon, items });
   const containers = () => ['bazarr', 'caddy', 'home-assistant', 'immich', 'immich-postgres', 'immich-redis', 'karakeep', 'mealie', 'paperless', 'pi-hole', 'plex', 'prowlarr', 'qbittorrent', 'radarr', 'sonarr', 'tautulli', 'uptime-kuma']
     .map(n => {
@@ -327,11 +342,11 @@ export default ({ z, defineIntegration }) => {
             buttons: off ? undefined : [{ label: 'Pause 5 min', action: 'pause', args: { minutes: 5 } }, { label: 'Pause 1 hour', action: 'pause', args: { minutes: 60 } }],
             series: [{ name: 'Blocked', tone: 'bad', points: blocks, total: blocked }, { name: 'Allowed', points: asked.map((v, i) => v - blocks[i]), total: total - blocked }],
             facts: OFFENDERS.map(([label, part]) => ({ label, value: Math.round(blocked * part).toLocaleString('en') })),
-            summary: { label: 'Ads blocked', icon: 'shield', value: blocked.toLocaleString('en'), ring: pct, tone: 'good', sub: `${pct} of queries · 24 hours`, trend: blocks, pct: blocked / total } }; }),
+            summary: { label: 'Ads blocked', icon: 'shield', value: blocked.toLocaleString('en'), ring: pct, tone: 'good', sub: `${pct} of queries · 24 hours`, trend: blocks, pct: blocked / total, waffle: true } }; }),
         updates: w('Updates', 3_600_000, () => ({ type: 'list', layout: 'chips', title: 'Updates', icon: 'tag', limit: 6,
           items: [{ title: 'immich', subtitle: 'v2.5.0 → v3.0.0', badge: 'Read first', tone: 'warn' }, { title: 'paperless', subtitle: '3.1.0 → 4.0.0', badge: 'Major' }, ...[['karakeep', '0.33.2 → 0.34.0'], ['plex', '1.42.1 → 1.42.2'], ['sonarr', '4.0.14 → 4.0.15'], ['radarr', '5.26.2 → 5.27.0'], ['bazarr', '1.5.2 → 1.5.3'], ['prowlarr', '1.37.0 → 1.38.0'], ['qbittorrent', '5.1.1 → 5.1.2'], ['caddy', '2.10.0 → 2.10.2'], ['pi-hole', '2025.08.0 → 2025.10.0'], ['uptime-kuma', '1.23.16 → 1.23.17'], ['home-assistant', '2026.10.3 → 2026.10.4']].map(([title, subtitle]) => ({ title, subtitle }))] })),
         jobs: w('Scheduled jobs', 60_000, () => ({ type: 'list', layout: 'chips', title: 'Scheduled jobs', icon: 'clock', items: [{ title: 'Nightly backup', subtitle: `ran ${(new Date(now()).getHours() + 20) % 24}h ago`, meta: `next ${24 - (new Date(now()).getHours() + 20) % 24}h` }, { title: 'Photo sync', subtitle: 'ran 12m ago', meta: 'next 3m' }, { title: 'Disk check', subtitle: 'ran 9h ago', meta: 'next 15h' }] })),
-        system: w('System', 5_000, () => { const cpu = cpuLoad(), gpu = gpuLoad(), gauge = (label, icon, v, detail, lo, hi) => ({ label, icon, value: `${v}%`, ring: `${v}%`, pct: v / 100, tone: 'good', detail, trend: past(48, lo, hi, 300_000) });
+        system: w('System', 5_000, () => { const cpu = cpuLoad(), gpu = gpuLoad(), gauge = (label, icon, v, detail, lo, hi) => ({ label, icon, value: `${v}%`, ring: `${v}%`, pct: v / 100, tone: 'good', detail, trend: past(48, lo, hi, 300_000), every: 300_000 });
           return { type: 'stats', title: 'System', icon: 'cpu', items: [{ label: 'CPU', value: cpu, unit: '%' }], summaries: [gauge('CPU', 'cpu', cpu, `${Math.round(cpuTemp())}°C`, 4, 20), gauge('Memory', 'memory', pctOf(MEMORY), `${MEMORY[0]} of ${MEMORY[1]} GB`, 29, 37), gauge('GPU', 'gpu', gpu, `${Math.round(gpuTemp())}°C`, 1, 11), gauge('Storage', 'disk', pctOf(STORAGE), `${STORAGE[0]} of ${STORAGE[1]} TB`, 56, 59)] }; }),
         weather: w('Weather', 900_000, weather),
         calendar: w('Calendar', 900_000, calendar),
@@ -359,8 +374,13 @@ export default ({ z, defineIntegration }) => {
           items: SHELF.map((title, i) => ({ title, subtitle: String(ART.films[title].year), image: poster(title), href: poster(title), backdrop: backdrop(title), badge: i < 2 ? 'Today' : i < 5 ? 'This week' : 'This month' })) })),
         mostwatched: w('Most watched', 3_600_000, () => { const top = WATCHED.map(([, , h, by]) => h * sum(by)), most = Math.max(...top);
           return { type: 'ranked', title: 'Most watched', icon: 'film', note: `Everyone · ${LAST_30}`, items: WATCHED.map(([title, , , by], i) => ({ title, value: `${top[i]}h · ${sum(by)} plays`, pct: top[i] / most, image: poster(title), backdrop: i ? undefined : photo(`${title}b`, 800, 400) })) }; }),
-        plays: w('Plays', 3_600_000, () => { const tv = share(playsOf('tv'), past(30, .2, 4, 864e5)), movies = share(playsOf('movie'), past(30, .1, 2, 7e7));
-          return { type: 'chart', style: 'bars', title: 'Plays', icon: 'chart', headline: `${sum(tv) + sum(movies)} plays`, span: LAST_30, from: now() - 29 * 864e5, to: now(), labels: tv.map((_, i) => inDays(i - 29)), series: [{ name: 'TV', tone: 'accent', points: tv }, { name: 'Movies', points: movies }] }; }),
+        plays: w('Plays', 3_600_000, () => { const { tv, movies } = lastMonth();
+          return { type: 'chart', style: 'stream', title: 'Plays', icon: 'chart', headline: `${sum(tv) + sum(movies)} plays`, span: LAST_30, from: now() - 29 * 864e5, to: now(), labels: tv.map((_, i) => inDays(i - 29)), series: [{ name: 'TV', tone: 'accent', points: tv }, { name: 'Movies', points: movies }] }; }),
+        race: w('The year so far', 21_600_000, () => { const r = yearRace(), lead = r.items[0];
+          return { type: 'race', title: 'The year so far', icon: 'film', span: `Hours watched in ${new Date(now()).getFullYear()}`, ...r, summary: { label: 'The year so far', value: lead.title, sub: `${lead.points.at(-1)} h`, image: lead.image } }; }),
+        viewing: w('Viewing', 21_600_000, () => { const { tv, movies } = lastMonth(), r = rng(`plays${dateOf(new Date(now()))}`), start = now() - 364 * 864e5;
+          const before = share(YEAR_PLAYS - playsOf('tv') - playsOf('movie'), Array.from({ length: 335 }, (_, i) => { const home = .55 + .45 * Math.sin(i / 335 * 19) * Math.sin(i / 335 * 7); return r() < .42 - home * .3 ? 0 : WEEKDAYS[new Date(start + i * 864e5).getDay()] * home * (.25 + r()); }));
+          return { type: 'heatmap', title: 'Viewing', icon: 'calendar', from: dateOf(new Date(start)), days: [...before, ...tv.map((n, i) => n + movies[i])], unit: 'play', span: 'last 12 months' }; }),
         people: w("Who's watching", 3_600_000, () => { const most = Math.max(...VIEWERS.map((_, i) => hoursOf(i))); return { type: 'list', title: "Who's watching", icon: 'play', note: 'Everyone', items: [{ title: VIEWERS[0], subtitle: stream().title, section: 'Watching now' }, ...VIEWERS.map((title, i) => ({ title, meta: `${hoursOf(i)}h`, pct: hoursOf(i) / most, section: 'Last 30 days' }))] }; }),
         week: w('Coming up', 3_600_000, () => ({ type: 'shelf', title: 'Coming up', icon: 'film', aspect: 'poster', layout: 'week',
           items: CALENDAR.map(([n, title, badge, subtitle = episode]) => ({ at: ymd(n), badge: badge ?? inDays(n), cta: badge ? { label: 'Open in Plex', href: poster(title) } : undefined, title, subtitle, image: poster(title), href: poster(title) })) })),
@@ -402,8 +422,9 @@ export default ({ z, defineIntegration }) => {
           { id: 'grafana', logo: '/api/icon/grafana', theme: 'ops', icon: 'chart', kicker: 'You built', value: '37', unit: 'dashboards', stat: 'Dashboards', score: 57, scope: 'All time', line: 'Fed by 6 data sources. Some of them you even look at.' },
           { id: 'watching', logo: '/api/icon/changedetection', theme: 'ops', icon: 'pulse', kicker: 'You are keeping an eye on', value: '58', unit: 'pages', stat: 'Pages watched', score: 51, scope: 'Right now', line: 'If any of them change, you hear about it first.' },
           { id: 'code', logo: '/api/icon/forgejo', theme: 'code', icon: 'file', kicker: 'Your own forge holds', value: '83', unit: 'repositories', stat: 'Repositories', score: 59, scope: 'All time', line: 'In Forgejo, on hardware you run.' },
-          { id: 'watch.hours', theme: 'media', icon: 'play', wall: true, art: FILMS.map(poster), kicker: 'You watched', value: '612', unit: 'hours', stat: 'Hours watched', score: 95, scope: 'year', facts: { watchedHours: 612 }, line: '1,048 plays, all from your own server.' },
-          { id: 'watch.top', theme: 'media', icon: 'film', backdrop: backdrop(FILMS[5]), kicker: 'Your most watched', value: FILMS[5], line: '41 plays and 38 h, more time than anything else this year.', score: 90, scope: 'year', items: [[FILMS[5], '38 h'], [FILMS[2], '21 h'], [FILMS[3], '17 h'], [FILMS[1], '12 h'], [FILMS[4], '9 h']].map(([name, value]) => ({ name, value, image: poster(name) })) },
+          { id: 'watch.hours', theme: 'media', icon: 'play', wall: true, art: FILMS.map(poster), kicker: 'You watched', value: String(YEAR_HOURS), unit: 'hours', stat: 'Hours watched', score: 95, scope: 'year', facts: { watchedHours: YEAR_HOURS }, line: `${YEAR_PLAYS.toLocaleString('en')} plays, all from your own server.` },
+          (() => { const race = yearRace(), [top, ...rest] = race.items, final = i => i.points.at(-1), [, , plays] = YEAR.find(y => y[0] === top.title), held = top.points.findLastIndex((p, i) => race.items.some(o => o.points[i] > p)) + 1;
+            return { id: 'watch.top', theme: 'media', icon: 'film', backdrop: backdrop(top.title), kicker: 'Your most watched', value: top.title, line: `${plays} plays and ${final(top)} h, more time than anything else this year. In front from ${race.steps[held]}.`, score: 90, scope: 'year', race, items: [top, ...rest].slice(0, 5).map(i => ({ name: i.title, value: `${Math.round(final(i))} h`, image: i.image })) }; })(),
           { id: 'library.added', theme: 'media', icon: 'film', wall: true, kicker: 'Your library grew by', value: '186', unit: 'titles', stat: 'Titles added', score: 80, scope: 'year', facts: { libraryHours: 3100 }, line: '171 films and 15 shows joined. The whole collection now takes up 6.2 TB.' },
           { id: 'seed.ratio', theme: 'network', icon: 'download', kicker: 'Your share ratio', value: (givenTb / takenTb).toFixed(2), stat: 'Share ratio', score: 75, scope: 'All time', facts: { uploadedBytes: givenTb * 1e12, downloadedBytes: takenTb * 1e12 }, line: `For every byte you took, ${(givenTb / takenTb).toFixed(2)} went back.`, bars: [{ label: 'Taken', value: takenTb, show: `${takenTb} TB` }, { label: 'Given back', value: givenTb, show: `${givenTb} TB` }], trait: { name: 'The Generous Seeder', line: 'You give back far more than you take, and somewhere a stranger finished their download because of you.', strength: .8 } },
           { id: 'dns.blocked', theme: 'network', icon: 'shield', kicker: 'Pi-hole stopped', value: BLOCKED_YEAR.toLocaleString('en'), unit: 'requests', stat: 'Ads blocked', score: 72, scope: 'year', line: `That's ${blockPct} of everything your devices tried to look up, across 23 devices. The worst offenders:`, bars: OFFENDERS.slice(0, 3).map(([label, part]) => { const value = Math.round(BLOCKED_YEAR * part); return { label, value, show: value.toLocaleString('en') }; }) },
