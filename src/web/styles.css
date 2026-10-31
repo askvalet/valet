@@ -129,7 +129,7 @@
 .tabular { font-variant-numeric: tabular-nums; }
 .metric { font-weight: 600; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; }
 
-.dot { width: 7px; height: 7px; border-radius: 999px; flex: none; }
+.dot { width: 7px; height: 7px; border-radius: 999px; flex: none; transition: background-color var(--dur-move) var(--ease-out), box-shadow var(--dur-move) var(--ease-out); }
 .dot-good { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 18%, transparent); }
 .dot-bad { background: var(--bad); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 20%, transparent); }
 .dot-warn { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 20%, transparent); }
@@ -573,7 +573,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .fact b { font-weight: 500; color: var(--foreground); font-variant-numeric: tabular-nums; }
 /* the wall: icons, and only trouble gets a word */
 .wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); grid-auto-flow: dense; gap: 8px; }
-.wall-tile { position: relative; display: grid; place-items: center; aspect-ratio: 1; border-radius: 13px; background: rgb(255 255 255 / .07); transition: background-color var(--dur-press) var(--ease-out); }
+.wall-tile { position: relative; display: grid; place-items: center; aspect-ratio: 1; border-radius: 13px; background: rgb(255 255 255 / .07); transition: background-color var(--dur-press) var(--ease-out), box-shadow var(--dur-move) var(--ease-out); }
 .wall-tile img, .wall-tile > span { width: 22px; height: 22px; }
 .wall-tile::after { content: ''; position: absolute; right: 4px; bottom: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 2px var(--card); }
 .wall-tile.is-off > img, .wall-tile.is-off > span { opacity: .4; } .wall-tile.is-off::after { background: var(--card); box-shadow: 0 0 0 2px var(--card), inset 0 0 0 1.5px var(--muted-foreground); }
