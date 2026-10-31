@@ -29,6 +29,7 @@ integrations:
     type: demo-homelab
 
 chat: { beam: always }
+hero: { scope: [downloads, lights, what to watch] }
 
 menubar: [lab.system]
 weather: lab.weather
@@ -39,9 +40,15 @@ island:
   idle: hide
 
 layout:
+  - title: Now
+    heading: false
+    tab: Media
+    columns: 2
+    widgets: [lab.streams, lab.downloads]
   - title: Services
     variant: minimal
     header: false
+    favorites: [Plex, Home Assistant, Immich, Paperless, Mealie]
     widgets: [lab.services]
   - tab: Services
     heading: false
@@ -66,10 +73,15 @@ layout:
       - { widget: lab.thermostat, size: medium }
   - tab: Home
     heading: false
-    columns: 2
-    tabColumns: 1
+    columns: 1
     header: false
-    widgets: [lab.home, lab.pc]
+    widgets: [lab.home]
+  - tab: Home
+    heading: false
+    overview: false
+    columns: 1
+    header: false
+    widgets: [lab.pc]
   - tab: Home
     heading: false
     header: false
@@ -77,11 +89,6 @@ layout:
     widgets:
       - { widget: lab.weather, size: medium }
       - { widget: lab.calendar, size: large }
-  - title: Now
-    heading: false
-    tab: Media
-    columns: 2
-    widgets: [lab.streams, lab.downloads]
   - widgets:
       - { widget: lab.sky, size: medium }
       - { widget: lab.photos, size: tall }
