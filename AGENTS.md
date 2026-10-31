@@ -156,6 +156,8 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   things go through a portal to the body (the cameras' theatre does).
 - **SSE keeps pages busy**: headless tools waiting for network idle never finish; wait a fixed time instead.
 
-- **Three small libraries from libraries.dev are in on purpose**, pinned exactly: `thinking-orbs` (the chat's working states and the
-  recap's loading), `border-beam` (the approval card) and `metal-fx` (the review pill, lazy). All MIT, no dependencies, no network. Left out:
+- **cmdk 1.1.1 doesn't reorder groups.** Its `filter` orders the items inside a group and never the groups themselves, so
+  `palette.tsx` scores each group with `rank` and sorts them itself. A new group goes in that list, not straight into the JSX.
+- **Two small libraries from libraries.dev are in on purpose**, pinned exactly: `thinking-orbs` (the chat's working states and the
+  recap's loading) and `border-beam` (the approval card). All MIT, no dependencies, no network. Left out:
   `img-fx` needs three.js, `liquid-gooey` lags the island's spring, `bot-avatars` and `voice-glow` have no job here yet.

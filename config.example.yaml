@@ -39,6 +39,7 @@ integrations:
     type: arr                      # Sonarr/Radarr: episodes and movies coming up, as posters with the day
     sonarr: { url: "http://sonarr:8989", apiKey: "${SONARR_KEY}" }
     radarr: { url: "http://radarr:7878", apiKey: "${RADARR_KEY}" }
+    # plex: https://plex.example.com   # Plex's web address: what's ready then opens there
   dns:
     type: pihole                   # Pi-hole v6: blocked share, a day of queries, pause/resume
     url: http://pihole
@@ -74,6 +75,7 @@ integrations:
     type: seerr                    # ask for a movie or show in chat and it's requested (asks you to confirm first)
     url: http://seerr:5055
     apiKey: ${SEERR_KEY}
+    # downloads: https://qbittorrent.example.com   # where "See progress" goes; without it, Seerr's own page for the title
   bookmarks:
     type: karakeep                 # send a link to save it; ask about what you've saved
     url: http://karakeep:3000

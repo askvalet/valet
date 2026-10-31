@@ -59,7 +59,8 @@ layout:
 someone is looking (default 10 s). Widgets that aren't in the layout are never polled.
 
 **`actions`** are what homepage controls call. A `controls` card item names an action and its args; when the person
-flips a toggle, Valet runs the action and refreshes the integration's widgets right away.
+flips a toggle, Valet runs the action and refreshes the integration's widgets right away. An action may return
+`{ done: 'Archived a saved link' }`: that's what the activity log says it did, in place of the integration and action name.
 
 **`tools`** are what the assistant may call. Write `description` for the model: what it returns and when to use it.
 Return `data` (compact JSON the model reads) and optionally a `card` (what the person sees). Give it a `label`: what it
@@ -125,6 +126,27 @@ Any card can also carry:
 - `summary` (or `summaries`): its headline, shown when the widget is placed with `size: small`, in the menubar, or as a tile.
 - `activity`: set only while something is happening; the island shows it.
 - `buttons`: quick actions along the bottom (`{ label, action, args }`), run through the integration's `actions`.
+- `banner`: a state the person chose and shouldn't forget, at the top of the card: `{ text, until, tone, button }`, as in
+  "Blocking paused until 14:05" with Resume beside it. `until` is in milliseconds.
+
+Some cards and rows take a little more:
+
+| Field | On | What it does |
+|---|---|---|
+| `state` | `status` item | `up`, `degraded`, `down` or `off`, when `ok` and `quiet` can't say it. Anything that counts running services should use `stateOf`, not `ok` |
+| `window` | `chart` | what the columns cover, under them: "last 24 h" |
+| `factsNote` | `chart` | what the chips under it are: "Most blocked · last 24 h" |
+| `series[].total` | `chart` | the service's own figure, when summing the points would disagree with the headline |
+| `limit` | `list` | how many rows show before the rest fold away |
+| `band` | `list` item, `layout: temps` | the normal stretch of the track, `[low, high]`, each 0..1 |
+| `section` | `list` item | a quiet heading wherever it changes: "Watching now" above "Last 30 days" |
+| `cta` | `shelf` item | its next step, `{ label, href }`, which the whole tile then opens: "Open in Plex", "See progress" |
+| `doc` | `shelf` item | a document's `{ sender, date, type }`: its columns in list view |
+| `archived` | `shelf`, `article` | a link to where archived things go |
+| `stall` | `media` item | a download getting nowhere: `{ word, since, why, next }`. `since` is when it last moved, in milliseconds; `next` is the step offered on its row, a link or an action |
+| `sample` | `cameras` | recorded footage: the card never calls it live |
+
+An `article` card with an `archive` action needs an `unarchive` one too, both taking `{ id }`: Undo calls it.
 
 Weather icons (`sun`, `moon`, `cloud`, `cloud-sun`, `cloud-moon`, `rain`, `snow`, `storm`, `fog`) are drawn as glyphs on
 `forecast` cards and on tiles. A `calendar` event's colour is its `color`, or a stable one picked from `calendar`'s name.
