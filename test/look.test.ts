@@ -23,7 +23,7 @@ test('defaults: an old config keeps the old look, to the letter', () => {
   assert.deepEqual(c.nav, { side: 'top', style: 'icons', hide: [], size: 1 });
   assert.equal(c.island?.position, 'top');
   assert.deepEqual(c.hero, { greeting: true, status: true, search: true, review: true, align: 'center' });
-  assert.deepEqual(c.chat, { open: 'center', overview: true, suggestions: 'ai', steps: true, thinking: 'collapsed', send: 'enter', beam: 'off', beamColor: 'colorful' });
+  assert.deepEqual(c.chat, { open: 'center', overview: true, suggestions: 'ai', steps: true, thinking: 'collapsed', send: 'enter', beam: 'off', beamColor: 'colorful', beamStrength: .45 });
   assert.deepEqual(c.format, { clock: 'auto', date: 'short', weekStart: 'auto', temperature: 'auto', distance: 'auto', locale: 'auto' });
   assert.equal(c.appearance.theme, 'auto');
   assert.equal(c.appearance.dim, .35);

@@ -10,7 +10,7 @@ export function ChatBeam({ ui, busy, className, children }: { ui?: ChatUi; busy?
   const on = mode === 'always' || (mode === 'focus' && typing) || (mode === 'thinking' && !!busy);
   return (
     <div className={className} onFocus={() => setTyping(true)} onBlur={() => setTyping(false)}>
-      <Suspense fallback={children}><BorderBeam active={on} colorVariant={ui?.beamColor ?? 'colorful'} style={{ display: 'block', width: '100%' }}>{children}</BorderBeam></Suspense>
+      <Suspense fallback={children}><BorderBeam active={on} colorVariant={ui?.beamColor ?? 'colorful'} strength={ui?.beamStrength ?? .45} duration={5} style={{ display: 'block', width: '100%' }}>{children}</BorderBeam></Suspense>
     </div>
   );
 }

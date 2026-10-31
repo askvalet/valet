@@ -144,9 +144,9 @@
 /* appearance.font and appearance.shape: each falls back to what the design had */
 [data-slot="card-title"], main h2, .hero-title { font-weight: var(--heading-weight, revert-layer); }
 [data-slot="card"]:not(.border-0) { border-width: var(--card-border, 1px); }
-.no-shadow :is(.lift:hover, .glass-bar, .glass-round, .nav-pill) { box-shadow: none !important; }
+.no-shadow :is(.lift:hover, .glass-bar, .glass-round) { box-shadow: none !important; }
 /* pills follow the radius, so squaring it off squares them too; at the design's radius this works out to fully round */
-.glass-bar, .glass-round, .nav-pill { border-radius: calc(var(--radius) * 40) !important; }
+.glass-bar, .glass-round { border-radius: calc(var(--radius) * 40) !important; }
 form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 /* no blur means none, utilities included: glass without frost, which is what asking for it looks like */
 .no-blur *, .no-blur *::before, .no-blur *::after { backdrop-filter: none !important; }
@@ -222,7 +222,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .1), 0 10px 30px -12px rgb(0 0 0 / .6); }
 .glass-bar::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--bar-bg);
   backdrop-filter: var(--bar-blur); }
-.glass-pop { --pop-blur: blur(calc(60px * var(--frost, 1))) saturate(1.8); border-radius: calc(var(--radius) * 1.4); background: var(--glass-sheet, rgb(24 24 28 / .78));
+.glass-pop { --pop-blur: blur(calc(60px * var(--frost, 1))) saturate(1.8); border-radius: calc(var(--radius) * 1.4); background: var(--glass-sheet, rgb(24 24 28 / .96));
   backdrop-filter: var(--pop-blur); box-shadow: 0 24px 60px -20px rgb(0 0 0 / .7); }
 .glass-pop [data-slot="card"] { background: transparent !important; backdrop-filter: none !important; }
 /* the round glass controls are the same material as the cards */
@@ -301,13 +301,10 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .dock button { width: calc(var(--nav-size, 44px) * var(--k, 1)); height: calc(var(--nav-size, 44px) * var(--k, 1)); transition: width 220ms var(--ease-out), height 220ms var(--ease-out), color 160ms var(--ease-out), background-color 160ms var(--ease-out); }
 .dock button svg { width: calc(var(--nav-size, 44px) / 44 * 18 * var(--k, 1)) !important; height: calc(var(--nav-size, 44px) / 44 * 18 * var(--k, 1)) !important; transition: width 220ms var(--ease-out), height 220ms var(--ease-out); }
 .dock.is-docking button, .dock.is-docking button svg { transition-duration: 70ms; }
-.dock.is-docking .nav-pill { transition: transform 90ms var(--ease-out), width 70ms linear, height 70ms linear; }
 /* nav.style: buttons that say what they are grow to fit the word */
 .dock:not([data-style="icons"]) button { display: flex; align-items: center; gap: .5rem; width: auto; min-width: var(--nav-size, 44px); padding: 0 1rem; font-size: 14px; font-weight: 500; white-space: nowrap; }
-/* the selected tab's pill slides from one button to the next */
-.nav-pill { position: absolute; top: 0; left: 0; border-radius: 999px; background: var(--nav-pill, #fff); box-shadow: 0 8px 20px -8px rgb(0 0 0 / .5);
-  transition: transform 340ms var(--ease-drawer), width 240ms var(--ease-out), height 240ms var(--ease-out); pointer-events: none; }
-.glass-round.is-on { background: transparent !important; border-color: transparent; box-shadow: none; backdrop-filter: none; color: var(--nav-pill-ink, #000); }
+/* the selected tab: the button itself, so it can never come apart from it */
+.glass-round.is-on { background: var(--nav-pill, #fff) !important; border-color: transparent; box-shadow: 0 8px 20px -8px rgb(0 0 0 / .5); backdrop-filter: none; color: var(--nav-pill-ink, #000); }
 .glass-light { --nav-pill: var(--primary); --nav-pill-ink: var(--primary-foreground); }
 .glass-light .send-round { background: var(--primary); color: var(--primary-foreground); }
 /* menubar and island: their own size, and the rings without their words */
@@ -476,3 +473,46 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .article::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to top, rgb(10 10 16 / .96) 8%, rgb(10 10 16 / .82) 42%, rgb(10 10 16 / .12) 78%); }
 .article-text { min-width: 0; padding: 18px 20px; }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) { .article:hover .article-page { transform: translateY(max(-60%, calc(-100% + 100cqh))); transition-duration: 14s; transition-timing-function: linear; } }
+
+/* documents on a desk: dealt out one by one, and hover picks a page up */
+.desk { display: flex; gap: 0; padding: 18px 10px 6px; overflow-x: auto; scrollbar-width: none; }
+.desk-page { position: relative; flex: 1 0 150px; max-width: 200px; min-width: 0; margin-inline: 2px; padding-inline: 3px; transform: rotate(var(--tilt)); transition: transform 320ms var(--ease-out); animation: desk-deal 560ms var(--ease-out) calc(var(--i) * 65ms) backwards; }
+.desk-sheet { position: relative; display: block; aspect-ratio: 8.5 / 11; overflow: hidden; border-radius: 6px; background: #fbfaf6; box-shadow: 0 1px 1px rgb(0 0 0 / .3), 0 14px 26px -12px rgb(0 0 0 / .65); transition: box-shadow 320ms var(--ease-out); }
+.desk-stamp { position: absolute; right: 10px; bottom: 12px; rotate: -9deg; padding: 1px 7px; border: 1.5px solid currentColor; border-radius: 4px; color: #c2352b; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+@keyframes desk-deal { from { opacity: 0; transform: translateY(-34px) rotate(calc(var(--tilt) * 4)) scale(1.06); } }
+@media (hover: hover) and (pointer: fine) {
+  .desk-page:hover { z-index: 5; transform: translateY(-12px) scale(1.09); }
+  .desk-page:hover .desk-sheet { box-shadow: 0 2px 2px rgb(0 0 0 / .3), 0 30px 46px -14px rgb(0 0 0 / .75); }
+}
+/* saved pages as small browser windows */
+.windows { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 16px; }
+.window { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: rgb(255 255 255 / .03); transition: transform 280ms var(--ease-out), border-color 280ms; animation: desk-rise 480ms var(--ease-out) calc(var(--i) * 55ms) backwards; }
+.window-bar { display: flex; align-items: center; gap: 5px; height: 30px; padding-inline: 11px; font-size: 11.5px; color: var(--muted-foreground); background: rgb(255 255 255 / .05); }
+.window-bar > i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: rgb(255 255 255 / .18); transition: background 200ms; }
+.window-page { display: block; height: 170px; overflow: hidden; background: #fff; }
+.window-page img { display: block; transition: transform 1s cubic-bezier(.3, 0, .2, 1); }
+@keyframes desk-rise { from { opacity: 0; transform: translateY(14px); } }
+@media (hover: hover) and (pointer: fine) {
+  .window:hover { transform: translateY(-3px); border-color: rgb(255 255 255 / .22); }
+  .window:hover .window-bar > i:nth-child(1) { background: #ff5f57; }
+  .window:hover .window-bar > i:nth-child(2) { background: #febc2e; }
+  .window:hover .window-bar > i:nth-child(3) { background: #28c840; }
+  .window:hover .window-page img { transform: translateY(calc(-100% + 170px)); transition: transform 9s linear; }
+}
+.motion-reduced :is(.desk-page, .window) { animation: none; }
+@media (prefers-reduced-motion: reduce) { .desk-page, .window { animation: none; } .window:hover .window-page img { transform: none; } }
+
+.glass-light .glass-pop { --glass-sheet: rgb(255 255 255 / .96); }
+/* the reading card's controls: on hover, always on touch */
+.article-tools { position: absolute; top: 10px; right: 10px; z-index: 3; display: flex; gap: 2px; padding: 3px; border-radius: 99px; color: #fff; background: rgb(0 0 0 / .62); backdrop-filter: blur(14px); opacity: 0; translate: 0 -4px; transition: opacity 180ms, translate 180ms; }
+.article-tools button, .article-tools a { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; transition: background 150ms; }
+.article-tools button:hover, .article-tools a:hover { background: rgb(255 255 255 / .16); }
+.article-tools button:disabled { opacity: .35; }
+.article:hover .article-tools, .article:focus-within .article-tools { opacity: 1; translate: 0; }
+.article-open { position: absolute; inset: 0; z-index: 2; }
+.article-text { position: relative; z-index: 1; pointer-events: none; }
+.window-archive { position: absolute; top: 4px; right: 5px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; color: var(--muted-foreground); opacity: 0; transition: opacity 150ms, background 150ms, color 150ms; }
+.window:hover .window-archive { opacity: 1; }
+.window-archive:hover { color: var(--foreground); background: rgb(255 255 255 / .12); }
+.window.gone { opacity: 0; transform: scale(.94); transition: opacity 240ms, transform 240ms; }
+@media (hover: none) { .article-tools { opacity: 1; translate: 0; } .window-archive { opacity: 1; } }

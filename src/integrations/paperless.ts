@@ -48,7 +48,7 @@ export default defineIntegration({
           title: 'Documents', interval: 300_000,
           async fetch() {
             const [n, r] = await Promise.all([lookup(), api<any>('documents/?ordering=-added&page_size=12')]);
-            return { type: 'shelf', title: 'Recent documents', icon: 'file', href: web, aspect: 'poster', items: shelf(r.results, n), empty: 'No documents yet',
+            return { type: 'shelf', layout: 'desk', title: 'Recent documents', icon: 'file', href: web, aspect: 'poster', items: shelf(r.results, n), empty: 'No documents yet',
               summary: { label: 'Documents', icon: 'file', value: r.count.toLocaleString(), sub: 'in Paperless' } };
           },
         },

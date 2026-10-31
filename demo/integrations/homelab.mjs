@@ -37,6 +37,29 @@ const poster = title => ART.films[title]?.poster ?? drawn(title);
 const backdrop = title => ART.films[title]?.backdrop ?? photo(`${title}b`, 1280, 720);
 const dir = existsSync('/demo/art') ? '/demo/art' : resolve('demo/art');
 const ART = JSON.parse(readFileSync(`${dir}/art.json`, 'utf8'));
+/** A scanned page: letterhead, the details, a table if it has one. Real enough at thumbnail size. */
+const paper = ({ org, title, date, color, lines = [], rows = [], total }) => {
+  const line = (y, w, o = .16) => `<rect x="44" y="${y}" width="${w}" height="6" rx="3" fill="#1f2430" opacity="${o}"/>`;
+  const table = rows.map(([a, b], i) => `<text x="44" y="${322 + i * 30}" font-size="15" fill="#39404f">${esc(a)}</text><text x="456" y="${322 + i * 30}" font-size="15" fill="#39404f" text-anchor="end">${esc(b)}</text><rect x="44" y="${332 + i * 30}" width="412" height="1" fill="#1f2430" opacity=".1"/>`).join('');
+  const after = 322 + rows.length * 30;
+  return uri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 647" font-family="Helvetica, Arial, sans-serif"><rect width="500" height="647" fill="#fbfaf6"/><rect width="500" height="10" fill="${color}"/>
+<circle cx="62" cy="62" r="18" fill="${color}"/><text x="92" y="58" font-size="19" font-weight="700" fill="#1f2430">${esc(org)}</text>${line(68, 110)}
+<text x="456" y="58" font-size="13" fill="#6a7180" text-anchor="end">${esc(date)}</text>
+<text x="44" y="150" font-size="27" font-weight="700" fill="#1f2430">${esc(title)}</text>${line(172, 300)}${line(188, 340)}${line(204, 220)}
+${lines.map((l, i) => `<text x="44" y="${246 + i * 21}" font-size="14" fill="#555c6b">${esc(l)}</text>`).join('')}${table}
+${total ? `<text x="456" y="${after + 34}" font-size="23" font-weight="700" fill="#1f2430" text-anchor="end">${esc(total)}</text>` : ''}
+${[0, 1, 2, 3].map(i => line(after + 72 + i * 16, 412 - i * 44, .1)).join('')}</svg>`);
+};
+const PAPERS = [
+  { title: 'Home insurance renewal', org: 'Northwind Mutual', date: 'Oct 2', color: '#1f6f8b', lines: ['Policy HM-20418, 14 Maple Street'], rows: [['Dwelling', '$612.00'], ['Contents', '$214.00'], ['Liability', '$96.00']], total: '$922.00' },
+  { title: 'Electricity bill', org: 'City Power', date: 'Sep 28', color: '#e0a100', lines: ['Billing period Aug 28 to Sep 27'], rows: [['Usage, 612 kWh', '$81.40'], ['Delivery', '$32.10']], total: '$113.50', badge: 'Paid' },
+  { title: 'Furnace service', org: 'Warm & Co', date: 'Sep 12', color: '#c8553d', lines: ['Annual inspection and filter'], rows: [['Labour', '$120.00'], ['Filter, MERV 13', '$34.00']], total: '$154.00', badge: 'Paid' },
+  { title: 'Passport renewal', org: 'Government', date: 'Aug 30', color: '#3b4a8c', lines: ['Application received', 'Reference 8841-2206-117'] },
+  { title: 'Vet checkup', org: 'Maple Vet Clinic', date: 'Aug 14', color: '#3f8f6b', lines: ['Patient: Biscuit'], rows: [['Exam', '$75.00'], ['Vaccines', '$48.00']], total: '$123.00' },
+  { title: 'Lease agreement', org: 'Oak Property', date: 'Jul 1', color: '#6b4fa0', lines: ['Term: 12 months', '14 Maple Street'] },
+  { title: 'Bike warranty', org: 'Trail Cycles', date: 'Jun 18', color: '#2e7d4f', lines: ['Frame: lifetime', 'Parts: two years'] },
+  { title: 'Internet plan', org: 'Fibre North', date: 'Jun 2', color: '#0077c8', rows: [['Gigabit, monthly', '$69.00']], total: '$69.00' },
+];
 const FILMS = ['Dune: Part Two', 'The Bear', 'Arrival', 'Interstellar', 'Blade Runner 2049', 'Severance', 'Spirited Away', 'Andor', 'Shōgun', 'The Grand Budapest Hotel'];
 const STACK = ['plex', 'tautulli', 'sonarr', 'radarr', 'prowlarr', 'bazarr', 'qbittorrent', 'navidrome', 'lidarr', 'komga', 'audiobookshelf', 'miniflux', 'immich', 'paperless', 'karakeep', 'mealie', 'tandoor-recipes', 'home-assistant', 'frigate', 'nextcloud', 'syncthing', 'vaultwarden', 'authentik', 'crowdsec', 'pi-hole', 'tailscale', 'caddy', 'nginx-proxy-manager', 'uptime-kuma', 'grafana', 'changedetection', 'forgejo', 'proxmox', 'portainer'];
 const SETBACKS = { home: 20, sleep: 18, night: 17 };
@@ -240,8 +263,7 @@ export default ({ z, defineIntegration }) => {
             activity: first && { title: `${first.title}${d.length > 1 ? ` +${d.length - 1}` : ''}`, subtitle: `↓ ${speed.toFixed(0)} MB/s`, image: poster(first.title), icon: 'download', pct: first.pct, count: d.length } }; }),
         sky: w('Daylight', 300_000, () => ({ type: 'schedule', title: 'Daylight', icon: 'sun', muted: ['Dawn', 'Dusk'], items: [['Dawn', 6, 41], ['Sunrise', 7, 12], ['Noon', 12, 48], ['Sunset', 18, 2], ['Dusk', 18, 33]].map(([name, h, m]) => ({ name, at: day(h, m) })) })),
         photos: w('Photos', 3_600_000, () => ({ type: 'photos', style: 'flashback', title: 'On this day', icon: 'image', source: { name: 'Immich', icon: '/api/icon/immich' }, items: ['2 years ago', '3 years ago', '5 years ago', '6 years ago'].map((badge, i) => ({ image: ctx.image(`photo${i}`), badge, title: ART.photos[i].title })) })),
-        reading: w('From your reading', 3_600_000, () => ({ type: 'article', title: 'From your reading', icon: 'bookmark', source: { name: 'Karakeep', icon: '/api/icon/karakeep' }, headline: 'Local-first software: you own your data, in spite of the cloud', site: 'inkandswitch.com', image: ctx.image('article'), link: ART.article.link,
-          blurb: 'Cloud apps made working together easy and quietly took your data with them. This essay sets out seven ideals for software that keeps the files on your own devices and still syncs like Google Docs.' })),
+        reading: w('From your reading', 3_600_000, () => { const more = pile().map(p => ({ id: p.title, headline: p.title, blurb: p.note, site: p.subtitle, image: ctx.image(p.image ?? `page${ART.saved.indexOf(p)}`), link: p.href })); return { type: 'article', title: 'From your reading', icon: 'bookmark', source: { name: 'Karakeep', icon: '/api/icon/karakeep' }, ...(more[0] ?? { headline: '' }), more }; }),
         upcoming: w('Coming up', 900_000, () => ({ type: 'list', title: 'Coming up', icon: 'film', items: [{ title: FILMS[7], subtitle: inDays(3) }],
           summary: { label: 'Coming up', icon: 'film', value: FILMS[7], sub: inDays(3), image: backdrop(FILMS[7]) } })),
         ai: w('AI', 60_000, () => ({ type: 'stats', title: 'AI', icon: 'chart', items: [{ label: 'Requests', value: 312 }],
@@ -255,18 +277,19 @@ export default ({ z, defineIntegration }) => {
         people: w("Who's watching", 3_600_000, () => ({ type: 'list', title: "Who's watching", icon: 'play', note: 'last 30 days', items: [['Theo', '31 plays', '22h', 1], ['Alex', '17 plays', '11h', .5], ['Priya', '9 plays', '6h', .27]].map(([title, subtitle, meta, pct]) => ({ title, subtitle, meta, pct })) })),
         week: w('Coming up', 3_600_000, () => ({ type: 'shelf', title: 'Coming up', icon: 'film', aspect: 'poster', layout: 'week', items: [['Tonight', FILMS[5]], ['Tomorrow', FILMS[4]], [inDays(3), FILMS[7]]].map(([badge, title]) => ({ badge, title, subtitle: 'New episode', image: poster(title) })) })),
         requests: w('Requested', 3_600_000, () => ({ type: 'shelf', title: 'Requested', icon: 'film', aspect: 'poster', layout: 'tickets', items: [[FILMS[8], 'Downloading', 'accent'], [FILMS[9], 'Available', 'good'], [FILMS[6], 'Available', 'good'], [FILMS[3], 'Available', 'good']].map(([title, badge, tone]) => ({ title, subtitle: 'Movie', badge, tone, image: poster(title) })) })),
-        docs: w('Recent documents', 3_600_000, () => ({ type: 'list', title: 'Recent documents', icon: 'file', items: [['Home insurance renewal', 'Northwind Mutual', 'Oct 2'], ['Electricity bill', 'City Power', 'Sep 28'], ['Furnace service receipt', 'Warm & Co', 'Sep 12'], ['Passport renewal', 'Government', 'Aug 30']].map(([title, subtitle, meta]) => ({ title, subtitle, meta })) })),
-        saved: w('Recently saved', 3_600_000, () => ({ type: 'list', title: 'Recently saved', icon: 'bookmark', items: [['How to back up a homelab properly', 'blog.example.com', 'Three copies, two kinds of storage, one somewhere else. The part most people skip is testing the restore.', 'Yesterday'], ['A field guide to Zigbee', 'example.org', 'Why your sensors drop off the network, and what mesh routing actually needs.', 'Oct 24']].map(([title, subtitle, detail, meta]) => ({ title, subtitle, detail, meta })) })),
+        docs: w('Recent documents', 3_600_000, () => ({ type: 'shelf', layout: 'desk', title: 'Recent documents', icon: 'file', aspect: 'poster', source: { name: 'Paperless', icon: '/api/icon/paperless' }, items: PAPERS.map(p => ({ title: p.title, subtitle: `${p.org} · ${p.date}`, image: paper(p), badge: p.badge })) })),
+        saved: w('Recently saved', 3_600_000, () => ({ type: 'shelf', layout: 'windows', title: 'Recently saved', icon: 'bookmark', aspect: 'wide', source: { name: 'Karakeep', icon: '/api/icon/karakeep' }, items: pile().map(p => ({ ...p, id: p.title, image: ctx.image(p.image ?? `page${ART.saved.indexOf(p)}`) })) })),
         news: w('Hacker News', 1_800_000, () => ({ type: 'list', title: 'Hacker News', icon: 'news', items: [['Show HN: I replaced my NAS with three old laptops', '412 points · 188 comments', '3h'], ['The surprising durability of cheap SSDs', '287 points · 96 comments', '6h'], ['Why self-hosted email is hard, in one diagram', '241 points · 140 comments', '9h'], ['A tiny DNS server in 500 lines', '198 points · 42 comments', '12h']].map(([title, subtitle, meta]) => ({ title, subtitle, meta })) })),
         feeds: w('Feeds', 1_800_000, () => ({ type: 'list', title: 'Feeds', icon: 'rss', items: [['This week in open-source home automation', 'The Example Times', '1h'], ['Quiet fans, ranked', 'Hardware Weekly', '4h'], ['Ten small scripts that run my house', 'Personal blog', '8h'], ['Solar panels and home servers: the numbers', 'Example Energy', '1d']].map(([title, subtitle, meta]) => ({ title, subtitle, meta })) })),
         releases: w('Releases', 3_600_000, () => ({ type: 'list', title: 'Releases', icon: 'tag', items: [['paperless', '3.2.0', 'Yesterday'], ['immich', 'v2.6.1', 'Oct 21'], ['home-assistant', '2026.10.4', 'Oct 18'], ['karakeep', '0.34.0', 'Oct 15']].map(([title, subtitle, meta]) => ({ title, subtitle, meta })) })),
       };
+      const pile = () => { const ids = got('archived', []); return [...ART.saved].reverse().filter(p => !ids.includes(p.title)); };
       const textCard = text => ({ type: 'text', tone: 'good', text });
       return {
         widgets,
         // the clips, with the byte ranges phones ask for. Nothing but the files named above can be reached
         image(ref, range) {
-          const still = ref === 'article' ? 'article.jpg' : /^photo[0-3]$/.test(ref) ? `photos/${ref[5]}.jpg` : null;
+          const still = ref === 'article' ? 'article.jpg' : /^photo[0-3]$/.test(ref) ? `photos/${ref[5]}.jpg` : /^page[0-4]$/.test(ref) ? `pages/${ref[4]}.jpg` : null;
           if (still) return readFile(`${dir}/${still}`).then(b => new Response(b, { headers: { 'Content-Type': 'image/jpeg' } }));
           if (!CLIPS.has(ref)) throw new Error('bad image ref');
           const file = join(cfg.art, ref), size = statSync(file).size, [, a, b] = /^bytes=(\d+)-(\d*)/.exec(range ?? '') ?? [];
@@ -311,6 +334,7 @@ export default ({ z, defineIntegration }) => {
             } },
           thermostat: { description: 'Set the pretend thermostat', input: z.object({ temperature: z.number().min(10).max(30).optional(), preset: z.enum(Object.keys(SETBACKS)).optional(), power: z.boolean().optional() }),
             run: async ({ temperature, preset, power }) => { const c = climate(); put('thermostat', { preset: preset ?? c.preset, power: preset ? true : power ?? c.power, target: temperature ?? (preset ? SETBACKS[preset] : c.target), from: c.room, at: now() }); } },
+          archive: { description: 'Archive a saved link', input: z.object({ id: z.string() }), run: async ({ id }) => put('archived', [...got('archived', []), id]) },
           vacuum: { description: 'Pretend to send the vacuum', input: z.object({}).loose(), run: async () => {} },
         },
         tools: {

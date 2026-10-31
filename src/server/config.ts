@@ -166,6 +166,7 @@ export const ChatView = z.object({
   bubble: Color.optional(),                // your messages
   beam: z.enum(['off', 'always', 'focus', 'thinking']).default('off'),   // a light travelling around the chat box: all the time, while typing, or while it answers
   beamColor: z.enum(['colorful', 'mono', 'ocean', 'sunset']).default('colorful'),
+  beamStrength: z.number().min(0).max(1).default(.45),   // how bright: a hint by default
   icon: z.string().optional(),             // an icon name, or an image path or URL, on its buttons and header
 }).strict();
 

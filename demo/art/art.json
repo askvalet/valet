@@ -106,5 +106,44 @@
  ],
  "article": {
   "link": "https://www.inkandswitch.com/essay/local-first/"
- }
+ },
+ "saved": [
+  {
+   "title": "The 3-2-1 Backup Strategy",
+   "subtitle": "backblaze.com",
+   "href": "https://www.backblaze.com/blog/the-3-2-1-backup-strategy/",
+   "note": "Three copies of your data, on two kinds of storage, with one somewhere else."
+  },
+  {
+   "title": "Zigbee",
+   "subtitle": "en.wikipedia.org",
+   "href": "https://en.wikipedia.org/wiki/Zigbee",
+   "note": "The low-power mesh radio behind most smart home sensors and bulbs."
+  },
+  {
+   "title": "Popular git config options",
+   "subtitle": "jvns.ca",
+   "href": "https://jvns.ca/blog/2024/02/16/popular-git-config-options/",
+   "note": "A tour of the settings people swear by, and what each one actually does."
+  },
+  {
+   "title": "95%-ile isn't that good",
+   "subtitle": "danluu.com",
+   "href": "https://danluu.com/p95-skill/",
+   "note": "Why getting good at most things takes less practice than it seems to."
+  },
+  {
+   "title": "Network-attached storage",
+   "subtitle": "en.wikipedia.org",
+   "href": "https://en.wikipedia.org/wiki/Network-attached_storage",
+   "note": "What a NAS is, and how a box of disks became the heart of a homelab."
+  },
+  {
+   "title": "Local-first software",
+   "subtitle": "inkandswitch.com",
+   "href": "https://www.inkandswitch.com/essay/local-first/",
+   "note": "Software that keeps your files on your own devices and still syncs.",
+   "image": "article"
+  }
+ ]
 }

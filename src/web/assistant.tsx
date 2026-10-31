@@ -18,7 +18,7 @@ import { Icon, Widget } from './cards.tsx';
 import { label } from './format.ts';
 
 /** What `chat:` says about the window. */
-export interface ChatUi { steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string; beam?: 'off' | 'always' | 'focus' | 'thinking'; beamColor?: 'colorful' | 'mono' | 'ocean' | 'sunset' }
+export interface ChatUi { steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string; beam?: 'off' | 'always' | 'focus' | 'thinking'; beamColor?: 'colorful' | 'mono' | 'ocean' | 'sunset'; beamStrength?: number }
 const Ui = createContext<ChatUi>({ steps: true, thinking: 'collapsed', send: 'enter' });
 
 // One conversation for the whole page session, so closing and reopening the panel keeps it.

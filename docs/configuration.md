@@ -335,6 +335,7 @@ The assistant's window. Its name is `assistant.name`.
 | `bubble` | the accent | your messages; for a hex colour, the text turns black or white to suit |
 | `beam` | `off` | a light travelling around the chat box: `always`, `focus` (while typing) or `thinking` (while it answers) |
 | `beamColor` | `colorful` | `colorful`, `mono`, `ocean` or `sunset` |
+| `beamStrength` | `0.45` | how bright the beam is, 0 to 1 |
 | `icon` | a speech bubble | an icon name from docs/integrations.md, or an image path or URL, on its buttons and header |
 
 ## `notify`

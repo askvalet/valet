@@ -123,8 +123,8 @@ export interface MediaItem {
 export interface MediaCard extends Base { type: 'media'; items: MediaItem[]; empty?: string }
 
 /** A horizontal shelf of artwork (posters, albums, photos), like a row in the Apple TV app. */
-export interface ShelfItem { title: string; subtitle?: string; image?: string; badge?: string; href?: string; backdrop?: string; tone?: Tone }
-export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string; stack?: boolean; layout?: 'row' | 'spotlight' | 'week' | 'tickets' }   // stack: a pile of pages that fans out
+export interface ShelfItem { id?: string; title: string; subtitle?: string; note?: string; image?: string; badge?: string; href?: string; backdrop?: string; tone?: Tone }
+export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string; stack?: boolean; layout?: 'row' | 'spotlight' | 'week' | 'tickets' | 'desk' | 'windows' }   // stack: a pile of pages that fans out
 
 export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string; group?: string; quiet?: boolean }   // quiet: being down is expected, never an alert
 export interface StatusCard extends Base { type: 'status'; items: StatusItem[] }
@@ -226,7 +226,8 @@ export interface ThermostatCard extends Base {
 export interface VerseCard extends Base { type: 'verse'; arabic?: string; english: string; reference: string; meaning?: string }
 
 /** One thing to read: the page itself behind it, and what it says in a few lines. */
-export interface ArticleCard extends Base { type: 'article'; headline: string; blurb?: string; site?: string; image?: string; link?: string; saved?: string; empty?: string }
+export interface ArticlePick { id?: string; headline: string; blurb?: string; site?: string; image?: string; link?: string; saved?: string }
+export interface ArticleCard extends Base, ArticlePick { type: 'article'; more?: ArticlePick[]; empty?: string }   // more: the pile to step through, an `archive` action takes an id
 export interface KVCard extends Base { type: 'kv'; rows: [string, string][] }
 
 export interface TextCard extends Base { type: 'text'; text: string; tone?: Tone }

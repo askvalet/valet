@@ -1,7 +1,7 @@
 // Renders any card from the shared catalog with shadcn/ui primitives. The homepage and the assistant both use this,
 // so a generated card looks exactly like the widget it came from.
 import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
-  Activity, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Thermometer, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
+  Activity, Archive, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Thermometer, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
   Video, type LucideIcon,
 } from 'lucide-react';
 import { createContext, Fragment, lazy, memo, Suspense, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
@@ -258,18 +258,29 @@ function Balanced({ groups, minimal }: { groups: { g: string; items: StatusCard[
   );
 }
 
-/** Something saved to read, with the page itself filling the card. Hover and it scrolls by, as if you'd started reading. */
-function Article({ card }: { card: ArticleCard }) {
-  if (!card.headline) return <div className="grid h-full min-h-[200px] place-items-center rounded-2xl bg-card text-sm text-muted-foreground shadow-card">{card.empty ?? 'Nothing saved to read'}</div>;
+/** Something saved to read, with the page itself filling the card. Hover and it scrolls by, as if you'd started reading;
+ *  the controls step through the pile, or archive what's done with. */
+function Article({ card, run }: { card: ArticleCard; run?: RunAction }) {
+  const [at, setAt] = useState(0), [gone, setGone] = useState<string[]>([]);
+  const pile = (card.more?.length ? card.more : [card]).filter(a => !a.id || !gone.includes(a.id)), a = pile[Math.min(at, pile.length - 1)];
+  if (!a?.headline) return <div className="grid h-full min-h-[200px] place-items-center rounded-2xl bg-card text-sm text-muted-foreground shadow-card">{card.empty ?? 'Nothing saved to read'}</div>;
+  const n = pile.length, link = a.link ?? card.href;
   return (
-    <a href={card.link ?? card.href} target="_blank" rel="noreferrer" className="article lift">
-      {card.image && <img src={card.image} alt="" className="article-page" />}
-      <div className="article-text">
-        <div className="flex items-center gap-1.5 text-[12px] font-medium text-white/70">{card.source?.icon && <img src={card.source.icon} alt="" className="size-3.5 object-contain" />}<span className="truncate">{[card.title, card.site].filter(Boolean).join(' · ')}</span></div>
-        <div className="mt-1 line-clamp-2 text-[19px] leading-tight font-semibold tracking-tight text-pretty text-white">{card.headline}</div>
-        {card.blurb && <p className="mt-1.5 line-clamp-3 text-[13.5px] leading-snug text-white/75">{card.blurb}</p>}
+    <div className="article lift">
+      {a.image && <img key={a.image} src={a.image} alt="" className="article-page" />}
+      {link && <a href={link} target="_blank" rel="noreferrer" aria-label={a.headline} className="article-open" />}
+      {n > 1 || (run && a.id) ? <div className="article-tools">
+        {n > 1 && <button type="button" aria-label="Previous" title="Previous" onClick={() => setAt((at - 1 + n) % n)}><ChevronLeft className="size-4" /></button>}
+        {run && a.id && <button type="button" aria-label="Archive" title="Archive" onClick={() => { setGone(g => [...g, a.id!]); void run('archive', { id: a.id }); }}><Archive className="size-[15px]" /></button>}
+        {link && <a href={link} target="_blank" rel="noreferrer" aria-label="Open" title="Open"><ArrowUpRight className="size-4" /></a>}
+        {n > 1 && <button type="button" aria-label="Next" title="Next" onClick={() => setAt((at + 1) % n)}><ChevronRight className="size-4" /></button>}
+      </div> : null}
+      <div key={a.headline} className="article-text tick">
+        <div className="flex items-center gap-1.5 text-[12px] font-medium text-white/70">{card.source?.icon && <img src={card.source.icon} alt="" className="size-3.5 object-contain" />}<span className="truncate">{[card.title, a.site].filter(Boolean).join(' · ')}</span>{n > 1 && <span className="ml-auto shrink-0 tabular">{Math.min(at, n - 1) + 1} of {n}</span>}</div>
+        <div className="mt-1 line-clamp-2 text-[19px] leading-tight font-semibold tracking-tight text-pretty text-white">{a.headline}</div>
+        {a.blurb && <p className="mt-1.5 line-clamp-3 text-[13.5px] leading-snug text-white/75">{a.blurb}</p>}
       </div>
-    </a>
+    </div>
   );
 }
 
@@ -407,10 +418,12 @@ function Stack({ card, header, onOpen }: { card: ShelfCard; header?: ReactNode; 
   );
 }
 
-function Shelf({ card, header, small }: { card: ShelfCard; header?: ReactNode; small?: boolean }) {
+function Shelf({ card, header, small, run }: { card: ShelfCard; header?: ReactNode; small?: boolean; run?: RunAction }) {
   const [spread, setSpread] = useState(false);
   if (card.stack && !spread && card.items.length) return <Stack card={card} header={header} onOpen={() => setSpread(true)} />;
   if (!small && card.layout === 'spotlight' && card.items.length) return <Spotlight card={card} header={header} />;
+  if (!small && card.layout === 'desk' && card.items.length) return <Desk card={card} header={header} />;
+  if (!small && card.layout === 'windows' && card.items.length) return <Windows card={card} header={header} run={run} />;
   if (!small && card.layout === 'week') return <Week card={card} header={header} />;
   if (!small && card.layout === 'tickets') return <Tickets card={card} header={header} />;
   return <div className={card.stack ? 'stack-open' : undefined}><ShelfRow card={card} header={header} small={small} /></div>;
@@ -425,8 +438,8 @@ function Spotlight({ card, header }: { card: ShelfCard; header?: ReactNode }) {
   return (
     <div>
       <div className="mb-3 flex items-center gap-2">{header}</div>
-      <div className="grid items-start gap-4 @4xl/main:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <Tile href={first.href} className="group relative block aspect-[16/9] overflow-hidden rounded-2xl bg-muted shadow-[0_18px_40px_-20px_rgb(0_0_0/.6)]">
+      <div className="grid gap-4 @4xl/main:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+        <Tile href={first.href} className="group relative block aspect-[16/9] overflow-hidden rounded-2xl @4xl/main:aspect-auto @4xl/main:h-full bg-muted shadow-[0_18px_40px_-20px_rgb(0_0_0/.6)]">
           <Art src={first.backdrop ?? first.image} alt={first.title} className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-4 text-white">
@@ -435,7 +448,50 @@ function Spotlight({ card, header }: { card: ShelfCard; header?: ReactNode }) {
               <div className="truncate text-[20px] font-semibold tracking-tight">{first.title}</div>{first.subtitle && <div className="truncate text-[13px] text-white/75">{first.subtitle}</div>}</div>
           </div>
         </Tile>
-        {rest.length > 0 && <ShelfRow card={{ ...card, items: rest }} />}
+        {rest.length > 0 && <ShelfRow card={{ ...card, items: rest }} beside />}
+      </div>
+    </div>
+  );
+}
+
+const TILT = [-3, 1.6, -1.2, 2.4, -2, .8, -2.6, 1.8];
+/** Documents as paper: real pages dealt onto a desk. Hover picks one up. */
+function Desk({ card, header }: { card: ShelfCard; header?: ReactNode }) {
+  return (
+    <div>
+      {header}
+      <div className="desk">
+        {card.items.slice(0, 8).map((d, i) => (
+          <a key={i} href={d.href} target="_blank" rel="noreferrer" className="desk-page" style={{ '--tilt': `${TILT[i]}deg`, '--i': i } as React.CSSProperties}>
+            <span className="desk-sheet"><Art src={d.image} className="size-full object-cover object-top" />{d.badge && <span className="desk-stamp">{d.badge}</span>}</span>
+            <span className="mt-2.5 block truncate text-[13px] font-medium">{d.title}</span>
+            {d.subtitle && <span className="block truncate text-xs text-muted-foreground">{d.subtitle}</span>}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Saved pages as small browser windows, the page itself inside; hover and it scrolls by. */
+function Windows({ card, header, run }: { card: ShelfCard; header?: ReactNode; run?: RunAction }) {
+  const [gone, setGone] = useState<string[]>([]);
+  const site = (s?: string) => s && /^[\w-]+(\.[\w-]+)+$/.test(s) ? s : undefined;
+  return (
+    <div>
+      {header}
+      <div className="windows">
+        {card.items.filter(w => !w.id || !gone.includes(w.id)).slice(0, 9).map((w, i) => (
+          <a key={w.id ?? i} href={w.href} target="_blank" rel="noreferrer" className="window relative" style={{ '--i': i } as React.CSSProperties}>
+            {run && w.id && <button type="button" aria-label="Archive" title="Archive" className="window-archive" onClick={e => { e.preventDefault(); e.stopPropagation(); setGone(g => [...g, w.id!]); void run('archive', { id: w.id }); }}><Archive className="size-3.5" /></button>}
+            <span className="window-bar"><i /><i /><i />{site(w.subtitle) && <img src={`/api/favicon/${w.subtitle}`} alt="" className="ml-1.5 size-3.5 rounded-sm" onError={e => { e.currentTarget.style.display = 'none'; }} />}<span className="min-w-0 truncate">{w.subtitle}</span></span>
+            <span className="window-page">{w.image ? <Art src={w.image} className="w-full" /> : <span className="grid h-full place-items-center bg-white/[.04]"><Bookmark className="size-5 text-muted-foreground" /></span>}</span>
+            <span className="block p-3.5">
+              <span className="line-clamp-2 text-[14.5px] leading-snug font-semibold tracking-tight">{w.title}</span>
+              {w.note && <span className="mt-1 line-clamp-2 text-[12.5px] leading-snug text-muted-foreground">{w.note}</span>}
+            </span>
+          </a>
+        ))}
       </div>
     </div>
   );
@@ -521,14 +577,14 @@ function Ranked({ card }: { card: RankedCard }) {
   );
 }
 
-function ShelfRow({ card, header, small }: { card: ShelfCard; header?: ReactNode; small?: boolean }) {
+function ShelfRow({ card, header, small, beside }: { card: ShelfCard; header?: ReactNode; small?: boolean; beside?: boolean }) {
   const row = useRef<HTMLDivElement>(null);
   const page = (dir: number) => row.current?.scrollBy({ left: dir * row.current.clientWidth * 0.85, behavior: 'smooth' });
   const ratio = card.aspect === 'square' ? 'aspect-square' : card.aspect === 'wide' ? 'aspect-video' : 'aspect-[2/3]';
   const width = small ? (card.aspect === 'wide' ? 'w-[180px]' : 'w-[92px]') : card.aspect === 'wide' ? 'w-[240px] @3xl/main:w-[280px]' : 'w-[128px] @3xl/main:w-[150px]';
   return (
-    <div>
-      <div className={cn('flex items-center gap-2', !!(header || card.items.length > (small ? 4 : 6)) && 'mb-3')}>
+    <div className={cn(beside && 'relative min-w-0')}>
+      <div className={cn('flex items-center gap-2', beside ? 'absolute -top-10 right-0 @max-4xl/main:hidden' : !!(header || card.items.length > (small ? 4 : 6)) && 'mb-3')}>
         {header}
         <div className={cn('ml-auto hidden gap-1.5', card.items.length > (small ? 4 : 6) && 'sm:flex')}>
           <button onClick={() => page(-1)} aria-label="Previous" className="grid size-7 place-items-center rounded-full bg-secondary text-muted-foreground transition-colors hover:text-foreground"><ChevronLeft className="size-4" /></button>
@@ -1051,9 +1107,9 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
   const why = useWhy(explain);
   // artwork-led cards sit directly on the page, without a card frame
   const actions = card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null;
-  if (card?.type === 'shelf') return <div className="fade-in-soft min-w-0"><Shelf card={card} small={compact} header={<BareHeader card={card} title={title} status={status} />} />{actions}</div>;
+  if (card?.type === 'shelf') return <div className="fade-in-soft min-w-0"><Shelf card={card} small={compact} run={run} header={<BareHeader card={card} title={title} status={status} />} />{actions}</div>;
   // a flashback is all picture: its heading sits on the photo, so the card's edges line up with its neighbours
-  if (card?.type === 'article') return <Article card={card} />;
+  if (card?.type === 'article') return <Article card={card} run={run} />;
   if (card?.type === 'photos' && card.items.length && !large && card.style !== 'mosaic') return (
     <div className="fade-in-soft h-full min-w-0"><Photos card={card} fill={fill} label={card.title ?? title} status={status} />{actions}</div>
   );

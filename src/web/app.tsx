@@ -123,24 +123,10 @@ function RoundButton({ label, active, onClick, children, tip = 'right', words }:
   );
 }
 
-/** The white pill behind the selected tab: measured, so it slides between buttons wherever they sit. */
-function useNavPill(view: string, count: number) {
-  const box = useRef<HTMLDivElement>(null);
-  const [at, setAt] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
-  useLayoutEffect(() => {
-    const el = box.current?.querySelector<HTMLElement>('[aria-current="page"]');
-    setAt(el ? { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight } : null);
-  }, [view, count]);
-  const sync = () => {
-    const el = box.current?.querySelector<HTMLElement>('[aria-current="page"]');
-    if (el) setAt({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight });
-  };
-  return { box, sync, pill: at && <span className="nav-pill" aria-hidden style={{ width: at.w, height: at.h, transform: `translate(${at.x}px, ${at.y}px)` }} /> };
-}
 
 /** The Mac dock: buttons swell as the pointer nears them and settle when it leaves. Distances are measured from where the
  *  buttons rest, so growing doesn't push the target around. Mouse only; movement is off if someone's asked for less. */
-function useDock(box: React.RefObject<HTMLElement | null>, side: 'left' | 'right' | 'top' | 'bottom', after: () => void) {
+function useDock(box: React.RefObject<HTMLElement | null>, side: 'left' | 'right' | 'top' | 'bottom') {
   const rest = useRef<{ b: HTMLElement; at: number }[]>([]), frame = useRef(0);
   const down = side === 'left' || side === 'right';
   const enter = () => {
@@ -154,7 +140,6 @@ function useDock(box: React.RefObject<HTMLElement | null>, side: 'left' | 'right
     cancelAnimationFrame(frame.current);
     frame.current = requestAnimationFrame(() => {
       for (const { b, at } of rest.current) b.style.setProperty('--k', (1 + .5 * Math.exp(-((p - at) ** 2) / (2 * 62 ** 2))).toFixed(3));
-      after();
     });
   };
   const leave = () => {
@@ -370,12 +355,12 @@ function Home({ account }: { account: boolean }) {
     .filter((s, j, all) => all.findIndex(x => x.key === s.key) === j);
   const nav = tabs.filter(s => !hidden(s.key));
   const showOverview = !hidden('Overview') && !hidden(label('overview')), chatButton = page?.assistant && !chatTab && !hidden(page.assistant.name);
-  const rail = useNavPill(view, nav.length), dock = useNavPill(view, nav.length);
+  const railBox = useRef<HTMLElement>(null), dockBox = useRef<HTMLDivElement>(null);
   const navStyle = page?.nav?.style ?? 'icons', words = navStyle !== 'icons', navIcon = navStyle !== 'labels';
   // the rail is as wide as its labels, and the page keeps clear of it
   const [railWidth, setRailWidth] = useState(0);
-  useLayoutEffect(() => { setRailWidth((navSide === 'left' || navSide === 'right') && (words || getComputedStyle(document.documentElement).getPropertyValue('--nav-size')) ? rail.box.current?.offsetWidth ?? 0 : 0); }, [navSide, words, nav.length, page]);
-  const swell = useDock(rail.box as React.RefObject<HTMLElement | null>, navSide, rail.sync);
+  useLayoutEffect(() => { setRailWidth((navSide === 'left' || navSide === 'right') && (words || getComputedStyle(document.documentElement).getPropertyValue('--nav-size')) ? railBox.current?.offsetWidth ?? 0 : 0); }, [navSide, words, nav.length, page]);
+  const swell = useDock(railBox, navSide);
   // remember what's empty (nothing playing), so it doesn't flash a placeholder on the next visit
   useEffect(() => { for (const [k, s] of Object.entries(state)) if (isEmpty(s.card)) noteShape(k, { empty: true }); }, [state]);
 
@@ -526,13 +511,12 @@ function Home({ account }: { account: boolean }) {
 
 
       {/* the tab buttons, on whichever side the config says (wide screens); a column on the left/right, a dock at the top/bottom */}
-      <nav ref={rail.box as React.RefObject<HTMLElement>} {...swell} aria-label="Sections" data-style={navStyle} className={cn('dock z-30 hidden gap-3 md:flex', {
+      <nav ref={railBox} {...swell} aria-label="Sections" data-style={navStyle} className={cn('dock z-30 hidden gap-3 md:flex', {
         left: 'fixed top-1/2 left-5 -translate-y-1/2 flex-col items-start',
         right: 'fixed top-1/2 right-5 -translate-y-1/2 flex-col items-end',
         bottom: 'glass-bar fixed bottom-5 left-1/2 -translate-x-1/2 rounded-full border p-1.5 gap-2',
         top: 'glass-bar absolute top-[calc(6rem*var(--bar-zoom,1))] left-1/2 -translate-x-1/2 rounded-full border p-1.5 gap-2',
       }[navSide])}>
-        {rail.pill}
         {showOverview && <RoundButton tip={tip} words={words} label={label('overview')} active={view === 'all'} onClick={() => setView('all')}>{navIcon && <LayoutGrid />}</RoundButton>}
         {nav.map(s => (
           <RoundButton tip={tip} words={words} key={s.key} label={s.key} active={view === s.key} onClick={() => setView(s.key)}>{navIcon && <Icon name={s.chat ? ui?.icon ?? 'chat' : sectionIcon(s) ?? 'pulse'} />}</RoundButton>
@@ -600,8 +584,7 @@ function Home({ account }: { account: boolean }) {
 
       {/* phones: the rail becomes a floating pill at the bottom */}
       <nav aria-label="Sections" className="glass-bar fixed inset-x-3 bottom-[max(.75rem,env(safe-area-inset-bottom))] z-20 rounded-full border p-1.5 md:hidden">
-        <div ref={dock.box} className="no-scrollbar relative flex justify-between gap-1 overflow-x-auto">
-          {dock.pill}
+        <div ref={dockBox} className="no-scrollbar relative flex justify-between gap-1 overflow-x-auto">
           {showOverview && <button onClick={() => setView('all')} aria-label={label('overview')} aria-current={view === 'all' ? 'page' : undefined} className={cn('press relative grid size-11 shrink-0 place-items-center rounded-full transition-colors duration-200', view === 'all' && 'text-black')}><LayoutGrid className="size-[19px]" /></button>}
           {nav.map(s => (
             <button key={s.key} onClick={() => { setView(s.key); if (s.chat) { warm(); setChatOpen(true); } }} aria-label={s.key} aria-current={view === s.key ? 'page' : undefined}

@@ -31,6 +31,9 @@ export default defineIntegration({
         return [{ id: 'saved', theme: 'files', icon: 'bookmark', kicker: 'You saved for later', value: s.numBookmarks.toLocaleString('en'), unit: 'things', stat: 'Things saved', score: 58, scope: 'All time',
           line: `${top ? `${top.count} of them came from ${top.domain}. ` : ''}Later is doing a lot of work here. What you keep saving:`, bars: tags.map(t => ({ label: t.name, value: t.count, show: String(t.count) })) }];
       },
+      actions: {
+        archive: { description: 'Archive a saved link', input: z.object({ id: z.string().regex(/^[\w-]{1,64}$/) }), run: async ({ id }) => { await api(`bookmarks/${id}`, { method: 'PATCH', body: JSON.stringify({ archived: true }) }); } },
+      },
       widgets: {
         digest: {
           title: 'Recently saved', interval: 300_000,
@@ -44,19 +47,26 @@ export default defineIntegration({
         reading: {
           title: 'From your reading', interval: 3_600_000,
           async fetch() {
-            const r = await api<any>('bookmarks?limit=100&sortOrder=desc');
+            const r = await api<any>('bookmarks?limit=100&sortOrder=desc&archived=false');
             const worth = (r.bookmarks ?? []).filter((b: any) => b.content?.type === 'link' && (b.summary || b.content?.description));
             const base = { type: 'article' as const, title: 'From your reading', icon: 'bookmark', href: web, source: { name: 'Karakeep', icon: '/api/icon/karakeep' }, empty: 'Nothing saved to read yet' };
             if (!worth.length) return { ...base, headline: '' };
-            const b = worth[Math.floor(Date.now() / 864e5) % worth.length], x = brief(b), page = b.content?.screenshotAssetId ?? b.content?.imageAssetId;
-            return { ...base, headline: x.title ?? x.url, blurb: String(x.summary).replace(/[#*_`>]/g, '').slice(0, 280), site: host(x.url), image: page ? ctx.image(page) : b.content?.imageUrl, link: x.url, saved: x.saved };
+            // the same pick all day, then the rest of the pile after it
+            const start = Math.floor(Date.now() / 864e5) % worth.length, pile = [...worth.slice(start), ...worth.slice(0, start)].slice(0, 12);
+            const more = pile.map((b: any) => {
+              const x = brief(b), page = b.content?.screenshotAssetId ?? b.content?.imageAssetId;
+              return { id: b.id, headline: x.title ?? x.url, blurb: String(x.summary).replace(/[#*_`>]/g, '').slice(0, 280), site: host(x.url), image: page ? ctx.image(page) : b.content?.imageUrl, link: x.url, saved: x.saved };
+            });
+            return { ...base, ...more[0], more };
           },
         },
         recent: {
           title: 'Saved', interval: 120_000,
           async fetch() {
-            const r = await api<any>('bookmarks?limit=12&sortOrder=desc');
-            return { type: 'shelf', title: 'Recently saved', icon: 'bookmark', href: web, aspect: 'wide', items: shelf(r.bookmarks ?? []), empty: 'Nothing saved yet' };
+            const r = await api<any>('bookmarks?limit=12&sortOrder=desc&archived=false');
+            // the page as it looked, not its banner, for a window to show
+            const items = (r.bookmarks ?? []).map((b: any) => ({ ...shelf([b])[0], id: b.id, note: brief(b).summary?.replace(/[#*_`>]/g, ''), image: b.content?.screenshotAssetId ? ctx.image(b.content.screenshotAssetId) : shelf([b])[0].image }));
+            return { type: 'shelf', layout: 'windows', title: 'Recently saved', icon: 'bookmark', href: web, aspect: 'wide', items, empty: 'Nothing saved yet' };
           },
         },
       },

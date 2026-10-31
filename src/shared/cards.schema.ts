@@ -33,7 +33,8 @@ const ListItem = z.object({ detail: z.string().optional(), title: z.string(), hr
 const MediaItem = z.object({ title: z.string(), subtitle: z.string().optional(), image: z.string().optional(), backdrop: z.string().optional(), pct: unit.optional(),
   state: z.enum(['playing', 'paused', 'buffering']).optional(), user: z.string().optional(), device: z.string().optional(), detail: z.string().optional(),
   tags: z.array(z.string()).optional(), remaining: z.string().optional(), icon: z.string().optional() }).strict();
-const ShelfItem = z.object({ backdrop: z.string().optional(), tone: Tone.optional(), title: z.string(), subtitle: z.string().optional(), image: z.string().optional(), badge: z.string().optional(), href: z.string().optional() }).strict();
+const pick = { id: z.string().optional(), headline: z.string(), blurb: z.string().optional(), site: z.string().optional(), image: z.string().optional(), link: z.string().optional(), saved: z.string().optional() };
+const ShelfItem = z.object({ id: z.string().optional(), backdrop: z.string().optional(), tone: Tone.optional(), title: z.string(), subtitle: z.string().optional(), note: z.string().optional(), image: z.string().optional(), badge: z.string().optional(), href: z.string().optional() }).strict();
 const StatusItem = z.object({ name: z.string(), ok: z.boolean(), ms: z.number().optional(), detail: z.string().optional(), href: z.string().optional(),
   icon: z.string().optional(), group: z.string().optional(), quiet: z.boolean().optional() }).strict();
 const Control = z.object({ id: z.string(), label: z.string(), kind: z.enum(['toggle', 'slider', 'select', 'button', 'value']),
@@ -50,7 +51,7 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
   z.object({ ...base, type: z.literal('stats'), items: z.array(StatItem), pie: z.array(z.object({ label: z.string(), value: z.number(), tone: Tone.optional() }).strict()).optional(), pieCenter: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('list'), items: z.array(ListItem), empty: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('media'), items: z.array(MediaItem), empty: z.string().optional() }).strict(),
-  z.object({ ...base, type: z.literal('shelf'), layout: z.enum(['row', 'spotlight', 'week', 'tickets']).optional(), items: z.array(ShelfItem), aspect: z.enum(['poster', 'square', 'wide']).optional(), empty: z.string().optional(), stack: z.boolean().optional() }).strict(),
+  z.object({ ...base, type: z.literal('shelf'), layout: z.enum(['row', 'spotlight', 'week', 'tickets', 'desk', 'windows']).optional(), items: z.array(ShelfItem), aspect: z.enum(['poster', 'square', 'wide']).optional(), empty: z.string().optional(), stack: z.boolean().optional() }).strict(),
   z.object({ ...base, type: z.literal('status'), items: z.array(StatusItem) }).strict(),
   z.object({ ...base, type: z.literal('links'), items: z.array(z.object({ name: z.string(), href: z.string(), icon: z.string().optional(), note: z.string().optional() }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('chart'), unit: z.string().optional(), headline: z.string().optional(), max: z.number().optional(), span: z.string().optional(), from: z.number().optional(), to: z.number().optional(), labels: z.array(z.string()).optional(),
@@ -66,7 +67,7 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
     items: z.array(z.object({ image: z.string(), title: z.string().optional(), subtitle: z.string().optional(), badge: z.string().optional(), href: z.string().optional() }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('schedule'), muted: z.array(z.string()).optional(),
     items: z.array(z.object({ name: z.string(), at: z.string().refine(s => !Number.isNaN(Date.parse(s)), 'not a date') }).strict()) }).strict(),
-  z.object({ ...base, type: z.literal('article'), headline: z.string(), blurb: z.string().optional(), site: z.string().optional(), image: z.string().optional(), link: z.string().optional(), saved: z.string().optional(), empty: z.string().optional() }),
+  z.object({ ...base, type: z.literal('article'), ...pick, more: z.array(z.object(pick).strict()).optional(), empty: z.string().optional() }),
   z.object({ ...base, type: z.literal('calendar'), from: date.optional(), to: date.optional(), empty: z.string().optional(),
     events: z.array(z.object({ title: z.string(), start: when, end: when.optional(), calendar: z.string().optional(), location: z.string().optional(),
       color: z.string().regex(/^(#[0-9a-f]{3,8}|[a-z]{3,30})$/i, 'not a colour').optional() }).strict()) }).strict(),
