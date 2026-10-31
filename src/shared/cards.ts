@@ -123,7 +123,7 @@ export interface MediaItem {
 export interface MediaCard extends Base { type: 'media'; items: MediaItem[]; empty?: string }
 
 /** A horizontal shelf of artwork (posters, albums, photos), like a row in the Apple TV app. */
-export interface ShelfItem { id?: string; title: string; subtitle?: string; note?: string; image?: string; badge?: string; href?: string; backdrop?: string; tone?: Tone }
+export interface ShelfItem { id?: string; at?: string; title: string; subtitle?: string; note?: string; image?: string; badge?: string; href?: string; backdrop?: string; tone?: Tone }
 export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string; stack?: boolean; layout?: 'row' | 'spotlight' | 'week' | 'tickets' | 'desk' | 'windows' }   // stack: a pile of pages that fans out
 
 export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string; group?: string; quiet?: boolean }   // quiet: being down is expected, never an alert

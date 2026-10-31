@@ -15,7 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
 import { clock as clockOf, num as written } from './format.ts';
-import type { ArticleCard, CodeCard, RankedCard, StatusItem, TableCard, LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
+import type { ArticleCard, CodeCard, RankedCard, ShelfItem, StatusItem, TableCard, LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
 // Icon names cards may use (docs/integrations.md lists them; keep the two in step). Anything else: a URL or a path.
 const ICONS: Record<string, LucideIcon> = {
@@ -498,6 +498,7 @@ function Shelf({ card, header, small, run }: { card: ShelfCard; header?: ReactNo
   if (!small && card.layout === 'spotlight' && card.items.length) return <Spotlight card={card} header={header} />;
   if (!small && card.layout === 'desk' && card.items.length) return <Desk card={card} header={header} />;
   if (!small && card.layout === 'windows' && card.items.length) return <Windows card={card} header={header} run={run} />;
+  if (!small && card.layout === 'week' && card.items.length && card.items.every(i => i.at)) return <Timeline card={card} header={header} />;
   if (!small && card.layout === 'week') return <Week card={card} header={header} />;
   if (!small && card.layout === 'tickets') return <Tickets card={card} header={header} />;
   return <div className={card.stack ? 'stack-open' : undefined}><ShelfRow card={card} header={header} small={small} /></div>;
@@ -571,6 +572,40 @@ function Windows({ card, header, run }: { card: ShelfCard; header?: ReactNode; r
   );
 }
 
+/** The next two weeks as a strip of days, each poster on the day it lands: the eye reads the gaps as well as the shows. */
+function Timeline({ card, header }: { card: ShelfCard; header?: ReactNode }) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const key = (d: Date) => [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(n => String(n).padStart(2, '0')).join('-');
+  const byDay = new Map<string, ShelfItem[]>();
+  for (const it of card.items) { const k = it.at!.slice(0, 10); byDay.set(k, [...(byDay.get(k) ?? []), it]); }
+  const last = Math.min(13, Math.max(0, ...[...byDay.keys()].map(k => Math.round((new Date(`${k}T00:00`).getTime() - today.getTime()) / 864e5))));
+  const days = Array.from({ length: last + 1 }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() + i); return d; });
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-2">{header}</div>
+      <div className="timeline">
+        {days.map((d, i) => {
+          const list = [...new Map((byDay.get(key(d)) ?? []).map(x => [x.title, x])).values()], ready = list.some(x => x.badge === 'Ready');
+          return (
+            <div key={i} className={cn('tl-day', !list.length && 'is-empty', i === 0 && 'is-today')} style={{ '--i': i } as React.CSSProperties}>
+              <div className="tl-posters">
+                {list.slice(0, 3).map((it, k) => <Tile key={k} href={it.href} className="tl-poster" title={`${it.title}${it.subtitle ? ` · ${it.subtitle}` : ''}`} style={{ '--k': k } as React.CSSProperties}><Art src={it.image} alt={it.title} className="size-full object-cover" /></Tile>)}
+                {list.length > 3 && <span className="tl-more">+{list.length - 3}</span>}
+              </div>
+              <div className="tl-label">
+                <span>{i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+                <b>{d.getDate()}</b>
+                {ready && <i className="tl-ready" title="Downloaded" />}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {(() => { const named = days.flatMap(d => (byDay.get(key(d)) ?? []).slice(0, 1)).slice(0, 4); return named.length ? <div className="mt-3 truncate text-xs text-muted-foreground">{[...new Set(named.map(x => x.title))].join(' · ')}</div> : null; })()}
+    </div>
+  );
+}
+
 /** What's coming, day by day, as a little week planner. */
 function Week({ card, header }: { card: ShelfCard; header?: ReactNode }) {
   const days = [...new Set(card.items.map(i => i.badge ?? ''))];
@@ -603,17 +638,20 @@ function Week({ card, header }: { card: ShelfCard; header?: ReactNode }) {
 }
 
 /** Things in a queue, each with where it's got to. */
+/** Requests as posters: the line under each says how far along it is, with no word needed. Full green is here, half is
+ *  partly here, a moving blue is on its way, a faint grey is still waiting. */
 function Tickets({ card, header }: { card: ShelfCard; header?: ReactNode }) {
+  const state = (it: ShelfItem) => /partial/i.test(it.badge ?? '') ? 'part' : it.tone === 'good' ? 'done' : it.tone === 'accent' || /download|processing/i.test(it.badge ?? '') ? 'busy' : it.tone === 'bad' ? 'bad' : 'wait';
   return (
     <div>
       <div className="mb-3 flex items-center gap-2">{header}</div>
       {!card.items.length ? <Empty text={card.empty ?? 'Nothing here yet'} /> : (
-        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 250px), 1fr))' }}>
+        <div className="tickets">
           {card.items.map((it, i) => (
-            <Tile key={i} href={it.href} className="lift flex min-w-0 items-center gap-3 rounded-xl border bg-card p-2 pr-3">
-              <Art src={it.image} alt={it.title} className="h-[54px] w-[36px] shrink-0 rounded-md object-cover" />
-              <div className="min-w-0 flex-1"><div className="truncate text-[13px] font-medium">{it.title}</div>{it.subtitle && <div className="truncate text-[11.5px] text-muted-foreground">{it.subtitle}</div>}</div>
-              {it.badge && <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', it.tone === 'good' ? 'bg-good/15 text-good' : it.tone === 'warn' ? 'bg-warn/15 text-warn' : it.tone === 'bad' ? 'bg-bad/15 text-bad' : 'bg-primary/15 text-primary')}>{it.badge}</span>}
+            <Tile key={i} href={it.href} className="ticket" title={[it.title, it.subtitle, it.badge].filter(Boolean).join(' · ')} style={{ '--i': i } as React.CSSProperties}>
+              <span className="ticket-art"><Art src={it.image} alt={it.title} className="size-full object-cover" /><i className={`ticket-line is-${state(it)}`} /></span>
+              <span className="mt-2 block truncate text-[13px] font-medium">{it.title}</span>
+              <span className="block truncate text-[11.5px] text-muted-foreground">{it.badge ?? it.subtitle}</span>
             </Tile>
           ))}
         </div>

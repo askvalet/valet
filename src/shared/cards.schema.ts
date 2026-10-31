@@ -34,7 +34,7 @@ const MediaItem = z.object({ title: z.string(), subtitle: z.string().optional(),
   state: z.enum(['playing', 'paused', 'buffering']).optional(), user: z.string().optional(), device: z.string().optional(), detail: z.string().optional(),
   tags: z.array(z.string()).optional(), remaining: z.string().optional(), icon: z.string().optional() }).strict();
 const pick = { id: z.string().optional(), headline: z.string(), blurb: z.string().optional(), site: z.string().optional(), image: z.string().optional(), link: z.string().optional(), saved: z.string().optional() };
-const ShelfItem = z.object({ id: z.string().optional(), backdrop: z.string().optional(), tone: Tone.optional(), title: z.string(), subtitle: z.string().optional(), note: z.string().optional(), image: z.string().optional(), badge: z.string().optional(), href: z.string().optional() }).strict();
+const ShelfItem = z.object({ id: z.string().optional(), at: z.string().regex(/^\d{4}-\d\d-\d\d/).optional(), backdrop: z.string().optional(), tone: Tone.optional(), title: z.string(), subtitle: z.string().optional(), note: z.string().optional(), image: z.string().optional(), badge: z.string().optional(), href: z.string().optional() }).strict();
 const StatusItem = z.object({ name: z.string(), ok: z.boolean(), ms: z.number().optional(), detail: z.string().optional(), href: z.string().optional(),
   icon: z.string().optional(), group: z.string().optional(), quiet: z.boolean().optional() }).strict();
 const Control = z.object({ id: z.string(), label: z.string(), kind: z.enum(['toggle', 'slider', 'select', 'button', 'value']),

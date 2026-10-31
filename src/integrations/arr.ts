@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { defineIntegration, fmt } from '../server/core.ts';
 import type { ShelfItem } from '../shared/cards.ts';
 
+// the day it lands, as the person's clock sees it (the server runs on their time zone)
+const ymd = (iso?: string) => { const d = new Date(iso ?? ''); return isNaN(+d) ? undefined : [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(n => String(n).padStart(2, '0')).join('-'); };
 const when = (iso: string) => {
   const d = new Date(iso), now = new Date(), day = 864e5;
   const diff = Math.floor((new Date(d.toDateString()).getTime() - new Date(now.toDateString()).getTime()) / day);
@@ -91,7 +93,7 @@ export default defineIntegration({
           async fetch() {
             const list = await upcoming(cfg.days);
             const next = list.find(x => !x.have);
-            return { type: 'shelf', title: 'Coming up', icon: 'film', aspect: 'poster', layout: 'week', source: { name: 'Sonarr & Radarr', icon: '/api/icon/sonarr' }, items: list.map(({ at, kind, have, ...s }) => s), empty: 'Nothing scheduled',
+            return { type: 'shelf', title: 'Coming up', icon: 'film', aspect: 'poster', layout: 'week', source: { name: 'Sonarr & Radarr', icon: '/api/icon/sonarr' }, items: list.map(({ at, kind, have, ...s }) => ({ ...s, at: ymd(at) })), empty: 'Nothing scheduled',
               buttons: [{ label: 'Search for missing', action: 'search_missing' }],
               summary: { label: 'Coming up', icon: 'film', value: next ? next.title : 'Nothing', sub: next ? next.badge : `next ${cfg.days} days`, image: next?.backdrop ?? next?.image } };
           },

@@ -92,8 +92,7 @@ export default defineIntegration({
           const total = (plays?.series as any[] | undefined)?.find(x => x.name === 'Total')?.data as number[] | undefined;
           const head = (label: string, n: number, icon: string, sub?: string) => ({ label, icon, value: n.toLocaleString(), sub });
           return { type: 'stats', title: 'Your library', icon: 'film', href: cfg.href, source, items: [{ label: 'Movies', value: sum('movie', 'count').toLocaleString() }, { label: 'Shows', value: sum('show', 'count').toLocaleString() }, { label: 'Episodes', value: sum('show', 'child_count').toLocaleString() }],
-            summaries: [head('Movies', sum('movie', 'count'), 'film'), head('Shows', sum('show', 'count'), 'play', `${sum('show', 'parent_count').toLocaleString()} seasons`), head('Episodes', sum('show', 'child_count'), 'pulse'),
-              ...(total ? [{ ...head('Plays', total.reduce((a, b) => a + b, 0), 'chart', 'last 30 days'), trend: total }] : [])] };
+            summaries: [head('Movies', sum('movie', 'count'), 'film'), head('Shows', sum('show', 'count'), 'play', `${sum('show', 'parent_count').toLocaleString()} seasons`), head('Episodes', sum('show', 'child_count'), 'pulse')] };
         },
       },
       top: {

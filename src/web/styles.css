@@ -556,3 +556,30 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .motion-reduced :is(.columns-chart .col, .wall-tile) { animation: none; }
 @media (prefers-reduced-motion: reduce) { .columns-chart .col, .wall-tile { animation: none; } }
 .wall-initials { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; font-size: 10px; font-weight: 600; letter-spacing: .02em; color: var(--muted-foreground); background: rgb(255 255 255 / .1); }
+
+/* the coming fortnight: a column a day */
+.timeline { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.tl-day { display: flex; flex: 1 1 0; flex-direction: column; justify-content: flex-end; gap: 8px; min-width: 52px; animation: desk-rise 420ms var(--ease-out) calc(var(--i) * 30ms) backwards; }
+.tl-day.is-empty { flex-grow: .55; min-width: 26px; }
+.tl-posters { position: relative; display: flex; align-items: flex-end; height: 104px; }
+.tl-poster { position: absolute; bottom: 0; left: calc(var(--k) * 9px); z-index: calc(3 - var(--k)); width: 60px; max-width: 100%; aspect-ratio: 2 / 3; overflow: hidden; border-radius: 7px; background: var(--muted); box-shadow: 0 8px 18px -8px rgb(0 0 0 / .8), 0 0 0 1px rgb(0 0 0 / .3); transform: translateY(calc(var(--k) * -6px)); transition: transform 200ms var(--ease-out); }
+.tl-more { position: absolute; right: 0; bottom: 4px; z-index: 4; padding: 1px 5px; border-radius: 99px; font-size: 10px; font-weight: 600; background: rgb(0 0 0 / .7); }
+.tl-label { display: flex; flex-direction: column; align-items: flex-start; min-height: 34px; padding: 4px 4px 0; border-top: 1px solid var(--border); font-size: 10.5px; color: var(--muted-foreground); }
+.tl-label b { font-size: 14px; font-weight: 600; color: var(--foreground); }
+.tl-day.is-empty .tl-label b { color: var(--muted-foreground); font-weight: 500; }
+.tl-day.is-today .tl-label { border-top-color: var(--primary); } .tl-day.is-today .tl-label span { color: var(--primary); }
+.tl-ready { position: absolute; margin-top: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--good); }
+.tl-label { position: relative; } .tl-ready { right: 6px; top: 0; margin: 0; }
+@media (hover: hover) and (pointer: fine) { .tl-poster:hover { z-index: 5; transform: translateY(calc(var(--k) * -6px - 4px)) scale(1.05); } }
+/* requests: a poster and a line that says how far along it is */
+.tickets { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 12px; }
+.ticket { min-width: 0; animation: desk-rise 420ms var(--ease-out) calc(var(--i) * 40ms) backwards; }
+.ticket-art { position: relative; display: block; aspect-ratio: 2 / 3; overflow: hidden; border-radius: 9px; background: var(--muted); box-shadow: 0 10px 22px -12px rgb(0 0 0 / .8); }
+.ticket-line { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgb(255 255 255 / .18); }
+.ticket-line::after { content: ''; position: absolute; inset: 0; width: 0; background: var(--good); }
+.ticket-line.is-done::after { width: 100%; } .ticket-line.is-part::after { width: 50%; }
+.ticket-line.is-busy::after { width: 100%; background: linear-gradient(90deg, var(--primary) 0 40%, #fff 50%, var(--primary) 60% 100%); background-size: 200% 100%; animation: ticket-busy 1.6s linear infinite; }
+.ticket-line.is-bad::after { width: 100%; background: var(--bad); }
+@keyframes ticket-busy { to { background-position: -200% 0; } }
+.motion-reduced :is(.tl-day, .ticket) { animation: none; } .motion-reduced .ticket-line.is-busy::after { animation: none; }
+@media (prefers-reduced-motion: reduce) { .tl-day, .ticket { animation: none; } .ticket-line.is-busy::after { animation: none; } }
