@@ -19,8 +19,7 @@
 .cam-osd-top { top: clamp(10px, 2.4cqw, 22px); left: clamp(11px, 2.6cqw, 24px); }
 .cam-osd-end { right: clamp(11px, 2.6cqw, 24px); bottom: clamp(10px, 2.4cqw, 22px); text-transform: uppercase; letter-spacing: .08em; }
 .cam-live { display: inline-flex; align-items: center; gap: .5em; letter-spacing: .1em; }
-.cam-live i { width: .62em; height: .62em; border-radius: 99px; background: #ff453a; box-shadow: 0 0 .7em rgb(255 69 58 / .75); animation: cam-breathe 2.6s ease-in-out infinite; }
-@keyframes cam-breathe { 50% { opacity: .35; } }
+.cam-live i { width: .62em; height: .62em; border-radius: 99px; background: #ff453a; box-shadow: 0 0 .7em rgb(255 69 58 / .75); }
 .cam-off { position: absolute; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / .55); color: rgb(255 255 255 / .6); font-size: 13px; }
 .cam-expand { position: absolute; right: 12px; top: 12px; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 99px; background: rgb(20 20 24 / .5); backdrop-filter: blur(14px) saturate(1.6); color: #fff; opacity: 0; transition: opacity 180ms var(--ease-out); }
 .cam-expand svg { width: 15px; height: 15px; }
@@ -29,7 +28,7 @@
 
 /* not live: a hollow dot for recorded footage, a plain tag for an event, and the bar that leads back */
 .cam-live.is-sample { letter-spacing: .02em; }
-.cam-live.is-sample i { background: none; box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / .85); animation: none; }
+.cam-live.is-sample i { background: none; box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / .85); }
 .cam-past { padding: .4em .7em; border-radius: 7px; letter-spacing: .02em; background: rgb(18 18 22 / .6); }
 .cam-still-bar { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 4px 4px 12px; border-radius: 99px; color: #fff; font-size: 12.5px; line-height: 1.35; background: rgb(18 18 22 / .62); backdrop-filter: blur(14px) saturate(1.6); }
 .cam-still-bar b { font-weight: 550; }
@@ -80,8 +79,8 @@
 .cam-dock .cam-pills { max-width: 100%; padding: 5px; border-radius: 99px; margin: 0; background: rgb(30 30 34 / .55); backdrop-filter: blur(24px) saturate(1.6); --foreground: #f5f5f7; }
 
 @media (prefers-reduced-motion: reduce) {
-  .cam-frame, .cam-theatre, .cam-box[data-on], .cam-live i, .cam-ping::after { animation: none; }
+  .cam-frame, .cam-theatre, .cam-box[data-on], .cam-ping::after { animation: none; }
   .cam-box { transition: none; }
 }
 
-.motion-reduced :is(.cam-frame, .cam-theatre, .cam-box[data-on], .cam-live i, .cam-ping::after) { animation: none; }
+.motion-reduced :is(.cam-frame, .cam-theatre, .cam-box[data-on], .cam-ping::after) { animation: none; }

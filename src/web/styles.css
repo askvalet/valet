@@ -140,7 +140,7 @@
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 /* appearance.motion: none is that, on purpose; reduced keeps fades and drops anything that moves */
 .motion-none *, .motion-none *::before, .motion-none *::after { animation: none !important; transition: none !important; }
-.motion-reduced :is(.settle, .settle-card, .chat-in, .chat-card, .chat-word, .tick, .spin-in, .tile-graph, .tile-mark, .twinkle, .stack-page, .stack-open, .chart-draw, .chat-pop, .brief-in, .fade-in-soft, .island-row) { animation: none !important; }
+.motion-reduced :is(.settle, .chat-in, .chat-card, .chat-word, .tick, .spin-in, .stack-open, .chat-pop, .brief-in, .fade-in-soft, .island-row) { animation: none !important; }
 .motion-reduced .lift, .motion-reduced .lift:hover, .motion-reduced .press:active { transform: none !important; }
 
 /* appearance.font and appearance.shape: each falls back to what the design had */
@@ -255,9 +255,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .island:not(.island-docked).island-open { border-radius: 30px; }
 .island-bubble { box-shadow: 0 10px 30px -10px rgb(0 0 0 / .7), inset 0 0 0 1px rgb(255 255 255 / .06); animation: island-in .45s cubic-bezier(.32, 1.35, .45, 1); }
 @keyframes island-in { from { transform: scale(.4); opacity: 0; } }
-.island-bar { height: 4px; animation: island-eq .9s ease-in-out infinite alternate; }
-.island-bar:nth-child(2) { animation-duration: .7s; } .island-bar:nth-child(3) { animation-duration: 1.05s; } .island-bar:nth-child(4) { animation-duration: .8s; }
-@keyframes island-eq { to { height: 14px; } }
+.island-bar { height: 7px; } .island-bar:nth-child(2) { height: 13px; } .island-bar:nth-child(3) { height: 5px; } .island-bar:nth-child(4) { height: 10px; }
 
 /* ── Motion. One set of curves for the whole app (Emil Kowalski's): ease-out for things arriving or leaving,
    ease-in-out for things moving on screen, never ease-in. UI motion stays under ~300ms; only transform, opacity and
@@ -287,12 +285,9 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 @keyframes chat-dot { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
 .chat-icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; }
 @media (hover: hover) and (pointer: fine) { .chat-icon:hover { background: rgb(255 255 255 / .07); color: var(--foreground); } }
-/* a page or tab opening: sections settle in, a beat apart, and each card inside a section a beat after the last;
-   a number that changes crossfades through a slight blur */
+/* sign-in and first run: seen once, so they may settle in. Tabs and sections don't: they're opened all day. */
 .settle { animation: settle 420ms var(--ease-out) both; }
 @keyframes settle { from { opacity: 0; transform: translateY(10px); } }
-.settle-card { animation: settle-card 520ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 40ms); }
-@keyframes settle-card { from { opacity: 0; transform: translateY(8px) scale(.992); } }
 /* cards lift a touch under the pointer: the shadow deepens, nothing jumps */
 @media (hover: hover) and (pointer: fine) {
   .lift { transition: transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out); }
@@ -316,20 +311,17 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .fade-in-soft { animation: fade-in-soft 320ms var(--ease-out) both; }
 @keyframes fade-in-soft { from { opacity: 0; } }
 /* placeholders: a soft light passes over them, so waiting looks like work rather than a stuck page */
-[data-slot="skeleton"] { position: relative; overflow: hidden; animation: none; }
+[data-slot="skeleton"] { position: relative; overflow: hidden; }
 [data-slot="skeleton"]::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%);
   background: linear-gradient(90deg, transparent, rgb(255 255 255 / .09), transparent); animation: skeleton-sweep 1.6s var(--ease-in-out) infinite; }
 @keyframes skeleton-sweep { to { transform: translateX(100%); } }
 /* the wallpaper fades up once it has decoded */
 .wallpaper img { opacity: 0; transition: opacity 700ms var(--ease-out); }
 .wallpaper img.is-on { opacity: 1; }
-/* ⌘K: drops in from just above, and its list eases to the height of the results */
-.palette-pop[data-state="open"] { animation: palette-in 220ms var(--ease-out) both; }
-.palette-pop[data-state="closed"] { animation: palette-out 120ms var(--ease-out) both; }
-@keyframes palette-in { from { opacity: 0; transform: translateY(-8px) scale(.98); } }
-@keyframes palette-out { to { opacity: 0; transform: translateY(-4px) scale(.99); } }
-[cmdk-list] { height: min(var(--cmdk-list-height), 340px); max-height: 340px; transition: height 180ms var(--ease-out); }
-[cmdk-item] { transition: background-color 110ms var(--ease-out); border-radius: 10px; }
+/* ⌘K opens from the keyboard all day, so it appears and follows the typing at once */
+.palette-pop, [data-slot="dialog-overlay"]:has(+ .palette-pop) { animation: none !important; }
+[cmdk-list] { height: min(var(--cmdk-list-height), 340px); max-height: 340px; }
+[cmdk-item] { border-radius: 10px; }
 /* the island opening: its rows arrive just after the shape does */
 .island-row { animation: island-row 380ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 45ms + 70ms); }
 @keyframes island-row { from { opacity: 0; transform: translateY(-6px); } }
@@ -365,12 +357,8 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .chat-aside .metric { font-size: 17px; }
 /* a ring's segments ease to their new size when the numbers change */
 .donut-seg { transition: stroke-dasharray 700ms var(--ease-in-out), stroke-dashoffset 700ms var(--ease-in-out); }
-/* a chat card that's keeping itself current: one small breathing dot */
-.live-dot { position: sticky; float: right; top: 14px; margin: 14px 14px -20px 0; left: auto; z-index: 2; width: 6px; height: 6px; border-radius: 99px; background: var(--good); animation: live-dot 2.4s ease-in-out infinite; }
-@keyframes live-dot { 50% { opacity: .35; } }
-/* a chart's line draws itself in, once */
-.chart-draw { animation: chart-draw 900ms var(--ease-out) both; }
-@keyframes chart-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+/* a chat card that's keeping itself current: one small dot */
+.live-dot { position: sticky; float: right; top: 14px; margin: 14px 14px -20px 0; left: auto; z-index: 2; width: 6px; height: 6px; border-radius: 99px; background: var(--good); }
 .chart-scrub { cursor: crosshair; }
 /* a theme switch: the sun and moon turn into each other */
 .spin-in { animation: spin-in 360ms var(--ease-out) both; }
@@ -383,7 +371,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 }
 .tick { display: inline-block; animation: tick 260ms var(--ease-out) both; }
 @keyframes tick { from { opacity: 0; transform: translateY(2px) scale(.96); filter: blur(2px); } }
-@media (prefers-reduced-motion: reduce) { .settle, .settle-card, .tick, .spin-in { animation: none; } .chat-word, .chat-card, .chat-in { animation: none; } .chat-shimmer { animation: none; color: var(--muted-foreground); } .lift, .lift:hover { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .settle, .tick, .spin-in { animation: none; } .chat-word, .chat-card, .chat-in { animation: none; } .chat-shimmer { animation: none; color: var(--muted-foreground); } .lift, .lift:hover { transform: none; } }
 /* the composer glows awake when it has focus; the send button morphs into the stop square and back */
 .composer { transition: box-shadow 220ms var(--ease-out), border-color 220ms var(--ease-out), background-color 220ms var(--ease-out); }
 .composer:focus-within { border-color: rgb(255 255 255 / .22); box-shadow: 0 0 0 4px rgb(255 255 255 / .06), 0 10px 30px -16px rgb(0 0 0 / .6); }
@@ -439,32 +427,24 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 /* one card's own surface: its tint over its picture, its own frost */
 .card-look [data-slot="card"] { background-color: transparent; background-image: linear-gradient(var(--card), var(--card)), var(--card-image, none); background-size: cover; background-position: center; backdrop-filter: var(--glass-blur); }
 
-/* a stack of pages: each settles into its pile, a beat apart; hovering fans them out to the right like a hand of cards.
-   Long, soft ease-out both ways so nothing snaps. */
-.stack-page { transform: translateX(var(--x)) rotate(var(--r)); transition: transform 560ms var(--ease-out), filter 560ms var(--ease-out); animation: stack-in 640ms var(--ease-out) both; }
-@keyframes stack-in { from { opacity: 0; transform: translateY(10px) rotate(0deg) scale(.97); filter: blur(2px); } }
+/* a stack of pages: hovering fans them out to the right like a hand of cards */
+.stack-page { transform: translateX(var(--x)) rotate(var(--r)); transition: transform 560ms var(--ease-out); }
 @media (hover: hover) and (pointer: fine) { .group\/stack:hover .stack-page { transform: translateX(var(--fan-x)) rotate(var(--fan-r)); } }
 .stack-open { animation: stack-open 520ms var(--ease-out) both; }
 @keyframes stack-open { from { opacity: 0; transform: translateY(6px); filter: blur(3px); } }
 @media (prefers-reduced-motion: reduce) { .stack-page, .stack-open { animation: none; transition: none; } }
 
-/* flashback photos: a slow crossfade with a gentle drift, so the card breathes without anything snapping */
 /* a long card in a packed section stays one screenful */
 .card-cap [data-slot="card-content"] { max-height: 420px; overflow-y: auto; scrollbar-width: thin; }
 
-/* tiles: the graph fades out behind the number and sweeps in; the bars rise; prayer-card stars breathe */
-.tile-graph { mask-image: linear-gradient(to right, transparent 22%, black 62%); animation: tile-sweep 1100ms var(--ease-out) both; }
-@keyframes tile-sweep { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
-.tile-mark { transform-origin: bottom; animation: tile-rise 560ms var(--ease-out) both; }
-@keyframes tile-rise { from { transform: scaleY(.2); opacity: 0; } }
-.twinkle { animation: twinkle 7s ease-in-out infinite; }
-@keyframes twinkle { 0%, 100% { opacity: .75; } 50% { opacity: .2; } }
+/* tiles: the graph fades out behind the number; numbers don't redraw themselves each time they're seen */
+.tile-graph { mask-image: linear-gradient(to right, transparent 22%, black 62%); }
+.twinkle { opacity: .5; }
 .verse-lattice { opacity: .1; mask-image: radial-gradient(90% 110% at 100% 100%, black, transparent 70%); }
-@media (prefers-reduced-motion: reduce) { .tile-graph, .tile-mark, .twinkle { animation: none; } }
 
-.photo-slide { opacity: 0; transform: scale(1.06); transition: opacity 1.4s var(--ease-in-out), transform 8s linear; }
-.photo-slide.is-on { opacity: 1; transform: scale(1); }
-@media (prefers-reduced-motion: reduce) { .photo-slide { transition: opacity .4s ease; transform: none; } }
+/* flashback photos crossfade and otherwise hold still */
+.photo-slide { opacity: 0; transition: opacity 1.4s var(--ease-in-out); }
+.photo-slide.is-on { opacity: 1; }
 
 /* Arabic: a classical Naskh face where the system has one */
 .verse-ar { font-family: "Scheherazade New", "Amiri", "Noto Naskh Arabic", "Geeza Pro", "Al Bayan", serif; font-feature-settings: normal; }
@@ -476,19 +456,18 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .article-text { min-width: 0; padding: 18px 20px; }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) { .article:hover .article-page { transform: translateY(min(0px, max(-60%, calc(-100% + 100cqh))));   /* down the page, and only if there's more of it */ transition-duration: 14s; transition-timing-function: linear; } }
 
-/* documents on a desk: dealt out one by one, and hover picks a page up */
+/* documents on a desk: hover picks a page up */
 .desk { display: flex; justify-content: space-between; gap: 0; padding: 18px 10px 6px; overflow-x: auto; scrollbar-width: none; }
-.desk-page { position: relative; flex: 1 1 0; max-width: 200px; min-width: 104px; margin-inline: 2px; padding-inline: 3px; transform: rotate(var(--tilt)); transition: transform 320ms var(--ease-out); animation: desk-deal 560ms var(--ease-out) calc(var(--i) * 65ms) backwards; }
+.desk-page { position: relative; flex: 1 1 0; max-width: 200px; min-width: 104px; margin-inline: 2px; padding-inline: 3px; transform: rotate(var(--tilt)); transition: transform 320ms var(--ease-out); }
 .desk-sheet { position: relative; display: block; aspect-ratio: 8.5 / 11; overflow: hidden; border-radius: 6px; background: #fbfaf6; box-shadow: 0 1px 1px rgb(0 0 0 / .3), 0 14px 26px -12px rgb(0 0 0 / .65); transition: box-shadow 320ms var(--ease-out); }
 .desk-stamp { position: absolute; right: 10px; bottom: 12px; rotate: -9deg; padding: 1px 7px; border: 1.5px solid currentColor; border-radius: 4px; color: #c2352b; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
-@keyframes desk-deal { from { opacity: 0; transform: translateY(-34px) rotate(calc(var(--tilt) * 4)) scale(1.06); } }
 @media (hover: hover) and (pointer: fine) {
   .desk-page[href]:hover { z-index: 5; transform: translateY(-12px) scale(1.09); }
   .desk-page[href]:hover .desk-sheet { box-shadow: 0 2px 2px rgb(0 0 0 / .3), 0 30px 46px -14px rgb(0 0 0 / .75); }
 }
 /* saved pages as small browser windows */
 .windows { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 16px; }
-.window { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: rgb(255 255 255 / .03); transition: transform 280ms var(--ease-out), border-color 280ms; animation: desk-rise 480ms var(--ease-out) calc(var(--i) * 55ms) backwards; }
+.window { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: rgb(255 255 255 / .03); transition: transform 280ms var(--ease-out), border-color 280ms; }
 .window-bar { display: flex; align-items: center; gap: 5px; height: 30px; padding-inline: 11px; font-size: 11.5px; color: var(--muted-foreground); background: rgb(255 255 255 / .05); }
 .window-bar > i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: rgb(255 255 255 / .18); transition: background 200ms; }
 .window-page { display: block; height: 170px; overflow: hidden; background: #fff; }
@@ -501,8 +480,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
   .window:hover .window-bar > i:nth-child(3) { background: #28c840; }
   .window:hover .window-page img { transform: translateY(min(0px, calc(-100% + 170px))); transition: transform 9s linear; }
 }
-.motion-reduced :is(.desk-page, .window) { animation: none; }
-@media (prefers-reduced-motion: reduce) { .desk-page, .window { animation: none; } .window:hover .window-page img { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .window:hover .window-page img { transform: none; } }
 
 .glass-light .glass-pop { --glass-sheet: rgb(255 255 255 / .96); }
 /* the reading card's controls: on hover, always on touch */
@@ -552,10 +530,9 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .title-link { transition: opacity 150ms; } .title-link:hover { opacity: .7; }
 /* stacked columns: the whole and its parts */
 .columns-chart { position: relative; display: flex; align-items: flex-end; gap: 2px; height: 112px; }
-.columns-chart .col { display: flex; flex: 1 1 0; flex-direction: column-reverse; min-width: 0; height: 100%; border-radius: 3px 3px 0 0; overflow: hidden; transition: opacity 150ms; animation: col-rise 600ms var(--ease-out) calc(var(--i) * 6ms) backwards; transform-origin: bottom; }
+.columns-chart .col { display: flex; flex: 1 1 0; flex-direction: column-reverse; min-width: 0; height: 100%; border-radius: 3px 3px 0 0; overflow: hidden; transition: opacity 150ms; }
 .columns-chart .col i { display: block; flex: none; min-height: 0; }
 .columns-chart:hover .col:not(.is-at) { opacity: .45; }
-@keyframes col-rise { from { transform: scaleY(0); } }
 .col-tip { position: absolute; bottom: calc(100% + 4px); z-index: 2; max-width: 100%; padding: 3px 8px; overflow: hidden; border-radius: 7px; font-size: 12px; line-height: 16px; white-space: nowrap; text-overflow: ellipsis; color: var(--muted-foreground); background: var(--popover); box-shadow: 0 6px 18px -6px rgb(0 0 0 / .5); pointer-events: none; font-variant-numeric: tabular-nums; }
 .col-tip b { font-weight: 500; color: var(--foreground); }
 .col-axis { display: flex; justify-content: space-between; margin-top: 5px; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
@@ -574,7 +551,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .fact b { font-weight: 500; color: var(--foreground); font-variant-numeric: tabular-nums; }
 /* the wall: icons, and only trouble gets a word */
 .wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); grid-auto-flow: dense; gap: 8px; }
-.wall-tile { position: relative; display: grid; place-items: center; aspect-ratio: 1; border-radius: 13px; background: rgb(255 255 255 / .07); transition: background 150ms, transform 200ms var(--ease-out); animation: desk-rise 420ms var(--ease-out) calc(var(--i) * 18ms) backwards; }
+.wall-tile { position: relative; display: grid; place-items: center; aspect-ratio: 1; border-radius: 13px; background: rgb(255 255 255 / .07); transition: background 150ms; }
 .wall-tile img, .wall-tile > span { width: 22px; height: 22px; }
 .wall-tile::after { content: ''; position: absolute; right: 4px; bottom: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 2px var(--card); }
 .wall-tile.is-off > img, .wall-tile.is-off > span { opacity: .4; } .wall-tile.is-off::after { background: var(--card); box-shadow: 0 0 0 2px var(--card), inset 0 0 0 1.5px var(--muted-foreground); }
@@ -586,7 +563,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 /* one app's containers, joined; the first carries how many */
 .wall-tile.is-joined::before { content: ''; position: absolute; left: -8px; top: 34%; bottom: 34%; width: 8px; background: rgb(255 255 255 / .07); }
 .wall-count { position: absolute; top: 3px; left: 5px; font-size: 9.5px; font-style: normal; font-weight: 600; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
-@media (hover: hover) and (pointer: fine) { a.wall-tile:hover { background: rgb(255 255 255 / .14); transform: translateY(-2px); } }
+@media (hover: hover) and (pointer: fine) { a.wall-tile:hover { background: rgb(255 255 255 / .14); } }
 /* a thermometer: cool at the left, hot at the right */
 /* a reading, not a control: a thin filled track with no knob, the normal range a faint band behind it */
 .reading { position: relative; height: 4px; overflow: hidden; border-radius: 2px; background: rgb(127 127 127 / .14); }
@@ -599,29 +576,22 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .chip-in { animation: desk-rise 280ms var(--ease-out) both; }
 .chip.is-warn { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 50%, transparent); }
 @media (hover: hover) and (pointer: fine) { a.chip:hover { background: rgb(255 255 255 / .13); } }
-.motion-reduced :is(.columns-chart .col, .wall-tile) { animation: none; }
-@media (prefers-reduced-motion: reduce) { .columns-chart .col, .wall-tile { animation: none; } }
 .wall-initials { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; font-size: 10px; font-weight: 600; letter-spacing: .02em; color: var(--muted-foreground); background: rgb(255 255 255 / .1); }
 
 /* requests: a poster and a line that says how far along it is */
 .ticket-line { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgb(0 0 0 / .45); }
 .ticket-line::after { content: ''; position: absolute; inset: 0; width: 0; border-radius: 0 3px 3px 0; background: var(--good); }
 .ticket-line.is-done::after { width: 100%; } .ticket-line.is-part::after { width: 50%; }
-.ticket-line.is-busy::after { width: 100%; background: linear-gradient(90deg, var(--primary) 0 40%, #fff 50%, var(--primary) 60% 100%); background-size: 200% 100%; animation: ticket-busy 1.6s linear infinite; }
+.ticket-line.is-busy::after { width: 100%; background: var(--primary); }
 .ticket-line.is-bad::after { width: 100%; background: var(--bad); }
-@keyframes ticket-busy { to { background-position: -200% 0; } }
-.motion-reduced .ticket-line.is-busy::after { animation: none; }
-@media (prefers-reduced-motion: reduce) { .ticket-line.is-busy::after { animation: none; } }
 
 /* headlines: a grid of stories, where they're from first */
 .headlines { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 10px; }
-.headline { display: flex; gap: 11px; align-items: flex-start; min-width: 0; padding: 11px 12px; border-radius: 14px; background: rgb(255 255 255 / .05); transition: background 150ms, transform 200ms var(--ease-out); animation: desk-rise 420ms var(--ease-out) calc(var(--i) * 40ms) backwards; }
+.headline { display: flex; gap: 11px; align-items: flex-start; min-width: 0; padding: 11px 12px; border-radius: 14px; background: rgb(255 255 255 / .05); transition: background 150ms; }
 .headline-mark { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: rgb(255 255 255 / .08); color: var(--muted-foreground); }
 .headline-mark img { width: 18px; height: 18px; border-radius: 4px; }
 .headline-art { flex: none; width: 54px; height: 54px; border-radius: 10px; object-fit: cover; background: var(--muted); }
-@media (hover: hover) and (pointer: fine) { .headline:hover { background: rgb(255 255 255 / .1); transform: translateY(-2px); } }
-.motion-reduced .headline { animation: none; }
-@media (prefers-reduced-motion: reduce) { .headline { animation: none; } }
+@media (hover: hover) and (pointer: fine) { .headline:hover { background: rgb(255 255 255 / .1); } }
 
 /* the shell: a line that comes and goes opens and closes rather than jumping, and a chip on its way out gives its room back */
 .fold { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 320ms var(--ease-out), opacity 240ms var(--ease-out); }

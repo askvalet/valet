@@ -332,9 +332,9 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
       )}
       {follow.length > 0 && (
         <div className="space-y-0.5 pt-1">
-          {follow.map((f: string, k: number) => (
-            <button key={f} onClick={() => act.ask(f)} style={{ animationDelay: `${150 + k * 60}ms` }}
-              className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left max-sm:py-2.5 text-[13.5px] text-muted-foreground transition-colors fill-mode-both hover:bg-white/[.05] hover:text-foreground animate-in fade-in slide-in-from-bottom-1 duration-300">
+          {follow.map((f: string) => (
+            <button key={f} onClick={() => act.ask(f)}
+              className="press flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left max-sm:py-2.5 text-[13.5px] text-muted-foreground hover:bg-white/[.05] hover:text-foreground">
               <CornerDownRight className="size-3.5 shrink-0 opacity-60" />{f}
             </button>
           ))}
@@ -454,13 +454,13 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
         <div ref={column} className="mx-auto w-full max-w-[820px] space-y-4 py-4">
         {!messages.length && (
           // on a phone the suggestions sit low, where the thumb is
-          <div className={cn('text-center animate-in fade-in duration-500', !sheet && 'pt-10')}>
+          <div className={cn('text-center', !sheet && 'pt-10')}>
             <div className="text-lg font-semibold tracking-tight">{label('chatTitle')}</div>
             <p className="mt-1 text-sm text-muted-foreground">{label('chatHint')}</p>
             <div className="mx-auto mt-6 grid max-w-[560px] gap-1.5 sm:grid-cols-2">
-              {suggestions.map((s, i) => (
-                <button key={s} onClick={() => onAsk(s)} style={{ animationDelay: `${120 + i * 50}ms` }}
-                  className="press flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-left text-sm text-foreground/85 transition-colors fill-mode-both hover:bg-white/[.07] hover:text-foreground animate-in fade-in slide-in-from-bottom-1 duration-300">
+              {suggestions.map(s => (
+                <button key={s} onClick={() => onAsk(s)}
+                  className="press flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-left text-sm text-foreground/85 hover:bg-white/[.07] hover:text-foreground">
                   {s}
                 </button>
               ))}

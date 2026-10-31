@@ -24,12 +24,12 @@ function Progress({ a, size = 20 }: { a: Live; size?: number }) {
     </svg>
   );
 }
-/** a little equaliser while something plays; a pause glyph when it's paused */
+/** a little equaliser, at rest, while something plays; a pause glyph when it's paused */
 function Bars({ a }: { a: Live }) {
   if (a.paused) return <Pause className="size-3.5 shrink-0" style={{ color: tint(a), fill: tint(a) }} aria-label="Paused" />;
   return (
     <span className="flex h-3.5 shrink-0 items-end gap-[2px]" aria-hidden>
-      {[0, 1, 2, 3].map(i => <i key={i} className="island-bar w-[3px] rounded-full" style={{ background: tint(a), animationDelay: `${i * -.23}s` }} />)}
+      {[0, 1, 2, 3].map(i => <i key={i} className="island-bar w-[3px] rounded-full" style={{ background: tint(a) }} />)}
     </span>
   );
 }

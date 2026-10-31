@@ -144,7 +144,7 @@ function Headlines({ card }: { card: ListCard }) {
       {card.items.slice(0, 8).map((it, i) => {
         const h = host(it.href);
         return (
-          <a key={i} href={it.href} target="_blank" rel="noreferrer" className={cn('headline', !it.href && 'pointer-events-none')} style={{ '--i': i } as React.CSSProperties}>
+          <a key={i} href={it.href} target="_blank" rel="noreferrer" className={cn('headline', !it.href && 'pointer-events-none')}>
             {it.image ? <img src={it.image} alt="" loading="lazy" className="headline-art" />
               : <span className="headline-mark">{h ? <img src={`/api/favicon/${h}`} alt="" loading="lazy" onError={e => { e.currentTarget.style.display = 'none'; }} /> : <Icon name={card.icon} className="size-4" />}</span>}
             <span className="min-w-0">
@@ -323,14 +323,13 @@ function Wall({ items }: { items: StatusItem[] }) {
   for (const i of items) { const k = i.name.split(/[-_]/)[0].toLowerCase(); family.set(k, [...family.get(k) ?? [], i]); }
   // what's wrong comes first: a wide tile anywhere else leaves a hole in the rows
   const groups = [...family.values()].sort((a, b) => Number(b.some(trouble)) - Number(a.some(trouble)));
-  let n = 0;
   return (
     <div>
       <div className="wall">
         {groups.flatMap(g => g.map((s, k) => {
           const st = stateOf(s), wrong = trouble(s);
           return (
-            <Tile key={s.name} href={s.href} title={stateTip(s)} className={cn('wall-tile', `is-${st}`, wrong && 'is-worded', k > 0 && 'is-joined')} style={{ '--i': n++ } as React.CSSProperties}>
+            <Tile key={s.name} href={s.href} title={stateTip(s)} className={cn('wall-tile', `is-${st}`, wrong && 'is-worded', k > 0 && 'is-joined')}>
               <Glyph src={s.icon} name={s.name} />
               {wrong && <div className="min-w-0"><div className="truncate text-[12.5px] leading-tight font-medium">{s.name}</div><div className={cn('truncate text-[11.5px] leading-tight', st === 'down' ? 'text-bad' : 'text-warn')}>{stateLine(s)}</div></div>}
               {k === 0 && g.length > 1 && <i className="wall-count" aria-label={`${g.length} together`}>{g.length}</i>}
@@ -594,7 +593,7 @@ function Stack({ card, header, onOpen }: { card: ShelfCard; header?: ReactNode; 
             <div key={i} className={cn('stack-page absolute top-2.5 left-3 h-[176px] origin-bottom-left overflow-hidden shadow-[0_10px_30px_-10px_rgb(0_0_0/.6),0_0_0_1px_rgb(0_0_0/.08)]',
               photo ? 'aspect-square rounded-[16px] bg-muted ring-[3px] ring-white/90' : 'aspect-[3/4] rounded-[10px] bg-white')}
               style={{ '--r': `${one ? -2 : r * .7}deg`, '--x': `${x + 10}px`, '--fan-x': `${depth ? (pile.length - 1 - depth) * 58 : (pile.length - 1) * 58}px`, '--fan-r': `${(i - (pile.length - 1)) * -2.5}deg`,
-                zIndex: i, filter: depth ? `brightness(${1 - depth * .06})` : undefined, animationDelay: `${i * 50}ms` } as React.CSSProperties}>
+                zIndex: i, filter: depth ? `brightness(${1 - depth * .06})` : undefined } as React.CSSProperties}>
               <Art src={it.image} alt="" className={cn('size-full object-cover', !photo && 'object-top')} />
             </div>
           );
@@ -690,7 +689,7 @@ function Desk({ card, header }: { card: ShelfCard; header?: ReactNode }) {
       </div>
       {list ? <DocList items={card.items} /> : <div className="desk">
         {card.items.slice(0, 8).map((d, i) => (
-          <a key={i} href={d.href} target="_blank" rel="noreferrer" className="desk-page" style={{ '--tilt': `${TILT[i]}deg`, '--i': i } as React.CSSProperties}>
+          <a key={i} href={d.href} target="_blank" rel="noreferrer" className="desk-page" style={{ '--tilt': `${TILT[i]}deg` } as React.CSSProperties}>
             <span className="desk-sheet"><Art src={d.image} className="size-full object-cover object-top" />{d.badge && <span className="desk-stamp">{d.badge}</span>}</span>
             <span className="mt-2.5 block truncate text-sm font-medium">{d.title}</span>
             {d.subtitle && <span className="block truncate text-xs text-muted-foreground">{d.subtitle}</span>}
@@ -710,7 +709,7 @@ function Windows({ card, header, run }: { card: ShelfCard; header?: ReactNode; r
       <div className="flex items-center justify-between gap-3"><div className="min-w-0">{header}</div>{run && <SeeArchived href={card.archived} className="shrink-0" />}</div>
       <div className="windows">
         {card.items.filter(w => !w.id || !arch.gone.includes(w.id)).slice(0, 9).map((w, i) => (
-          <a key={w.id ?? i} href={w.href} target="_blank" rel="noreferrer" className={cn('window relative', w.id && arch.leaving.includes(w.id) && 'gone')} style={{ '--i': i } as React.CSSProperties}>
+          <a key={w.id ?? i} href={w.href} target="_blank" rel="noreferrer" className={cn('window relative', w.id && arch.leaving.includes(w.id) && 'gone')}>
             {run && w.id && <button type="button" aria-label="Archive" title="Archive" className="window-archive" onClick={e => { e.preventDefault(); e.stopPropagation(); arch.archive(w.id!); }}><Archive className="size-3.5" /></button>}
             <span className="window-bar"><i /><i /><i />{site(w.subtitle) && <img src={`/api/favicon/${w.subtitle}`} alt="" className="ml-1.5 size-3.5 rounded-sm" onError={e => { e.currentTarget.style.display = 'none'; }} />}<span className="min-w-0 truncate">{w.subtitle}</span></span>
             <span className="window-page">{w.image ? <Art src={w.image} className="w-full" /> : <span className="grid h-full place-items-center bg-white/[.04]"><Bookmark className="size-5 text-muted-foreground" /></span>}</span>
@@ -824,7 +823,7 @@ function Columns({ card }: { card: ChartCard }) {
       </div>
       <div className="columns-chart" onPointerLeave={() => setAt(null)}>
         {tops.map((t, i) => (
-          <div key={i} className={cn('col', at === i && 'is-at')} onPointerEnter={() => setAt(i)} style={{ '--i': i } as React.CSSProperties}>
+          <div key={i} className={cn('col', at === i && 'is-at')} onPointerEnter={() => setAt(i)}>
             {card.series.map(s => <i key={s.name} style={{ height: `${(s.points[i] ?? 0) / max * 100}%`, background: s.tone ? toneVar(s.tone) : 'rgb(255 255 255 / .22)' }} />)}
           </div>
         ))}
@@ -875,7 +874,7 @@ function Chart({ card }: { card: ChartCard }) {
         </span>
       </div>
       <div className="chart-scrub relative touch-pan-y select-none" onPointerMove={scrub} onPointerDown={scrub} onPointerLeave={() => setAt(null)} onPointerUp={e => { if (e.pointerType !== 'mouse') setAt(null); }}>
-        <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="chart-draw h-28 w-full" aria-hidden>
+        <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="h-28 w-full" aria-hidden>
           {card.series.map((s, k) => {
             const pts = s.points.map((p, i) => [x(i, s.points.length), y(p)] as [number, number]), d = smooth(pts);
             const color = k ? 'var(--muted-foreground)' : toneVar(s.tone);
@@ -1057,8 +1056,8 @@ function SkyWash({ card }: { card: ScheduleCard }) {
   const night = now < rise - 50 * min || now > set + 50 * min;
   return (
     <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
-      <div className="absolute inset-0 opacity-30 transition-[background] duration-1000" style={{ background: `radial-gradient(120% 90% at 50% 112%, ${sky[0]}, ${sky[1]} 52%, transparent 82%)` }} />
-      {night && [[8, 12], [17, 34], [26, 9], [38, 22], [49, 7], [61, 30], [72, 12], [83, 26], [92, 8], [13, 56], [88, 52]].map(([x, y], i) => <span key={i} className="twinkle absolute size-[2px] rounded-full bg-white" style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${i * .7}s` }} />)}
+      <div className="absolute inset-0 opacity-30" style={{ background: `radial-gradient(120% 90% at 50% 112%, ${sky[0]}, ${sky[1]} 52%, transparent 82%)` }} />
+      {night && [[8, 12], [17, 34], [26, 9], [38, 22], [49, 7], [61, 30], [72, 12], [83, 26], [92, 8], [13, 56], [88, 52]].map(([x, y], i) => <span key={i} className="twinkle absolute size-[2px] rounded-full bg-white" style={{ left: `${x}%`, top: `${y}%` }} />)}
     </div>
   );
 }
@@ -1109,8 +1108,8 @@ function Sky({ card }: { card: ScheduleCard }) {
             </g>
           );
         })}
-        <circle cx={sun.x} cy={sun.y} r="22" fill="url(#sky-sun)" className="transition-all duration-1000" />
-        <circle cx={sun.x} cy={sun.y} r="6.5" fill={sun.up ? '#ffe680' : '#e8edff'} className="transition-all duration-1000" />
+        <circle cx={sun.x} cy={sun.y} r="22" fill="url(#sky-sun)" />
+        <circle cx={sun.x} cy={sun.y} r="6.5" fill={sun.up ? '#ffe680' : '#e8edff'} />
       </svg>
     </div>
   );
@@ -1150,8 +1149,8 @@ function Schedule({ card }: { card: ScheduleCard }) {
       </div>
       <div className="relative pt-1 pb-7">
         <div className="h-[3px] rounded-full bg-white/10" />
-        <div className="absolute top-1 left-0 h-[3px] rounded-full bg-gradient-to-r from-white/20 to-white/60 transition-[width] duration-1000" style={{ width: `${at(now) * 100}%` }} />
-        <span className="absolute top-[-1px] h-[11px] w-[2px] -translate-x-1/2 rounded-full bg-white transition-[left] duration-1000" style={{ left: `${at(now) * 100}%` }} />
+        <div className="absolute top-1 left-0 h-[3px] rounded-full bg-gradient-to-r from-white/20 to-white/60" style={{ width: `${at(now) * 100}%` }} />
+        <span className="absolute top-[-1px] h-[11px] w-[2px] -translate-x-1/2 rounded-full bg-white" style={{ left: `${at(now) * 100}%` }} />
         {items.map((x, k) => x.muted
           // a moment that's never "next" is a notch on the line, not a word: hover says which
           ? <span key={x.name} title={`${x.name} · ${clock(x.t)}`} className="absolute top-[2px] h-[7px] w-px -translate-x-1/2 bg-white/35" style={{ left: `${pos(k) * 100}%` }} />
@@ -1413,7 +1412,7 @@ const tintOf = (key: string) => TINTS[[...key].reduce((h, c) => (h * 17 + c.char
 function TileMarks({ marks }: { marks: NonNullable<Summary['marks']> }) {
   return (
     <div className="flex h-8 shrink-0 items-end gap-1" role="img" aria-label={marks.map(m => m.label).filter(Boolean).join(', ')}>
-      {marks.slice(0, 12).map((m, i) => <span key={i} title={m.label} className="tile-mark w-[7px] rounded-full" style={{ height: `${28 + (m.pct ?? .5) * 72}%`, background: m.tone && m.tone !== 'neutral' ? toneVar(m.tone) : 'var(--tint)', animationDelay: `${i * 60}ms` }} />)}
+      {marks.slice(0, 12).map((m, i) => <span key={i} title={m.label} className="w-[7px] rounded-full" style={{ height: `${28 + (m.pct ?? .5) * 72}%`, background: m.tone && m.tone !== 'neutral' ? toneVar(m.tone) : 'var(--tint)' }} />)}
     </div>
   );
 }
@@ -1560,7 +1559,7 @@ export function WeatherRing({ card }: { card: ForecastCard }) {
         <svg viewBox="0 0 42 42" className="size-full" aria-hidden>
           <defs><linearGradient id="wx" x1="0" y1="1" x2="1" y2="1"><stop offset="0" stopColor="#64d2ff" /><stop offset=".55" stopColor="#ffd60a" /><stop offset="1" stopColor="#ff9f0a" /></linearGradient></defs>
           <circle cx="21" cy="21" r={r} fill="none" stroke="url(#wx)" strokeOpacity=".9" strokeWidth="3" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} transform="rotate(135 21 21)" />
-          <circle cx={mx} cy={my} r="3.6" fill="#fff" stroke="rgb(0 0 0 / .35)" strokeWidth="1" className="transition-all duration-700" />
+          <circle cx={mx} cy={my} r="3.6" fill="#fff" stroke="rgb(0 0 0 / .35)" strokeWidth="1" />
         </svg>
         <div className="absolute inset-0 grid place-items-center"><Icon name={s.icon} className="size-4" /></div>
       </div>

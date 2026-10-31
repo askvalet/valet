@@ -10,25 +10,6 @@
   background: radial-gradient(130% 90% at 30% 0%, rgb(var(--sky) / .24), transparent 70%), linear-gradient(180deg, rgb(var(--sky) / .08), rgb(var(--sky) / .14)); }
 .wx-range { background: linear-gradient(90deg, #6cc4ff, #ffc65c 70%, #ff9f5a); }
 
-/* the glyphs barely move: a cloud breathing, rain starting and stopping. Only the large one on a card does. */
-.wx g, .wx path, .wx rect { transform-box: fill-box; transform-origin: center; }
-.wx-live .wx-float { animation: wx-float 7s ease-in-out infinite alternate; }
-@keyframes wx-float { from { transform: translate(-.5px, .5px); } to { transform: translate(1px, -1px); } }
-.wx-live .wx-spin { animation: wx-spin 120s linear infinite; }
-@keyframes wx-spin { to { transform: rotate(360deg); } }
-.wx-live .wx-drop { animation: wx-drop 2.4s ease-in-out infinite; }
-@keyframes wx-drop { 0% { opacity: 0; transform: translateY(-2.5px); } 30%, 62% { opacity: 1; } 100% { opacity: 0; transform: translateY(3.5px); } }
-.wx-live .wx-flake { animation: wx-flake 4.2s ease-in-out infinite; }
-@keyframes wx-flake { 0% { opacity: 0; transform: translate(-1px, -3px); } 35%, 65% { opacity: 1; } 100% { opacity: 0; transform: translate(1px, 3.5px); } }
-.wx-live .wx-flash { animation: wx-flash 6s ease-in-out infinite; }
-@keyframes wx-flash { 0%, 86%, 100% { opacity: .82; } 90% { opacity: 1; } 93% { opacity: .7; } 96% { opacity: 1; } }
-.wx-live .wx-mist { animation: wx-mist 6s ease-in-out infinite alternate; }
-@keyframes wx-mist { from { transform: translateX(-2px); } to { transform: translateX(2.5px); } }
-.wx-live .wx-twinkle { animation: wx-twinkle 4.4s ease-in-out infinite alternate; }
-@keyframes wx-twinkle { from { opacity: .35; } to { opacity: 1; } }
-
-.motion-reduced :is(.wx-live .wx-float, .wx-live .wx-spin, .wx-live .wx-drop, .wx-live .wx-flake, .wx-live .wx-flash, .wx-live .wx-mist, .wx-live .wx-twinkle) { animation: none; }
-
 /* calendar */
 .cal-scroll > div { scrollbar-width: none; }
 .cal-scroll > div::-webkit-scrollbar { display: none; }

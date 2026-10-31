@@ -489,7 +489,7 @@ function Home({ account }: { account: boolean }) {
   // a section title on the page, as it always was; one that's only a tab's name is still a heading to a screen reader
   const titled = (sec: Page['sections'][number]) => view === 'all' && sec.heading !== false && (sec.display === 'cards' || sec.display === 'media') && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title);
   const renderSection = (sec: (typeof sections)[number], aside = sec.place === 'left' || sec.place === 'right') => (
-          <section key={`${view}:${sec.i}`} className="settle space-y-3" style={{ animationDelay: `${Math.min(sec.i, 6) * 45}ms`, ...(sec.gap != null && { '--card-gap': `${sec.gap}px`, '--tile-gap': `${sec.gap}px` } as React.CSSProperties) }}>
+          <section key={`${view}:${sec.i}`} className="space-y-3" style={sec.gap != null ? { '--card-gap': `${sec.gap}px`, '--tile-gap': `${sec.gap}px` } as React.CSSProperties : undefined}>
             {sec.title && (titled(sec) ? <h2 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h2> : sec.title !== view && <h2 className="sr-only">{sec.title}</h2>)}
             {sec.display === 'media'
               ? (
@@ -537,19 +537,19 @@ function Home({ account }: { account: boolean }) {
                   if (sec.sizes && Object.keys(sec.sizes).length && !aside) return (
                     <div className={cn('bento grid grid-flow-row-dense gap-(--card-gap)', sec.grid ? 'cols' : 'grid-cols-2 @2xl/main:grid-cols-4 @5xl/main:grid-cols-6')} style={sec.grid && gridVars(sec.grid)}>
                       {keys.map((key, j) => {
-                        const o = sec.looks?.[key], c = dress(state[key]?.card, o), size = c?.type === 'calendar' && sec.sizes![key] === 'wide' ? 'large' : sec.sizes![key], beat = { '--i': Math.min(j, 8) } as React.CSSProperties;
+                        const o = sec.looks?.[key], c = dress(state[key]?.card, o), size = c?.type === 'calendar' && sec.sizes![key] === 'wide' ? 'large' : sec.sizes![key];
                         const span = cn(size !== 'small' && 'col-span-2', size === 'tall' && 'row-span-2', size === 'large' && 'col-span-full @5xl/main:col-span-4');
                         // a size the config redefines, or a grid of its own, spans by number, never past the last column
                         const [cols, rows] = SPANS[size ?? 'medium'], own = sized[size ?? 'medium'];
                         const spans = (own || sec.grid) && { gridColumn: `span min(${own?.cols ?? cols}, var(--tracks))`, gridRow: `span ${own?.rows ?? rows}` };
-                        if ((size === 'small' || size === 'wide') && c?.summary) return <div key={key} className={cn('settle-card min-w-0', !spans && span, o?.style && 'card-look')} style={{ ...beat, ...spans, ...o?.style }}><SummaryTile s={c.summary} href={c.href} explain={explainFor(key)} /></div>;
-                        return <div key={key} style={{ ...beat, ...spans }} className={cn('settle-card min-w-0', !spans && (size === 'small' ? 'col-span-2' : span))}>{widget(key, size === 'large', true)}</div>;
+                        if ((size === 'small' || size === 'wide') && c?.summary) return <div key={key} className={cn('min-w-0', !spans && span, o?.style && 'card-look')} style={{ ...spans, ...o?.style }}><SummaryTile s={c.summary} href={c.href} explain={explainFor(key)} /></div>;
+                        return <div key={key} style={spans || undefined} className={cn('min-w-0', !spans && (size === 'small' ? 'col-span-2' : span))}>{widget(key, size === 'large', true)}</div>;
                       })}
                     </div>
                   );
                   if (sec.grid && !aside) return (
                     <div className="cols grid gap-(--card-gap)" style={gridVars(sec.grid)}>
-                      {keys.map((k, j) => <div key={k} className="settle-card min-w-0" style={{ '--i': Math.min(j, 8) } as React.CSSProperties}>{widget(k, false, true)}</div>)}
+                      {keys.map(k => <div key={k} className="min-w-0">{widget(k, false, true)}</div>)}
                     </div>
                   );
                   // a wide card (e.g. the 3D desktop) takes two thirds; the rest stack beside it
@@ -564,7 +564,7 @@ function Home({ account }: { account: boolean }) {
                   // a long mix of cards packs into columns with compact rows, and a very long card scrolls inside itself
                   if (!aside && !sec.columns && keys.length > 3) return (
                     <div className="columns-[340px] gap-(--card-gap)">
-                      {keys.map((k, j) => <div key={k} className="card-cap settle-card mb-(--card-gap) min-w-0 break-inside-avoid" style={{ '--i': Math.min(j, 8) } as React.CSSProperties}>{widget(k, false, false, true)}</div>)}
+                      {keys.map(k => <div key={k} className="card-cap mb-(--card-gap) min-w-0 break-inside-avoid">{widget(k, false, false, true)}</div>)}
                     </div>
                   );
                   // a card that's come up empty gives its column back, and cards in a row share a height
@@ -573,7 +573,7 @@ function Home({ account }: { account: boolean }) {
                     // a fixed column count applies from tablet width up; phones get one column
                     <div className={cn('grid gap-(--card-gap)', aside && 'items-start', sec.columns && !aside && 'grid-cols-1 @3xl/main:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))]')}
                       style={sec.columns && !aside ? { '--cols': cols } as React.CSSProperties : { gridTemplateColumns: aside ? '1fr' : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
-                      {keys.map((k, j) => <div key={k} className="settle-card min-w-0" style={{ '--i': Math.min(j, 8) } as React.CSSProperties}>{widget(k, false, row)}</div>)}
+                      {keys.map(k => <div key={k} className="min-w-0">{widget(k, false, row)}</div>)}
                     </div>
                   );
                 })()
