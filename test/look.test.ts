@@ -22,7 +22,7 @@ test('defaults: an old config keeps the old look, to the letter', () => {
   assert.deepEqual(look({ appearance: { wallpaper: 'w.jpg' } }), { vars: {}, classes: [] });
   const c = Config.parse({ menubar: ['a.b'], nav: { side: 'top' }, island: { activities: ['a.b'] } });
   assert.deepEqual(c.menubar, { widgets: ['a.b'], position: 'right', labels: true, clock: true, date: true, theme: true, size: 1 });
-  assert.deepEqual(c.nav, { side: 'top', style: 'icons', hide: [], size: 1 });
+  assert.deepEqual(c.nav, { side: 'top', style: 'icons', hide: [], order: [], size: 1 });
   assert.equal(c.island?.position, 'top');
   assert.deepEqual(c.hero, { greeting: true, status: true, search: true, review: true, align: 'center' });
   assert.deepEqual(c.chat, { open: 'center', overview: true, suggestions: 'ai', steps: true, thinking: 'collapsed', send: 'enter', beam: 'off', beamColor: 'colorful', beamStrength: .45 });

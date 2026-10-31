@@ -37,7 +37,7 @@ interface Page {
   insight?: string;
   welcome?: { path: string; saved: boolean };
   menubar?: { widgets: string[]; position: 'left' | 'center' | 'right'; labels: boolean; clock: boolean; date: boolean; theme: boolean };
-  nav?: { side: 'left' | 'right' | 'top' | 'bottom'; style: 'icons' | 'labels' | 'both'; hide: string[] };
+  nav?: { side: 'left' | 'right' | 'top' | 'bottom'; style: 'icons' | 'labels' | 'both'; hide: string[]; order?: string[] };
   island?: { activities: string[]; idle: 'notch' | 'hide'; position: 'top' | 'top-left' | 'top-right' | 'bottom'; label: boolean };
   weather?: string;
   calendar?: string;
@@ -407,7 +407,8 @@ function Home({ account }: { account: boolean }) {
   const hasSide = !!page?.sections.some(x => (x.place === 'left' || x.place === 'right') && (view === 'all' ? x.overview !== false : true));
   const tip = ({ left: 'right', right: 'left', top: 'bottom', bottom: 'top' } as const)[navSide];
   const hidden = (name?: string) => !!name && !!page?.nav?.hide.some(h => h.toLowerCase() === name.toLowerCase());
-  const nav = tabs.filter(s => !hidden(s.key));
+  const spot = (k: string) => { const i = page?.nav?.order?.indexOf(k) ?? -1; return i < 0 ? Infinity : i; };
+  const nav = tabs.filter(s => !hidden(s.key)).map((s, i) => [s, i] as const).sort(([a, i], [b, j]) => spot(a.key) - spot(b.key) || i - j).map(([s]) => s);   // stable: unlisted tabs keep their layout order
   const showOverview = !hidden('Overview') && !hidden(label('overview')), chatButton = page?.assistant && !chatTab && !hidden(page.assistant.name);
   const railBox = useRef<HTMLElement>(null), dockBox = useRef<HTMLDivElement>(null);
   const navStyle = page?.nav?.style ?? 'icons', words = navStyle !== 'icons', navIcon = navStyle !== 'labels';

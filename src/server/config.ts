@@ -255,6 +255,7 @@ export const Config = z.object({
     side: z.enum(['left', 'right', 'top', 'bottom']).default('left'),   // where the tab buttons sit (wide screens; phones always bottom)
     style: z.enum(['icons', 'labels', 'both']).default('icons'),        // wide screens; phones have room for icons
     hide: z.array(z.string()).default([]),   // tabs to leave out, by name; also Overview, and the assistant's name for its button
+    order: z.array(z.string()).default([]),  // tabs in this order, by name; the rest follow in layout order
     size: Scale.default(1),
   }).strict().prefault({}),
   // the island: a black notch at the top that comes alive with whatever's happening (plays, downloads, a robot

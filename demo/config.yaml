@@ -39,6 +39,8 @@ island:
   activities: [lab.streams, lab.downloads, lab.home]
   idle: hide
 
+nav: { order: [Services, AI, Home, Media, Library] }
+
 layout:
   - title: Now
     heading: false

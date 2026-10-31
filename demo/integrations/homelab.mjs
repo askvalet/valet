@@ -298,7 +298,7 @@ export default ({ z, defineIntegration }) => {
   const statusCard = (title, icon, items) => ({ type: 'status', title, icon, items });
   const containers = () => ['bazarr', 'caddy', 'home-assistant', 'immich', 'immich-postgres', 'immich-redis', 'karakeep', 'mealie', 'paperless', 'pi-hole', 'plex', 'prowlarr', 'qbittorrent', 'radarr', 'sonarr', 'tautulli', 'uptime-kuma']
     .map(n => {
-      const state = n === 'mealie' && !mealieUp() ? 'down' : n === SICK ? 'degraded' : n === SWITCHED_OFF[1] ? 'off' : 'up';
+      const state = n === 'mealie' && !mealieUp() ? 'down' : n === SICK && !mealieUp() ? 'degraded' : n === SWITCHED_OFF[1] ? 'off' : 'up';
       return { name: n, icon: `/api/icon/${n}`, ok: state === 'up', state, quiet: state === 'off' || undefined, detail: { down: 'exited (137)', degraded: 'unhealthy', off: 'exited (0)' }[state] ?? (n === 'plex' ? 'healthy' : undefined) };
     });
   const LOGS = ['03:11:58 INFO  importing recipe batch (412 items)', '03:12:04 WARN  worker memory at 251 MiB of 256 MiB', '03:12:06 ERROR Out of memory: killed process 41 (gunicorn)', '03:12:06 INFO  container exited with code 137'];

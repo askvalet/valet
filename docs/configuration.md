@@ -158,6 +158,7 @@ The top of the overview.
 
 | Option | Default | |
 |---|---|---|
+| `order` | | tabs in this order, by name; the rest follow in layout order |
 | `side` | `left` | `left`, `right`, `top`, `bottom`, on wide screens. Phones always have it at the bottom |
 | `style` | `icons` | `labels` or `both`, on wide screens. Phones have room for icons. The page moves over to clear a wider rail |
 | `hide` | `[]` | tabs to leave out, by name; also `Overview`, and the assistant's name for its button |
