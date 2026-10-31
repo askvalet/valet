@@ -88,7 +88,7 @@ export default ({ z, defineIntegration }) => {
       rooms: rooms.map(([id, name, floor, x, z, w, d]) => ({ id, name, floor, x, z, w, d, lights: LIGHTS.filter(l => l[0] === name).map(light) })),
       furniture: FURNITURE.map(([type, room, x, z, w, d, angle = 0]) => ({ type, room, angle, x, z, w, d })),
       dock: { x: 262, z: -55, a: 180 },
-      robot: { x: 240, z: -40, a: 180, id: 'vacuum.robot', state: 'docked', status: 'Docked', battery: 100, fanSpeed: 'Standard', fanSpeeds: ['Quiet', 'Standard', 'Turbo'], wear: [['Main brush', 82], ['Filter', 64]] } } } });
+      robot: { x: 240, z: -40, a: 180, id: 'vacuum.robot', ...(got('vacuum', now() % 1_200_000 < 840_000) ? { state: 'cleaning', status: 'Cleaning', battery: 78 } : { state: 'docked', status: 'Docked', battery: 100 }), fanSpeed: 'Standard', fanSpeeds: ['Quiet', 'Standard', 'Turbo'], wear: [['Main brush', 82], ['Filter', 64]] } } } });
 
   const PRESETS = [['white', 'All white', ['#ffffff']], ['ocean', 'Ocean', ['#00c2ff', '#0a5cff']], ['sunset', 'Sunset', ['#ff6b35', '#ff2d78']], ['forest', 'Forest', ['#2fd27a', '#0f7b4f']], ['off', 'All off', ['#000000']]];
   const PRESET_RGB = { white: [255, 255, 255], ocean: [0, 150, 255], sunset: [255, 90, 60], forest: [47, 210, 122], off: [0, 0, 0] };
@@ -208,7 +208,7 @@ export default ({ z, defineIntegration }) => {
               if (part && /^(fans[01]|pump|ram|gpu)$/.test(part)) put(`part.${part}`, { mode: 'Static', brightness: 100, color: [255, 255, 255], ...state });
               for (const id of (entity_id ?? []).slice(0, 13)) { const was = LIGHTS.find(l => lightId(l[0], l[1]) === id); if (was) { const now_ = light(was); put(id, { on: on ?? now_.on, level: brightness ?? now_.level, color: color ?? now_.color }); } }
             } },
-          vacuum: { description: 'Pretend to send the vacuum', input: z.object({}).loose(), run: async () => {} },
+          vacuum: { description: 'Pretend to send the vacuum', input: z.object({ command: z.string().optional() }).loose(), run: async ({ command }) => put('vacuum', /start|clean/.test(command ?? '')) },
         },
         tools: {
           service_status: { label: 'Checked services', live: true, access: 'read', input: z.object({}), description: 'Whether each service is up.',

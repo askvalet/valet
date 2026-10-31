@@ -1,7 +1,9 @@
-// The home as a 3D floor plan, drawn from the robot vacuum's room map: each room a floor with low glass walls, lit
-// by its real lights (colour and brightness), furniture where the map has it, and the robot and dock where they are.
+// The home's data, and the plan drawn with CSS 3D where WebGL2 isn't available: each room a floor with low glass walls,
+// lit by its real lights, furniture where the map has it, and the robot and dock where they are. Everywhere else the
+// model is the dollhouse in home-gl.ts.
 import './home.css';
-import { createStage, type Scene, type StageOptions } from './stage.ts';
+import { createDollhouse, glReady, type HomeOptions, type HomeStage } from './home-gl.ts';
+import { createStage, type Scene } from './stage.ts';
 
 export interface PlanLight { id: string; name: string; on: boolean; available: boolean; color?: string; level: number; kelvin?: number; canColor: boolean; canTemp: boolean; dims: boolean;
   at?: { x: number; z: number };                           // where it is; without one, lights spread evenly across the room
@@ -194,4 +196,4 @@ export const homeScene: Scene<PlanData> = {
   limits: { tilt: [-80, -18], turn: [-180, 180] },   // negative tilt looks down onto the plan
 };
 
-export const createHome = (box: HTMLElement, opts: StageOptions = {}) => createStage(box, homeScene, opts);
+export const createHome = (box: HTMLElement, opts: HomeOptions = {}): HomeStage => glReady() ? createDollhouse(box, opts) : createStage(box, homeScene, opts);
