@@ -32,6 +32,21 @@ const FILMS = ['The Long Way Home', 'Paper Lanterns', 'Salt & Cedar', 'Northern 
 const ALBUMS = ['Glass Harbor', 'Night Shift', 'Low Tide', 'Copper Sky', 'Slow Radio', 'Winter Static', 'Blue Hour', 'Long Weekend', 'Paper Moon', 'Soft Machines', 'Far Fields', 'Echo Lake'];
 const BOOKS = ['The Cartographer', 'Tidewater', 'A Field Guide', 'Small Engines', 'The Lighthouse Year', 'Moss', 'Ash & Rye', 'The Night Ferry', 'Atlas of Rain', 'Old Roads'];
 const STACK = ['plex', 'tautulli', 'sonarr', 'radarr', 'prowlarr', 'bazarr', 'qbittorrent', 'navidrome', 'lidarr', 'komga', 'audiobookshelf', 'miniflux', 'immich', 'paperless', 'karakeep', 'mealie', 'tandoor-recipes', 'home-assistant', 'frigate', 'nextcloud', 'syncthing', 'vaultwarden', 'authentik', 'crowdsec', 'pi-hole', 'tailscale', 'caddy', 'nginx-proxy-manager', 'uptime-kuma', 'grafana', 'changedetection', 'forgejo', 'proxmox', 'portainer'];
+const SETBACKS = { home: 20, sleep: 18, night: 17 };
+const pad = n => String(n).padStart(2, '0');
+const dateOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+/** A season's worth of plausible weather: every day is the same for everyone, and today is always today. */
+const skyOn = (offset = 0) => {
+  const d = new Date(now() + offset * 864e5), r = rng(`sky${dateOf(d)}`), year = (d - new Date(d.getFullYear(), 0, 20)) / 864e5 / 365;
+  const hi = Math.round(10 - 15 * Math.cos(year * 2 * Math.PI) + r() * 6 - 3), lo = hi - 5 - Math.round(r() * 5), pick = r();
+  const [words, icon, pop] = pick < .3 ? ['Cloudy', 'cloud', 15] : pick < .55 ? ['Partly cloudy', 'cloud-sun', 5] : pick < .75 ? ['Sunny', 'sun', 0] : pick < .9 ? (hi < 2 ? ['Snow', 'snow', 70] : ['Rain', 'rain', 70]) : pick < .96 ? ['Fog', 'fog', 20] : ['Thunderstorms', 'storm', 80];
+  return { words, icon, pop, hi, lo };
+};
+const FAMILY = ['Family', '#5ac8fa'], WORK = ['Work', '#ff9f6b'], HOME = ['Home', '#bf8bff'];
+const WEEK = { 1: [['Daycare drop-off', 8, 30, 20, FAMILY], ['Team standup', 9, 30, 15, WORK]], 2: [['Daycare drop-off', 8, 30, 20, FAMILY], ['Bins out', 19, 0, 10, HOME]],
+  3: [['Daycare drop-off', 8, 30, 20, FAMILY], ['Design review', 14, 0, 60, WORK], ['Daycare pick-up', 16, 45, 30, FAMILY]], 4: [['Daycare drop-off', 8, 30, 20, FAMILY], ['Planning', 11, 0, 45, WORK], ['Piano practice', 17, 30, 30, FAMILY]],
+  5: [['Daycare drop-off', 8, 30, 20, FAMILY], ['Daycare pick-up', 16, 0, 30, FAMILY], ['Pizza night', 18, 0, 90, HOME]], 6: [['Swimming lessons', 10, 0, 45, FAMILY], ['Farmers market', 12, 0, 60, HOME]], 0: [['Groceries', 9, 30, 60, HOME], ['Meal prep', 16, 0, 90, HOME]] };
+const NOW_AND_THEN = [['Dentist', 15, 0, 45, FAMILY], ['Vet check-up', 10, 30, 30, HOME], ['Parent-teacher meeting', 17, 0, 30, FAMILY], ['Furnace service', 13, 0, 120, HOME], ['Dinner with the neighbours', 18, 30, 150, FAMILY], ['Haircut', 12, 30, 30, FAMILY], ['Quarterly review', 15, 30, 60, WORK], ['Book club', 19, 30, 90, HOME]];
 const SERVICES = [['Plex', 'Media', 'plex'], ['Tautulli', 'Media', 'tautulli'], ['Sonarr', 'Media', 'sonarr'], ['Radarr', 'Media', 'radarr'], ['Prowlarr', 'Media', 'prowlarr'], ['Bazarr', 'Media', 'bazarr'], ['qBittorrent', 'Media', 'qbittorrent'],
   ['Home Assistant', 'Home', 'home-assistant'], ['Immich', 'Home', 'immich'], ['Paperless', 'Home', 'paperless'], ['Karakeep', 'Home', 'karakeep'], ['Mealie', 'Home', 'mealie'],
   ['Pi-hole', 'Network', 'pi-hole'], ['Caddy', 'Network', 'caddy'], ['Uptime Kuma', 'Network', 'uptime-kuma']];
@@ -42,6 +57,44 @@ export default ({ z, defineIntegration }) => {
   const put = (k, v) => changes.set(k, { v, until: now() + 600_000 });
   const got = (k, fallback) => { const c = changes.get(k); return c && c.until > now() ? c.v : fallback; };
 
+  const weather = () => {
+    const d = new Date(now()), today = skyOn(), h = d.getHours() + d.getMinutes() / 60, night = h < 6.5 || h > 19;
+    const tempAt = hour => Math.round(today.lo + (today.hi - today.lo) * (.5 + .5 * Math.sin((hour - 9) / 24 * 2 * Math.PI)));
+    const dark = (icon, hour) => hour % 24 < 6.5 || hour % 24 > 19 ? { sun: 'moon', 'cloud-sun': 'cloud-moon' }[icon] ?? icon : icon, temp = tempAt(h), icon = dark(today.icon, h);
+    const words = night && today.words === 'Sunny' ? 'Clear' : today.words;
+    return { type: 'forecast', title: 'Weather', icon, now: { temp, feels: temp - 2, words, icon, hi: today.hi, lo: today.lo },
+      hours: Array.from({ length: 12 }, (_, i) => { const at = new Date(now() + (i + 1) * 36e5), hour = at.getHours(); return { time: at.toLocaleTimeString('en', { hour: 'numeric' }).replace(' ', '').toLowerCase(), temp: tempAt(hour), icon: dark(today.icon, hour), pop: today.pop }; }),
+      days: [1, 2, 3, 4, 5].map(n => { const s = skyOn(n); return { name: new Date(now() + n * 864e5).toLocaleDateString('en', { weekday: 'short' }), icon: s.icon, hi: s.hi, lo: s.lo, pop: s.pop }; }),
+      summary: { label: words, icon, value: `${temp}°`, pct: today.hi > today.lo ? (temp - today.lo) / (today.hi - today.lo) : .5, tone: 'good', detail: `H ${today.hi}° · L ${today.lo}°` } };
+  };
+  const calendar = () => {
+    const d = new Date(now()), first = new Date(d.getFullYear(), d.getMonth() - 1, 1), last = new Date(d.getFullYear(), d.getMonth() + 7, 0), events = [];
+    const timed = (day, [title, h, m, mins, [calendar, color]]) => { const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m); events.push({ title, start: start.toISOString(), end: new Date(+start + mins * 6e4).toISOString(), calendar, color }); };
+    for (let day = new Date(first), n = 0; day <= last; day = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1), n++) {
+      for (const e of WEEK[day.getDay()]) timed(day, e);
+      const r = rng(`cal${dateOf(day)}`);
+      if (r() < .1) timed(day, NOW_AND_THEN[Math.floor(r() * NOW_AND_THEN.length)]);
+      if (day.getDay() === 5 && r() < .13) { const back = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 3); events.push({ title: r() < .5 ? 'Grandparents visiting' : 'Cottage weekend', start: dateOf(day), end: dateOf(back), calendar: FAMILY[0], color: FAMILY[1] }); }
+    }
+    events.sort((a, b) => a.start < b.start ? -1 : 1);
+    const today = events.filter(e => e.start.length > 10 && new Date(e.start).toDateString() === d.toDateString()), next = events.find(e => e.start.length > 10 && new Date(e.end) > d);
+    const clock = iso => new Date(iso).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' });
+    return { type: 'calendar', title: 'Calendar', icon: 'calendar', events, from: dateOf(first), to: dateOf(last),
+      summary: { label: 'Calendar', icon: 'calendar', value: next?.title ?? 'Free', sub: next ? `${new Date(next.start).toDateString() === d.toDateString() ? 'Today' : new Date(next.start).toLocaleDateString('en', { weekday: 'long' })} · ${clock(next.start)}` : undefined, detail: today.length ? `${today.length} today` : undefined } };
+  };
+  // the house at rest, or as a visitor left it; a changed target pulls the room towards it over a few minutes
+  const roomAt = target => target + Math.round(2 * Math.sin(now() / 54e5)) / 10;
+  const climate = () => {
+    const was = got('thermostat', null), preset = was?.preset ?? (new Date(now()).getHours() < 7 || new Date(now()).getHours() >= 22 ? 'sleep' : 'home'), power = was?.power ?? true, target = was?.target ?? SETBACKS[preset];
+    const room = was ? Math.round((target + (was.from - target) * Math.exp(-(now() - was.at) / 2e5)) * 10) / 10 : roomAt(target);
+    return { preset, power, target, room };
+  };
+  const thermostat = () => {
+    const { preset, power, target, room } = climate(), state = !power ? 'Off' : room < target - .1 ? 'Heating' : 'Idle';
+    return { type: 'thermostat', title: 'Hallway', icon: 'home', unit: 'C', state, mode: power ? 'heat' : 'off', current: room, target: power ? target : undefined, min: 10, max: 30, step: .5, set: power ? { action: 'thermostat' } : undefined,
+      modes: [{ id: 'off', label: power ? 'Turn off' : 'Turn on', on: !power, action: 'thermostat', args: { power: !power } }, ...[['home', 'Home'], ['sleep', 'Sleep'], ['night', 'Night']].map(([id, label]) => ({ id, label, on: power && preset === id, action: 'thermostat', args: { preset: id } }))],
+      summary: { label: 'Hallway', icon: 'thermometer', value: `${(power ? target : room).toFixed(1)}°`, sub: state, detail: power ? `${room.toFixed(1)}° now` : undefined, pct: (target - 10) / 20 } };
+  };
   const mealieUp = () => got('mealie', false);
   const paused = () => got('paused', false);
   const services = () => SERVICES.map(([name, group, icon]) => {
@@ -134,9 +187,9 @@ export default ({ z, defineIntegration }) => {
         jobs: w('Scheduled jobs', 60_000, () => ({ type: 'list', title: 'Scheduled jobs', icon: 'clock', items: [{ title: 'Nightly backup', subtitle: 'ran 6h ago', meta: 'next 18h' }, { title: 'Photo sync', subtitle: 'ran 12m ago', meta: 'next 3m' }, { title: 'Disk check', subtitle: 'ran 9h ago', meta: 'next 15h' }] })),
         system: w('System', 5_000, () => { const cpu = Math.round(12 + 8 * Math.sin(now() / 30_000)), gpu = Math.round(6 + 5 * Math.sin(now() / 50_000)), gauge = (label, icon, v, detail) => ({ label, icon, value: `${v}%`, ring: `${v}%`, pct: v / 100, tone: 'good', detail });
           return { type: 'stats', title: 'System', icon: 'cpu', items: [{ label: 'CPU', value: cpu, unit: '%' }], summaries: [gauge('CPU', 'cpu', cpu, '44°C'), gauge('Memory', 'memory', 33, '21 of 64 GB'), gauge('GPU', 'gpu', gpu, '38°C'), gauge('Storage', 'disk', 58, '11 of 20 TB')] }; }),
-        weather: w('Weather', 900_000, () => ({ type: 'forecast', title: 'Weather', icon: 'cloud-sun', now: { temp: 14, feels: 12, words: 'Partly cloudy', icon: 'cloud-sun', hi: 17, lo: 8 },
-          hours: Array.from({ length: 10 }, (_, i) => { const h = new Date(now() + (i + 1) * 36e5); return { time: h.toLocaleTimeString('en', { hour: 'numeric' }).replace(' ', '').toLowerCase(), temp: 14 + Math.round(3 * Math.sin(i / 3)), icon: i > 6 ? 'rain' : 'cloud-sun', pop: i > 6 ? 40 : 0 }; }),
-          summary: { label: 'Partly cloudy', icon: 'cloud-sun', value: '14°', pct: .6, tone: 'good', detail: 'H 17° · L 8°' } })),
+        weather: w('Weather', 900_000, weather),
+        calendar: w('Calendar', 900_000, calendar),
+        thermostat: w('Thermostat', 30_000, thermostat),
         pc: w('Desktop', 30_000, pcCard),
         home: w('Home', 15_000, homeCard),
         streams: w('Now playing', 10_000, () => { const s = stream(); return { type: 'media', title: 'Now playing', icon: 'play', note: '1 stream · 12 Mbps',
@@ -208,6 +261,8 @@ export default ({ z, defineIntegration }) => {
               if (part && /^(fans[01]|pump|ram|gpu)$/.test(part)) put(`part.${part}`, { mode: 'Static', brightness: 100, color: [255, 255, 255], ...state });
               for (const id of (entity_id ?? []).slice(0, 13)) { const was = LIGHTS.find(l => lightId(l[0], l[1]) === id); if (was) { const now_ = light(was); put(id, { on: on ?? now_.on, level: brightness ?? now_.level, color: color ?? now_.color }); } }
             } },
+          thermostat: { description: 'Set the pretend thermostat', input: z.object({ temperature: z.number().min(10).max(30).optional(), preset: z.enum(Object.keys(SETBACKS)).optional(), power: z.boolean().optional() }),
+            run: async ({ temperature, preset, power }) => { const c = climate(); put('thermostat', { preset: preset ?? c.preset, power: preset ? true : power ?? c.power, target: temperature ?? (preset ? SETBACKS[preset] : c.target), from: c.room, at: now() }); } },
           vacuum: { description: 'Pretend to send the vacuum', input: z.object({}).loose(), run: async () => {} },
         },
         tools: {
