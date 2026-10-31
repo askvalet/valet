@@ -13,8 +13,9 @@ import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
 import { checkCard } from '../shared/cards.schema.ts';
 import { defineIntegration, fmt, type Instance, type Integration } from './core.ts';
+import { service } from './service.ts';
 
-export const toolkit = { z, fmt, defineIntegration, checkCard };
+export const toolkit = { z, fmt, defineIntegration, service, checkCard };
 
 async function load(spec: string): Promise<Integration[]> {
   const mod = await import(spec);
@@ -65,6 +66,21 @@ export async function loadPlugins(registry: Record<string, Integration>, package
   return new Set(loaded);
 }
 
+/** `valet check-integration <file>`: runs a plugin against the sample it carries, as Valet's own tests do. */
+export async function checkPlugin(file: string) {
+  if (!file) { console.log('usage: check-integration <file.mjs>'); return 1; }
+  const { checkService } = await import('./service-check.ts');
+  const found = await load(pathToFileURL(resolve(file)).href), plain = found.filter(i => !(i as any).def);
+  if (plain.length) console.log(`${plain.map(i => i.type).join(', ')}: written with defineIntegration, so there's no sample to run. Use service() to get this check.`);
+  let bad = 0;
+  for (const s of found.filter(i => (i as any).def) as any[]) {
+    const problems = await checkService(s);
+    console.log(problems.length ? `✗ ${s.def.name}\n${problems.map(p => `  ${p}`).join('\n')}` : `✓ ${s.def.name}: card, tile, assistant tool and failure handling all good`);
+    bad += problems.length;
+  }
+  return bad ? 1 : 0;
+}
+
 /** `valet new-integration <name>`: writes a working plugin (and its visual) into data/integrations/ to start from. */
 export async function scaffold(name: string) {
   if (!/^[a-z][a-z0-9-]{1,40}$/.test(name ?? '')) { console.log('usage: new-integration <name>   (lowercase letters, digits, dashes)'); return 1; }
@@ -73,8 +89,10 @@ export async function scaffold(name: string) {
   const fill = (t: string) => t.replaceAll('__SLUG__', name.replace(/-/g, '_')).replaceAll('__NAME__', name).replaceAll('__TITLE__', name.replace(/(^|-)(\w)/g, (_, d, c) => (d ? ' ' : '') + c.toUpperCase()))
     .replaceAll('__ENV__', name.toUpperCase().replace(/-/g, '_')).replaceAll('__SLUG__', name.replace(/-/g, '_'));
   // the templates are bundled as text into dist/server.js (imported only here, so `npm run dev` never needs them)
-  const PLUGIN = (await import('./templates/plugin.mjs.txt')).default, VISUAL = (await import('./templates/visual.web.js.txt')).default;
-  const files = [[`${name}.mjs`, PLUGIN], [`${name}.web.js`, VISUAL]] as const;
+  // the short form by default; --full is everything an integration can do, and a visual of its own
+  const full = process.argv.includes('--full');
+  const PLUGIN = (await import(full ? './templates/plugin.mjs.txt' : './templates/service.mjs.txt')).default, VISUAL = (await import('./templates/visual.web.js.txt')).default;
+  const files = (full ? [[`${name}.mjs`, PLUGIN], [`${name}.web.js`, VISUAL]] : [[`${name}.mjs`, PLUGIN]]) as [string, string][];
   await mkdir(dir, { recursive: true });
   for (const [f] of files) if (await access(resolve(dir, f)).then(() => true, () => false)) { console.log(`${f} already exists in ${dir}`); return 1; }
   for (const [f, t] of files) await writeFile(resolve(dir, f), fill(t));

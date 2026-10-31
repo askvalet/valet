@@ -26,6 +26,7 @@ const HOST = process.env.HOST ?? '0.0.0.0';
 
 // `node dist/server.js user add <name>`, `config check` and friends run and exit
 if (process.argv[2] === 'new-integration') process.exit(await (await import('./plugins.ts')).scaffold(process.argv[3]));
+if (process.argv[2] === 'check-integration') process.exit(await (await import('./plugins.ts')).checkPlugin(process.argv[3]));
 if (process.argv[2] === 'user') process.exit(await userCommand(process.argv.slice(3)).catch(e => { console.error(String(e.message ?? e)); return 1; }));
 if (process.argv[2] === 'config') process.exit(await (await import('./cli.ts')).configCommand(process.argv.slice(3), CONFIG, registry));
 

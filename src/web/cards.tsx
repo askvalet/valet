@@ -310,16 +310,16 @@ function Media({ card, compact }: { card: MediaCard; compact?: boolean }) {
   if (card.items.length === 1) return <NowPlaying m={card.items[0]} />;
   // banners suit something to watch; a pile of downloads, or three of anything, reads better as rows
   if (card.items.length > 2 || card.items.every(m => m.icon === 'download')) return (
-    <Card className="gap-0 divide-y divide-border py-1 shadow-card">
+    <Card className="gap-0 divide-y divide-border overflow-hidden py-0 shadow-card">
       {card.items.map((m, i) => (
-        <div key={i} className="flex min-w-0 items-center gap-3 px-4 py-2.5">
-          <Art src={m.image} className="h-12 w-8 shrink-0 rounded-md object-cover" />
+        <div key={i} className="relative isolate flex min-w-0 items-center gap-3 overflow-hidden px-4 py-2.5">
+          {m.pct != null && <span className="absolute inset-y-0 left-0 -z-10 bg-primary/20 transition-[width] duration-1000 ease-out" style={{ width: `${m.pct * 100}%` }} />}
+          {m.image ? <Art src={m.image} className="h-12 w-8 shrink-0 rounded-md object-cover" /> : <span className="grid h-12 w-8 shrink-0 place-items-center rounded-md bg-white/10 text-muted-foreground"><Icon name={m.icon ?? 'film'} className="size-4" /></span>}
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-medium">{m.title}</div>
             <div className="truncate text-xs text-muted-foreground">{m.tags?.join(' · ') ?? m.subtitle}</div>
           </div>
-          {m.pct != null && <div className="w-20 shrink-0 text-right text-xs tabular text-muted-foreground">{Math.floor(m.pct * 100)}%
-            <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-primary transition-[width] duration-1000" style={{ width: `${m.pct * 100}%` }} /></div></div>}
+          {m.pct != null && <span className="shrink-0 text-sm font-medium tabular">{Math.floor(m.pct * 100)}%</span>}
         </div>
       ))}
     </Card>
@@ -907,6 +907,7 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
     case 'showcase': return <Showcase card={card} run={run} />;
     case 'photos': return <Photos card={card} large={large} />;
     case 'schedule': return <Times card={card} />;
+    case 'embed': return <iframe src={card.src} title={card.title ?? 'Embedded page'} loading="lazy" referrerPolicy="no-referrer" sandbox={card.scripts ? 'allow-scripts allow-same-origin allow-forms' : ''} className="w-full rounded-xl border-0 bg-black/20" style={{ height: card.height }} />;
     case 'verse': return <Verse card={card} />;
     case 'forecast': return <Forecast card={card} />;
     case 'stats': return <Stats card={card} />;

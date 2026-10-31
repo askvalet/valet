@@ -30,7 +30,15 @@ import calendar from './calendar.ts';
 import api from './api.ts';
 import docker from './docker.ts';
 import host from './host.ts';
+import { services } from './services/index.ts';
+import clock from './clock.ts';
+import iframe from './iframe.ts';
+import { apcups, minecraft } from './sockets.ts';
+import lobsters from './lobsters.ts';
+import repository from './repository.ts';
+import todo from './todo.ts';
+import twitch from './twitch.ts';
 
 export const registry: Record<string, Integration> = Object.fromEntries(
-  [aimonitor, arr, glances, homeassistant, http, immich, indexers, karakeep, ollama, paperless, pihole, qbittorrent, quran, rgbcontrol, romm, scrutiny, seerr, tautulli, uptimekuma, weather, links, rss, hackernews, reddit, releases, markets, calendar, api, docker, host].map(i => [i.type, i as Integration]),
+  [aimonitor, arr, glances, homeassistant, http, immich, indexers, karakeep, ollama, paperless, pihole, qbittorrent, quran, rgbcontrol, romm, scrutiny, seerr, tautulli, uptimekuma, weather, links, rss, hackernews, reddit, releases, markets, calendar, api, docker, host, apcups, minecraft, clock, iframe, lobsters, repository, todo, twitch, ...services].map(i => [i.type, i as Integration]),
 );

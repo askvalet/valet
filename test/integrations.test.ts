@@ -1,13 +1,24 @@
 // Integrations against made-up service responses: the cards they produce validate, and the logic that's easy to get
 // wrong (sign-in reuse, parsing, roll-over to tomorrow, picking a verse) does what it says.
 import assert from 'node:assert/strict';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
+import { Hono } from 'hono';
+import { headers as securityHeaders } from '../src/server/security.ts';
 import { Config } from '../src/server/config.ts';
 import { session, type Context, type Instance } from '../src/server/core.ts';
 import { Timeline } from '../src/server/timeline.ts';
 import { checkCard } from '../src/shared/cards.schema.ts';
 import arr from '../src/integrations/arr.ts';
+import clock from '../src/integrations/clock.ts';
 import docker from '../src/integrations/docker.ts';
+import iframe from '../src/integrations/iframe.ts';
+import lobsters from '../src/integrations/lobsters.ts';
+import repository from '../src/integrations/repository.ts';
+import todo from '../src/integrations/todo.ts';
+import twitch from '../src/integrations/twitch.ts';
 import homeassistant from '../src/integrations/homeassistant.ts';
 import http from '../src/integrations/http.ts';
 import pihole from '../src/integrations/pihole.ts';
@@ -33,6 +44,7 @@ function fake(handler: Handler): Context & { calls: string[] } {
   } as any;
 }
 const make = <C>(i: { config: any; create(c: C, ctx: Context): Instance }, cfg: unknown, ctx: Context) => i.create(i.config.parse(cfg), ctx);
+const headersFor = async () => { const a = new Hono(); a.use(securityHeaders); a.get('/', c => c.text('ok')); return (await a.request('/')).headers.get('content-security-policy') ?? ''; };
 const valid = (card: unknown) => { const r = checkCard(card); assert.ok(r.success, r.success ? '' : JSON.stringify(r.error.issues.slice(0, 3))); };
 
 test('config: widgets take a size, plain names default to medium', () => {
@@ -124,6 +136,21 @@ test('qbittorrent: stuck torrents are reported, and stay out of the island', asy
 test('releases: being rate limited is an error, not "no releases"', async () => {
   const r = make(releases, { repos: ['a/b'] }, fake(() => { throw new Error('api.github.com answered 403'); }));
   await assert.rejects(r.widgets.latest.fetch(), /403/);
+});
+
+test('qbittorrent: a pack added by hand still finds its show, season and quality', async () => {
+  const q = make(qbittorrent, { url: 'http://q', username: 'u', password: 'p', arr: [{ type: 'sonarr', url: 'http://s', apiKey: 'k' }] }, fake(url => {
+    if (url.includes('auth/login')) return new Response('Ok.', { headers: { 'set-cookie': 'SID=x; path=/' } });
+    if (url.includes('transfer/info')) return new Response(JSON.stringify({ dl_info_speed: 0, up_info_speed: 0 }));
+    if (url.includes('torrents/info')) return new Response(JSON.stringify([{ hash: 'a', name: 'Full House S03 1080p WEBRip x265-RARBG', state: 'downloading', progress: .04, dlspeed: 1e6, amount_left: 8e9, eta: 900, added_on: 1 }, { hash: 'b', name: 'Something.Else.2019.1080p', state: 'downloading', progress: .1, dlspeed: 1e6, amount_left: 1e9, eta: 900, added_on: 1 }, { hash: 'c', name: 'Full House S01E37E38E39 WEB-DL', state: 'downloading', progress: .1, dlspeed: 1e6, amount_left: 1e9, eta: 900, added_on: 1 }]));
+    if (url.includes('/queue')) return { records: [] };
+    return [{ title: 'Full House', images: [{ coverType: 'poster', remoteUrl: 'https://img/original/fh.jpg' }] }];
+  }));
+  const c: any = await q.widgets.active.fetch();
+  valid(c);
+  assert.deepEqual([c.items[0].title, c.items[0].image, c.items[0].tags.slice(0, 2)], ['Full House', 'https://img/w500/fh.jpg', ['Season 3', 'WEBRip-1080p']]);
+  assert.equal(c.items[1].title, 'Something.Else.2019.1080p');                                // nothing to match: the name, as it is
+  assert.equal(c.items[2].title, 'Full House');                                               // three episodes in one file
 });
 
 test('scrutiny: a failing drive is called out', async () => {
@@ -254,10 +281,29 @@ test('scaffold: new-integration writes a plugin that loads and whose cards and t
   assert.equal(await scaffold('my-service'), 1);   // won't overwrite
   const registry: Record<string, any> = {};
   await loadPlugins(registry, [], []);
-  const i = registry['my-service'];
+  // the short form checks out as it stands, so a new author starts from something that passes
+  const { checkService } = await import('../src/server/service-check.ts');
+  assert.deepEqual(await checkService(registry['my-service']), []);
+  // the full form: every part of an integration, with a visual of its own
+  process.argv.push('--full');
+  assert.equal(await scaffold('my-full'), 0);
+  process.argv.pop();
+  const full: Record<string, any> = {};
+  await loadPlugins(full, [], []);
+  const i = full['my-full'];
   const inst = i.create(i.config.parse({ url: 'http://x' }), { http: async () => ({}) });
   valid(await inst.widgets.status.fetch());
-  assert.equal(inst.tools['my_service_restart'].access, 'control');
+  assert.equal(inst.tools['my_full_restart'].access, 'control');
+});
+
+test('check-integration: names what is wrong with a service, in words', async () => {
+  const { service } = await import('../src/server/service.ts');
+  const { checkService } = await import('../src/server/service-check.ts');
+  const s = (over: object) => service({ type: 'x', name: 'X', get: { a: '/a' }, stats: (d: any) => [{ label: 'N', value: d.a.n }], sample: { a: { n: 5 } }, expect: { N: 5 }, ...over });
+  assert.deepEqual(await checkService(s({})), []);
+  assert.match((await checkService(s({ expect: { N: 6 } }))).join(), /"N" shows 5, expected 6/);
+  assert.match((await checkService(s({ sample: { a: {} } , expect: {} }))).join(), /came up empty/);
+  assert.match((await checkService(s({ stats: (d: any) => [{ label: 'N', value: d.b.n }] }))).join(), /can't read its own sample/);
 });
 
 test('host guard: IPs, localhost and listed names pass; other names are refused (DNS rebinding)', async () => {
@@ -419,4 +465,103 @@ test('docker updates: names what\'s behind, surfaces warnings, and caches regist
   assert.equal(registry, 2);                                                       // the second look used the cache
   const n: any = await d.tools!.update_notes.run({ name: 'immich' });
   assert.deepEqual(n.data.releases.map((r: any) => r.version), ['v3.4.0']);         // only what's new to you
+});
+
+test('lobsters: stories become rows', async () => {
+  const l = make(lobsters, { limit: 1 }, fake(() => [{ title: 'A post', score: 41, comment_count: 7, tags: ['linux'], created_at: new Date().toISOString(), comments_url: 'https://lobste.rs/s/x', url: 'https://x' }, { title: 'Another' }]));
+  const c: any = await l.widgets.stories.fetch();
+  valid(c);
+  assert.deepEqual([c.items.length, c.items[0].title, c.items[0].subtitle], [1, 'A post', '41 points · 7 comments · linux']);
+});
+
+test('repository: issues leave out pull requests, and a rate limit is a clear error', async () => {
+  const r = make(repository, { repos: ['a/b'] }, fake(url => url.includes('search') ? { total_count: 3 } : { stargazers_count: 12400, forks_count: 80, open_issues_count: 10, pushed_at: new Date().toISOString(), html_url: 'https://github.com/a/b' }));
+  const c: any = await r.widgets.repos.fetch();
+  valid(c);
+  assert.match(c.items[0].subtitle, /12k · 80 forks · 7 issues · 3 PRs/);
+  const limited = make(repository, { repos: ['a/b'] }, fake(() => { throw new Error('answered 403'); }));
+  await assert.rejects(limited.widgets.repos.fetch(), /rate limited/);
+});
+
+test('twitch: signs in with its own app, and says who is live', async () => {
+  const t = make(twitch, { clientId: 'i', clientSecret: 's', channels: ['one'] }, fake(url => url.includes('oauth2') ? { access_token: 'x' } : url.includes('games/top') ? { data: [{ name: 'Chess' }] } : { data: [{ user_name: 'One', user_login: 'one', game_name: 'Chess', title: 'hi', viewer_count: 1500 }] }));
+  const c: any = await t.widgets.channels.fetch();
+  valid(c);
+  assert.deepEqual([c.summary.value, c.items[0].meta], ['1 live', '1.5k']);
+  valid(await t.widgets.games.fetch());
+});
+
+test('clock: every zone is checked at startup', async () => {
+  const c: any = await make(clock, { clocks: [{ name: 'Tokyo', zone: 'Asia/Tokyo' }] }, fake(() => null)).widgets.times.fetch();
+  valid(c);
+  assert.equal(c.items[0].label, 'Tokyo');
+  assert.throws(() => clock.config.parse({ clocks: [{ name: 'x', zone: 'Mars/Base' }] }));
+});
+
+test('iframe: only what it names can load, and nothing can be framed otherwise', async () => {
+  const before = headersFor();
+  assert.match(await before, /frame-src 'none'/);
+  const c: any = await make(iframe, { url: 'https://grafana.example/d/1' }, fake(() => null)).widgets.page.fetch();
+  valid(c);
+  assert.match(await headersFor(), /frame-src https:\/\/grafana\.example[;\s]/);
+  assert.throws(() => iframe.config.parse({ url: 'javascript:alert(1)' }));
+});
+
+test('todo: add, tick and clear', async () => {
+  process.env.VALET_DATA = await mkdtemp(join(tmpdir(), 'valet-todo-'));
+  const t = make(todo, {}, fake(() => null)) as any;
+  await t.tools.todo_add.run({ text: 'Patch the Pi' });
+  let c: any = await t.widgets.list.fetch();
+  valid(c);
+  assert.equal(c.summary.value, '1');
+  await t.actions.tick.run({ id: c.items[0].id, value: true });
+  assert.equal(((await t.widgets.list.fetch()) as any).summary.value, '0');
+  await t.actions.clear.run({});
+  assert.deepEqual(((await t.widgets.list.fetch()) as any).items, []);
+});
+
+test('sockets: speaks Minecraft and apcupsd to a real socket', async () => {
+  const { createServer } = await import('node:net');
+  const { ping, upsStatus } = await import('../src/integrations/sockets.ts');
+  const serve = (answer: Buffer) => new Promise<{ port: number; close(): void }>(ok => { const s = createServer(c => c.once('data', () => c.write(answer))); s.listen(0, '127.0.0.1', () => ok({ port: (s.address() as any).port, close: () => s.close() })); });
+  const json = Buffer.from(JSON.stringify({ version: { name: '1.21' }, players: { online: 2, max: 20 } }));
+  const mc = await serve(Buffer.concat([Buffer.from([json.length + 2, 0, json.length]), json]));
+  assert.deepEqual((await ping('127.0.0.1', mc.port)).players, { online: 2, max: 20 });
+  mc.close();
+  const line = (t: string) => { const b = Buffer.from(t); return Buffer.concat([Buffer.from([0, b.length]), b]); };
+  const ups = await serve(Buffer.concat([line('STATUS   : ONLINE \n'), line('BCHARGE  : 100.0 Percent\n'), Buffer.from([0, 0])]));
+  assert.deepEqual(await upsStatus('127.0.0.1', ups.port), { STATUS: 'ONLINE', BCHARGE: '100.0 Percent' });
+  ups.close();
+});
+
+test('service: self-signed, handshakes, expiring sessions and a second step', async () => {
+  const { service } = await import('../src/server/service.ts');
+  const { checkService } = await import('../src/server/service-check.ts');
+  // a session that dies with a 200: sign in again, once
+  let logins = 0, calls = 0;
+  const s = service({ type: 'y', name: 'Y', auth: { login: '/in', token: (r: any) => r.t, expired: (a: any) => a.gone }, get: { a: '/a' }, stats: (d: any) => [{ label: 'N', value: d.a.n }], sample: { a: { n: 1 } }, expect: { N: 1 } });
+  const ctx: any = { session: (await import('../src/server/core.ts')).session, async http(url: string) { if (url.endsWith('/in')) { logins++; return new Response(JSON.stringify({ t: 'x' })); } return new Response(JSON.stringify(calls++ ? { n: 7 } : { gone: true })); } };
+  const c: any = await s.create(s.config.parse({ url: 'http://y', username: 'u', password: 'p' }), ctx).widgets.status.fetch();
+  assert.deepEqual([c.items[0].value, logins], ['7', 2]);
+  // a second step sees the first answer
+  const chain = service({ type: 'z', name: 'Z', get: { libs: '/libs' }, then: (d: any) => ({ one: `/lib/${d.libs[0]}` }), stats: (d: any) => [{ label: 'Items', value: d.one.n }], sample: { libs: ['a'], one: { n: 3 } }, expect: { Items: 3 } });
+  assert.deepEqual(await checkService(chain), []);
+  // an interval in words, and insecure as a per-service choice
+  const every = service({ type: 'w', name: 'W', every: '5m', get: { a: '/a' }, stats: () => [{ label: 'N', value: 1 }], sample: { a: {} }, expect: { N: 1 } });
+  assert.equal(every.create(every.config.parse({ url: 'http://w', insecure: true }), ctx).widgets.status.interval, 300_000);
+});
+
+test('http: insecure accepts a self-signed certificate, and only when asked', async () => {
+  const { createServer } = await import('node:https');
+  const { makeContext } = await import('../src/server/core.ts');
+  const { execFileSync } = await import('node:child_process');
+  const dir = await mkdtemp(join(tmpdir(), 'valet-tls-'));
+  execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', `${dir}/k`, '-out', `${dir}/c`, '-days', '1', '-subj', '/CN=localhost'], { stdio: 'ignore' });
+  const { readFileSync } = await import('node:fs');
+  const s = createServer({ key: readFileSync(`${dir}/k`), cert: readFileSync(`${dir}/c`) }, (_, r) => r.end('{"ok":true}'));
+  await new Promise<void>(ok => s.listen(0, '127.0.0.1', ok));
+  const url = `https://127.0.0.1:${(s.address() as any).port}/`, c = makeContext('t');
+  await assert.rejects(c.http(url));
+  assert.deepEqual(await c.http(url, { insecure: true }), { ok: true });
+  s.close();
 });

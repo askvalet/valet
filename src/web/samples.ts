@@ -59,6 +59,7 @@ export const SAMPLES: { name: string; card: Card }[] = [
   { name: 'schedule', card: { type: 'schedule', title: 'Prayer times', icon: 'crescent', muted: ['Sunrise'],
     items: [['Fajr', 5, 31], ['Sunrise', 6, 50], ['Dhuhr', 12, 3], ['Asr', 15, 31], ['Maghrib', 17, 14], ['Isha', 18, 34]].map(([name, h, m]) => ({ name: name as string, at: at(h as number, m as number) })) } },
   { name: 'verse', card: { type: 'verse', title: 'Verse of the day', icon: 'book', arabic: 'إِنَّ مَعَ الْعُسْرِ يُسْرًا', english: 'Surely with hardship comes ease.', reference: 'Ash-Sharh 94:6', meaning: 'The Uplifting' } },
+  { name: 'embed', card: { type: 'embed', title: 'A dashboard', src: 'https://example.com/', height: 300 } },
   { name: 'kv', card: { type: 'kv', title: 'Details', rows: [['Model', 'Something'], ['Firmware', '1.2.3'], ['A key that is quite long', 'and its value']] } },
   { name: 'text', card: { type: 'text', text: 'Filed “Lease” in Paperless.', tone: 'good' } },
   { name: 'group', card: { type: 'group', layout: 'row', cards: [

@@ -12,16 +12,18 @@ npm run dev                          # server with --watch, plus Vite on :5173
 ```
 
 `npm run check` type-checks the server and the web app. `npm test` runs every test (no network, no real services).
-`npm run test:live` checks your config's widgets against your real services. `/#gallery` shows every card type in
+`npm run test:live` checks your config's widgets against your real services, and `npm run test:services` does the same for catalog entries. `/#gallery` shows every card type in
 every size.
 
 ## Adding things
 
 - **A service with a JSON API:** you may not need code: `type: api` maps it to a card from YAML
   ([docs/configuration.md](docs/configuration.md)).
-- **An integration for a service:** start with a plugin (`node dist/server.js new-integration <name>`, see
-  [docs/plugins.md](docs/plugins.md)). If it's broadly useful, it can become a built-in: one file in
-  `src/integrations/`, registered in `index.ts`, with a test in `test/integrations.test.ts` against made-up responses.
+- **An integration for a service:** usually about ten lines. Add a `service()` entry to the right family file in
+  `src/integrations/services/`, with a `sample` of a real answer and what it should show in `expect`, and `npm test`
+  checks it automatically (see [docs/plugins.md](docs/plugins.md)). Please paste a real response: samples written from
+  memory are how integrations break for everyone. If it needs controls, write a full integration: one file in
+  `src/integrations/`, registered in `index.ts`, with a test in `test/integrations.test.ts`.
   [docs/integrations.md](docs/integrations.md) covers widgets, actions, tools and access levels.
 - **A card type:** the type in `src/shared/cards.ts`, its schema in `cards.schema.ts`, a renderer in `src/web/cards.tsx`,
   a sample in `src/web/samples.ts`. The tests then render it in every size.

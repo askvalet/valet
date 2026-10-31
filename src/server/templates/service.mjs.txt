@@ -1,0 +1,26 @@
+// __TITLE__ for Valet. Drop this file in data/integrations/, then in config.yaml:
+//
+//   integrations:
+//     __NAME__:
+//       type: __NAME__
+//       url: http://your-service:1234
+//       key: ${__ENV___KEY}          # in .env; only ever used on the server
+//
+// and place it in the layout: `widgets: [__NAME__.status]`. That also gives the assistant a tool for it.
+//
+// 1. Point `get` at the service's API and paste a real answer into `sample`.
+// 2. Say which numbers matter in `stats`, and what `sample` should show in `expect`.
+// 3. Check it: node dist/server.js check-integration data/integrations/__NAME__.mjs
+export default ({ service, fmt }) => service({
+  type: '__NAME__',
+  name: '__TITLE__',
+  icon: 'pulse',
+  auth: 'bearer',                    // or 'none', 'token', 'basic', { header: 'X-Api-Key' }, { query: 'apikey' }, { login: '/api/login' }
+  get: { status: '/api/status' },    // each one is fetched, and its answer arrives as d.status
+  stats: d => [
+    { label: 'Used', value: fmt.bytes(d.status.used) },
+    { label: 'Items', value: d.status.items },
+  ],
+  sample: { status: { used: 1610612736, items: 1204 } },
+  expect: { Used: fmt.bytes(1610612736), Items: '1,204' },
+});

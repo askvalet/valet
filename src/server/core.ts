@@ -61,7 +61,7 @@ export interface Instance {
 export interface Context {
   id: string;                            // the instance's key in config.yaml, e.g. "downloads"
   /** fetch with a timeout and a readable error; returns parsed JSON unless `as: 'text'` */
-  http<T = any>(url: string, init?: RequestInit & { timeout?: number; as?: 'json' | 'text' | 'response' }): Promise<T>;
+  http<T = any>(url: string, init?: RequestInit & { timeout?: number; as?: 'json' | 'text' | 'response'; insecure?: boolean }): Promise<T>;
   log(...args: unknown[]): void;
   /** URL for a card image served by this instance's image() */
   image(ref: string): string;
@@ -93,12 +93,33 @@ export interface Integration<C = any> {
 
 export const defineIntegration = <C>(i: Integration<C>) => i;
 
+/** Proxmox, TrueNAS and many appliances ship a self-signed certificate. fetch can't accept one for a single request, so
+ *  a service that opts in with `insecure: true` goes through node:https. Only that service, and only when asked. */
+async function selfSigned(url: string, init: RequestInit, timeout: number) {
+  const { request } = await import('node:https');
+  const body = init.body == null ? undefined : init.body instanceof URLSearchParams ? init.body.toString() : String(init.body);
+  return new Promise<Response>((ok, no) => {
+    const req = request(url, { method: init.method ?? 'GET', headers: init.headers as Record<string, string>, rejectUnauthorized: false, timeout }, res => {
+      const parts: Buffer[] = [];
+      res.on('data', d => parts.push(d));
+      res.on('end', () => {
+        const headers = new Headers();
+        for (const [k, v] of Object.entries(res.headers)) for (const x of [v ?? []].flat()) headers.append(k, x);
+        const status = res.statusCode ?? 502;
+        ok(new Response(status === 204 || status === 304 ? null : Buffer.concat(parts), { status, headers }));
+      });
+    });
+    req.on('error', no); req.on('timeout', () => req.destroy(new Error('timed out')));
+    req.end(body);
+  });
+}
+
 export function makeContext(id: string): Context {
   return {
     id,
     async http(url, init = {}) {
-      const { timeout = 8000, as = 'json', ...rest } = init;
-      const res = await fetch(url, { ...rest, signal: AbortSignal.timeout(timeout) });
+      const { timeout = 8000, as = 'json', insecure, ...rest } = init;
+      const res = insecure && url.startsWith('https:') ? await selfSigned(url, rest, timeout) : await fetch(url, { ...rest, signal: AbortSignal.timeout(timeout) });
       if (as === 'response') return res as any;
       if (!res.ok) throw new Error(`${new URL(url).host} answered ${res.status}`);
       return (as === 'text' ? res.text() : res.json()) as any;

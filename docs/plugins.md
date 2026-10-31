@@ -15,6 +15,41 @@ Plugins run inside Valet with the same access as the built-in integrations. **On
 
 From source you can also install a plugin from npm and list it: `plugins: [valet-integration-something]`.
 
+## The ten-line version
+
+Most services are one or two API calls and a few numbers. `service()` needs nothing more, and the rest comes free: the
+config, sign-in, a card with a headline tile, and a tool so the assistant can answer questions about it.
+
+```js
+// data/integrations/speedtest.mjs
+export default ({ service }) => service({
+  type: 'speedtest', name: 'Speedtest', icon: 'wifi', auth: 'bearer',
+  get: { latest: '/api/v1/results/latest' },
+  stats: d => [{ label: 'Down', value: d.latest.data.download, unit: ' Mbps' }, { label: 'Ping', value: d.latest.data.ping, unit: ' ms' }],
+  sample: { latest: { data: { download: 940, ping: 11 } } },
+  expect: { Down: 940, Ping: 11 },
+});
+```
+
+`sample` is a real answer from the service and `expect` is what it should show. Check it without the service running:
+
+```sh
+node dist/server.js new-integration speedtest      # writes a commented starting point
+node dist/server.js check-integration data/integrations/speedtest.mjs
+```
+
+That runs what Valet's own tests run: the card is valid, the numbers land where you said, an outage fails cleanly and
+the key never appears in an error. To ship it for everyone, move it into a family file in `src/integrations/services/`
+and open a pull request: `npm test` picks it up by itself.
+
+`auth` is `'none'`, `'bearer'`, `'token'`, `'basic'`, `{ header: 'X-Api-Key' }`, `{ query: 'apikey' }`, or
+`{ login: '/api/login', token: r => r.jwt }` to trade a password for a session (add `expired`, `ttl`, `text` or `needs` for
+the awkward ones, and `authOptional: true` where many installs run without a login). `then` is a second step that uses the
+first's answers, and `every: '5m'` slows down heavy calls. [docs/services.md](services.md) lists what's supported. Use `list` or `status` instead of
+`stats` for rows, `options` for settings of its own, and `recap` to join the year in review.
+
+For controls, write tools or several widgets: use the full form below (`new-integration <name> --full`).
+
 ## Write one
 
 A plugin's default export is either an integration object, or a function that receives Valet's toolkit

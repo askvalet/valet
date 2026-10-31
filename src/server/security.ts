@@ -16,12 +16,15 @@ export function redactor(secrets: string[]) {
 }
 
 /** Headers for every response: only Valet's own scripts run, nothing frames it, referrers stay home. */
+const frames = new Set<string>();
+/** An address a card may embed, added by the iframe integration. Nothing can be framed otherwise. */
+export const allowFrame = (origin: string) => { frames.add(origin); };
 export const headers: MiddlewareHandler = async (c, next) => {
   await next();
   c.header('Content-Security-Policy', [
     "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'",   // React sets inline style attributes
     "img-src 'self' data: blob: https:", "font-src 'self' data:", "connect-src 'self'", "media-src 'self' blob:",
-    "frame-ancestors 'none'", "base-uri 'none'", "form-action 'self'", "object-src 'none'",
+    `frame-src ${[...frames].join(' ') || "'none'"}`, "frame-ancestors 'none'", "base-uri 'none'", "form-action 'self'", "object-src 'none'",
   ].join('; '));
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('Referrer-Policy', 'same-origin');

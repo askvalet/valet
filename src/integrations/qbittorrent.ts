@@ -65,19 +65,42 @@ export default defineIntegration({
       return known;
     }
 
+    // Added by hand, or a season pack: no queue knows it, so read the torrent's name and find the show in the library.
+    let shelf: { key: string; known: Known }[] = [], shelfAt = 0;
+    const plain = (s: string) => s.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '');
+    async function library() {
+      if (!cfg.arr.length || Date.now() - shelfAt < 600_000) return shelf;
+      const next: typeof shelf = [];
+      await Promise.all(cfg.arr.map(async a => {
+        const list = await ctx.http<any[]>(`${a.url.replace(/\/$/, '')}/api/v3/${a.type === 'radarr' ? 'movie' : 'series'}`, { headers: { 'X-Api-Key': a.apiKey }, timeout: 8000 }).catch(() => []);
+        for (const x of list) next.push({ key: plain(x.title), known: { title: x.title, subtitle: a.type === 'radarr' && x.year ? String(x.year) : undefined, poster: img(x.images, 'poster', 'w500'), backdrop: img(x.images, 'fanart', 'w1280') } });
+      }));
+      shelf = next; shelfAt = Date.now();
+      return shelf;
+    }
+    /** "Full.House.S03.1080p.WEBRip.x265-RARBG" → the show, Season 3, WEBRip-1080p. */
+    function fromName(name: string, on: typeof shelf): Known | undefined {
+      const m = /^(.+?)[\s._-]+(?:[Ss](\d{1,2})(?:[Ee](\d{1,3})(?:-?[Ee]\d{1,3})*)?|[([]?((?:19|20)\d{2})[)\]]?)(?:[\s._-]|$)/.exec(name);
+      const hit = m && on.find(x => x.key === plain(m[1]));
+      if (!m || !hit) return undefined;
+      const res = /(2160|1080|720|480)p/i.exec(name)?.[0].toLowerCase(), source = /web-?dl/i.test(name) ? 'WEBDL' : /webrip|web\b/i.test(name) ? 'WEBRip' : /blu-?ray|bdrip/i.test(name) ? 'Bluray' : /dvd/i.test(name) ? 'DVD' : /hdtv/i.test(name) ? 'HDTV' : undefined;
+      const part = m[2] ? (m[3] ? `S${m[2].padStart(2, '0')}E${m[3].padStart(2, '0')}` : `Season ${Number(m[2])}`) : hit.known.subtitle;
+      return { ...hit.known, subtitle: part, quality: source && res ? `${source}-${res}` : res };
+    }
+
     const widgets = {
       active: {
         title: 'Downloads', interval: 5000,
         async fetch() {
           const { info, dl, stuck, moving } = await state();
           speeds.push(info.dl_info_speed); if (speeds.length > 40) speeds.shift();
-          const k = await lookup();
+          const k = await lookup(), on = dl.some(t => !k.has(String(t.hash).toLowerCase())) ? await library() : shelf;
           const items: MediaItem[] = dl.slice(0, 6).map(t => {
-            const m = k.get(String(t.hash).toLowerCase());
+            const m = k.get(String(t.hash).toLowerCase()) ?? fromName(t.name, on);
             return { title: m?.title ?? t.name, subtitle: m?.subtitle ?? label(t), image: m?.poster, backdrop: m?.backdrop, pct: t.progress,
               state: t.state === 'pausedDL' || t.state === 'stoppedDL' ? 'paused' : t.state === 'stalledDL' || t.state === 'metaDL' ? 'buffering' : 'playing',
               remaining: `${Math.floor(t.progress * 100)}%${t.eta < 8640000 ? ` · ${fmt.duration(t.eta)} left` : ''}`, icon: 'download',
-              tags: [m?.quality, word(t), t.state !== 'metaDL' && `${fmt.bytes(t.amount_left)} left`].filter(Boolean) as string[],
+              tags: [m?.subtitle, m?.quality, word(t), t.state !== 'metaDL' && `${fmt.bytes(t.amount_left)} left`].filter(Boolean) as string[],
               detail: label(t) };
           });
           const first = items[dl.indexOf(moving[0])];

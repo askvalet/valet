@@ -201,7 +201,10 @@ export interface GroupCard extends Base { type: 'group'; cards: Card[]; layout?:
 export interface RankedItem { title: string; subtitle?: string; value?: string; image?: string; backdrop?: string; pct?: number; href?: string }
 export interface RankedCard extends Base { type: 'ranked'; items: RankedItem[]; empty?: string }
 
-export type Card = RankedCard | CodeCard | TableCard | LinksCard | VerseCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
+/** A page inside a card, sandboxed. Only addresses the iframe integration allowed can load. */
+export interface EmbedCard extends Base { type: 'embed'; src: string; height: number; scripts?: boolean }
+
+export type Card = EmbedCard | RankedCard | CodeCard | TableCard | LinksCard | VerseCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
 
 /** One widget slot's live state, as pushed to the browser. */
 export interface WidgetState { key: string; card?: Card; error?: string; at: number; source?: string }
