@@ -488,7 +488,13 @@ function Shelf({ card, header, small, run }: { card: ShelfCard; header?: ReactNo
   if (!small && card.layout === 'desk' && card.items.length) return <Desk card={card} header={header} />;
   if (!small && card.layout === 'windows' && card.items.length) return <Windows card={card} header={header} run={run} />;
   // what's coming and what's asked for wear the same shelf as what's new: one shape, three times
-  if (card.layout === 'week') return <ShelfRow card={{ ...card, items: card.items.map(i => ({ ...i, badge: i.badge === 'Ready' ? 'Ready' : dayWord(i.at) ?? i.badge })) }} header={header} small={small} />;
+  if (card.layout === 'week') {
+    // several episodes of one show on one day are one poster
+    const seen = new Map<string, ShelfItem & { n: number }>();
+    for (const i of card.items) { const k = `${i.title}|${i.at ?? i.badge}`, had = seen.get(k); if (had) had.n++; else seen.set(k, { ...i, n: 1 }); }
+    const items = [...seen.values()].map(({ n, ...i }) => ({ ...i, subtitle: n > 1 ? `${n} episodes` : i.subtitle, badge: i.badge === 'Ready' ? 'Ready' : dayWord(i.at) ?? i.badge }));
+    return <ShelfRow card={{ ...card, items }} header={header} small={small} />;
+  }
   if (card.layout === 'tickets') return <ShelfRow card={card} header={header} small={small} lines />;
   return <div className={card.stack ? 'stack-open' : undefined}><ShelfRow card={card} header={header} small={small} /></div>;
 }
