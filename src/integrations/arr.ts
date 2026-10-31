@@ -119,6 +119,7 @@ export default defineIntegration({
         },
         library_search: {
           label: 'Searched for it',
+          confirm: ({ title }) => ({ title: `Search for ${title}?`, detail: 'Looks for a download now', icon: 'film', verb: 'Search' }),
           description: 'Ask Sonarr/Radarr to search now for what\'s missing of one show or movie in the library (by title), e.g. when an episode didn\'t download.',
           access: 'control', input: z.object({ title: z.string() }),
           async run({ title }) {

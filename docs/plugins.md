@@ -80,6 +80,9 @@ Rules of the road:
 - **Tools say what they need.** `access: 'read'` to look, `'write'` to add something (it runs without asking), `'control'`
   to change or remove something (the person approves first). Write descriptions for the model: what it returns and
   when to use it.
+- **Say what you're about to do.** A `control` tool can have `confirm(input)`, returning `{ title, detail, image, icon, verb, danger }`
+  for its approval card: `Request The Mob?`, with a button that says Request. It may look things up but never change them, and
+  it should show what the service says rather than what the model typed.
 - **Images go through `ctx.image(ref)`** and your `image(ref)` handler, so the browser never needs your service's key.
 - **A built-in type can't be replaced** unless the config lists it: `plugins: { replace: [tautulli] }`.
 
@@ -115,6 +118,8 @@ async recap({ year, from, to }) {
 - `trait` is a personality: the strongest across all services becomes who the person was this year.
 - `backdrop` is wide artwork behind the slide, `wall: true` puts the drifting wall of posters behind it, and `art` adds
   posters to that wall. `bars` is a small chart of what the number is made of, `chart` a progress bar.
+- `logo` is the app's icon, shown large with its colours across the slide. A `service()` gets its own without asking.
+- In a `service()`, `tally(count, slide)` makes the usual slide from one number, and nothing at all when it's zero.
 - No model writes any of this: a recap of real numbers can't have one inventing a few.
 
 ## Visuals of your own

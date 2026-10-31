@@ -67,7 +67,7 @@ export async function buildRecap(instances: Map<string, Instance>, year: number,
   const persona = slides.flatMap(s => s.trait ? [s.trait] : []).sort((a, b) => b.strength - a.strength)[0] ?? FALLBACK;
   // the card shows the range of the year: one number per theme first, then the best of the rest
   const carded = everything.filter(s => s.stat), picks = [...new Map(carded.map(s => [s.theme, s] as const).reverse()).values()].reverse();
-  const stats = [...new Set([...picks, ...carded])].slice(0, 6).map(s => ({ label: s.stat!, value: `${s.value}${s.unit && s.unit.length <= 5 ? ` ${s.unit}` : ''}` }));   // the label already says what it counts
+  const stats = [...new Set([...picks, ...carded])].slice(0, 6).map(s => ({ label: s.stat!, value: `${s.value}${s.unit && s.unit.length <= 5 && !s.stat!.toLowerCase().split(' ').includes(s.unit) ? ` ${s.unit}` : ''}` }));   // the label already says what it counts
   const wall = [...new Set(everything.flatMap(s => [...(s.art ?? []), ...(s.theme === 'media' ? s.items ?? [] : []).flatMap(i => i.image ? [i.image] : [])]))].slice(0, 60);
   const recap: Recap = { year, soFar: range.to < Date.UTC(year + 1, 0, 1) - 864e5, slides, persona: { name: persona.name, line: persona.line }, stats, wall };
   cache.set(year, { at: now.getTime(), recap });

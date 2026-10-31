@@ -106,6 +106,7 @@ export default defineIntegration({
       tools: {
         pc_lighting: {
           label: 'Changed the lights',
+          confirm: ({ part = 'all', color, effect, brightness, preset }) => ({ title: preset ? `Set the PC to ${preset}?` : `Change ${part === 'all' ? 'the PC' : `the ${part}`} lighting?`, detail: [color, effect, brightness != null && `${brightness}% brightness`].filter(Boolean).join(' · ') || undefined, icon: 'cpu', verb: 'Change' }),
           description: 'Change the PC\'s lighting: one part (fans, pump, ram, gpu, or "all") to a colour (hex like #0a84ff, or a name you turn into hex), an effect (Static, Breathing, Rainbow, …) and/or brightness 0-100; or apply a preset by name (e.g. "Ocean", "All white", "All off").',
           access: 'control',
           input: z.object({ part: z.string().default('all'), color: z.string().optional(), effect: z.string().optional(), brightness: z.number().min(0).max(100).optional(), preset: z.string().optional() }),

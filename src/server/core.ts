@@ -9,7 +9,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { z } from 'zod';
-import type { RecapSlide, Card } from '../shared/cards.ts';
+import type { RecapSlide, Card, Confirm } from '../shared/cards.ts';
 
 export type Access = 'read' | 'write' | 'control';
 
@@ -37,6 +37,9 @@ export interface Tool<A = any> {
   /** Its card stays current in the chat: the page re-runs it every few seconds while it's on screen. Only for cheap,
    *  look-only tools whose answer changes by itself. */
   live?: boolean;
+  /** For tools that ask first: what's about to happen, as a person would say it. May look things up (never change them),
+   *  and should show what the service says, not what the model typed. */
+  confirm?(input: A): Confirm | Promise<Confirm>;
   /** The tool that reverses this one, given the same input: it adds Undo in the activity log. */
   undo?: string;
   /** For 'write' tools: input fields that must come word for word from the person's own latest message for the tool to

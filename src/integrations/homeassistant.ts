@@ -259,6 +259,11 @@ export default defineIntegration({
         },
         home_control: {
           label: 'Changed the home',
+          async confirm({ entity_id, action }) {
+            const e = (await states()).find(x => x.entity_id === entity_id), name = e?.attributes?.friendly_name ?? entity_id;
+            const verb = { turn_on: 'Turn on', turn_off: 'Turn off', toggle: 'Toggle', run: 'Run', start: 'Start', return_to_base: 'Send home' }[action as string] ?? 'Change';
+            return { title: `${verb} ${name}?`, detail: e ? `It's ${e.state} now` : undefined, icon: 'home', verb };
+          },
           followUps: ['Which lights are on?'],
           description: 'Control a Home Assistant entity: turn_on / turn_off / toggle (optionally brightness 0-100 and rgb colour for lights), or run a scene/script, or start/return_to_base a vacuum. Only entities marked controllable by home_find.',
           access: 'control',

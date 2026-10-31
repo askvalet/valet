@@ -58,6 +58,7 @@ function Backdrop({ s, wall, wallpaper }: { s?: RecapSlide; wall: string[]; wall
   return (
     <div className="rc-bg" aria-hidden>
       {wallpaper && <img className="rc-wallpaper" src={wallpaper} alt="" />}
+      {s?.logo && <img key={s.logo} className="rc-tint" src={s.logo} alt="" />}
       <div key={s?.id} className="rc-scene">{scene}</div>
       <div className="rc-scrim" />
     </div>
@@ -86,7 +87,7 @@ function Extra({ s }: { s: RecapSlide }) {
 function Slide({ s, year }: { s: RecapSlide; year: number }) {
   const size = s.value.length > 18 ? 'clamp(38px, 7vw, 68px)' : s.value.length > 9 ? 'clamp(52px, 10vw, 96px)' : 'clamp(84px, 17vw, 168px)';
   return (
-    <div className={`rc-body ${s.visual || s.icons ? 'rc-beside' : ''}`} key={s.id}>
+    <div className={`rc-body ${s.visual || s.icons || s.logo ? 'rc-beside' : ''}`} key={s.id}>
       {s.icon && <div className="rc-tile"><Icon name={s.icon} className="size-[22px]" /></div>}
       <div className="rc-kicker">{s.kicker}</div>
       <div className="rc-value" style={{ fontSize: size }}><Climb value={s.value} />{s.unit && <span className="rc-unit">{s.unit}</span>}</div>
@@ -160,6 +161,7 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
       <Backdrop s={s ?? (r && (i === 0 || who) ? { id: who ? 'who' : 'open', kicker: '', value: '', line: '', wall: true } : undefined)} wall={r?.wall ?? []} wallpaper={wallpaper} />
       {s?.visual && <Model key={s.id} visual={s.visual} />}
       {s?.icons && <Icons key={s.id} icons={s.icons} />}
+      {s?.logo && <div key={s.id} className="rc-logo"><img src={s.logo} alt="" /></div>}
       {!r ? <div className="rc-body"><div className="rc-kicker">{failed ? "Couldn't put your year together." : 'Going through your year…'}</div></div>
         : !r.slides.length ? <div className="rc-body"><div className="rc-kicker">Nothing to look back on yet. Connect a service or two and come back.</div></div>
         : i === 0 ? <div className="rc-body" key="open"><div className="rc-kicker">Your homelab</div><div className="rc-value" style={{ fontSize: 'clamp(96px, 22vw, 210px)' }}>{r.year}</div><p className="rc-line">{r.soFar ? 'The year so far.' : 'The whole year.'}</p></div>

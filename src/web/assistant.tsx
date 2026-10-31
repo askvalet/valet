@@ -9,9 +9,9 @@ import {
 import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { Card } from '../shared/cards.ts';
+import type { Card, Confirm } from '../shared/cards.ts';
 import { splitThink } from '../shared/think.ts';
-import { Widget } from './cards.tsx';
+import { Icon, Widget } from './cards.tsx';
 
 // One conversation for the whole page session, so closing and reopening the panel keeps it.
 // a long chat's early messages stay on screen, but only the recent ones are sent: the server would drop the rest anyway
@@ -129,11 +129,13 @@ const argOf = (input: any) => {
 };
 
 /** A run of tool calls as compact chips: what it did, with what, and whether it worked. Collapses once the answer's in. */
-function ToolChips({ parts, settled, tools, fresh }: { parts: any[]; settled: boolean; tools: Record<string, ToolInfo>; fresh?: boolean }) {
+function ToolChips({ parts: all, settled, tools, fresh }: { parts: any[]; settled: boolean; tools: Record<string, ToolInfo>; fresh?: boolean }) {
+  const parts = all.filter(p => p.state !== 'approval-requested' || p.approval?.isAutomatic);   // the card asking says it, and nothing has happened yet
   const [open, setOpen] = useState<boolean | null>(null);
   const [peek, setPeek] = useState<string | null>(null);   // a step's card, opened from its line
   const shown = open ?? !settled;
   const name = (p: any) => p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, '');
+  if (!parts.length) return null;
   return (
     <div className="text-[13px]">
       {parts.length > 1 && (
@@ -164,13 +166,28 @@ function ToolChips({ parts, settled, tools, fresh }: { parts: any[]; settled: bo
   );
 }
 
-function ToolPart({ p, approve, tools = {}, fresh, shown = true }: { p: any; approve: (id: string, ok: boolean) => void; tools?: Record<string, ToolInfo>; fresh?: boolean; shown?: boolean }) {
-  const label = toolLabel(p.type === 'dynamic-tool' ? p.toolName : p.type);
-  const name = p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, '');
-  if (p.state === 'approval-requested' && !p.approval?.isAutomatic) return (
-    <div className="chat-card rounded-2xl border bg-card p-4 shadow-card">
-      <div className="mb-0.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Needs your OK</div>
-      <div className="text-sm font-medium first-letter:uppercase">{p.input?.steps ? p.input.title : p.input?.ops ? 'Save this change to your config?' : `${label}?`}</div>
+// ids and hashes mean nothing to a person, and the service has the real name of anything they point at
+const plainInput = (input: Record<string, unknown>) => Object.entries(input).filter(([k, v]) => !/(^|_)(id|hash|uuid|key|token)$/i.test(k) && v !== '' && v != null && typeof v !== 'object').map(([, v]) => String(v)).join(' · ');
+
+/** Asking before something happens: what it is, in words, and two buttons. The service supplies the words and the picture
+ *  (a plan or a config change lists its steps); until they arrive, the action's own name stands in. */
+function Confirmation({ p, name, approve, tools }: { p: any; name: string; approve: (id: string, ok: boolean) => void; tools: Record<string, ToolInfo> }) {
+  const [said, setSaid] = useState<Confirm | null>(null), input = p.input ?? {}, listed = !!(input.steps || input.ops);
+  useEffect(() => { if (listed) return; let live = true; fetch('/api/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: name, input }) }).then(r => r.json()).then(c => { if (live && c.title) setSaid(c); }, () => {}); return () => { live = false; }; }, [name, listed]);
+  const title = input.steps ? input.title : input.ops ? 'Save this change to your config?' : said?.title ?? `Allow this: ${(tools[name]?.label ?? toolLabel(name)).toLowerCase()}?`;
+  const detail = listed ? undefined : said?.detail ?? (said ? undefined : plainInput(input));
+  return (
+    <div className="chat-card overflow-hidden rounded-2xl border bg-card shadow-card">
+      <div className="flex items-center gap-3.5 p-3.5">
+        {said?.image ? <img src={said.image} alt="" className="h-[84px] w-14 shrink-0 rounded-lg object-cover shadow-md" />
+          : <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/10"><Icon name={said?.icon ?? (input.steps ? 'chart' : input.ops ? 'file' : 'pulse')} className="size-5" /></span>}
+        <div className="min-w-0 flex-1">
+          <div className="text-[15px] leading-snug font-semibold text-pretty">{title}</div>
+          {detail && <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">{detail}</div>}
+        </div>
+        <div className="hidden shrink-0 gap-2 sm:flex">{buttons()}</div>
+      </div>
+      {listed && <div className="px-3.5 pb-3.5">
       {p.input?.steps ? (
         // a plan: every step, in order, before any of them runs
         <ol className="mt-2 space-y-2">
@@ -178,7 +195,7 @@ function ToolPart({ p, approve, tools = {}, fresh, shown = true }: { p: any; app
             <li key={i} className="flex gap-2.5 text-[13px]">
               <span className="mt-px grid size-5 shrink-0 place-items-center rounded-full bg-white/10 text-[11px] font-semibold tabular">{i + 1}</span>
               <span className="min-w-0"><span className="font-medium">{tools[s.tool]?.label ?? toolLabel(s.tool)}</span>
-                {Object.keys(s.input ?? {}).length > 0 && <span className="ml-1.5 break-all text-xs text-muted-foreground">{Object.values(s.input).map(v => typeof v === 'object' ? JSON.stringify(v) : String(v)).join(', ')}</span>}
+                {plainInput(s.input ?? {}) && <span className="ml-1.5 text-xs text-muted-foreground">{plainInput(s.input)}</span>}
                 <span className="block text-xs text-muted-foreground">{s.why}</span></span>
             </li>
           ))}
@@ -189,13 +206,23 @@ function ToolPart({ p, approve, tools = {}, fresh, shown = true }: { p: any; app
           {p.input.summary && <div>{p.input.summary}</div>}
           <pre className="max-h-48 overflow-auto rounded-lg bg-white/[.06] p-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-all">{p.input.ops.map((o: any) => `${o.op} ${o.path.join('.')}${o.value === undefined ? '' : ` = ${JSON.stringify(o.value)}`}`).join('\n')}</pre>
         </div>
-      ) : p.input && Object.keys(p.input).length > 0 && <div className="mt-1 break-all text-xs text-muted-foreground">{Object.entries(p.input).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(' · ')}</div>}
-      <div className="mt-3 flex gap-2">
-        <Button size="sm" className="max-sm:h-10 max-sm:flex-1" onClick={() => approve(p.approval.id, true)}>Approve</Button>
-        <Button size="sm" variant="outline" className="max-sm:h-10 max-sm:flex-1" onClick={() => approve(p.approval.id, false)}>Don't</Button>
-      </div>
+      ) : null}
+      </div>}
+      <div className="flex gap-2 px-3.5 pb-3.5 sm:hidden">{buttons()}</div>
     </div>
   );
+  function buttons() {
+    return <>
+      <button onClick={() => approve(p.approval.id, false)} className="press h-9 flex-1 rounded-full px-4 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:flex-none">Not now</button>
+      <button onClick={() => approve(p.approval.id, true)} className={cn('press h-9 flex-1 rounded-full px-5 text-[14px] font-semibold sm:flex-none', said?.danger ? 'bg-bad text-white' : 'bg-white text-black')}>{said?.verb ?? 'Allow'}</button>
+    </>;
+  }
+}
+
+function ToolPart({ p, approve, tools = {}, fresh, shown = true }: { p: any; approve: (id: string, ok: boolean) => void; tools?: Record<string, ToolInfo>; fresh?: boolean; shown?: boolean }) {
+  const label = toolLabel(p.type === 'dynamic-tool' ? p.toolName : p.type);
+  const name = p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, '');
+  if (p.state === 'approval-requested' && !p.approval?.isAutomatic) return <Confirmation p={p} name={name} approve={approve} tools={tools} />;
   if (p.state === 'output-available') {
     const card = p.output?.card as Card | undefined;
     if (card) return shown ? <ChatCard first={card} name={name} input={p.input} tools={tools} fresh={fresh} /> : null;

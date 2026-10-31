@@ -140,6 +140,7 @@ export default defineIntegration({
       tools: {
         torrent_control: {
           label: 'Changed a download',
+          confirm: ({ name, do: what }) => ({ title: `${what === 'remove' ? 'Remove' : what === 'pause' ? 'Pause' : 'Resume'} ${name}?`, detail: what === 'remove' ? 'The downloaded files are kept' : undefined, icon: 'download', verb: what === 'remove' ? 'Remove' : what === 'pause' ? 'Pause' : 'Resume', danger: what === 'remove' }),
           description: 'Pause, resume or remove ONE torrent (by part of its name, from downloads_status). Removing keeps the downloaded files.',
           access: 'control', input: z.object({ name: z.string(), do: z.enum(['pause', 'resume', 'remove']) }),
           async run({ name, do: what }) {
@@ -170,6 +171,7 @@ export default defineIntegration({
         pause_downloads: {
           undo: 'resume_downloads',
           label: 'Paused downloads',
+          confirm: ({ hash }) => ({ title: hash ? 'Pause this download?' : 'Pause all downloads?', icon: 'download', verb: 'Pause' }),
           followUps: ['Resume downloads'],
           description: 'Pause downloading. Pass a torrent hash from downloads_status to pause one, or nothing to pause all.',
           access: 'control', input: z.object({ hash: z.string().optional() }),
@@ -181,6 +183,7 @@ export default defineIntegration({
         resume_downloads: {
           undo: 'pause_downloads',
           label: 'Resumed downloads',
+          confirm: ({ hash }) => ({ title: hash ? 'Resume this download?' : 'Resume all downloads?', icon: 'download', verb: 'Resume' }),
           description: 'Resume downloading. Pass a torrent hash to resume one, or nothing to resume all.',
           access: 'control', input: z.object({ hash: z.string().optional() }),
           async run({ hash }) {

@@ -38,6 +38,7 @@ export default defineIntegration({
       tools: {
         ollama_unload: {
           label: 'Unloaded a model',
+          confirm: ({ model }) => ({ title: `Unload ${model}?`, detail: 'Frees its memory until it is next used', icon: 'gpu', verb: 'Unload' }),
           description: 'Unload a model from Ollama\'s memory, freeing its VRAM.',
           access: 'control', input: z.object({ model: z.string() }),
           async run({ model }) {

@@ -1,6 +1,6 @@
 // DNS, proxies, tunnels, routers, speed tests and sign-in. See media.ts for the shape of an entry.
 import { z } from 'zod';
-import { fmt, service } from '../../server/service.ts';
+import { fmt, service, tally } from '../../server/service.ts';
 
 const num = (v: unknown) => Number(v ?? 0) || 0;                       // some of these send numbers as strings
 const sum = (xs: any[] | null | undefined, f: (x: any) => unknown) => (xs ?? []).reduce((n, x) => n + num(f(x)), 0);
@@ -24,6 +24,7 @@ export default [
         { label: 'Filtered', value: num(s?.num_replaced_safebrowsing) + num(s?.num_replaced_safesearch) + num(s?.num_replaced_parental) },
         { label: 'Latency', value: ms(num(s?.avg_processing_time) * 1000) }];              // sent in seconds
     },
+    recap: d => tally(num(d.stats?.num_blocked_filtering), { id: 'dns.blocked', theme: 'network', icon: 'shield', kicker: 'AdGuard stopped', unit: 'requests', stat: 'Ads blocked', scope: "AdGuard's recent stats", line: 'Out of ' + num(d.stats?.num_dns_queries).toLocaleString('en') + ' lookups from your devices.' }),
     sample: { stats: { num_dns_queries: 48210, num_blocked_filtering: 9642, num_replaced_safebrowsing: 12, num_replaced_safesearch: 30, num_replaced_parental: 3, avg_processing_time: 0.0184 } },
     expect: { Queries: '48,210', Blocked: '9,642', Filtered: 45, Latency: '18 ms' },
   }),
@@ -73,6 +74,7 @@ export default [
       const hosts = d.hosts ?? [], on = hosts.filter((h: any) => h.enabled).length;
       return [{ label: 'Enabled', value: on }, { label: 'Disabled', value: hosts.length - on }, { label: 'Hosts', value: hosts.length }];
     },
+    recap: d => tally(d.hosts?.filter((h: any) => h.enabled).length, { id: 'proxy.hosts', theme: 'reach', icon: 'wifi', kicker: 'Your front door serves', unit: 'hosts', stat: 'Proxy hosts', line: 'Each one with its own address, on a domain you run.' }),
     sample: { hosts: [{ id: 1, domain_names: ['a.example.com'], enabled: 1 }, { id: 2, domain_names: ['b.example.com'], enabled: 1 }, { id: 3, domain_names: ['c.example.com'], enabled: 0 }] },
     expect: { Enabled: 2, Disabled: 1, Hosts: 3 },
   }),
@@ -92,6 +94,7 @@ export default [
       return [{ label: 'Routers', value: num(http?.routers?.total) }, { label: 'Services', value: num(http?.services?.total) }, { label: 'Middlewares', value: num(http?.middlewares?.total) },
         { label: 'Errors', value: errors, tone: errors ? 'bad' : undefined }, { label: 'Warnings', value: warnings, tone: warnings ? 'warn' : undefined }];
     },
+    recap: d => tally(num(d.overview?.http?.routers?.total), { id: 'proxy.routers', theme: 'reach', icon: 'wifi', kicker: 'Traefik routes', unit: 'routes', stat: 'Routes', line: `To ${num(d.overview?.http?.services?.total)} services behind one front door.` }),
     sample: { overview: { http: { routers: { total: 18, warnings: 1, errors: 0 }, services: { total: 20, warnings: 0, errors: 1 }, middlewares: { total: 6, warnings: 0, errors: 0 } }, tcp: { routers: { total: 0, warnings: 0, errors: 0 } } } },
     expect: { Routers: 18, Services: 20, Middlewares: 6, Errors: 1, Warnings: 1 },
   }),
@@ -144,6 +147,7 @@ export default [
       return [{ label: 'Devices', value: devices.length }, { label: 'Seen in last 5 min', value: devices.filter((x: any) => new Date(x.lastSeen).getTime() > recent).length },
         { label: 'Updates available', value: devices.filter((x: any) => x.updateAvailable).length }];
     },
+    recap: d => tally(d.list?.devices?.length, { id: 'tailnet', theme: 'reach', icon: 'wifi', kicker: 'Your private network spans', unit: 'devices', stat: 'Tailnet devices', line: 'Your homelab goes wherever they do, with no ports left open.' }),
     sample: { list: { devices: [{ name: 'nas.tail1234.ts.net', lastSeen: new Date().toISOString(), updateAvailable: true }, { name: 'phone.tail1234.ts.net', lastSeen: '2026-01-02T03:04:05Z', updateAvailable: false }] } },
     expect: { Devices: 2, 'Seen in last 5 min': 1, 'Updates available': 1 },
   }),
@@ -312,6 +316,7 @@ export default [
       const alerts = d.alerts?.length ?? 0;                            // both are a literal null when empty
       return [{ label: 'Alerts, 24h', value: alerts >= 500 ? '500+' : alerts }, { label: 'Active bans', value: d.bans?.length ?? 0 }];
     },
+    recap: d => tally(d.bans?.length, { id: 'bans', theme: 'security', icon: 'shield', kicker: 'CrowdSec is keeping out', unit: 'attackers', stat: 'Attackers banned', line: 'Every one of them tried something and got caught.' }),
     sample: { alerts: [{ id: 901, scenario: 'crowdsecurity/ssh-bf' }, { id: 902, scenario: 'crowdsecurity/http-probing' }, { id: 903, scenario: 'crowdsecurity/ssh-bf' }], bans: [{ id: 901, scenario: 'crowdsecurity/ssh-bf' }] },
     expect: { 'Alerts, 24h': 3, 'Active bans': 1 },
   }),

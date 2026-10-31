@@ -65,6 +65,9 @@ const number = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v.t
 const seconds = (v: string | number | undefined) => { const r = Every.safeParse(v); return r.success ? r.data : undefined; };
 const shown = (s: Stat): StatItem => ({ ...s, value: (number(s.value) ?? '–') as string | number });
 
+/** A number worth a slide in the year in review, or nothing at all when there's none: what most services can say. */
+export const tally = (n: unknown, slide: Omit<RecapSlide, 'value' | 'score'> & { value?: string }): RecapSlide[] => Number(n) > 0 ? [{ value: Number(n).toLocaleString('en'), score: 55, scope: 'Right now', ...slide }] : [];
+
 export function service<O = Record<string, never>>(def: ServiceDef<O>): Integration<any> & { def: ServiceDef<O> } {
   const auth = def.auth ?? 'none';
   const needsKey = auth === 'bearer' || auth === 'token' || (typeof auth === 'object' && ('header' in auth || 'query' in auth));
@@ -148,7 +151,7 @@ export function service<O = Record<string, never>>(def: ServiceDef<O>): Integrat
           label: `Checked ${def.name}`, access: 'read', input: z.object({}), live: true,
           description: def.about ?? `What ${def.name} reports right now: ${labels(def, cfg)}.`,
           async run() { const card = toCard(await load()); return { data: card, card }; } } },
-        ...(def.recap ? { recap: async (range: { year: number; from: number; to: number }) => def.recap!(await load(), cfg, range) } : {}),
+        ...(def.recap ? { recap: async (range: { year: number; from: number; to: number }) => def.recap!(await load(), cfg, range).map(s => s.show || s.wall || s.backdrop ? s : { logo: `/api/icon/${logo}`, ...s }) } : {}),
       };
     },
   };

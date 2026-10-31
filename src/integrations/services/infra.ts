@@ -1,6 +1,6 @@
 // Servers, storage and what watches over them. See media.ts for the shape of an entry.
 import { z } from 'zod';
-import { fmt, service } from '../../server/service.ts';
+import { fmt, service, tally } from '../../server/service.ts';
 
 // For services that run open by default and only sometimes ask for a sign-in, so nothing here can be required.
 type Creds = { key?: string; username?: string; password?: string };
@@ -47,6 +47,7 @@ export default [
         meter('CPU', sum(online, n => n.cpu * n.maxcpu), sum(online, n => n.maxcpu)), meter('Memory', sum(online, n => n.mem), memory, `of ${fmt.bytes(memory)}`),
         { label: 'Nodes', value: of(online.length, hosts.length), tone: online.length < hosts.length ? 'bad' : 'good' }];
     },
+    recap: (d, o) => tally(list(d.resources?.data).filter(r => PROXMOX_TYPES.includes(r.type) && (!o.node || r.node === o.node)).length, { id: 'proxmox.guests', theme: 'hardware', icon: 'cpu', kicker: 'Proxmox is running', unit: 'machines', stat: 'Virtual machines', line: 'Whole computers inside your computer.' }),
     sample: { resources: { data: [
       { id: 'node/pve', type: 'node', node: 'pve', status: 'online', cpu: 0.25, maxcpu: 16, mem: 34359738368, maxmem: 68719476736, uptime: 1209600 },
       { id: 'node/pve2', type: 'node', node: 'pve2', status: 'offline' },
@@ -248,6 +249,7 @@ export default [
         { label: 'Shares', value: nextcloud?.shares?.num_shares ?? 0 }, ...(typeof free === 'number' && free >= 0 ? [{ label: 'Free space', value: fmt.bytes(free) }] : [])];
     },
     sampleOptions: { key: 'k' },
+    recap: d => tally(d.info?.ocs?.data?.nextcloud?.storage?.num_files, { id: 'cloud.files', theme: 'files', icon: 'file', kicker: 'Your own cloud holds', unit: 'files', stat: 'Files', scope: 'All time', line: 'Same convenience, and the only person with the keys is you.' }),
     sample: { info: { ocs: { meta: { status: 'ok', statuscode: 200 }, data: {
       nextcloud: { system: { version: '31.0.2.1', freespace: 1099511627776, cpuload: [0.3, 0.2, 0.2], mem_total: 16000000, mem_free: 9000000 }, storage: { num_users: 6, num_files: 182340 }, shares: { num_shares: 41 } },
       activeUsers: { last5minutes: 1, last1hour: 2, last24hours: 4 } } } } },
@@ -318,6 +320,7 @@ export default [
     get: { stats: '/api/admin/stats', alerts: { path: '/api/alertmanager/grafana/api/v2/alerts', optional: true } },
     stats: d => [{ label: 'Dashboards', value: d.stats?.dashboards ?? 0 }, { label: 'Data sources', value: d.stats?.datasources ?? 0 }, { label: 'Users', value: d.stats?.users ?? 0 },
       alarm('Firing', list(d.alerts).filter(a => (a.status?.state ?? 'active') === 'active').length)],
+    recap: d => tally(d.stats?.dashboards, { id: 'grafana', theme: 'ops', icon: 'chart', kicker: 'You built', unit: 'dashboards', stat: 'Dashboards', scope: 'All time', line: `Fed by ${d.stats?.datasources ?? 0} data sources. Some of them you even look at.` }),
     sample: { stats: { dashboards: 24, datasources: 5, users: 3, orgs: 1 }, alerts: [{ status: { state: 'active' } }, { status: { state: 'suppressed' } }] },
     expect: { Dashboards: 24, 'Data sources': 5, Firing: 1 },
   }),

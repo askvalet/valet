@@ -51,6 +51,7 @@ export default defineIntegration({
       tools: {
         indexers_retest: {
           label: 'Retested indexers',
+          confirm: () => ({ title: 'Retest your indexers?', detail: 'Failing ones get another try now', icon: 'pulse', verb: 'Retest' }),
           description: 'Ask Prowlarr to test every indexer again (clears failures that have recovered).',
           access: 'control', input: z.object({}),
           async run() {

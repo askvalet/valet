@@ -1,7 +1,7 @@
 // Media servers and what feeds them.
 import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
-import { fmt, service } from '../../server/service.ts';
+import { fmt, service, tally } from '../../server/service.ts';
 
 const key = { key: z.string().optional() };
 const login = { username: z.string(), password: z.string() };
@@ -25,6 +25,7 @@ export default [
     stats: d => [
       { label: 'Playing now', value: d.sessions.filter((s: any) => s.NowPlayingItem).length },
       { label: 'Movies', value: d.counts.MovieCount }, { label: 'Series', value: d.counts.SeriesCount }, { label: 'Episodes', value: d.counts.EpisodeCount }],
+    recap: d => tally(sum(d.counts?.MovieCount, d.counts?.SeriesCount), { id: 'jellyfin.shelf', theme: 'media', icon: 'film', kicker: 'On your Jellyfin shelf', unit: 'titles', stat: 'Titles', scope: 'All time', line: `${d.counts?.MovieCount ?? 0} films and ${d.counts?.SeriesCount ?? 0} shows, ${d.counts?.EpisodeCount ?? 0} episodes in all.` }),
     sample: { counts: { MovieCount: 1204, SeriesCount: 88, EpisodeCount: 3120 }, sessions: [{ NowPlayingItem: { Name: 'A Film' } }, {}] },
     expect: { 'Playing now': 1, Movies: '1,204', Episodes: '3,120' },
   }),
@@ -66,6 +67,7 @@ export default [
       const entry = subsonic(d.playing)?.nowPlaying?.entry;
       return [{ label: 'Playing now', value: entry ? Object.values(entry).length : 0 }, { label: 'Songs', value: d.scan?.['subsonic-response']?.scanStatus?.count }];
     },
+    recap: d => tally(d.scan?.['subsonic-response']?.scanStatus?.count, { id: 'music.songs', theme: 'music', icon: 'play', kicker: 'Your music, on your own disks', unit: 'songs', stat: 'Songs', scope: 'All time', line: 'No subscription can take a single one of them away.' }),
     sample: { playing: { 'subsonic-response': { status: 'ok', nowPlaying: { entry: [{ id: 'a1', title: 'A Song', artist: 'A Band' }] } } },
       scan: { 'subsonic-response': { status: 'ok', scanStatus: { scanning: false, count: 18422, folderCount: 930 } } } },
     sampleOptions: { username: 'admin', password: 'hunter2' },
@@ -142,6 +144,7 @@ export default [
     type: 'kavita', name: 'Kavita', icon: 'book', auth: { login: '/api/Account/login', body: c => ({ username: c.username, password: c.password, apiKey: '' }), token: r => r.token },
     get: { stats: '/api/Stats/server/stats' },
     stats: d => [{ label: 'Series', value: d.stats?.seriesCount ?? 0 }, { label: 'Files', value: d.stats?.totalFiles ?? 0 }],
+    recap: d => tally(d.stats?.seriesCount, { id: 'kavita.series', theme: 'reading', icon: 'book', kicker: 'Your Kavita library holds', unit: 'series', stat: 'Series', scope: 'All time', line: `${d.stats?.totalFiles ?? 0} files, ready on any screen you own.` }),
     sample: { stats: { seriesCount: 214, totalFiles: 5620 } },
     expect: { Series: 214, Files: '5,620' },
   }),
@@ -155,6 +158,7 @@ export default [
     },
     stats: d => [{ label: 'Libraries', value: (d.libraries ?? []).filter((l: any) => !l?.unavailable).length },
       { label: 'Series', value: d.series?.totalElements ?? d.seriesOld?.totalElements ?? 0 }, { label: 'Books', value: d.books?.totalElements ?? d.booksOld?.totalElements ?? 0 }],
+    recap: d => tally(d.books?.totalElements ?? d.booksOld?.totalElements, { id: 'komga.books', theme: 'reading', icon: 'book', kicker: 'On your shelves', unit: 'books', stat: 'Books', scope: 'All time', line: `Across ${d.series?.totalElements ?? d.seriesOld?.totalElements ?? 0} series, and none of them can be pulled from a store.` }),
     sample: { libraries: [{ id: '1', name: 'Comics', unavailable: false }, { id: '2', name: 'Unplugged', unavailable: true }],
       series: { totalElements: 318, content: [] }, seriesOld: { totalElements: 318, content: [] }, books: { totalElements: 7240, content: [] }, booksOld: { totalElements: 7240, content: [] } },
     expect: { Libraries: 1, Series: 318, Books: '7,240' },

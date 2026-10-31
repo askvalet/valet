@@ -1,6 +1,6 @@
 // The apps a homelab collects: feeds, code, notes, money, home, sync. See media.ts for the shape of an entry.
 import { z } from 'zod';
-import { fmt, service } from '../../server/service.ts';
+import { fmt, service, tally } from '../../server/service.ts';
 
 const rows = (v: unknown): any[] => Array.isArray(v) ? v : [];
 const sum = (o: unknown) => Object.values((o ?? {}) as Record<string, number>).reduce((a, b) => a + (b ?? 0), 0);
@@ -16,6 +16,7 @@ const total = (h: any) => Number(h?.['x-total-count'] ?? 0);
 const forge = (type: string, name: string) => service({
   type, name, icon: 'file', auth: 'bearer',
   get: { repos: totalOf('/api/v1/repos/search?limit=1'), issues: totalOf('/api/v1/repos/issues/search?type=issues&limit=1'), pulls: totalOf('/api/v1/repos/issues/search?type=pulls&limit=1'), notifications: totalOf('/api/v1/notifications?limit=1') },
+  recap: d => tally(total(d.repos), { id: 'code', theme: 'code', icon: 'file', kicker: 'Your own forge holds', unit: 'repositories', stat: 'Repositories', scope: 'All time', line: `In ${name}, on your hardware, and not training anyone's model.` }),
   stats: d => [
     { label: 'Repositories', value: total(d.repos) }, { label: 'Open issues', value: total(d.issues) },
     { label: 'Open PRs', value: total(d.pulls) }, { label: 'Notifications', value: total(d.notifications) }],
@@ -29,6 +30,7 @@ export default [
     type: 'miniflux', name: 'Miniflux', icon: 'rss', auth: { header: 'X-Auth-Token' },
     get: { counters: '/v1/feeds/counters' },
     stats: d => [{ label: 'Unread', value: sum(d.counters?.unreads) }, { label: 'Read', value: sum(d.counters?.reads) }],
+    recap: d => tally(sum(d.counters?.reads), { id: 'feeds.read', theme: 'reading', icon: 'rss', kicker: 'You read', unit: 'articles', stat: 'Articles read', scope: 'All time', line: 'Chosen by you, in the order they came. No algorithm involved.' }),
     sample: { counters: { reads: { 1: 1200, 4: 34 }, unreads: { 1: 12, 4: 3 } } },
     expect: { Unread: 15, Read: '1,234' },
   }),
@@ -53,6 +55,7 @@ export default [
         { label: 'Changed', value: all.filter(w => w.last_changed > 0 && !w.viewed).length }, { label: 'Watching', value: all.length },
         { label: 'Failing', value: all.filter(w => w.last_error).length }];
     },
+    recap: d => tally(Object.keys(d.watches ?? {}).length, { id: 'watching', theme: 'ops', icon: 'pulse', kicker: 'You are keeping an eye on', unit: 'pages', stat: 'Pages watched', line: 'If any of them change, you hear about it first.' }),
     sample: { watches: {
       '6a4b7d5c-fee4-4616-9f43-4ac97046b595': { last_changed: 1793000000, last_checked: 1793400000, last_error: false, title: 'Docs', url: 'https://example.com/docs', viewed: false },
       'e6f5fd5c-dbfe-468b-b8f3-f9d6ff5ad69b': { last_changed: 1793000000, last_checked: 1793400000, last_error: false, title: 'Prices', url: 'https://example.com/prices', viewed: true },
@@ -212,6 +215,7 @@ export default [
       const space = rows(d.space?.results ?? d.space)[0];
       return [{ label: 'Recipes', value: space?.recipe_count ?? 0 }, { label: 'Keywords', value: d.keywords?.count ?? 0 }, { label: 'Users', value: space?.user_count ?? 0 }];
     },
+    recap: d => tally(rows(d.space?.results ?? d.space)[0]?.recipe_count, { id: 'recipes', theme: 'food', icon: 'book', kicker: 'Your cookbook has', unit: 'recipes', stat: 'Recipes', scope: 'All time', line: 'All of them without a life story above the ingredients.' }),
     sample: { space: { count: 1, results: [{ id: 1, name: 'Home', user_count: 2, recipe_count: 1204 }] }, keywords: { count: 96, results: [{ id: 1, name: 'dinner' }] } },
     expect: { Recipes: '1,204', Keywords: 96, Users: 2 },
   }),
@@ -289,6 +293,7 @@ export default [
         { label: 'Devices online', value: peers.filter(p => p.connected).length, sub: `of ${peers.length}` }, { label: 'Folders', value: rows(d.folders).length },
         { label: 'Received', value: fmt.bytes(d.connections?.total?.inBytesTotal ?? 0) }, { label: 'Sent', value: fmt.bytes(d.connections?.total?.outBytesTotal ?? 0) }];
     },
+    recap: d => { const moved = (d.connections?.total?.inBytesTotal ?? 0) + (d.connections?.total?.outBytesTotal ?? 0); return tally(moved, { id: 'sync.moved', theme: 'files', icon: 'disk', kicker: 'Your devices passed around', value: fmt.bytes(moved), scope: 'Since Syncthing last restarted', line: 'Straight from one to the next, with no server in the middle.' }); },
     sample: { connections: { total: { at: '2026-10-31T10:00:00Z', inBytesTotal: 1073741824, outBytesTotal: 536870912 }, connections: { 'AAAAAAA-BBBBBBB': { connected: true, paused: false, inBytesTotal: 1073741824, outBytesTotal: 536870912 }, 'CCCCCCC-DDDDDDD': { connected: false, paused: false, inBytesTotal: 0, outBytesTotal: 0 } } },
       folders: [{ id: 'default', label: 'Default', paused: false }, { id: 'photos', label: 'Photos', paused: false }] },
     expect: { 'Devices online': 1, Folders: 2, Received: '1.0 GB', Sent: '512.0 MB' },

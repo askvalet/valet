@@ -77,6 +77,7 @@ export default defineIntegration({
         },
         adblock_pause: {
           label: 'Paused ad blocking',
+          confirm: ({ minutes }) => minutes ? { title: `Pause ad blocking for ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}?`, detail: 'Ads come back on every device until it ends', icon: 'shield', verb: 'Pause' } : { title: 'Turn ad blocking back on?', icon: 'shield', verb: 'Turn on' },
           description: 'Pause Pi-hole ad blocking for some minutes (e.g. a site breaks), or resume it with minutes: 0.',
           access: 'control', input: z.object({ minutes: z.number().int().min(0).max(1440) }),
           async run({ minutes }) {

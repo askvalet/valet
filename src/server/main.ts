@@ -252,6 +252,14 @@ app.get('/api/image/:inst', async c => {
 
 // Things the page asks the model by itself. No tools here: see brain.ts.
 const whyCache = new Map<string, { at: number; text: string }>();
+// The approval card's words: what this action is about to do. It only reads, and nothing runs until the person says so.
+app.post('/api/confirm', async c => {
+  const { tool, input } = await c.req.json().catch(() => ({} as any));
+  const [inst, name] = String(tool ?? '').split('__'), t = name ? site.instances.get(inst)?.tools?.[name] : undefined;
+  if (!t?.confirm) return c.json({});
+  try { return c.json(JSON.parse(site.redact(JSON.stringify(await t.confirm(input ?? {}))))); } catch { return c.json({}); }
+});
+
 app.post('/api/why', async c => {
   const { key, about } = await c.req.json().catch(() => ({} as any));
   if (!site.ask) return c.json({ error: 'no assistant configured' }, 404);

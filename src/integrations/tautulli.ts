@@ -161,6 +161,7 @@ export default defineIntegration({
       tools: {
         plex_stop_stream: {
           label: 'Stopped a stream',
+          confirm: ({ who, message }) => ({ title: `Stop ${who}'s stream?`, detail: message ? `They'll see: ${message}` : undefined, icon: 'play', verb: 'Stop', danger: true }),
           description: 'Stop someone\'s Plex stream, with a short message they\'ll see. Identify it by the user\'s name or the title (from plex_streams).',
           access: 'control', input: z.object({ who: z.string().describe('user name or title'), message: z.string().default('Stopped by the server owner.') }),
           async run({ who, message }) {

@@ -45,3 +45,9 @@ test('recap: what only Valet can say comes from real numbers on both sides', asy
   assert.equal(r.slides.find(s => s.id === 'aws')!.value, '$92');
   assert.deepEqual(r.wall, ['/p1', '/p2']);
 });
+
+test('recap: the card does not count things twice', async () => {
+  clearRecap();
+  const r = await buildRecap(new Map([['a', inst(async () => [{ id: 'a', kicker: '', value: '18,422', unit: 'songs', stat: 'Songs', line: '', theme: 'music' }])]]), 2026, new Date(Date.UTC(2026, 5, 1)));
+  assert.deepEqual(r.stats, [{ label: 'Songs', value: '18,422' }]);
+});

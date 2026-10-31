@@ -51,6 +51,11 @@ export async function checkService(s: { def: ServiceDef<any>; config: any; creat
   const shown: Record<string, unknown> = Object.fromEntries((card.items ?? []).map((i: any) => [i.label ?? i.name ?? i.title, i.value ?? i.meta ?? i.subtitle ?? i.ok]));
   for (const [k, want] of Object.entries(def.expect ?? {})) if (String(shown[k]) !== String(want)) problems.push(`"${k}" shows ${String(shown[k])}, expected ${want}`);
   for (const i of card.type === 'stats' ? card.items : []) if (['–', 'undefined', 'NaN', 'null'].includes(String(i.value))) problems.push(`"${i.label}" came up empty: the sample doesn't have that field`);
+  if (def.recap) {
+    const slides = await inst.recap({ year: 2026, from: 0, to: Date.now() }).catch((e: Error) => { problems.push(`its recap failed: ${e.message}`); return null; });
+    if (slides && !slides.length) problems.push('its recap said nothing about its own sample');
+    for (const s of slides ?? []) if (/undefined|NaN|null/.test(`${s.value} ${s.line}`)) problems.push(`its recap came up empty: "${s.value}", "${s.line}"`);
+  }
   if (!Object.keys(def.expect ?? {}).length) problems.push('add `expect`, so a test proves the numbers land in the right place');
   if (Object.values(inst.tools ?? {}).some((t: any) => t.access !== 'read')) problems.push('its tool must only read');
   try { await s.create(parsed.data, fakeContext(def, 500)).widgets.status.fetch(); problems.push('it reported success when the service answered 500'); } catch (e) { if (/sample-key|[?&](api_?key|token)=/i.test((e as Error).message)) problems.push('its error message leaks the key'); }
