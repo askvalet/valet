@@ -11,8 +11,6 @@
 .swatch[aria-pressed="true"] > i { outline-color: var(--foreground); }
 .swatch:focus-visible { box-shadow: inset 0 0 0 2px var(--ring); }
 .swatch:disabled { opacity: .4; }
-.motion-reduced .roll-on .roll-new, .motion-none .roll-on .roll-new { animation: none; }
-.motion-reduced .slots > span[data-off] { transform: none; }
 /* a switch's hit area reaches 32px without its look changing */
 .tap { position: relative; }
 .tap::after { content: ""; position: absolute; inset: -7px -2px; }

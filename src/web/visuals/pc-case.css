@@ -3,7 +3,6 @@
 @property --lo { syntax: '<number>'; inherits: true; initial-value: 1; }
 .pcx .lit { transition: --ink .8s ease, --lo .8s ease, opacity .9s ease; }
 .pcx .lit.dipping { transition-duration: .22s; }
-.motion-reduced .pcx .lit { transition: none; }
 @media (prefers-reduced-motion: reduce) { .pcx .lit { transition: none; } }
 
 /* The 3D case. Scoped under .pcx. Surfaces are matte black steel; light comes only from the parts that are lit. */

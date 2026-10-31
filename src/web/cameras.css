@@ -77,10 +77,3 @@
 .cam-dock { position: absolute; left: 0; right: 0; bottom: max(14px, env(safe-area-inset-bottom)); display: flex; justify-content: center; padding-inline: 12px; }
 .cam-dock .cam-pills .cam-pill { flex: none; }
 .cam-dock .cam-pills { max-width: 100%; padding: 5px; border-radius: 99px; margin: 0; background: rgb(30 30 34 / .55); backdrop-filter: blur(24px) saturate(1.6); --foreground: #f5f5f7; }
-
-@media (prefers-reduced-motion: reduce) {
-  .cam-frame, .cam-theatre, .cam-box[data-on], .cam-ping::after { animation: none; }
-  .cam-box { transition: none; }
-}
-
-.motion-reduced :is(.cam-frame, .cam-theatre, .cam-box[data-on], .cam-ping::after) { animation: none; }

@@ -128,11 +128,3 @@
   .rc-logo img { width: 96px; height: 96px; padding: 18px; }
   .rc-tint { top: -10vmax; right: -30vmax; transform: none; }
 }
-
-/* the system's setting and the page's own mean the same here: nothing drifts, rises, rolls or fills. styles.css already stops everything for motion: none. */
-@media (prefers-reduced-motion: reduce) {
-  .rc-col, .rc-backdrop, .rc-body, .rc-scene, .rc-share, .rc-track i, .rc-week i, .rc-poster, .rc-tint, .rc-logo, .rc-model, .rc-icons span, .rc-reel i, .rc-hint { animation: none; }
-  .rc-seg i.on { animation: none !important; width: 100%; }
-}
-.motion-reduced :is(.rc-col, .rc-backdrop, .rc-body, .rc-track i, .rc-week i, .rc-poster, .rc-logo, .rc-model, .rc-icons span, .rc-reel i) { animation: none; }
-:is(.motion-reduced, .motion-none) .rc-seg i.on { animation: none !important; width: 100%; }

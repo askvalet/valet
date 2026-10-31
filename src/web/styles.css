@@ -112,7 +112,7 @@
   --radius-2xl: calc(var(--radius) * 1.111);
   --radius-3xl: calc(var(--radius) * 1.667);
   --shadow-card: var(--shadow-card);
-  --default-transition-duration: var(--dur-press) var(--ease-out);
+  --default-transition-duration: var(--dur-press);
   --default-transition-timing-function: var(--ease-out);
 }
 
@@ -139,11 +139,20 @@
 .prose-chat strong { font-weight: 600; }
 .prose-chat code { font-size: .9em; padding: 1px 5px; border-radius: 6px; background: var(--muted); }
 
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
-/* appearance.motion: none is that, on purpose; reduced keeps fades and drops anything that moves */
+/* Reduced motion, all of it, here. The system's setting and appearance.motion: none stop everything; reduced stops what
+   moves or loops and keeps plain fades. Hover and press movement scale by --move, so they hold still with the rest. */
+:root { --move: 1; }
+.motion-none, .motion-reduced { --move: 0; }
 .motion-none *, .motion-none *::before, .motion-none *::after { animation: none !important; transition: none !important; }
-.motion-reduced :is(.settle, .chat-in, .chat-card, .chat-word, .tick, .spin-in, .stack-open, .chat-pop, .brief-in, .fade-in-soft, .island-row) { animation: none !important; }
-.motion-reduced .lift, .motion-reduced .lift:hover, .motion-reduced .press:active { transform: none !important; }
+.motion-reduced *, .motion-reduced *::before, .motion-reduced *::after { animation: none !important; transition-property: opacity, color, background-color, border-color !important; }
+:is(.motion-none, .motion-reduced) :is(.article .article-page, .window .window-page img) { transform: none !important; }
+:is(.motion-none, .motion-reduced) .chip-out { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root { --move: 0; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .article .article-page, .window .window-page img { transform: none !important; }
+  .chip-out { display: none; }
+}
 
 /* appearance.font and appearance.shape: each falls back to what the design had */
 [data-slot="card-title"], main h2, .hero-title { font-weight: var(--heading-weight, revert-layer); }
@@ -275,8 +284,8 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
   --dur-scene: 600ms;    /* not UI: a wallpaper, a photo, a room's light */
 }
 /* press feedback: a slight give under the finger */
-.press, [data-slot="button"], .glass-round, .chat-icon { transition-property: transform, color, background-color, opacity, box-shadow; transition-duration: var(--dur-press) var(--ease-out); transition-timing-function: var(--ease-out); }
-:is(.press, [data-slot="button"], button.glass-round, .chat-icon, .why-chip, .seg button, .shelf-arrow, .window-archive, .article-tools button, .article-tools a, .undo-bar button):active:not(:disabled) { transform: scale(0.97); }
+.press, [data-slot="button"], .glass-round, .chat-icon { transition-property: transform, color, background-color, opacity, box-shadow; transition-duration: var(--dur-press); transition-timing-function: var(--ease-out); }
+:is(.press, [data-slot="button"], button.glass-round, .chat-icon, .why-chip, .seg button, .shelf-arrow, .window-archive, .article-tools button, .article-tools a, .undo-bar button):active:not(:disabled) { transform: scale(calc(1 - .03 * var(--move))); }
 
 /* chat: a message arrives, cards settle in, words fade up out of a slight blur as they stream */
 .chat-in { animation: chat-in var(--dur-move) var(--ease-out) backwards; transform-origin: bottom right; }
@@ -300,7 +309,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 /* cards lift a touch under the pointer: the shadow deepens, nothing jumps */
 @media (hover: hover) and (pointer: fine) {
   .lift { transition: transform var(--dur-pop) var(--ease-out), box-shadow var(--dur-pop) var(--ease-out); }
-  .lift:hover { transform: translateY(-1px); box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 14px 32px -12px rgb(0 0 0 / .22); }
+  .lift:hover { transform: translateY(calc(-1px * var(--move))); box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 14px 32px -12px rgb(0 0 0 / .22); }
   .has-wallpaper .lift:hover, .dark .lift:hover { box-shadow: inset 0 1px 0 rgb(255 255 255 / .14), 0 28px 56px -24px rgb(0 0 0 / .75); }
 }
 /* the Mac dock: the size follows the pointer directly while it's over the rail, and eases back when it leaves */
@@ -382,7 +391,6 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 /* a number or a line that changes crossfades; these tick all day, so nothing moves */
 .tick { display: inline-block; animation: tick var(--dur-pop) var(--ease-out) backwards; }
 @keyframes tick { from { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .settle, .tick, .spin-in { animation: none; } .chat-word, .chat-card, .chat-in { animation: none; } .chat-shimmer { animation: none; color: var(--muted-foreground); } .lift, .lift:hover { transform: none; } }
 /* the composer glows awake when it has focus; the send button morphs into the stop square and back */
 .composer { transition: box-shadow var(--dur-pop) var(--ease-out), border-color var(--dur-pop) var(--ease-out), background-color var(--dur-pop) var(--ease-out); }
 .composer:focus-within { border-color: rgb(255 255 255 / .22); box-shadow: 0 0 0 4px rgb(255 255 255 / .06), 0 10px 30px -16px rgb(0 0 0 / .6); }
@@ -443,7 +451,6 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 @media (hover: hover) and (pointer: fine) { .group\/stack:hover .stack-page { transform: translateX(var(--fan-x)) rotate(var(--fan-r)); } }
 .stack-open { animation: stack-open var(--dur-move) var(--ease-out) backwards; }
 @keyframes stack-open { from { opacity: 0; transform: translateY(6px); } }
-@media (prefers-reduced-motion: reduce) { .stack-page, .stack-open { animation: none; transition: none; } }
 
 /* a long card in a packed section stays one screenful */
 .card-cap [data-slot="card-content"] { max-height: 420px; overflow-y: auto; scrollbar-width: thin; }
@@ -465,7 +472,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .article-page { position: absolute; inset: 0 0 auto; z-index: -2; width: 100%; min-height: 100%; object-fit: cover; object-position: top; transition: transform var(--dur-scene) var(--ease-out); }
 .article::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to top, rgb(10 10 16 / .96) 8%, rgb(10 10 16 / .82) 42%, rgb(10 10 16 / .12) 78%); }
 .article-text { min-width: 0; padding: 18px 20px; }
-@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) { .article:hover .article-page { transform: translateY(min(0px, max(-60%, calc(-100% + 100cqh))));   /* down the page, and only if there's more of it */ transition-duration: 14s; transition-timing-function: linear; } }
+@media (hover: hover) and (pointer: fine) { .article:hover .article-page { transform: translateY(min(0px, max(-60%, calc(-100% + 100cqh))));   /* down the page, and only if there's more of it */ transition-duration: 14s; transition-timing-function: linear; } }
 
 /* documents on a desk: hover picks a page up */
 .desk { display: flex; justify-content: space-between; gap: 0; padding: 18px 10px 6px; overflow-x: auto; scrollbar-width: none; }
@@ -473,7 +480,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .desk-sheet { position: relative; display: block; aspect-ratio: 8.5 / 11; overflow: hidden; border-radius: 6px; background: #fbfaf6; box-shadow: 0 1px 1px rgb(0 0 0 / .3), 0 14px 26px -12px rgb(0 0 0 / .65); transition: box-shadow var(--dur-move) var(--ease-out); }
 .desk-stamp { position: absolute; right: 10px; bottom: 12px; rotate: -9deg; padding: 1px 7px; border: 1.5px solid currentColor; border-radius: 4px; color: #c2352b; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
 @media (hover: hover) and (pointer: fine) {
-  .desk-page[href]:hover { z-index: 5; transform: translateY(-12px) scale(1.09); }
+  .desk-page[href]:hover { z-index: 5; transform: translateY(calc(-12px * var(--move))) scale(calc(1 + .09 * var(--move))); }
   .desk-page[href]:hover .desk-sheet { box-shadow: 0 2px 2px rgb(0 0 0 / .3), 0 30px 46px -14px rgb(0 0 0 / .75); }
 }
 /* saved pages as small browser windows */
@@ -485,13 +492,12 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .window-page img { display: block; transition: transform var(--dur-scene) var(--ease-out); }
 @keyframes desk-rise { from { opacity: 0; transform: translateY(14px); } }
 @media (hover: hover) and (pointer: fine) {
-  .window[href]:hover { transform: translateY(-3px); border-color: rgb(255 255 255 / .22); }
+  .window[href]:hover { transform: translateY(calc(-3px * var(--move))); border-color: rgb(255 255 255 / .22); }
   .window:hover .window-bar > i:nth-child(1) { background: #ff5f57; }
   .window:hover .window-bar > i:nth-child(2) { background: #febc2e; }
   .window:hover .window-bar > i:nth-child(3) { background: #28c840; }
   .window:hover .window-page img { transform: translateY(min(0px, calc(-100% + 170px))); transition: transform 9s linear; }
 }
-@media (prefers-reduced-motion: reduce) { .window:hover .window-page img { transform: none; } }
 
 .glass-light .glass-pop { --glass-sheet: rgb(255 255 255 / .96); }
 /* the reading card's controls: on hover, always on touch */
@@ -615,9 +621,6 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .fold > div { min-height: 0; overflow: hidden; }
 .chip-out { animation: chip-out var(--dur-pop) var(--ease-out) both; pointer-events: none; overflow: hidden; white-space: nowrap; }
 @keyframes chip-out { to { opacity: 0; max-width: 0; padding-inline: 0; } }
-.motion-reduced .fold, .motion-none .fold { transition: none; }
-.motion-reduced .chip-out, .motion-none .chip-out { display: none; }
-@media (prefers-reduced-motion: reduce) { .fold { transition: none; } .chip-out { display: none; } }
 /* phones: a menubar ring says what it is when tapped */
 @media (max-width: 639px) {
   .menubar .group\/ring > .truncate { display: block; position: absolute; top: calc(100% + 4px); left: 50%; translate: -50% 0; max-width: none; padding: 1px 6px; border-radius: 6px; background: rgb(0 0 0 / .72); color: #fff; opacity: 0; pointer-events: none; transition: opacity var(--dur-press) var(--ease-out); }
