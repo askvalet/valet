@@ -9,3 +9,6 @@ config/
 # the demo's own config and compose are part of the repo, unlike yours
 !demo/config.yaml
 !demo/docker-compose.yml
+# the demo's own config and compose are part of the repo, unlike yours
+!demo/config.yaml
+!demo/docker-compose.yml
