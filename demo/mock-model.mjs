@@ -4,6 +4,7 @@
 // cost and nothing for a stranger to misuse. It never repeats what's typed into it.
 import { createServer } from 'node:http';
 
+const BAZARR = "Bazarr's container is running, but its health check is failing, so subtitles may lag. Nothing else depends on it.";
 const lit = '(?:living room|kitchen|dining room|hallway|office|bedroom|bathroom|guest room)', cleaned = `(?:${lit}|laundry)`;
 const titled = s => s.replace(/\b\w/g, c => c.toUpperCase());
 const robot = String.raw`(?:the |my )?(?:vacuum|robot|robot vacuum)`;
@@ -28,8 +29,9 @@ export const ORDERS = [
 ];
 export const ANSWERS = [
   [/^(?=.*\bmealie\b).*\b(?:why|how'?s|how is|logs?|down|up|wrong|happened|crash\w*|stopped|broken|diagnose|check|status|ok|okay|working|running|memory)\b|\bwhy\b.*\b(?:it|that)\b.*\b(?:down|crash\w*|stopp?\w*|fail\w*)\b/i, 'container_logs', { name: 'mealie' }, logsSay],
-  [/\b(?:anything|everything|something|services?|homelab|lab)\b.*\b(?:down|wrong|broken|ok|okay|fine|healthy|working|up|problems?|issues?|status)\b|\bhealth check\b/i, 'service_status', {}, d => { const bad = (d.services ?? []).filter(s => !s.ok); return bad.length ? `${bad.map(s => s.name).join(', ')} ${bad.length > 1 ? 'are' : 'is'} down; the other ${d.services.length - bad.length} are fine.` : `All ${d.services?.length} services are up.`; }],
-  [/\b(?:downloads?|torrents?)\b|\b(?:when|how long)\b.*\b(?:finish|done)\b/i, 'downloads_status', {}, d => { const t = d.torrents ?? []; return t.length ? `${t.length} going at ${d.speed}. ${t[0].name} is at ${t[0].progress}${t[0].left ? ` with about ${t[0].left} left` : ''}.` : 'Nothing is downloading right now.'; }],
+  [/\bbazarr\b/i, 'service_status', {}, () => BAZARR],
+  [/\b(?:anything|everything|something|services?|homelab|lab)\b.*\b(?:down|wrong|broken|ok|okay|fine|healthy|working|up|problems?|issues?|status)\b|\bhealth check\b/i, 'service_status', {}, d => { const all = d.services ?? [], bad = all.filter(s => !s.ok && !s.quiet), up = all.filter(s => s.ok).length, off = all.length - bad.length - up, rest = off ? `, and ${off} ${off > 1 ? 'are' : 'is'} off by choice` : ''; return bad.length ? `${bad.map(s => s.name).join(', ')} ${bad.length > 1 ? 'are' : 'is'} down; the other ${up} are fine${rest}.` : `${off ? `${up} of ${all.length}` : `All ${all.length}`} services are up${rest}.`; }],
+  [/\b(?:downloads?|torrents?)\b|\b(?:when|how long)\b.*\b(?:finish|done)\b/i, 'downloads_status', {}, d => { const all = d.torrents ?? [], t = all.filter(x => !x.stalled), stuck = all.filter(x => x.stalled).map(x => ` ${x.name} is stalled at ${x.progress} with no peers.`).join(''); return t.length ? `${t.length} going at ${d.speed}. ${t[0].name} is at ${t[0].progress}${t[0].left ? ` with about ${t[0].left} left` : ''}.${stuck}` : 'Nothing is downloading right now.'; }],
   [/\b(?:playing|streaming|who'?s watching|who is watching|on plex)\b/i, 'plex_streams', {}, d => { const s = d.streams?.[0]; return s ? `${s.user} is watching ${s.title} on the ${s.device}, with ${s.left} left.` : 'Nobody is watching anything.'; }],
   [/\b(?:recommend\w*|something to watch|what\b.*\bwatch|watch tonight|popular|most watched|good (?:movies?|films?|shows?)|(?:movie|film) night)\b/i, 'plex_stats', {}, d => `The household's favourite lately is ${d.top}. If you'd like something new, ${d.unwatched} was added this week and nobody has started it.`],
   [/\b(?:disks?|drives?)\b.*\b(?:health\w*|ok|okay|hot|warm|temp\w*|fail\w*|full|space|status|doing)\b|\bhow\b.*\b(?:disks?|drives?)\b|\b(?:storage|nvme|ssd)\b/i, 'drive_health', {}, d => `All ${d.drives?.length} drives pass their health checks. The warmest is ${d.hottest}.`],
@@ -63,6 +65,7 @@ export const suggestions = down => down ? SUGGESTIONS : ['What took Mealie down?
 const textOf = c => typeof c === 'string' ? c : Array.isArray(c) ? c.map(p => p.text ?? '').join(' ') : '';
 const hasFile = c => /\[attached: /.test(textOf(c)) || (Array.isArray(c) && c.some(p => p.type && p.type !== 'text'));
 /** What the page reported as wrong: the words after the heading, so a mention elsewhere on the page doesn't count. */
+const sick = text => /bazarr is unhealthy/i.test(/Wrong right now:\n([\s\S]*?)(?:\n\n|$)/.exec(text)?.[1] ?? '');
 const mealieDown = text => /mealie is down/i.test(/Wrong right now:\n([\s\S]*?)(?:\n\n|$)/.exec(text)?.[1] ?? '');
 /** The sentence without its manners, so "Hey, could you restart Mealie, please?" is the same order as "restart mealie". */
 const plain = said => said.replace(/\n?\[attached: [^\]]*\]/g, '').trim().replace(/^(?:(?:hey|hi|ok|okay|valet|please)\b[,!]*\s+)+/i, '').replace(/^(?:can|could|would|will) you (?:please )?(.*?)\??$/i, '$1').replace(/^please\s+/i, '').replace(/[,\s]+(?:please|thanks|thank you)[.!\s]*$/i, '').replace(/[.!\s]+$/, '');
@@ -71,8 +74,8 @@ const YES = /^(?:yes|yep|yeah|sure|ok|okay|go ahead|do it|restart it|please do|y
 export function reply(body) {
   const msgs = body.messages ?? [], all = msgs.map(m => textOf(m.content)).join('\n'), system = msgs.filter(m => m.role === 'system' || m.role === 'developer').map(m => textOf(m.content)).join('\n');
   if (/suggest what the owner/.test(system)) return { text: suggestions(mealieDown(all)).join('\n') };
-  if (/one short line/.test(system)) return { text: mealieDown(all) ? 'Mealie is down, everything else is fine' : 'All quiet, everything is up' };
-  if (/explain what's on a homelab dashboard/.test(system)) return { text: /Asked about:[^\n]*(?:mealie|services|containers|uptime)/i.test(all) && /"ok":false/.test(all) ? 'Mealie ran out of memory at 3:12 AM and hit its 256 MB limit. Restart it, and give it more memory if it happens again.' : `${standIn}, so I can't explain this one. On a real Valet, the assistant would read this card's numbers and say what's behind them.` };
+  if (/one short line/.test(system)) return { text: mealieDown(all) ? (sick(all) ? 'Mealie is down and Bazarr is unhealthy' : 'Mealie is down, everything else is fine') : sick(all) ? 'Bazarr is unhealthy, the rest is quiet' : 'All quiet, everything is up' };
+  if (/explain what's on a homelab dashboard/.test(system)) return { text: /Asked about:[^\n]*bazarr/i.test(all) ? BAZARR : /Asked about:[^\n]*(?:mealie|services|containers|uptime)/i.test(all) && /"ok":false/.test(all) ? 'Mealie ran out of memory at 3:12 AM and hit its 256 MB limit. Restart it, and give it more memory if it happens again.' : `${standIn}, so I can't explain this one. On a real Valet, the assistant would read this card's numbers and say what's behind them.` };
   const last = msgs.at(-1), at = msgs.findLastIndex(m => m.role === 'user'), user = msgs[at]?.content, offered = /Want me to restart it\?\s*$/.test(textOf(msgs.slice(0, Math.max(at, 0)).findLast(m => m.role === 'assistant')?.content));
   const said = YES.test(plain(textOf(user))) && offered ? 'restart mealie' : plain(textOf(user));
   const told = msgs.slice(0, Math.max(at, 0)).some(m => m.role === 'assistant' && textOf(m.content).includes(can));
