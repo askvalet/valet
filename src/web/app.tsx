@@ -155,7 +155,7 @@ function useDock(box: React.RefObject<HTMLElement | null>, side: 'left' | 'right
 function Walls({ list, every }: { list: Paper[]; every?: number }) {
   const [n, setN] = useState(0), now = list[n % list.length] ?? list[0];
   const [shown, setShown] = useState([now]);
-  useEffect(() => { setN(0); if (!every || list.length < 2) return; const t = setInterval(() => setN(i => i + 1), every); return () => clearInterval(t); }, [list, every]);
+  useEffect(() => { setN(0); if (!every || list.length < 2) return; const t = setInterval(() => { if (!document.hidden) setN(i => i + 1); }, every); return () => clearInterval(t); }, [list, every]);
   useEffect(() => { setShown(s => s.at(-1) === now ? s : [...s.filter(x => x !== now).slice(-1), now]); }, [now]);
   return (
     <div className="wallpaper" aria-hidden>
@@ -191,7 +191,7 @@ function useLeaving(list: string[], ms = 260) {
     return () => clearTimeout(t);
   }, [list.join('\n')]);
   const all = list.map(s => ({ s, out: false }));
-  for (const { s, at } of gone) all.splice(Math.min(at, all.length), 0, { s, out: true });
+  for (const { s, at } of gone) if (!list.includes(s)) all.splice(Math.min(at, all.length), 0, { s, out: true });   // back already: one chip, not two with one key
   return all;
 }
 

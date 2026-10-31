@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
+import { cn, useOnScreen } from '@/lib/utils';
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
 import { clock as clockOf, day as dayOf, num as written } from './format.ts';
 import { stateOf } from '../shared/cards.ts';
@@ -1184,12 +1184,12 @@ function letterbox(img: HTMLImageElement): [number, number] | undefined {
 /** Flashback: one photo at a time, filling the card, crossfading slowly with a gentle drift; the moment's caption
  *  ("3 years ago · Lisbon") sits over the bottom. Mosaic: one large photo and four small ones. Hover pauses. */
 function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?: boolean; fill?: boolean; label?: string; status?: ReactNode }) {
-  const items = card.items, [i, setI] = useState(0), [paused, setPaused] = useState(false), [bars, setBars] = useState<Record<number, [number, number]>>({});
+  const items = card.items, [i, setI] = useState(0), [paused, setPaused] = useState(false), [bars, setBars] = useState<Record<number, [number, number]>>({}), [box, seen] = useOnScreen<HTMLAnchorElement>();
   useEffect(() => {
-    if (items.length < 2 || paused || (large && card.style !== 'flashback')) return;
-    const t = setInterval(() => setI(n => (n + 1) % items.length), 7000);
+    if (items.length < 2 || paused || !seen || (large && card.style !== 'flashback')) return;
+    const t = setInterval(() => { if (!document.hidden) setI(n => (n + 1) % items.length); }, 7000);
     return () => clearInterval(t);
-  }, [items.length, paused, large, card.style]);
+  }, [items.length, paused, seen, large, card.style]);
   if (!items.length) return <Empty text={card.empty ?? 'No photos'} />;
   if (large || card.style === 'mosaic') {
     const [first, ...rest] = items;
@@ -1206,7 +1206,7 @@ function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?
   }
   const cur = items[i], [lead, ...rest] = [cur.badge, cur.title, cur.subtitle].filter(Boolean);
   return (
-    <a href={cur.href} target="_blank" rel="noreferrer" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
+    <a ref={box} href={cur.href} target="_blank" rel="noreferrer" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
       className={cn(cur.href && 'lift', 'relative isolate block overflow-hidden rounded-[calc(var(--radius)*1.6)] bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/.55)]', fill ? 'h-full min-h-[280px]' : 'aspect-[4/3] max-h-[460px] w-full')}>
       {items.map((p, k) => (
         <Art key={k} src={p.image} alt={p.title ?? ''} className={cn('photo-slide absolute inset-0 -z-10 size-full object-cover', k === i && 'is-on')}

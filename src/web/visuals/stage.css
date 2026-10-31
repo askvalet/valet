@@ -23,6 +23,9 @@
 .stage .world .f[data-part], .stage .world .f[data-of]:not([data-of=""]) { cursor: pointer; }
 .stage.draggable { cursor: grab; }
 .stage.dragging { cursor: grabbing; }
+/* a model being built is simply there; only what changes later eases */
+.stage .world.boot * { transition: none !important; }
+.stage.is-away * { animation-play-state: paused !important; }
 /* this file travels with the exported model, so it says this for itself; styles.css has the whole app's rule */
 @media (prefers-reduced-motion: reduce) { .stage * { animation: none !important; } }
 /* a small glass button in the model's corner: back to where it started, and the hint that it turns */
