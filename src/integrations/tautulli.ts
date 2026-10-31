@@ -42,19 +42,18 @@ export default defineIntegration({
       const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], byDay = days.map(d => ({ label: d, value: rows.filter(h => new Date(h.date * 1000).toLocaleString('en', { weekday: 'short' }) === d).length }));
       const added: any[] = await api('get_recently_added', { count: 60 }).then(d => d.recently_added, () => []);
       const recent = added.map(x => x.grandparent_thumb || x.parent_thumb || x.thumb).filter(Boolean).map(t => ctx.image(t));
-      const scenes = [...new Set(added.map(x => x.art).filter(Boolean) as string[])].map(t => ctx.image(t));
       const key = titles[0][1].h.grandparent_rating_key || titles[0][1].h.rating_key;
       const art = await api('get_metadata', { rating_key: key }).then(m => m.art ? ctx.image(m.art) : undefined, () => undefined);
       const slides: RecapSlide[] = [
-        { id: 'watch.hours', icon: 'play', kicker: 'You watched', value: hours.toLocaleString('en'), unit: 'hours', stat: 'Hours watched', score: 95, scope: 'year', facts: { watchedHours: total / 3600 }, art: recent, wall: true, scenes,
+        { id: 'watch.hours', theme: 'media', icon: 'play', kicker: 'You watched', value: hours.toLocaleString('en'), unit: 'hours', stat: 'Hours watched', score: 95, scope: 'year', facts: { watchedHours: total / 3600 }, art: recent, wall: true,
           line: `${rows.length} plays, all from your own server.`,
           trait: { name: 'The Projectionist', line: 'The lights go down, the server spins up, and the house gets exactly what it wanted to watch.', strength: Math.min(.9, hours / 500) } },
-        { id: 'watch.top', icon: 'film', kicker: 'Your most watched', value: titles[0][0], backdrop: art, line: `${titles[0][1].n} ${titles[0][1].n === 1 ? 'play' : 'plays'} and ${hrs(titles[0][1].s)}, more time than anything else this year.`, score: 90, scope: 'year',
+        { id: 'watch.top', theme: 'media', icon: 'film', kicker: 'Your most watched', value: titles[0][0], backdrop: art, line: `${titles[0][1].n} ${titles[0][1].n === 1 ? 'play' : 'plays'} and ${hrs(titles[0][1].s)}, more time than anything else this year.`, score: 90, scope: 'year',
           items: titles.slice(0, 5).map(([name, e]) => ({ name, value: hrs(e.s), image: poster(e.h) })) },
-        { id: 'watch.day', icon: 'calendar', kicker: 'Your night in', value: `${day}s`, line: `${dayN} of your ${rows.length} plays started on a ${day}.`, score: 60, scope: 'year', bars: byDay },
+        { id: 'watch.day', theme: 'media', icon: 'calendar', kicker: 'Your night in', value: `${day}s`, line: `${dayN} of your ${rows.length} plays started on a ${day}.`, score: 60, scope: 'year', bars: byDay },
       ];
-      if (people.length > 1) slides.push({ id: 'watch.people', icon: 'play', kicker: 'Who kept Plex busiest', value: people[0][0], line: `${hrs(people[0][1].s)} of the ${hrs(total)} everyone watched.`, score: 70, scope: 'year', private: true, bars: people.slice(0, 5).map(([label, e]) => ({ label, value: e.s, show: hrs(e.s) })) });
-      if (late > .25) slides.push({ id: 'watch.late', icon: 'moon', kicker: 'After 11 PM', value: `${Math.round(late * 100)}%`, line: 'of everything you watched started when you should have been asleep.', score: 55, scope: 'year', trait: { name: 'The Night Owl', line: "The disks spin, the house sleeps, and you're still one more episode away from bed.", strength: late } });
+      if (people.length > 1) slides.push({ id: 'watch.people', theme: 'media', icon: 'play', kicker: 'Who kept Plex busiest', value: people[0][0], line: `${hrs(people[0][1].s)} of the ${hrs(total)} everyone watched.`, score: 70, scope: 'year', private: true, bars: people.slice(0, 5).map(([label, e]) => ({ label, value: e.s, show: hrs(e.s) })) });
+      if (late > .25) slides.push({ id: 'watch.late', theme: 'media', icon: 'moon', kicker: 'After 11 PM', value: `${Math.round(late * 100)}%`, line: 'of everything you watched started when you should have been asleep.', score: 55, scope: 'year', trait: { name: 'The Night Owl', line: "The disks spin, the house sleeps, and you're still one more episode away from bed.", strength: late } });
       return slides;
     }
 

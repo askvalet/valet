@@ -1,7 +1,7 @@
 // rgb-control: a PC's case lighting and cooler, drawn as a live 3D model with its
 // temperatures, pump and fan speeds beside it.
 import { z } from 'zod';
-import { defineIntegration } from '../server/core.ts';
+import { defineIntegration, type Instance } from '../server/core.ts';
 
 export default defineIntegration({
   type: 'rgb-control',
@@ -34,6 +34,12 @@ export default defineIntegration({
     const deg = (v?: number | null) => v == null ? undefined : Math.round(v);
     const heat = (v?: number | null) => v == null ? undefined : v >= 90 ? 'bad' as const : v >= 80 ? 'warn' as const : undefined;
     return {
+      async recap(this: Instance) {
+        const t = (await get()).telemetry ?? {}, card: any = await this.widgets.pc.fetch();
+        if (!t.ram_total) return [];
+        return [{ id: 'rig', theme: 'hardware', icon: 'cpu', kicker: 'All of it runs on', value: String(Math.round(t.ram_total)), unit: 'GB of memory', score: 67, scope: 'Right now', visual: { kind: 'pc-case', data: { ...card.visual.data, controls: false, presets: undefined } },
+          line: t.cpu_temp != null ? `Right now the CPU is at ${Math.round(t.cpu_temp)}°C${t.gpu_temp != null ? ` and the GPU at ${Math.round(t.gpu_temp)}°C` : ''}.` : 'Humming away in the corner.' }];
+      },
       widgets: {
         pc: {
           title: 'Desktop', interval: cfg.interval,

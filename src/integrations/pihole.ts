@@ -32,8 +32,10 @@ export default defineIntegration({
         const s = await api<any>(`stats/database/summary?from=${Math.floor(from / 1000)}&until=${Math.floor(to / 1000)}`);
         if (!s?.sum_blocked) return [];
         const covered = Number(s.total_clients ?? 0);
-        return [{ id: 'dns.blocked', icon: 'shield', kicker: 'Pi-hole stopped', value: Number(s.sum_blocked).toLocaleString('en'), unit: 'requests', stat: 'Ads blocked', score: 72, scope: 'As far back as Pi-hole keeps',
-          line: `That's ${Number(s.percent_blocked).toFixed(0)}% of everything your devices tried to look up${covered ? `, across ${covered} devices` : ''}.` }];
+        const worst = ((await api<any>('stats/top_domains?blocked=true&count=4').catch(() => null))?.domains ?? []) as { domain: string; count: number }[];
+        return [{ id: 'dns.blocked', theme: 'network', icon: 'shield', kicker: 'Pi-hole stopped', value: Number(s.sum_blocked).toLocaleString('en'), unit: 'requests', stat: 'Ads blocked', score: 72, scope: 'As far back as Pi-hole keeps',
+          line: `That's ${Number(s.percent_blocked).toFixed(0)}% of everything your devices tried to look up${covered ? `, across ${covered} devices` : ''}.${worst.length ? ' The worst offenders lately:' : ''}`,
+          bars: worst.map(d => ({ label: d.domain, value: d.count, show: d.count.toLocaleString('en') })) }];
       },
       widgets: {
         stats: {

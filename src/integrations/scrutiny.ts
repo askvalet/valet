@@ -1,7 +1,7 @@
 // Scrutiny: drive health from SMART data. Each disk with its status, temperature and age; a failing check or a hot
 // drive turns the card amber or red.
 import { z } from 'zod';
-import { defineIntegration } from '../server/core.ts';
+import { defineIntegration, fmt } from '../server/core.ts';
 
 export default defineIntegration({
   type: 'scrutiny',
@@ -15,11 +15,18 @@ export default defineIntegration({
         const dev = x.device ?? {}, smart = x.smart ?? {};
         // device_status: 0 passed; bit 1 failed by SMART, bit 2 failed by Scrutiny's thresholds
         const failed = (dev.device_status ?? 0) !== 0, hot = (smart.temp ?? 0) >= cfg.hotC;
-        return { name: dev.device_name, model: dev.model_name ?? dev.device_name, failed, hot, temp: smart.temp, hours: smart.power_on_hours, wwn: dev.wwn };
+        return { name: dev.device_name, model: dev.model_name ?? dev.device_name, failed, hot, temp: smart.temp, hours: smart.power_on_hours, wwn: dev.wwn, capacity: dev.capacity as number | undefined };
       });
     }
     const age = (h?: number) => h == null ? '' : h >= 8760 ? `${(h / 8760).toFixed(1)} years on` : `${Math.round(h / 24)} days on`;
     return {
+      async recap() {
+        const list = await drives();
+        if (!list.length) return [];
+        const total = list.reduce((s, d) => s + (d.capacity ?? 0), 0), bad = list.filter(d => d.failed).length, days = (h: number) => `${Math.round(h / 24).toLocaleString('en')} days`;
+        return [{ id: 'drives', theme: 'hardware', icon: 'disk', kicker: 'Your data lives on', value: total ? fmt.bytes(total, 0) : String(list.length), unit: total ? undefined : 'drives', stat: 'Storage', score: 63, scope: 'Right now',
+          line: `${list.length} drives, ${bad ? `${bad} of them failing` : 'all passing their health checks'}. How long each has been spinning:`, bars: list.map(d => ({ label: d.model, value: d.hours ?? 0, show: days(d.hours ?? 0) })) }];
+      },
       widgets: {
         drives: {
           title: 'Drives', interval: 600_000,

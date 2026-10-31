@@ -28,7 +28,7 @@ interface Page {
   island?: { activities: string[]; idle: 'notch' | 'hide' };
   weather?: string;
   recap?: boolean;
-  sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; sizes?: Record<string, 'small' | 'wide' | 'tall' | 'large'>; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; widgets: string[] }[];
+  sections: { title?: string; columns?: number; tabColumns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; sizes?: Record<string, 'small' | 'wide' | 'tall' | 'large'>; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
 }
 
@@ -422,7 +422,7 @@ function Home({ account }: { account: boolean }) {
                     </div>
                   );
                   // a card that's come up empty gives its column back, and cards in a row share a height
-                  const cols = Math.min(sec.columns ?? keys.length, keys.length), row = !aside && keys.length > 1;
+                  const wanted = (view !== 'all' && sec.tabColumns) || sec.columns, cols = Math.min(wanted ?? keys.length, keys.length), row = !aside && keys.length > 1 && cols > 1;
                   return (
                     // a fixed column count applies from tablet width up; phones get one column
                     <div className={cn('grid gap-4', aside && 'items-start', sec.columns && !aside && 'grid-cols-1 @3xl/main:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))]')}

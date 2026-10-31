@@ -192,6 +192,17 @@ export default defineIntegration({
     }
 
     return {
+      async recap(this: Instance) {
+        const [key, plan] = Object.entries(cfg.floorplans).find(([, p]) => p.vacuum) ?? [];
+        if (!key || !plan?.vacuum) return [];
+        const all = await states(), name = plan.vacuum.replace(/^vacuum\./, 'sensor.'), read = (k: string) => all.find(e => e.entity_id === `${name}_${k}`)?.state;
+        const area = Number(read('total_cleaned_area')), runs = Number(read('cleaning_count')), mins = Number(read('total_cleaning_time'));
+        if (!area || !runs) return [];                   // not every robot reports its lifetime totals
+        const since = new Date(read('first_cleaning_date') ?? NaN), hours = Math.round(mins / 60), card: any = await this.widgets[key].fetch();
+        return [{ id: 'home.vacuum', theme: 'home', icon: 'home', kicker: 'Your robot has vacuumed', value: Math.round(area).toLocaleString('en'), unit: 'm²', stat: 'Floor vacuumed', score: 88, facts: { vacuumHours: hours },
+          scope: Number.isNaN(+since) ? 'All time' : `Since ${since.toLocaleDateString('en', { month: 'short', year: 'numeric' })}`, visual: { kind: 'home', data: card.visual.data },
+          line: `${runs.toLocaleString('en')} runs and ${hours.toLocaleString('en')} hours of work.`, trait: { name: 'The Delegator', line: 'Why do it yourself when a robot will do it and tell you about it afterwards?', strength: Math.min(.75, runs / 300) } }];
+      },
       widgets: widgets satisfies Instance['widgets'],
       actions: {
         set: { description: 'Turn an entity on or off', input: z.object({ entity_id: z.string(), value: z.boolean() }), run: ({ entity_id, value }) => set(entity_id, value) },

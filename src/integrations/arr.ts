@@ -81,7 +81,7 @@ export default defineIntegration({
         const size = [...films.map(f => f.sizeOnDisk ?? 0), ...shows.map(s => s.statistics?.sizeOnDisk ?? 0)].reduce((a, b) => a + b, 0);
         if (!n) return [];
         const hours = (films.reduce((a, f) => a + (f.hasFile ? f.runtime ?? 0 : 0), 0) + shows.reduce((a, s) => a + (s.runtime ?? 0) * (s.statistics?.episodeFileCount ?? 0), 0)) / 60;
-        return [{ id: 'library.added', icon: 'film', wall: true, kicker: 'Your library grew by', value: n.toLocaleString('en'), unit: 'titles', stat: 'Titles added', score: 80, scope: 'year', facts: { libraryHours: hours },
+        return [{ id: 'library.added', theme: 'media', icon: 'film', wall: true, kicker: 'Your library grew by', value: n.toLocaleString('en'), unit: 'titles', stat: 'Titles added', score: 80, scope: 'year', facts: { libraryHours: hours },
           line: `${newFilms.length} films and ${newShows.length} shows joined. The whole collection now takes up ${fmt.bytes(size)}.`,
           trait: { name: 'The Curator', line: 'You never just watch something. You acquire it, label it and find it the right quality profile.', strength: Math.min(.85, n / 400) } }];
       },

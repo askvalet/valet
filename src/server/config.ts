@@ -46,6 +46,7 @@ const Section = z.object({
   // "instance.widget", or { widget, size } to pick a size: small (its headline as a tile), wide (that tile at twice the
   // width), medium (the card), tall (the card over two rows), large (the card across two columns, with room for more)
   // `every` overrides how often it refreshes while someone's looking: seconds, or "30s", "5m", "1h"
+  tabColumns: z.number().int().min(1).max(6).optional(),   // columns on its own tab, when that should differ from the overview
   widgets: z.array(z.union([z.string(), z.object({ widget: z.string(), size: z.enum(['small', 'wide', 'medium', 'tall', 'large']).default('medium'), every: Every.optional() })]))
     .transform(ws => ws.map(w => typeof w === 'string' ? { widget: w, size: 'medium' as const } : w)),
   columns: z.number().int().min(1).max(4).optional(),

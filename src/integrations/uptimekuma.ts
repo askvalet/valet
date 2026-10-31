@@ -38,7 +38,8 @@ export default defineIntegration({
         const month = (await monitors()).filter(m => m.month != null);
         if (!month.length) return [];
         const avg = month.reduce((s, m) => s + m.month!, 0) / month.length;
-        return [{ id: 'uptime', icon: 'pulse', kicker: 'Your homelab stayed up', value: pct(avg), stat: 'Uptime', score: 66, scope: 'Last 30 days', line: `Across the ${month.length} things Uptime Kuma watches.` }];
+        return [{ id: 'uptime', theme: 'network', icon: 'pulse', kicker: 'Your homelab stayed up', value: pct(avg), stat: 'Uptime', score: 66, scope: 'Last 30 days', line: `Across the ${month.length} things Uptime Kuma watches. The ones that kept you busiest:`,
+          bars: [...month].sort((a, b) => a.month! - b.month!).slice(0, 4).map(m => ({ label: m.name, value: m.month!, show: pct(m.month!) })) }];
       },
       widgets: {
         monitors: {

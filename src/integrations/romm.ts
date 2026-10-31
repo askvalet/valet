@@ -13,6 +13,14 @@ export default defineIntegration({
     const tile = (r: any) => ({ title: r.name, subtitle: r.platform_display_name, image: r.path_cover_large ? ctx.image(String(r.id)) : r.url_cover, href: `${web}/rom/${r.id}`,
       badge: r.last_played ? 'Played' : undefined });
     return {
+      async recap() {
+        const [stats, roms] = await Promise.all([api<any>('stats'), api<any>('roms?limit=40&order_by=created_at&order_dir=desc')]);
+        if (!stats?.ROMS) return [];
+        const covers = (roms.items ?? []).map(tile).flatMap((t: any) => t.image ? [t.image] : []);
+        return [{ id: 'games', theme: 'games', icon: 'game', kicker: 'Your game shelf holds', value: String(stats.ROMS), unit: 'games', stat: 'Games', score: 64, scope: 'All time', show: { images: covers, shape: 'square' },
+          line: `Across ${stats.PLATFORMS} systems, in ${fmt.bytes(stats.TOTAL_FILESIZE_BYTES, 0)}. Save files so far: ${stats.SAVES}.`,
+          trait: { name: 'The Retro Keeper', line: 'Somewhere in the rack, a Game Boy lives on.', strength: Math.min(.5, stats.ROMS / 400) } }];
+      },
       widgets: {
         recent: {
           title: 'Games', interval: 900_000,

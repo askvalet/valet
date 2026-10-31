@@ -35,11 +35,13 @@ export default defineIntegration({
     }));
 
     return {
-      async recap({ year }) {
-        const { count } = await api<any>(`documents/?added__date__gt=${year - 1}-12-31&added__date__lt=${year + 1}-01-01&page_size=1`);
-        if (!count) return [];
-        return [{ id: 'docs', icon: 'file', kicker: 'You filed away', value: Number(count).toLocaleString('en'), unit: 'documents', stat: 'Documents filed', score: 62, scope: 'year', line: 'Every one of them searchable, and not one in a shoebox.',
-          trait: { name: 'The Archivist', line: 'If it has ever been printed, emailed or scanned, you can find it in four seconds.', strength: Math.min(.8, count / 5000) } }];
+      async recap() {
+        const [st, who, docs] = await Promise.all([api<any>('statistics/'), api<any>('correspondents/?ordering=-document_count&page_size=4'), api<any>('documents/?ordering=-added&page_size=36&fields=id')]);
+        if (!st?.documents_total) return [];
+        return [{ id: 'docs', theme: 'files', icon: 'file', kicker: 'You keep', value: Number(st.documents_total).toLocaleString('en'), unit: 'documents', stat: 'Documents kept', score: 78, scope: 'All time',
+          line: `${Math.round(st.character_count / 1e6)} million characters of text, every word searchable. Most of it from:`, show: { images: docs.results.map((d: any) => ctx.image(String(d.id))), soft: true },
+          bars: who.results.filter((c: any) => c.document_count).map((c: any) => ({ label: c.name, value: c.document_count, show: Number(c.document_count).toLocaleString('en') })),
+          trait: { name: 'The Archivist', line: 'If it has ever been printed, emailed or scanned, you can find it in four seconds.', strength: Math.min(.8, st.documents_total / 5000) } }];
       },
       widgets: {
         recent: {

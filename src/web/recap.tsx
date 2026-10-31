@@ -27,14 +27,34 @@ function Climb({ value }: { value: string }) {
 }
 
 /** Your library, drifting past. Columns repeat what they have, so even a small collection fills the screen. */
-function Wall({ images }: { images: string[] }) {
+function Wall({ images, shape, soft }: { images: string[]; shape?: 'poster' | 'square'; soft?: boolean }) {
   const cols = Array.from({ length: 8 }, (_, c) => Array.from({ length: 9 }, (_, r) => images[(c * 7 + r * 3 + c * r) % images.length]));
-  return <div className="rc-wall">{cols.map((col, c) => <div key={c} className="rc-col" style={{ animationDelay: `${-c * 7}s` }}>{col.map((src, r) => <img key={r} src={src} alt="" loading="lazy" />)}</div>)}</div>;
+  return <div className="rc-wall" data-shape={shape} data-soft={soft || undefined}>{cols.map((col, c) => <div key={c} className="rc-col" style={{ animationDelay: `${-c * 7}s` }}>{col.map((src, r) => <img key={r} src={src} alt="" loading="lazy" />)}</div>)}</div>;
 }
 
-function Backdrop({ s, wall, scene: spare, wallpaper }: { s?: RecapSlide; wall: string[]; scene?: string; wallpaper?: string }) {
-  const art = s?.backdrop ?? (s && !s.wall ? spare : undefined);
-  const scene = art ? <img className="rc-backdrop" src={art} alt="" /> : s?.wall && wall.length ? <Wall images={wall} /> : null;
+/** A live 3D model beside the words: your own home, your own machine. It loads only when its slide comes up. */
+function Model({ visual }: { visual: NonNullable<RecapSlide['visual']> }) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let stage: { update(d: any): void; destroy(): void } | undefined, gone = false;
+    void (visual.kind === 'home'
+      ? import('./visuals/home-model.ts').then(m => m.createHome(box.current!, { turn: -32, tilt: -46, draggable: false }))
+      : import('./visuals/pc-model.ts').then(m => m.createViewer(box.current!, { turn: -27, tilt: -14, draggable: false })))
+      .then(s => { if (gone) return s.destroy(); stage = s as typeof stage; s.update(visual.data as never); });
+    return () => { gone = true; stage?.destroy(); };
+  }, [visual]);
+  return <div className="rc-model" ref={box} />;
+}
+
+/** A wall of app icons, one for each thing you run. */
+function Icons({ icons }: { icons: string[] }) {
+  return <div className="rc-icons">{icons.slice(0, 42).map((src, i) => <span key={src} style={{ animationDelay: `${Math.min(i, 30) * 35}ms` }}><img src={src} alt="" onError={e => { e.currentTarget.parentElement!.style.display = 'none'; }} /></span>)}</div>;
+}
+
+function Backdrop({ s, wall, wallpaper }: { s?: RecapSlide; wall: string[]; wallpaper?: string }) {
+  const scene = s?.backdrop ? <img className="rc-backdrop" src={s.backdrop} alt="" />
+    : s?.show?.images.length ? <Wall images={s.show.images} shape={s.show.shape} soft={s.show.soft} />
+    : s?.wall && wall.length ? <Wall images={wall} /> : null;
   return (
     <div className="rc-bg" aria-hidden>
       {wallpaper && <img className="rc-wallpaper" src={wallpaper} alt="" />}
@@ -51,7 +71,7 @@ function Extra({ s }: { s: RecapSlide }) {
       <div className="rc-ends"><span>{s.chart.mark}: {(s.chart.pct * 100).toFixed(1)}%</span><span>{s.chart.to}</span></div>
     </div>
   );
-  if (s.bars?.length && s.bars[0].label.length <= 3 && s.bars.length === 7) {
+  if (s.bars?.length && s.bars.every(b => b.label.length <= 3)) {
     const top = Math.max(...s.bars.map(b => b.value));
     return <div className="rc-glass"><div className="rc-week">{s.bars.map((b, i) => <div key={b.label} className={b.value === top ? 'top' : ''}><i style={{ height: `${Math.max(4, b.value / top * 82)}%`, animationDelay: `${300 + i * 50}ms` }} />{b.label}</div>)}</div></div>;
   }
@@ -66,7 +86,7 @@ function Extra({ s }: { s: RecapSlide }) {
 function Slide({ s, year }: { s: RecapSlide; year: number }) {
   const size = s.value.length > 18 ? 'clamp(38px, 7vw, 68px)' : s.value.length > 9 ? 'clamp(52px, 10vw, 96px)' : 'clamp(84px, 17vw, 168px)';
   return (
-    <div className="rc-body" key={s.id}>
+    <div className={`rc-body ${s.visual || s.icons ? 'rc-beside' : ''}`} key={s.id}>
       {s.icon && <div className="rc-tile"><Icon name={s.icon} className="size-[22px]" /></div>}
       <div className="rc-kicker">{s.kicker}</div>
       <div className="rc-value" style={{ fontSize: size }}><Climb value={s.value} />{s.unit && <span className="rc-unit">{s.unit}</span>}</div>
@@ -130,14 +150,16 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
     addEventListener('keydown', key); return () => removeEventListener('keydown', key);
   }, [go, onClose]);
   useEffect(() => { if (!r?.slides.length || held || done) return; const t = setTimeout(() => go(1), i ? STEP : 3200); return () => clearTimeout(t); }, [r, i, held, done, go]);
-  useEffect(() => { for (const src of [...(r?.slides ?? []).flatMap(s => s.backdrop ?? []), ...(r?.scenes ?? [])].slice(0, 20)) new Image().src = src; }, [r]);
+  useEffect(() => { for (const s of r?.slides ?? []) if (s.backdrop) new Image().src = s.backdrop; }, [r]);
   const pressed = useRef(0), s = r && i > 0 && i <= r.slides.length ? r.slides[i - 1] : undefined;
   const save = () => document.querySelector<HTMLCanvasElement>('.rc-share canvas')?.toBlob(b => { if (!b) return; const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `my-homelab-${r!.year}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }, 'image/png');
   return createPortal(
     <div role="dialog" aria-modal aria-label={`Your ${r?.year ?? ''} in review`} className="rc" style={{ '--tint': TINTS[i % TINTS.length] } as React.CSSProperties}
       onPointerDown={() => { pressed.current = Date.now(); setHeld(true); }}
       onPointerUp={e => { setHeld(false); if (Date.now() - pressed.current < 280) go(e.clientX < innerWidth * .28 ? -1 : 1); }}>
-      <Backdrop s={s ?? (r && (i === 0 || who) ? { id: who ? 'who' : 'open', kicker: '', value: '', line: '', wall: true } : undefined)} wall={r?.wall ?? []} scene={r?.scenes.length ? r.scenes[i % r.scenes.length] : undefined} wallpaper={wallpaper} />
+      <Backdrop s={s ?? (r && (i === 0 || who) ? { id: who ? 'who' : 'open', kicker: '', value: '', line: '', wall: true } : undefined)} wall={r?.wall ?? []} wallpaper={wallpaper} />
+      {s?.visual && <Model key={s.id} visual={s.visual} />}
+      {s?.icons && <Icons key={s.id} icons={s.icons} />}
       {!r ? <div className="rc-body"><div className="rc-kicker">{failed ? "Couldn't put your year together." : 'Going through your year…'}</div></div>
         : !r.slides.length ? <div className="rc-body"><div className="rc-kicker">Nothing to look back on yet. Connect a service or two and come back.</div></div>
         : i === 0 ? <div className="rc-body" key="open"><div className="rc-kicker">Your homelab</div><div className="rc-value" style={{ fontSize: 'clamp(96px, 22vw, 210px)' }}>{r.year}</div><p className="rc-line">{r.soFar ? 'The year so far.' : 'The whole year.'}</p></div>

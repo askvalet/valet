@@ -105,6 +105,14 @@ export default defineIntegration({
     }
     const row = (u: Update): ListItem => ({ title: u.name, subtitle: `${u.current} → ${u.latest}`, meta: u.warnings?.length ? 'Read first' : u.major ? 'Major' : undefined, tone: u.warnings?.length ? 'warn' : undefined });
     return {
+      async recap() {
+        const running = (await containers()).filter(c => c.state === 'running');
+        if (!running.length) return [];
+        const apps = [...new Set(running.map(c => c.project ?? c.name))];
+        return [{ id: 'containers', theme: 'hardware', icon: 'disk', kicker: 'Right now you run', value: String(running.length), unit: 'containers', stat: 'Containers', score: 74, scope: 'Right now', icons: apps.map(iconFor),
+          line: `${apps.length} apps, all on hardware you can touch. None of them have asked you for a monthly fee.`,
+          trait: { name: 'The Sysadmin', line: 'Nobody asked you to run all of this. That has never stopped you.', strength: Math.min(.7, running.length / 80) } }];
+      },
       widgets: {
         updates: {
           title: 'Updates', interval: 3_600_000,

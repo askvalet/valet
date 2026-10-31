@@ -39,12 +39,15 @@ export interface RecapSlide {
   backdrop?: string;       // wide artwork, full bleed behind the slide
   wall?: boolean;          // the drifting wall of posters behind it
   art?: string[];          // posters to add to that wall
-  scenes?: string[];       // wide artwork for slides that have none of their own
+  theme?: string;          // media, home, network, files, ai, hardware, games: neighbours never share one
+  show?: { images: string[]; shape?: 'poster' | 'square'; soft?: boolean };   // a wall of this slide's own pictures
+  icons?: string[];        // a wall of app icons
+  visual?: { kind: 'home' | 'pc-case'; data: unknown };         // a live 3D model beside the words
   bars?: { label: string; value: number; show?: string }[];     // a small chart of what the number is made of
   chart?: { pct: number; from: string; to: string; mark: string };  // how far along, its two ends, and what's at the marker
   facts?: Record<string, number>;   // raw numbers, so slides can be written across services
 }
-export interface Recap { year: number; soFar: boolean; slides: RecapSlide[]; persona: { name: string; line: string }; stats: { label: string; value: string }[]; wall: string[]; scenes: string[] }
+export interface Recap { year: number; soFar: boolean; slides: RecapSlide[]; persona: { name: string; line: string }; stats: { label: string; value: string }[]; wall: string[] }
 
 /** Something happening right now, for the island at the top of the page: a stream, a download, a robot cleaning.
  *  A card carries one only while it's live; the island shows the live ones in the order the config lists them. */

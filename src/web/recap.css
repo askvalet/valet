@@ -9,15 +9,32 @@
 .rc-scene { animation: rc-fade 900ms var(--ease-out) both; }
 @keyframes rc-fade { from { opacity: 0; } }
 
+/* a live 3D model and a wall of apps, on the right where the words aren't */
+.rc-model { position: absolute; right: -3vw; top: 50%; width: 66vw; height: 92vh; transform: translateY(-50%); z-index: 1; pointer-events: none; animation: rc-model 900ms var(--ease-out) both; }
+@keyframes rc-model { from { opacity: 0; transform: translateY(-48%) scale(.96); } }
+.rc-icons { position: absolute; right: 4vw; top: 50%; transform: translateY(-50%); width: min(38vw, 560px); display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 14px; z-index: 1; pointer-events: none; }
+.rc-icons span { display: grid; place-items: center; aspect-ratio: 1; border-radius: 20px; background: rgb(255 255 255 / .1); border: 1px solid rgb(255 255 255 / .14); box-shadow: inset 0 1px 0 rgb(255 255 255 / .12); backdrop-filter: blur(24px) saturate(1.6); animation: rc-pop 500ms var(--ease-out) both; }
+.rc-icons img { width: 56%; height: 56%; object-fit: contain; }
+@keyframes rc-pop { from { opacity: 0; transform: scale(.7); } }
+.rc-beside { max-width: min(46vw, 620px); }
+@media (max-width: 760px) {
+  .rc-beside { max-width: none; }
+  .rc-model { right: 0; left: 0; width: 100%; top: 8vh; height: 42vh; transform: none; }
+  .rc-icons { left: 20px; right: 20px; width: auto; top: 9vh; transform: none; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .rc-icons span { border-radius: 12px; }
+}
+
 /* the wall: your posters, drifting past behind glass */
 .rc-wall { display: flex; gap: 14px; justify-content: center; transform: rotate(-7deg) scale(1.35); opacity: .62; }
 .rc-col { display: flex; flex-direction: column; gap: 14px; flex: none; width: clamp(110px, 13vw, 190px); animation: rc-up 70s linear infinite alternate; }
 .rc-col:nth-child(even) { animation-name: rc-down; animation-duration: 90s; }
 .rc-col img { display: block; width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 12px; background: #1c1c1e; }
+.rc-wall[data-shape="square"] img { aspect-ratio: 1; }
+.rc-wall[data-soft] { opacity: .34; filter: blur(2px); }
 @keyframes rc-up { from { transform: translateY(0); } to { transform: translateY(-34%); } }
 @keyframes rc-down { from { transform: translateY(-34%); } to { transform: translateY(0); } }
 
-.rc-body { position: absolute; left: clamp(24px, 8vw, 120px); right: clamp(24px, 8vw, 120px); bottom: clamp(84px, 13vh, 130px); max-width: 720px; animation: rc-in 720ms var(--ease-out) both; }
+.rc-body { z-index: 2; position: absolute; left: clamp(24px, 8vw, 120px); right: clamp(24px, 8vw, 120px); bottom: clamp(84px, 13vh, 130px); max-width: 720px; animation: rc-in 720ms var(--ease-out) both; }
 @keyframes rc-in { from { opacity: 0; transform: translateY(18px); } }
 .rc-tile { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; background: rgb(255 255 255 / .14); border: 1px solid rgb(255 255 255 / .16); backdrop-filter: blur(24px) saturate(1.6); margin-bottom: 18px; }
 .rc-kicker { font-size: clamp(18px, 2.4vw, 24px); font-weight: 500; color: rgb(255 255 255 / .82); }
