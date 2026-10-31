@@ -1049,7 +1049,7 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
     <div className="fade-in-soft min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Photos card={card} large={large} />{actions}</div>
   );
   if (card?.type === 'media') return (
-    <div className="fade-in-soft min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Media card={card} compact={compact} />{actions}</div>
+    <div className={cn('fade-in-soft flex min-w-0 flex-col gap-3', fill && 'h-full')}><BareHeader card={card} title={title} status={status} /><Media card={card} compact={compact} />{actions}</div>
   );
   const t = card?.title ?? title;
   const bare = card?.type === 'group';

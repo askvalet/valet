@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 // A made-up homelab, for the public demo. Every number and person is invented; the films, albums and books are real ones
 // so the page reads like a real home, their art linked from art/art.json. It moves on its own (streams play, downloads fill, graphs
@@ -32,7 +32,8 @@ const drawn = title => uri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0
 
 const poster = title => ART.films[title]?.poster ?? drawn(title);
 const backdrop = title => ART.films[title]?.backdrop ?? photo(`${title}b`, 1280, 720);
-const ART = JSON.parse(readFileSync('/demo/art/art.json', 'utf8'));
+const DIR = existsSync('/demo/art') ? '/demo/art' : new URL('../art', import.meta.url).pathname;
+const ART = JSON.parse(readFileSync(`${DIR}/art.json`, 'utf8'));
 const FILMS = ['Dune: Part Two', 'The Bear', 'Arrival', 'Interstellar', 'Blade Runner 2049', 'Severance', 'Spirited Away', 'Andor', 'Shōgun', 'The Grand Budapest Hotel'];
 const STACK = ['plex', 'tautulli', 'sonarr', 'radarr', 'prowlarr', 'bazarr', 'qbittorrent', 'navidrome', 'lidarr', 'komga', 'audiobookshelf', 'miniflux', 'immich', 'paperless', 'karakeep', 'mealie', 'tandoor-recipes', 'home-assistant', 'frigate', 'nextcloud', 'syncthing', 'vaultwarden', 'authentik', 'crowdsec', 'pi-hole', 'tailscale', 'caddy', 'nginx-proxy-manager', 'uptime-kuma', 'grafana', 'changedetection', 'forgejo', 'proxmox', 'portainer'];
 const SERVICES = [['Plex', 'Media', 'plex'], ['Tautulli', 'Media', 'tautulli'], ['Sonarr', 'Media', 'sonarr'], ['Radarr', 'Media', 'radarr'], ['Prowlarr', 'Media', 'prowlarr'], ['Bazarr', 'Media', 'bazarr'], ['qBittorrent', 'Media', 'qbittorrent'],
@@ -203,7 +204,7 @@ export default ({ z, defineIntegration }) => {
           { id: 'ai.tokens', theme: 'ai', icon: 'gpu', kicker: 'Your own AI wrote', value: '2.1', unit: 'million tokens', stat: 'AI tokens', score: 58, scope: 'year', bars: [8, 12, 6, 15, 22, 9, 14].map((value, i) => ({ label: String(20 + i), value })), line: 'On your own graphics card, for 41¢ of electricity. Nobody else read a word of it.' },
           { id: 'watch.day', theme: 'media', icon: 'calendar', kicker: 'Your night in', value: 'Fridays', line: '312 of your 1,048 plays started on a Friday.', score: 60, scope: 'year', bars: [['Mon', 88], ['Tue', 96], ['Wed', 104], ['Thu', 121], ['Fri', 312], ['Sat', 214], ['Sun', 113]].map(([label, value]) => ({ label, value })) },
         ],
-        image: async ref => { if (ref !== 'article') throw new Error('bad image ref'); return new Response(await readFile('/demo/art/article.jpg'), { headers: { 'Content-Type': 'image/jpeg' } }); },
+        image: async ref => { if (ref !== 'article') throw new Error('bad image ref'); return new Response(await readFile(`${DIR}/article.jpg`), { headers: { 'Content-Type': 'image/jpeg' } }); },
         actions: {
           preset: { description: 'Apply a lighting preset', input: z.object({ id: z.string() }), run: async ({ id }) => { if (PRESET_RGB[id]) { put('preset', id); for (const p of ['fans0', 'fans1', 'pump', 'ram', 'gpu']) changes.delete(`part.${p}`); } } },
           light: { description: 'Set a PC part or some home lights', input: z.object({ part: z.string().optional(), state: z.object({}).loose().optional(), entity_id: z.array(z.string()).optional() }).loose(),
