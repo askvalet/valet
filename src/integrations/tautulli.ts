@@ -161,8 +161,8 @@ export default defineIntegration({
           // two different questions: a heading each, and only when both have an answer
           const both = now.length > 0 && rows.length > 0;
           return { type: 'list', title: 'Who\'s watching', icon: 'play', source, empty: 'Nobody yet', note: both ? 'Everyone' : scope,
-            items: [...[...now].sort((a: any, b: any) => (b.total_duration ?? 0) - (a.total_duration ?? 0)).map(s => ({ title: s.friendly_name, subtitle: title(s), meta: s.state === 'paused' ? 'Paused' : undefined, section: 'Watching now' })),
-              ...rows.map(r => ({ title: r.friendly_name, meta: fmt.duration(r.total_duration ?? 0), pct: (r.total_duration ?? 0) / top, section: both ? 'Last 30 days' : undefined }))] };
+            items: [...now.map(s => ({ title: s.friendly_name, subtitle: title(s), meta: s.state === 'paused' ? 'Paused' : undefined, section: 'Watching now' })),
+              ...[...rows].sort((a, b) => (b.total_duration ?? 0) - (a.total_duration ?? 0)).map(r => ({ title: r.friendly_name, meta: fmt.duration(r.total_duration ?? 0), pct: (r.total_duration ?? 0) / top, section: both ? 'Last 30 days' : undefined }))] };
         },
       },
       plays: {
