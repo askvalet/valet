@@ -147,7 +147,7 @@ export default [
       return [{ label: 'Devices', value: devices.length }, { label: 'Seen in last 5 min', value: devices.filter((x: any) => new Date(x.lastSeen).getTime() > recent).length },
         { label: 'Updates available', value: devices.filter((x: any) => x.updateAvailable).length }];
     },
-    recap: d => tally(d.list?.devices?.length, { id: 'tailnet', theme: 'reach', icon: 'wifi', kicker: 'Your private network spans', unit: 'devices', stat: 'Tailnet devices', line: 'Your homelab goes wherever they do, with no ports left open.' }),
+    recap: d => tally(d.list?.devices?.length, { id: 'tailnet', theme: 'reach', icon: 'wifi', kicker: 'Your private network spans', unit: 'devices', stat: 'Tailnet devices', line: 'Your homelab goes wherever they do.' }),
     sample: { list: { devices: [{ name: 'nas.tail1234.ts.net', lastSeen: new Date().toISOString(), updateAvailable: true }, { name: 'phone.tail1234.ts.net', lastSeen: '2026-01-02T03:04:05Z', updateAvailable: false }] } },
     expect: { Devices: 2, 'Seen in last 5 min': 1, 'Updates available': 1 },
   }),
@@ -316,7 +316,7 @@ export default [
       const alerts = d.alerts?.length ?? 0;                            // both are a literal null when empty
       return [{ label: 'Alerts, 24h', value: alerts >= 500 ? '500+' : alerts }, { label: 'Active bans', value: d.bans?.length ?? 0 }];
     },
-    recap: d => tally(d.bans?.length, { id: 'bans', theme: 'security', icon: 'shield', kicker: 'CrowdSec is keeping out', unit: 'attackers', stat: 'Attackers banned', line: 'Every one of them tried something and got caught.' }),
+    recap: d => tally(d.bans?.length, { id: 'bans', theme: 'security', icon: 'shield', kicker: 'CrowdSec is keeping out', unit: 'attackers', stat: 'Attackers banned', line: 'Each one flagged and blocked at the door.' }),
     sample: { alerts: [{ id: 901, scenario: 'crowdsecurity/ssh-bf' }, { id: 902, scenario: 'crowdsecurity/http-probing' }, { id: 903, scenario: 'crowdsecurity/ssh-bf' }], bans: [{ id: 901, scenario: 'crowdsecurity/ssh-bf' }] },
     expect: { 'Alerts, 24h': 3, 'Active bans': 1 },
   }),

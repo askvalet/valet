@@ -250,7 +250,7 @@ export default [
         { label: 'Shares', value: nextcloud?.shares?.num_shares ?? 0 }, ...(typeof free === 'number' && free >= 0 ? [{ label: 'Free space', value: fmt.bytes(free) }] : [])];
     },
     sampleOptions: { key: 'k' },
-    recap: d => tally(d.info?.ocs?.data?.nextcloud?.storage?.num_files, { id: 'cloud.files', theme: 'files', icon: 'file', kicker: 'Your own cloud holds', unit: 'files', stat: 'Files', scope: 'All time', line: 'Same convenience, and the only person with the keys is you.' }),
+    recap: d => tally(d.info?.ocs?.data?.nextcloud?.storage?.num_files, { id: 'cloud.files', theme: 'files', icon: 'file', kicker: 'Your own cloud holds', unit: 'files', stat: 'Files', scope: 'All time', line: 'Same convenience, on a server you run.' }),
     sample: { info: { ocs: { meta: { status: 'ok', statuscode: 200 }, data: {
       nextcloud: { system: { version: '31.0.2.1', freespace: 1099511627776, cpuload: [0.3, 0.2, 0.2], mem_total: 16000000, mem_free: 9000000 }, storage: { num_users: 6, num_files: 182340 }, shares: { num_shares: 41 } },
       activeUsers: { last5minutes: 1, last1hour: 2, last24hours: 4 } } } } },
