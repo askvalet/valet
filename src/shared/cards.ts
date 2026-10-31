@@ -78,7 +78,10 @@ interface Base {
   wide?: boolean;         // take two columns (and two rows) on wide screens
   activity?: Activity;    // set only while something's live
   buttons?: { label: string; action: string; args?: Record<string, unknown> }[];   // quick actions along the bottom
+  banner?: Banner;        // a state the person chose and should not forget, at the top of the card
 }
+/** "Blocking paused until 14:05", with the way out beside it. `until` (ms) is written in the viewer's own clock. */
+export interface Banner { text: string; until?: number; tone?: Tone; button?: { label: string; action: string; args?: Record<string, unknown> } }
 
 export interface StatItem {
   label: string;
@@ -102,9 +105,11 @@ export interface ListItem {
   pct?: number;           // 0..1 progress bar
   tone?: Tone;
   image?: string;
-  badge?: string;
+  badge?: string;         // a small mark on a chip: "Major", "Read first"
+  band?: [number, number];   // temps: the normal stretch of the track, 0..1 at each end
+  section?: string;       // rows: a quiet heading wherever this changes, e.g. "Watching now" above "Last 30 days"
 }
-export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; layout?: 'temps' | 'chips' | 'headlines' }   // headlines: a grid of stories, each anchored by its site's favicon · temps: a thermometer per row (pct along it, meta the reading) · chips: pills, an icon by name
+export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; limit?: number; layout?: 'temps' | 'chips' | 'headlines' }   // headlines: a grid of stories, each anchored by its site's favicon · temps: a reading per row (pct along the track, meta the number) · chips: pills, an icon by name · limit: chips show this many, "19 in all" opens the rest in place
 
 export interface MediaItem {
   title: string;
@@ -118,15 +123,21 @@ export interface MediaItem {
   detail?: string;        // e.g. "4K · direct play · 36 Mbps"
   tags?: string[];        // small labels shown as chips, e.g. ["4K", "Transcode", "40 Mbps"]
   remaining?: string;     // e.g. "41 min left"
-  icon?: string;          // the glyph by the progress bar (default: play/pause), e.g. download
+  icon?: string;          // the glyph by the progress bar (default: a status dot), e.g. download
+  stall?: Stall;          // a download getting nowhere: say so in words, and what to do next
 }
+/** Why a download isn't moving. `since` is when it last moved (ms); `next` is the step offered on its row. */
+export interface Stall { word?: string; since?: number; why?: string; next?: { label: string; href?: string; action?: string; args?: Record<string, unknown> } }
 export interface MediaCard extends Base { type: 'media'; items: MediaItem[]; empty?: string }
 
 /** A horizontal shelf of artwork (posters, albums, photos), like a row in the Apple TV app. */
-export interface ShelfItem { id?: string; at?: string; title: string; subtitle?: string; note?: string; image?: string; badge?: string; href?: string; backdrop?: string; tone?: Tone }
-export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string; stack?: boolean; layout?: 'row' | 'spotlight' | 'week' | 'tickets' | 'desk' | 'windows' }   // stack: a pile of pages that fans out
+export interface ShelfItem { id?: string; at?: string; title: string; subtitle?: string; note?: string; image?: string; badge?: string; href?: string; backdrop?: string; tone?: Tone; cta?: { label: string; href: string }; doc?: { sender?: string; date?: string; type?: string } }   // cta: the next step, which the whole tile then opens · doc: a document's columns in list view
+export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string; stack?: boolean; archived?: string; layout?: 'row' | 'spotlight' | 'week' | 'tickets' | 'desk' | 'windows' }   // stack: a pile of pages that fans out · archived: where archived things can be found, with an `unarchive` action beside `archive`
 
-export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string; group?: string; quiet?: boolean }   // quiet: being down is expected, never an alert
+export type ServiceState = 'up' | 'degraded' | 'down' | 'off';
+export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string; group?: string; quiet?: boolean; state?: ServiceState }   // quiet: being down is expected, never an alert · state: up, up but unwell, down, or off by choice; left out, it follows from ok and quiet
+/** What a status item's dot should say. Anything counting "services running" should use this, not `ok` alone. */
+export const stateOf = (i: Pick<StatusItem, 'ok' | 'quiet' | 'state'>): ServiceState => i.state ?? (i.ok ? 'up' : i.quiet ? 'off' : 'down');
 export interface StatusCard extends Base { type: 'status'; items: StatusItem[]; layout?: 'wall' }   // wall: a grid of icons, only trouble gets words
 
 export interface LinkItem { name: string; href: string; icon?: string; note?: string }
@@ -136,14 +147,16 @@ export interface ChartCard extends Base {
   type: 'chart';
   unit?: string;
   max?: number;
-  series: { name: string; points: number[]; tone?: Tone }[];
+  series: { name: string; points: number[]; tone?: Tone; total?: number }[];   // total: the service's own figure, when summing the points would disagree with the headline
   headline?: string;      // the big number, when the latest point isn't it ("31 plays")
   span?: string;          // e.g. "last 10 min"
+  window?: string;        // what the columns cover, under them: "last 24 h"
   from?: number;          // when the first point is (ms), so scrubbing can say when
   to?: number;            // when the last point is
   labels?: string[];      // or a name per point, for charts that aren't over time
   style?: 'line' | 'bars';   // bars: a column per point, the series stacked in order
   facts?: { label: string; value?: string }[];   // quiet chips under the chart: what the number is made of
+  factsNote?: string;     // what those chips are: "Most blocked · last 24 h"
 }
 
 export interface CodeCard extends Base { type: 'code'; lines: string[]; diff?: boolean }   // logs, config: diff colours lines starting + and -
@@ -229,7 +242,7 @@ export interface VerseCard extends Base { type: 'verse'; arabic?: string; englis
 
 /** One thing to read: the page itself behind it, and what it says in a few lines. */
 export interface ArticlePick { id?: string; headline: string; blurb?: string; site?: string; image?: string; link?: string; saved?: string }
-export interface ArticleCard extends Base, ArticlePick { type: 'article'; more?: ArticlePick[]; empty?: string }   // more: the pile to step through, an `archive` action takes an id
+export interface ArticleCard extends Base, ArticlePick { type: 'article'; more?: ArticlePick[]; empty?: string; archived?: string }   // more: the pile to step through, `archive` and `unarchive` actions take an id · archived: where archived things can be found
 export interface KVCard extends Base { type: 'kv'; rows: [string, string][] }
 
 export interface TextCard extends Base { type: 'text'; text: string; tone?: Tone }

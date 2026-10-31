@@ -18,7 +18,8 @@ export default defineIntegration({
         return { name: dev.device_name, model: dev.model_name ?? dev.device_name, failed, hot, temp: smart.temp, hours: smart.power_on_hours, wwn: dev.wwn, capacity: dev.capacity as number | undefined };
       });
     }
-    const age = (h?: number) => h == null ? '' : h >= 8760 ? `${(h / 8760).toFixed(1)} years on` : `${Math.round(h / 24)} days on`;
+    const age = (h?: number) => h == null ? '' : h >= 8760 ? `Powered on ${(h / 8760).toFixed(1)} years` : `Powered on ${Math.round(h / 24)} days`;
+    const along = (t: number) => Math.max(0, Math.min(1, (t - 20) / 40));   // the track runs from 20°C to 60°C
     return {
       async recap() {
         const list = await drives();
@@ -38,7 +39,7 @@ export default defineIntegration({
               summary: { label: 'Drives', icon: 'disk', value: bad.length ? `${bad.length} failing` : temps.length ? `${Math.max(...temps)}°C` : 'Healthy', tone: bad.length ? 'bad' : warm.length ? 'warn' : 'good',
                 sub: bad.length ? `of ${list.length} drives` : warm.length ? `${warm.length} of ${list.length} running hot` : `All ${list.length} healthy`,
                 marks: list.map(d => ({ pct: d.temp != null ? Math.max(0, Math.min(1, (d.temp - 20) / 40)) : undefined, tone: d.failed ? 'bad' as const : d.hot ? 'warn' as const : undefined, label: [d.model, d.temp != null && `${d.temp}°C`].filter(Boolean).join(' · ') })) },
-              items: list.map(d => ({ title: d.model, subtitle: [d.failed && 'Failing', age(d.hours)].filter(Boolean).join(' · '), pct: d.temp != null ? Math.max(0, Math.min(1, (d.temp - 20) / 40)) : undefined,
+              items: list.map(d => ({ title: d.model, subtitle: [d.failed && 'Failing', age(d.hours)].filter(Boolean).join(' · '), pct: d.temp != null ? along(d.temp) : undefined, band: [along(25), along(cfg.hotC)] as [number, number],
                 meta: d.temp != null ? `${d.temp}°C` : undefined, dot: d.failed ? 'bad' : d.hot ? 'warn' : 'good', tone: d.failed ? 'bad' : d.hot ? 'warn' : 'neutral' })),
             };
           },

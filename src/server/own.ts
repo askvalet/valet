@@ -1,7 +1,7 @@
 // Valet's own abilities, shaped like an integration so the chat treats them like any other: what happened, what it
 // changed, and "tell me when". Access defaults to write (see chat.ts), so these work without any config.
 import { z } from 'zod';
-import type { Activity } from './activity.ts';
+import { outcome, sentence, type Activity } from './activity.ts';
 import type { Hub } from './hub.ts';
 import type { History } from './history.ts';
 import type { Instance } from './core.ts';
@@ -10,13 +10,15 @@ import type { Timeline } from './timeline.ts';
 import type { Watches } from './watches.ts';
 
 const when = (t: number) => new Date(t).toLocaleString('en', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+// today needs no day
+const stamp = (t: number) => new Date(t).toDateString() === new Date().toDateString() ? new Date(t).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }) : when(t);
 
 export function ownInstance(o: { timeline: Timeline; activity: Activity; watches: Watches; hub: () => Hub; widgets: string[]; history?: History; recap: (year?: number) => Promise<Recap>; undo: (id: number) => Promise<string> }): Instance {
   const log = () => {
     const list = o.activity.recent(12), undoable = list.find(e => e.undo && !e.undone);
     return { type: 'list' as const, title: 'Activity', icon: 'pulse', empty: 'Nothing changed yet',
-      items: list.map(e => ({ title: e.what, subtitle: `${e.who} · ${e.via}${e.undone ? ' · undone' : ''}${e.error ? ` · ${e.error}` : ''}`, meta: when(e.at), tone: e.ok ? undefined : 'bad' as const })),
-      buttons: undoable ? [{ label: `Undo: ${undoable.what}`, action: 'undo', args: { id: undoable.id } }] : undefined };
+      items: list.map(e => ({ title: sentence(e), subtitle: `${outcome(e)} · ${stamp(e.at)}`, tone: e.ok ? undefined : 'bad' as const })),
+      buttons: undoable ? [{ label: `Undo: ${sentence(undoable)}`, action: 'undo', args: { id: undoable.id } }] : undefined };
   };
   return {
     widgets: { activity: { title: 'Activity', interval: 15_000, fetch: async () => log() } },
@@ -61,7 +63,7 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
         label: 'Checked what changed', followUps: ['Undo the last one'],
         description: 'What Valet itself changed recently: who asked, from where (chat, a plan, a card), what it did and whether it worked. Use for "did you do that", "what did you change", "who turned that on".',
         access: 'read', input: z.object({}),
-        async run() { return { data: o.activity.recent(25).map(e => ({ id: e.id, when: when(e.at), who: e.who, via: e.via, what: e.what, ok: e.ok, error: e.error, canUndo: !!e.undo && !e.undone })), card: log() }; },
+        async run() { return { data: o.activity.recent(25).map(e => ({ id: e.id, when: when(e.at), who: e.who, via: e.via, what: sentence(e), ok: e.ok, error: e.error, canUndo: !!e.undo && !e.undone })), card: log() }; },
       },
       watch_add: {
         label: 'Set a reminder', followUps: ['What am I waiting on?'],

@@ -32,6 +32,7 @@ export default defineIntegration({
     const shelf = (docs: any[], n: typeof names): ShelfItem[] => docs.map(d => ({
       title: d.title, subtitle: [n.c.get(d.correspondent), day(d.created)].filter(Boolean).join(' · '),
       image: ctx.image(String(d.id)), href: `${web}/documents/${d.id}/details`,
+      doc: { sender: n.c.get(d.correspondent), date: day(d.created), type: n.d.get(d.document_type) },
     }));
 
     return {
@@ -48,7 +49,7 @@ export default defineIntegration({
           title: 'Documents', interval: 300_000,
           async fetch() {
             const [n, r] = await Promise.all([lookup(), api<any>('documents/?ordering=-added&page_size=12')]);
-            return { type: 'shelf', layout: 'desk', title: 'Recent documents', icon: 'file', href: web, aspect: 'poster', items: shelf(r.results, n), empty: 'No documents yet',
+            return { type: 'shelf', layout: 'desk', title: 'Recent documents', icon: 'file', href: `${web}/documents`, aspect: 'poster', items: shelf(r.results, n), empty: 'No documents yet',
               summary: { label: 'Documents', icon: 'file', value: r.count.toLocaleString(), sub: 'in Paperless' } };
           },
         },

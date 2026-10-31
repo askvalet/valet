@@ -83,6 +83,15 @@ export default defineIntegration({
       return rows.map(r => ({ title: r.title, subtitle: `${r.total_plays} play${r.total_plays === 1 ? '' : 's'}`, value: fmt.duration(r.total_duration ?? 0), image: r.thumb ? ctx.image(r.thumb) : undefined, backdrop: art(r), pct: (r.total_duration ?? 0) / top }));
     }
 
+    const scope = 'Everyone · last 30 days';
+    let viewers: { at: number; rows: any[] } | undefined;   // totals move slowly; who's on right now doesn't
+    async function totals() {
+      if (viewers && Date.now() - viewers.at < 3_600_000) return viewers.rows;
+      const rows = stat(await api('get_home_stats', { time_range: 30, stats_count: 6 }) as any[], 'top_users');
+      viewers = { at: Date.now(), rows };
+      return rows;
+    }
+
     const widgets = {
       library: {
         title: 'Your library', interval: 3_600_000,
@@ -97,14 +106,17 @@ export default defineIntegration({
       },
       top: {
         title: 'Most watched', interval: 3_600_000,
-        async fetch() { return { type: 'ranked', title: 'Most watched', icon: 'film', source, items: await mostWatched(6), empty: 'Nothing watched yet' }; },
+        async fetch() { return { type: 'ranked', title: 'Most watched', icon: 'film', source, note: scope, items: await mostWatched(6), empty: 'Nothing watched yet' }; },
       },
       people: {
-        title: 'Who\'s watching', interval: 3_600_000,
+        title: 'Who\'s watching', interval: 60_000,
         async fetch() {
-          const rows = stat(await api('get_home_stats', { time_range: 30, stats_count: 6 }) as any[], 'top_users'), top = Math.max(1, ...rows.map(r => r.total_duration ?? 0));
-          return { type: 'list', title: 'Who\'s watching', icon: 'play', source, empty: 'Nobody yet',
-            items: rows.map(r => ({ title: r.friendly_name, meta: fmt.duration(r.total_duration ?? 0), pct: (r.total_duration ?? 0) / top })) };
+          const [rows, now] = await Promise.all([totals(), activity().then(a => a.sessions, () => [] as any[])]), top = Math.max(1, ...rows.map(r => r.total_duration ?? 0));
+          // two different questions: a heading each, and only when both have an answer
+          const both = now.length > 0 && rows.length > 0;
+          return { type: 'list', title: 'Who\'s watching', icon: 'play', source, empty: 'Nobody yet', note: both ? 'Everyone' : scope,
+            items: [...now.map(s => ({ title: s.friendly_name, subtitle: title(s), meta: s.state === 'paused' ? 'Paused' : undefined, section: 'Watching now' })),
+              ...rows.map(r => ({ title: r.friendly_name, meta: fmt.duration(r.total_duration ?? 0), pct: (r.total_duration ?? 0) / top, section: both ? 'Last 30 days' : undefined }))] };
         },
       },
       plays: {
@@ -206,7 +218,7 @@ export default defineIntegration({
           async run() {
             const items = await mostWatched(6), users = stat(await api('get_home_stats', { time_range: 30, stats_count: 6 }) as any[], 'top_users');
             return { data: { mostWatched: items.map(i => ({ title: i.title, plays: i.subtitle, time: i.value })), people: users.map(u => ({ name: u.friendly_name, plays: u.total_plays, time: fmt.duration(u.total_duration ?? 0) })) },
-              card: { type: 'ranked', title: 'Most watched', icon: 'film', source, items } };
+              card: { type: 'ranked', title: 'Most watched', icon: 'film', source, note: scope, items } };
           },
         },
         plex_history: {

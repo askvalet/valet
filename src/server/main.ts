@@ -258,10 +258,11 @@ app.post('/api/action/:inst/:action', async c => {
   try {
     const result = await a.run(args.data);
     setTimeout(() => hub.refreshInstance(inst), 300);
-    site.activity.add({ who, via: 'page', what, input: args.data, ok: true });
+    // an action may say what it did ({ done: 'Archived a saved link' }); its description is written for a model
+    site.activity.add({ who, via: 'page', what, action: (result as { done?: string } | undefined)?.done ?? `${site.meta.get(inst)?.name ?? inst}: ${action}`, input: args.data, ok: true });
     return c.json(JSON.parse(redact(JSON.stringify({ ok: true, result: result ?? null }))));
   } catch (e) {
-    site.activity.add({ who, via: 'page', what, input: args.data, ok: false, error: redact((e as Error).message) });
+    site.activity.add({ who, via: 'page', what, action: `${site.meta.get(inst)?.name ?? inst}: ${action}`, input: args.data, ok: false, error: redact((e as Error).message) });
     return c.json({ error: redact((e as Error).message) }, 502);
   }
 });

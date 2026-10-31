@@ -12,7 +12,8 @@ const REQUEST: Record<number, string> = { 1: 'Waiting for approval', 2: 'Approve
 export default defineIntegration({
   type: 'seerr',
   name: 'Seerr',
-  config: z.object({ url: z.string().url(), apiKey: z.string(), href: z.string().optional() }),
+  config: z.object({ url: z.string().url(), apiKey: z.string(), href: z.string().optional(),
+    downloads: z.string().optional() }),   // where download progress lives; without it, Seerr's own page for the title
   create(cfg, ctx) {
     const base = cfg.url.replace(/\/$/, ''), web = (cfg.href ?? base).replace(/\/$/, '');
     const headers = { 'X-Api-Key': cfg.apiKey, 'Content-Type': 'application/json' };
@@ -42,6 +43,16 @@ export default defineIntegration({
       }));
     }
 
+    /** A request's next step: watch what's there, follow what's coming, or say what's still missing. */
+    function ticket(q: any, t: ShelfItem): ShelfItem {
+      const m = q.media ?? {}, watch = m.mediaUrl ?? m.plexUrl, left = (m.seasons ?? []).filter((s: any) => s.seasonNumber > 0 && s.status !== 5).map((s: any) => s.seasonNumber as number);
+      const got = m.downloadStatus?.[0], pct = got?.size ? Math.floor((1 - got.sizeLeft / got.size) * 100) : undefined;
+      if (m.status === 5 && watch) return { ...t, cta: { label: 'Watch', href: watch } };
+      if (m.status === 3) return { ...t, note: pct != null ? `${pct}% there` : undefined, cta: { label: 'See progress', href: cfg.downloads ?? t.href ?? `${web}/requests` } };
+      if (m.status === 4 && left.length) return { ...t, note: `Missing ${left.length > 3 ? `${left.length} seasons` : left.map((n: number) => `S${n}`).join(', ')}`, cta: watch ? { label: 'Watch what\'s here', href: watch } : undefined };
+      return t;
+    }
+
     return {
       async recap({ from, to }) {
         const seen: any[] = [];
@@ -60,7 +71,7 @@ export default defineIntegration({
           async fetch() {
             const list = await requests(12);
             return { type: 'shelf', title: 'Requested', icon: 'film', href: `${web}/requests`, aspect: 'poster', layout: 'tickets', source: { name: 'Seerr', icon: '/api/icon/seerr' }, empty: 'No requests yet',
-              items: list.map(({ q, d, title }) => ({ ...(d ? tile({ ...d, mediaType: q.type }, q.media?.status) : { title }), title })) };
+              items: list.map(({ q, d, title }) => ticket(q, { ...(d ? tile({ ...d, mediaType: q.type }, q.media?.status) : { title }), title })) };
           },
         },
       },

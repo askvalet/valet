@@ -38,7 +38,7 @@ export default defineIntegration({
               note: s.subs ? (missing ? `${missing} missing subtitles` : 'subtitles complete') : undefined,
               summary: { label: 'Indexers', icon: 'search', value: s.indexers ? `${s.indexers.length - bad.length}/${s.indexers.length}` : '–', tone: bad.length ? 'warn' : 'good',
                 sub: bad.length ? `${bad.map(b => b.name).join(', ')} failing` : 'All working', detail: s.subs ? (missing ? `${missing} subs missing` : 'subs complete') : undefined },
-              items: (s.indexers ?? []).map(i => ({ name: i.name, ok: i.ok, detail: i.ok ? undefined : until(i.until), quiet: !i.ok })),
+              items: (s.indexers ?? []).map(i => ({ name: i.name, ok: i.ok, state: i.ok ? 'up' as const : 'degraded' as const, detail: i.ok ? undefined : until(i.until), quiet: !i.ok })),
               buttons: bad.length && cfg.prowlarr ? [{ label: 'Test again', action: 'retest' }] : undefined,
             };
           },
@@ -46,7 +46,7 @@ export default defineIntegration({
       },
       actions: {
         retest: { description: 'Test every indexer again', input: z.object({}),
-          run: () => ctx.http(`${cfg.prowlarr!.url.replace(/\/$/, '')}/api/v1/indexer/testall`, { method: 'POST', headers: { 'X-Api-Key': cfg.prowlarr!.apiKey }, as: 'response' }) },
+          run: async () => { await ctx.http(`${cfg.prowlarr!.url.replace(/\/$/, '')}/api/v1/indexer/testall`, { method: 'POST', headers: { 'X-Api-Key': cfg.prowlarr!.apiKey }, as: 'response' }); return { done: 'Tested every indexer again' }; } },
       },
       tools: {
         indexers_retest: {

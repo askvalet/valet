@@ -53,7 +53,7 @@ export default defineIntegration({
               note: avg != null ? `${pct(avg)} over 30 days` : undefined,
               summary: { label: 'Uptime', icon: 'pulse', value: down.length ? `${down.length} down` : pct(avg), tone: down.length ? 'bad' : certs.length ? 'warn' : 'good',
                 sub: down.length ? down.map(m => m.name).join(', ') : `${list.length} monitors · 30 days`, detail: certs.length ? `cert ${Math.min(...certs.map(c => c.certDays!))} days` : undefined, pct: avg },
-              items: list.map(m => ({ name: m.name, icon: iconFor(m.name), ok: m.status !== 0, ms: m.ms, detail: m.status === 0 ? 'down' : m.status === 3 ? 'maintenance' : `${pct(m.month)} · 30d` })),
+              items: list.map(m => ({ name: m.name, icon: iconFor(m.name), ok: m.status !== 0, state: m.status === 0 ? 'down' as const : m.status === 2 ? 'degraded' as const : m.status === 3 ? 'off' as const : 'up' as const, ms: m.ms, detail: m.status === 0 ? 'down' : m.status === 3 ? 'maintenance' : `${pct(m.month)} · 30d` })),
             };
           },
         },

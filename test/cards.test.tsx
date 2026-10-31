@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { renderToString } from 'react-dom/server';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { stateOf } from '../src/shared/cards.ts';
 import { checkCard } from '../src/shared/cards.schema.ts';
 import { MiniRing, SummaryTile, Widget } from '../src/web/cards.tsx';
 import { byDay, CalendarView, span, Thermostat } from '../src/web/home-cards.tsx';
@@ -37,6 +38,92 @@ for (const { name, card } of SAMPLES) {
     });
   }
 }
+
+const html = (card: any, o: { run?: boolean; compact?: boolean } = {}) => renderToString(<TooltipProvider><Widget card={card} compact={o.compact} run={o.run ? async () => {} : undefined} /></TooltipProvider>).replaceAll('<!-- -->', '');
+
+test('status: a state follows from ok and quiet unless it says, and off is hollow', () => {
+  assert.deepEqual([stateOf({ ok: true }), stateOf({ ok: false }), stateOf({ ok: false, quiet: true }), stateOf({ ok: true, state: 'degraded' })], ['up', 'down', 'off', 'degraded']);
+  assert.equal(checkCard({ type: 'status', items: [{ name: 'x', ok: true, state: 'sideways' }] }).success, false);
+  const out = html({ type: 'status', items: [{ name: 'Prayer Clock', ok: false, quiet: true }, { name: 'Plex', ok: true, ms: 9 }] });
+  assert.match(out, /dot-off/); assert.match(out, /1 off by choice/); assert.doesNotMatch(out, /Offline/);
+});
+
+test('status: the legend only shows once something is not plainly up', () => {
+  assert.doesNotMatch(html({ type: 'status', items: [{ name: 'a', ok: true }, { name: 'b', ok: true }] }), /state-legend/);
+  assert.match(html({ type: 'status', layout: 'wall', items: [{ name: 'a', ok: true }, { name: 'b', ok: false, detail: 'exited (1)' }] }), /state-legend/);
+});
+
+test('wall: trouble gets a label on its tile and comes first; families join under one count, a tile each', () => {
+  const out = html({ type: 'status', layout: 'wall', items: [{ name: 'a', ok: true }, { name: 'immich', ok: true }, { name: 'immich-postgres', ok: true }, { name: 'immich_redis', ok: true }, { name: 'zed', ok: false, state: 'degraded', detail: 'unhealthy' }] });
+  assert.equal(out.match(/wall-tile/g)!.length, 5);
+  assert.equal(out.match(/is-joined/g)!.length, 2);
+  assert.match(out, /wall-count[^>]*>3</);
+  assert.ok(out.indexOf('is-worded') < out.indexOf('immich'), 'trouble first');
+  assert.match(out, />zed</); assert.match(out, />unhealthy</);
+});
+
+test('chips: past the limit they fold behind a count, and a mark shows', () => {
+  const out = html({ type: 'list', layout: 'chips', limit: 1, items: [{ title: 'immich', badge: 'Major' }, { title: 'caddy' }, { title: 'plex' }] });
+  assert.equal(out.match(/font-medium">(immich|caddy|plex)</g)!.length, 1);
+  assert.match(out, /3 in all/); assert.match(out, /chip-mark[^>]*>Major/);
+});
+
+test('drives read as readings: a meter with a normal band, no knob, and each number named', () => {
+  const out = html({ type: 'list', layout: 'temps', items: [{ title: 'Disk', subtitle: 'Powered on 2.0 years', meta: '41°C', pct: .5, band: [.1, .9] }] });
+  assert.match(out, /role="meter"/); assert.doesNotMatch(out, /temp-track/);
+  assert.match(out, /left:10%;width:80%/); assert.match(out, /Powered on 2\.0 years/); assert.match(out, />now</);
+});
+
+test('columns: the axis says when, the legend trusts the service, and the chips say what they are', () => {
+  const from = Date.now() - 864e5, out = html({ type: 'chart', style: 'bars', headline: '14%', window: 'last 24 h', factsNote: 'Most blocked · last 24 h', facts: [{ label: 'x', value: '1' }], from, to: Date.now(),
+    series: [{ name: 'Blocked', points: [1, 2, 3], total: 140 }] });
+  assert.match(out, /col-axis/); assert.match(out, />now</); assert.match(out, /Blocked 140/); assert.match(out, /last 24 h/); assert.match(out, /Most blocked/);
+});
+
+test('a paused card says until when, and offers the way out only if it can act', () => {
+  const card = { type: 'chart', style: 'bars', series: [], banner: { text: 'Blocking paused', until: Date.now() + 6e4, button: { label: 'Resume', action: 'pause', args: { minutes: 0 } } } };
+  assert.match(html(card, { run: true }), /Blocking paused until/); assert.match(html(card, { run: true }), />Resume</);
+  assert.doesNotMatch(html(card), />Resume</);
+  assert.doesNotMatch(html({ ...card, banner: { ...card.banner, until: Date.now() - 1 } }, { run: true }), /Blocking paused/);   // it lapsed
+});
+
+test('now playing has no play button shape; a stalled download says so and what to do', () => {
+  const np = html({ type: 'media', items: [{ title: 'Film', state: 'paused', pct: .5 }] });
+  assert.match(np, /np-state is-paused/); assert.doesNotMatch(np, /lucide-(play|pause)/);
+  const dl = html({ type: 'media', href: 'http://q', source: { name: 'qBittorrent' }, items: [{ title: 'Film', state: 'buffering', icon: 'download', pct: .1, stall: { word: 'Stalled', since: Date.now() - 72e5, why: 'no peers' } }] });
+  assert.match(dl, /Stalled 2 h · no peers/); assert.match(dl, /Check in qBittorrent/);
+  assert.match(html({ type: 'media', items: [{ title: 'Film', state: 'buffering', icon: 'download', tags: ['Stalled'] }] }), /Stalled · nothing coming in/);   // an integration that says no more than its state
+});
+
+test('shelf: a next step opens from the whole tile, and the arrows start with nowhere to go back to', () => {
+  const out = html({ type: 'shelf', items: Array.from({ length: 8 }, (_, i) => ({ title: `T${i}`, badge: 'Ready', href: 'http://sonarr', cta: { label: 'Open in Plex', href: 'http://plex/x' } })) });
+  assert.match(out, /href="http:\/\/plex\/x"/); assert.doesNotMatch(out, /href="http:\/\/sonarr"/); assert.match(out, /Open in Plex/);
+  assert.match(out, /aria-label="Previous" aria-disabled="true"/); assert.match(out, /aria-label="Next" aria-disabled="false"/);
+});
+
+test('hover lift stays on links: a plain card and a tile with nowhere to go sit still', () => {
+  assert.doesNotMatch(html({ type: 'text', title: 'x', text: 'y' }), /\blift\b/);
+  assert.doesNotMatch(renderToString(<SummaryTile s={{ label: 'x', value: 1 }} />), /\blift\b/);
+  assert.match(renderToString(<SummaryTile s={{ label: 'x', value: 1 }} href="http://x" />), /\blift\b/);
+});
+
+test('without a link nothing looks clickable: rows are plain, posters and pictures sit still', () => {
+  const rows = (href?: string, minimal?: boolean) => renderToString(<TooltipProvider><Widget card={{ type: 'status', items: [{ name: 'x', ok: true, href }] }} minimal={minimal} /></TooltipProvider>);
+  for (const minimal of [false, true]) {
+    assert.doesNotMatch(rows(undefined, minimal), /<a |hover:bg-accent/);
+    assert.match(rows('http://x', minimal), /<a [^>]*hover:bg-accent/);
+  }
+  const shelf = (href?: string) => html({ type: 'shelf', items: [{ title: 'T', href }] });
+  assert.doesNotMatch(shelf(), /group-hover:|<a /); assert.match(shelf('http://x'), /group-hover:-translate-y-1/);
+  assert.doesNotMatch(html({ type: 'photos', style: 'flashback', items: [{ image: '/a.jpg' }] }), /\blift\b/);
+  assert.match(html({ type: 'photos', style: 'flashback', items: [{ image: '/a.jpg', href: 'http://x' }] }), /\blift\b/);
+  assert.doesNotMatch(html({ type: 'verse', title: 'v', english: 'e', reference: 'r' }), /\blift\b/);
+});
+
+test('archive offers a way to find what went, only where it can act', () => {
+  const card = { type: 'shelf', layout: 'windows', title: 'Saved', archived: 'http://k/archive', items: [{ id: 'a', title: 'A', note: 'n' }] };
+  assert.match(html(card, { run: true }), /See archived/); assert.doesNotMatch(html(card), /See archived/);
+});
 
 test('schema rejects a malformed card', () => {
   assert.equal(checkCard({ type: 'stats', items: [{ label: 'x' }] }).success, false);            // no value
