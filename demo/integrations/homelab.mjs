@@ -169,6 +169,17 @@ export default ({ z, defineIntegration }) => {
       const textCard = text => ({ type: 'text', tone: 'good', text });
       return {
         widgets,
+        recap: async ({ year }) => [
+          { id: 'watch.hours', kicker: 'You watched', value: '612', unit: 'hours', stat: 'Hours watched', score: 95, scope: 'year', line: '1,048 plays, all of it from your own server.', trait: { name: 'The Projectionist', line: 'The lights go down, the server spins up, and the house gets exactly what it wanted to watch.', strength: .7 } },
+          { id: 'watch.top', kicker: 'Your number one', value: FILMS[5], line: '41 plays and 38 h, more time than anything else this year.', score: 90, scope: 'year', items: [[FILMS[5], '38 h'], [FILMS[2], '21 h'], [FILMS[3], '17 h'], [FILMS[1], '12 h'], [FILMS[4], '9 h']].map(([name, value]) => ({ name, value, image: poster(name) })) },
+          { id: 'library.added', kicker: 'Your library grew by', value: '186', unit: 'titles', stat: 'Titles added', score: 80, scope: 'year', line: '171 films and 15 shows joined. The whole collection now takes up 9.2 TB.' },
+          { id: 'seed.ratio', kicker: 'Your share ratio', value: '3.18', stat: 'Share ratio', score: 75, scope: 'All time', line: 'You took 4.1 TB and gave 13 TB back. The swarm thanks you.', trait: { name: 'The Generous Seeder', line: 'You give back far more than you take, and somewhere a stranger finished their download because of you.', strength: .8 } },
+          { id: 'dns.blocked', kicker: 'Pi-hole stopped', value: '6,204,118', unit: 'requests', stat: 'Ads blocked', score: 72, scope: 'year', line: "That's 14% of everything your devices tried to look up, across 23 devices." },
+          { id: 'watch.people', kicker: 'Who kept Plex busiest', value: 'Sam', line: '298 hours of the 612 everyone watched.', score: 70, scope: 'year', private: true, items: [['Sam', '298 h'], ['Alex', '201 h'], ['Priya', '113 h']].map(([name, value]) => ({ name, value })) },
+          { id: 'photos', kicker: 'You kept', value: '8,741', unit: 'photos and videos', stat: 'Memories kept', score: 68, scope: 'year', line: 'August was your busiest month. All of it on your own disks.' },
+          { id: 'uptime', kicker: 'The lab stayed up', value: '99.8%', stat: 'Uptime', score: 66, scope: 'year', line: 'Mealie accounts for most of the rest. You know what you did.' },
+          { id: 'watch.day', kicker: 'Your favourite night in', value: 'Fridays', line: `312 of your 1,048 plays in ${year} started on a Friday.`, score: 60, scope: 'year' },
+        ],
         actions: {
           preset: { description: 'Apply a lighting preset', input: z.object({ id: z.string() }), run: async ({ id }) => { if (PRESET_RGB[id]) { put('preset', id); for (const p of ['fans0', 'fans1', 'pump', 'ram', 'gpu']) changes.delete(`part.${p}`); } } },
           light: { description: 'Set a PC part or some home lights', input: z.object({ part: z.string().optional(), state: z.object({}).loose().optional(), entity_id: z.array(z.string()).optional() }).loose(),

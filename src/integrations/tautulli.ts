@@ -1,7 +1,7 @@
 // Tautulli (https://tautulli.com): who's watching what on Plex right now, what was added, and watch history.
 import { z } from 'zod';
 import { defineIntegration, fmt, type Instance } from '../server/core.ts';
-import type { RankedItem, MediaItem } from '../shared/cards.ts';
+import type { RankedItem, MediaItem, RecapSlide } from '../shared/cards.ts';
 
 export default defineIntegration({
   type: 'tautulli',
@@ -27,6 +27,29 @@ export default defineIntegration({
     const subtitle = (s: any) => s.media_type === 'episode'
       ? `S${s.parent_media_index}·E${s.media_index} — ${s.title}`
       : s.media_type === 'track' ? `${s.grandparent_title} — ${s.parent_title}` : s.year ? String(s.year) : undefined;
+
+    /** The year from Plex's own history: time watched, the favourites, who, and when. */
+    async function recap({ year, from, to }: { year: number; from: number; to: number }): Promise<RecapSlide[]> {
+      const rows = ((await api('get_history', { length: 20000, after: `${year}-01-01`, before: `${year}-12-31` })).data as any[]).filter(h => h.date * 1000 >= from && h.date * 1000 < to);
+      if (!rows.length) return [];
+      const secs = (h: any) => Number(h.play_duration ?? h.duration) || 0, total = rows.reduce((s, h) => s + secs(h), 0), hours = Math.round(total / 3600);
+      const rank = (key: (h: any) => string) => { const m = new Map<string, { n: number; s: number; h: any }>(); for (const h of rows) { const k = key(h), e = m.get(k) ?? { n: 0, s: 0, h }; e.n++; e.s += secs(h); m.set(k, e); } return [...m].sort((a, b) => b[1].s - a[1].s); };
+      const hrs = (s: number) => s >= 3600 ? `${Math.round(s / 3600)} h` : `${Math.round(s / 60)} min`;
+      const titles = rank(h => h.media_type === 'episode' ? h.grandparent_title : h.title), people = rank(h => h.friendly_name || h.user);
+      const when = (o: Intl.DateTimeFormatOptions) => rows.map(h => new Date(h.date * 1000).toLocaleString('en', o));
+      const most = (l: string[]) => [...l.reduce((m, x) => m.set(x, (m.get(x) ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])[0];
+      const [day, dayN] = most(when({ weekday: 'long' })), late = rows.filter(h => { const n = new Date(h.date * 1000).getHours(); return n >= 23 || n < 5; }).length / rows.length;
+      const slides: RecapSlide[] = [
+        { id: 'watch.hours', kicker: 'You watched', value: hours.toLocaleString('en'), unit: 'hours', stat: 'Hours watched', score: 95, scope: 'year', line: `${rows.length} plays, all of it from your own server.`,
+          trait: { name: 'The Projectionist', line: 'The lights go down, the server spins up, and the house gets exactly what it wanted to watch.', strength: Math.min(.9, hours / 500) } },
+        { id: 'watch.top', kicker: 'Your number one', value: titles[0][0], line: `${titles[0][1].n} ${titles[0][1].n === 1 ? 'play' : 'plays'} and ${hrs(titles[0][1].s)}, more time than anything else this year.`, score: 90, scope: 'year',
+          items: titles.slice(0, 5).map(([name, e]) => ({ name, value: hrs(e.s), image: poster(e.h) })) },
+        { id: 'watch.day', kicker: 'Your favourite night in', value: `${day}s`, line: `${dayN} of your ${rows.length} plays started on a ${day}.`, score: 60, scope: 'year' },
+      ];
+      if (people.length > 1) slides.push({ id: 'watch.people', kicker: 'Who kept Plex busiest', value: people[0][0], line: `${hrs(people[0][1].s)} of the ${hrs(total)} everyone watched.`, score: 70, scope: 'year', private: true, items: people.slice(0, 5).map(([name, e]) => ({ name, value: hrs(e.s) })) });
+      if (late > .25) slides.push({ id: 'watch.late', kicker: 'After 11 PM', value: `${Math.round(late * 100)}%`, line: 'of everything you watched started when you should have been asleep.', score: 55, scope: 'year', trait: { name: 'The Night Owl', line: "The disks spin, the house sleeps, and you're still one more episode away from bed.", strength: late } });
+      return slides;
+    }
 
     const bw: number[] = [];
     async function activity() {
@@ -119,6 +142,7 @@ export default defineIntegration({
     } satisfies Instance['widgets'];
 
     return {
+      recap,
       widgets,
       image(ref) {
         if (!/^\/library\/metadata\/\d+\/(thumb|art)(\/\d+)?$/.test(ref)) throw new Error('bad image ref');

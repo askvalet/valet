@@ -23,6 +23,13 @@ export default defineIntegration({
     });
 
     return {
+      async recap() {
+        const s = await api<any>('users/me/stats');
+        if (!s?.numBookmarks) return [];
+        const top = s.topDomains?.[0];
+        return [{ id: 'saved', kicker: 'You saved for later', value: s.numBookmarks.toLocaleString('en'), unit: 'things', stat: 'Things saved', score: 45, scope: 'All time',
+          line: top ? `${top.count} of them came from ${top.domain}. Later is doing a lot of work here.` : 'Later is doing a lot of work here.' }];
+      },
       widgets: {
         digest: {
           title: 'Recently saved', interval: 300_000,

@@ -1,7 +1,7 @@
 // Sonarr and Radarr: what's coming. Episodes airing and movies landing (digital or disc) in the days ahead, as
 // posters with the day on them; each tells you if it's already downloaded. Uses the arrs' calendar API.
 import { z } from 'zod';
-import { defineIntegration } from '../server/core.ts';
+import { defineIntegration, fmt } from '../server/core.ts';
 import type { ShelfItem } from '../shared/cards.ts';
 
 const when = (iso: string) => {
@@ -74,6 +74,16 @@ export default defineIntegration({
     }
 
     return {
+      async recap({ from, to }) {
+        const [films, shows] = await Promise.all([cfg.radarr ? get(cfg.radarr, 'movie') : [], cfg.sonarr ? get(cfg.sonarr, 'series') : []]) as [any[], any[]];
+        const added = (l: any[]) => l.filter(x => { const t = Date.parse(x.added); return t >= from && t < to; });
+        const newFilms = added(films), newShows = added(shows), n = newFilms.length + newShows.length;
+        const size = [...films.map(f => f.sizeOnDisk ?? 0), ...shows.map(s => s.statistics?.sizeOnDisk ?? 0)].reduce((a, b) => a + b, 0);
+        if (!n) return [];
+        return [{ id: 'library.added', kicker: 'Your library grew by', value: n.toLocaleString('en'), unit: 'titles', stat: 'Titles added', score: 80, scope: 'year',
+          line: `${newFilms.length} films and ${newShows.length} shows joined. The whole collection now takes up ${fmt.bytes(size)}.`,
+          trait: { name: 'The Curator', line: 'You never just watch something. You acquire it, label it and find it the right quality profile.', strength: Math.min(.85, n / 400) } }];
+      },
       widgets: {
         upcoming: {
           title: 'Coming up', interval: 900_000,

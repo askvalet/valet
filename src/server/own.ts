@@ -5,12 +5,13 @@ import type { Activity } from './activity.ts';
 import type { Hub } from './hub.ts';
 import type { History } from './history.ts';
 import type { Instance } from './core.ts';
+import type { Recap } from '../shared/cards.ts';
 import type { Timeline } from './timeline.ts';
 import type { Watches } from './watches.ts';
 
 const when = (t: number) => new Date(t).toLocaleString('en', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 
-export function ownInstance(o: { timeline: Timeline; activity: Activity; watches: Watches; hub: () => Hub; widgets: string[]; history?: History; undo: (id: number) => Promise<string> }): Instance {
+export function ownInstance(o: { timeline: Timeline; activity: Activity; watches: Watches; hub: () => Hub; widgets: string[]; history?: History; recap: (year?: number) => Promise<Recap>; undo: (id: number) => Promise<string> }): Instance {
   const log = () => {
     const list = o.activity.recent(12), undoable = list.find(e => e.undo && !e.undone);
     return { type: 'list' as const, title: 'Activity', icon: 'pulse', empty: 'Nothing changed yet',
@@ -21,6 +22,16 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
     widgets: { activity: { title: 'Activity', interval: 15_000, fetch: async () => log() } },
     actions: { undo: { description: 'Undo something from the activity log', input: z.object({ id: z.number() }), run: ({ id }: { id: number }) => o.undo(id) } },
     tools: {
+      year_in_review: {
+        label: 'Looked back over the year', followUps: ['What was my most watched thing?'],
+        description: 'The year in review: the headline numbers from every service, and who that makes the person this year. Use for "my year", "wrapped", "year in review".',
+        access: 'read', input: z.object({ year: z.number().int().optional() }),
+        async run({ year }) {
+          const r = await o.recap(year);
+          return { data: { year: r.year, soFar: r.soFar, persona: r.persona.name, numbers: r.stats, moments: r.slides.map(s => `${s.kicker} ${s.value}${s.unit ? ` ${s.unit}` : ''}`) },
+            card: { type: 'stats', title: `Your ${r.year} in review`, icon: 'chart', href: '#recap', note: r.persona.name, items: r.stats.slice(0, 6).map(s => ({ label: s.label, value: s.value })) } };
+        },
+      },
       timeline: {
         label: 'Checked what happened', followUps: ['What should I do about it?'],
         description: 'What happened over a period: things starting and finishing, services going down and coming back, problems appearing and clearing, changes made, and how each headline number moved (lowest, highest, now). Use for "what happened overnight", "what changed since yesterday", "why was it slow at 3am". Check this, then the logs, before explaining a past problem. A time here is when Valet saw it happen; trust a service\'s own timestamps over it.',

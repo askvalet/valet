@@ -12,6 +12,7 @@ import { canAct, redactor } from './security.ts';
 import { links } from '../integrations/links.ts';
 import { makeAsk, type Ask } from './brain.ts';
 import { Activity } from './activity.ts';
+import { buildRecap, recapYear } from './recap.ts';
 import { troubles, Watcher } from './insight.ts';
 import { push, type Message } from './notify.ts';
 import { ownInstance } from './own.ts';
@@ -125,7 +126,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     activity.add({ who: e.who, via: 'page', what: `Undid: ${e.what}`, ok: true });
     return 'done';
   };
-  instances.set('valet', ownInstance({ timeline, activity, watches, hub: () => hub, widgets: [...placed], history, undo }));
+  instances.set('valet', ownInstance({ timeline, activity, watches, hub: () => hub, widgets: [...placed], history, recap: year => buildRecap(instances, recapYear(year == null ? undefined : String(year))), undo }));
   meta.set('valet', { type: 'valet', name: 'Valet', integration: { type: 'valet', name: 'Valet' } as Integration });
 
   const hub = new Hub(new Map([...instances].map(([id, i]) => [id, {

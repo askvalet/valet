@@ -28,6 +28,13 @@ export default defineIntegration({
       return { s, history: (h.history ?? []) as any[], blocking: b.blocking as string, timer: b.timer as number | null, top: (top.domains ?? []) as { domain: string; count: number }[] };
     }
     return {
+      async recap({ from, to }) {
+        const s = await api<any>(`stats/database/summary?from=${Math.floor(from / 1000)}&until=${Math.floor(to / 1000)}`);
+        if (!s?.sum_blocked) return [];
+        const covered = Number(s.total_clients ?? 0);
+        return [{ id: 'dns.blocked', kicker: 'Pi-hole stopped', value: Number(s.sum_blocked).toLocaleString('en'), unit: 'requests', stat: 'Ads blocked', score: 72, scope: 'As far back as Pi-hole keeps',
+          line: `That's ${Number(s.percent_blocked).toFixed(0)}% of everything your devices tried to look up${covered ? `, across ${covered} devices` : ''}.` }];
+      },
       widgets: {
         stats: {
           title: 'Pi-hole', interval: 60_000,

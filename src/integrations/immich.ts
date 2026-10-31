@@ -24,6 +24,14 @@ export default defineIntegration({
     };
 
     return {
+      async recap({ year }) {
+        const months = await api<{ timeBucket: string; count: number }[]>('timeline/buckets?size=MONTH&visibility=timeline');
+        const inYear = months.filter(m => m.timeBucket.startsWith(`${year}-`)), n = inYear.reduce((s, m) => s + m.count, 0);
+        if (n < 12) return [];                                   // too few to be someone's real library, or a key that can't see it
+        const best = [...inYear].sort((a, b) => b.count - a.count)[0];
+        return [{ id: 'photos', kicker: 'You kept', value: n.toLocaleString('en'), unit: 'photos and videos', stat: 'Memories kept', score: 68, scope: 'year',
+          line: `${new Date(best.timeBucket).toLocaleDateString('en', { month: 'long', timeZone: 'UTC' })} was your busiest month. All of it on your own disks.` }];
+      },
       widgets: {
         memories: {
           title: 'On this day', interval: 3_600_000,

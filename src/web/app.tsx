@@ -1,4 +1,4 @@
-import { ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Search, Sun } from 'lucide-react';
+import { Sparkles, ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Search, Sun } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -14,6 +14,7 @@ import { type Explain, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, s
 const Assistant = lazy(() => import('./assistant.tsx'));
 import type { ToolInfo } from './assistant.tsx';
 const Palette = lazy(() => import('./palette.tsx'));
+const RecapStory = lazy(() => import('./recap.tsx'));
 
 interface Page {
   title: string; greeting?: string; location?: string; canAct?: boolean;
@@ -26,6 +27,7 @@ interface Page {
   nav?: { side: 'left' | 'right' | 'top' | 'bottom' };
   island?: { activities: string[]; idle: 'notch' | 'hide' };
   weather?: string;
+  recap?: boolean;
   sections: { title?: string; columns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; sizes?: Record<string, 'small' | 'wide' | 'tall' | 'large'>; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
 }
@@ -208,6 +210,9 @@ function Home({ account }: { account: boolean }) {
   const theme = useTheme();
   const [view, setView] = useState<string>('all');   // 'all' (the overview) or a tab's name
   const [palette, setPalette] = useState(false);
+  const [recap, setRecap] = useState(location.hash === '#recap');
+  useEffect(() => { const on = () => setRecap(location.hash === '#recap'); addEventListener('hashchange', on); return () => removeEventListener('hashchange', on); }, []);
+  const closeRecap = () => { setRecap(false); if (location.hash === '#recap') history.replaceState(null, '', location.pathname); };
   const [chat, setChat] = useState<{ text: string; n: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const wide = useWide();
@@ -343,6 +348,7 @@ function Home({ account }: { account: boolean }) {
                 </div>
               </div>
             )}
+            {page?.recap !== false && <a href="#recap" className="press mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-[13px] font-medium backdrop-blur-md transition-colors hover:bg-white/15"><Sparkles className="size-3.5" />Your {now.getFullYear()} in review</a>}
           </header>
         );
 
@@ -524,6 +530,7 @@ function Home({ account }: { account: boolean }) {
         </div>
       </nav>
 
+      {recap && page?.recap !== false && <Suspense fallback={null}><RecapStory onClose={closeRecap} /></Suspense>}
       {page && palette && (
         <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} ask={ask} actions={actions} account={account} tools={page.assistant?.tools}
           openChat={() => { setPalette(false); if (phone || !(chatTab && view === chatTab)) setChatOpen(true); }}

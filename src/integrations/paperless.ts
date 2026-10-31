@@ -35,6 +35,12 @@ export default defineIntegration({
     }));
 
     return {
+      async recap({ year }) {
+        const { count } = await api<any>(`documents/?added__date__gt=${year - 1}-12-31&added__date__lt=${year + 1}-01-01&page_size=1`);
+        if (!count) return [];
+        return [{ id: 'docs', kicker: 'You filed away', value: Number(count).toLocaleString('en'), unit: 'documents', stat: 'Documents filed', score: 62, scope: 'year', line: 'Every one of them searchable, and not one in a shoebox.',
+          trait: { name: 'The Archivist', line: 'If it has ever been printed, emailed or scanned, you can find it in four seconds.', strength: Math.min(.8, count / 5000) } }];
+      },
       widgets: {
         recent: {
           title: 'Documents', interval: 300_000,

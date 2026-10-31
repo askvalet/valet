@@ -22,6 +22,22 @@ export interface Summary {
 /** One thing in a tile's row of bars: `pct` sets the height, `tone` the colour, `label` the tooltip. */
 export interface Mark { pct?: number; tone?: Tone; label?: string }
 
+/** One moment of the year in review. Use real numbers only: a service that can't say something should leave it out. */
+export interface RecapSlide {
+  id: string;
+  kicker: string;          // the small line above, "You watched"
+  value: string;           // the big one; a plain number counts up
+  unit?: string;
+  line: string;            // a sentence that says why it's interesting
+  items?: { name: string; value?: string; image?: string }[];   // a top five
+  scope?: string;          // 'year', or what it covers when that isn't this year: "All time", "Last 30 days"
+  score?: number;          // higher comes earlier; 50 by default
+  stat?: string;           // its label on the shareable card, if it belongs there
+  private?: boolean;       // names people, so it stays off the shareable card
+  trait?: { name: string; line: string; strength: number };     // who this makes you, 0..1: the strongest wins
+}
+export interface Recap { year: number; soFar: boolean; slides: RecapSlide[]; persona: { name: string; line: string }; stats: { label: string; value: string }[]; closing?: string }
+
 /** Something happening right now, for the island at the top of the page: a stream, a download, a robot cleaning.
  *  A card carries one only while it's live; the island shows the live ones in the order the config lists them. */
 export interface Activity {

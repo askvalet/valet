@@ -9,7 +9,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { z } from 'zod';
-import type { Card } from '../shared/cards.ts';
+import type { RecapSlide, Card } from '../shared/cards.ts';
 
 export type Access = 'read' | 'write' | 'control';
 
@@ -54,6 +54,8 @@ export interface Instance {
   /** Serve an image (poster, camera snapshot) through Valet so the browser never needs the service's key.
    *  Cards point at it with ctx.image(ref); validate `ref` before fetching. */
   image?(ref: string): Promise<Response>;
+  /** What this service can say about a stretch of time, for the year in review. Leave out anything it can't really know. */
+  recap?(range: { year: number; from: number; to: number }): Promise<RecapSlide[]>;
 }
 
 export interface Context {

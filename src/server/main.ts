@@ -15,6 +15,7 @@ import { parseSuggestions, statusLine, suggestPrompt, troubles, whyPrompt } from
 import { loadPins, newPin, pinnedCard, savePins } from './pins.ts';
 import { loadPlugins } from './plugins.ts';
 import { chatAgent } from './model.ts';
+import { buildRecap, recapYear } from './recap.ts';
 import { buildSite, type Site } from './site.ts';
 import { registry } from '../integrations/index.ts';
 
@@ -142,7 +143,7 @@ app.get('/api/page', c => {
     title: config.title, greeting: config.greeting, location: config.location, canAct: site.acting, search: config.search,
     welcome: config.welcome ? { path: CONFIG, saved } : undefined,
     // ?v= the file's mtime: replacing the wallpaper changes the URL, so browsers never show a stale cached one
-    appearance: { ...config.appearance, wallpaper: site.wallpaperFile ? `/api/wallpaper?v=${site.wallpaperVersion}` : config.appearance.wallpaper },
+    recap: config.recap, appearance: { ...config.appearance, wallpaper: site.wallpaperFile ? `/api/wallpaper?v=${site.wallpaperVersion}` : config.appearance.wallpaper },
     assistant: config.assistant ? { ...(agent ? { name: agent.name, model: agent.model, external: true } : { name: config.assistant.name, model: config.assistant.model }), suggestions: config.assistant.suggestions,
       // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>")
       tools: Object.fromEntries([...instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {})
@@ -294,6 +295,12 @@ app.get('/api/brief', async c => {
   await settled();
   const b = await statusLine(site.ask, site.timeline.lines(8 * 36e5, 40, true), site.hub.snapshot());
   return c.json({ text: b ? site.redact(b.text) : null });
+});
+
+app.get('/api/recap', async c => {
+  if (!site.config.recap) return c.notFound();
+  const recap = await buildRecap(site.instances, recapYear(c.req.query('year')), site.ask && site.config.assistant?.background.brief ? site.ask : undefined);
+  return c.json(JSON.parse(site.redact(JSON.stringify(recap))));
 });
 
 // Keep a chat card on the page. It must really produce a card now, from a tool that only looks.

@@ -43,6 +43,17 @@ export default defineIntegration({
     }
 
     return {
+      async recap({ from, to }) {
+        const seen: any[] = [];
+        for (let skip = 0; skip < 1000; skip += 100) {
+          const page = await api<any>(`request?take=100&skip=${skip}&sort=added`);
+          seen.push(...page.results);
+          if (page.results.length < 100 || Date.parse(page.results.at(-1).createdAt) < from) break;
+        }
+        const year = seen.filter(r => { const t = Date.parse(r.createdAt); return t >= from && t < to; });
+        if (!year.length) return [];
+        return [{ id: 'requests', kicker: 'You asked for', value: year.length.toLocaleString('en'), unit: 'titles', stat: 'Requests', score: 65, scope: 'year', line: 'Request it, wait a bit, press play. Nobody in the house has to know how any of it works.' }];
+      },
       widgets: {
         requests: {
           title: 'Requests', interval: 300_000,

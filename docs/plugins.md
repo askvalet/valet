@@ -58,6 +58,27 @@ writes `data/integrations/my-service.mjs` (a widget with a summary and a button,
 tool) and `my-service.web.js` (its visual), commented line by line. Point it at your service, add it to `config.yaml`
 (the file's first lines show how), restart, and it's on the page and in the assistant.
 
+## The year in review
+
+Valet's year in review is built from what each integration offers, and yours can join in. Return a `recap` next to
+`widgets`. It gets the period and answers with slides:
+
+```js
+async recap({ year, from, to }) {
+  const n = await countThings(from, to);
+  if (!n) return [];                               // nothing to say? say nothing
+  return [{ id: 'things', kicker: 'You made', value: n.toLocaleString('en'), unit: 'things', scope: 'year',
+    line: 'One sentence on why that matters.', stat: 'Things made', score: 60,
+    trait: { name: 'The Maker', line: 'Who this makes them.', strength: 0.6 } }];
+}
+```
+
+- **Only real numbers.** If your service can't really know something, leave it out. Set `scope` to what the number
+  covers (`'year'`, `'All time'`, `'Last 30 days'`).
+- `score` orders the story (higher comes earlier, 50 by default), and `stat` puts the number on the shareable card.
+- `items` is a top five, with an optional `image`. Mark a slide `private: true` if it names people.
+- `trait` is a personality: the strongest across all services becomes who the person was this year.
+
 ## Visuals of your own
 
 The catalog covers most things, but a plugin can draw anything. Return a `showcase` card whose `visual.kind` is the

@@ -34,6 +34,12 @@ export default defineIntegration({
     }
     const pct = (r?: number) => r == null ? '–' : `${(r * 100).toFixed(r >= .9995 ? 0 : r >= .99 ? 2 : 1)}%`;
     return {
+      async recap() {
+        const month = (await monitors()).filter(m => m.month != null);
+        if (!month.length) return [];
+        const avg = month.reduce((s, m) => s + m.month!, 0) / month.length;
+        return [{ id: 'uptime', kicker: 'The lab stayed up', value: pct(avg), stat: 'Uptime', score: 66, scope: 'Last 30 days', line: `Across the ${month.length} things Uptime Kuma watches.` }];
+      },
       widgets: {
         monitors: {
           title: 'Uptime', interval: 60_000,

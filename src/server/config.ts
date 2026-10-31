@@ -152,6 +152,7 @@ export const Config = z.object({
   // where "tell me when" reminders go when you're not looking (ntfy, gotify, telegram, discord, slack, pushover, apprise,
   // webhook). insights: also push the assistant's shared-cause line.
   notify: z.object({ channels: z.array(Channel).default([]), insights: z.boolean().default(false) }).default({ channels: [], insights: false }),
+  recap: z.boolean().default(true),             // the year in review
   welcome: z.boolean().default(false),          // the getting-started card (a fresh config turns it on)
   reload: z.boolean().default(true),            // watch config.yaml and apply edits live (a bad edit keeps the last good one)
 }).strict();
