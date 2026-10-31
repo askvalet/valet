@@ -1,6 +1,7 @@
 // Service health: is each URL answering, and how fast. The simplest integration, and a template for new ones.
 import { z } from 'zod';
 import { defineIntegration } from '../server/core.ts';
+import { stateOf } from '../shared/cards.ts';
 
 export default defineIntegration({
   type: 'http',
@@ -38,12 +39,12 @@ export default defineIntegration({
         status: {
           title: 'Services', interval: cfg.interval,
           async fetch() {
-            const items = await check(), down = items.filter(i => !i.ok && !i.quiet);
+            const items = await check(), down = items.filter(i => stateOf(i) === 'down'), off = items.filter(i => stateOf(i) === 'off').length;
             const up = items.filter(i => i.ok && i.ms != null), avg = up.length ? Math.round(up.reduce((a, i) => a + i.ms!, 0) / up.length) : 0;
             lat.push(avg); if (lat.length > 40) lat.shift();
             return { type: 'status', title: 'Services', icon: 'pulse', items,
-              summary: { label: 'Services', icon: 'pulse', value: `${items.filter(i => i.ok).length}/${items.length}`, tone: down.length ? 'bad' : 'good',
-                sub: down.length ? `${down.map(d => d.name).join(', ')} down` : 'All up', detail: `${avg} ms avg`, trend: [...lat] } };
+              summary: { label: 'Services', icon: 'pulse', value: `${items.filter(i => stateOf(i) === 'up').length}/${items.length}`, tone: down.length ? 'bad' : 'good',
+                sub: down.length ? `${down.map(d => d.name).join(', ')} down` : off ? `${off} off by choice` : 'All up', detail: `${avg} ms avg`, trend: [...lat] } };
           },
         },
       },

@@ -5,9 +5,9 @@ import { defaultFilter } from 'cmdk';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import type { StatusItem } from '../shared/cards.ts';
+import { stateOf, type StatusItem } from '../shared/cards.ts';
 import type { ChatUi } from './assistant.tsx';
-import { Icon } from './cards.tsx';
+import { DOT, Icon } from './cards.tsx';
 import { signOut } from './signin.tsx';
 
 const InlineAnswer = lazy(() => import('./assistant.tsx').then(m => ({ default: m.InlineAnswer })));
@@ -71,7 +71,7 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
           <CommandItem key={sv.name} {...opening(sv)} onSelect={() => { window.open(sv.href, '_blank', 'noopener'); setPalette(false); }}>
             {sv.icon ? <img src={sv.icon} alt="" className="size-4 object-contain" /> : <ArrowUp className="rotate-45 text-muted-foreground" />}
             {sv.name}
-            <span className={cn('dot ml-auto size-1.5', sv.ok ? 'dot-good' : sv.quiet ? 'bg-muted-foreground/40' : 'dot-bad')} />
+            <span className={cn('dot ml-auto size-1.5', DOT[stateOf(sv)])} />
           </CommandItem>
         ))}
       </CommandGroup>

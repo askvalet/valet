@@ -1,16 +1,22 @@
 // What to offer as a question right now. The model writes these from the page when it can (`tailored`); until then, and
 // without one, they come from reading the cards. Either way anything that's just gone wrong comes first, because the
 // model's list can be a few minutes old.
-import type { WidgetState } from '../shared/cards.ts';
+import { stateOf, type WidgetState } from '../shared/cards.ts';
+import { spellings } from './format.ts';
 
-/** The same question once, however many cards raised it and however each spells the name. */
-const once = (list: string[]) => [...new Map(list.map(q => [q.toLowerCase(), q] as const).reverse()).values()].reverse();
+const capitals = (s: string) => s.replace(/\P{Lu}/gu, '').length;
+/** The same question once, however many cards raised it, where it first came up, and in its best-capitalised spelling. */
+const once = (list: string[]) => {
+  const seen = new Map<string, string>();
+  for (const q of list) { const key = q.toLowerCase(), had = seen.get(key); if (had === undefined || capitals(q) > capitals(had)) seen.set(key, q); }
+  return [...seen.values()];
+};
 
 export function suggest(state: Record<string, WidgetState>, configured: string[], hour = new Date().getHours(), tailored?: string[] | null) {
   const out: string[] = [];
-  const cards = Object.values(state);
+  const cards = Object.values(state), spelled = spellings(cards);
   for (const s of cards) {
-    if (s.card?.type === 'status') for (const i of s.card.items) if (!i.ok && !i.quiet) out.push(`Why is ${i.name} down?`);
+    if (s.card?.type === 'status') for (const i of s.card.items) if (!i.ok && !i.quiet) out.push(`Why is ${spelled.get(i.name.toLowerCase()) ?? i.name} ${stateOf(i) === 'degraded' ? 'unhealthy' : 'down'}?`);
     if (s.error) out.push(`What's wrong with ${s.card?.title ?? s.key.split('.')[0]}?`);
   }
   if (tailored?.length) return once([...out, ...tailored]);

@@ -273,7 +273,7 @@ function AppIcon({ src, name, small }: { src?: string; name: string; small?: boo
   return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className={cn(size, 'shrink-0 object-contain')} />;
 }
 
-const DOT: Record<ServiceState, string> = { up: 'dot-good', degraded: 'dot-warn', down: 'dot-bad', off: 'dot-off' };
+export const DOT: Record<ServiceState, string> = { up: 'dot-good', degraded: 'dot-warn', down: 'dot-bad', off: 'dot-off' };
 const STATE: Record<ServiceState, string> = { up: 'Up', degraded: 'Unhealthy', down: 'Down', off: 'Off by choice' };
 /** What a service's state is in words: answering, running or healthy when it's fine, and the reason when it isn't. */
 const stateLine = (s: StatusItem, st = stateOf(s)) => st === 'up' ? s.ms != null ? `${s.ms} ms` : s.detail ?? 'Up' : st === 'off' ? STATE.off : s.detail ?? STATE[st];
