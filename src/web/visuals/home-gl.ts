@@ -283,15 +283,16 @@ export function createDollhouse(box: HTMLElement, opts: HomeOptions = {}): HomeS
     const c = [x - eye[0], y - eye[1], z - eye[2]], w = dot(c, fwd), s = 1 / (TAN * w);
     return [(dot(c, right) * s / aspect * .5 + .5) * box.clientWidth, (.5 - dot(c, up) * s * .5) * box.clientHeight];
   };
-  /** The point on the floor under a place on the screen. */
-  const onFloor = (px: number, py: number) => {
+  /** The room under a place on the screen: at floor level, or failing that on a wall that stands in front of it. */
+  const roomUnder = (px: number, py: number) => {
     const sx = (px / box.clientWidth * 2 - 1) * TAN * aspect, sy = (1 - py / box.clientHeight * 2) * TAN, ray = fwd.map((v, i) => v + right[i] * sx + up[i] * sy);
-    const t = -eye[1] / ray[1]; return t > 0 ? [eye[0] + ray[0] * t, eye[2] + ray[2] * t] : null;
+    for (const y of [0, WALL * .3, WALL * .6]) { const t = (y - eye[1]) / ray[1], k = t > 0 ? roomAt(layout!, eye[0] + ray[0] * t, eye[2] + ray[2] * t) : 0; if (k) return k; }
+    return 0;
   };
   const pickAt = (px: number, py: number) => {
     if (!layout) return null;
     if (sim && data?.robot) { const [a, b] = project(sim.pose.x, 4, sim.pose.z); if (Math.hypot(a - px, b - py) < 20 * Math.max(1, cam.zoom * cam.k)) return 'robot'; }
-    const f = onFloor(px, py), k = f ? roomAt(layout, f[0], f[1]) : 0;
+    const k = roomUnder(px, py);
     return k ? `room:${layout.rooms[k - 1].src.id}` : null;
   };
   const lampAt = (px: number, py: number) => {
@@ -504,7 +505,7 @@ export function createDollhouse(box: HTMLElement, opts: HomeOptions = {}): HomeS
     if (last && !idle) { frames++; slow += t - last; if (frames >= 45) { if (slow / frames > 26 && scale > .55) { scale *= .8; size(); } frames = 0; slow = 0; } }
     const gap = lastDraw ? Math.min(.05, (t - lastDraw) / 1000) : dt; last = t; lastDraw = t;
     step(gap); draw();
-    if (!idle || (!calm && !asleep)) raf = requestAnimationFrame(frame);
+    if (onScreen && !document.hidden && (!idle || (!calm && !asleep))) raf = requestAnimationFrame(frame);
   }
   const size = () => {
     const w = box.clientWidth; if (!w) return;
