@@ -11,6 +11,7 @@ import { suggest } from './suggest.ts';
 import { clock, day, label, setFormat, type Format } from './format.ts';
 import { applyLook, applyTheme, type Look } from './look.ts';
 import type { Labels } from '../shared/labels.ts';
+import { ChatBeam } from './beam.tsx';
 import { ClockMonth, type Explain, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, shapeOf, TileSkeleton, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
 
 // The assistant (and the AI SDK client) loads only when someone asks something.
@@ -393,14 +394,14 @@ function Home({ account }: { account: boolean }) {
             {hello && <div className="hero-title text-[22px] font-semibold tracking-tight">{hello}</div>}
             {h?.status !== false && (cause ? <div className="brief-in mt-0.5 text-[13.5px] text-warn">{cause}</div> : line && <div key={line} title={brief ?? undefined} className="brief-in mx-auto mt-1 max-w-full text-[13.5px] text-pretty text-muted-foreground">{line}</div>)}
             {askHere && boxed && (
-              <form className="glass-round mt-5 flex items-center gap-2.5 rounded-[26px] py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
+              <ChatBeam ui={ui} className="mt-5"><form className="glass-round flex items-center gap-2.5 rounded-[26px] py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
                 <input value={draft} onChange={e => setDraft(e.target.value)} onFocus={warm} aria-label={label('ask', named)} placeholder={placeholder}
                   className="h-11 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground" />
                 {!draft.trim() && <kbd className="hidden rounded-md border border-white/15 px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground sm:block">⌘K</kbd>}
                 <button type="submit" aria-label="Ask" disabled={!draft.trim()}
                   className="send-round grid size-10 shrink-0 place-items-center rounded-full bg-white text-black transition-opacity disabled:opacity-25"><ArrowUp className="size-[18px]" /></button>
-              </form>
+              </form></ChatBeam>
             )}
             {page && !askHere && boxed && (
               <button onClick={() => setPalette(true)} className="glass-round mt-5 flex h-11 w-full items-center gap-2.5 rounded-full px-5 text-left text-[15px] text-muted-foreground">

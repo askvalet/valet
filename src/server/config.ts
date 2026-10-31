@@ -164,6 +164,8 @@ export const ChatView = z.object({
   thinking: z.enum(['collapsed', 'open', 'hidden']).default('collapsed'),
   send: z.enum(['enter', 'mod-enter']).default('enter'),       // mod-enter: ⌘/Ctrl+Enter sends and Enter starts a line
   bubble: Color.optional(),                // your messages
+  beam: z.enum(['off', 'always', 'focus', 'thinking']).default('off'),   // a light travelling around the chat box: all the time, while typing, or while it answers
+  beamColor: z.enum(['colorful', 'mono', 'ocean', 'sunset']).default('colorful'),
   icon: z.string().optional(),             // an icon name, or an image path or URL, on its buttons and header
 }).strict();
 

@@ -9,6 +9,7 @@ import {
 import { createContext, Fragment, memo, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { BorderBeam } from 'border-beam';
 import { ThinkingOrb } from 'thinking-orbs';
+import { ChatBeam } from './beam.tsx';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Card, Confirm } from '../shared/cards.ts';
@@ -17,7 +18,7 @@ import { Icon, Widget } from './cards.tsx';
 import { label } from './format.ts';
 
 /** What `chat:` says about the window. */
-export interface ChatUi { steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string }
+export interface ChatUi { steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string; beam?: 'off' | 'always' | 'focus' | 'thinking'; beamColor?: 'colorful' | 'mono' | 'ocean' | 'sunset' }
 const Ui = createContext<ChatUi>({ steps: true, thinking: 'collapsed', send: 'enter' });
 
 // One conversation for the whole page session, so closing and reopening the panel keeps it.
@@ -499,6 +500,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
             ))}
           </div>
         )}
+        <ChatBeam ui={ui} busy={busy}>
         <div className={cn('composer flex items-end gap-2 rounded-2xl border bg-card px-3 py-2 shadow-card', over && 'ring-2 ring-primary/60')}>
           <input ref={filePicker} type="file" multiple hidden onChange={e => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
  {canAttach && <button type="button" onClick={() => filePicker.current?.click()} aria-label="Attach a file" className={cn('mb-0.5 grid shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground', sheet ? 'size-8' : 'size-7')}><Paperclip className="size-4" /></button>}
@@ -510,6 +512,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
             ? <Button type="button" size="icon" variant="secondary" className="size-8 rounded-full" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" /></Button>
             : <Button type="submit" size="icon" className="size-8 rounded-full transition-opacity duration-200" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
         </div>
+        </ChatBeam>
       </form>
     </div></Ui.Provider>
   );
