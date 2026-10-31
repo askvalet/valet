@@ -395,11 +395,12 @@ function Home({ account }: { account: boolean }) {
                       run={page?.canAct === false ? undefined : runFor(key)} /></Shaped>;
                   };
                   // sized: a bento of 2, 4 or 6 tracks, so rows end flush at any width. Small cards take one track as their
-                  // headline tile, wide takes two, medium is the card at two, tall is that over two rows, large four.
+                  // headline tile, wide takes two, medium is the card at two, tall is that over two rows, large four. A calendar needs
+                  // the room for its month, so wide means large for it.
                   if (sec.sizes && Object.keys(sec.sizes).length && !aside) return (
                     <div className="grid grid-flow-row-dense grid-cols-2 gap-4 @2xl/main:grid-cols-4 @5xl/main:grid-cols-6">
                       {keys.map((key, j) => {
-                        const size = sec.sizes![key], c = state[key]?.card, beat = { '--i': Math.min(j, 8) } as React.CSSProperties;
+                        const c = state[key]?.card, size = c?.type === 'calendar' && sec.sizes![key] === 'wide' ? 'large' : sec.sizes![key], beat = { '--i': Math.min(j, 8) } as React.CSSProperties;
                         const span = cn(size !== 'small' && 'col-span-2', size === 'tall' && 'row-span-2', size === 'large' && 'col-span-full @5xl/main:col-span-4');
                         if ((size === 'small' || size === 'wide') && c?.summary) return <div key={key} className={cn('settle-card min-w-0', span)} style={beat}><SummaryTile s={c.summary} href={c.href} explain={explainFor(key)} /></div>;
                         return <div key={key} style={beat} className={cn('settle-card min-w-0', size === 'small' ? 'col-span-2' : span)}>{widget(key, size === 'large', true)}</div>;

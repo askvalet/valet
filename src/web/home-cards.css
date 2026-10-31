@@ -1,0 +1,68 @@
+/* The house's cards: weather, calendar, thermostat. Colours are theirs alone; everything else comes from the tokens. */
+.wx-temp { font-weight: 500; letter-spacing: -.04em; line-height: 1; }
+
+/* a breath of sky behind the weather: blue by default, warmer in sun, indigo at night */
+.wx-card { --sky: 96 150 240; }
+.wx-card[data-sky="clear"] { --sky: 86 164 255; }
+.wx-card[data-sky="night"] { --sky: 96 92 214; }
+.wx-card[data-sky="wet"] { --sky: 92 124 186; }
+.wx-card::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(130% 90% at 30% 0%, rgb(var(--sky) / .24), transparent 70%), linear-gradient(180deg, rgb(var(--sky) / .08), rgb(var(--sky) / .14)); }
+.wx-range { background: linear-gradient(90deg, #6cc4ff, #ffc65c 70%, #ff9f5a); }
+
+/* the glyphs barely move: a cloud breathing, rain starting and stopping. Only the large one on a card does. */
+.wx g, .wx path, .wx rect { transform-box: fill-box; transform-origin: center; }
+.wx-live .wx-float { animation: wx-float 7s ease-in-out infinite alternate; }
+@keyframes wx-float { from { transform: translate(-.5px, .5px); } to { transform: translate(1px, -1px); } }
+.wx-live .wx-spin { animation: wx-spin 120s linear infinite; }
+@keyframes wx-spin { to { transform: rotate(360deg); } }
+.wx-live .wx-drop { animation: wx-drop 2.4s ease-in-out infinite; }
+@keyframes wx-drop { 0% { opacity: 0; transform: translateY(-2.5px); } 30%, 62% { opacity: 1; } 100% { opacity: 0; transform: translateY(3.5px); } }
+.wx-live .wx-flake { animation: wx-flake 4.2s ease-in-out infinite; }
+@keyframes wx-flake { 0% { opacity: 0; transform: translate(-1px, -3px); } 35%, 65% { opacity: 1; } 100% { opacity: 0; transform: translate(1px, 3.5px); } }
+.wx-live .wx-flash { animation: wx-flash 6s ease-in-out infinite; }
+@keyframes wx-flash { 0%, 86%, 100% { opacity: .82; } 90% { opacity: 1; } 93% { opacity: .7; } 96% { opacity: 1; } }
+.wx-live .wx-mist { animation: wx-mist 6s ease-in-out infinite alternate; }
+@keyframes wx-mist { from { transform: translateX(-2px); } to { transform: translateX(2.5px); } }
+.wx-live .wx-twinkle { animation: wx-twinkle 4.4s ease-in-out infinite alternate; }
+@keyframes wx-twinkle { from { opacity: .35; } to { opacity: 1; } }
+
+/* calendar */
+.cal-scroll > div { scrollbar-width: none; }
+.cal-scroll > div::-webkit-scrollbar { display: none; }
+.cal-scroll { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent); }
+.cal-page { animation: cal-page 260ms var(--ease-out) both; }
+@keyframes cal-page { from { opacity: 0; transform: translateX(var(--from, 0)); } }
+.cal-day[data-out] .cal-num { opacity: .36; }
+.cal-day[data-out] > span:last-child:not(.cal-num) { opacity: .4; }
+.cal-num { transition: background-color 140ms var(--ease-out); }
+.is-picked { background: color-mix(in srgb, var(--foreground) 15%, transparent); }
+@media (hover: hover) { .cal-day:hover .cal-num:not(.bg-primary):not(.is-picked) { background: color-mix(in srgb, var(--foreground) 9%, transparent); } }
+
+/* thermostat: one colour per mood, the same dial for all of them */
+.th { --th-a: #ffc9a3; --th-b: #ff9a6c; --th-soft: rgb(255 170 125 / .2); user-select: none; -webkit-user-select: none; }
+.th[data-mode="cool"] { --th-a: #a4dcff; --th-b: #4ba7ff; --th-soft: rgb(90 170 255 / .2); }
+.th[data-mode="auto"] { --th-a: #b5efd7; --th-b: #5cd6a7; --th-soft: rgb(100 220 170 / .18); }
+.th[data-mode="off"] { --th-a: #9b9ba3; --th-b: #77777f; --th-soft: rgb(255 255 255 / .1); }
+.th-track { stroke: color-mix(in srgb, var(--foreground) 13%, transparent); }
+.th-ticks { stroke: var(--foreground); opacity: 0; transition: opacity 220ms var(--ease-out); }
+.is-drag .th-ticks { opacity: .22; }
+.th-fill { transition: stroke-dasharray 300ms var(--ease-out), stroke 300ms var(--ease-out); }
+.is-drag .th-fill, .is-drag .th-handle { transition: none; }
+.th-handle { transform-origin: 160px 160px; transform-box: view-box; transition: transform 300ms var(--ease-out); }
+.th-knob { fill: #fff; filter: drop-shadow(0 2px 7px rgb(0 0 0 / .4)); transition: r 180ms var(--ease-out); }
+.is-drag .th-knob { r: 23px; }
+.th-pip { fill: var(--th-b); transition: r 180ms var(--ease-out); }
+.is-drag .th-pip { r: 8px; }
+.th-room { fill: color-mix(in srgb, var(--foreground) 62%, transparent); }
+.th-room.on-fill { fill: #fff; stroke: rgb(0 0 0 / .18); stroke-width: 1; }
+.th-hit { stroke: transparent; pointer-events: stroke; cursor: grab; touch-action: none; outline: none; }
+.is-drag .th-hit { cursor: grabbing; }
+.th-hit:focus-visible { stroke: color-mix(in srgb, var(--foreground) 7%, transparent); }
+.th-step { background: color-mix(in srgb, var(--foreground) 10%, transparent); color: var(--foreground); transition: background-color 160ms var(--ease-out), opacity 160ms var(--ease-out), transform 160ms var(--ease-out); }
+.th-step:disabled { opacity: .35; }
+.th-mode { background: color-mix(in srgb, var(--foreground) 7%, transparent); color: var(--muted-foreground); transition: background-color 180ms var(--ease-out), color 180ms var(--ease-out), transform 160ms var(--ease-out); }
+.th-mode.is-on { background: var(--th-soft); color: var(--th-a); }
+@media (hover: hover) { .th-step:hover:not(:disabled), .th-mode:hover:not(.is-on):not(:disabled) { background: color-mix(in srgb, var(--foreground) 15%, transparent); } }
+.th[data-mode="off"] .th-mode.is-on { background: color-mix(in srgb, var(--foreground) 18%, transparent); color: var(--foreground); }
+html:not(.dark):not(.has-wallpaper) .th-mode.is-on { color: color-mix(in srgb, var(--th-b) 78%, #000); }
