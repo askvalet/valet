@@ -23,6 +23,7 @@ export default defineIntegration({
     sonarr: z.object({ url: z.string().url(), apiKey: z.string(), href: z.string().optional() }).optional(),
     radarr: z.object({ url: z.string().url(), apiKey: z.string(), href: z.string().optional() }).optional(),
     days: z.number().int().min(1).max(90).default(14),          // how far ahead to look (movies: twice that)
+    plex: z.string().url().optional(),                          // Plex's web address: what's ready then opens there
   }),
   create(cfg, ctx) {
     const get = (s: { url: string; apiKey: string }, path: string) => ctx.http<any>(`${s.url.replace(/\/$/, '')}/api/v3/${path}`, { headers: { 'X-Api-Key': s.apiKey }, timeout: 10_000 });
@@ -52,6 +53,8 @@ export default defineIntegration({
     }
     const img = (images: any[] = [], type = 'poster') => images.find(i => i.coverType === type)?.remoteUrl?.replace(/(image\.tmdb\.org\/t\/p)\/original\//, `$1/${type === 'fanart' ? 'w780' : 'w342'}/`);
     const day = (n: number) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+    // what's downloaded goes straight to watching it; without Plex's address, to the app that holds it
+    const ready = (title: string, href: string, from: string) => cfg.plex ? { label: 'Open in Plex', href: `${cfg.plex.replace(/\/$/, '')}/web/index.html#!/search?query=${encodeURIComponent(title)}` } : { label: `Open in ${from}`, href };
 
     async function upcoming(days: number) {
       const out: (ShelfItem & { at: string; kind: 'episode' | 'movie'; have: boolean })[] = [];
@@ -60,7 +63,7 @@ export default defineIntegration({
         const web = (cfg.sonarr.href ?? cfg.sonarr.url).replace(/\/$/, '');
         for (const e of eps) out.push({ at: e.airDateUtc, kind: 'episode', have: e.hasFile, title: e.series?.title ?? e.title,
           subtitle: `S${String(e.seasonNumber).padStart(2, '0')}E${String(e.episodeNumber).padStart(2, '0')}${e.title ? ` · ${e.title}` : ''}`,
-          image: img(e.series?.images), backdrop: img(e.series?.images, 'fanart'), href: `${web}/series/${e.series?.titleSlug ?? ''}`, badge: e.hasFile ? 'Ready' : when(e.airDateUtc) });
+          image: img(e.series?.images), backdrop: img(e.series?.images, 'fanart'), href: `${web}/series/${e.series?.titleSlug ?? ''}`, badge: e.hasFile ? 'Ready' : when(e.airDateUtc), cta: e.hasFile ? ready(e.series?.title ?? e.title, `${web}/series/${e.series?.titleSlug ?? ''}`, 'Sonarr') : undefined });
       }
       if (cfg.radarr) {
         const films = await get(cfg.radarr, `calendar?start=${day(-1)}&end=${day(days * 2)}`);
@@ -69,7 +72,7 @@ export default defineIntegration({
           const at = [m.digitalRelease, m.physicalRelease].filter(Boolean).sort().find(d => d >= day(-1)) ?? m.digitalRelease ?? m.inCinemas;
           if (!at) continue;
           out.push({ at, kind: 'movie', have: m.hasFile, title: m.title, subtitle: `${m.year ?? ''} · Movie`.replace(/^ · /, ''),
-            image: img(m.images), backdrop: img(m.images, 'fanart'), href: `${web}/movie/${m.titleSlug ?? m.tmdbId}`, badge: m.hasFile ? 'Ready' : when(at) });
+            image: img(m.images), backdrop: img(m.images, 'fanart'), href: `${web}/movie/${m.titleSlug ?? m.tmdbId}`, badge: m.hasFile ? 'Ready' : when(at), cta: m.hasFile ? ready(m.title, `${web}/movie/${m.titleSlug ?? m.tmdbId}`, 'Radarr') : undefined });
         }
       }
       return out.sort((a, b) => a.at.localeCompare(b.at));
@@ -103,6 +106,7 @@ export default defineIntegration({
         search_missing: { description: 'Search for every missing episode and movie', input: z.object({}),
           async run() {
             await Promise.all([cfg.sonarr && command(cfg.sonarr, { name: 'MissingEpisodeSearch' }), cfg.radarr && command(cfg.radarr, { name: 'MissingMoviesSearch' })]);
+            return { done: 'Searched for everything missing' };
           } },
       },
       tools: {

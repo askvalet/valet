@@ -47,8 +47,9 @@ export default defineIntegration({
     const healthy = (c: C) => c.state === 'running' && !c.unhealthy;
     // finished cleanly, or made and never run: a one-off job, not a problem
     const idle = (c: C) => c.exit === 0 || c.state === 'created';
-    const item = (c: C): StatusItem => ({ name: c.name, icon: iconFor(c.name), ok: healthy(c), detail: healthy(c) ? undefined : c.unhealthy ? 'unhealthy' : c.exit != null ? `exited (${c.exit})` : c.state === 'created' ? 'never started' : c.state, group: c.project,
-      quiet: idle(c) });
+    // running only says the process is alive; "healthy" is a check that passed, so it's said when it's known
+    const item = (c: C): StatusItem => ({ name: c.name, icon: iconFor(c.name), ok: healthy(c), detail: healthy(c) ? (/\(healthy\)/.test(c.status ?? '') ? 'healthy' : undefined) : c.unhealthy ? 'unhealthy' : c.exit != null ? `exited (${c.exit})` : c.state === 'created' ? 'never started' : c.state, group: c.project,
+      quiet: idle(c), state: healthy(c) ? 'up' : c.state === 'running' ? 'degraded' : idle(c) ? 'off' : 'down' });
     const find = async (name: string) => {
       const all = await containers(), n = name.toLowerCase();
       const c = all.find(x => x.name.toLowerCase() === n) ?? all.find(x => x.name.toLowerCase().includes(n));
@@ -103,7 +104,8 @@ export default defineIntegration({
       checked = { at: Date.now(), list };
       return list;
     }
-    const row = (u: Update): ListItem => ({ title: u.name, subtitle: `${u.current} → ${u.latest}`, meta: u.warnings?.length ? 'Read first' : u.major ? 'Major' : undefined, tone: u.warnings?.length ? 'warn' : undefined });
+    const mark = (u: Update) => u.warnings?.length ? 'Read first' : u.major ? 'Major' : undefined;
+    const row = (u: Update): ListItem => ({ title: u.name, subtitle: `${u.current} → ${u.latest}`, meta: mark(u), badge: mark(u), tone: u.warnings?.length ? 'warn' : undefined });
     return {
       async recap() {
         const running = (await containers()).filter(c => c.state === 'running');
@@ -118,7 +120,7 @@ export default defineIntegration({
           title: 'Updates', interval: 3_600_000,
           async fetch() {
             const list = await updates(), behind = list.filter(u => u.state === 'behind'), risky = behind.filter(u => u.warnings?.length);
-            return { type: 'list', layout: 'chips', title: 'Updates', icon: 'tag', items: behind.slice(0, 12).map(row), empty: 'Everything is up to date', note: behind.length > 12 ? `${behind.length} in all` : undefined,
+            return { type: 'list', layout: 'chips', title: 'Updates', icon: 'tag', items: behind.map(row), limit: 12, empty: 'Everything is up to date',
               summary: { label: 'Updates', icon: 'tag', value: behind.length ? String(behind.length) : 'Current', sub: risky.length ? `${risky.length} to read first` : behind.length ? 'available' : undefined, tone: risky.length ? 'warn' : 'good' } };
           },
         },

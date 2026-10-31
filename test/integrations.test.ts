@@ -28,6 +28,10 @@ import qbittorrent from '../src/integrations/qbittorrent.ts';
 import quran from '../src/integrations/quran.ts';
 import releases from '../src/integrations/releases.ts';
 import scrutiny from '../src/integrations/scrutiny.ts';
+import karakeep from '../src/integrations/karakeep.ts';
+import seerr from '../src/integrations/seerr.ts';
+import tautulli from '../src/integrations/tautulli.ts';
+import { Activity, outcome, sentence } from '../src/server/activity.ts';
 import uptimekuma from '../src/integrations/uptimekuma.ts';
 
 type Handler = (url: string, init: RequestInit) => unknown;
@@ -164,6 +168,90 @@ test('scrutiny: a failing drive is called out', async () => {
   assert.equal(card.summary.value, '1 failing');
   assert.deepEqual(card.summary.marks.map((m: any) => m.tone), [undefined, 'bad']);   // one bar per drive
   assert.equal(card.items[1].tone, 'bad');
+});
+
+test('scrutiny: age and temperature are told apart, and normal ends where hot begins', async () => {
+  const s = make(scrutiny, { url: 'http://s', hotC: 50 }, fake(() => ({ data: { summary: { a: { device: { device_name: 'sda', device_status: 0 }, smart: { temp: 40, power_on_hours: 17520 } } } } })));
+  const card: any = await s.widgets.drives.fetch(); valid(card);
+  assert.equal(card.items[0].subtitle, 'Powered on 2.0 years');
+  assert.deepEqual(card.items[0].band, [.125, .75]);
+});
+
+test('pihole: paused says until when with one way out; totals match the headline', async () => {
+  let blocking = 'disabled';
+  const ctx = fake((url, init) => {
+    if (url.includes('/auth')) return { session: { valid: true, sid: 's' } };
+    if (url.includes('dns/blocking')) { if (init.method === 'POST') blocking = 'enabled'; return { blocking, timer: blocking === 'enabled' ? null : 300 }; }
+    if (url.includes('summary')) return { queries: { total: 1000, blocked: 140, percent_blocked: 14 }, clients: { active: 3 } };
+    if (url.includes('history')) return { history: [{ timestamp: 1, total: 10, blocked: 1 }, { timestamp: 2, total: 20, blocked: 2 }] };
+    return { domains: [{ domain: 'ads.example', count: 9 }] };
+  });
+  const p = make(pihole, { url: 'http://pi', password: 'x' }, ctx);
+  const t0 = Date.now(), c: any = await p.widgets.stats.fetch(); valid(c);
+  assert.equal(c.banner.text, 'Blocking paused'); assert.ok(c.banner.until >= t0 + 299_000 && c.banner.until <= Date.now() + 300_000);
+  assert.deepEqual(c.banner.button.args, { minutes: 0 }); assert.equal(c.buttons, undefined);     // said once
+  assert.deepEqual(c.series.map((x: any) => x.total), [140, 860]); assert.equal(c.window, 'last 24 h'); assert.match(c.factsNote, /blocked/i);
+  assert.deepEqual(await p.actions!.pause.run({ minutes: 0 }), { done: 'Resumed ad blocking' });
+  const on: any = await p.widgets.stats.fetch();
+  assert.equal(on.banner, undefined); assert.equal(on.buttons.length, 2);
+});
+
+test('karakeep: archiving can be taken back, and the title goes to its search', async () => {
+  const calls: any[] = [];
+  const k = make(karakeep, { url: 'http://k', apiKey: 'x' }, fake((url, init) => { if (init.method === 'PATCH') calls.push([url, init.body]); return { bookmarks: [] }; }));
+  await k.actions!.archive.run({ id: 'abc' }); await k.actions!.unarchive.run({ id: 'abc' });
+  assert.deepEqual(calls.map(c => JSON.parse(c[1]).archived), [true, false]);
+  const c: any = await k.widgets.recent.fetch(); valid(c);
+  assert.equal(c.href, 'http://k/dashboard/search'); assert.equal(c.archived, 'http://k/dashboard/archive');
+});
+
+test('seerr: each ticket says what to do next, and what a part-filled one is missing', async () => {
+  const media = (status: number, more = {}) => ({ type: 'tv', media: { tmdbId: status, status, ...more } });
+  const s = make(seerr, { url: 'http://s', apiKey: 'x', downloads: 'http://dl' }, fake(url => url.includes('request?') ? { results: [
+    media(5, { plexUrl: 'http://plex/5' }), media(3, { downloadStatus: [{ size: 100, sizeLeft: 25 }] }), media(4, { plexUrl: 'http://plex/4', seasons: [{ seasonNumber: 1, status: 5 }, { seasonNumber: 2, status: 3 }] }), media(2)] } : { id: 1, name: 'Show' }));
+  const c: any = await s.widgets.requests.fetch(); valid(c);
+  assert.deepEqual(c.items.map((i: any) => [i.cta?.label, i.cta?.href, i.note]), [['Watch', 'http://plex/5', undefined], ['See progress', 'http://dl', '75% there'], ['Watch what\'s here', 'http://plex/4', 'Missing S2'], [undefined, undefined, undefined]]);
+});
+
+test('tautulli: whose viewing and which period are said, and now stays apart from totals', async () => {
+  let streams: any[] = [{ friendly_name: 'Theo', title: 'Dune', media_type: 'movie', state: 'playing' }];
+  const t = make(tautulli, { url: 'http://t', apiKey: 'x' }, fake(url => ({ response: { result: 'success', data: url.includes('get_activity') ? { stream_count: streams.length, total_bandwidth: 0, sessions: streams }
+    : [{ stat_id: 'top_users', rows: [{ friendly_name: 'Theo', total_duration: 3600 }] }, { stat_id: 'top_movies', rows: [] }, { stat_id: 'top_tv', rows: [] }] } })));
+  const both: any = await t.widgets.people.fetch(); valid(both);
+  assert.deepEqual(both.items.map((i: any) => i.section), ['Watching now', 'Last 30 days']); assert.equal(both.note, 'Everyone');
+  streams = [];
+  const quiet: any = await t.widgets.people.fetch();
+  assert.deepEqual(quiet.items.map((i: any) => i.section), [undefined]); assert.equal(quiet.note, 'Everyone · last 30 days');
+  assert.equal(((await t.widgets.top.fetch()) as any).note, 'Everyone · last 30 days');
+});
+
+test('arr: what\'s ready opens where it can be watched, and only says Plex when it is', async () => {
+  const eps = [{ airDateUtc: new Date().toISOString(), seasonNumber: 1, episodeNumber: 1, hasFile: true, series: { title: 'Show & Co', titleSlug: 'show' } }, { airDateUtc: new Date().toISOString(), seasonNumber: 1, episodeNumber: 2, hasFile: false, series: { title: 'Later', titleSlug: 'later' } }];
+  const go = async (cfg: object) => ((await make(arr, { sonarr: { url: 'http://s', apiKey: 'k' }, ...cfg }, fake(() => eps)).widgets.upcoming.fetch()) as any).items;
+  assert.deepEqual((await go({ plex: 'http://plex:32400/' }))[0].cta, { label: 'Open in Plex', href: 'http://plex:32400/web/index.html#!/search?query=Show%20%26%20Co' });
+  assert.deepEqual((await go({}))[0].cta, { label: 'Open in Sonarr', href: 'http://s/series/show' });
+  assert.equal((await go({}))[1].cta, undefined);
+});
+
+test('activity: the log reads as what, to what, how it went, who', async () => {
+  assert.equal(sentence({ what: 'Requested', input: { title: 'Dune', tmdb_id: 1 } }), 'Requested Dune');
+  assert.equal(sentence({ what: 'Searched for it', input: { title: 'Dune' } }), 'Searched for Dune');
+  assert.equal(sentence({ what: 'Stopped a stream', input: { who: 'Theo' } }), 'Stopped a stream: Theo');
+  assert.equal(sentence({ what: 'Saved a link', input: { url: 'https://www.example.com/a?b=1' } }), 'Saved a link: example.com');
+  assert.equal(sentence({ what: 'Pi-hole: Pause or resume ad blocking', action: 'Paused ad blocking for 5 min', input: { minutes: 5 } }), 'Paused ad blocking for 5 min');   // a number names nothing
+  assert.equal(sentence({ what: 'Paused downloads', input: { hash: 'abc' } }), 'Paused downloads');
+  assert.equal(outcome({ ok: true, who: 'you', via: 'page' }), 'worked · you');
+  assert.equal(outcome({ ok: false, error: 'timed out', who: 'you', via: 'chat' }), 'failed: timed out · you in chat');
+  assert.equal(outcome({ ok: true, undone: true, who: 'you', via: 'page' }), 'undone · you');
+  const log = new Activity(), e = log.add({ who: 'you', via: 'chat', what: 'Requested', input: { title: 'Dune' }, ok: true });
+  assert.deepEqual([e.action, e.target], ['Requested', 'Dune']);
+});
+
+test('docker: states tell a sick container from a stopped one and a finished job; updates keep them all', async () => {
+  const { default: docker } = await import('../src/integrations/docker.ts');
+  const list = [{ Id: '1', Names: ['/a'], State: 'running', Status: 'Up 1 day (healthy)', Labels: {} }, { Id: '2', Names: ['/b'], State: 'running', Status: 'Up 1 day', Labels: {} }, { Id: '3', Names: ['/c'], State: 'running', Status: 'Up 1 day (unhealthy)', Labels: {} }, { Id: '4', Names: ['/d'], State: 'exited', Status: 'Exited (1) 1 day ago', Labels: {} }, { Id: '5', Names: ['/e'], State: 'exited', Status: 'Exited (0) 1 day ago', Labels: {} }];
+  const c: any = await make(docker, { url: 'http://p' }, fake(() => list)).widgets.containers.fetch(); valid(c);
+  assert.deepEqual(c.items.map((i: any) => [i.state, i.detail]), [['up', 'healthy'], ['up', undefined], ['degraded', 'unhealthy'], ['down', 'exited (1)'], ['off', 'exited (0)']]);
 });
 
 test('arr: episodes and movies come out in date order with friendly days', async () => {
