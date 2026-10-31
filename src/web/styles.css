@@ -469,10 +469,10 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 
 /* the page behind a saved article: it reads top down, and scrolls by on hover */
 .article { position: relative; isolation: isolate; container-type: size; display: flex; align-items: flex-end; height: 100%; min-height: 240px; overflow: hidden; border-radius: 1rem; background: #fff; box-shadow: var(--shadow-card); }
-.article-page { position: absolute; inset: 0 0 auto; z-index: -2; width: 100%; height: auto; transition: transform 1.2s cubic-bezier(.3, 0, .2, 1); }
+.article-page { position: absolute; inset: 0 0 auto; z-index: -2; width: 100%; min-height: 100%; object-fit: cover; object-position: top; transition: transform 1.2s cubic-bezier(.3, 0, .2, 1); }
 .article::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to top, rgb(10 10 16 / .96) 8%, rgb(10 10 16 / .82) 42%, rgb(10 10 16 / .12) 78%); }
 .article-text { min-width: 0; padding: 18px 20px; }
-@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) { .article:hover .article-page { transform: translateY(max(-60%, calc(-100% + 100cqh))); transition-duration: 14s; transition-timing-function: linear; } }
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) { .article:hover .article-page { transform: translateY(min(0px, max(-60%, calc(-100% + 100cqh))));   /* down the page, and only if there's more of it */ transition-duration: 14s; transition-timing-function: linear; } }
 
 /* documents on a desk: dealt out one by one, and hover picks a page up */
 .desk { display: flex; justify-content: space-between; gap: 0; padding: 18px 10px 6px; overflow-x: auto; scrollbar-width: none; }
@@ -497,7 +497,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
   .window:hover .window-bar > i:nth-child(1) { background: #ff5f57; }
   .window:hover .window-bar > i:nth-child(2) { background: #febc2e; }
   .window:hover .window-bar > i:nth-child(3) { background: #28c840; }
-  .window:hover .window-page img { transform: translateY(calc(-100% + 170px)); transition: transform 9s linear; }
+  .window:hover .window-page img { transform: translateY(min(0px, calc(-100% + 170px))); transition: transform 9s linear; }
 }
 .motion-reduced :is(.desk-page, .window) { animation: none; }
 @media (prefers-reduced-motion: reduce) { .desk-page, .window { animation: none; } .window:hover .window-page img { transform: none; } }

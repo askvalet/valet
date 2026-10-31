@@ -49,18 +49,28 @@ function lightOf(st: Light) {
   const base = kind === 'cycle' ? '#ff3b30' : col;
   return {
     kind,
-    lc: kind === 'rainbow' ? 'conic-gradient(#ff3b30, #ffd60a, #34c759, #00e0c6, #0a84ff, #bf5af2, #ff2d92, #ff3b30)' : base,
+    ink: base,   // a registered colour, so changing it fades (pc-case.css); a rainbow can't, so it dips through dark instead
+    lc: kind === 'rainbow' ? 'conic-gradient(#ff3b30, #ffd60a, #34c759, #00e0c6, #0a84ff, #bf5af2, #ff2d92, #ff3b30)' : 'var(--ink)',
     lb: kind === 'rainbow' ? 'linear-gradient(90deg, #ff3b30, #ffd60a, #34c759, #00e0c6, #0a84ff, #bf5af2, #ff2d92)'
-      : kind === 'comet' ? `linear-gradient(90deg, transparent, ${col} 70%, #fff)` : base,
+      : kind === 'comet' ? 'linear-gradient(90deg, transparent, var(--ink) 70%, #fff)' : 'var(--ink)',
     lo: kind === 'off' ? 0 : Math.max(.12, (st.brightness ?? 100) / 100),
     dur: (8 - 6.5 * ((st.speed ?? 50) / 100)).toFixed(2) + 's',
   };
 }
+const dipping = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
 function setLight(e: HTMLElement, st: Light) {
-  const L = lightOf(st);
-  e.style.setProperty('--lc', L.lc); e.style.setProperty('--lb', L.lb); e.style.setProperty('--lo', String(L.lo)); e.style.setProperty('--dur', L.dur);
-  e.classList.remove('m-off', 'm-rainbow', 'm-comet', 'm-breathe', 'm-cycle', 'm-static');
-  e.classList.add('m-' + L.kind);
+  const L = lightOf(st), rainbow = String(L.kind === 'rainbow'), first = e.dataset.rainbow === undefined;
+  clearTimeout(dipping.get(e));
+  e.classList.add('lit'); e.style.setProperty('--ink', L.ink);
+  const apply = () => {
+    e.dataset.rainbow = rainbow; e.classList.remove('dipping');
+    e.style.setProperty('--lc', L.lc); e.style.setProperty('--lb', L.lb); e.style.setProperty('--lo', String(L.lo)); e.style.setProperty('--dur', L.dur);
+    e.classList.remove('m-off', 'm-rainbow', 'm-comet', 'm-breathe', 'm-cycle', 'm-static');
+    e.classList.add('m-' + L.kind);
+  };
+  if (first || e.dataset.rainbow === rainbow) return apply();
+  e.classList.add('dipping'); e.style.setProperty('--lo', '0');
+  dipping.set(e, setTimeout(apply, 240));
 }
 
 // ── placing faces. x, y on the motherboard wall from its top-left; z out from the wall towards the glass.
