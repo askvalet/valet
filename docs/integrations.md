@@ -86,7 +86,7 @@ attached in chat. `fmt` (from `core.ts`) formats bytes, rates, speeds, durations
 `fmt.relativeDay`: "Today", "Tomorrow", "Fri") and times consistently.
 
 Icons in cards are names: `cpu gpu memory wifi disk download pulse play film bulb home shield chat image clock crescent
-game book coins text file bookmark sun moon cloud cloud-sun cloud-moon rain snow fog storm`, or an image URL.
+game book coins text file bookmark sun moon cloud cloud-sun cloud-moon rain snow fog storm thermometer`, or an image URL.
 
 ## Guidelines
 
@@ -108,7 +108,9 @@ A widget returns one card from the catalog in `src/shared/cards.ts`. Pick the on
 | `shelf` | a row of artwork | `aspect` poster/square/wide; `stack: true` piles them up (documents, photos) |
 | `photos` | photos to look at | `flashback` crossfades; `mosaic` (or size large) tiles them |
 | `schedule` | a day's times | next one counts down live; `muted` times show but are never "next" |
-| `forecast` | weather | now, high/low, the next hours with rain chance |
+| `forecast` | weather | a large glyph and temperature, high/low, the next `days`; more room adds the hours and range bars |
+| `calendar` | an agenda and a month | `events` with ISO times, or plain dates for all day; browsing a month happens in the browser, within `from`..`to` |
+| `thermostat` | a dial | `target`, `current`, `min`, `max`, `step`, `unit`; `set` names the action for a new target, `modes` the buttons |
 | `verse` | a verse or quote | original (right-to-left if Arabic), translation, reference |
 | `controls` | switches, sliders, choices | each control names an action of the same integration |
 | `chart`, `kv`, `text` | a graph, key–value rows, a sentence | |
@@ -122,6 +124,10 @@ Any card can also carry:
 - `summary` (or `summaries`): its headline, shown when the widget is placed with `size: small`, in the menubar, or as a tile.
 - `activity`: set only while something is happening; the island shows it.
 - `buttons`: quick actions along the bottom (`{ label, action, args }`), run through the integration's `actions`.
+
+Weather icons (`sun`, `moon`, `cloud`, `cloud-sun`, `cloud-moon`, `rain`, `snow`, `storm`, `fog`) are drawn as glyphs on
+`forecast` cards and on tiles. A `calendar` event's colour is its `color`, or a stable one picked from `calendar`'s name.
+A `thermostat` with no `target` draws the room and no handle, and one with no `set` is read-only.
 
 Sizes are the layout's business, not the integration's: every card works as small (its summary), medium and large,
 and in chat (dense). Give a card a `summary` so the small size has something to show.

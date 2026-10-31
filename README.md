@@ -59,7 +59,7 @@ changing anything. [SECURITY.md](SECURITY.md) has the details and the least-priv
 | `http` | Up/down and response time for any list of URLs |
 | `qbittorrent` | Active downloads with posters (matched through Sonarr/Radarr), speeds, pause/resume |
 | `tautulli` | What's playing on Plex (with posters), recently added, watch history |
-| `homeassistant` | Cards of entities as live controls; a 3D floor plan from a robot vacuum's map with lights per room; schedules (e.g. prayer times) from timestamp sensors; search and control tools |
+| `homeassistant` | Cards of entities as live controls; a 3D floor plan from a robot vacuum's map with lights per room; schedules (e.g. prayer times) from timestamp sensors; a thermostat dial for climate entities; search and control tools |
 | `aimonitor` | GPU load, power, VRAM and model status for a local-AI monitor |
 | `arr` | Sonarr/Radarr: episodes and movies coming up, as posters with the day |
 | `seerr` | Search and request movies and shows from chat; your requests as posters |
@@ -80,7 +80,7 @@ changing anything. [SECURITY.md](SECURITY.md) has the details and the least-priv
 | `reddit` | Posts from your subreddits |
 | `releases` | Latest releases of the GitHub projects you run |
 | `markets` | Stocks, indices, currencies, crypto, with the day's line |
-| `calendar` | What's coming up, from any iCal link (Google, iCloud, Nextcloud, Outlook, Proton) |
+| `calendar` | What's coming up and a month to browse, from any iCal link (Google, iCloud, Nextcloud, Outlook, Proton) |
 | `links` | Bookmarks, grouped, with favicons |
 | `docker` | Containers, why they stopped, logs, resource use and which have updates (with warnings from their release notes), through a read-only socket proxy |
 | `host` | systemd services on any machine, with logs, through a small read-only agent |

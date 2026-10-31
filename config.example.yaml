@@ -108,6 +108,9 @@ integrations:
         title: Lights
         icon: bulb
         entities: [light.living_room, light.office, { id: scene.movie_night, name: Movie night }]
+    # a dial for one climate entity, placed as home.hallway; modes picks and orders its buttons (default: all of them)
+    thermostats:
+      hallway: { entity: climate.hallway, title: Hallway, modes: [off, home, sleep, away] }
 
 # Any MCP server's tools, under the same access rules.
 mcp:
