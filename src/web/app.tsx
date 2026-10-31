@@ -35,7 +35,6 @@ interface Page {
   assistant: { name: string; model: string; suggestions: string[]; tools: Record<string, ToolInfo>; external?: boolean } | null;
   search?: string;
   insight?: string;
-  footer?: string;
   welcome?: { path: string; saved: boolean };
   menubar?: { widgets: string[]; position: 'left' | 'center' | 'right'; labels: boolean; clock: boolean; date: boolean; theme: boolean };
   nav?: { side: 'left' | 'right' | 'top' | 'bottom'; style: 'icons' | 'labels' | 'both'; hide: string[] };
@@ -216,16 +215,6 @@ function sayHow(cards: (CardData | undefined)[]) {
 
 // only the once-a-year pill wears it, so a page without one never loads the shader
 const Metal = lazy(() => import('metal-fx').then(m => ({ default: m.MetalFx })));
-
-/** The foot of the page: one muted line, links allowed as [text](https://…). */
-function Footer({ text }: { text: string }) {
-  const parts = text.split(/(\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g);
-  return (
-    <p className="wall-text mx-auto mt-6 max-w-[720px] text-center text-[12px] leading-relaxed text-muted-foreground">
-      {parts.map((p, i) => { const m = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/.exec(p); return m ? <a key={i} href={m[2]} target="_blank" rel="noreferrer" className="underline decoration-white/25 underline-offset-2 transition-colors hover:text-foreground">{m[1]}</a> : <Fragment key={i}>{p}</Fragment>; })}
-    </p>
-  );
-}
 
 export function App() {
   const { me, setMe } = useMe();
@@ -590,7 +579,6 @@ function Home({ account }: { account: boolean }) {
             </div>
           );
         })()}
-        {page?.footer && <Footer text={page.footer} />}
       </main>
 
       {/* phones: the rail becomes a floating pill at the bottom */}

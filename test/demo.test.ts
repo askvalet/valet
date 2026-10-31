@@ -57,7 +57,7 @@ test('demo: what a visitor types never comes back', () => {
 });
 
 test('demo: nothing in it reaches out or carries a secret', () => {
-  const src = ['integrations/homelab.mjs', 'mock-model.mjs', 'config.yaml'].map(f => readFileSync(`demo/${f}`, 'utf8')).join('\n').replace(/^(allowedHosts|footer):.*$/gm, '')   // the footer's links are credits, not calls;
+  const src = ['integrations/homelab.mjs', 'mock-model.mjs', 'config.yaml'].map(f => readFileSync(`demo/${f}`, 'utf8')).join('\n').replace(/^allowedHosts:.*$/m, '');
   assert.doesNotMatch(src, /\bfetch\(['"`]|https?:\/\/(?!valet-demo-model|www\.w3\.org)|ctx\.http|\$\{[A-Z_]+\}|192\.168\.|chotte/);
   assert.match(readFileSync('demo/docker-compose.yml', 'utf8'), /sealed: \{ internal: true \}/);
   assert.match(readFileSync('demo/docker-compose.yml', 'utf8'), /172\.17\.0\.1:7580:8080/);
