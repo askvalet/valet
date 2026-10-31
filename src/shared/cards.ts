@@ -33,7 +33,7 @@ export interface RecapSlide {
   scope?: string;          // 'year', or what it covers when that isn't this year: "All time", "Last 30 days"
   score?: number;          // higher comes earlier; 50 by default
   stat?: string;           // its label on the shareable card, if it belongs there
-  private?: boolean;       // names people, so it stays off the shareable card
+  private?: boolean;       // names people, so it stays off the shareable card unless chosen
   trait?: { name: string; line: string; strength: number };     // who this makes you, 0..1: the strongest wins
   icon?: string;
   backdrop?: string;       // wide artwork, full bleed behind the slide

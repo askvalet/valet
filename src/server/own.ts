@@ -30,8 +30,8 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
         access: 'read', input: z.object({ year: z.number().int().optional() }),
         async run({ year }) {
           const r = await o.recap(year);
-          return { data: { year: r.year, soFar: r.soFar, persona: r.persona.name, numbers: r.stats, moments: r.slides.map(s => `${s.kicker} ${s.value}${s.unit ? ` ${s.unit}` : ''}`) },
-            card: { type: 'stats', title: `Your ${r.year} in review`, icon: 'chart', href: '#recap', note: r.persona.name, items: r.stats.slice(0, 6).map(s => ({ label: s.label, value: s.value })) } };
+          return { data: { year: r.year, soFar: r.soFar, persona: r.persona.name, numbers: r.stats, moments: r.slides.filter(s => s.id !== 'explore').map(s => `${s.kicker} ${s.value}${s.unit ? ` ${s.unit}` : ''}`) },
+            card: { type: 'stats', title: `Your ${r.year} in review`, icon: 'chart', href: '#recap', note: r.persona.name, items: r.stats.filter(st => !r.slides.some(s => s.private && s.stat === st.label)).slice(0, 6).map(s => ({ label: s.label, value: s.value })) } };
         },
       },
       timeline: {
