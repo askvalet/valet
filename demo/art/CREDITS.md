@@ -10,3 +10,8 @@ Resized copies from Wikimedia Commons.
 # Saved page previews
 
 Screenshots of the pages linked in art.json, shown small as link previews. Wikipedia text is CC BY-SA 4.0.
+
+# Documents
+
+`docs/` holds the made-up letters from `PAPERS` in `integrations/homelab.mjs`, drawn in code and rendered to JPEG. Nothing
+in them is real.
