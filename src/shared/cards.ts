@@ -104,7 +104,7 @@ export interface ListItem {
   image?: string;
   badge?: string;
 }
-export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string }
+export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; layout?: 'shares' }   // shares: blocks sized by each item's pct
 
 export interface MediaItem {
   title: string;

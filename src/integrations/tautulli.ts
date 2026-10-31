@@ -98,13 +98,13 @@ export default defineIntegration({
       },
       top: {
         title: 'Most watched', interval: 3_600_000,
-        async fetch() { return { type: 'ranked', title: 'Most watched', icon: 'film', source, note: 'last 30 days', items: await mostWatched(6), empty: 'Nothing watched yet' }; },
+        async fetch() { return { type: 'ranked', title: 'Most watched', icon: 'film', source, items: await mostWatched(6), empty: 'Nothing watched yet' }; },
       },
       people: {
         title: 'Who\'s watching', interval: 3_600_000,
         async fetch() {
           const rows = stat(await api('get_home_stats', { time_range: 30, stats_count: 6 }) as any[], 'top_users'), top = Math.max(1, ...rows.map(r => r.total_duration ?? 0));
-          return { type: 'list', title: 'Who\'s watching', icon: 'play', source, note: 'last 30 days', empty: 'Nobody yet',
+          return { type: 'list', layout: 'shares', title: 'Who\'s watching', icon: 'play', source, empty: 'Nobody yet',
             items: rows.map(r => ({ title: r.friendly_name, subtitle: `${r.total_plays} plays`, meta: fmt.duration(r.total_duration ?? 0), pct: (r.total_duration ?? 0) / top })) };
         },
       },

@@ -516,3 +516,17 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .window-archive:hover { color: var(--foreground); background: rgb(255 255 255 / .12); }
 .window.gone { opacity: 0; transform: scale(.94); transition: opacity 240ms, transform 240ms; }
 @media (hover: none) { .article-tools { opacity: 1; translate: 0; } .window-archive { opacity: 1; } }
+
+/* a card's title is its link */
+.title-link { transition: opacity 150ms; } .title-link:hover { opacity: .7; }
+/* shares: blocks as wide as their part */
+.shares { display: flex; flex: 1; gap: 6px; min-height: 124px; }
+.share { display: flex; flex: 1 1 0; flex-direction: column; justify-content: flex-end; min-width: 68px; padding: 12px 13px; border-radius: 14px; color: #fff; background: color-mix(in oklab, var(--primary) var(--o), rgb(255 255 255 / .07)); }
+/* the posters are the bars */
+.posters { display: flex; align-items: flex-end; flex: 1; gap: 8px; height: 232px; }
+.poster-bar { position: relative; flex: 1 1 0; min-width: 0; overflow: hidden; border-radius: 10px; background: var(--muted); box-shadow: 0 10px 22px -12px rgb(0 0 0 / .7); transform-origin: bottom; transition: transform 240ms var(--ease-out); animation: poster-rise 620ms var(--ease-out) calc(var(--i) * 70ms) backwards; }
+.poster-bar > span { position: absolute; inset: auto 0 0; padding: 18px 8px 6px; font-size: 12px; font-weight: 500; color: #fff; text-align: center; background: linear-gradient(to top, rgb(0 0 0 / .72), transparent); }
+@keyframes poster-rise { from { opacity: 0; transform: scaleY(.6); } }
+@media (hover: hover) and (pointer: fine) { .poster-bar:hover { transform: translateY(-3px); } }
+.motion-reduced .poster-bar { animation: none; }
+@media (prefers-reduced-motion: reduce) { .poster-bar { animation: none; } }

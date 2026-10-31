@@ -126,9 +126,24 @@ function Stats({ card }: { card: StatsCard }) {
 
 const Empty = ({ text }: { text: string }) => <p className="py-6 text-center text-sm text-muted-foreground">{text}</p>;
 
+/** Who took what share: blocks as wide as their part, so the answer is the shape and needs no reading. */
+function Shares({ card }: { card: ListCard }) {
+  return (
+    <div className="shares">
+      {[...card.items].sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0)).slice(0, 5).map((it, i) => (
+        <div key={i} className="share" style={{ flexGrow: Math.max(.22, it.pct ?? .2), '--o': `${Math.max(14, 100 - i * 30)}%` } as React.CSSProperties} title={it.subtitle}>
+          <span className="truncate text-sm font-medium">{it.title}</span>
+          {it.meta && <span className="text-xs tabular opacity-75">{it.meta}</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function List({ card }: { card: ListCard }) {
   const dense = useContext(Dense);
   if (!card.items.length) return <Empty text={card.empty ?? 'Nothing here'} />;
+  if (card.layout === 'shares' && !dense) return <Shares card={card} />;
   return (
     <ul className="-my-1 divide-y">
       {card.items.map((it, i) => (
@@ -429,8 +444,8 @@ function Shelf({ card, header, small, run }: { card: ShelfCard; header?: ReactNo
   return <div className={card.stack ? 'stack-open' : undefined}><ShelfRow card={card} header={header} small={small} /></div>;
 }
 
-const Tile = ({ href, className, children }: { href?: string; className?: string; children: ReactNode }) =>
-  href ? <a href={href} target="_blank" rel="noreferrer" className={className}>{children}</a> : <div className={className}>{children}</div>;
+const Tile = ({ href, className, children, style, title }: { href?: string; className?: string; children: ReactNode; style?: React.CSSProperties; title?: string }) =>
+  href ? <a href={href} target="_blank" rel="noreferrer" className={className} style={style} title={title}>{children}</a> : <div className={className} style={style} title={title}>{children}</div>;
 
 /** The newest thing, large, with the rest running beside it. */
 function Spotlight({ card, header }: { card: ShelfCard; header?: ReactNode }) {
@@ -551,6 +566,18 @@ function Tickets({ card, header }: { card: ShelfCard; header?: ReactNode }) {
 /** A leaderboard: the winner in full colour, the rest measured against it. */
 function Ranked({ card }: { card: RankedCard }) {
   if (!card.items.length) return <Empty text={card.empty ?? 'Nothing yet'} />;
+  const dense = useContext(Dense);
+  // with artwork, the chart is the posters: the taller, the more it was watched
+  if (!dense && card.items.filter(i => i.image).length >= 3) return (
+    <div className="posters">
+      {card.items.filter(i => i.image).slice(0, 5).map((it, i) => (
+        <Tile key={i} href={it.href} className="poster-bar" style={{ height: `${44 + 56 * (it.pct ?? 1 - i * .18)}%`, '--i': i } as React.CSSProperties} title={it.title}>
+          <Art src={it.image} alt={it.title} className="size-full object-cover object-top" />
+          {it.value && <span>{it.value}</span>}
+        </Tile>
+      ))}
+    </div>
+  );
   const [first, ...rest] = card.items;
   return (
     <div className="space-y-3">
@@ -643,7 +670,6 @@ function Chart({ card }: { card: ChartCard }) {
       </div>
       <div className="chart-scrub relative touch-pan-y select-none" onPointerMove={scrub} onPointerDown={scrub} onPointerLeave={() => setAt(null)} onPointerUp={e => { if (e.pointerType !== 'mouse') setAt(null); }}>
         <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="chart-draw h-28 w-full" aria-hidden>
-          {[0.25, 0.5, 0.75].map(f => <line key={f} x1="0" x2={w} y1={h * f} y2={h * f} stroke="var(--border)" vectorEffect="non-scaling-stroke" />)}
           {card.series.map((s, k) => {
             const pts = s.points.map((p, i) => [x(i, s.points.length), y(p)] as [number, number]), d = smooth(pts);
             const color = k ? 'var(--muted-foreground)' : toneVar(s.tone);
@@ -659,7 +685,7 @@ function Chart({ card }: { card: ChartCard }) {
         )}
       </div>
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        {card.series.length > 1 && card.series.map(s => <span key={s.name} className="tabular">{s.name}{at != null && s.points[at] != null ? ` ${num(s.points[at])}` : card.headline ? '' : s.points.length ? ` ${num(s.points.at(-1)!)}` : ''}</span>)}
+        {card.series.length > 1 && card.series.map((s, k) => <span key={s.name} className="tabular" style={k ? undefined : { color: toneVar(s.tone) }}>{s.name}{at != null && s.points[at] != null ? ` ${num(s.points[at])}` : card.headline ? '' : s.points.length ? ` ${num(s.points.at(-1)!)}` : ''}</span>)}
         {card.span && !card.headline && <span className="ml-auto">{card.span}</span>}
       </div>
     </div>
@@ -1037,20 +1063,14 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
 function BareHeader({ card, title, status }: { card?: CardT; title?: string; status?: ReactNode }) {
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <h3 className="truncate text-[15px] font-semibold tracking-tight">{card?.title ?? title}</h3>
-      {card?.type !== 'media' && <Source of={card?.source} />}
+      <h3 className="truncate text-[15px] font-semibold tracking-tight">{card?.href ? <a href={card.href} target="_blank" rel="noreferrer" className="title-link">{card?.title ?? title}</a> : card?.title ?? title}</h3>
       {status}
       {card?.note && <span className="truncate text-xs tabular text-muted-foreground">{card.note}</span>}
-      {card?.href && <a href={card.href} target="_blank" rel="noreferrer" aria-label={`Open ${card.title ?? title}`} className="text-muted-foreground transition-colors hover:text-foreground"><ArrowUpRight className="size-4" /></a>}
     </div>
   );
 }
 
 /** Where a card comes from: the service's logo and name, quiet, beside the title. */
-const Source = ({ of }: { of?: CardT['source'] }) => !of ? null : (
-  <span className="flex shrink-0 items-center gap-1 text-[11.5px] text-muted-foreground">{of.icon && <img src={of.icon} alt="" className="size-3.5 object-contain" />}{of.name}</span>
-);
-
 /** Quick actions along a card's bottom: quiet pills that show they're working, then settle. */
 function CardButtons({ buttons, run }: { buttons: NonNullable<CardT['buttons']>; run: RunAction }) {
   const [busy, setBusy] = useState<string | null>(null), [done, setDone] = useState<string | null>(null);
@@ -1135,18 +1155,11 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
       {scene}
       {t && !bare && !headless && (
         <CardHeader className={cn('flex items-center gap-2', compact ? 'px-3.5' : 'px-5')}>
-          {card?.icon && (compact ? <Icon name={card.icon} className="size-3.5 text-muted-foreground" /> : <span className="icon-tile"><Icon name={card.icon} /></span>)}
-          <CardTitle className={cn('truncate', compact ? 'text-[13px]' : 'text-[15px]')}>{t}</CardTitle>
-          <Source of={card?.source} />
+          <CardTitle className={cn('truncate', compact ? 'text-[13px]' : 'text-[15px]')}>{card?.href ? <a href={card.href} target="_blank" rel="noreferrer" className="title-link">{t}</a> : t}</CardTitle>
           {status}
           {failed && <WhyChip about={`It can't be reached: ${failed}`} />}
           <CardAction className="flex items-center gap-2 self-center">
             {card?.note && <span className="truncate text-xs tabular text-muted-foreground">{card.note}</span>}
-            {card?.href && (
-              <a href={card.href} target="_blank" rel="noreferrer" aria-label={`Open ${t}`} className="text-muted-foreground transition-colors hover:text-foreground">
-                <ArrowUpRight className="size-4" />
-              </a>
-            )}
           </CardAction>
         </CardHeader>
       )}
@@ -1217,7 +1230,7 @@ function SummaryTileView({ s, href, explain }: { s: Summary; href?: string; expl
       {!art && !s.marks && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} gauge={s.ring != null} /></div>}
       <div className={cn('relative flex flex-1 flex-col p-4', art && '[text-shadow:0_1px_10px_rgb(0_0_0/.7)]')}>
         <div className="flex items-center gap-2.5">
-          {s.icon && (isWeather(s.icon) && !art ? <WeatherGlyph name={s.icon} size={38} className="-my-1 -ml-0.5" /> : <span className={cn('grid size-8 shrink-0 place-items-center rounded-[10px]', art ? 'bg-white/15 backdrop-blur-md' : 'bg-[color-mix(in_oklab,var(--tint)_16%,transparent)] text-[var(--tint)]')}><Icon name={s.icon} className="size-[17px]" /></span>)}
+          {s.icon && isWeather(s.icon) && !art && <WeatherGlyph name={s.icon} size={38} className="-my-1 -ml-0.5" />}
           <div className="min-w-0">
             <div className="truncate text-[14px] font-semibold leading-tight @[200px]/tile:text-[15px]">{s.label}</div>
             {s.sub && <div className={cn('truncate text-[13px] leading-tight', art ? 'text-white/75' : 'text-muted-foreground')}>{s.sub}</div>}
