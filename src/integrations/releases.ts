@@ -52,7 +52,7 @@ export default defineIntegration({
           title: 'Releases', interval: 1_800_000,
           async fetch() {
             const list = (await releases()).slice(0, cfg.limit);
-            return { type: 'list', title: 'Releases', icon: 'tag', items: list.map(row), empty: 'No releases yet',
+            return { type: 'list', layout: 'chips', title: 'Releases', icon: 'tag', items: list.map(row), empty: 'No releases yet',
               summary: list[0] ? { label: 'Releases', icon: 'tag', value: `${label(list[0].repo)} ${list[0].tag}`, sub: list[0].at ? fmt.relativeDay(list[0].at) : undefined } : undefined };
           },
         },

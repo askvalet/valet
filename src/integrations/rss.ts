@@ -65,7 +65,7 @@ export default defineIntegration({
             const summary = first ? { label: cfg.title, icon: 'rss', value: first.title, sub: `${first.source} · ${ago(first.at)}` } : undefined;
             return cfg.style === 'shelf'
               ? { type: 'shelf', title: cfg.title, icon: 'rss', aspect: 'wide', items: list.map(tile), empty: 'Nothing new', summary }
-              : { type: 'list', title: cfg.title, icon: 'rss', items: list.map(row), empty: 'Nothing new', summary };
+              : { type: 'list', layout: 'headlines', title: cfg.title, icon: 'rss', items: list.map(row), empty: 'Nothing new', summary };
           },
         },
       },

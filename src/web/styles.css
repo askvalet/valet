@@ -554,3 +554,13 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 @keyframes ticket-busy { to { background-position: -200% 0; } }
 .motion-reduced .ticket-line.is-busy::after { animation: none; }
 @media (prefers-reduced-motion: reduce) { .ticket-line.is-busy::after { animation: none; } }
+
+/* headlines: a grid of stories, where they're from first */
+.headlines { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 10px; }
+.headline { display: flex; gap: 11px; align-items: flex-start; min-width: 0; padding: 11px 12px; border-radius: 14px; background: rgb(255 255 255 / .05); transition: background 150ms, transform 200ms var(--ease-out); animation: desk-rise 420ms var(--ease-out) calc(var(--i) * 40ms) backwards; }
+.headline-mark { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: rgb(255 255 255 / .08); color: var(--muted-foreground); }
+.headline-mark img { width: 18px; height: 18px; border-radius: 4px; }
+.headline-art { flex: none; width: 54px; height: 54px; border-radius: 10px; object-fit: cover; background: var(--muted); }
+@media (hover: hover) and (pointer: fine) { .headline:hover { background: rgb(255 255 255 / .1); transform: translateY(-2px); } }
+.motion-reduced .headline { animation: none; }
+@media (prefers-reduced-motion: reduce) { .headline { animation: none; } }

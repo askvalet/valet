@@ -104,7 +104,7 @@ export interface ListItem {
   image?: string;
   badge?: string;
 }
-export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; layout?: 'temps' | 'chips' }   // temps: a thermometer per row (pct along it, meta the reading) · chips: pills, an icon by name
+export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; layout?: 'temps' | 'chips' | 'headlines' }   // headlines: a grid of stories, each anchored by its site's favicon · temps: a thermometer per row (pct along it, meta the reading) · chips: pills, an icon by name
 
 export interface MediaItem {
   title: string;

@@ -29,7 +29,7 @@ export default defineIntegration({
           title: 'Hacker News', interval: 600_000,
           async fetch() {
             const list = await stories(cfg.limit);
-            return { type: 'list', title: 'Hacker News', icon: 'news', href: 'https://news.ycombinator.com', items: list.map(row), empty: 'Nothing on the front page',
+            return { type: 'list', layout: 'headlines', title: 'Hacker News', icon: 'news', href: 'https://news.ycombinator.com', items: list.map(row), empty: 'Nothing on the front page',
               summary: list[0] ? { label: 'Hacker News', icon: 'news', value: list[0].title, sub: `${list[0].points} points` } : undefined };
           },
         },

@@ -131,7 +131,30 @@ function List({ card }: { card: ListCard }) {
   if (!card.items.length) return <Empty text={card.empty ?? 'Nothing here'} />;
   if (card.layout === 'temps' && !dense) return <Temps card={card} />;
   if (card.layout === 'chips' && !dense) return <Chips card={card} />;
+  if (card.layout === 'headlines' && !dense) return <Headlines card={card} />;
   return <Rows card={card} dense={dense} />;
+}
+
+/** Stories as a grid of small cards, each anchored by where it's from, so the eye sorts by source before it reads. */
+function Headlines({ card }: { card: ListCard }) {
+  const host = (u?: string) => { try { return u ? new URL(u).hostname.replace(/^www\./, '') : undefined; } catch { return undefined; } };
+  return (
+    <div className="headlines">
+      {card.items.slice(0, 8).map((it, i) => {
+        const h = host(it.href);
+        return (
+          <a key={i} href={it.href} target="_blank" rel="noreferrer" className={cn('headline', !it.href && 'pointer-events-none')} style={{ '--i': i } as React.CSSProperties}>
+            {it.image ? <img src={it.image} alt="" loading="lazy" className="headline-art" />
+              : <span className="headline-mark">{h ? <img src={`/api/favicon/${h}`} alt="" loading="lazy" onError={e => { e.currentTarget.style.display = 'none'; }} /> : <Icon name={card.icon} className="size-4" />}</span>}
+            <span className="min-w-0">
+              <span className="line-clamp-2 text-[13.5px] leading-snug font-medium">{it.title}</span>
+              <span className="mt-1 block truncate text-xs text-muted-foreground">{[h ?? it.subtitle, it.meta].filter(Boolean).join(' · ')}</span>
+            </span>
+          </a>
+        );
+      })}
+    </div>
+  );
 }
 
 /** A thermometer per drive: where it sits between cool and hot says more than the number. */
