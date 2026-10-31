@@ -4,7 +4,7 @@ import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calend
   Activity, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
   type LucideIcon,
 } from 'lucide-react';
-import { createContext, Fragment, lazy, memo, Suspense, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, Fragment, lazy, memo, Suspense, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -1118,6 +1118,7 @@ function TileMarks({ marks }: { marks: NonNullable<Summary['marks']> }) {
 /** The live graph behind a summary tile: a soft filled area across the lower part of the tile, fading out on the
  *  left so the number there stays clear of it. */
 function TileGraph({ points, gauge }: { points: number[]; gauge?: boolean }) {
+  const fill = useId();   // each graph its own: a shared gradient takes the colour of whichever card drew it first
   const w = 200, h = 60, max = Math.max(...points), min = Math.min(...points), span = max - min || Math.max(1, max), still = max - min <= Math.abs(max) * .01;
   if (points.length < 2 || (still && !gauge)) return null;   // a count that barely moves has no story to draw; a gauge holding steady does
   const pts = points.map((p, i) => [(i / (points.length - 1)) * w, still ? h * .55 : h - 4 - ((p - min) / span) * (h - 14)] as [number, number]);
@@ -1125,11 +1126,11 @@ function TileGraph({ points, gauge }: { points: number[]; gauge?: boolean }) {
   return (
     <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="tile-graph pointer-events-none absolute inset-x-0 bottom-0 h-[62%] w-full" aria-hidden>
       <defs>
-        <linearGradient id="tileFill" x1="0" x2="0" y1="0" y2="1">
+        <linearGradient id={fill} x1="0" x2="0" y1="0" y2="1">
           <stop offset="0" stopColor="currentColor" stopOpacity=".24" /><stop offset="1" stopColor="currentColor" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={`${line}L${w},${h}L0,${h}Z`} fill="url(#tileFill)" />
+      <path d={`${line}L${w},${h}L0,${h}Z`} fill={`url(#${fill})`} />
       <path d={line} fill="none" stroke="currentColor" strokeOpacity=".7" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
     </svg>
   );
