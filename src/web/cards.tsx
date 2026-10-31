@@ -126,6 +126,14 @@ function Stats({ card }: { card: StatsCard }) {
 
 const Empty = ({ text }: { text: string }) => <p className="py-6 text-center text-sm text-muted-foreground">{text}</p>;
 
+function List({ card }: { card: ListCard }) {
+  const dense = useContext(Dense);
+  if (!card.items.length) return <Empty text={card.empty ?? 'Nothing here'} />;
+  if (card.layout === 'temps' && !dense) return <Temps card={card} />;
+  if (card.layout === 'chips' && !dense) return <Chips card={card} />;
+  return <Rows card={card} dense={dense} />;
+}
+
 /** A thermometer per drive: where it sits between cool and hot says more than the number. */
 function Temps({ card }: { card: ListCard }) {
   return (
@@ -157,26 +165,7 @@ function Chips({ card }: { card: ListCard }) {
   );
 }
 
-/** Who took what share: blocks as wide as their part, so the answer is the shape and needs no reading. */
-function Shares({ card }: { card: ListCard }) {
-  return (
-    <div className="shares">
-      {[...card.items].sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0)).slice(0, 5).map((it, i) => (
-        <div key={i} className="share" style={{ flexGrow: Math.max(.22, it.pct ?? .2), '--o': `${Math.max(14, 100 - i * 30)}%` } as React.CSSProperties} title={it.subtitle}>
-          <span className="truncate text-sm font-medium">{it.title}</span>
-          {it.meta && <span className="text-xs tabular opacity-75">{it.meta}</span>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function List({ card }: { card: ListCard }) {
-  const dense = useContext(Dense);
-  if (!card.items.length) return <Empty text={card.empty ?? 'Nothing here'} />;
-  if (card.layout === 'shares' && !dense) return <Shares card={card} />;
-  if (card.layout === 'temps' && !dense) return <Temps card={card} />;
-  if (card.layout === 'chips' && !dense) return <Chips card={card} />;
+function Rows({ card, dense }: { card: ListCard; dense: boolean }) {
   return (
     <ul className="-my-1 divide-y">
       {card.items.map((it, i) => (
@@ -498,9 +487,9 @@ function Shelf({ card, header, small, run }: { card: ShelfCard; header?: ReactNo
   if (!small && card.layout === 'spotlight' && card.items.length) return <Spotlight card={card} header={header} />;
   if (!small && card.layout === 'desk' && card.items.length) return <Desk card={card} header={header} />;
   if (!small && card.layout === 'windows' && card.items.length) return <Windows card={card} header={header} run={run} />;
-  if (!small && card.layout === 'week' && card.items.length && card.items.every(i => i.at)) return <Timeline card={card} header={header} />;
-  if (!small && card.layout === 'week') return <Week card={card} header={header} />;
-  if (!small && card.layout === 'tickets') return <Tickets card={card} header={header} />;
+  // what's coming and what's asked for wear the same shelf as what's new: one shape, three times
+  if (card.layout === 'week') return <ShelfRow card={{ ...card, items: card.items.map(i => ({ ...i, badge: i.badge === 'Ready' ? 'Ready' : dayWord(i.at) ?? i.badge })) }} header={header} small={small} />;
+  if (card.layout === 'tickets') return <ShelfRow card={card} header={header} small={small} lines />;
   return <div className={card.stack ? 'stack-open' : undefined}><ShelfRow card={card} header={header} small={small} /></div>;
 }
 
@@ -572,136 +561,34 @@ function Windows({ card, header, run }: { card: ShelfCard; header?: ReactNode; r
   );
 }
 
-/** The next two weeks as a strip of days, each poster on the day it lands: the eye reads the gaps as well as the shows. */
-function Timeline({ card, header }: { card: ShelfCard; header?: ReactNode }) {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const key = (d: Date) => [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(n => String(n).padStart(2, '0')).join('-');
-  const byDay = new Map<string, ShelfItem[]>();
-  for (const it of card.items) { const k = it.at!.slice(0, 10); byDay.set(k, [...(byDay.get(k) ?? []), it]); }
-  const last = Math.min(13, Math.max(0, ...[...byDay.keys()].map(k => Math.round((new Date(`${k}T00:00`).getTime() - today.getTime()) / 864e5))));
-  const days = Array.from({ length: last + 1 }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() + i); return d; });
-  return (
-    <div>
-      <div className="mb-3 flex items-center gap-2">{header}</div>
-      <div className="timeline">
-        {days.map((d, i) => {
-          const list = [...new Map((byDay.get(key(d)) ?? []).map(x => [x.title, x])).values()], ready = list.some(x => x.badge === 'Ready');
-          return (
-            <div key={i} className={cn('tl-day', !list.length && 'is-empty', i === 0 && 'is-today')} style={{ '--i': i } as React.CSSProperties}>
-              <div className="tl-posters">
-                {list.slice(0, 3).map((it, k) => <Tile key={k} href={it.href} className="tl-poster" title={`${it.title}${it.subtitle ? ` · ${it.subtitle}` : ''}`} style={{ '--k': k } as React.CSSProperties}><Art src={it.image} alt={it.title} className="size-full object-cover" /></Tile>)}
-                {list.length > 3 && <span className="tl-more">+{list.length - 3}</span>}
-              </div>
-              <div className="tl-label">
-                <span>{i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString(undefined, { weekday: 'short' })}</span>
-                <b>{d.getDate()}</b>
-                {ready && <i className="tl-ready" title="Downloaded" />}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {(() => { const named = days.flatMap(d => (byDay.get(key(d)) ?? []).slice(0, 1)).slice(0, 4); return named.length ? <div className="mt-3 truncate text-xs text-muted-foreground">{[...new Set(named.map(x => x.title))].join(' · ')}</div> : null; })()}
-    </div>
-  );
+/** Today, Tomorrow, then the weekday and date: how a person says when. */
+function dayWord(at?: string) {
+  if (!at) return undefined;
+  const d = new Date(`${at.slice(0, 10)}T00:00`), t = new Date(); t.setHours(0, 0, 0, 0);
+  const n = Math.round((d.getTime() - t.getTime()) / 864e5);
+  return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : n < 0 ? 'Aired' : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
 }
-
-/** What's coming, day by day, as a little week planner. */
-function Week({ card, header }: { card: ShelfCard; header?: ReactNode }) {
-  const days = [...new Set(card.items.map(i => i.badge ?? ''))];
-  return (
-    <div>
-      <div className="mb-3 flex items-center gap-2">{header}</div>
-      {!card.items.length ? <Empty text={card.empty ?? 'Nothing scheduled'} /> : (
-        <div className="no-scrollbar -mx-2 flex gap-3 overflow-x-auto px-2 pb-1">
-          {days.map((d, k) => (
-            <div key={d} className={cn('min-w-[210px] flex-1 rounded-2xl border bg-card p-3', k === 0 && 'border-white/20')}>
-              <div className={cn('mb-2 text-[12px] font-semibold', k === 0 ? 'text-foreground' : 'text-muted-foreground')}>{d || 'Later'}</div>
-              <div className="space-y-2">
-                {[...new Map(card.items.filter(i => (i.badge ?? '') === d).map(i => [i.title, i])).values()].slice(0, 4).map((it, i) => {
-                  // several episodes of one show on a day are one line
-                  const same = card.items.filter(x => (x.badge ?? '') === d && x.title === it.title).length;
-                  return (
-                    <Tile key={i} href={it.href} className="flex min-w-0 items-center gap-2.5">
-                      <Art src={it.image} alt={it.title} className="h-[52px] w-[35px] shrink-0 rounded-md object-cover" />
-                      <div className="min-w-0"><div className="truncate text-[13px] font-medium">{it.title}</div><div className="truncate text-[11.5px] text-muted-foreground">{same > 1 ? `${same} episodes` : it.subtitle}</div></div>
-                    </Tile>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Things in a queue, each with where it's got to. */
-/** Requests as posters: the line under each says how far along it is, with no word needed. Full green is here, half is
- *  partly here, a moving blue is on its way, a faint grey is still waiting. */
-function Tickets({ card, header }: { card: ShelfCard; header?: ReactNode }) {
-  const state = (it: ShelfItem) => /partial/i.test(it.badge ?? '') ? 'part' : it.tone === 'good' ? 'done' : it.tone === 'accent' || /download|processing/i.test(it.badge ?? '') ? 'busy' : it.tone === 'bad' ? 'bad' : 'wait';
-  return (
-    <div>
-      <div className="mb-3 flex items-center gap-2">{header}</div>
-      {!card.items.length ? <Empty text={card.empty ?? 'Nothing here yet'} /> : (
-        <div className="tickets">
-          {card.items.map((it, i) => (
-            <Tile key={i} href={it.href} className="ticket" title={[it.title, it.subtitle, it.badge].filter(Boolean).join(' · ')} style={{ '--i': i } as React.CSSProperties}>
-              <span className="ticket-art"><Art src={it.image} alt={it.title} className="size-full object-cover" /><i className={`ticket-line is-${state(it)}`} /></span>
-              <span className="mt-2 block truncate text-[13px] font-medium">{it.title}</span>
-              <span className="block truncate text-[11.5px] text-muted-foreground">{it.badge ?? it.subtitle}</span>
-            </Tile>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+const lineOf = (it: ShelfItem) => /partial/i.test(it.badge ?? '') ? 'part' : it.tone === 'good' ? 'done' : it.tone === 'accent' || /download|processing/i.test(it.badge ?? '') ? 'busy' : it.tone === 'bad' ? 'bad' : 'wait';
 
 /** A leaderboard: the winner in full colour, the rest measured against it. */
 function Ranked({ card }: { card: RankedCard }) {
   if (!card.items.length) return <Empty text={card.empty ?? 'Nothing yet'} />;
-  const dense = useContext(Dense);
-  // with artwork, the chart is the posters: the taller, the more it was watched
-  if (!dense && card.items.filter(i => i.image).length >= 3) return (
-    <div className="posters">
-      {card.items.filter(i => i.image).slice(0, 5).map((it, i) => (
-        <Tile key={i} href={it.href} className="poster-bar" style={{ height: `${44 + 56 * (it.pct ?? 1 - i * .18)}%`, '--i': i } as React.CSSProperties} title={it.title}>
-          <Art src={it.image} alt={it.title} className="size-full object-cover object-top" />
-          {it.value && <span>{it.value}</span>}
-        </Tile>
-      ))}
-    </div>
-  );
-  const [first, ...rest] = card.items;
   return (
-    <div className="space-y-3">
-      <Tile href={first.href} className="relative block h-[116px] overflow-hidden rounded-xl bg-muted">
-        {first.backdrop && <Art src={first.backdrop} alt="" className="absolute inset-0 size-full object-cover" />}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-transparent" />
-        <div className="absolute inset-0 flex items-center gap-3 p-3 text-white">
-          {first.image && <Art src={first.image} alt={first.title} className="h-[92px] w-[62px] shrink-0 rounded-lg object-cover shadow-lg" />}
-          <div className="min-w-0"><div className="text-[11px] font-medium text-white/65">No. 1</div>
-            <div className="truncate text-[17px] font-semibold tracking-tight">{first.title}</div>
-            <div className="truncate text-[12.5px] text-white/75">{[first.value, first.subtitle].filter(Boolean).join(' · ')}</div></div>
-        </div>
-      </Tile>
-      <ol className="space-y-2">
-        {rest.map((it, i) => (
-          <li key={i} className="flex min-w-0 items-center gap-2.5 text-[13px]">
-            <span className="w-3 shrink-0 text-right text-[11px] tabular text-muted-foreground">{i + 2}</span>
-            <div className="min-w-0 flex-1"><div className="flex items-baseline gap-2"><span className="min-w-0 flex-1 truncate font-medium">{it.title}</span><span className="shrink-0 text-xs tabular text-muted-foreground">{it.value}</span></div>
-              {it.pct != null && <div className="mt-1"><Bar pct={it.pct} /></div>}</div>
-          </li>
-        ))}
-      </ol>
-    </div>
+    <ol className="space-y-3">
+      {card.items.slice(0, 5).map((it, i) => (
+        <li key={i} className="flex min-w-0 items-center gap-3">
+          {it.image && <Art src={it.image} alt="" className="h-[42px] w-7 shrink-0 rounded-[5px] object-cover" />}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-3"><span className="min-w-0 flex-1 truncate text-sm font-medium">{it.title}</span>{it.value && <span className="shrink-0 text-xs tabular text-muted-foreground">{it.value}</span>}</div>
+            <div className="mt-1.5"><Bar pct={it.pct ?? (i ? 0 : 1)} /></div>
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }
 
-function ShelfRow({ card, header, small, beside }: { card: ShelfCard; header?: ReactNode; small?: boolean; beside?: boolean }) {
+function ShelfRow({ card, header, small, beside, lines }: { card: ShelfCard; header?: ReactNode; small?: boolean; beside?: boolean; lines?: boolean }) {
   const row = useRef<HTMLDivElement>(null);
   const page = (dir: number) => row.current?.scrollBy({ left: dir * row.current.clientWidth * 0.85, behavior: 'smooth' });
   const ratio = card.aspect === 'square' ? 'aspect-square' : card.aspect === 'wide' ? 'aspect-video' : 'aspect-[2/3]';
@@ -722,10 +609,11 @@ function ShelfRow({ card, header, small, beside }: { card: ShelfCard; header?: R
               <>
                 <div className={cn('relative overflow-hidden rounded-xl bg-muted shadow-[0_10px_24px_-12px_rgb(0_0_0/0.45)] transition-all duration-300 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_18px_32px_-12px_rgb(0_0_0/0.5)]', ratio)}>
                   <Art src={it.image} alt={it.title} className="size-full object-cover" />
-                  {it.badge && <span className="absolute bottom-2 left-2 rounded-full bg-black/55 px-2 py-0.5 text-[10.5px] font-medium text-white backdrop-blur-md">{it.badge}</span>}
+                  {it.badge && !lines && <span className={cn('absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[10.5px] font-medium text-white backdrop-blur-md', it.badge === 'Ready' ? 'bg-good/80' : it.badge === 'Today' ? 'bg-primary/85' : 'bg-black/55')}>{it.badge}</span>}
+                  {lines && <i className={`ticket-line is-${lineOf(it)}`} />}
                 </div>
                 <div className="mt-2.5 truncate text-[13px] font-medium">{it.title}</div>
-                {it.subtitle && <div className="truncate text-xs text-muted-foreground">{it.subtitle}</div>}
+                {(lines ? it.badge ?? it.subtitle : it.subtitle) && <div className="truncate text-xs text-muted-foreground">{lines ? it.badge ?? it.subtitle : it.subtitle}</div>}
               </>
             );
             return it.href

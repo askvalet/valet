@@ -103,8 +103,8 @@ export default defineIntegration({
         title: 'Who\'s watching', interval: 3_600_000,
         async fetch() {
           const rows = stat(await api('get_home_stats', { time_range: 30, stats_count: 6 }) as any[], 'top_users'), top = Math.max(1, ...rows.map(r => r.total_duration ?? 0));
-          return { type: 'list', layout: 'shares', title: 'Who\'s watching', icon: 'play', source, empty: 'Nobody yet',
-            items: rows.map(r => ({ title: r.friendly_name, subtitle: `${r.total_plays} plays`, meta: fmt.duration(r.total_duration ?? 0), pct: (r.total_duration ?? 0) / top })) };
+          return { type: 'list', title: 'Who\'s watching', icon: 'play', source, empty: 'Nobody yet',
+            items: rows.map(r => ({ title: r.friendly_name, meta: fmt.duration(r.total_duration ?? 0), pct: (r.total_duration ?? 0) / top })) };
         },
       },
       plays: {
@@ -112,7 +112,7 @@ export default defineIntegration({
         async fetch() {
           const d = await api('get_plays_by_date', { time_range: 30 }), series = (d.series as any[]).filter(x => x.name !== 'Total' && x.data.some((n: number) => n > 0));
           const all = (d.series as any[]).find(x => x.name === 'Total')?.data as number[] | undefined;
-          return { type: 'chart', title: 'Plays', icon: 'chart', source, span: 'last 30 days', headline: all ? `${all.reduce((a, b) => a + b, 0)} plays` : undefined, labels: d.categories, series: series.map(x => ({ name: x.name, points: x.data })) };
+          return { type: 'chart', style: 'bars', title: 'Plays', icon: 'chart', source, span: 'last 30 days', headline: all ? `${all.reduce((a, b) => a + b, 0)} plays` : undefined, labels: d.categories, series: series.map(x => ({ name: x.name, points: x.data })) };
         },
       },
       streams: {
