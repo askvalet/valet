@@ -147,7 +147,6 @@ function useDock(box: React.RefObject<HTMLElement | null>, side: 'left' | 'right
     for (const { b } of rest.current) b.style.removeProperty('--k');
     rest.current = [];
     box.current?.classList.remove('is-docking');
-    setTimeout(after, 240);
   };
   return { onPointerEnter: enter, onPointerMove: move, onPointerLeave: leave };
 }
