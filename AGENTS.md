@@ -62,6 +62,11 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - **Personal things live in config, never in code.** Hardware builds (`build:`), rooms and lights, services, layout,
   angles: the repo ships generic defaults and a documented `config.example.yaml`. Before committing, grep for anything
   that names the author's hardware, hosts or people.
+- **The look is data too.** `src/shared/look.ts` turns the config into CSS variables and classes, `/api/page` carries them
+  and `src/web/look.ts` applies them; `public/theme.js` restores them before first paint. An option left out adds nothing,
+  so an empty result *is* the design, and `test/look.test.ts` holds that. A new visual option is a variable with a fallback
+  in `styles.css`, never a value in a component. `format.ts` writes times, dates, numbers and `labels`: renderers call it
+  instead of `toLocale…`, and new words the page writes go in `src/shared/labels.ts`.
 - **Layout is data.** Sections choose how they draw (`display`), where they sit (`place`), how dense they are
   (`variant`, `header`, `columns`) and whether they're on the overview (`overview`); the tab buttons' side is `nav.side`.
   A new arrangement is a new option with a default, never a fork of the page.
@@ -117,6 +122,13 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 
 ## Gotchas
 
+- **Text scales in the build.** A PostCSS step in `vite.config.ts` rewrites every `font-size` as a multiple of
+  `--font-scale`, so `text-[13px]` follows `font.scale`. `em`, `%` and `inherit` are left alone, being relative already.
+  Inline `fontSize` in a component doesn't scale.
+- **`--spacing` is density.** Tailwind's spacing utilities all multiply it, so `top-24` shrinks with `compact`. Anything
+  that must clear a fixed-size thing (the top nav under the bar) needs a literal `rem`, not a spacing utility.
+- **CSS that reads a variable needs a fallback.** An unset `var()` without one is invalid at computed time, and the
+  property falls back to its initial value: `border-width: var(--x)` is 0, not "whatever Tailwind said".
 - **CSS minifier vs `backdrop-filter`.** Lightning CSS treats `backdrop-filter` and `-webkit-backdrop-filter` as one
   property and keeps the *last*. Write only the unprefixed one (it adds the prefix); writing both left Chrome with no
   blur at all.

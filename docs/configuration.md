@@ -36,22 +36,240 @@ In Docker, prefix these with `docker exec -it valet`.
 | Option | Default | |
 |---|---|---|
 | `title` | `Home` | the page title |
-| `greeting` | none | the name in "Good evening, Sam" |
+| `greeting` | none | the name in "Good evening, Sam". `hero` says whether and how it's shown |
 | `location` | none | gives the assistant local context |
 | `timezone` | `TZ`, else the first browser's | an IANA name like `America/Toronto`. Times the server writes (assistant answers, watch history) use it; containers default to UTC |
-| `appearance` | `{ dim: 0.35, blur: 0 }` | `wallpaper` (a file in the data folder or an image URL), `dim` 0–0.9, `blur` 0–40 px |
 | `allowedHosts` | `[]` | names Valet answers to besides localhost and IP addresses, e.g. `[valet.example.com, "*.home.example.com"]`. Others get 421 (DNS-rebinding protection) |
 | `history` | `{ hours: 72, every: 5, background: true }` | remember headline numbers, so tiles can draw a graph and the assistant can say how they moved. `every` is minutes between samples; `background` keeps sampling while nobody has the page open; `false` turns it off |
 | `plugins` | `[]` | npm packages of community integrations, or `{ packages, replace }` where `replace` lets a plugin take over a built-in type. Files in `data/integrations/` load on their own |
-| `menubar` | `[]` | widget keys whose headline numbers sit as small rings in the top bar |
 | `weather` | none | a widget key (e.g. `weather.now`) shown as a ring beside the clock |
-| `nav` | `{ side: left }` | where the tab buttons sit on wide screens: `left`, `right`, `top`, `bottom` (phones: bottom) |
 | `search` | none | web search from ⌘K: `duckduckgo`, `google`, `kagi`, `brave`, `startpage`, `searxng`, or a URL with `{q}` |
 | `links` | `{}` | bookmarks by group, each group a widget `links.<group-slug>`: `Media: [{ name, url, icon?, note? }]`. Without `icon`, the site's favicon (fetched by Valet) |
 | `notify` | `{ channels: [] }` | where reminders go when you're not looking: see below. `insights: true` also pushes the shared-cause line |
 | `reload` | `true` | watch the file and apply edits live |
 | `recap` | `true` | your year in review, at `#recap` and on the overview |
 | `welcome` | `false` | the getting-started card; a fresh starter config turns it on |
+
+## Look and feel
+
+Everything here is optional, and a config that says nothing looks exactly as Valet always has. Options reach the page as
+CSS variables on `:root` (`/api/page` carries them), so a saved edit shows up in open tabs at once, without a rebuild.
+Sizes in px are plain numbers; where it says "size" you can also write `"40rem"`, `"80vw"` or `"70dvh"`. Colours are
+anything CSS calls a colour: `"#0a84ff"`, `rgb(10 132 255)`, `oklch(.7 .2 250)`, `tomato`. Quote hex colours.
+
+### `appearance`
+
+| Option | Default | |
+|---|---|---|
+| `theme` | `auto` | `auto` follows the system and the switch in the top bar, or dark glass over a wallpaper. `light` and `dark` hold it there, over a wallpaper too, and drop the switch |
+| `motion` | `full` | `reduced`: nothing moves or settles in. `none`: no animation at all, not even fades. A system's reduce-motion setting always counts |
+| `density` | `comfortable` | `compact` or `spacious`: scales every margin, padding and control together |
+| `gap` | 16 | px between cards (12 between tiles until you set this) |
+| `sectionGap` | 32 | px between sections |
+| `maxWidth` | `1320px`, or `1720px` with a sidebar | a size: how wide the page gets |
+| `rowHeight` | fits the tallest card | px, the least a row takes in a section that uses `size`; a card that needs more still gets it |
+| `sizes` | see below | what each card size means |
+| `css` | none | your own CSS, loaded after everything else. See [Your own CSS](#your-own-css) |
+| `cssFile` | none | the same from a `.css` file; `css` comes after it |
+
+`colors`
+
+| Option | Default | |
+|---|---|---|
+| `accent` | system blue | buttons, focus rings, chat. Text on it turns black or white to suit, for a hex colour |
+| `good`, `warn`, `bad` | system green, orange, red | status tones |
+| `card` | white, `#1c1c1e`, or a dark tint over a wallpaper | the card's tint |
+
+`font`
+
+| Option | Default | |
+|---|---|---|
+| `family` | Geist | the UI font, or a fallback list: `"Inter, sans-serif"`. Must be installed, or come from `url` |
+| `url` | none | where it comes from: a stylesheet (Google Fonts, Bunny Fonts), a font file URL, or a local `.woff2`, `.woff`, `.ttf` or `.otf` that Valet serves itself. Needs `family` |
+| `mono` | the system's | code and tool arguments |
+| `scale` | `1` | 0.7–1.5, every size of text |
+| `headingWeight` | as designed | 100–900: card titles, section titles and the greeting |
+
+A remote `url`'s origin is added to the page's content-security policy for styles and fonts, and only that origin (plus
+`fonts.gstatic.com` for Google Fonts, which is where it keeps the files). A local file needs no change at all and works
+offline, so it's the choice if you'd rather no browser talks to a font CDN.
+
+`shape`
+
+| Option | Default | |
+|---|---|---|
+| `radius` | 14 | px, 0–40. Everything rounded follows, and at `0` the pills square off too |
+| `border` | 1 | px around cards, 0–8 |
+| `borderColor` | a hairline | |
+| `shadow` | as designed | `none`, `soft` or `deep` |
+
+`glass`, and the wallpaper
+
+| Option | Default | |
+|---|---|---|
+| `glass.opacity` | `1`; `0.5` over a wallpaper | how much of the card's tint shows, 0–1 |
+| `glass.blur` | 36 | px behind cards; bars and popovers keep in proportion. `0` turns blur off everywhere, and floating sheets go nearly solid so they stay readable |
+| `wallpaper` | none | a file (a path Valet can read: it serves it), an image URL, a colour, or a gradient like `"linear-gradient(135deg, #0f2027, #2c5364)"`. Any of them turns cards to glass. A list takes turns |
+| `rotate` | none | how long each one in a list stays: `10m`, `1h` |
+| `wallpapers` | `{}` | a different one per tab, by the tab's name: `{ Media: /data/film.jpg, Home: "#102030" }`. A value can be a list too. Other tabs and the overview use `wallpaper` |
+| `dim` | `0.35` | 0–0.9, darkens it (lightens it, with `theme: light`) |
+| `blur` | `0` | px, 0–40, blurs it |
+
+`sizes` redefines the card sizes in layout sections. Those sections sit on a grid of 2 columns on a phone, 4 on a tablet
+and 6 on a wide screen, and a size can't overrun the last column:
+
+| Size | Columns | Rows | |
+|---|---|---|---|
+| `small` | 1 | 1 | its headline as a tile |
+| `wide` | 2 | 1 | that tile at twice the width |
+| `medium` | 2 | 1 | the card |
+| `tall` | 2 | 2 | the card over two rows |
+| `large` | 4 (all of them below 6) | 1 | the card with more room |
+
+```yaml
+appearance:
+  sizes: { tall: { rows: 3 }, large: { cols: 6 } }
+```
+
+### Your own CSS
+
+For whatever the options don't cover. `css` and `cssFile` are served as one stylesheet from `/api/custom.css`, last in
+the page, so they win ties. Anything that could close a `<style>` tag or start a tag is escaped, and values Valet knows to
+be secrets are redacted. The page's CSP still applies: no remote `@import` beyond your font's origin. Every variable above
+is yours to set, and surfaces can be found by `[data-slot="card"]`, `.glass-bar`, `.glass-round` and `.chat-pop`. These
+hooks aren't a stable API: read your CSS again after an upgrade. Saving `cssFile` applies on the next page load; saving
+`css` applies at once.
+
+### `hero`
+
+The top of the overview.
+
+| Option | Default | |
+|---|---|---|
+| `greeting` | `true` | `false` hides it; text replaces "Good evening, Sam", and `{name}` fills in the top-level `greeting` |
+| `status` | `true` | the sentence under it, including the assistant's shared-cause line |
+| `search` | `true` | the ask box, or the search box without an assistant |
+| `review` | `true` | the year in review pill. `recap: false` turns off the review itself |
+| `align` | `center` | `left`, `right` |
+
+### `nav`
+
+| Option | Default | |
+|---|---|---|
+| `side` | `left` | `left`, `right`, `top`, `bottom`, on wide screens. Phones always have it at the bottom |
+| `style` | `icons` | `labels` or `both`, on wide screens. Phones have room for icons. The page moves over to clear a wider rail |
+| `hide` | `[]` | tabs to leave out, by name; also `Overview`, and the assistant's name for its button |
+| `size` | `1` | 0.6–2, relative to the usual size |
+
+### `menubar`
+
+A list of widget keys, or this, to say more about the bar:
+
+| Option | Default | |
+|---|---|---|
+| `widgets` | `[]` | widget keys whose headline numbers sit as small rings |
+| `position` | `right` | `left`, `center`, on wide screens; below that it's centred at the top of the page. `center` sits behind the island, if you use one |
+| `labels` | `true` | the words under the rings |
+| `clock`, `date`, `theme` | `true` | the time, the date, and the light/dark switch |
+| `size` | `1` | 0.6–2 |
+
+### `format`
+
+| Option | Default | |
+|---|---|---|
+| `clock` | `auto` | `12h`, `24h`; `auto` follows the browser |
+| `date` | `short` | `short` (Sat, Oct 31), `long` (Saturday, October 31), `numeric` (10/31/2026), `iso` (2026-10-31) |
+| `locale` | `auto` | a language tag like `en-GB` or `de-DE`: sets month names and how numbers are written (`1.234,5`) on what Valet formats itself. Values a service writes out in full stay as they are |
+| `temperature` | `auto` | `c`, `f`: converts anything a service reports as `°C` or `°F` on any card, and is the default for the `weather` integration's `units`. `auto` leaves everything as reported |
+| `distance` | `auto` | `km`, `mi`: the same for distances |
+| `weekStart` | `auto` | `monday`, `sunday`, `saturday`. For cards that draw a week as a calendar; `auto` follows the locale. Nothing in Valet draws one yet, so it's a setting waiting for its card. Integrations read it as `ctx.format`, the page as `firstDay()` |
+
+### `labels`
+
+The words Valet itself writes, for another language or a voice of your own. `{name}`, `{year}` and `{n}` fill in. What
+services and the assistant write is theirs, and the status sentence is built from English grammar, so turn that off with
+`hero.status: false` on a page in another language.
+
+| Key | Default |
+|---|---|
+| `goodMorning` | Good morning |
+| `goodAfternoon` | Good afternoon |
+| `goodEvening` | Good evening |
+| `goodNight` | Good night |
+| `overview` | Overview |
+| `search` | Search services and actions |
+| `review` | Your {year} in review |
+| `ask` | Ask {name}… |
+| `askAnything` | Ask {name} anything… |
+| `message` | Message {name} |
+| `messageHint` | Message {name}, paste a link or drop a file |
+| `chatTitle` | What would you like to know? |
+| `chatHint` | Ask about anything on your homepage. |
+| `thinking` | Thinking |
+| `writing` | Writing |
+| `thought` | Thought |
+| `thoughtFor` | Thought for {n}s |
+| `steps` | {n} steps |
+| `worked` | Worked for {n}s |
+| `allow` | Allow |
+| `notNow` | Not now |
+
+### A full example
+
+Every option at once, which no real page would want:
+
+```yaml
+appearance:
+  theme: light
+  wallpaper: [/config/walls/dawn.jpg, /config/walls/dusk.jpg, "linear-gradient(135deg, #ffd6e8, #c9f0ff)"]
+  rotate: 30m
+  wallpapers: { Media: /config/walls/film.jpg, Home: "#fff6e0" }
+  dim: 0.1
+  blur: 12
+  colors: { accent: "#e6007e", good: "#00a36c", warn: "#ff6a00", bad: "#c8102e", card: "#fff7e6" }
+  font: { family: Inter, url: "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800", mono: Fira Code, scale: 1.05, headingWeight: 800 }
+  shape: { radius: 6, border: 2, borderColor: "#111111", shadow: soft }
+  glass: { opacity: 0.8, blur: 20 }
+  density: compact
+  gap: 20
+  sectionGap: 40
+  maxWidth: 1200
+  rowHeight: 180
+  sizes: { tall: { rows: 3 }, large: { cols: 6 } }
+  motion: reduced
+  cssFile: /config/valet.css
+  css: "main h2 { text-transform: uppercase; }"
+
+hero: { greeting: "Welcome back, {name}", status: true, search: true, review: false, align: left }
+
+chat:
+  open: right
+  width: 520
+  height: 90vh
+  overview: true
+  placeholder: "What's up, {name}?"
+  suggestions: fixed
+  steps: false
+  thinking: hidden
+  send: mod-enter
+  bubble: "#ffd400"
+  icon: bulb
+
+nav: { side: top, style: both, hide: [Reading], size: 0.9 }
+menubar: { widgets: [system.tiles], position: left, labels: false, clock: true, date: false, theme: false, size: 1.2 }
+island: { activities: [plex.streams], idle: hide, position: bottom, label: false, size: 1.1 }
+format: { clock: 24h, date: iso, weekStart: monday, temperature: f, distance: mi, locale: en-GB }
+labels: { overview: Everything, goodMorning: Morning }
+
+layout:
+  - title: Lately
+    gap: 24
+    columns: { phone: 2, tablet: 4, desktop: 6 }
+    widgets:
+      - { widget: plex.recent, size: tall, title: New on Plex, icon: film, header: false }
+      - { widget: dns.stats, size: small, tint: "#0a7d4f", opacity: 0.8, blur: 12 }
+      - { widget: drives.health, size: wide, background: "https://example.com/rack.jpg" }
+```
 
 ## `auth`
 
@@ -81,10 +299,12 @@ In Docker, prefix these with `docker exec -it valet`.
 | `suggestions` | four examples | questions offered until the model has written its own, or if `background.suggest` is off |
 | `background` | `{ watch: true, brief: true, suggest: true, perDay: 100 }` | what it does unasked. `watch`: when two or more things break, say what they share, if the data shows it. `brief`: a line under the greeting, rewritten every half hour while the page is in use. `suggest`: write the suggested questions from what's on the page, every half hour or when something changes (`suggestions` is the fallback). `perDay` caps the first two. None of them get tools |
 
+What `assistant` sets is what it knows and may do. How it looks on the page is `chat`, below, apart from its name.
+
 **Setting up by talking.** With `access: { config: control }` you can say "add a card for http://box/status". It reads
 this file and the integration's options, tries the change without saving (a diff, problems, and the real card in chat),
 and saves only when you approve; hot reload does the rest. It changes only the lines it must. It can't touch `auth`,
-`assistant`, `mcp`, `plugins` or `allowedHosts`, and it refuses to write a secret: it asks you to put `${NAME}` in `.env`.
+`assistant`, `appearance` (which names files on disk), `mcp`, `plugins` or `allowedHosts`, and it refuses to write a secret: it asks you to put `${NAME}` in `.env`.
 Mount the config folder read-only and it hands you the diff to paste instead.
 
 **On the page, not in chat:** "Why?" on anything in trouble, a line under the greeting, ⌘K answers and approvals in
@@ -97,6 +317,23 @@ layout for a card of everything Valet changed, with Undo where a change can be r
 
 **Several changes at once.** The assistant can propose a plan: every step listed, one approval, stopping at the first
 failure. Each step is still a tool its access level allows.
+
+## `chat`
+
+The assistant's window. Its name is `assistant.name`.
+
+| Option | Default | |
+|---|---|---|
+| `open` | `center` | where it opens: `center`, `right` or `left` (a panel, and the page stays usable beside it), `bottom`, `page` (the whole window). Phones always get the full sheet. A section with `chat: true` holds it on its own tab as well |
+| `width`, `height` | suit `open` | sizes, never past the window: `520`, `40rem`, `80vh` |
+| `overview` | `true` | `false`: no ask box or chips on the overview. It's still in ⌘K, the tab or the rail's button |
+| `placeholder` | `Ask {name} anything…` | in the ask box and ⌘K; `{name}` is the assistant's name |
+| `suggestions` | `ai` | `ai`: questions written from what's happening (`assistant.background.suggest`), with the cards' own and `assistant.suggestions` to fall back on. `fixed`: exactly `assistant.suggestions`, and no model call. `off`: none, here or in the empty chat |
+| `steps` | `true` | `false` hides the list of tool calls. Approvals and result cards always show |
+| `thinking` | `collapsed` | a model's reasoning: `collapsed` (a line that opens), `open`, `hidden` |
+| `send` | `enter` | `mod-enter`: ⌘/Ctrl+Enter sends, Enter starts a new line |
+| `bubble` | the accent | your messages; for a hex colour, the text turns black or white to suit |
+| `icon` | a speech bubble | an icon name from docs/integrations.md, or an image path or URL, on its buttons and header |
 
 ## `notify`
 
@@ -134,6 +371,9 @@ The black notch at the top that shows what's happening.
 |---|---|---|
 | `activities` | `[]` | widget keys, most important first |
 | `idle` | `hide` | `notch` keeps a small empty notch when nothing is live |
+| `position` | `top` | `top-left`, `top-right`, or `bottom` (floating, and no notch), on wide screens. Phones float it at the top |
+| `label` | `true` | `false`: artwork and progress only, until it's opened |
+| `size` | `1` | 0.6–2 |
 | `notify` | `[]` | short notices: `{ widget, on: start\|end\|down\|up, text, push }`; `{title}` and `{name}` fill in; `push: true` also sends it to your channels |
 
 ## `layout`
@@ -144,9 +384,10 @@ A list of sections; each is a tab in the rail.
 |---|---|---|
 | `title` | none | |
 | `tabColumns` | same as `columns` | columns on the section's own tab, when you want more room there than on the overview |
-| `widgets` | required | `instance.widget`, or `{ widget, size: small\|wide\|medium\|tall\|large, every: 30s }` (`every` overrides how often it refreshes: seconds, or `30s`, `5m`, `1h`) |
+| `widgets` | required | `instance.widget`, or an entry with its own settings: below |
 | `display` | `cards` | `cards`, `tiles`, `rings` or `media` |
-| `columns` | auto | cards per row (in a sidebar: the list's columns) |
+| `columns` | auto | cards per row, 1 to 4, from tablet width up (in a sidebar: the list's columns); or per screen, up to 6: `{ phone: 1, tablet: 2, desktop: 3 }` |
+| `gap` | `appearance.gap` | px between its cards |
 | `place` | `main` | `left` or `right` makes it a sidebar |
 | `variant` | `full` | `minimal`: tighter rows, just the essentials |
 | `header` | `true` | `false`: its cards drop their title bar |
@@ -154,6 +395,20 @@ A list of sections; each is a tab in the rail.
 | `overview` | `true` | `false`: only on its own tab |
 | `tab` | its title | share a tab with other sections |
 | `chat` | `false` | its tab also holds the assistant, full page |
+
+A widget entry takes these, all optional but `widget`:
+
+| Option | Default | |
+|---|---|---|
+| `widget` | required | `instance.widget` |
+| `size` | `medium` | `small`, `wide`, `medium`, `tall`, `large`: see [sizes](#appearance) |
+| `every` | the widget's own | how often it refreshes: seconds, or `30s`, `5m`, `1h` |
+| `title`, `icon` | the card's | its name and icon; on a tile, its label and icon |
+| `header` | the section's | `false` drops its title bar, `true` keeps it in a section that drops them |
+| `tint` | `colors.card` | a colour for its surface |
+| `opacity` | `glass.opacity` | how much of the tint shows, 0–1; `0.45` over a `background` |
+| `blur` | `glass.blur` | px behind it |
+| `background` | none | an image behind it, under the tint: an `https://` URL or a Valet path. A file at `data/icons/rack.png` is `/api/icon/rack` |
 
 ## Integrations
 

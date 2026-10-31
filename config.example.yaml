@@ -7,6 +7,19 @@ title: Home
 greeting: Sam                      # "Good evening, Sam"
 location: Toronto, Canada          # gives the assistant local context
 
+# The look. Everything's optional; docs/configuration.md has the rest (fonts, shape, glass, hero, chat, nav, format…).
+# appearance:
+#   wallpaper: ./data/wallpaper.jpg  # a file, an image URL, a colour, a gradient, or a list with rotate: 30m
+#   theme: auto                      # or light, dark
+#   colors: { accent: "#0a84ff" }
+#   font: { family: Inter, url: "https://fonts.googleapis.com/css2?family=Inter:wght@400;600" }
+#   shape: { radius: 14 }            # 0 is sharp corners
+#   glass: { opacity: 0.5, blur: 36 }
+#   density: comfortable             # or compact, spacious
+# hero: { align: center, review: true }
+# chat: { open: center, suggestions: ai }   # open: center, right, left, bottom, page
+# format: { clock: 24h, temperature: c }
+
 # The assistant. Any OpenAI-compatible server (Ollama, llama.cpp, vLLM, LM Studio, OpenRouter, OpenAI) or Anthropic.
 assistant:
   name: Valet
