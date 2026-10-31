@@ -59,7 +59,7 @@ function Pending({ since, label: text = label('thinking') }: { since: number; la
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 100); return () => clearInterval(t); }, []);
   return (
-    <div className="flex items-center gap-2.5 text-sm animate-in fade-in duration-300">
+    <div className="flex items-center gap-2.5 text-sm animate-in fade-in duration-(--dur-pop)">
       <ThinkingOrb state="composing" size={20} />
       <span className="chat-shimmer font-medium">{text}</span>
       <span className="tabular text-xs text-muted-foreground">{((now - since) / 1000).toFixed(1)}s</span>
@@ -73,11 +73,11 @@ function Reasoning({ text, streaming, took }: { text: string; streaming: boolean
   if ((!text.trim() && !streaming) || ui.thinking === 'hidden') return null;
   return (
     <div className="text-[13px]">
-      <button onClick={() => setOpen(o => !o)} className="flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground">
-        <ChevronRight className={cn('size-3.5 transition-transform duration-200', open && 'rotate-90')} />
+      <button onClick={() => setOpen(o => !o)} className="press flex items-center gap-1 text-muted-foreground hover:text-foreground">
+        <ChevronRight className={cn('size-3.5 transition-transform duration-(--dur-pop)', open && 'rotate-90')} />
         {streaming && <ThinkingOrb state="breathing" size={20} />}<span className={cn(streaming && 'chat-shimmer')}>{streaming ? label('thinking') : took ? label('thoughtFor', { n: (took / 1000).toFixed(took < 10_000 ? 1 : 0) }) : label('thought')}</span>
       </button>
-      <div className={cn('grid transition-[grid-template-rows,opacity] duration-300 ease-out', open ? 'mt-1.5 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
+      <div className={cn('grid transition-[grid-template-rows,opacity] duration-(--dur-move) ease-out', open ? 'mt-1.5 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
         <div className="overflow-hidden"><div className="border-l-2 border-white/10 pl-3 leading-relaxed whitespace-pre-wrap text-muted-foreground">{text.trim()}</div></div>
       </div>
     </div>
@@ -147,11 +147,11 @@ function ToolChips({ parts: all, settled, tools, fresh }: { parts: any[]; settle
   return (
     <div className="text-[13px]">
       {parts.length > 1 && (
-        <button onClick={() => setOpen(!shown)} className="mb-1 flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
-          <ChevronRight className={cn('size-3.5 transition-transform duration-200', shown && 'rotate-90')} />{label('steps', { n: parts.length })}
+        <button onClick={() => setOpen(!shown)} className="press mb-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          <ChevronRight className={cn('size-3.5 transition-transform duration-(--dur-pop)', shown && 'rotate-90')} />{label('steps', { n: parts.length })}
         </button>
       )}
-      <div className={cn('grid transition-[grid-template-rows,opacity] duration-300 ease-out', shown || parts.length === 1 ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
+      <div className={cn('grid transition-[grid-template-rows,opacity] duration-(--dur-move) ease-out', shown || parts.length === 1 ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
         <div className="max-w-[560px] space-y-1 overflow-hidden">
           {parts.map((p, i) => {
             const [verb, I] = verbOf(name(p), tools), arg = argOf(p.input), card = p.output?.card as Card | undefined;
@@ -323,7 +323,7 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
       {blocks}
       {live && !text && !m.parts.some((p: any) => (ui.steps && (p.type.startsWith('tool-') || p.type === 'dynamic-tool') && p.state !== 'output-available') || (ui.thinking !== 'hidden' && p.type === 'reasoning' && p.state === 'streaming')) && !thinking && <Pending since={since || Date.now()} label={label(m.parts.length ? 'writing' : 'thinking')} />}
       {!live && text && (
-        <div className="flex items-center gap-1 text-muted-foreground animate-in fade-in duration-500">
+        <div className="flex items-center gap-1 text-muted-foreground animate-in fade-in duration-(--dur-pop)">
           <button aria-label="Copy" title="Copy" onClick={() => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1400); }}
             className="chat-icon">{copied ? <Check className="size-3.5 text-good" /> : <Copy className="size-3.5" />}</button>
           {isLast && <button aria-label="Ask again" title="Ask again" onClick={act.regenerate} className="chat-icon"><RotateCcw className="size-3.5" /></button>}
@@ -332,9 +332,9 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
       )}
       {follow.length > 0 && (
         <div className="space-y-0.5 pt-1">
-          {follow.map((f: string, k: number) => (
-            <button key={f} onClick={() => act.ask(f)} style={{ animationDelay: `${150 + k * 60}ms` }}
-              className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left max-sm:py-2.5 text-[13.5px] text-muted-foreground transition-colors fill-mode-both hover:bg-white/[.05] hover:text-foreground animate-in fade-in slide-in-from-bottom-1 duration-300">
+          {follow.map((f: string) => (
+            <button key={f} onClick={() => act.ask(f)}
+              className="press flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left max-sm:py-2.5 text-[13.5px] text-muted-foreground hover:bg-white/[.05] hover:text-foreground">
               <CornerDownRight className="size-3.5 shrink-0 opacity-60" />{f}
             </button>
           ))}
@@ -454,13 +454,13 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
         <div ref={column} className="mx-auto w-full max-w-[820px] space-y-4 py-4">
         {!messages.length && (
           // on a phone the suggestions sit low, where the thumb is
-          <div className={cn('text-center animate-in fade-in duration-500', !sheet && 'pt-10')}>
+          <div className={cn('text-center', !sheet && 'pt-10')}>
             <div className="text-lg font-semibold tracking-tight">{label('chatTitle')}</div>
             <p className="mt-1 text-sm text-muted-foreground">{label('chatHint')}</p>
             <div className="mx-auto mt-6 grid max-w-[560px] gap-1.5 sm:grid-cols-2">
-              {suggestions.map((s, i) => (
-                <button key={s} onClick={() => onAsk(s)} style={{ animationDelay: `${120 + i * 50}ms` }}
-                  className="press flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-left text-sm text-foreground/85 transition-colors fill-mode-both hover:bg-white/[.07] hover:text-foreground animate-in fade-in slide-in-from-bottom-1 duration-300">
+              {suggestions.map(s => (
+                <button key={s} onClick={() => onAsk(s)}
+                  className="press flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-left text-sm text-foreground/85 hover:bg-white/[.07] hover:text-foreground">
                   {s}
                 </button>
               ))}
@@ -503,14 +503,14 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
         <ChatBeam ui={ui} busy={busy}>
         <div className={cn('composer flex items-end gap-2 rounded-2xl border bg-card px-3 py-2 shadow-card', over && 'ring-2 ring-primary/60')}>
           <input ref={filePicker} type="file" multiple hidden onChange={e => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
- {canAttach && <button type="button" onClick={() => filePicker.current?.click()} aria-label="Attach a file" className={cn('grid shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground', sheet ? 'mb-0.5 size-8' : 'mb-1 size-7')}><Paperclip className="size-4" /></button>}
+ {canAttach && <button type="button" onClick={() => filePicker.current?.click()} aria-label="Attach a file" className={cn('press grid shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground', sheet ? 'mb-0.5 size-8' : 'mb-1 size-7')}><Paperclip className="size-4" /></button>}
           <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={label(sheet || external || !canAttach ? 'message' : 'messageHint', { name })} aria-label="Message"
             onKeyDown={e => { if (e.key === 'Enter' && (ui.send === 'enter' ? !e.shiftKey : e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
             onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
             className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-[7px] text-[16px] leading-[22px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-[15px]" autoFocus={!sheet} />
           {busy
             ? <Button type="button" size="icon" variant="secondary" className="mb-0.5 size-8 rounded-full" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" /></Button>
-            : <Button type="submit" size="icon" className="mb-0.5 size-8 rounded-full transition-opacity duration-200" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
+            : <Button type="submit" size="icon" className="mb-0.5 size-8 rounded-full" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
         </div>
         </ChatBeam>
       </form>

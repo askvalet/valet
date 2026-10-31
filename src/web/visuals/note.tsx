@@ -32,7 +32,7 @@ const TONES = { busy: 'text-foreground', good: 'text-foreground', warn: 'text-wa
 export function Said({ note, className }: { note: Note | null; className?: string }) {
   return (
     <div role="status" className={cn('flex min-h-8 min-w-0 items-center gap-2 text-[12.5px] leading-[1.35]', className)}>
-      {note && <span key={note.id} className={cn('min-w-0 animate-in fade-in duration-200', TONES[note.tone ?? 'good'])}>{note.text}</span>}
+      {note && <span key={note.id} className={cn('min-w-0 animate-in fade-in duration-(--dur-pop)', TONES[note.tone ?? 'good'])}>{note.text}</span>}
       {note?.undo && <button onClick={note.undo} className="h-8 flex-none rounded-full px-2.5 font-medium text-primary hover:bg-foreground/10">Undo</button>}
     </div>
   );

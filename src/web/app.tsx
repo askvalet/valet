@@ -117,7 +117,7 @@ function RoundButton({ label, active, onClick, children, tip = 'right', words }:
 function DockButton({ name, active, onClick, children }: { name: string; active?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button onClick={onClick} aria-current={active ? 'page' : undefined}
-      className={cn('press relative flex h-[46px] min-w-[54px] flex-[1_0_auto] flex-col items-center justify-center gap-0.5 rounded-[23px] px-1.5 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 focus-visible:ring-inset [&_svg]:size-[18px]',
+      className={cn('press relative flex h-[46px] min-w-[54px] flex-[1_0_auto] flex-col items-center justify-center gap-0.5 rounded-[23px] px-1.5 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 focus-visible:ring-inset [&_svg]:size-[18px]',
         active ? 'bg-[var(--nav-pill,var(--foreground))] text-[var(--nav-pill-ink,#fff)] dark:text-[var(--nav-pill-ink,#000)]' : 'text-foreground/85')}>
       {children}<span className="max-w-[64px] truncate text-[10.5px] leading-3 font-medium">{name}</span>
     </button>
@@ -155,7 +155,7 @@ function useDock(box: React.RefObject<HTMLElement | null>, side: 'left' | 'right
 function Walls({ list, every }: { list: Paper[]; every?: number }) {
   const [n, setN] = useState(0), now = list[n % list.length] ?? list[0];
   const [shown, setShown] = useState([now]);
-  useEffect(() => { setN(0); if (!every || list.length < 2) return; const t = setInterval(() => setN(i => i + 1), every); return () => clearInterval(t); }, [list, every]);
+  useEffect(() => { setN(0); if (!every || list.length < 2) return; const t = setInterval(() => { if (!document.hidden) setN(i => i + 1); }, every); return () => clearInterval(t); }, [list, every]);
   useEffect(() => { setShown(s => s.at(-1) === now ? s : [...s.filter(x => x !== now).slice(-1), now]); }, [now]);
   return (
     <div className="wallpaper" aria-hidden>
@@ -168,6 +168,10 @@ function Walls({ list, every }: { list: Paper[]; every?: number }) {
 function Wall({ src, style }: { src: string; style?: React.CSSProperties }) {
   return <img src={src} alt="" style={style} ref={el => { if (el?.complete && el.naturalWidth) el.classList.add('is-on'); }} onLoad={e => e.currentTarget.classList.add('is-on')} onError={e => { e.currentTarget.style.display = 'none'; }} />;
 }
+
+const arrived = new Set<string>();
+/** A fade the first time something lands on the page, and only then: a tab you come back to is already there. */
+const arrival = (key: string) => { if (arrived.has(key)) return ''; arrived.add(key); return 'fade-in-soft'; };
 
 /** A line or a block that opens and closes instead of jumping, and keeps its words while it closes. */
 function Fold({ open, className, children }: { open: boolean; className?: string; children: React.ReactNode }) {
@@ -187,7 +191,7 @@ function useLeaving(list: string[], ms = 260) {
     return () => clearTimeout(t);
   }, [list.join('\n')]);
   const all = list.map(s => ({ s, out: false }));
-  for (const { s, at } of gone) all.splice(Math.min(at, all.length), 0, { s, out: true });
+  for (const { s, at } of gone) if (!list.includes(s)) all.splice(Math.min(at, all.length), 0, { s, out: true });   // back already: one chip, not two with one key
   return all;
 }
 
@@ -306,7 +310,7 @@ function Home({ account }: { account: boolean }) {
   const [chatOpen, setChatOpen] = useState(false);
   const wide = useWide();
   const phone = useWide('(max-width: 639px)');
-  const bar = useRef<HTMLDivElement>(null);
+  const bar = useRef<HTMLDivElement>(null), flipped = useRef(false);
   // the chat sheet follows the on-screen keyboard (phones report it through the visual viewport)
   useEffect(() => {
     const v = window.visualViewport, root = document.documentElement.style;
@@ -470,14 +474,14 @@ function Home({ account }: { account: boolean }) {
                 {/* centred when it fits, scrolls from the start when it doesn't */}
                 <div className={cn('flex max-w-full flex-wrap justify-center gap-1.5', h?.align === 'left' ? 'mr-auto' : h?.align === 'right' ? 'ml-auto' : 'mx-auto')}>
                   {shownChips.map(({ s, out }) => (
-                    <button key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={cn('shrink-0 rounded-full px-2.5 py-1 text-[12.5px] text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground', out ? 'chip-out' : 'fade-in-soft')} style={out ? { maxWidth: 320 } : undefined}>{s}</button>
+                    <button key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={cn('press shrink-0 rounded-full px-2.5 py-1 text-[12.5px] text-muted-foreground hover:bg-white/10 hover:text-foreground', out ? 'chip-out' : arrival(`chip:${s}`))} style={out ? { maxWidth: 320 } : undefined}>{s}</button>
                   ))}
                 </div>
               </div>
             )}
             <Fold open={pill}><div className={cn('mt-1.5 flex items-center gap-0.5 text-[12px] text-muted-foreground', h?.align === 'left' ? 'justify-start' : h?.align === 'right' ? 'justify-end' : 'justify-center')}>
               <a href="#recap" className="underline-offset-2 transition-colors hover:text-foreground hover:underline">{label('review', { year: now.getFullYear() })}</a>
-              <button onClick={dismissReview} aria-label={label('dismiss')} className="grid size-6 flex-none place-items-center rounded-full transition-colors hover:text-foreground"><X className="size-3" /></button>
+              <button onClick={dismissReview} aria-label={label('dismiss')} className="press grid size-6 flex-none place-items-center rounded-full hover:text-foreground"><X className="size-3" /></button>
             </div></Fold>
           </header>
         );
@@ -489,13 +493,13 @@ function Home({ account }: { account: boolean }) {
   // a section title on the page, as it always was; one that's only a tab's name is still a heading to a screen reader
   const titled = (sec: Page['sections'][number]) => view === 'all' && sec.heading !== false && (sec.display === 'cards' || sec.display === 'media') && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title);
   const renderSection = (sec: (typeof sections)[number], aside = sec.place === 'left' || sec.place === 'right') => (
-          <section key={`${view}:${sec.i}`} className="settle space-y-3" style={{ animationDelay: `${Math.min(sec.i, 6) * 45}ms`, ...(sec.gap != null && { '--card-gap': `${sec.gap}px`, '--tile-gap': `${sec.gap}px` } as React.CSSProperties) }}>
+          <section key={`${view}:${sec.i}`} className="space-y-3" style={sec.gap != null ? { '--card-gap': `${sec.gap}px`, '--tile-gap': `${sec.gap}px` } as React.CSSProperties : undefined}>
             {sec.title && (titled(sec) ? <h2 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h2> : sec.title !== view && <h2 className="sr-only">{sec.title}</h2>)}
             {sec.display === 'media'
               ? (
                 <div className={cn('grid gap-(--card-gap)', sec.grid && 'cols')} style={sec.grid ? gridVars(sec.grid) : { gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${sec.columns ? Math.floor(1200 / sec.columns) - 40 : 420}px), 1fr))` }}>
                   {mediaOf(sec.widgets).map(({ m, href, k }) => (
-                    <a key={k} href={href} target="_blank" rel="noreferrer" className="block min-w-0 transition-transform duration-300 hover:-translate-y-0.5"><NowPlaying m={m} compact /></a>
+                    <a key={k} href={href} target="_blank" rel="noreferrer" className="block min-w-0 transition-[translate] duration-(--dur-pop) hover:-translate-y-0.5"><NowPlaying m={m} compact /></a>
                   ))}
                 </div>
               )
@@ -516,7 +520,7 @@ function Home({ account }: { account: boolean }) {
                   {sec.widgets.flatMap(key => {
                     const o = sec.looks?.[key], c = dress(state[key]?.card, o);
                     if (!c) return [<TileSkeleton key={key} />];
-                    return (c.summaries ?? (c.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} className={cn('fade-in-soft min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} href={c.href} explain={explainFor(key)} /></div>);
+                    return (c.summaries ?? (c.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} className={cn(arrival(key), 'min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} href={c.href} explain={explainFor(key)} /></div>);
                   })}
                 </div>
               )
@@ -537,19 +541,19 @@ function Home({ account }: { account: boolean }) {
                   if (sec.sizes && Object.keys(sec.sizes).length && !aside) return (
                     <div className={cn('bento grid grid-flow-row-dense gap-(--card-gap)', sec.grid ? 'cols' : 'grid-cols-2 @2xl/main:grid-cols-4 @5xl/main:grid-cols-6')} style={sec.grid && gridVars(sec.grid)}>
                       {keys.map((key, j) => {
-                        const o = sec.looks?.[key], c = dress(state[key]?.card, o), size = c?.type === 'calendar' && sec.sizes![key] === 'wide' ? 'large' : sec.sizes![key], beat = { '--i': Math.min(j, 8) } as React.CSSProperties;
+                        const o = sec.looks?.[key], c = dress(state[key]?.card, o), size = c?.type === 'calendar' && sec.sizes![key] === 'wide' ? 'large' : sec.sizes![key];
                         const span = cn(size !== 'small' && 'col-span-2', size === 'tall' && 'row-span-2', size === 'large' && 'col-span-full @5xl/main:col-span-4');
                         // a size the config redefines, or a grid of its own, spans by number, never past the last column
                         const [cols, rows] = SPANS[size ?? 'medium'], own = sized[size ?? 'medium'];
                         const spans = (own || sec.grid) && { gridColumn: `span min(${own?.cols ?? cols}, var(--tracks))`, gridRow: `span ${own?.rows ?? rows}` };
-                        if ((size === 'small' || size === 'wide') && c?.summary) return <div key={key} className={cn('settle-card min-w-0', !spans && span, o?.style && 'card-look')} style={{ ...beat, ...spans, ...o?.style }}><SummaryTile s={c.summary} href={c.href} explain={explainFor(key)} /></div>;
-                        return <div key={key} style={{ ...beat, ...spans }} className={cn('settle-card min-w-0', !spans && (size === 'small' ? 'col-span-2' : span))}>{widget(key, size === 'large', true)}</div>;
+                        if ((size === 'small' || size === 'wide') && c?.summary) return <div key={key} className={cn('min-w-0', !spans && span, o?.style && 'card-look')} style={{ ...spans, ...o?.style }}><SummaryTile s={c.summary} href={c.href} explain={explainFor(key)} /></div>;
+                        return <div key={key} style={spans || undefined} className={cn('min-w-0', !spans && (size === 'small' ? 'col-span-2' : span))}>{widget(key, size === 'large', true)}</div>;
                       })}
                     </div>
                   );
                   if (sec.grid && !aside) return (
                     <div className="cols grid gap-(--card-gap)" style={gridVars(sec.grid)}>
-                      {keys.map((k, j) => <div key={k} className="settle-card min-w-0" style={{ '--i': Math.min(j, 8) } as React.CSSProperties}>{widget(k, false, true)}</div>)}
+                      {keys.map(k => <div key={k} className="min-w-0">{widget(k, false, true)}</div>)}
                     </div>
                   );
                   // a wide card (e.g. the 3D desktop) takes two thirds; the rest stack beside it
@@ -564,7 +568,7 @@ function Home({ account }: { account: boolean }) {
                   // a long mix of cards packs into columns with compact rows, and a very long card scrolls inside itself
                   if (!aside && !sec.columns && keys.length > 3) return (
                     <div className="columns-[340px] gap-(--card-gap)">
-                      {keys.map((k, j) => <div key={k} className="card-cap settle-card mb-(--card-gap) min-w-0 break-inside-avoid" style={{ '--i': Math.min(j, 8) } as React.CSSProperties}>{widget(k, false, false, true)}</div>)}
+                      {keys.map(k => <div key={k} className="card-cap mb-(--card-gap) min-w-0 break-inside-avoid">{widget(k, false, false, true)}</div>)}
                     </div>
                   );
                   // a card that's come up empty gives its column back, and cards in a row share a height
@@ -573,7 +577,7 @@ function Home({ account }: { account: boolean }) {
                     // a fixed column count applies from tablet width up; phones get one column
                     <div className={cn('grid gap-(--card-gap)', aside && 'items-start', sec.columns && !aside && 'grid-cols-1 @3xl/main:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))]')}
                       style={sec.columns && !aside ? { '--cols': cols } as React.CSSProperties : { gridTemplateColumns: aside ? '1fr' : 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
-                      {keys.map((k, j) => <div key={k} className="settle-card min-w-0" style={{ '--i': Math.min(j, 8) } as React.CSSProperties}>{widget(k, false, row)}</div>)}
+                      {keys.map(k => <div key={k} className="min-w-0">{widget(k, false, row)}</div>)}
                     </div>
                   );
                 })()
@@ -625,7 +629,7 @@ function Home({ account }: { account: boolean }) {
           {topbar?.date !== false && <div className={cn('text-xs text-muted-foreground sm:block', topbar?.clock !== false && 'hidden')}>{day(now)}</div>}
           </ClockMonth>}
         </div>}
-        {!wall && topbar?.theme !== false && (page?.look.theme ?? 'auto') === 'auto' && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={theme.toggle}>{theme.dark ? <Sun key="sun" className="spin-in" /> : <Moon key="moon" className="spin-in" />}</RoundButton>}
+        {!wall && topbar?.theme !== false && (page?.look.theme ?? 'auto') === 'auto' && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={() => { flipped.current = true; theme.toggle(); }}>{theme.dark ? <Sun key="sun" className={cn(flipped.current && 'spin-in')} /> : <Moon key="moon" className={cn(flipped.current && 'spin-in')} />}</RoundButton>}
       </div>
 
       <main style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-20', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>

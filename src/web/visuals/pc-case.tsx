@@ -24,7 +24,7 @@ function MiniGauge({ m }: { m: Metric }) {
     <span className="flex items-center gap-1.5" title={m.label}>
       <svg viewBox="0 0 32 32" className="size-7 rotate-[135deg]" aria-hidden>
         <circle cx="16" cy="16" r={r} fill="none" stroke="currentColor" strokeOpacity=".14" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} />
-        <circle cx="16" cy="16" r={r} fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${Math.max(.001, pct) * arc} ${c}`} className="transition-[stroke-dasharray] duration-700" />
+        <circle cx="16" cy="16" r={r} fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${Math.max(.001, pct) * arc} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move)" />
       </svg>
       <span className="leading-[1.3]"><span className="metric flex items-baseline gap-0.5 text-[13px]"><Roll value={String(m.value)} /><span className="text-[11px] font-medium text-muted-foreground">{m.unit}</span></span>
         <span className="block text-[11px] text-muted-foreground">{m.label}</span></span>
@@ -89,7 +89,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
         <StageTools moved={moved} reset={() => viewer.current?.reset()} hint={view.draggable ? 'Drag to look around' : undefined} />
       </div>
       {!pick ? (
-        <div key="all" className="space-y-2 animate-in fade-in duration-300">
+        <div key="all" className="space-y-2 animate-in fade-in duration-(--dur-pop)">
           {!!data.presets?.length && (
             <div role="group" aria-label="Lighting presets" className="flex flex-wrap gap-1">
               {data.presets.map(p => (
@@ -111,7 +111,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
           {data.controls === false ? <Cant>Lighting is read-only in this install.</Cant> : !run ? <Cant>View only: sign in to change this.</Cant> : <Said note={note} />}
         </div>
       ) : (
-        <section key={pick.id} aria-label={`${pick.name} controls`} className="space-y-1.5 animate-in fade-in duration-200">
+        <section key={pick.id} aria-label={`${pick.name} controls`} className="space-y-1.5 animate-in fade-in duration-(--dur-pop)">
           <div className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1">
             <button onClick={() => choose(null)} className="press flex h-8 flex-none items-center gap-1 rounded-full pr-3 pl-1.5 text-[12.5px] text-muted-foreground ring-1 ring-foreground/15 hover:bg-foreground/10 hover:text-foreground"><ChevronLeft className="size-4" />All parts</button>
             <h4 className="min-w-0 truncate text-[15px] font-semibold">{pick.name}</h4>

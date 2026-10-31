@@ -29,7 +29,7 @@ function Reading({ label, note, value, tone }: { label: string; note: string; va
     <div className="flex h-7 min-w-0 items-center gap-2 text-[12.5px] leading-[1.35]">
       <svg viewBox="0 0 20 20" className="size-5 flex-none -rotate-90" aria-hidden>
         <circle cx="10" cy="10" r={r} fill="none" stroke="currentColor" strokeOpacity=".14" strokeWidth="3" />
-        <circle cx="10" cy="10" r={r} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${Math.max(.001, p) * c} ${c}`} className="transition-[stroke-dasharray] duration-700" />
+        <circle cx="10" cy="10" r={r} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${Math.max(.001, p) * c} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move)" />
       </svg>
       <span className="flex-none font-medium">{label}</span>
       <span className={cn('min-w-0 truncate', tone === 'bad' ? 'text-bad' : tone === 'warn' ? 'text-warn' : 'text-muted-foreground')}>{note}</span>
@@ -138,7 +138,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
         <StageTools moved={moved} reset={() => stage.current?.reset()} hint="Drag to look around" />
       </div>
       {!sel && (
-        <div key="all" className="space-y-2 animate-in fade-in duration-300">
+        <div key="all" className="space-y-2 animate-in fade-in duration-(--dur-pop)">
           <div className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1.5">
             {note ? <Said note={note} /> : <>
               <Roll value={String(lit.length)} className="metric text-[22px] leading-none" />
@@ -169,7 +169,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
       )}
 
       {room && (
-        <section key={room.id} aria-label={`${room.name} controls`} className="space-y-1 animate-in fade-in duration-200">
+        <section key={room.id} aria-label={`${room.name} controls`} className="space-y-1 animate-in fade-in duration-(--dur-pop)">
           <div className="flex min-h-8 items-center gap-2">
             {back}
             <h4 className="min-w-0 truncate text-[15px] font-semibold">{room.name}</h4>
@@ -203,7 +203,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
       )}
 
       {sel === 'robot' && r && (
-        <section key="robot" aria-label="Vacuum controls" className="space-y-1.5 animate-in fade-in duration-200">
+        <section key="robot" aria-label="Vacuum controls" className="space-y-1.5 animate-in fade-in duration-(--dur-pop)">
           <div className="flex min-h-8 items-center gap-2">
             {back}
             <h4 className="flex-none text-[15px] font-semibold">Vacuum</h4>

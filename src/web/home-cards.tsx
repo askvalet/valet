@@ -31,7 +31,7 @@ function Sun({ id, x = 32, y = 32, r = 13 }: { id: string; x?: number; y?: numbe
   return (
     <g transform={`translate(${x} ${y})`}>
       <circle r={r * 2.1} fill={`url(#${id}g)`} />
-      <g className="wx-spin">{RAYS.map(a => <rect key={a} x={-r * .1} y={-r * 1.62} width={r * .2} height={r * .36} rx={r * .1} fill="#ffc94d" transform={`rotate(${a})`} />)}</g>
+      <g>{RAYS.map(a => <rect key={a} x={-r * .1} y={-r * 1.62} width={r * .2} height={r * .36} rx={r * .1} fill="#ffc94d" transform={`rotate(${a})`} />)}</g>
       <circle r={r} fill={`url(#${id}s)`} />
       <path d={`M${-r * .62} ${-r * .3}A${r * .72} ${r * .72} 0 0 1 ${-r * .1} ${-r * .72}`} fill="none" stroke="#fff" strokeOpacity=".75" strokeWidth={r * .11} strokeLinecap="round" />
     </g>
@@ -46,7 +46,7 @@ function Crescent({ id, x = 32, y = 30, s = 1 }: { id: string; x?: number; y?: n
   );
 }
 function Stars({ points }: { points: [number, number, number][] }) {
-  return <>{points.map(([x, y, r], i) => <path key={i} className="wx-twinkle" style={{ animationDelay: `${i * 1.1}s` }} fill="#fff" d={`M${x} ${y - r}Q${x} ${y} ${x + r} ${y}Q${x} ${y} ${x} ${y + r}Q${x} ${y} ${x - r} ${y}Q${x} ${y} ${x} ${y - r}Z`} />)}</>;
+  return <>{points.map(([x, y, r], i) => <path key={i} fill="#fff" d={`M${x} ${y - r}Q${x} ${y} ${x + r} ${y}Q${x} ${y} ${x} ${y + r}Q${x} ${y} ${x - r} ${y}Q${x} ${y} ${x} ${y - r}Z`} />)}</>;
 }
 function Puff({ id, dark, transform, back }: { id: string; dark?: boolean; transform?: string; back?: boolean }) {
   return (
@@ -61,26 +61,26 @@ const up = 'translate(1.5 -7.5) scale(.95)';
 const SCENES: Record<string, (id: string) => ReactNode> = {
   sun: id => <Sun id={id} r={15} />,
   moon: id => <><Crescent id={id} /><Stars points={[[50, 14, 2.6], [55, 32, 1.7], [44, 46, 1.4]]} /></>,
-  cloud: id => <><Puff id={id} back transform="translate(21 -3) scale(.68)" /><g className="wx-float"><Puff id={id} transform="translate(-3 2)" /></g></>,
-  'cloud-sun': id => <><Sun id={id} x={43} y={21} r={12.5} /><g className="wx-float"><Puff id={id} transform="translate(-3.5 7.5) scale(.92)" /></g></>,
-  'cloud-moon': id => <><Crescent id={id} x={43} y={20} s={.72} /><Stars points={[[23, 8, 2], [58, 40, 1.4]]} /><g className="wx-float"><Puff id={id} transform="translate(-3.5 7.5) scale(.92)" /></g></>,
-  rain: id => <><Puff id={id} back transform="translate(23 -8) scale(.6)" /><g className="wx-float"><Puff id={id} transform={up} /></g>
-    {[[21, 0], [32, .55], [43, 1.1]].map(([x, d]) => <path key={x} className="wx-drop" style={{ animationDelay: `${d}s` }} fill={`url(#${id}w)`} d={`M${x} 46.5c2.6 3.7 3.8 5.7 3.8 7.4a3.8 3.8 0 0 1-7.6 0c0-1.7 1.2-3.7 3.8-7.4Z`} />)}</>,
-  snow: id => <><Puff id={id} back transform="translate(23 -8) scale(.6)" /><g className="wx-float"><Puff id={id} transform={up} /></g>
-    {[[20, 49, 0], [32, 54, .9], [44, 49, 1.8]].map(([x, y, d]) => <g key={x} className="wx-flake" style={{ animationDelay: `${d}s` }}><g transform={`translate(${x} ${y})`} stroke="#e8f3ff" strokeWidth="1.5" strokeLinecap="round">{[0, 60, 120].map(a => <path key={a} d="M0-3.6V3.6" transform={`rotate(${a})`} />)}</g></g>)}</>,
-  storm: id => <><Puff id={id} back dark transform="translate(23 -8) scale(.6)" /><g className="wx-float"><Puff id={id} dark transform={up} /></g>
-    <path className="wx-flash" d="M34.5 38 24.5 50.5h6.6L27.5 61l11.2-14.2h-6.9l3.5-8.8Z" fill={`url(#${id}y)`} stroke="#fff" strokeOpacity=".55" strokeWidth=".6" strokeLinejoin="round" /></>,
-  fog: id => <><g className="wx-float"><Puff id={id} transform="translate(0 -7) scale(.96)" /></g>
-    {[[13, 40, 0], [7, 50, .8], [19, 34, 1.6]].map(([x, w, d], i) => <rect key={i} className="wx-mist" style={{ animationDelay: `${d}s` }} x={x} y={46 + i * 6.2} width={w} height="3.2" rx="1.6" fill="#dbe6f4" fillOpacity={.85 - i * .2} />)}</>,
+  cloud: id => <><Puff id={id} back transform="translate(21 -3) scale(.68)" /><g><Puff id={id} transform="translate(-3 2)" /></g></>,
+  'cloud-sun': id => <><Sun id={id} x={43} y={21} r={12.5} /><g><Puff id={id} transform="translate(-3.5 7.5) scale(.92)" /></g></>,
+  'cloud-moon': id => <><Crescent id={id} x={43} y={20} s={.72} /><Stars points={[[23, 8, 2], [58, 40, 1.4]]} /><g><Puff id={id} transform="translate(-3.5 7.5) scale(.92)" /></g></>,
+  rain: id => <><Puff id={id} back transform="translate(23 -8) scale(.6)" /><g><Puff id={id} transform={up} /></g>
+    {[21, 32, 43].map(x => <path key={x} fill={`url(#${id}w)`} d={`M${x} 46.5c2.6 3.7 3.8 5.7 3.8 7.4a3.8 3.8 0 0 1-7.6 0c0-1.7 1.2-3.7 3.8-7.4Z`} />)}</>,
+  snow: id => <><Puff id={id} back transform="translate(23 -8) scale(.6)" /><g><Puff id={id} transform={up} /></g>
+    {[[20, 49], [32, 54], [44, 49]].map(([x, y]) => <g key={x}><g transform={`translate(${x} ${y})`} stroke="#e8f3ff" strokeWidth="1.5" strokeLinecap="round">{[0, 60, 120].map(a => <path key={a} d="M0-3.6V3.6" transform={`rotate(${a})`} />)}</g></g>)}</>,
+  storm: id => <><Puff id={id} back dark transform="translate(23 -8) scale(.6)" /><g><Puff id={id} dark transform={up} /></g>
+    <path d="M34.5 38 24.5 50.5h6.6L27.5 61l11.2-14.2h-6.9l3.5-8.8Z" fill={`url(#${id}y)`} stroke="#fff" strokeOpacity=".55" strokeWidth=".6" strokeLinejoin="round" /></>,
+  fog: id => <><g><Puff id={id} transform="translate(0 -7) scale(.96)" /></g>
+    {[[13, 40], [7, 50], [19, 34]].map(([x, w], i) => <rect key={i} x={x} y={46 + i * 6.2} width={w} height="3.2" rx="1.6" fill="#dbe6f4" fillOpacity={.85 - i * .2} />)}</>,
 };
 
 export const isWeather = (name: string) => name in SCENES;
 
-/** A weather icon with some depth. `live` lets it move, very slightly; a row of small ones stays still. */
-export function WeatherGlyph({ name, size = 40, live, className }: { name: string; size?: number; live?: boolean; className?: string }) {
+/** A weather icon with some depth. */
+export function WeatherGlyph({ name, size = 40, className }: { name: string; size?: number; className?: string }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, ''), scene = SCENES[name] ?? SCENES.cloud;
   return (
-    <svg viewBox="0 0 64 64" width={size} height={size} className={cn('wx shrink-0 overflow-visible', live && 'wx-live', className)} aria-hidden>
+    <svg viewBox="0 0 64 64" width={size} height={size} className={cn('wx shrink-0 overflow-visible', className)} aria-hidden>
       <defs>
         <linearGradient id={`${id}c`} x1=".3" y1="0" x2=".6" y2="1"><stop offset="0" stopColor="#fff" /><stop offset=".55" stopColor="#e6edf8" stopOpacity=".94" /><stop offset="1" stopColor="#a9bcd8" stopOpacity=".82" /></linearGradient>
         <linearGradient id={`${id}b`} x1=".3" y1="0" x2=".6" y2="1"><stop offset="0" stopColor="#c6d3e6" stopOpacity=".85" /><stop offset="1" stopColor="#7d8fae" stopOpacity=".55" /></linearGradient>
@@ -123,7 +123,7 @@ function Hero({ card, s }: { card: ForecastCard; s: number }) {
   return (
     <div className="flex flex-col items-center text-center">
       <div className="flex items-center justify-center" style={{ gap: 14 * s }}>
-        <WeatherGlyph name={now.icon} size={112 * s} live />
+        <WeatherGlyph name={now.icon} size={112 * s} />
         <div className="wx-temp tabular" style={{ fontSize: 82 * s }}>{now.temp}°</div>
       </div>
       <div className="mt-1 font-semibold tracking-tight" style={{ fontSize: 21 * s }}>{now.words}.</div>
@@ -337,7 +337,7 @@ export function CalendarView({ card, large, dense }: { card: CalendarCard; large
             </div>
           </div>
           <div className="mb-1 grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground" aria-hidden>{Array.from({ length: 7 }, (_, i) => 'SMTWTFS'[(firstDay() + i) % 7]).map((l, i) => <div key={i}>{l}</div>)}</div>
-          <div key={`${y}-${m}`} className="cal-page flex min-h-0 flex-1 flex-col" style={{ '--from': `${(view?.dir ?? 0) * 10}px` } as CSSProperties}><Month year={y} month={m} days={days} today={today} picked={key} pick={pick} /></div>
+          <div key={`${y}-${m}`} className={cn('flex min-h-0 flex-1 flex-col', view?.dir && 'cal-page')} style={{ '--from': `${(view?.dir ?? 0) * 10}px` } as CSSProperties}><Month year={y} month={m} days={days} today={today} picked={key} pick={pick} /></div>
           {/* two quiet lines for the chosen day; always this tall, so choosing a day doesn't move anything */}
           <ul className="mt-2 h-[38px] space-y-0.5 overflow-hidden text-[11.5px] leading-[18px]">
             {chosen.slice(0, 2).map((e, i) => <li key={i} className="flex min-w-0 items-center gap-1.5"><i className="size-1.5 shrink-0 rounded-full" style={{ background: colorOf(e) }} /><span className="truncate font-medium">{e.title}</span><span className="ml-auto shrink-0 tabular text-muted-foreground">{i === 1 && chosen.length > 2 ? `+${chosen.length - 2} more` : dated(e.start) ? 'All day' : clock(parse(e.start))}</span></li>)}

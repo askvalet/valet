@@ -20,7 +20,7 @@ export function signOut(everywhere = false) {
 const Field = ({ label, ...p }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
   <label className="block">
     <span className="mb-1.5 block text-[12px] text-muted-foreground">{label}</span>
-    <input {...p} className="h-11 w-full rounded-xl border border-white/10 bg-white/[.06] px-3.5 text-[15px] outline-none transition-[border-color,background-color] duration-200 placeholder:text-muted-foreground/60 focus:border-white/30 focus:bg-white/[.09]" />
+    <input {...p} className="h-11 w-full rounded-xl border border-white/10 bg-white/[.06] px-3.5 text-[15px] outline-none transition-[border-color,background-color] placeholder:text-muted-foreground/60 focus:border-white/30 focus:bg-white/[.09]" />
   </label>
 );
 
@@ -67,7 +67,7 @@ export function SignIn({ setup, wallpaper, onDone, provider }: { setup: boolean;
             <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} className="size-3.5 accent-[var(--primary)]" />Keep me signed in
           </label>
         )}
-        <div className={cn('grid transition-[grid-template-rows,opacity] duration-300 ease-out', error ? 'mt-4 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
+        <div className={cn('grid transition-[grid-template-rows,opacity] duration-(--dur-move) ease-out', error ? 'mt-4 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
           <p className="overflow-hidden text-[13px] text-bad" role="alert">{error}</p>
         </div>
         <button disabled={busy || !name || !password || (setup && !code)}
