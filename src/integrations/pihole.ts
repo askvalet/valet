@@ -43,7 +43,9 @@ export default defineIntegration({
           async fetch() {
             const { s, history, blocking, timer, top } = await stats();
             const off = blocking !== 'enabled';
-            const hist = history.filter(x => x.timestamp), total = s.queries.total as number;
+            // half-hour columns: ten-minute ones are too thin to read
+            const raw = history.filter(x => x.timestamp), hist = raw.length > 60 ? Array.from({ length: Math.ceil(raw.length / 3) }, (_, i) => raw.slice(i * 3, i * 3 + 3).reduce((a, x) => ({ timestamp: x.timestamp, total: a.total + (x.total ?? 0), blocked: a.blocked + (x.blocked ?? 0) }), { timestamp: 0, total: 0, blocked: 0 })) : raw;
+            const total = s.queries.total as number;
             return {
               // a day of columns, the blocked share in red: how much of the day's chatter never left the house
               type: 'chart', style: 'bars', title: 'Pi-hole', icon: 'shield', ...(hist.length > 1 ? { from: hist[0].timestamp * 1000, to: hist.at(-1)!.timestamp * 1000 } : {}),

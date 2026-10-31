@@ -555,3 +555,4 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 @media (hover: hover) and (pointer: fine) { a.chip:hover { background: rgb(255 255 255 / .13); } }
 .motion-reduced :is(.columns-chart .col, .wall-tile) { animation: none; }
 @media (prefers-reduced-motion: reduce) { .columns-chart .col, .wall-tile { animation: none; } }
+.wall-initials { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; font-size: 10px; font-weight: 600; letter-spacing: .02em; color: var(--muted-foreground); background: rgb(255 255 255 / .1); }

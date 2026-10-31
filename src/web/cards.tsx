@@ -150,7 +150,7 @@ function Chips({ card }: { card: ListCard }) {
         <a key={i} href={it.href} target="_blank" rel="noreferrer" className={cn('chip', it.tone === 'warn' && 'is-warn', !it.href && 'pointer-events-none')}>
           {(it.image || slug(it.title)) && <img src={it.image ?? `/api/icon/${slug(it.title)}`} alt="" className="size-[18px] rounded-[5px] object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />}
           <span className="font-medium">{it.title}</span>
-          {(it.subtitle || it.meta) && <span className="text-muted-foreground">{it.meta ?? it.subtitle}</span>}
+          {(it.subtitle || it.meta) && <span className="text-muted-foreground">{it.subtitle ?? it.meta}</span>}
         </a>
       ))}
     </div>
@@ -255,6 +255,13 @@ function ServiceRow({ s, minimal }: { s: StatusCard['items'][number]; minimal?: 
   );
 }
 
+/** An app's icon, or its initials when it has none, so a wall never has a blank tile. */
+function Glyph({ src, name }: { src?: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <span className="wall-initials">{name.replace(/[-_]/g, ' ').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]!.toUpperCase()).join('')}</span>;
+  return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className="object-contain" />;
+}
+
 /** Every container as its icon: the eye finds the one that's wrong, and only that one gets words. */
 function Wall({ items }: { items: StatusItem[] }) {
   const down = items.filter(i => !i.ok && !i.quiet);
@@ -264,7 +271,7 @@ function Wall({ items }: { items: StatusItem[] }) {
         {items.map((s, i) => (
           <a key={s.name} href={s.href} target="_blank" rel="noreferrer" title={s.ok ? s.name : `${s.name} · ${s.quiet ? 'off' : s.detail ?? 'down'}`} aria-label={s.name}
             className={cn('wall-tile', !s.ok && (s.quiet ? 'is-off' : 'is-down'))} style={{ '--i': i } as React.CSSProperties}>
-            <AppIcon src={s.icon} name={s.name} />
+            <Glyph src={s.icon} name={s.name} />
           </a>
         ))}
       </div>
