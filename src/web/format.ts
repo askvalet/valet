@@ -75,7 +75,7 @@ export function sayHow(states: WidgetState[], onPage: Set<string> = new Set()) {
   const media = states.filter(s => !onPage.has(s.key)).flatMap(s => s.card?.type === 'media' ? s.card.items : []);
   const watching = media.filter(m => m.user && m.state !== 'paused'), coming = getting.filter(g => !onPage.has(g.key) && !stuck.includes(g)).reduce((n, g) => n + g.items.length, 0);
   const parts = [
-    !total || down.length || sick.length ? '' : up === total ? `All ${total} services are running` : `${up} of ${total} running${off ? `, ${off} off by choice` : ''}`,
+    !total || down.length ? '' : up === total ? `All ${total} services are running` : `${up} of ${total} running${off ? `, ${off} off by choice` : ''}`,
     watching.length === 1 ? `${watching[0].user} is watching ${watching[0].title}` : watching.length ? `${watching.length} people are watching` : '',
     coming ? `${coming === 1 ? 'a download is' : `${coming} downloads are`} on the way` : '',
   ].filter(Boolean);

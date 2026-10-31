@@ -58,6 +58,7 @@ layout:
       - { widget: lab.drives, size: medium }
       - { widget: lab.containers, size: large }
       - { widget: lab.updates, size: medium }
+      - { widget: valet.activity, size: medium }
   - title: AI
     display: tiles
     overview: false

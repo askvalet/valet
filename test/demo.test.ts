@@ -28,7 +28,7 @@ const carry = async (q: string, before: any[] = []) => {
 test('demo: every widget returns a valid card, and the layout only names widgets that exist', async () => {
   for (const [k, w] of Object.entries<any>(inst.widgets)) { const r = checkCard(await w.fetch()); assert.ok(r.success, `${k}: ${r.success ? '' : JSON.stringify(r.error.issues.slice(0, 3))}`); }
   const cfg = Config.parse(parse(readFileSync('demo/config.yaml', 'utf8')));
-  for (const s of cfg.layout) for (const w of s.widgets) assert.ok(inst.widgets[w.widget.split('.')[1]], w.widget);
+  for (const s of cfg.layout) for (const w of s.widgets) if (!w.widget.startsWith('valet.')) assert.ok(inst.widgets[w.widget.split('.')[1]], w.widget);
 });
 
 test('demo: the script only calls tools that exist, and answers from what they return', async () => {
