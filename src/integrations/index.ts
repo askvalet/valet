@@ -2,6 +2,7 @@
 import type { Integration } from '../server/core.ts';
 import aimonitor from './aimonitor.ts';
 import arr from './arr.ts';
+import camera from './camera.ts';
 import glances from './glances.ts';
 import homeassistant from './homeassistant.ts';
 import immich from './immich.ts';
@@ -40,5 +41,5 @@ import todo from './todo.ts';
 import twitch from './twitch.ts';
 
 export const registry: Record<string, Integration> = Object.fromEntries(
-  [aimonitor, arr, glances, homeassistant, http, immich, indexers, karakeep, ollama, paperless, pihole, qbittorrent, quran, rgbcontrol, romm, scrutiny, seerr, tautulli, uptimekuma, weather, links, rss, hackernews, reddit, releases, markets, calendar, api, docker, host, apcups, minecraft, clock, iframe, lobsters, repository, todo, twitch, ...services].map(i => [i.type, i as Integration]),
+  [aimonitor, arr, camera, glances, homeassistant, http, immich, indexers, karakeep, ollama, paperless, pihole, qbittorrent, quran, rgbcontrol, romm, scrutiny, seerr, tautulli, uptimekuma, weather, links, rss, hackernews, reddit, releases, markets, calendar, api, docker, host, apcups, minecraft, clock, iframe, lobsters, repository, todo, twitch, ...services].map(i => [i.type, i as Integration]),
 );
