@@ -88,14 +88,21 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - **Numbers as shapes.** Health reads at a glance: rings coloured by tone, area graphs behind tiles. Values sit inside
   the shape; labels stay quiet.
 - **Motion follows one vocabulary** (`styles.css`, after Emil Kowalski's skills): `--ease-out` for arriving/leaving,
-  `--ease-in-out` for moving on screen, never ease-in; under ~300ms for UI; animate transform, opacity and small blurs
-  only; `scale(0.97)` press feedback; hover effects gated by `(hover: hover)`; nothing animates on keyboard actions;
-  `prefers-reduced-motion` drops movement. Name transitioned properties, never `transition: all`.
-- **Alive, not busy.** The chat shows work happening (a shimmering label with a timer, tool calls as chips that settle
-  into a collapsed "n steps"), words fade in as they stream, cards settle in. Sections settle in once per page or tab;
-  live numbers crossfade. Anything that happens many times a day stays still.
-- **Motion is short and purposeful.** ~300 ms fades and scales for popovers; ~900 ms ease-out for a camera flying to
-  a part. Respect `prefers-reduced-motion`.
+  `--ease-in-out` for moving on screen, never ease-in; `--dur-press`, `--dur-pop`, `--dur-move` for UI (under ~300ms),
+  `--dur-spring` for the island, `--dur-scene` for what isn't UI (a wallpaper, a photo, a room's light); animate transform,
+  opacity and small blurs only, so a bar that ticks with every poll moves by `translateX`, not `width`; `scale(0.97)` press
+  feedback; hover effects gated by `(hover: hover)`; nothing animates on keyboard actions. Name transitioned properties,
+  never `transition: all`. Reduced motion lives in one rule near the top of `styles.css`, not beside each animation: new
+  motion needs nothing, and hover or press movement scales by `--move`. `stage.css` and `pc-case.css` keep their own
+  media rule because they ship with the exported model.
+- **Alive, not busy.** Motion explains a change. The chat shows work happening (a shimmering label with a timer, tool
+  calls as chips that settle into a collapsed "n steps"), words fade in as they stream. Live numbers crossfade. Anything
+  that happens many times a day stays still: no loops on status elements, no entrances on a tab or a load, no charts
+  redrawing. A card fades up only from its skeleton. What must loop (a model's fans, a chat.beam someone asked for) rests
+  off screen (`useOnScreen`, `.is-away`).
+- **Motion is short and purposeful.** ~200 ms fades and scales for popovers, growing from their trigger; ~900 ms ease-out
+  for a camera flying to a part. Finished entrances use `backwards`, not `both`: a held fill stays in the page's
+  animation list and keeps the element in its own stacking context.
 - **Things don't jump.** Controls that change with a selection live in fixed-height rows; panels never resize their card.
 - **Pointer on everything clickable** (global rule in `styles.css`); hover gives a slight lift, never a jump.
 - **3D models are faithful to the real thing.** Model from photos of the user's hardware, keep proportions honest, and
