@@ -1,5 +1,6 @@
 // The cameras card: a big live view, a pill per camera, what they've noticed lately. A video plays if there is one and a
-// snapshot refreshes about once a second if not, and both rest when the tab is hidden or the card has scrolled away.
+// snapshot refreshes about once a second if not, and both rest when the tab is hidden or the card has scrolled away. An
+// event opens as its own picture, never as the live view; a card that says `sample` plays recordings and never says LIVE.
 import { Expand, X } from 'lucide-react';
 import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
@@ -113,7 +114,7 @@ function Boxes({ cam, on, clock }: { cam: Camera; on: boolean; clock: Clock }) {
 }
 
 /** One camera's picture, with its own little on-screen display, as if the camera had burned it in. */
-function Feed({ cam, refresh, on, full, open }: { cam: Camera; refresh?: number; on: boolean; full?: boolean; open?: () => void }) {
+function Feed({ cam, refresh, on, full, open, sample }: { cam: Camera; refresh?: number; on: boolean; full?: boolean; open?: () => void; sample?: boolean }) {
   const box = useRef<HTMLDivElement>(null), awake = useAwake(box), live = on && awake;
   const clock = useRef(seconds), time = useRef<HTMLSpanElement>(null);
   const [aspect, setAspect] = useState(16 / 9), [noVideo, setNoVideo] = useState(false), [up, setUp] = useState<boolean | null>(cam.offline ? false : null);   // null: not heard from yet
@@ -132,7 +133,7 @@ function Feed({ cam, refresh, on, full, open }: { cam: Camera; refresh?: number;
         {still && <Snapshot src={cam.image!} every={refresh ?? 1} on={live} shape={setAspect} up={setUp} />}
         <Boxes cam={cam} on={live} clock={clock} />
         {up === false && <div className="cam-off"><span>No signal</span></div>}
-        {up !== false && (video || up) && <div className="cam-osd cam-osd-top"><span className="cam-live"><i />LIVE</span><span ref={time}>{stamp()}</span></div>}
+        {up !== false && (video || up) && <div className="cam-osd cam-osd-top">{sample ? <span className="cam-live is-sample"><i />Sample footage</span> : <><span className="cam-live"><i />LIVE</span><span ref={time}>{stamp()}</span></>}</div>}
         <div className="cam-osd cam-osd-end">{cam.name}</div>
       </div>
       {open && <span className="cam-expand" aria-hidden><Expand /></span>}
@@ -154,15 +155,33 @@ function Pills({ cameras, at, pick, busy, row }: { cameras: Camera[]; at: string
   );
 }
 
-function Events({ events, cameras, pick }: { events: CameraEvent[]; cameras: Camera[]; pick: (id: string) => void }) {
+function Events({ events, cameras, open, at }: { events: CameraEvent[]; cameras: Camera[]; open: (e: CameraEvent) => void; at: CameraEvent | null }) {
   return (
     <div className="cam-events no-scrollbar">
       {events.map((e, i) => (
-        <button key={e.id ?? `${e.camera}${e.at}${i}`} onClick={() => pick(e.camera)} className="cam-event press">
+        <button key={e.id ?? `${e.camera}${e.at}${i}`} onClick={() => open(e)} aria-pressed={!!at && at.camera === e.camera && at.at === e.at} className="cam-event press">
           {e.image && <img src={e.image} alt="" loading="lazy" />}
           <span className="min-w-0"><b>{e.label}</b><small>{cameras.find(c => c.id === e.camera)?.name ?? e.camera} · {clockTime(e.at)}</small></span>
         </button>
       ))}
+    </div>
+  );
+}
+
+/** What a camera saw, as a picture of that moment: when, what, and the way to the camera as it is now. */
+export function EventStill({ event, cam, sample, live }: { event: CameraEvent; cam?: Camera; sample?: boolean; live: () => void }) {
+  const src = event.image ?? cam?.poster, name = cam?.name ?? event.camera;
+  return (
+    <div className="cam-stage is-still" role="group" aria-label={`${event.label} on ${name} at ${clockTime(event.at)}`}>
+      <div className="cam-frame" style={{ '--a': 16 / 9 } as React.CSSProperties}>
+        {src ? <img src={src} alt={`${event.label} on ${name}`} className="cam-media" /> : <div className="cam-off"><span>No picture saved</span></div>}
+        <div className="cam-osd cam-osd-top"><span className="cam-past">Event · {clockTime(event.at)}</span></div>
+        <div className="cam-osd cam-osd-end">{name}</div>
+      </div>
+      <div className="cam-still-bar">
+        <span className="min-w-0 truncate"><b>{event.label}</b>{event.score != null && ` · ${Math.round(event.score * 100)}%`}</span>
+        <button onClick={live} className="cam-to-live press">{sample ? "View this camera's sample feed" : 'View this camera live'}</button>
+      </div>
     </div>
   );
 }
@@ -185,14 +204,14 @@ function Theatre({ card, at, pick, busy, close }: { card: CamerasCard; at: strin
   }, []);
   return createPortal(
     <div ref={box} role="dialog" aria-modal aria-label={cam.name} tabIndex={-1} className="cam-theatre">
-      <Feed key={cam.id} cam={cam} refresh={card.refresh} on full />
+      <Feed key={cam.id} cam={cam} refresh={card.refresh} on full sample={card.sample} />
       <button onClick={close} aria-label="Close" className="cam-close press"><X /></button>
       {card.cameras.length > 1 && <div className="cam-dock"><Pills cameras={card.cameras} at={at} pick={pick} busy={busy} row /></div>}
     </div>, document.body);
 }
 
 export function Cameras({ card }: { card: CamerasCard }) {
-  const [at, setAt] = useState(card.cameras[0]?.id ?? ''), [full, setFull] = useState(false), [busy, setBusy] = useState<string[]>([]);
+  const [at, setAt] = useState(card.cameras[0]?.id ?? ''), [full, setFull] = useState(false), [busy, setBusy] = useState<string[]>([]), [still, setStill] = useState<CameraEvent | null>(null);
   const cam = card.cameras.find(c => c.id === at) ?? card.cameras[0], many = card.cameras.length > 1;
   useEffect(() => {
     const check = () => { const now = card.cameras.filter(justSeen).map(c => c.id); setBusy(b => b.join() === now.join() ? b : now); };
@@ -200,15 +219,17 @@ export function Cameras({ card }: { card: CamerasCard }) {
     const t = setInterval(check, 500);
     return () => clearInterval(t);
   }, [card.cameras]);
+  const pick = (id: string) => { setAt(id); setStill(null); };
   if (!cam) return <p className="py-6 text-center text-sm text-muted-foreground">{card.empty ?? 'No cameras'}</p>;
   return (
     <div className="cam-card @container">
       <div className={cn('cam-grid', many && 'has-pills')}>
-        <Feed key={cam.id} cam={cam} refresh={card.refresh} on={!full} open={() => setFull(true)} />
-        {many && <Pills cameras={card.cameras} at={cam.id} pick={setAt} busy={busy} />}
+        {still ? <EventStill event={still} cam={card.cameras.find(c => c.id === still.camera)} sample={card.sample} live={() => pick(still.camera)} />
+          : <Feed key={cam.id} cam={cam} refresh={card.refresh} on={!full} open={() => setFull(true)} sample={card.sample} />}
+        {many && <Pills cameras={card.cameras} at={cam.id} pick={pick} busy={busy} />}
       </div>
-      {!!card.events?.length && <Events events={card.events} cameras={card.cameras} pick={setAt} />}
-      {full && <Theatre card={card} at={cam.id} pick={setAt} busy={busy} close={() => setFull(false)} />}
+      {!!card.events?.length && <Events events={card.events} cameras={card.cameras} at={still} open={e => { setAt(e.camera); setStill(e); }} />}
+      {full && <Theatre card={card} at={cam.id} pick={pick} busy={busy} close={() => setFull(false)} />}
     </div>
   );
 }

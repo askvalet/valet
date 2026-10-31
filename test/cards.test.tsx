@@ -7,7 +7,11 @@ import { renderToString } from 'react-dom/server';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { checkCard } from '../src/shared/cards.schema.ts';
 import { MiniRing, SummaryTile, Widget } from '../src/web/cards.tsx';
-import { byDay, CalendarView, span, Thermostat } from '../src/web/home-cards.tsx';
+import { byDay, CalendarView, headsUp, span, splitToday, Thermostat, WeatherCard } from '../src/web/home-cards.tsx';
+import HomeCase from '../src/web/visuals/home-case.tsx';
+import { batteryNote, heard, near, restoreGroups, restoreOf, unsettled, wearNote, type PlanData, type PlanLight } from '../src/web/visuals/home-model.ts';
+import PcCase, { type PcCaseData } from '../src/web/visuals/pc-case.tsx';
+import type { ForecastCard, ThermostatCard } from '../src/shared/cards.ts';
 import Island from '../src/web/island.tsx';
 import { SAMPLES } from '../src/web/samples.ts';
 
@@ -89,4 +93,90 @@ test('the island renders with one and with several activities, and not at all wh
   assert.ok(renderToString(<Island live={[a]} idle="hide" docked />).includes('Joker'));
   assert.ok(renderToString(<Island live={[a, { ...a, key: 'b', title: 'Download', icon: 'download' }]} idle="hide" docked={false} />).includes('Download'));
   assert.equal(renderToString(<Island live={[]} idle="hide" docked />), '');
+});
+
+const weather = (over: Partial<ForecastCard['now']> = {}, hours: ForecastCard['hours'] = [], days?: ForecastCard['days']): ForecastCard => ({ type: 'forecast', now: { temp: 12, feels: 11, words: 'Cloudy', icon: 'cloud', hi: 14, lo: 8, ...over }, hours, days });
+const hour = (time: string, pop: number, icon = 'cloud') => ({ time, temp: 12, icon, pop });
+
+test('weather: leads with what today asks of you, and says nothing on a dull day', () => {
+  assert.equal(headsUp(weather()), undefined);
+  assert.equal(headsUp(weather({}, [hour('1pm', 10), hour('2pm', 70, 'rain'), hour('3pm', 60, 'rain'), hour('4pm', 10)])), 'Rain likely from 2pm to 4pm');
+  assert.equal(headsUp(weather({}, [hour('1pm', 80, 'snow')])), 'Snow likely from 1pm');
+  assert.equal(headsUp(weather({ icon: 'rain', precip: 1 }, [hour('1pm', 70, 'rain'), hour('2pm', 10)])), 'Rain easing around 2pm');
+  assert.equal(headsUp(weather({ icon: 'rain' }, [hour('1pm', 70, 'rain')])), 'Rain until at least 1pm');
+  const cool = [{ name: 'Tue', icon: 'sun', hi: 6, lo: 1 }, { name: 'Wed', icon: 'sun', hi: 6, lo: 1 }];
+  assert.match(headsUp(weather({}, [], cool))!, /high of 14° is 8° warmer/);
+  assert.match(headsUp(weather({ temp: 12, feels: 5 }))!, /Feels like 5°/);
+  assert.ok(renderToString(<WeatherCard card={weather({}, [hour('1pm', 70, 'rain')])} />).includes('Rain likely from 1pm'));
+});
+
+test('calendar: what is next leads, all-day follows, and what is over steps aside', () => {
+  const at = new Date(2026, 5, 10, 12).getTime(), iso = (h: number) => new Date(2026, 5, 10, h).toISOString();
+  const list = [{ title: 'Over', start: iso(9), end: iso(10) }, { title: 'Later', start: iso(15) }, { title: 'Now', start: iso(11), end: iso(13) }, { title: 'Holiday', start: '2026-06-10' }, { title: 'Point', start: iso(8) }];
+  const { ahead, earlier } = splitToday(list, at);
+  assert.deepEqual(ahead.map(e => e.title), ['Now', 'Later', 'Holiday']);
+  assert.deepEqual(earlier.map(e => e.title), ['Over', 'Point']);
+  const d = new Date(), html = renderToString(<CalendarView card={{ type: 'calendar', events: [{ title: 'Gone', start: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0).toISOString(), end: new Date(Date.now() - 1000).toISOString() }, { title: 'Soon', start: new Date(Date.now() + 864e5 * 2).toISOString() }] }} />);
+  assert.ok(html.includes('earlier today') && !html.includes('Gone'), 'collapsed until asked');
+});
+
+test('thermostat: the dial names both numbers, explains the pair people mix up, and owns up to being read-only', () => {
+  const base: ThermostatCard = { type: 'thermostat', unit: 'C', state: 'Idle', min: 10, max: 30, step: .5, target: 20, current: 19.5, set: { action: 'climate' },
+    modes: [{ id: 'sleep', label: 'Sleep', action: 'climate' }, { id: 'night', label: 'Night', action: 'climate', hint: '17 degrees' }], note: 'Following its schedule' };
+  const html = renderToString(<Thermostat card={base} run={async () => {}} />);
+  for (const word of ['Set to', 'Room ', '19.5', 'A little cooler', '17 degrees', 'Following its schedule']) assert.ok(html.includes(word), word);
+  assert.ok(!html.includes('View only'));
+  assert.ok(renderToString(<Thermostat card={base} />).includes('View only'));
+  assert.ok(renderToString(<Thermostat card={{ ...base, target: undefined, set: undefined, range: [18, 22] }} run={async () => {}} />).includes("can&#x27;t be set from here"));
+});
+
+const lamp = (over: Partial<PlanLight> = {}): PlanLight => ({ id: 'light.a', name: 'A', on: true, available: true, level: 40, canColor: true, canTemp: true, dims: true, ...over });
+const plan = (over: Partial<PlanData> = {}): PlanData => ({ rooms: [{ id: 1, name: 'Kitchen', floor: 'tile', x: 0, z: 0, w: 10, d: 10, lights: [lamp()] }, { id: 2, name: 'Store', floor: 'tile', x: 10, z: 0, w: 10, d: 10, lights: [] }], furniture: [],
+  robot: { id: 'vacuum.r', state: 'docked', status: 'Docked', battery: 90, fanSpeeds: [], wear: [['Filter', 8]] }, ...over });
+
+test('home: undo puts each light back as it was, in as few calls as it can', () => {
+  assert.deepEqual(restoreOf(lamp({ on: false })), { on: false });
+  assert.deepEqual(restoreOf(lamp({ color: '#ff0000' })), { on: true, brightness: 40, rgb: [255, 0, 0] });
+  assert.deepEqual(restoreOf(lamp({ color: '#ffc98f', kelvin: 2700 })), { on: true, brightness: 40, kelvin: 2700 });
+  assert.deepEqual(restoreOf(lamp({ dims: false, canColor: false, canTemp: false })), { on: true });
+  const groups = restoreGroups([lamp({ id: 'a' }), lamp({ id: 'b' }), lamp({ id: 'c', on: false })]);
+  assert.deepEqual(groups.map(g => g.lights.map(l => l.id)), [['a', 'b'], ['c']]);
+});
+
+test('home: a change stands until the lights agree with it', () => {
+  const rooms = plan().rooms, draft = { 'light.a': { on: false } };
+  assert.deepEqual(unsettled(draft, rooms), draft);
+  assert.deepEqual(unsettled({ 'light.a': { on: true, level: 41 } }, rooms), {}, 'rounding is agreement');
+  assert.deepEqual(unsettled({ 'light.gone': { on: true } }, rooms), {});
+  assert.ok(near('#ff0000', '#fa0404') && !near('#ff0000', '#00ff00'));
+});
+
+test('home: the robot only counts as having answered when it says what was asked, and its percentages say what they mean', () => {
+  const r = plan().robot!;
+  assert.ok(!heard({ command: 'start' }, r));
+  assert.ok(heard({ command: 'start' }, { ...r, state: 'cleaning' }));
+  assert.ok(heard({ command: 'dock' }, { ...r, state: 'returning' }));
+  assert.ok(heard({ command: 'fan_speed', fan: 'Turbo' }, { ...r, fanSpeed: 'Turbo' }));
+  assert.ok(!heard({ command: 'locate' }, r), 'nothing to read back: the page says sent');
+  assert.deepEqual([wearNote(50), wearNote(20), wearNote(5)], ['Due at 10%', 'Replace soon', 'Replace now']);
+  assert.equal(batteryNote(60, r), 'Charging');
+  assert.equal(batteryNote(100, r), 'Full');
+  assert.equal(batteryNote(15, { ...r, state: 'cleaning', status: 'Cleaning' }), 'Low, dock soon');
+});
+
+test('home: every room can be reached without the model, and view-only says so', () => {
+  const html = renderToString(<HomeCase data={plan()} run={async () => {}} />);
+  assert.ok(html.includes('Kitchen') && html.includes('Store') && html.includes('No lights'));
+  assert.ok(!html.includes('View only') && html.includes('Reset view'));
+  assert.ok(renderToString(<HomeCase data={plan()} />).includes('View only'));
+  assert.ok(!renderToString(<HomeCase data={plan({ robot: undefined })} />).includes('Store'), 'nothing to do in a room with no lights and no robot');
+});
+
+test('pc: presets read without hover, the chosen one is marked, and controls off says so', () => {
+  const data: PcCaseData = { parts: [{ id: 'pump', title: 'Cooler', zones: [{ mode: 'Static', color: [0, 0, 255], brightness: 80 }] }], metrics: { pump: [{ label: 'CPU', value: 41, unit: '°C', pct: .3 }] },
+    presets: [{ id: 'ocean', name: 'Ocean', swatch: ['#00f'], active: true }, { id: 'off', name: 'All off', swatch: ['#000'] }] } as PcCaseData;
+  const html = renderToString(<PcCase data={data} run={async () => {}} />);
+  assert.match(html, /aria-pressed="true"[^>]*title="Ocean"/);
+  assert.ok(html.includes('>Ocean<') && html.includes('>All off<') && html.includes('41°') && html.includes('Reset view'));
+  assert.ok(renderToString(<PcCase data={{ ...data, controls: false, presets: undefined }} run={async () => {}} />).includes('read-only in this install'));
 });
