@@ -1117,10 +1117,10 @@ function TileMarks({ marks }: { marks: NonNullable<Summary['marks']> }) {
 
 /** The live graph behind a summary tile: a soft filled area across the lower part of the tile, fading out on the
  *  left so the number there stays clear of it. */
-function TileGraph({ points }: { points: number[] }) {
-  const w = 200, h = 60, max = Math.max(...points), min = Math.min(...points), span = max - min || Math.max(1, max);
-  if (points.length < 2 || max - min <= Math.abs(max) * .01) return null;   // a count that barely moves has no story to draw
-  const pts = points.map((p, i) => [(i / (points.length - 1)) * w, h - 4 - ((p - min) / span) * (h - 14)] as [number, number]);
+function TileGraph({ points, gauge }: { points: number[]; gauge?: boolean }) {
+  const w = 200, h = 60, max = Math.max(...points), min = Math.min(...points), span = max - min || Math.max(1, max), still = max - min <= Math.abs(max) * .01;
+  if (points.length < 2 || (still && !gauge)) return null;   // a count that barely moves has no story to draw; a gauge holding steady does
+  const pts = points.map((p, i) => [(i / (points.length - 1)) * w, still ? h * .55 : h - 4 - ((p - min) / span) * (h - 14)] as [number, number]);
   const line = smooth(pts);
   return (
     <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="tile-graph pointer-events-none absolute inset-x-0 bottom-0 h-[62%] w-full" aria-hidden>
@@ -1144,7 +1144,7 @@ function SummaryTileView({ s, href, explain }: { s: Summary; href?: string; expl
   const body = (
     <Card className={cn('@container/tile lift relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', art && 'border-transparent text-white')} style={{ '--tint': `color-mix(in oklab, ${tintOf(s.icon ?? s.label)} 80%, var(--foreground))` } as React.CSSProperties}>
       {art && <><Art src={s.image} className="absolute inset-0 -z-10 size-full object-cover transition-transform duration-700 ease-out group-hover/tile:scale-[1.03]" /><div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(0_0_0/.78),rgb(0_0_0/.42)_38%,transparent_72%)]" /></>}
-      {!art && !s.marks && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} /></div>}
+      {!art && !s.marks && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} gauge={s.ring != null} /></div>}
       <div className={cn('relative flex flex-1 flex-col p-4', art && '[text-shadow:0_1px_10px_rgb(0_0_0/.7)]')}>
         <div className="flex items-center gap-2.5">
           {s.icon && <span className={cn('grid size-8 shrink-0 place-items-center rounded-[10px]', art ? 'bg-white/15 backdrop-blur-md' : 'bg-[color-mix(in_oklab,var(--tint)_16%,transparent)] text-[var(--tint)]')}><Icon name={s.icon} className="size-[17px]" /></span>}
