@@ -1,7 +1,32 @@
 // Tautulli (https://tautulli.com): who's watching what on Plex right now, what was added, and watch history.
 import { z } from 'zod';
 import { defineIntegration, fmt, type Instance } from '../server/core.ts';
-import type { RankedItem, MediaItem, RecapSlide } from '../shared/cards.ts';
+import type { RankedItem, MediaItem, Race, RecapSlide } from '../shared/cards.ts';
+
+const TOP = 6, MOST = 14, PAGE = 1000, HEAVY = 6 * 3_600_000;
+const seconds = (h: any) => Number(h.play_duration ?? h.duration) || 0;
+/** One year's history as running hours per title, a step a month. Too few months of it to race, it goes day by day instead;
+ *  too little even for that, there's no race. Only titles that ever reach the board are kept, so the card stays small. */
+export function raceOf(rows: any[], image: (ref: string) => string): Race | undefined {
+  const seen = rows.filter(h => (h.media_type === 'episode' || h.media_type === 'movie') && seconds(h) > 0).sort((a, b) => a.date - b.date);
+  if (!seen.length) return;
+  const at = (h: any) => new Date(h.date * 1000), start = at(seen[0]), last = at(seen.at(-1)), monthly = new Set(seen.map(h => at(h).getMonth())).size >= 3;
+  const dayNo = (d: Date) => Math.round(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 864e5);
+  const stepOf = (d: Date) => monthly ? d.getMonth() - start.getMonth() : dayNo(d) - dayNo(start), n = stepOf(last) + 1;
+  const steps = Array.from({ length: n }, (_, i) => monthly ? new Date(start.getFullYear(), start.getMonth() + i).toLocaleDateString('en', { month: 'short' }) : new Date(start.getFullYear(), start.getMonth(), start.getDate() + i).toLocaleDateString('en', { month: 'short', day: 'numeric' }));
+  const titles = new Map<string, { title: string; thumb?: string; sums: number[] }>();
+  for (const h of seen) {
+    const title = h.media_type === 'episode' ? h.grandparent_title : h.title;
+    const e = titles.get(title) ?? { title, thumb: h.grandparent_thumb || h.thumb, sums: Array<number>(n).fill(0) };
+    e.sums[stepOf(at(h))] += seconds(h) / 3600; titles.set(title, e);
+  }
+  const all = [...titles.values()].map(e => { let run = 0; return { ...e, points: e.sums.map(s => Math.round((run += s) * 10) / 10) }; });
+  const board = new Set(steps.flatMap((_, i) => [...all].sort((a, b) => b.points[i] - a.points[i]).slice(0, TOP).filter(e => e.points[i] > 0)));
+  const items = [...board].sort((a, b) => b.points[n - 1] - a.points[n - 1]).slice(0, MOST).map(e => ({ title: e.title, image: e.thumb ? image(e.thumb) : undefined, points: e.points }));
+  return n < 3 || items.length < 3 ? undefined : { steps, items, unit: 'h' };
+}
+/** The step the winner went in front and stayed there. */
+const ledFrom = (r: Race) => { const final = r.items[0].points; let i = r.steps.length - 1; while (i > 0 && r.items.every(it => it.points[i - 1] <= final[i - 1])) i--; return i; };
 
 export default defineIntegration({
   type: 'tautulli',
@@ -32,7 +57,7 @@ export default defineIntegration({
     async function recap({ year, from, to }: { year: number; from: number; to: number }): Promise<RecapSlide[]> {
       const rows = ((await api('get_history', { length: 20000, after: `${year}-01-01`, before: `${year}-12-31` })).data as any[]).filter(h => h.date * 1000 >= from && h.date * 1000 < to);
       if (!rows.length) return [];
-      const secs = (h: any) => Number(h.play_duration ?? h.duration) || 0, total = rows.reduce((s, h) => s + secs(h), 0), hours = Math.round(total / 3600);
+      const secs = seconds, total = rows.reduce((s, h) => s + secs(h), 0), hours = Math.round(total / 3600);
       const rank = (key: (h: any) => string) => { const m = new Map<string, { n: number; s: number; h: any }>(); for (const h of rows) { const k = key(h), e = m.get(k) ?? { n: 0, s: 0, h }; e.n++; e.s += secs(h); m.set(k, e); } return [...m].sort((a, b) => b[1].s - a[1].s); };
       const hrs = (s: number) => s >= 3600 ? `${Math.round(s / 3600)} h` : `${Math.round(s / 60)} min`;
       const titles = rank(h => h.media_type === 'episode' ? h.grandparent_title : h.title), people = rank(h => h.friendly_name || h.user);
@@ -44,11 +69,12 @@ export default defineIntegration({
       const recent = added.map(x => x.grandparent_thumb || x.parent_thumb || x.thumb).filter(Boolean).map(t => ctx.image(t));
       const key = titles[0][1].h.grandparent_rating_key || titles[0][1].h.rating_key;
       const art = await api('get_metadata', { rating_key: key }).then(m => m.art ? ctx.image(m.art) : undefined, () => undefined);
+      const race = raceOf(rows, ctx.image), led = race && ledFrom(race);
       const slides: RecapSlide[] = [
         { id: 'watch.hours', theme: 'media', icon: 'play', kicker: 'You watched', value: hours.toLocaleString('en'), unit: 'hours', stat: 'Hours watched', score: 95, scope: 'year', facts: { watchedHours: total / 3600 }, art: recent, wall: true,
           line: `${rows.length} plays, all from your own server.`,
           trait: { name: 'The Projectionist', line: 'The lights go down, the server spins up, and the house gets exactly what it wanted to watch.', strength: Math.min(.9, hours / 500) } },
-        { id: 'watch.top', theme: 'media', icon: 'film', kicker: 'Your most watched', value: titles[0][0], backdrop: art, line: `${titles[0][1].n} ${titles[0][1].n === 1 ? 'play' : 'plays'} and ${hrs(titles[0][1].s)}, more time than anything else this year.`, score: 90, scope: 'year',
+        { id: 'watch.top', theme: 'media', icon: 'film', kicker: 'Your most watched', value: titles[0][0], backdrop: art, line: `${titles[0][1].n} ${titles[0][1].n === 1 ? 'play' : 'plays'} and ${hrs(titles[0][1].s)}, more time than anything else this year.${led ? ` In front from ${race!.steps[led]}.` : ''}`, score: 90, scope: 'year', race,
           items: titles.slice(0, 5).map(([name, e]) => ({ name, value: hrs(e.s), image: poster(e.h) })) },
         { id: 'watch.day', theme: 'media', icon: 'calendar', kicker: 'Your night in', value: `${day}s`, line: `${dayN} of your ${rows.length} plays started on a ${day}.`, score: 60, scope: 'year', bars: byDay },
       ];
@@ -84,6 +110,26 @@ export default defineIntegration({
     }
 
     const scope = 'Everyone · last 30 days';
+    const months = new Map<string, any[]>();   // a month that's over doesn't change, so a refresh only asks for this one
+    /** A year's history, a month and a page at a time, one request after the next: it's the heaviest thing Tautulli gets asked. */
+    async function history(year: number, today = new Date()) {
+      const out: any[] = [];
+      for (let m = 0; m < 12 && new Date(year, m) <= today; m++) {
+        const after = `${year}-${String(m + 1).padStart(2, '0')}-01`, end = new Date(year, m + 1, 0);
+        let rows = months.get(after);
+        if (!rows) {
+          rows = [];
+          for (let got = PAGE; got === PAGE;) {
+            const page = (await api('get_history', { after, before: `${after.slice(0, 8)}${String(end.getDate()).padStart(2, '0')}`, start: rows.length, length: PAGE })).data as any[];
+            rows.push(...page.map(h => ({ date: h.date, media_type: h.media_type, title: h.title, grandparent_title: h.grandparent_title, grandparent_thumb: h.grandparent_thumb, thumb: h.thumb, play_duration: h.play_duration, duration: h.duration })));   // only what the race reads
+            got = page.length;
+          }
+          if (new Date(year, m + 1) <= today) months.set(after, rows);
+        }
+        out.push(...rows);
+      }
+      return out;
+    }
     let viewers: { at: number; rows: any[] } | undefined;   // totals move slowly; who's on right now doesn't
     async function totals() {
       if (viewers && Date.now() - viewers.at < 3_600_000) return viewers.rows;
@@ -124,7 +170,22 @@ export default defineIntegration({
         async fetch() {
           const d = await api('get_plays_by_date', { time_range: 30 }), series = (d.series as any[]).filter(x => x.name !== 'Total' && x.data.some((n: number) => n > 0));
           const all = (d.series as any[]).find(x => x.name === 'Total')?.data as number[] | undefined;
-          return { type: 'chart', style: 'bars', title: 'Plays', icon: 'chart', source, span: 'last 30 days', headline: all ? `${all.reduce((a, b) => a + b, 0)} plays` : undefined, labels: d.categories, series: series.map(x => ({ name: x.name, points: x.data })) };
+          return { type: 'chart', style: 'stream', title: 'Plays', icon: 'chart', source, span: 'last 30 days', headline: all ? `${all.reduce((a, b) => a + b, 0)} plays` : undefined, labels: d.categories, series: series.map(x => ({ name: x.name, points: x.data })) };
+        },
+      },
+      race: {
+        title: 'The year so far', interval: HEAVY,
+        async fetch() {
+          const year = new Date().getFullYear(), r = raceOf(await history(year), ctx.image), lead = r?.items[0];
+          return { type: 'race', title: 'The year so far', icon: 'film', source, steps: r?.steps ?? [], items: r?.items ?? [], unit: r?.unit, span: r && (/ /.test(r.steps[0]) ? `Hours watched since ${r.steps[0]}` : `Hours watched in ${year}`),
+            summary: lead && { label: 'The year so far', value: lead.title, sub: `${Math.round(lead.points.at(-1)!)} h`, image: lead.image } };
+        },
+      },
+      viewing: {
+        title: 'Viewing', interval: HEAVY,
+        async fetch() {
+          const d = await api('get_plays_by_date', { time_range: 365 }), all = (d.series as any[]).find(x => x.name === 'Total')?.data as number[] | undefined;
+          return { type: 'heatmap', title: 'Viewing', icon: 'calendar', source, from: d.categories[0], days: all ?? [], unit: 'play', span: 'last 12 months' };
         },
       },
       streams: {

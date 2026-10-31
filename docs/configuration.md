@@ -445,7 +445,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `romm` | `url`, `username`, `password` | `recent` |
 | `scrutiny` | `url`, `hotC` (55) | `drives` |
 | `seerr` | `url`, `apiKey` | `requests` |
-| `tautulli` | `url`, `apiKey` | `streams`, `recent` |
+| `tautulli` | `url`, `apiKey` | `streams`, `recent`, `top`, `people`, `library`, `plays` (a stream of 30 days), `race` (the year's titles overtaking each other; refreshes every few hours), `viewing` (a year of days) |
 | `uptimekuma` | `url`, `username` (empty with an API key), `password` (or the key), `certWarnDays` (14) | `monitors` |
 | `weather` | `latitude`, `longitude`, `units` (`metric`), `interval` (600000 ms) | `now` |
 | `rss` | `feeds` (URLs, or `{ url, name }`; YouTube channels via `youtube.com/feeds/videos.xml?channel_id=…`), `limit` (12), `style` (`list` or `shelf` for thumbnails), `title`, `every` (900 s) | `latest` |

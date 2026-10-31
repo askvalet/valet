@@ -59,9 +59,9 @@ export default defineIntegration({
             const [o, net, d] = await Promise.all([overview(), network(), disks()]);
             cpuName ??= await api('quicklook').then(q => String(q.cpu_name ?? '').replace(/ \d+-Core Processor$/, '').replace(/^AMD /, '')).catch(() => undefined);
             const tiles: Summary[] = [
-              { label: 'CPU', icon: 'cpu', sub: cpuName, value: `${Math.round(o.cpu.total)}%`, detail: o.temp != null ? `${o.temp}°C` : undefined, trend: [...hist.cpu],
+              { label: 'CPU', icon: 'cpu', sub: cpuName, value: `${Math.round(o.cpu.total)}%`, detail: o.temp != null ? `${o.temp}°C` : undefined, trend: [...hist.cpu], every: 3000,
                 pct: o.cpu.total / 100, tone: o.cpu.total > 90 ? 'warn' : heat(o.temp) === 'neutral' ? 'good' : heat(o.temp) },
-              { label: 'Memory', icon: 'memory', sub: fmt.bytes(o.mem.total, 0), value: `${Math.round(o.mem.percent)}%`, detail: `${fmt.bytes(o.mem.used, 1)} used`, trend: [...hist.mem],
+              { label: 'Memory', icon: 'memory', sub: fmt.bytes(o.mem.total, 0), value: `${Math.round(o.mem.percent)}%`, detail: `${fmt.bytes(o.mem.used, 1)} used`, trend: [...hist.mem], every: 3000,
                 pct: o.mem.percent / 100, tone: o.mem.percent > 95 ? 'bad' : o.mem.percent > 85 ? 'warn' : 'good' },
             ];
             if (net) {
@@ -71,7 +71,7 @@ export default defineIntegration({
                 pct: (net.bytes_recv_rate_per_sec ?? 0) / peak, tone: 'accent', ring: fmt.speed(net.bytes_recv_rate_per_sec ?? 0).replace('/s', '') });
             }
             if (o.gpu) tiles.push({ label: 'GPU', icon: 'gpu', sub: String(o.gpu.name).replace(/^NVIDIA GeForce /, ''), value: `${Math.round(o.gpu.proc ?? 0)}%`,
-              detail: `${o.gpu.temperature}°C · VRAM ${Math.round(o.gpu.mem)}%`, trend: [...hist.gpu], pct: (o.gpu.proc ?? 0) / 100,
+              detail: `${o.gpu.temperature}°C · VRAM ${Math.round(o.gpu.mem)}%`, trend: [...hist.gpu], every: 3000, pct: (o.gpu.proc ?? 0) / 100,
               tone: heat(o.gpu.temperature) === 'neutral' ? 'good' : heat(o.gpu.temperature) });
             for (const x of d) {
               const m = mounts.find(m => m.mount === x.mnt_point);
