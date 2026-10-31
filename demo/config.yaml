@@ -1,6 +1,7 @@
 # The public demo: real Valet, made-up homelab. Everything on the page comes from integrations/homelab.mjs and the
 # assistant is the scripted stand-in in mock-model.mjs. No secrets, no real services, nothing worth stealing.
 title: Valet
+notice: "Interactive demo · simulated home · guided AI responses"
 greeting: Daniel
 timezone: America/Toronto
 location: Example, Canada
@@ -21,6 +22,7 @@ assistant:
   maxSteps: 4
   access: { default: control }
   background: { watch: false, brief: true, suggest: true }
+  suggestions: [What should we watch tonight?, Turn off the living room lights, Anything happen overnight?, How are the downloads doing?]
 
 integrations:
   lab:
@@ -33,7 +35,7 @@ weather: lab.weather
 calendar: lab.calendar
 format: { weekStart: monday }
 island:
-  activities: [lab.streams, lab.downloads]
+  activities: [lab.streams, lab.downloads, lab.home]
   idle: hide
 
 layout:

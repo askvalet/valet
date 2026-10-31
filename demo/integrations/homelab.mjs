@@ -13,6 +13,9 @@ const now = () => Date.now();
 const past = (n, a, b, step = 60_000) => Array.from({ length: n }, (_, i) => Math.round(wave(Math.floor(now() / step) - n + i, a, b) * 10) / 10);
 const PALETTES = [['#0b1033', '#5b3a8c', '#f2708a', '#ffc27a'], ['#04202b', '#0e5a6b', '#3fb6a8', '#f5e6a8'], ['#1a0b2e', '#7a2a6b', '#ff6f59', '#ffd166'],
   ['#0a1a12', '#1f5a44', '#7cc36a', '#f4f1bb'], ['#101827', '#2f4b8f', '#6ea8ff', '#e8f1ff'], ['#2a0f12', '#8a2b2b', '#ef8354', '#ffe0a3']];
+const sum = list => list.reduce((a, b) => a + b, 0);
+/** A whole number dealt out across some weights, so the parts always add back up to it exactly. */
+const share = (total, weights) => { const all = sum(weights); let upto = 0, dealt = 0; return weights.map(w => { upto += w / all * total; const n = Math.round(upto) - dealt; dealt += n; return n; }); };
 const uri = svg => `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 const esc = s => String(s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]);
 
@@ -39,11 +42,11 @@ const dir = existsSync('/demo/art') ? '/demo/art' : resolve('demo/art');
 const ART = JSON.parse(readFileSync(`${dir}/art.json`, 'utf8'));
 /** A scanned page: letterhead, the details, a table if it has one. Real enough at thumbnail size. */
 const paper = ({ org, title, date, color, lines = [], rows = [], total }) => {
-  const line = (y, w, o = .16) => `<rect x="44" y="${y}" width="${w}" height="6" rx="3" fill="#1f2430" opacity="${o}"/>`;
+  const line = (y, w, o = .16, x = 44) => `<rect x="${x}" y="${y}" width="${w}" height="6" rx="3" fill="#1f2430" opacity="${o}"/>`;
   const table = rows.map(([a, b], i) => `<text x="44" y="${322 + i * 30}" font-size="15" fill="#39404f">${esc(a)}</text><text x="456" y="${322 + i * 30}" font-size="15" fill="#39404f" text-anchor="end">${esc(b)}</text><rect x="44" y="${332 + i * 30}" width="412" height="1" fill="#1f2430" opacity=".1"/>`).join('');
   const after = 322 + rows.length * 30;
   return uri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 647" font-family="Helvetica, Arial, sans-serif"><rect width="500" height="647" fill="#fbfaf6"/><rect width="500" height="10" fill="${color}"/>
-<circle cx="62" cy="62" r="18" fill="${color}"/><text x="92" y="58" font-size="19" font-weight="700" fill="#1f2430">${esc(org)}</text>${line(68, 110)}
+<circle cx="62" cy="62" r="18" fill="${color}"/><text x="92" y="58" font-size="19" font-weight="700" fill="#1f2430">${esc(org)}</text>${line(68, 110, .16, 92)}
 <text x="456" y="58" font-size="13" fill="#6a7180" text-anchor="end">${esc(date)}</text>
 <text x="44" y="150" font-size="27" font-weight="700" fill="#1f2430">${esc(title)}</text>${line(172, 300)}${line(188, 340)}${line(204, 220)}
 ${lines.map((l, i) => `<text x="44" y="${246 + i * 21}" font-size="14" fill="#555c6b">${esc(l)}</text>`).join('')}${table}
@@ -56,11 +59,36 @@ const PAPERS = [
   { title: 'Furnace service', org: 'Warm & Co', date: 'Sep 12', color: '#c8553d', lines: ['Annual inspection and filter'], rows: [['Labour', '$120.00'], ['Filter, MERV 13', '$34.00']], total: '$154.00', badge: 'Paid' },
   { title: 'Passport renewal', org: 'Government', date: 'Aug 30', color: '#3b4a8c', lines: ['Application received', 'Reference 8841-2206-117'] },
   { title: 'Vet checkup', org: 'Maple Vet Clinic', date: 'Aug 14', color: '#3f8f6b', lines: ['Patient: Biscuit'], rows: [['Exam', '$75.00'], ['Vaccines', '$48.00']], total: '$123.00' },
-  { title: 'Lease agreement', org: 'Oak Property', date: 'Jul 1', color: '#6b4fa0', lines: ['Term: 12 months', '14 Maple Street'] },
+  { title: 'Mortgage renewal', org: 'Example Bank', date: 'Jul 1', color: '#6b4fa0', lines: ['Term: 5 years', '14 Maple Street'] },
   { title: 'Bike warranty', org: 'Trail Cycles', date: 'Jun 18', color: '#2e7d4f', lines: ['Frame: lifetime', 'Parts: two years'] },
   { title: 'Internet plan', org: 'Fibre North', date: 'Jun 2', color: '#0077c8', rows: [['Gigabit, monthly', '$69.00']], total: '$69.00' },
 ];
 const FILMS = ['Spider-Man: Brand New Day', 'The Bear', 'Arrival', 'Interstellar', 'Blade Runner 2049', 'Severance', 'Spirited Away', 'Andor', 'Shōgun', 'The Grand Budapest Hotel'];
+// What's new on the shelf, newest first, and what the calendar has next: [days away, title, badge, what it is]
+const SHELF = ['Severance', 'Blade Runner 2049', 'Spirited Away', 'The Grand Budapest Hotel', 'Andor', 'The Bear', 'Arrival', 'Interstellar'];
+const episode = 'New episode', NEXT = ['Shōgun', 3];
+const CALENDAR = [[0, 'Severance', 'Ready'], [1, 'The Bear'], [NEXT[1], NEXT[0]], [6, 'Severance'], [8, 'The Bear'], [10, 'Shōgun'], [10, 'Severance'], [13, 'Dune: Part Two', undefined, 'Film · 4K release']];
+// Everything watched in the last 30 days: [title, kind, hours a play, plays by each viewer]. Plays, Most watched and Who's
+// watching all add up this one table, and so does the assistant.
+const VIEWERS = ['Theo', 'Alex', 'Priya'];
+const WATCHED = [['Severance', 'tv', 1, [11, 5, 2]], ['The Bear', 'tv', .5, [12, 12, 6]], ['Interstellar', 'movie', 3, [1, 1, 1]], ['Arrival', 'movie', 2, [2, 1, 1]]];
+const playsOf = kind => sum(WATCHED.filter(w => w[1] === kind).map(w => sum(w[3])));
+const hoursOf = viewer => sum(WATCHED.map(([, , h, by]) => h * by[viewer]));
+const LAST_30 = 'last 30 days';
+const UNSEEN = SHELF.find(t => !WATCHED.some(w => w[0] === t));
+// One pair of numbers for the Pi-hole card, its tile and the year in review
+const BLOCK_RATE = .14, blockPct = `${Math.round(BLOCK_RATE * 100)}%`, BLOCKED_YEAR = 6_204_118, OFFENDERS = [['ads.example.net', .31], ['telemetry.example.com', .22], ['tracker.example.org', .14], ['metrics.example.io', .07]];
+/** The last 24 hours of DNS, half an hour a bar, in whole queries: everything Pi-hole says is added up from these. */
+const dnsDay = () => {
+  const slot = Math.floor(now() / 18e5), asked = past(48, 400, 2600, 18e5).map(Math.round), total = sum(asked);
+  const blocks = share(Math.round(total * BLOCK_RATE), asked.map((v, i) => v * (1 + .35 * Math.sin((slot + i) / 5))));
+  return { asked, blocks, total, blocked: sum(blocks) };
+};
+const MEMORY = [21, 64], STORAGE = [11.6, 20], gpuWatts = 38;
+const pctOf = ([used, all]) => Math.round(used / all * 100);
+const cpuLoad = () => Math.round(12 + 8 * Math.sin(now() / 30_000)), gpuLoad = () => Math.round(6 + 5 * Math.sin(now() / 50_000));
+const cpuTemp = () => 42 + 5 * Math.sin(now() / 90_000), gpuTemp = () => 38 + 6 * Math.sin(now() / 70_000);
+const takenTb = 4.5, givenTb = 14.3;
 const STACK = ['plex', 'tautulli', 'sonarr', 'radarr', 'prowlarr', 'bazarr', 'qbittorrent', 'navidrome', 'lidarr', 'komga', 'audiobookshelf', 'miniflux', 'immich', 'paperless', 'karakeep', 'mealie', 'tandoor-recipes', 'home-assistant', 'frigate', 'nextcloud', 'syncthing', 'vaultwarden', 'authentik', 'crowdsec', 'pi-hole', 'tailscale', 'caddy', 'nginx-proxy-manager', 'uptime-kuma', 'grafana', 'changedetection', 'forgejo', 'proxmox', 'portainer'];
 const SETBACKS = { home: 20, sleep: 18, night: 17 };
 const pad = n => String(n).padStart(2, '0');
@@ -152,6 +180,7 @@ export default ({ z, defineIntegration }) => {
       modes: [{ id: 'off', label: power ? 'Turn off' : 'Turn on', on: !power, action: 'thermostat', args: { power: !power } }, ...[['home', 'Home'], ['sleep', 'Sleep'], ['night', 'Night']].map(([id, label]) => ({ id, label, on: power && preset === id, action: 'thermostat', args: { preset: id } }))],
       summary: { label: 'Hallway', icon: 'thermometer', value: `${(power ? target : room).toFixed(1)}°`, sub: state, detail: power ? `${room.toFixed(1)}° now` : undefined, pct: (target - 10) / 20 } };
   };
+  const setClimate = ({ temperature, preset, power }) => { const c = climate(); put('thermostat', { preset: preset ?? c.preset, power: preset ? true : power ?? c.power, target: temperature ?? (preset ? SETBACKS[preset] : c.target), from: c.room, at: now() }); };
   const mealieUp = () => got('mealie', false);
   const paused = () => got('paused', false);
   const services = () => SERVICES.map(([name, group, icon]) => {
@@ -164,7 +193,7 @@ export default ({ z, defineIntegration }) => {
     if (paused()) return [];
     return [['Andor', 'S02E05', 1.4], ['Oppenheimer', '2023', 6.8]].map(([title, sub, gb], i) => {
       const pct = (.08 + ((now() + i * 1.3e7) % CYCLE) / CYCLE * .9), left = gb * (1 - pct);
-      return { title, sub, pct, left, speed: 18 + 9 * Math.sin(now() / 40_000 + i) };
+      return { title, sub, pct, left, speed: gb * 1000 / (CYCLE / 1000 * .9) * (1 + .15 * Math.sin(now() / 40_000 + i)) };
     });
   };
   const STREAM = 118 * 60_000;
@@ -179,6 +208,7 @@ export default ({ z, defineIntegration }) => {
     ['Bedroom', 'Bedside left', 'lamp', -92, 36], ['Bedroom', 'Bedside right', 'lamp', 72, 36], ['Bathroom', 'Mirror', 'ceiling', 150, 60], ['Guest Room', 'Ceiling', 'ceiling', 190, 150]];
   const OFF = new Set(['Hallway', 'Bathroom', 'Guest Room', 'Bedroom']);
   const COLOUR = { 'TV backlight': '#7f7bff', 'Desk lamp': '#ffe8d1' };
+  const KELVIN = { 2200: '#ffb46b', 2700: '#ffc98f', 4000: '#ffe8d1', 6500: '#e6efff' };
   const lightId = (room, name) => `light.${room}_${name}`.toLowerCase().replace(/ /g, '_');
   const light = ([room, name, kind, x, z]) => { const id = lightId(room, name), s = got(id, { on: !OFF.has(room), level: 75, color: COLOUR[name] ?? '#ffc58f' });
     return { id, name, kind, at: { x, z }, available: true, canColor: true, canTemp: true, dims: true, ...s }; };
@@ -193,12 +223,54 @@ export default ({ z, defineIntegration }) => {
     ['Washer', 8, 206, 26, 32, 30], ['Dryer', 8, 242, 26, 32, 30], ['Shelf', 8, 206, 106, 68, 10, 180],
     ['Bed', 9, 208, 124, 64, 60], ['Bedside table', 9, 180, 124, 22, 22], ['Plant', 9, 106, 164, 20, 20],
   ];
-  const homeCard = () => ({ type: 'showcase', title: 'Home', icon: 'home', wide: true, items: [],
+  // The robot drives a route at a steady pace, so where it is, what it's doing and its battery all follow from the clock.
+  // Each point is [x, z], and in a room [x, z, room]; it leaves the hallway by these doors.
+  const HOME = [240, -40], HALL = [240, -25], FANS = ['Quiet', 'Standard', 'Turbo'], PACE = 30, FIND_MS = 10_000, BUSY_DRAIN = .1, CHARGE = .4;
+  const DOORS = { 1: [[40, -25], [-20, -25]], 2: [[85, -25], [85, -85]], 3: [[220, -25], [220, -85]], 4: [], 5: [[40, -25], [-195, -10], [-195, 40]], 6: [[55, -25], [55, 40]], 7: [[150, -25], [150, 40]], 8: [[240, -25], [240, 40]], 9: [[240, -25], [240, 100], [240, 140]] };
+  const sweep = ([id, , , x, z, w, d]) => [[x + 22, z + 22], [x + w - 22, z + 22], [x + w - 22, z + d / 2], [x + 22, z + d / 2], [x + 22, z + d - 22], [x + w - 22, z + d - 22]].map(p => [...p, id]);
+  const leaving = at => at ? [[at.x, at.z], ...(DOORS[at.room] ?? []).toReversed()] : [HOME];
+  const trip = (ids, from = [HOME]) => [...from, HALL, ...rooms.filter(r => ids.includes(r[0])).flatMap(r => [...DOORS[r[0]], ...sweep(r), ...DOORS[r[0]].toReversed()]), HALL, HOME];
+  /** Where a route has got to after `dist`, or null once it's over. */
+  const along = (route, dist) => {
+    for (let i = 1; i < route.length; i++) {
+      const [ax, az] = route[i - 1], [bx, bz, room] = route[i], dx = bx - ax, dz = bz - az, len = Math.hypot(dx, dz);
+      if (dist <= len) return { x: Math.round(ax + dx * (len ? dist / len : 0)), z: Math.round(az + dz * (len ? dist / len : 0)), a: Math.round(Math.atan2(-dx, -dz) * 180 / Math.PI), room, i };
+      dist -= len;
+    }
+    return null;
+  };
+  const span = route => route.slice(1).reduce((n, p, i) => n + Math.hypot(p[0] - route[i][0], p[1] - route[i][1]), 0);
+  const vacuumNow = () => {
+    const v = got('vacuum', null), ran = v ? v.held ?? now() - v.at : 0, at = v && along(v.route, ran / 1000 * PACE), length = v ? span(v.route) : 0;
+    return { v, ran, at, length, tired: (v?.spent ?? 0) + Math.round(Math.min(ran, length / PACE * 1000) / 1000 * BUSY_DRAIN) };
+  };
+  const robot = () => {
+    const { v, ran, at, length, tired } = vacuumNow(), rest = { id: 'vacuum.robot', fanSpeed: got('fan', 'Standard'), fanSpeeds: FANS, wear: [['Main brush', 82], ['Filter', 64]] };
+    const said = got('vacuumNote', null), note = said?.until > now() ? said.text : null, found = got('found', 0) > now(), docked = { x: HOME[0], z: HOME[1], a: 180, state: 'docked' };
+    // the plan's ring only pulses for a busy robot, so that's what Find borrows while it beeps
+    const beep = found ? { state: 'returning', status: 'Beeping: here I am' } : {};
+    if (!at) { const battery = Math.min(100, 100 - tired + Math.round((ran - length / PACE * 1000) / 1000 * CHARGE)); return { ...rest, ...docked, battery, status: note ?? (battery < 100 ? 'Charging' : 'Docked'), ...beep }; }
+    const out = v.route.slice(at.i).some(p => p[2] != null), place = rooms.find(r => r[0] === at.room)?.[1], paused = v.held != null;
+    return { ...rest, x: at.x, z: at.z, a: at.a, battery: 100 - tired, state: paused ? 'paused' : out ? 'cleaning' : 'returning', status: note ?? (paused ? 'Paused' : out ? (place ? `Cleaning the ${place.toLowerCase()}` : 'Cleaning') : 'Returning to the dock'), ...beep };
+  };
+  /** What the buttons and the assistant ask of the robot. Asking for something it can't do says so on its status line. */
+  const vacuum = ({ command, rooms: ids, fan_speed }) => {
+    const { v, ran, at, tired } = vacuumNow(), tell = text => put('vacuumNote', { text, until: now() + 6_000 });
+    if (command === 'fan_speed') { if (FANS.includes(fan_speed)) put('fan', fan_speed); else tell("It can't do that"); }
+    else if (command === 'locate') put('found', now() + FIND_MS);
+    else if (command === 'clean_rooms') { const known = (ids ?? []).filter(id => DOORS[id]); if (known.length) put('vacuum', { route: trip(known, leaving(at)), at: now(), spent: tired }); else tell("That room isn't on the map"); }
+    else if (command === 'start') { if (v?.held != null) put('vacuum', { ...v, held: undefined, at: now() - ran }); else if (!at) put('vacuum', { route: trip(rooms.map(r => r[0])), at: now() }); else tell('Already cleaning'); }
+    else if (command === 'pause') { changes.delete('found'); if (at) put('vacuum', { ...v, held: ran }); else tell('Nothing to pause'); }
+    else if (command === 'dock') { if (at) put('vacuum', { route: [...leaving(at), HALL, HOME], at: now(), spent: tired }); else tell('Already docked'); }
+    else tell("It can't do that");
+  };
+  const homeCard = () => { const r = robot(), { at, ran, length } = vacuumNow(); return { type: 'showcase', title: 'Home', icon: 'home', wide: true, items: [],
+    ...(at ? { activity: { title: 'Vacuum', subtitle: r.status, icon: 'home', pct: Math.min(1, ran / 1000 * PACE / length), trailing: `${r.battery}%`, paused: r.state === 'paused' } } : {}),
     visual: { kind: 'home', data: { view: { turn: -30, tilt: -46 },
       rooms: rooms.map(([id, name, floor, x, z, w, d]) => ({ id, name, floor, x, z, w, d, lights: LIGHTS.filter(l => l[0] === name).map(light) })),
       furniture: FURNITURE.map(([type, room, x, z, w, d, angle = 0]) => ({ type, room, angle, x, z, w, d })),
       dock: { x: 262, z: -55, a: 180 },
-      robot: { x: 240, z: -40, a: 180, id: 'vacuum.robot', state: 'docked', status: 'Docked', battery: 100, fanSpeed: 'Standard', fanSpeeds: ['Quiet', 'Standard', 'Turbo'], wear: [['Main brush', 82], ['Filter', 64]] } } } });
+      robot: r } } }; };
 
   const PRESETS = [['white', 'All white', ['#ffffff']], ['ocean', 'Ocean', ['#00c2ff', '#0a5cff']], ['sunset', 'Sunset', ['#ff6b35', '#ff2d78']], ['forest', 'Forest', ['#2fd27a', '#0f7b4f']], ['off', 'All off', ['#000000']]];
   const PRESET_RGB = { white: [255, 255, 255], ocean: [0, 150, 255], sunset: [255, 90, 60], forest: [47, 210, 122], off: [0, 0, 0] };
@@ -206,19 +278,19 @@ export default ({ z, defineIntegration }) => {
     const preset = got('preset', 'ocean'), part = id => got(`part.${id}`, null);
     const zone = (id, n = 1) => Array.from({ length: n }, () => part(id) ?? { mode: preset === 'off' ? 'Off' : 'Static', color: PRESET_RGB[preset], brightness: 100 });
     const mk = (id, title, n) => ({ id, title, modes: ['Static', 'Breathing', 'Rainbow', 'Off'], zones: zone(id, n) });
-    const temp = 42 + 5 * Math.sin(now() / 90_000), gpu = 38 + 6 * Math.sin(now() / 70_000);
+    const temp = cpuTemp(), gpu = gpuTemp();
     return { type: 'showcase', title: 'Desktop', icon: 'cpu', wide: true, items: [],
       visual: { kind: 'pc-case', data: { parts: [mk('fans0', 'Top fans', 3), mk('fans1', 'Floor fans', 3), mk('pump', 'Cooler', 1), mk('ram', 'Memory', 4), mk('gpu', 'GPU', 1)],
         layout: { fans0: 'top', fans1: 'hidden' }, fans: { fans0: 900, fans1: 760 }, view: { turn: -27, tilt: -18, draggable: true }, controls: true,
         presets: PRESETS.map(([id, name, swatch]) => ({ id, name, swatch })),
-        metrics: { pump: [{ label: 'CPU', value: Math.round(temp), unit: '°C', pct: (temp - 25) / 70 }], gpu: [{ label: 'Temp', value: Math.round(gpu), unit: '°C', pct: (gpu - 25) / 65 }, { label: 'Power', value: 42, unit: 'W', pct: .1 }], ram: [{ label: 'In use', value: 21, unit: 'GB', pct: .33 }] },
+        metrics: { pump: [{ label: 'CPU', value: Math.round(temp), unit: '°C', pct: (temp - 25) / 70 }], gpu: [{ label: 'Temp', value: Math.round(gpu), unit: '°C', pct: (gpu - 25) / 65 }, { label: 'Power', value: gpuWatts, unit: 'W', pct: .1 }], ram: [{ label: 'In use', value: MEMORY[0], unit: 'GB', pct: MEMORY[0] / MEMORY[1] }] },
         build: { ramLabel: 'VALET', board: { label: 'MAPLE', plate: 'STREET', accent: '#7d9cff' }, gpu: { label: 'DEMO', badge: 'VALET' } } } } };
   };
 
   const day = (h, m = 0) => { const d = new Date(); d.setHours(h, m, 0, 0); return d.toISOString(); };
   const ymd = n => { const d = new Date(now() + n * 864e5); return [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(x => String(x).padStart(2, '0')).join('-'); };
   const inDays = n => new Date(now() + n * 864e5).toLocaleDateString('en', { month: 'short', day: 'numeric' });
-  const drives = [['Backup 12 TB', 38, '3.1 years on'], ['Media 8 TB', 41, '1.8 years on'], ['System NVMe', 46, '244 days on']];
+  const drives = [['Backup 12 TB', 38, '3.1 years on'], ['Media 8 TB', 41, '1.8 years on'], ['System NVMe', 46, '244 days on']], hottest = drives.reduce((a, b) => b[1] > a[1] ? b : a);
   const statusCard = (title, icon, items) => ({ type: 'status', title, icon, items });
   const containers = () => ['bazarr', 'caddy', 'home-assistant', 'immich', 'karakeep', 'mealie', 'paperless', 'pi-hole', 'plex', 'prowlarr', 'qbittorrent', 'radarr', 'sonarr', 'tautulli', 'uptime-kuma']
     .map(n => ({ name: n, icon: `/api/icon/${n}`, ok: n !== 'mealie' || mealieUp(), detail: n === 'mealie' && !mealieUp() ? 'exited (137)' : undefined }));
@@ -241,47 +313,48 @@ export default ({ z, defineIntegration }) => {
         uptime: w('Uptime', 60_000, () => ({ ...statusCard('Uptime', 'pulse', services().map(({ group, ...s }) => s)), note: '99.8% over 30 days' })),
         containers: w('Containers', 30_000, () => ({ ...statusCard('Containers', 'disk', containers()), layout: 'wall' })),
         drives: w('Drives', 300_000, () => ({ type: 'list', layout: 'temps', title: 'Drives', icon: 'disk', items: drives.map(([title, t, age]) => ({ title, subtitle: age, meta: `${t}°C`, pct: (t - 20) / 40 })),
-          summary: { label: 'Drives', icon: 'disk', value: '46°C', sub: 'All 3 healthy', tone: 'good', marks: drives.map(([title, t]) => ({ pct: (t - 20) / 40, label: `${title} · ${t}°C` })) } })),
-        dns: w('Pi-hole', 60_000, () => { const blocked = 9000 + Math.floor((now() % 864e5) / 864e5 * 14000), q = past(48, 400, 2600, 1_800_000), b = q.map((v, i) => Math.round(v * (.09 + .1 * Math.abs(Math.sin(i / 5)))));
-          return { type: 'chart', style: 'bars', title: 'Pi-hole', icon: 'shield', headline: '14%', span: `of ${(blocked * 7).toLocaleString('en')} queries today · 23 devices`, from: now() - 864e5, to: now(),
-            series: [{ name: 'Blocked', tone: 'bad', points: b }, { name: 'Allowed', points: q.map((v, i) => v - b[i]) }],
-            facts: [['ads.example.net', 41200], ['telemetry.example.com', 30110], ['tracker.example.org', 18840], ['metrics.example.io', 9020]].map(([label, value]) => ({ label, value: value.toLocaleString('en') })),
-            summary: { label: 'Ads blocked', icon: 'shield', value: blocked.toLocaleString('en'), ring: '14%', tone: 'good', sub: '14% of queries', trend: past(60, 20, 90, 300_000), pct: .14 } }; }),
+          summary: { label: 'Drives', icon: 'disk', value: `${hottest[1]}°C`, sub: `All ${drives.length} healthy`, tone: 'good', marks: drives.map(([title, t]) => ({ pct: (t - 20) / 40, label: `${title} · ${t}°C` })) } })),
+        dns: w('Pi-hole', 60_000, () => { const { asked, blocks, total, blocked } = dnsDay(), pct = `${Math.round(blocked / total * 100)}%`;
+          return { type: 'chart', style: 'bars', title: 'Pi-hole', icon: 'shield', headline: pct, span: `of ${total.toLocaleString('en')} queries · last 24 hours · 23 devices`, from: now() - 864e5, to: now(),
+            series: [{ name: 'Blocked', tone: 'bad', points: blocks }, { name: 'Allowed', points: asked.map((v, i) => v - blocks[i]) }],
+            facts: OFFENDERS.map(([label, part]) => ({ label, value: Math.round(blocked * part).toLocaleString('en') })),
+            summary: { label: 'Ads blocked', icon: 'shield', value: blocked.toLocaleString('en'), ring: pct, tone: 'good', sub: `${pct} of queries · 24 hours`, trend: blocks, pct: blocked / total } }; }),
         updates: w('Updates', 3_600_000, () => ({ type: 'list', layout: 'chips', title: 'Updates', icon: 'tag', items: [{ title: 'immich', subtitle: 'v2.5.0 → v2.6.1' }, { title: 'paperless', subtitle: '3.1.0 → 3.2.0' }, { title: 'karakeep', subtitle: '0.33.2 → 0.34.0' }] })),
-        jobs: w('Scheduled jobs', 60_000, () => ({ type: 'list', layout: 'chips', title: 'Scheduled jobs', icon: 'clock', items: [{ title: 'Nightly backup', subtitle: 'ran 6h ago', meta: 'next 18h' }, { title: 'Photo sync', subtitle: 'ran 12m ago', meta: 'next 3m' }, { title: 'Disk check', subtitle: 'ran 9h ago', meta: 'next 15h' }] })),
-        system: w('System', 5_000, () => { const cpu = Math.round(12 + 8 * Math.sin(now() / 30_000)), gpu = Math.round(6 + 5 * Math.sin(now() / 50_000)), gauge = (label, icon, v, detail, lo, hi) => ({ label, icon, value: `${v}%`, ring: `${v}%`, pct: v / 100, tone: 'good', detail, trend: past(48, lo, hi, 300_000) });
-          return { type: 'stats', title: 'System', icon: 'cpu', items: [{ label: 'CPU', value: cpu, unit: '%' }], summaries: [gauge('CPU', 'cpu', cpu, '44°C', 6, 24), gauge('Memory', 'memory', 33, '21 of 64 GB', 29, 37), gauge('GPU', 'gpu', gpu, '38°C', 2, 40), gauge('Storage', 'disk', 58, '11 of 20 TB', 56, 59)] }; }),
+        jobs: w('Scheduled jobs', 60_000, () => ({ type: 'list', layout: 'chips', title: 'Scheduled jobs', icon: 'clock', items: [{ title: 'Nightly backup', subtitle: `ran ${(new Date(now()).getHours() + 20) % 24}h ago`, meta: `next ${24 - (new Date(now()).getHours() + 20) % 24}h` }, { title: 'Photo sync', subtitle: 'ran 12m ago', meta: 'next 3m' }, { title: 'Disk check', subtitle: 'ran 9h ago', meta: 'next 15h' }] })),
+        system: w('System', 5_000, () => { const cpu = cpuLoad(), gpu = gpuLoad(), gauge = (label, icon, v, detail, lo, hi) => ({ label, icon, value: `${v}%`, ring: `${v}%`, pct: v / 100, tone: 'good', detail, trend: past(48, lo, hi, 300_000) });
+          return { type: 'stats', title: 'System', icon: 'cpu', items: [{ label: 'CPU', value: cpu, unit: '%' }], summaries: [gauge('CPU', 'cpu', cpu, `${Math.round(cpuTemp())}°C`, 4, 20), gauge('Memory', 'memory', pctOf(MEMORY), `${MEMORY[0]} of ${MEMORY[1]} GB`, 29, 37), gauge('GPU', 'gpu', gpu, `${Math.round(gpuTemp())}°C`, 1, 11), gauge('Storage', 'disk', pctOf(STORAGE), `${STORAGE[0]} of ${STORAGE[1]} TB`, 56, 59)] }; }),
         weather: w('Weather', 900_000, weather),
         calendar: w('Calendar', 900_000, calendar),
         thermostat: w('Thermostat', 30_000, thermostat),
         pc: w('Desktop', 30_000, pcCard),
-        home: w('Home', 15_000, homeCard),
+        home: w('Home', 5_000, homeCard),
         streams: w('Now playing', 10_000, () => { const s = stream(); return { type: 'media', title: 'Now playing', icon: 'play', source: { name: 'Plex', icon: '/api/icon/plex' }, note: '1 stream · 12 Mbps',
-          items: [{ title: s.title, subtitle: String(s.year), image: poster(s.title), backdrop: backdrop(s.title), pct: s.pct, state: 'playing', user: 'Theo', device: 'Living room TV', tags: ['4K', 'Direct Play', '12 Mbps'], remaining: `${s.left} min left` }],
+          items: [{ title: s.title, subtitle: String(s.year), image: poster(s.title), backdrop: backdrop(s.title), pct: s.pct, state: 'playing', user: 'Theo', device: 'Living room TV', tags: ['1080p', 'Direct Play', '12 Mbps'], remaining: `${s.left} min left` }],
           activity: { title: s.title, subtitle: 'Theo · Living room TV', image: poster(s.title), icon: 'play', pct: s.pct, trailing: `${s.left}m left` } }; }),
         downloads: w('Downloads', 5_000, () => { const d = downloads(), speed = d.reduce((a, t) => a + t.speed, 0), first = d[0];
-          return { type: 'media', title: 'Downloading', icon: 'download', source: { name: 'qBittorrent', icon: '/api/icon/qbittorrent' }, note: d.length ? `${d.length} downloads · ↓ ${speed.toFixed(0)} MB/s` : undefined, empty: 'Paused for ten minutes',
-            items: d.map(t => ({ title: t.title, subtitle: t.sub, image: poster(t.title), backdrop: backdrop(t.title), pct: t.pct, state: 'playing', icon: 'download', tags: ['1080p', `${t.speed.toFixed(0)} MB/s`, `${t.left.toFixed(1)} GB left`], remaining: `${Math.floor(t.pct * 100)}%` })),
-            summary: { label: 'Downloads', icon: 'download', value: `${speed.toFixed(0)} MB/s`, sub: d.length ? `${d.length} active` : 'Paused' },
-            activity: first && { title: `${first.title}${d.length > 1 ? ` +${d.length - 1}` : ''}`, subtitle: `↓ ${speed.toFixed(0)} MB/s`, image: poster(first.title), icon: 'download', pct: first.pct, count: d.length } }; }),
+          return { type: 'media', title: 'Downloading', icon: 'download', source: { name: 'qBittorrent', icon: '/api/icon/qbittorrent' }, note: d.length ? `${d.length} downloads · ↓ ${speed.toFixed(1)} MB/s` : undefined, empty: 'Paused for ten minutes',
+            items: d.map(t => ({ title: t.title, subtitle: t.sub, image: poster(t.title), backdrop: backdrop(t.title), pct: t.pct, state: 'playing', icon: 'download', tags: ['1080p', `${t.speed.toFixed(1)} MB/s`, `${t.left.toFixed(1)} GB left`], remaining: `${Math.floor(t.pct * 100)}%` })),
+            summary: { label: 'Downloads', icon: 'download', value: `${speed.toFixed(1)} MB/s`, sub: d.length ? `${d.length} active` : 'Paused' },
+            activity: first && { title: `${first.title}${d.length > 1 ? ` +${d.length - 1}` : ''}`, subtitle: `↓ ${speed.toFixed(1)} MB/s`, image: poster(first.title), icon: 'download', pct: first.pct, count: d.length } }; }),
         sky: w('Daylight', 300_000, () => ({ type: 'schedule', title: 'Daylight', icon: 'sun', muted: ['Dawn', 'Noon', 'Dusk'], items: [['Dawn', 6, 41], ['Sunrise', 7, 12], ['Noon', 12, 48], ['Sunset', 18, 2], ['Dusk', 18, 33]].map(([name, h, m]) => ({ name, at: day(h, m) })) })),
-        photos: w('Photos', 3_600_000, () => ({ type: 'photos', style: 'flashback', title: 'On this day', icon: 'image', source: { name: 'Immich', icon: '/api/icon/immich' }, items: ['2 years ago', '3 years ago', '5 years ago', '6 years ago'].map((badge, i) => ({ image: ctx.image(`photo${i}`), badge, title: ART.photos[i].title })) })),
+        photos: w('Photos', 3_600_000, () => ({ type: 'photos', style: 'flashback', title: 'On this day', icon: 'image', source: { name: 'Immich', icon: '/api/icon/immich' }, items: ['2 years ago', '3 years ago', '5 years ago', '6 years ago'].map((badge, i) => ({ image: ctx.image(`photo${i}`), badge, title: ART.photos[i].title, href: ART.photos[i].credit })) })),
         reading: w('From your reading', 3_600_000, () => { const more = pile().map(p => ({ id: p.title, headline: p.title, blurb: p.note, site: p.subtitle, image: ctx.image(p.image ?? `page${ART.saved.indexOf(p)}`), link: p.href })); return { type: 'article', title: 'From your reading', icon: 'bookmark', source: { name: 'Karakeep', icon: '/api/icon/karakeep' }, ...(more[0] ?? { headline: '' }), more }; }),
-        upcoming: w('Coming up', 900_000, () => ({ type: 'list', title: 'Coming up', icon: 'film', items: [{ title: FILMS[7], subtitle: inDays(3) }],
-          summary: { label: 'Coming up', icon: 'film', value: FILMS[7], sub: inDays(3), image: backdrop(FILMS[7]) } })),
-        ai: w('AI', 60_000, () => ({ type: 'stats', title: 'AI', icon: 'chart', items: [{ label: 'Requests', value: 312 }],
-          summaries: [{ label: 'Requests', icon: 'pulse', value: '312', sub: 'today', trend: past(40, 2, 30, 120_000) }, { label: 'Tokens', icon: 'text', value: '84k', sub: 'generated today', trend: past(40, 10, 60, 120_000) }, { label: 'Power', icon: 'gpu', value: '38 W', sub: 'idle', trend: past(40, 30, 90, 120_000) }, { label: 'Cost today', icon: 'coins', value: '0¢', sub: 'it runs at home' }] })),
+        upcoming: w('Coming up', 900_000, () => ({ type: 'list', title: 'Coming up', icon: 'film', items: [{ title: NEXT[0], subtitle: `${episode} · ${inDays(NEXT[1])}` }],
+          summary: { label: 'Coming up', icon: 'film', value: NEXT[0], sub: `${episode} · ${inDays(NEXT[1])}`, image: backdrop(NEXT[0]) } })),
+        ai: w('AI', 60_000, () => ({ type: 'stats', title: 'AI', icon: 'chart', items: [{ label: 'Requests', value: 24 }],
+          summaries: [{ label: 'Requests', icon: 'pulse', value: '24', sub: 'today', trend: past(40, 2, 30, 120_000) }, { label: 'Tokens', icon: 'text', value: '6k', sub: 'generated today', trend: past(40, 10, 60, 120_000) }, { label: 'Power', icon: 'gpu', value: `${gpuWatts} W`, sub: 'idle', trend: past(40, 30, 90, 120_000) }, { label: 'Cost today', icon: 'coins', value: '0¢', sub: 'it runs at home' }] })),
         library: w('Library', 3_600_000, () => ({ type: 'stats', title: 'Library', icon: 'film', items: [{ label: 'Movies', value: 412 }], summaries: [{ label: 'Movies', icon: 'film', value: '412' }, { label: 'Shows', icon: 'play', value: '38', sub: '164 seasons' }, { label: 'Episodes', icon: 'pulse', value: '2,986' }] })),
         recent: w('Recently added', 3_600_000, () => ({ type: 'shelf', title: 'Recently added', icon: 'film', aspect: 'poster', layout: 'spotlight', source: { name: 'Plex', icon: '/api/icon/plex' },
-          items: FILMS.slice(1, 9).map((title, i) => ({ title, subtitle: String(ART.films[title]?.year ?? ''), image: poster(title), backdrop: backdrop(title), badge: i < 2 ? 'Today' : 'This week' })) })),
-        mostwatched: w('Most watched', 3_600_000, () => ({ type: 'ranked', title: 'Most watched', icon: 'film',
-          items: [[FILMS[5], '9 plays', '14h', 1], [FILMS[2], '4 plays', '7h', .5], [FILMS[3], '3 plays', '5h', .36], [FILMS[1], '2 plays', '3h', .22]].map(([title, subtitle, value, pct], i) => ({ title, subtitle, value, pct, image: poster(title), backdrop: i ? undefined : photo(`${title}b`, 800, 400) })) })),
-        plays: w('Plays', 3_600_000, () => ({ type: 'chart', style: 'bars', title: 'Plays', icon: 'chart', headline: '57 plays', span: 'last 30 days', from: now() - 30 * 864e5, to: now(), series: [{ name: 'TV', tone: 'accent', points: past(30, 0, 4, 864e5).map(Math.round) }, { name: 'Movies', points: past(30, 0, 2, 7e7).map(Math.round) }] })),
-        people: w("Who's watching", 3_600_000, () => ({ type: 'list', title: "Who's watching", icon: 'play', items: [['Theo', '22h', 1], ['Alex', '11h', .5], ['Priya', '6h', .27]].map(([title, meta, pct]) => ({ title, meta, pct })) })),
+          items: SHELF.map((title, i) => ({ title, subtitle: String(ART.films[title].year), image: poster(title), href: poster(title), backdrop: backdrop(title), badge: i < 2 ? 'Today' : i < 5 ? 'This week' : 'This month' })) })),
+        mostwatched: w('Most watched', 3_600_000, () => { const top = WATCHED.map(([, , h, by]) => h * sum(by)), most = Math.max(...top);
+          return { type: 'ranked', title: 'Most watched', icon: 'film', note: LAST_30, items: WATCHED.map(([title, , , by], i) => ({ title, value: `${top[i]}h · ${sum(by)} plays`, pct: top[i] / most, image: poster(title), backdrop: i ? undefined : photo(`${title}b`, 800, 400) })) }; }),
+        plays: w('Plays', 3_600_000, () => { const tv = share(playsOf('tv'), past(30, .2, 4, 864e5)), movies = share(playsOf('movie'), past(30, .1, 2, 7e7));
+          return { type: 'chart', style: 'bars', title: 'Plays', icon: 'chart', headline: `${sum(tv) + sum(movies)} plays`, span: LAST_30, from: now() - 29 * 864e5, to: now(), labels: tv.map((_, i) => inDays(i - 29)), series: [{ name: 'TV', tone: 'accent', points: tv }, { name: 'Movies', points: movies }] }; }),
+        people: w("Who's watching", 3_600_000, () => { const most = Math.max(...VIEWERS.map((_, i) => hoursOf(i))); return { type: 'list', title: "Who's watching", icon: 'play', note: LAST_30, items: VIEWERS.map((title, i) => ({ title, meta: `${hoursOf(i)}h`, pct: hoursOf(i) / most })) }; }),
         week: w('Coming up', 3_600_000, () => ({ type: 'shelf', title: 'Coming up', icon: 'film', aspect: 'poster', layout: 'week',
-          items: [[0, FILMS[5], 'Ready'], [1, FILMS[1]], [3, FILMS[7]], [3, FILMS[8]], [6, FILMS[5]], [8, FILMS[1]], [10, FILMS[7]], [10, FILMS[5]], [13, FILMS[2]]].map(([n, title, badge]) => ({ at: ymd(n), badge: badge ?? inDays(n), title, subtitle: 'New episode', image: poster(title) })) })),
-        requests: w('Requested', 3_600_000, () => ({ type: 'shelf', title: 'Requested', icon: 'film', aspect: 'poster', layout: 'tickets', items: [[FILMS[8], 'Downloading', 'accent'], [FILMS[9], 'Available', 'good'], [FILMS[6], 'Available', 'good'], [FILMS[3], 'Available', 'good']].map(([title, badge, tone]) => ({ title, subtitle: String(ART.films[title]?.year ?? ''), badge, tone, image: poster(title) })) })),
-        docs: w('Recent documents', 3_600_000, () => ({ type: 'shelf', layout: 'desk', title: 'Recent documents', icon: 'file', aspect: 'poster', items: PAPERS.map(p => ({ title: p.title, subtitle: `${p.org} · ${p.date}`, image: paper(p), badge: p.badge })) })),
+          items: CALENDAR.map(([n, title, badge, subtitle = episode]) => ({ at: ymd(n), badge: badge ?? inDays(n), title, subtitle, image: poster(title), href: poster(title) })) })),
+        requests: w('Requested', 3_600_000, () => ({ type: 'shelf', title: 'Requested', icon: 'film', aspect: 'poster', layout: 'tickets', items: [['Oppenheimer', 'Downloading', 'accent'], ['The Grand Budapest Hotel', 'Available', 'good'], ['Spirited Away', 'Available', 'good'], ['Interstellar', 'Available', 'good']].map(([title, badge, tone]) => ({ title, subtitle: String(ART.films[title].year), badge, tone, image: poster(title), href: poster(title) })) })),
+        docs: w('Recent documents', 3_600_000, () => ({ type: 'shelf', layout: 'desk', title: 'Recent documents', icon: 'file', aspect: 'poster', items: PAPERS.map((p, i) => ({ title: p.title, subtitle: `${p.org} · ${p.date}`, image: paper(p), href: ctx.image(`doc${i}`), badge: p.badge })) })),
         saved: w('Recently saved', 3_600_000, () => ({ type: 'shelf', layout: 'windows', title: 'Recently saved', icon: 'bookmark', aspect: 'wide', items: pile().map(p => ({ ...p, id: p.title, image: ctx.image(p.image ?? `page${ART.saved.indexOf(p)}`) })) })),
         news: w('Hacker News', 1_800_000, () => ({ type: 'list', layout: 'headlines', title: 'Hacker News', icon: 'news', items: [['Show HN: I replaced my NAS with three old laptops', '412 points · 188 comments', '3h'], ['The surprising durability of cheap SSDs', '287 points · 96 comments', '6h'], ['Why self-hosted email is hard, in one diagram', '241 points · 140 comments', '9h'], ['A tiny DNS server in 500 lines', '198 points · 42 comments', '12h']].map(([title, subtitle, meta]) => ({ title, subtitle, meta })) })),
         feeds: w('Feeds', 1_800_000, () => ({ type: 'list', layout: 'headlines', title: 'Feeds', icon: 'rss', items: [['This week in open-source home automation', 'The Example Times', '1h'], ['Quiet fans, ranked', 'Hardware Weekly', '4h'], ['Ten small scripts that run my house', 'Personal blog', '8h'], ['Solar panels and home servers: the numbers', 'Example Energy', '1d']].map(([title, subtitle, meta]) => ({ title, subtitle, meta })) })),
@@ -293,7 +366,7 @@ export default ({ z, defineIntegration }) => {
         widgets,
         // the clips, with the byte ranges phones ask for. Nothing but the files named above can be reached
         image(ref, range) {
-          const still = ref === 'article' ? 'article.jpg' : /^photo[0-3]$/.test(ref) ? `photos/${ref[5]}.jpg` : /^page[0-4]$/.test(ref) ? `pages/${ref[4]}.jpg` : null;
+          const still = ref === 'article' ? 'article.jpg' : /^photo[0-3]$/.test(ref) ? `photos/${ref[5]}.jpg` : /^page[0-4]$/.test(ref) ? `pages/${ref[4]}.jpg` : /^doc[0-7]$/.test(ref) ? `docs/${ref[3]}.jpg` : null;
           if (still) return readFile(`${dir}/${still}`).then(b => new Response(b, { headers: { 'Content-Type': 'image/jpeg' } }));
           if (!CLIPS.has(ref)) throw new Error('bad image ref');
           const file = join(cfg.art, ref), size = statSync(file).size, [, a, b] = /^bytes=(\d+)-(\d*)/.exec(range ?? '') ?? [];
@@ -317,48 +390,52 @@ export default ({ z, defineIntegration }) => {
           { id: 'code', logo: '/api/icon/forgejo', theme: 'code', icon: 'file', kicker: 'Your own forge holds', value: '83', unit: 'repositories', stat: 'Repositories', score: 59, scope: 'All time', line: "In Forgejo, on your hardware, and not training anyone's model." },
           { id: 'watch.hours', theme: 'media', icon: 'play', wall: true, art: FILMS.map(poster), kicker: 'You watched', value: '612', unit: 'hours', stat: 'Hours watched', score: 95, scope: 'year', facts: { watchedHours: 612 }, line: '1,048 plays, all from your own server.' },
           { id: 'watch.top', theme: 'media', icon: 'film', backdrop: backdrop(FILMS[5]), kicker: 'Your most watched', value: FILMS[5], line: '41 plays and 38 h, more time than anything else this year.', score: 90, scope: 'year', items: [[FILMS[5], '38 h'], [FILMS[2], '21 h'], [FILMS[3], '17 h'], [FILMS[1], '12 h'], [FILMS[4], '9 h']].map(([name, value]) => ({ name, value, image: poster(name) })) },
-          { id: 'library.added', theme: 'media', icon: 'film', wall: true, kicker: 'Your library grew by', value: '186', unit: 'titles', stat: 'Titles added', score: 80, scope: 'year', facts: { libraryHours: 9400 }, line: '171 films and 15 shows joined. The whole collection now takes up 9.2 TB.' },
-          { id: 'seed.ratio', theme: 'network', icon: 'download', kicker: 'Your share ratio', value: '3.18', stat: 'Share ratio', score: 75, scope: 'All time', facts: { uploadedBytes: 14.3e12, downloadedBytes: 4.5e12 }, line: 'For every byte you took, 3.18 went back.', bars: [{ label: 'Taken', value: 4.1, show: '4.1 TB' }, { label: 'Given back', value: 13, show: '13 TB' }], trait: { name: 'The Generous Seeder', line: 'You give back far more than you take, and somewhere a stranger finished their download because of you.', strength: .8 } },
-          { id: 'dns.blocked', theme: 'network', icon: 'shield', kicker: 'Pi-hole stopped', value: '6,204,118', unit: 'requests', stat: 'Ads blocked', score: 72, scope: 'year', line: "That's 14% of everything your devices tried to look up, across 23 devices. The worst offenders lately:", bars: [['ads.example.net', 41200], ['telemetry.example.com', 30110], ['tracker.example.org', 18840]].map(([label, value]) => ({ label, value, show: value.toLocaleString('en') })) },
+          { id: 'library.added', theme: 'media', icon: 'film', wall: true, kicker: 'Your library grew by', value: '186', unit: 'titles', stat: 'Titles added', score: 80, scope: 'year', facts: { libraryHours: 3100 }, line: '171 films and 15 shows joined. The whole collection now takes up 6.2 TB.' },
+          { id: 'seed.ratio', theme: 'network', icon: 'download', kicker: 'Your share ratio', value: (givenTb / takenTb).toFixed(2), stat: 'Share ratio', score: 75, scope: 'All time', facts: { uploadedBytes: givenTb * 1e12, downloadedBytes: takenTb * 1e12 }, line: `For every byte you took, ${(givenTb / takenTb).toFixed(2)} went back.`, bars: [{ label: 'Taken', value: takenTb, show: `${takenTb} TB` }, { label: 'Given back', value: givenTb, show: `${givenTb} TB` }], trait: { name: 'The Generous Seeder', line: 'You give back far more than you take, and somewhere a stranger finished their download because of you.', strength: .8 } },
+          { id: 'dns.blocked', theme: 'network', icon: 'shield', kicker: 'Pi-hole stopped', value: BLOCKED_YEAR.toLocaleString('en'), unit: 'requests', stat: 'Ads blocked', score: 72, scope: 'year', line: `That's ${blockPct} of everything your devices tried to look up, across 23 devices. The worst offenders:`, bars: OFFENDERS.slice(0, 3).map(([label, part]) => { const value = Math.round(BLOCKED_YEAR * part); return { label, value, show: value.toLocaleString('en') }; }) },
           { id: 'watch.people', theme: 'media', icon: 'play', kicker: 'Who kept Plex busiest', value: 'Theo', line: '298 h of the 612 h everyone watched.', score: 70, scope: 'year', private: true, bars: [{ label: 'Theo', value: 298, show: '298 h' }, { label: 'Alex', value: 201, show: '201 h' }, { label: 'Priya', value: 113, show: '113 h' }] },
-          { id: 'uptime', theme: 'network', icon: 'pulse', kicker: 'Your homelab stayed up', value: '99.8%', stat: 'Uptime', score: 66, scope: 'Last 30 days', line: 'Across the 15 things Uptime Kuma watches. The ones that kept you busiest:', bars: [['Mealie', 96.1], ['Paperless', 99.7], ['Radarr', 99.9]].map(([label, value]) => ({ label, value, show: `${value}%` })) },
+          { id: 'uptime', theme: 'network', icon: 'pulse', kicker: 'Your homelab stayed up', value: '99.8%', stat: 'Uptime', score: 66, scope: 'Last 30 days', line: `Across the ${SERVICES.length} things Uptime Kuma watches. The ones that kept you busiest:`, bars: [['Mealie', 96.1], ['Paperless', 99.7], ['Radarr', 99.9]].map(([label, value]) => ({ label, value, show: `${value}%` })) },
           { id: 'docs', theme: 'files', icon: 'file', kicker: 'You keep', value: '1,204', unit: 'documents', stat: 'Documents kept', score: 78, scope: 'All time', line: '4 million characters of text, every word searchable. Most of it from:', bars: [['City Power', 212], ['Northwind Mutual', 164], ['Example Bank', 93]].map(([label, value]) => ({ label, value, show: String(value) })) },
           { id: 'home.vacuum', theme: 'home', icon: 'home', kicker: 'Your robot has vacuumed', value: '3,410', unit: 'm²', stat: 'Floor vacuumed', score: 88, scope: 'Since Mar 2025', visual: { kind: 'home', data: homeCard().visual.data }, line: '142 runs and 96 hours of work.' },
-          { id: 'rig', theme: 'hardware', icon: 'cpu', kicker: 'All of it runs on', value: '64', unit: 'GB of memory', score: 67, scope: 'Right now', visual: { kind: 'pc-case', data: { ...pcCard().visual.data, controls: false, presets: undefined } }, line: 'Right now the CPU is at 44°C and the GPU at 38°C.' },
+          { id: 'rig', theme: 'hardware', icon: 'cpu', kicker: 'All of it runs on', value: '64', unit: 'GB of memory', score: 67, scope: 'Right now', visual: { kind: 'pc-case', data: { ...pcCard().visual.data, controls: false, presets: undefined } }, line: `Right now the CPU is at ${Math.round(cpuTemp())}°C and the GPU at ${Math.round(gpuTemp())}°C.` },
           { id: 'ai.tokens', theme: 'ai', icon: 'gpu', kicker: 'Your own AI wrote', value: '2.1', unit: 'million tokens', stat: 'AI tokens', score: 58, scope: 'year', bars: [8, 12, 6, 15, 22, 9, 14].map((value, i) => ({ label: String(20 + i), value })), line: 'On your own graphics card, for 41¢ of electricity. Nobody else read a word of it.' },
           { id: 'watch.day', theme: 'media', icon: 'calendar', kicker: 'Your night in', value: 'Fridays', line: '312 of your 1,048 plays started on a Friday.', score: 60, scope: 'year', bars: [['Mon', 88], ['Tue', 96], ['Wed', 104], ['Thu', 121], ['Fri', 312], ['Sat', 214], ['Sun', 113]].map(([label, value]) => ({ label, value })) },
         ],
         actions: {
           preset: { description: 'Apply a lighting preset', input: z.object({ id: z.string() }), run: async ({ id }) => { if (PRESET_RGB[id]) { put('preset', id); for (const p of ['fans0', 'fans1', 'pump', 'ram', 'gpu']) changes.delete(`part.${p}`); } } },
           light: { description: 'Set a PC part or some home lights', input: z.object({ part: z.string().optional(), state: z.object({}).loose().optional(), entity_id: z.array(z.string()).optional() }).loose(),
-            run: async ({ part, state, entity_id, on, brightness, rgb }) => {
-              const color = rgb && `#${rgb.map(v => Number(v).toString(16).padStart(2, '0')).join('')}`;
+            run: async ({ part, state, entity_id, on, brightness, rgb, kelvin }) => {
+              const color = rgb ? `#${rgb.map(v => Number(v).toString(16).padStart(2, '0')).join('')}` : KELVIN[kelvin];
               if (part && /^(fans[01]|pump|ram|gpu)$/.test(part)) put(`part.${part}`, { mode: 'Static', brightness: 100, color: [255, 255, 255], ...state });
               for (const id of (entity_id ?? []).slice(0, 13)) { const was = LIGHTS.find(l => lightId(l[0], l[1]) === id); if (was) { const now_ = light(was); put(id, { on: on ?? now_.on, level: brightness ?? now_.level, color: color ?? now_.color }); } }
             } },
           thermostat: { description: 'Set the pretend thermostat', input: z.object({ temperature: z.number().min(10).max(30).optional(), preset: z.enum(Object.keys(SETBACKS)).optional(), power: z.boolean().optional() }),
-            run: async ({ temperature, preset, power }) => { const c = climate(); put('thermostat', { preset: preset ?? c.preset, power: preset ? true : power ?? c.power, target: temperature ?? (preset ? SETBACKS[preset] : c.target), from: c.room, at: now() }); } },
+            run: async args => setClimate(args) },
           archive: { description: 'Archive a saved link', input: z.object({ id: z.string() }), run: async ({ id }) => put('archived', [...got('archived', []), id]) },
-          vacuum: { description: 'Pretend to send the vacuum', input: z.object({}).loose(), run: async () => {} },
+          vacuum: { description: 'Send the pretend vacuum', input: z.object({}).loose(), run: async args => vacuum(args) },
         },
         tools: {
           service_status: { label: 'Checked services', live: true, access: 'read', input: z.object({}), description: 'Whether each service is up.',
             run: async () => ({ data: { services: services().map(({ name, ok, detail }) => ({ name, ok, detail })) }, card: await widgets.services.fetch() }) },
           container_logs: { label: 'Read the logs', access: 'read', input: z.object({ name: z.string().default('mealie') }), description: 'Recent logs of a container.',
-            run: async () => ({ data: { lines: LOGS }, card: { type: 'code', title: 'mealie logs', lines: LOGS } }) },
-          restart_service: { label: 'Restarted a service', confirm: ({ name = 'Mealie' }) => ({ title: `Restart ${name}?`, detail: 'It stopped at 3:12 AM', logo: '/api/icon/mealie', verb: 'Restart' }), access: 'control', input: z.object({ name: z.string().default('Mealie') }), description: 'Restart a service.', undo: undefined,
-            run: async () => { put('mealie', true); return { data: { done: true }, card: textCard('Mealie is back up.') }; } },
+            run: async () => ({ data: { lines: LOGS, up: mealieUp() }, card: { type: 'code', title: 'mealie logs', lines: LOGS } }) },
+          restart_service: { label: 'Restarted a service', confirm: ({ name = 'Mealie' }) => ({ title: `Restart ${name}?`, detail: mealieUp() ? 'It\'s running at the moment' : 'It stopped at 3:12 AM', logo: '/api/icon/mealie', verb: 'Restart' }), access: 'control', input: z.object({ name: z.string().default('Mealie') }), description: 'Restart a service.', undo: undefined,
+            run: async () => { const wasUp = mealieUp(); put('mealie', true); return { data: { done: true, wasUp }, card: textCard(wasUp ? 'Mealie restarted.' : 'Mealie is back up.') }; } },
           downloads_status: { label: 'Checked downloads', live: true, access: 'read', input: z.object({}), description: 'Unfinished downloads.',
-            run: async () => { const d = downloads(); return { data: { speed: `${d.reduce((a, t) => a + t.speed, 0).toFixed(0)} MB/s`, torrents: d.map(t => ({ name: t.title, progress: `${Math.floor(t.pct * 100)}%`, left: `${Math.max(1, Math.round(t.left / (t.speed / 1000) / 60))} min` })) }, card: await widgets.downloads.fetch() }; } },
+            run: async () => { const d = downloads(); return { data: { speed: `${d.reduce((a, t) => a + t.speed, 0).toFixed(1)} MB/s`, torrents: d.map(t => ({ name: t.title, progress: `${Math.floor(t.pct * 100)}%`, left: `${Math.max(1, Math.round(t.left * 1000 / t.speed / 60))} min` })) }, card: await widgets.downloads.fetch() }; } },
           pause_downloads: { label: 'Paused downloads', confirm: () => ({ title: 'Pause all downloads?', logo: '/api/icon/qbittorrent', verb: 'Pause' }), access: 'control', input: z.object({}), description: 'Pause every download.', run: async () => { put('paused', true); return { data: { done: true }, card: textCard('Downloads paused.') }; } },
           plex_streams: { label: "Checked what's playing", live: true, access: 'read', input: z.object({}), description: 'Who is watching what.',
             run: async () => { const s = stream(); return { data: { streams: [{ user: 'Theo', title: s.title, device: 'living room TV', left: `${s.left} minutes` }] }, card: await widgets.streams.fetch() }; } },
-          plex_stats: { label: "Checked what's popular", access: 'read', input: z.object({}), description: 'Most watched lately and what is new.', run: async () => ({ data: { top: FILMS[5], unwatched: FILMS[1] }, card: await widgets.mostwatched.fetch() }) },
-          drive_health: { label: 'Checked the drives', access: 'read', input: z.object({}), description: 'Disk health.', run: async () => ({ data: { drives, hottest: 'the system NVMe at 46°C' }, card: await widgets.drives.fetch() }) },
-          system_status: { label: 'Checked the server', access: 'read', input: z.object({}), description: 'CPU, memory and GPU.', run: async () => ({ data: { cpu: '12%', memory: '33%', gpu: '6%' }, card: { type: 'chart', title: 'CPU', unit: '%', span: 'last hour', from: now() - 36e5, to: now(), series: [{ name: 'CPU', points: past(60, 6, 30) }] } }) },
-          set_lights: { label: 'Changed the lights', confirm: ({ room = 'Living Room', on = false }) => ({ title: `Turn ${on ? 'on' : 'off'} the ${room.toLowerCase()} lights?`, logo: '/api/icon/home-assistant', verb: `Turn ${on ? 'on' : 'off'}` }), access: 'control', input: z.object({ room: z.string().default('Living Room'), on: z.boolean().default(false) }), description: 'Turn a room on or off.',
-            run: async ({ room, on }) => { for (const l of LIGHTS.filter(x => x[0] === room)) put(lightId(l[0], l[1]), { on, level: on ? 75 : 0, color: light(l).color }); return { data: { done: true }, card: textCard(`${room} lights ${on ? 'on' : 'off'}.`) }; } },
-          what_happened: { label: 'Looked back', access: 'read', input: z.object({}), description: 'What happened recently.', run: async () => ({ data: { summary: 'Mealie ran out of memory at 3:12 AM, the backup finished at 4:00, and two episodes arrived.' }, card: { type: 'list', title: 'Overnight', icon: 'clock', items: [{ title: 'Mealie stopped', subtitle: 'Out of memory', meta: '3:12 AM', tone: 'bad' }, { title: 'Backup finished', subtitle: '41 GB, verified', meta: '4:00 AM' }, { title: 'Two new episodes', subtitle: 'Harbor Lights', meta: '5:30 AM' }] } }) },
+          plex_stats: { label: "Checked what's popular", access: 'read', input: z.object({}), description: 'Most watched lately and what is new.', run: async () => ({ data: { top: WATCHED[0][0], unwatched: UNSEEN }, card: await widgets.mostwatched.fetch() }) },
+          drive_health: { label: 'Checked the drives', access: 'read', input: z.object({}), description: 'Disk health.', run: async () => ({ data: { drives, hottest: `the ${hottest[0].replace('System', 'system')} at ${hottest[1]}°C` }, card: await widgets.drives.fetch() }) },
+          system_status: { label: 'Checked the server', access: 'read', input: z.object({}), description: 'CPU, memory and GPU.', run: async () => ({ data: { cpu: `${cpuLoad()}%`, memory: `${pctOf(MEMORY)}%`, gpu: `${gpuLoad()}%` }, card: { type: 'chart', title: 'CPU', unit: '%', span: 'last hour', from: now() - 36e5, to: now(), series: [{ name: 'CPU', points: [...past(59, 4, 20), cpuLoad()] }] } }) },
+          set_lights: { label: 'Changed the lights', confirm: ({ room = 'Living Room', on = false }) => ({ title: `Turn ${on ? 'on' : 'off'} ${room === 'All' ? 'all the' : `the ${room.toLowerCase()}`} lights?`, logo: '/api/icon/home-assistant', verb: `Turn ${on ? 'on' : 'off'}` }), access: 'control', input: z.object({ room: z.string().default('Living Room'), on: z.boolean().default(false) }), description: 'Turn a room on or off, or All of them.',
+            run: async ({ room, on }) => { for (const l of LIGHTS.filter(x => room === 'All' || x[0] === room)) put(lightId(l[0], l[1]), { on, level: on ? 75 : 0, color: light(l).color }); return { data: { done: true, room, on }, card: textCard(`${room === 'All' ? 'All the' : room} lights ${on ? 'on' : 'off'}.`) }; } },
+          set_thermostat: { label: 'Changed the thermostat', confirm: ({ temperature, preset, power }) => ({ title: power === false ? 'Turn off the heating?' : power ? 'Turn on the heating?' : preset ? `Switch the hallway to ${preset}?` : `Set the hallway to ${temperature}°?`, logo: '/api/icon/home-assistant', verb: 'Set' }), access: 'control', input: z.object({ temperature: z.number().min(10).max(30).optional(), preset: z.enum(Object.keys(SETBACKS)).optional(), power: z.boolean().optional() }), description: 'Set the hallway thermostat.',
+            run: async args => { setClimate(args); return { data: { done: true, ...args }, card: await widgets.thermostat.fetch() }; } },
+          run_vacuum: { label: 'Sent the vacuum', confirm: ({ command, rooms: ids = [] }) => ({ title: command === 'dock' ? 'Send the vacuum back to its dock?' : command === 'locate' ? 'Make the vacuum beep?' : ids.length ? `Clean the ${rooms.find(r => r[0] === ids[0])?.[1].toLowerCase() ?? 'room'}?` : 'Clean the whole house?', logo: '/api/icon/home-assistant', verb: command === 'dock' ? 'Dock' : command === 'locate' ? 'Find' : 'Clean' }), access: 'control', input: z.object({ command: z.enum(['start', 'clean_rooms', 'dock', 'locate']), rooms: z.array(z.number()).optional() }), description: 'Start, dock or find the robot vacuum, or clean some rooms.',
+            run: async args => { vacuum(args); const { status } = robot(); return { data: { done: true, status }, card: textCard(status) }; } },
+          what_happened: { label: 'Looked back', access: 'read', input: z.object({}), description: 'What happened recently.', run: async () => ({ data: { summary: `Mealie ran out of memory at 3:12 AM, the backup finished at 4:00, and a new episode of ${SHELF[0]} arrived.` }, card: { type: 'list', title: 'Overnight', icon: 'clock', items: [{ title: 'Mealie stopped', subtitle: 'Out of memory', meta: '3:12 AM', tone: mealieUp() ? undefined : 'bad' }, { title: 'Backup finished', subtitle: '41 GB, verified', meta: '4:00 AM' }, { title: 'New episode', subtitle: SHELF[0], meta: '5:30 AM' }] } }) },
         },
       };
     },
