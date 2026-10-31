@@ -84,8 +84,8 @@ export const whyPrompt = (name: string, about: string | undefined, state: Widget
 /** Questions worth asking right now, from what's on the page. A tapped suggestion goes out as the person's own words, so
  *  these must never carry a stranger's text: feeds stay out of the prompt, and anything with a link in it is dropped. */
 export const suggestPrompt = (states: WidgetState[], journal: string[], tools: string[], now = new Date()) => ({
-  system: `You suggest what the owner of a homelab would actually want to ask its assistant right now. Write 4, one per line, at most 7 words each, in everyday words: never an internal name like downloads.active.
-A good one gets something the page can't show at a glance: an explanation, a comparison, a recommendation, or something to do. Trouble first, then what's live, then what suits the time of day and day of the week.
+  system: `You suggest what the owner of a homelab would actually want to ask its assistant right now. Write at most 4, one per line, at most 7 words each, in everyday words: never an internal name like downloads.active. Fewer good ones beat four: stop when the next isn't worth asking.
+A good one gets something the page can't show at a glance: an explanation, a comparison, a recommendation, or something to do. If something's wrong, the first is about the most consequential issue, the one that stops the most or that other things depend on; ask about it once, not once per symptom, and leave smaller trouble out if it would crowd it. Then what's live, then what suits the time of day and day of the week.
 Never ask about something the page already answers, like whether a thing is idle, how many of something there are, or a number that's on screen. Don't invent names; name a service or title only if it's below. Each must be possible with the tools listed.
 No numbering, no quotes, nothing else.\n${SEP}`,
   prompt: `It's ${now.toLocaleString('en', { weekday: 'long', hour: 'numeric', minute: '2-digit' })}.\n\nWrong right now:\n${troubles(states).map(t => `- ${t.text}`).join('\n') || '(nothing)'}\n\nThe page:\n${digest(states)}\n\nLately:\n${journal.slice(-10).join('\n') || '(quiet)'}\n\nTools: ${tools.join(', ')}`,
@@ -94,7 +94,16 @@ export function parseSuggestions(reply: string | null) {
   const list = (reply ?? '').split('\n').map(l => l.replace(/^[\s\-*•\d.)"'“]+|["'”\s]+$/g, '').trim())
     .filter(l => l.length >= 6 && l.length <= 60 && !/https?:|www\.|\w\.(com|net|org|io|dev)\b|\b[a-z]+\.[a-z]+\b|file id|\[/i.test(l));
   const asked = list.map(l => /^(what|which|why|how|when|who|where|should|is|are|did|do|does|can|will)\b/i.test(l) && !/[?.!]$/.test(l) ? `${l}?` : l);
-  return asked.length >= 2 ? [...new Set(asked)].slice(0, 4) : null;
+  return asked.length ? [...new Set(asked)].slice(0, 4) : null;
+}
+
+// ── what the ask box offers
+// what each integration lets someone ask about, in the order worth naming
+const TOPICS: [string, string[]][] = [['downloads', ['qbittorrent']], ['lights', ['homeassistant']], ['what to watch', ['tautulli', 'arr', 'seerr']], ['containers', ['docker']], ['photos', ['immich']], ['documents', ['paperless']], ['the weather', ['weather']], ['your calendar', ['calendar']]];
+/** `hero.scope: true`: a few concrete things, from the integrations present. Nothing to name leaves the box as it was. */
+export function scopeOf(types: string[]) {
+  const named = TOPICS.filter(([, of]) => of.some(t => types.includes(t))).map(([topic]) => topic).slice(0, 3);
+  return named.length ? named : undefined;
 }
 
 // ── the line under the greeting

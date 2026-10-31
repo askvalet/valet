@@ -1,5 +1,5 @@
-import { Sparkles, ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Search, Sun } from 'lucide-react';
-import { Fragment, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Search, Sun, X } from 'lucide-react';
+import { Fragment, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Card as CardData, ForecastCard, StatusCard, WidgetState } from '../shared/cards.ts';
@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import Island, { type Live, type Notice } from './island.tsx';
 import { SignIn, useMe } from './signin.tsx';
 import { suggest } from './suggest.ts';
-import { clock, day, label, setFormat, type Format } from './format.ts';
+import { clock, day, favorites, label, sayHow, setFormat, stillTrue, tabHash, type Format } from './format.ts';
 import { applyLook, applyTheme, type Look } from './look.ts';
 import type { Labels } from '../shared/labels.ts';
 import { ChatBeam } from './beam.tsx';
@@ -26,10 +26,10 @@ type Grid = { phone?: number; tablet?: number; desktop?: number };
 type CardOverride = { title?: string; icon?: string; header?: boolean; style?: Record<string, string> };
 
 interface Page {
-  title: string; greeting?: string; location?: string; canAct?: boolean;
+  title: string; greeting?: string; notice?: string; location?: string; canAct?: boolean;
   appearance: { walls: Paper[]; tabWalls: Record<string, Paper[]>; rotate?: number; sizes: Partial<Record<Size, { cols?: number; rows?: number }>> };
   look: Look;
-  hero: { greeting: boolean | string; status: boolean; search: boolean; review: boolean; align: 'center' | 'left' | 'right' };
+  hero: { greeting: boolean | string; status: boolean; search: boolean; review: boolean; align: 'center' | 'left' | 'right'; scope?: string[] };
   chat: ChatUi & { open: 'center' | 'right' | 'left' | 'bottom' | 'page'; overview: boolean; placeholder?: string; suggestions: 'ai' | 'fixed' | 'off' };
   format: Format; labels: Labels;
   assistant: { name: string; model: string; suggestions: string[]; tools: Record<string, ToolInfo>; external?: boolean } | null;
@@ -42,7 +42,7 @@ interface Page {
   weather?: string;
   calendar?: string;
   recap?: boolean;
-  sections: { title?: string; icon?: string; columns?: number; grid?: Grid; gap?: number; looks?: Record<string, CardOverride>; tabColumns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; sizes?: Record<string, Size>; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; widgets: string[] }[];
+  sections: { title?: string; icon?: string; columns?: number; grid?: Grid; gap?: number; looks?: Record<string, CardOverride>; tabColumns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; sizes?: Record<string, Size>; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; favorites?: string[]; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
 }
 
@@ -91,17 +91,6 @@ function useTheme() {
 
 const greet = (h: number) => label(h < 5 ? 'goodNight' : h < 12 ? 'goodMorning' : h < 17 ? 'goodAfternoon' : 'goodEvening');
 
-/** One line that says whether anything needs attention. */
-function pulse(state: Record<string, WidgetState>) {
-  const items = Object.values(state).map(s => s.card).filter((c): c is StatusCard => c?.type === 'status').flatMap(c => c.items);
-  const down = items.filter(i => !i.ok && !i.quiet), errors = Object.values(state).filter(s => s.error);
-  // one service can show on several cards, spelled differently: it's still one problem
-  const names = [...new Map(down.map(d => [d.name.toLowerCase(), d.name] as const).reverse()).values()].reverse();
-  if (names.length) return { text: `${names.join(', ')} ${names.length === 1 ? 'is' : 'are'} down`, tone: 'text-bad' };
-  if (errors.length) return { text: `${errors.length} widget${errors.length > 1 ? 's' : ''} can't reach ${errors.length > 1 ? 'their services' : 'its service'}`, tone: 'text-warn' };
-  return { text: '', tone: '' };   // all well: say nothing
-}
-
 async function runAction(key: string, action: string, args?: Record<string, unknown>) {
   const r = await fetch(`/api/action/${key.split('.')[0]}/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(args ?? {}) });
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? r.statusText);
@@ -114,7 +103,7 @@ function RoundButton({ label, active, onClick, children, tip = 'right', words }:
     <Tooltip>
       <TooltipTrigger asChild>
         <button onClick={onClick} aria-label={label} aria-current={active ? 'page' : undefined}
-          className={cn('glass-round relative grid size-11 place-items-center rounded-full [&_svg]:size-[18px]', active ? 'is-on' : 'text-foreground/85 hover:text-foreground')}>
+          className={cn('glass-round relative grid size-11 flex-none place-items-center rounded-full [&_svg]:size-[18px]', active ? 'is-on' : 'text-foreground/85 hover:text-foreground')}>
           {children}{words && <span>{label}</span>}
         </button>
       </TooltipTrigger>
@@ -123,6 +112,17 @@ function RoundButton({ label, active, onClick, children, tip = 'right', words }:
   );
 }
 
+
+/** One phone dock button: an icon over its word, and a solid surface when it's the tab you're on, in whichever theme. */
+function DockButton({ name, active, onClick, children }: { name: string; active?: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick} aria-current={active ? 'page' : undefined}
+      className={cn('press relative flex h-[46px] min-w-[54px] flex-[1_0_auto] flex-col items-center justify-center gap-0.5 rounded-[23px] px-1.5 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 focus-visible:ring-inset [&_svg]:size-[18px]',
+        active ? 'bg-[var(--nav-pill,var(--foreground))] text-[var(--nav-pill-ink,#fff)] dark:text-[var(--nav-pill-ink,#000)]' : 'text-foreground/85')}>
+      {children}<span className="max-w-[64px] truncate text-[10.5px] leading-3 font-medium">{name}</span>
+    </button>
+  );
+}
 
 /** The Mac dock: buttons swell as the pointer nears them and settle when it leaves. Distances are measured from where the
  *  buttons rest, so growing doesn't push the target around. Mouse only; movement is off if someone's asked for less. */
@@ -169,6 +169,39 @@ function Wall({ src, style }: { src: string; style?: React.CSSProperties }) {
   return <img src={src} alt="" style={style} ref={el => { if (el?.complete && el.naturalWidth) el.classList.add('is-on'); }} onLoad={e => e.currentTarget.classList.add('is-on')} onError={e => { e.currentTarget.style.display = 'none'; }} />;
 }
 
+/** A line or a block that opens and closes instead of jumping, and keeps its words while it closes. */
+function Fold({ open, className, children }: { open: boolean; className?: string; children: React.ReactNode }) {
+  const last = useRef(children);
+  if (open) last.current = children;
+  return <div className={cn('fold', open && 'is-open', className)} aria-hidden={!open || undefined}><div>{last.current}</div></div>;
+}
+
+/** The chips that have just gone, and where they were, so they can leave instead of vanishing. */
+function useLeaving(list: string[], ms = 260) {
+  const [gone, setGone] = useState<{ s: string; at: number }[]>([]), last = useRef(list);
+  useEffect(() => {
+    const left = last.current.flatMap((s, at) => list.includes(s) ? [] : [{ s, at }]);
+    last.current = list; setGone(left);
+    if (!left.length) return;
+    const t = setTimeout(() => setGone([]), ms);
+    return () => clearTimeout(t);
+  }, [list.join('\n')]);
+  const all = list.map(s => ({ s, out: false }));
+  for (const { s, at } of gone) all.splice(Math.min(at, all.length), 0, { s, out: true });
+  return all;
+}
+
+/** True once `on` has stayed true for a while, for what's only worth saying if it lasts. */
+function useHeld(on: boolean, ms: number) {
+  const [held, setHeld] = useState(false);
+  useEffect(() => {
+    if (!on) { setHeld(false); return; }
+    const t = setTimeout(() => setHeld(true), ms);
+    return () => clearTimeout(t);
+  }, [on, ms]);
+  return held;
+}
+
 /** On a fresh install: what to do next, in three lines. It goes away when the config says so. */
 function Welcome({ path, saved }: { path: string; saved: boolean }) {
   const step = (n: number, title: string, body: React.ReactNode) => (
@@ -198,24 +231,6 @@ function useWide(query = '(min-width: 1280px)') {
 /** Signed in? Show the page; otherwise the sign-in screen (over the wallpaper, which needs no session). */
 const Gallery = lazy(() => import('./gallery.tsx'));
 
-/** The whole place in one sentence, from what the services report right now, so it can't be wrong and never needs a model. */
-function sayHow(cards: (CardData | undefined)[]) {
-  const and = (l: string[]) => l.length < 2 ? l.join('') : `${l.slice(0, -1).join(', ')} and ${l.at(-1)}`;
-  const board = cards.flatMap(c => c?.type === 'status' ? [c.items.filter(i => !i.quiet)] : []).sort((a, b) => b.length - a.length)[0] ?? [];
-  const down = board.filter(i => !i.ok).map(i => i.name), media = cards.flatMap(c => c?.type === 'media' ? c.items : []);
-  const watching = media.filter(m => m.user && m.state !== 'paused'), getting = media.filter(m => m.icon === 'download').length;
-  const stalled = cards.some(c => c?.type === 'media' && c.items.some(m => m.icon === 'download') && /(^|\s)0 B\/s/.test(c.note ?? ''));   // nothing's moving
-  const parts = [
-    !board.length ? '' : !down.length ? `All ${board.length} services are running` : down.length === 1 ? `Everything's running except ${down[0]}` : down.length <= 3 ? `${and(down)} are down` : `${down.length} of ${board.length} services are down`,
-    watching.length === 1 ? `${watching[0].user} is watching ${watching[0].title}` : watching.length ? `${watching.length} people are watching` : '',
-    getting ? `${getting === 1 ? 'a download is' : `${getting} downloads are`} ${stalled ? 'waiting for peers' : 'on the way'}` : '',
-  ].filter(Boolean);
-  return parts.length ? `${and(parts)}.` : '';
-}
-
-// only the once-a-year pill wears it, so a page without one never loads the shader
-const Metal = lazy(() => import('metal-fx').then(m => ({ default: m.MetalFx })));
-
 export function App() {
   const { me, setMe } = useMe();
   const [hash, setHash] = useState(location.hash);
@@ -240,6 +255,9 @@ function dress(card?: CardData, o?: CardOverride) {
   dressed.set(o, { card, out });
   return out;
 }
+// tabs: sections sharing a `tab` (or title) open together
+const tabOf = (s: Page['sections'][number], i: number) => s.tab ?? s.title ?? `#${i}`;
+const hashNow = () => { try { return decodeURIComponent(location.hash); } catch { return location.hash; } };
 const gridVars = (g: Grid) => ({ '--cols-phone': g.phone, '--cols-tablet': g.tablet, '--cols-desktop': g.desktop }) as React.CSSProperties;
 const SPANS: Record<Size, [number, number]> = { small: [1, 1], wide: [2, 1], medium: [2, 1], tall: [2, 2], large: [4, 1] };
 
@@ -247,14 +265,43 @@ function Home({ account }: { account: boolean }) {
   const [page, setPage] = useState<Page | null>(null);
   const { state, notice, generation, insight: liveInsight } = useLive();
   const [brief, setBrief] = useState<string | null>(null);
-  const [tailored, setTailored] = useState<string[] | null>(null);
+  const [tailored, setTailored] = useState<{ list: string[]; wrong: string[] } | null>(null);
   const now = useClock();
   const theme = useTheme();
-  const [view, setView] = useState<string>('all');   // 'all' (the overview) or a tab's name
+  // the address says which tab this is, so Back, Forward and a reload all work. Each tab keeps its own scroll position.
+  const [hash, setHash] = useState(hashNow);
+  const tabs = (page?.sections.map((s, i) => ({ ...s, i, key: tabOf(s, i) })).filter(s => s.title || s.tab) ?? [])
+    .filter((s, j, all) => all.findIndex(x => x.key === s.key) === j);
+  const view = tabs.find(t => `#${tabHash(t.key)}` === hash)?.key ?? 'all';   // 'all' (the overview) or a tab's name
+  const seen = useRef('all'), spots = useRef(new Map<string, number>()), recapHere = useRef(false);
+  const go = useCallback((key: string) => {
+    if (key === seen.current) return;
+    spots.current.set(seen.current, scrollY);
+    history.pushState(null, '', key === 'all' ? location.pathname + location.search : `#${tabHash(key)}`);
+    setHash(hashNow());
+  }, []);
+  useEffect(() => {
+    history.scrollRestoration = 'manual';
+    const on = () => { spots.current.set(seen.current, scrollY); if (location.hash === '#recap') recapHere.current = true; setHash(hashNow()); };
+    addEventListener('hashchange', on); return () => removeEventListener('hashchange', on);
+  }, []);
+  useLayoutEffect(() => {
+    seen.current = view;
+    const y = spots.current.get(view) ?? 0;
+    scrollTo({ top: y, behavior: 'instant' });
+    // a tab drawn again can need a moment to be tall enough
+    let n = 0, frame = 0;
+    const settle = () => { if (Math.abs(scrollY - y) < 2 || n++ > 20) return; scrollTo({ top: y, behavior: 'instant' }); frame = requestAnimationFrame(settle); };
+    frame = requestAnimationFrame(settle);
+    return () => cancelAnimationFrame(frame);
+  }, [view]);
   const [palette, setPalette] = useState(false);
-  const [recap, setRecap] = useState(location.hash === '#recap');
-  useEffect(() => { const on = () => setRecap(location.hash === '#recap'); addEventListener('hashchange', on); return () => removeEventListener('hashchange', on); }, []);
-  const closeRecap = () => { setRecap(false); if (location.hash === '#recap') history.replaceState(null, '', location.pathname); };
+  const recap = hash === '#recap';
+  const closeRecap = () => {
+    if (location.hash !== '#recap') return;
+    if (recapHere.current) { recapHere.current = false; history.back(); return; }   // it was opened from this page: go back to where that was
+    history.replaceState(null, '', location.pathname + location.search); setHash('');
+  };
   const [chat, setChat] = useState<{ text: string; n: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const wide = useWide();
@@ -272,14 +319,26 @@ function Home({ account }: { account: boolean }) {
 
   useEffect(() => { fetch(`/api/page?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`).then(r => r.json()).then((p: Page) => { setFormat(p.format, p.labels); applyLook(p.look); setPage(p); }); }, [generation]);
   useEffect(() => { if (page) document.title = page.title; }, [page]);
-  // questions the model wrote for what's going on now; refreshed while the page stays open
+  // what's wrong and what's merely going on; a stall has to last, because a torrent between peers reads 0 B/s for a moment
+  const onPage = useMemo(() => new Set(page?.sections.filter(s => s.overview !== false).flatMap(s => s.widgets)), [page]);
+  const how = sayHow(Object.values(state), onPage), stalled = useHeld(how.problems.some(p => p.id === 'downloads'), 20_000);
+  const trouble = how.problems.filter(p => p.id !== 'downloads' || stalled), mood = trouble.map(p => p.why).join('|');
+  // questions the model wrote for what's going on now; refreshed while the page stays open, and soon after what's wrong changes
+  const tailoring = !!page?.assistant && page.chat.suggestions === 'ai';
+  const getTailored = useCallback(() => fetch('/api/suggest').then(r => r.json()).then(j => { if (j.list) setTailored({ list: j.list, wrong: j.wrong ?? [] }); }).catch(() => {}), []);
   useEffect(() => {
-    if (!page?.assistant || page.chat.suggestions !== 'ai') return;
-    const get = () => fetch('/api/suggest').then(r => r.json()).then(j => { if (j.list) setTailored(j.list); }).catch(() => {});
-    get();
-    const t = setInterval(get, 6 * 60_000);
+    if (!tailoring) return;
+    getTailored();
+    const t = setInterval(getTailored, 6 * 60_000);
     return () => clearInterval(t);
-  }, [!!page?.assistant, page?.chat.suggestions]);
+  }, [tailoring]);
+  const asked = useRef(mood);
+  useEffect(() => {
+    if (!tailoring || mood === asked.current) return;
+    asked.current = mood;
+    const t = setTimeout(getTailored, 4000);   // let a burst of changes land first
+    return () => clearTimeout(t);
+  }, [tailoring, mood]);
   useEffect(() => {
     if (!page?.assistant) return;
     const get = () => fetch('/api/brief').then(r => r.json()).then(b => { if (b.text) setBrief(b.text); }).catch(() => {});
@@ -296,8 +355,6 @@ function Home({ account }: { account: boolean }) {
     addEventListener('keydown', k); return () => removeEventListener('keydown', k);
   }, []);
 
-  // tabs: sections sharing a `tab` (or title) open together; the overview shows every section that's on it
-  const tabOf = (s: Page['sections'][number], i: number) => s.tab ?? s.title ?? `#${i}`;
   const chatTab = page?.sections.map((s, i) => (s.chat ? tabOf(s, i) : null)).find(Boolean) ?? null;
   const ask = useCallback((text: string) => {
     if (!text.trim()) return;
@@ -329,7 +386,7 @@ function Home({ account }: { account: boolean }) {
   };
   const cause = liveInsight === undefined ? page?.insight : liveInsight;
   const chatMode = page?.chat.suggestions;
-  const questions = !page?.assistant || chatMode === 'off' ? [] : chatMode === 'fixed' ? page.assistant.suggestions : suggest(state, page.assistant.suggestions, undefined, tailored);
+  const questions = !page?.assistant || chatMode === 'off' ? [] : chatMode === 'fixed' ? page.assistant.suggestions : stillTrue(suggest(state, page.assistant.suggestions, undefined, tailored?.list), tailored?.wrong ?? [], Object.values(state));
   // every card's quick actions, for ⌘K: "pause" finds "Pi-hole · Pause 5 min"
   const actions = page?.canAct === false ? [] : Object.values(state).flatMap(w => (w.card?.buttons ?? []).map(b => ({ key: w.key, b, card: w.card!.title ?? page?.widgets[w.key]?.title ?? w.key })));
   // every service from the status cards, for ⌘K: type a name, open it
@@ -350,8 +407,6 @@ function Home({ account }: { account: boolean }) {
   const hasSide = !!page?.sections.some(x => (x.place === 'left' || x.place === 'right') && (view === 'all' ? x.overview !== false : true));
   const tip = ({ left: 'right', right: 'left', top: 'bottom', bottom: 'top' } as const)[navSide];
   const hidden = (name?: string) => !!name && !!page?.nav?.hide.some(h => h.toLowerCase() === name.toLowerCase());
-  const tabs = (page?.sections.map((s, i) => ({ ...s, i, key: tabOf(s, i) })).filter(s => s.title || s.tab) ?? [])
-    .filter((s, j, all) => all.findIndex(x => x.key === s.key) === j);
   const nav = tabs.filter(s => !hidden(s.key));
   const showOverview = !hidden('Overview') && !hidden(label('overview')), chatButton = page?.assistant && !chatTab && !hidden(page.assistant.name);
   const railBox = useRef<HTMLElement>(null), dockBox = useRef<HTMLDivElement>(null);
@@ -360,28 +415,44 @@ function Home({ account }: { account: boolean }) {
   const [railWidth, setRailWidth] = useState(0);
   useLayoutEffect(() => { setRailWidth((navSide === 'left' || navSide === 'right') && (words || getComputedStyle(document.documentElement).getPropertyValue('--nav-size')) ? railBox.current?.offsetWidth ?? 0 : 0); }, [navSide, words, nav.length, page]);
   const swell = useDock(railBox, navSide);
+  useEffect(() => { dockBox.current?.querySelector('[aria-current]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, [view, nav.length]);   // a dock that scrolls keeps its tab in sight
   // remember what's empty (nothing playing), so it doesn't flash a placeholder on the next visit
   useEffect(() => { for (const [k, s] of Object.entries(state)) if (isEmpty(s.card)) noteShape(k, { empty: true }); }, [state]);
 
-  const line = sayHow(Object.values(state).map(s => s.card));
   const h = page?.hero, ui = page?.chat;
   const named = { name: page?.assistant?.name ?? '' };
-  const placeholder = (ui?.placeholder ?? label('askAnything')).replace('{name}', page?.assistant?.name ?? '');
+  const placeholder = (ui?.placeholder ?? (h?.scope?.length ? label('askAbout', { scope: h.scope.slice(0, phone ? 2 : 6).join(', ') }) : label('askAnything'))).replace('{name}', page?.assistant?.name ?? '');
   const askHere = !!page?.assistant && ui?.overview !== false, chips = askHere && chatMode !== 'off';
   const hello = !h || h.greeting === false ? '' : typeof h.greeting === 'string' ? h.greeting.replace('{name}', page?.greeting ?? '').trim() : `${greet(now.getHours())}${page?.greeting ? `, ${page.greeting}` : ''}`;
-  const pill = page?.recap !== false && h?.review !== false, boxed = h?.search !== false;
+  const boxed = h?.search !== false, shownChips = useLeaving(chips ? questions.slice(0, 3) : []);
+  const [reviewed, setReviewed] = useState(() => { try { return !!sessionStorage.getItem('valet-review'); } catch { return false; } });   // dismissed, for this visit
+  const pill = page?.recap !== false && h?.review !== false && !reviewed;
+  const dismissReview = () => { setReviewed(true); try { sessionStorage.setItem('valet-review', '1'); } catch { /* private mode */ } };
   const side = h?.align === 'left' ? 'mr-auto text-left' : h?.align === 'right' ? 'ml-auto text-right' : 'mx-auto text-center';
-  const reviewLink = <a href="#recap" className="press inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-[13px] font-medium backdrop-blur-md transition-colors hover:bg-white/15"><Sparkles className="size-3.5" />{label('review', { year: now.getFullYear() })}</a>;
   // the hero: ask anything
-  const hero = view === 'all' && (hello || h?.status !== false || boxed || pill) && (
+  const lines = cause ? [{ ...trouble[0], id: 'cause', text: cause }] : trouble;
+  const hero = view === 'all' && (hello || h?.status !== false || boxed || pill || page?.notice) && (
           <header className={cn('wall-text w-full max-w-[720px] pt-8 xl:pt-10', side)}>
-            {hello && <div className="hero-title text-[22px] font-semibold tracking-tight">{hello}</div>}
-            {h?.status !== false && (cause ? <div className="brief-in mt-0.5 text-[13.5px] text-warn">{cause}</div> : line && <div key={line} title={brief ?? undefined} className="brief-in mx-auto mt-1 max-w-full text-[13.5px] text-pretty text-muted-foreground">{line}</div>)}
+            {page?.notice && <p className="mb-2.5 inline-block max-w-full rounded-full bg-foreground/[.08] px-3 py-1 text-[12px] text-muted-foreground">{page.notice}</p>}
+            {hello && <h1 className="hero-title text-[22px] font-semibold tracking-tight">{hello}</h1>}
+            {h?.status !== false && <>
+              {/* what needs someone gets its own line and what to do about it; what's merely going on stays quiet */}
+              <Fold open={lines.length > 0}><div role="status" className="mt-0.5 text-[13.5px] text-pretty text-warn">
+                {lines.map(p => (
+                  <div key={p.id}><span key={p.text} className="brief-in">{p.text}</span>
+                    {page?.canAct !== false && p.fix && <> · <button onClick={() => { runAction(p.fix!.key, p.fix!.action, p.fix!.args).catch(() => {}); }} className="py-1 font-medium underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none">{p.fix.label}</button></>}
+                    {page?.assistant && p.why && <>{p.fix && page.canAct !== false ? ' / ' : ' · '}<button onClick={() => ask(p.why!)} className="py-1 font-medium underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none">{label('askWhy')}</button></>}
+                  </div>
+                ))}
+              </div></Fold>
+              <Fold open={!!how.quiet}><div key={how.quiet} title={brief ?? undefined} className="brief-in mx-auto mt-1 max-w-full text-[13.5px] text-pretty text-muted-foreground">{how.quiet}</div></Fold>
+            </>}
             {askHere && boxed && (
               <ChatBeam ui={ui} className="mt-5"><form className="glass-round flex items-center gap-2.5 rounded-[26px] py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
-                <input value={draft} onChange={e => setDraft(e.target.value)} onFocus={warm} aria-label={label('ask', named)} placeholder={placeholder}
-                  className="h-11 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground" />
+                <label htmlFor="ask-box" className="sr-only">{label('ask', named)}</label>
+                <input id="ask-box" value={draft} onChange={e => setDraft(e.target.value)} onFocus={warm} placeholder={placeholder}
+                  className="h-11 min-w-0 flex-1 bg-transparent text-[16px] text-ellipsis outline-none placeholder:text-muted-foreground" />
                 {!draft.trim() && <kbd className="hidden rounded-md border border-white/15 px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground sm:block">⌘K</kbd>}
                 <button type="submit" aria-label="Ask" disabled={!draft.trim()}
                   className="send-round grid size-10 shrink-0 place-items-center rounded-full bg-white text-black transition-opacity disabled:opacity-25"><ArrowUp className="size-[18px]" /></button>
@@ -397,13 +468,16 @@ function Home({ account }: { account: boolean }) {
               <div className="fade-x no-scrollbar mt-2.5 overflow-x-auto">
                 {/* centred when it fits, scrolls from the start when it doesn't */}
                 <div className={cn('flex max-w-full flex-wrap justify-center gap-1.5', h?.align === 'left' ? 'mr-auto' : h?.align === 'right' ? 'ml-auto' : 'mx-auto')}>
-                  {questions.slice(0, 3).map(s => (
-                    <button key={s} onClick={() => ask(s)} className="fade-in-soft shrink-0 rounded-full px-2.5 py-1 text-[12.5px] text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground">{s}</button>
+                  {shownChips.map(({ s, out }) => (
+                    <button key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={cn('shrink-0 rounded-full px-2.5 py-1 text-[12.5px] text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground', out ? 'chip-out' : 'fade-in-soft')} style={out ? { maxWidth: 320 } : undefined}>{s}</button>
                   ))}
                 </div>
               </div>
             )}
-            {pill && <div className="mt-3 flex justify-center"><Suspense fallback={reviewLink}><Metal variant="button">{reviewLink}</Metal></Suspense></div>}
+            <Fold open={pill}><div className={cn('mt-1.5 flex items-center gap-0.5 text-[12px] text-muted-foreground', h?.align === 'left' ? 'justify-start' : h?.align === 'right' ? 'justify-end' : 'justify-center')}>
+              <a href="#recap" className="underline-offset-2 transition-colors hover:text-foreground hover:underline">{label('review', { year: now.getFullYear() })}</a>
+              <button onClick={dismissReview} aria-label={label('dismiss')} className="grid size-6 flex-none place-items-center rounded-full transition-colors hover:text-foreground"><X className="size-3" /></button>
+            </div></Fold>
           </header>
         );
 
@@ -411,9 +485,11 @@ function Home({ account }: { account: boolean }) {
   const topbar = page?.menubar;
   const weatherCard = page?.weather && state[page.weather]?.card?.type === 'forecast' ? state[page.weather]!.card as ForecastCard : undefined;
   const chatWide = wide && !phone && !!chatTab && view === chatTab && !!page?.assistant;
+  // a section title on the page, as it always was; one that's only a tab's name is still a heading to a screen reader
+  const titled = (sec: Page['sections'][number]) => view === 'all' && sec.heading !== false && (sec.display === 'cards' || sec.display === 'media') && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title);
   const renderSection = (sec: (typeof sections)[number], aside = sec.place === 'left' || sec.place === 'right') => (
           <section key={`${view}:${sec.i}`} className="settle space-y-3" style={{ animationDelay: `${Math.min(sec.i, 6) * 45}ms`, ...(sec.gap != null && { '--card-gap': `${sec.gap}px`, '--tile-gap': `${sec.gap}px` } as React.CSSProperties) }}>
-            {view === 'all' && sec.title && sec.heading !== false && (sec.display === 'cards' || sec.display === 'media') && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title) && <h2 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h2>}
+            {sec.title && (titled(sec) ? <h2 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h2> : sec.title !== view && <h2 className="sr-only">{sec.title}</h2>)}
             {sec.display === 'media'
               ? (
                 <div className={cn('grid gap-(--card-gap)', sec.grid && 'cols')} style={sec.grid ? gridVars(sec.grid) : { gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${sec.columns ? Math.floor(1200 / sec.columns) - 40 : 420}px), 1fr))` }}>
@@ -447,7 +523,7 @@ function Home({ account }: { account: boolean }) {
                 (() => {
                   const keys = sec.widgets.filter(key => state[key] ? !isEmpty(state[key].card) : !shapeOf(key)?.empty);
                   const widget = (key: string, large = false, fill = false, dense = false) => {
-                    const s = state[key], o = sec.looks?.[key], card = dress(s?.card, o);
+                    const s = state[key], o = sec.looks?.[key], card = dress(view === 'all' ? favorites(s?.card, sec.favorites) : s?.card, o);
                     const body = <Shaped key={key} id={key} card={s?.card}><Widget large={large} fill={fill} card={card} kind={shapeOf(key)?.t} explain={explainFor(key)} failed={s?.error} title={o?.title ?? page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={dense || sec.variant === 'minimal' || (phone && view === 'all')} headless={o?.header === false || (o?.header !== true && sec.header === false && view === 'all')}
                       status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
                       run={page?.canAct === false ? undefined : runFor(key)} /></Shaped>;
@@ -501,6 +577,11 @@ function Home({ account }: { account: boolean }) {
                   );
                 })()
               )}
+            {(() => {   // favourites: the way to the rest of them
+              const whole = view === 'all' && sec.favorites ? sec.widgets.map(k => state[k]?.card).find(c => c?.type === 'status') : undefined, key = tabOf(sec, sec.i);
+              if (whole?.type !== 'status' || !tabs.some(t => t.key === key) || (favorites(whole, sec.favorites) as StatusCard).items.length >= whole.items.length) return null;
+              return <div className="wall-text flex justify-end"><button onClick={() => go(key)} className="press px-0.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground"><span key={whole.items.length} className="tick">{label('allOf', { n: whole.items.length })}</span> →</button></div>;
+            })()}
           </section>
   );
 
@@ -516,9 +597,9 @@ function Home({ account }: { account: boolean }) {
         bottom: 'glass-bar fixed bottom-5 left-1/2 -translate-x-1/2 rounded-full border p-1.5 gap-2',
         top: 'glass-bar absolute top-[calc(6rem*var(--bar-zoom,1))] left-1/2 -translate-x-1/2 rounded-full border p-1.5 gap-2',
       }[navSide])}>
-        {showOverview && <RoundButton tip={tip} words={words} label={label('overview')} active={view === 'all'} onClick={() => setView('all')}>{navIcon && <LayoutGrid />}</RoundButton>}
+        {showOverview && <RoundButton tip={tip} words={words} label={label('overview')} active={view === 'all'} onClick={() => go('all')}>{navIcon && <LayoutGrid />}</RoundButton>}
         {nav.map(s => (
-          <RoundButton tip={tip} words={words} key={s.key} label={s.key} active={view === s.key} onClick={() => setView(s.key)}>{navIcon && <Icon name={s.chat ? ui?.icon ?? 'chat' : sectionIcon(s) ?? 'pulse'} />}</RoundButton>
+          <RoundButton tip={tip} words={words} key={s.key} label={s.key} active={view === s.key} onClick={() => go(s.key)}>{navIcon && <Icon name={s.chat ? ui?.icon ?? 'chat' : sectionIcon(s) ?? 'pulse'} />}</RoundButton>
         ))}
         {chatButton && <RoundButton tip={tip} words={words} label={page!.assistant!.name} onClick={() => setChatOpen(o => !o)}>{navIcon && (ui?.icon ? <Icon name={ui.icon} /> : <MessageCircle />)}</RoundButton>}
       </nav>
@@ -532,7 +613,7 @@ function Home({ account }: { account: boolean }) {
           <div className="glass-bar relative flex shrink items-center gap-1 rounded-full border px-2 py-1 sm:gap-3 sm:px-4 sm:py-1.5">
             {topbar.widgets.flatMap(key => {
               const c = state[key]?.card;
-              return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} className="fade-in-soft"><MiniRing s={t} /></div>);
+              return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} role="group" aria-label={`${t.label} ${t.value}`} className="fade-in-soft"><MiniRing s={t} /></div>);
             })}
           </div>
         )}
@@ -547,6 +628,7 @@ function Home({ account }: { account: boolean }) {
       </div>
 
       <main style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-20', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
+        {(view !== 'all' || !hello) && <h1 className="sr-only">{view === 'all' ? page?.title : view}</h1>}
         {!hasSide && hero}
         {page?.welcome && view === 'all' && <Welcome path={page.welcome.path} saved={page.welcome.saved} />}
 
@@ -584,20 +666,17 @@ function Home({ account }: { account: boolean }) {
       {/* phones: the rail becomes a floating pill at the bottom */}
       <nav aria-label="Sections" className="glass-bar fixed inset-x-3 bottom-[max(.75rem,env(safe-area-inset-bottom))] z-20 rounded-full border p-1.5 md:hidden">
         <div ref={dockBox} className="no-scrollbar relative flex justify-between gap-1 overflow-x-auto">
-          {showOverview && <button onClick={() => setView('all')} aria-label={label('overview')} aria-current={view === 'all' ? 'page' : undefined} className={cn('press relative grid size-11 shrink-0 place-items-center rounded-full transition-colors duration-200', view === 'all' && 'text-black')}><LayoutGrid className="size-[19px]" /></button>}
-          {nav.map(s => (
-            <button key={s.key} onClick={() => { setView(s.key); if (s.chat) { warm(); setChatOpen(true); } }} aria-label={s.key} aria-current={view === s.key ? 'page' : undefined}
-              className={cn('press relative grid size-11 shrink-0 place-items-center rounded-full transition-colors duration-200', view === s.key && 'text-black')}><Icon name={s.chat ? ui?.icon ?? 'chat' : sectionIcon(s) ?? 'pulse'} className="size-[19px]" /></button>
-          ))}
-          {chatButton && <button onClick={() => setChatOpen(true)} aria-label={page!.assistant!.name} className="press relative grid size-11 shrink-0 place-items-center rounded-full">{ui?.icon ? <Icon name={ui.icon} className="size-[19px]" /> : <MessageCircle className="size-[19px]" />}</button>}
+          {showOverview && <DockButton name={label('overview')} active={view === 'all'} onClick={() => go('all')}><LayoutGrid /></DockButton>}
+          {nav.map(s => <DockButton key={s.key} name={s.key} active={view === s.key} onClick={() => { go(s.key); if (s.chat) { warm(); setChatOpen(true); } }}><Icon name={s.chat ? ui?.icon ?? 'chat' : sectionIcon(s) ?? 'pulse'} /></DockButton>)}
+          {chatButton && <DockButton name={page!.assistant!.name} onClick={() => setChatOpen(true)}>{ui?.icon ? <Icon name={ui.icon} /> : <MessageCircle />}</DockButton>}
         </div>
       </nav>
 
       {recap && page?.recap !== false && <Suspense fallback={null}><RecapStory onClose={closeRecap} wallpaper={page?.appearance.walls.find(w => w.image)?.image} /></Suspense>}
       {page && palette && (
-        <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} placeholder={page.assistant && page.chat.placeholder ? placeholder : undefined} ui={page.chat} ask={ask} actions={actions} account={account} tools={page.assistant?.tools}
+        <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} placeholder={page.assistant && (page.chat.placeholder || page.hero.scope?.length) ? placeholder : undefined} ui={page.chat} ask={ask} actions={actions} account={account} tools={page.assistant?.tools}
           openChat={() => { setPalette(false); if (phone || !(chatTab && view === chatTab)) setChatOpen(true); }}
-          runAction={runAction} services={services} SUGGESTIONS={questions} setView={setView} nav={nav} sectionIcon={sectionIcon} search={page.search} /></Suspense>
+          runAction={runAction} services={services} SUGGESTIONS={questions} setView={go} nav={nav} sectionIcon={sectionIcon} search={page.search} /></Suspense>
       )}
 
       {page?.assistant && (

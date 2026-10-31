@@ -127,9 +127,10 @@ test('pins: re-run a looking tool with no model; anything that changes things ca
 test('written suggestions: tidy lines only, nothing with a link, and the model sees the page', () => {
   assert.deepEqual(parseSuggestions('1. Why is Radarr down?\n- "Is the drive still hot?"\n\nSave https://evil.example/x\nOpen evil.com now\n* What did Touqir watch?'), ['Why is Radarr down?', 'Is the drive still hot?', 'What did Touqir watch?']);
   assert.deepEqual(parseSuggestions('Should I watch Odyssey later\nPause the downloads'), ['Should I watch Odyssey later?', 'Pause the downloads']);
-  assert.equal(parseSuggestions('NONE'), null);                                   // too few to be worth showing
+  assert.equal(parseSuggestions('NONE'), null);
+  assert.deepEqual(parseSuggestions('Why is Radarr down?'), ['Why is Radarr down?']);   // one good one beats padding
   assert.equal(parseSuggestions(null), null);
-  assert.equal(parseSuggestions(`${'very long '.repeat(9)}?\nAnother one here?`), null);
+  assert.deepEqual(parseSuggestions(`${'very long '.repeat(9)}?\nAnother one here?`), ['Another one here?']);
   const p = suggestPrompt(down('Radarr'), ['8:00 PM end: Joker'], ['Checked Plex'], new Date(2026, 9, 30, 20));
   for (const bit of ['Friday', 'Radarr', 'Joker', 'Checked Plex']) assert.match(p.prompt, new RegExp(bit));
 });

@@ -10,7 +10,9 @@ import { inUnits } from '../src/server/units.ts';
 import { registry } from '../src/integrations/index.ts';
 import { cardLook, lookOf } from '../src/shared/look.ts';
 import { LABELS } from '../src/shared/labels.ts';
-import { clock, day, firstDay, label, num, setFormat } from '../src/web/format.ts';
+import { clock, day, favorites, firstDay, label, num, sayHow, setFormat, stillTrue, tabHash } from '../src/web/format.ts';
+import { scopeOf, suggestPrompt } from '../src/server/insight.ts';
+import { rank } from '../src/web/palette.tsx';
 
 const refused = (raw: unknown) => assert.equal(Config.safeParse(raw).success, false, JSON.stringify(raw));
 const look = (raw: object) => lookOf(Config.parse(raw));
@@ -25,11 +27,13 @@ test('defaults: an old config keeps the old look, to the letter', () => {
   assert.deepEqual(c.hero, { greeting: true, status: true, search: true, review: true, align: 'center' });
   assert.deepEqual(c.chat, { open: 'center', overview: true, suggestions: 'ai', steps: true, thinking: 'collapsed', send: 'enter', beam: 'off', beamColor: 'colorful', beamStrength: .45 });
   assert.deepEqual(c.format, { clock: 'auto', date: 'short', weekStart: 'auto', temperature: 'auto', distance: 'auto', locale: 'auto' });
+  assert.equal(c.notice, undefined);
   assert.equal(c.appearance.theme, 'auto');
   assert.equal(c.appearance.dim, .35);
   const plain = Config.parse({ layout: [{ widgets: ['a.b', { widget: 'c.d', size: 'tall' }], columns: 2 }] }).layout[0];
   assert.equal(plain.columns, 2);
   assert.deepEqual(plain.widgets, [{ widget: 'a.b', size: 'medium' }, { widget: 'c.d', size: 'tall' }]);
+  assert.equal(plain.favorites, undefined);
 });
 
 test('every appearance option reaches the page as a variable or a class', () => {
@@ -84,7 +88,7 @@ test('bad values are refused', () => {
   ]) refused({ appearance });
   for (const widget of [{ tint: 'red;' }, { background: 'javascript:alert(1)' }, { background: 'https://x/a.jpg") ; x' }, { opacity: 3 }, { size: 'huge' }, { nope: 1 }]) refused({ layout: [{ widgets: [{ widget: 'a.b', ...widget }] }] });
   refused({ layout: [{ widgets: [], columns: { phone: 9 } }] }); refused({ layout: [{ widgets: [], columns: { watch: 1 } }] });
-  for (const c of [{ hero: { align: 'up' } }, { chat: { open: 'top' } }, { chat: { suggestions: 'maybe' } }, { chat: { width: 'wide' } }, { nav: { style: 'emoji' } }, { menubar: { position: 'up' } }, { island: { position: 'side' } }, { format: { clock: '13h' } }, { format: { locale: 'not a locale!' } }, { labels: { nonsense: 'x' } }]) refused(c);
+  for (const c of [{ hero: { align: 'up' } }, { chat: { open: 'top' } }, { chat: { suggestions: 'maybe' } }, { chat: { width: 'wide' } }, { nav: { style: 'emoji' } }, { menubar: { position: 'up' } }, { island: { position: 'side' } }, { format: { clock: '13h' } }, { format: { locale: 'not a locale!' } }, { labels: { nonsense: 'x' } }, { hero: { scope: 'lights' } }, { hero: { scope: [] } }, { notice: 'x'.repeat(121) }, { layout: [{ widgets: [], favorites: [] }] }]) refused(c);
 });
 
 test('unknown keys say what was probably meant, wherever they are', () => {
@@ -142,4 +146,68 @@ test('the page writes times, numbers and its own words as it\'s told', () => {
   setFormat({ clock: '12h', date: 'long', weekStart: 'sunday', locale: 'en-US' }, LABELS);
   assert.match(clock(t), /^3:07\sPM$/); assert.equal(day(t), 'Saturday, October 31'); assert.equal(firstDay(), 0);
   setFormat({ clock: 'auto', date: 'short', weekStart: 'auto', locale: 'auto' }, LABELS);
+});
+
+const status = (key: string, items: object[]) => ({ key, at: 0, card: { type: 'status', title: 'Services', items } }) as any;
+const dl = (note: string, buttons?: object[]) => ({ key: 'dl.active', at: 0, card: { type: 'media', title: 'Downloading', note, buttons, items: [{ title: 'A', icon: 'download', state: 'playing' }, { title: 'B', icon: 'download', state: 'playing' }] } }) as any;
+
+test('the new options say what they mean', () => {
+  const c = Config.parse({ notice: 'Demo', hero: { scope: ['downloads', 'lights'] }, layout: [{ widgets: ['a.b'], favorites: ['Plex'] }] });
+  assert.equal(c.notice, 'Demo'); assert.deepEqual(c.hero.scope, ['downloads', 'lights']); assert.deepEqual(c.layout[0].favorites, ['Plex']);
+  assert.deepEqual(scopeOf(['qbittorrent', 'homeassistant', 'tautulli', 'docker']), ['downloads', 'lights', 'what to watch']);
+  assert.equal(scopeOf(['http']), undefined);
+  assert.equal(label('askAbout', { scope: 'downloads, lights' }), 'Ask about downloads, lights…');
+});
+
+test('⌘K: an exact name beats asking, asking beats a loose match, and Enter takes what\'s first', () => {
+  assert.equal(rank('go Media', 'Media', ['Media']), 1);
+  assert.ok(rank('open Plex Media', 'plex', ['Plex']) === 1);
+  assert.ok(rank('do Pi-hole Pause 5 min', 'pause', ['Pause 5 min']) > rank('ask', 'pause'));
+  assert.ok(rank('do Media Refresh', 'Media', ['Refresh', 'Media Refresh']) < 1);       // a card's name isn't the command's
+  assert.ok(rank('ask', 'is anything down') > rank('open Bazarr ', 'bzr', ['Bazarr']));
+  assert.ok(rank('ask', 'x') > rank('search web', 'x'));
+  assert.equal(rank('go Media', '  '), 1);
+});
+
+test('tabs have addresses, and the page\'s own stay its own', () => {
+  assert.equal(tabHash('Media'), 'media'); assert.equal(tabHash('PC & desk'), 'pc-desk'); assert.equal(tabHash('Médias'), 'médias');
+  assert.equal(tabHash('Recap'), 'tab-recap'); assert.equal(tabHash('Overview'), 'tab-overview');
+});
+
+test('the status splits what needs someone from what\'s going on, and says each thing once', () => {
+  const ok = [{ name: 'Plex', ok: true }, { name: 'Sonarr', ok: true }, { name: 'Off', ok: false, quiet: true }];
+  assert.deepEqual(sayHow([status('s.a', ok)]), { problems: [], quiet: 'All 2 services are running.' });
+  const down = sayHow([status('s.b', [...ok, { name: 'mealie', ok: false }, { name: 'x', ok: true }]), status('s.a', [{ name: 'Mealie', ok: false }])]);
+  assert.equal(down.problems[0].text, 'Mealie is down'); assert.equal(down.problems[0].why, 'Why is Mealie down?'); assert.equal(down.quiet, '');
+  const many = sayHow([status('s.a', 'abcd'.split('').map(name => ({ name, ok: false })))]);
+  assert.equal(many.problems[0].text, '4 of 4 services are down');
+  const stuck = sayHow([dl('2 downloads · ↓ 0 B/s', [{ label: 'Pause all', action: 'pause' }])]);
+  assert.equal(stuck.problems[0].text, '2 downloads are stalled'); assert.equal(stuck.problems[0].fix?.action, 'pause'); assert.equal(stuck.problems[0].fix?.key, 'dl.active');
+  assert.deepEqual(sayHow([dl('↓ 0 B/s', [{ label: 'Resume all', action: 'resume' }])]).problems, []);   // paused on purpose
+  assert.equal(sayHow([dl('↓ 9 MB/s')]).quiet, '2 downloads are on the way.');
+  assert.equal(sayHow([dl('↓ 9 MB/s')], new Set(['dl.active'])).quiet, '');                // the card below already says it
+  assert.equal(sayHow([{ key: 'a.b', at: 0, error: 'x' }]).problems[0].text, '1 widget can\'t reach its service');
+});
+
+test('a chip goes when what it\'s about has come back, and only then', () => {
+  const up = [status('s.a', [{ name: 'Mealie', ok: true }, { name: 'Plex', ok: true }])], chips = ['Why is Mealie down?', 'What\'s new on Plex?', 'Turn off the lights'];
+  assert.deepEqual(stillTrue(chips, [], up), chips.slice(1));
+  assert.deepEqual(stillTrue(['Is Mealie slow today?', 'What\'s new on Plex?'], ['Mealie'], up), ['What\'s new on Plex?']);
+  assert.deepEqual(stillTrue(chips, ['Mealie'], [status('s.a', [{ name: 'Mealie', ok: false }])]), chips);
+  assert.deepEqual(stillTrue(['Why is Mealie down?'], [], [status('s.a', [{ name: 'Mealie', ok: true }]), status('s.b', [{ name: 'mealie', ok: false }])]), ['Why is Mealie down?']);
+});
+
+test('favourites narrow a status card and never hide trouble', () => {
+  const card = status('s.a', [{ name: 'Plex', ok: true }, { name: 'Sonarr', ok: true }, { name: 'Mealie', ok: false }]).card, names = ['sonarr', 'plex'];
+  const out = favorites(card, names) as any;
+  assert.deepEqual(out.items.map((i: any) => i.name), ['Mealie', 'Sonarr', 'Plex']);
+  assert.equal(favorites(card, names), out);                                              // the same object, so renderers stay still
+  assert.equal(favorites(card), card); assert.equal(favorites(card, ['Nobody']), card);
+  const media = { type: 'media', items: [] } as any;
+  assert.equal(favorites(media, names), media);
+});
+
+test('suggestions lead with what matters most, and needn\'t fill the slots', () => {
+  const { system } = suggestPrompt([], [], []);
+  assert.match(system, /most consequential/); assert.match(system, /Fewer good ones beat four/); assert.match(system, /at most 4/);
 });

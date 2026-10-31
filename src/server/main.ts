@@ -11,7 +11,7 @@ import { sameOrigin, setupAuth, userCommand } from './auth.ts';
 import { loadConfig, startConfig, validZone, type Config } from './config.ts';
 import { cleanCss, headers, hostGuard, served } from './security.ts';
 import { UPLOAD_DIR } from './core.ts';
-import { parseSuggestions, statusLine, suggestPrompt, troubles, whyPrompt } from './insight.ts';
+import { parseSuggestions, scopeOf, statusLine, suggestPrompt, troubles, whyPrompt } from './insight.ts';
 import { loadPins, newPin, pinnedCard, savePins } from './pins.ts';
 import { loadPlugins } from './plugins.ts';
 import { chatAgent } from './model.ts';
@@ -168,9 +168,9 @@ app.get('/api/page', c => {
   const tz = c.req.query('tz');
   if (!zoneKnown && tz && validZone(tz)) { process.env.TZ = tz; zoneKnown = true; console.log(`time zone: ${tz} (from the browser; set timezone in config.yaml to fix it)`); }
   return c.json({
-    title: config.title, greeting: config.greeting, location: config.location, canAct: site.acting, search: config.search,
+    title: config.title, greeting: config.greeting, notice: config.notice, location: config.location, canAct: site.acting, search: config.search,
     welcome: config.welcome ? { path: CONFIG, saved } : undefined,
-    recap: config.recap, hero: config.hero, labels: { ...LABELS, ...config.labels }, format: config.format,
+    recap: config.recap, hero: { ...config.hero, scope: config.hero.scope === true ? scopeOf([...site.meta.values()].map(m => m.type)) : config.hero.scope || undefined }, labels: { ...LABELS, ...config.labels }, format: config.format,
     appearance: { walls: wallsOf(config.appearance.wallpaper), tabWalls: Object.fromEntries(Object.entries(config.appearance.wallpapers).map(([t, w]) => [t, wallsOf(w)])), rotate: config.appearance.rotate, sizes: config.appearance.sizes },
     look: { ...lookOf(config), theme: config.appearance.theme, css: site.cssVersion && `/api/custom.css?v=${site.cssVersion}`, font: fontOf(config) },
     chat: config.chat,
@@ -184,7 +184,7 @@ app.get('/api/page', c => {
     weather: config.weather && hub.widget(config.weather) ? config.weather : undefined,
     calendar: config.calendar && hub.widget(config.calendar) ? config.calendar : undefined,
     insight: site.watcher?.insight?.text,
-    sections: [...(site.pins.length ? [{ widgets: site.pins.map(p => `pins.${p.id}`).filter(k => hub.widget(k)), display: 'cards', place: 'main', overview: true, sizes: {} }] : []), ...config.layout.map(s => ({ title: s.title, icon: s.icon, columns: typeof s.columns === 'object' ? s.columns.desktop ?? s.columns.tablet ?? s.columns.phone : s.columns, grid: typeof s.columns === 'object' ? s.columns : undefined, gap: s.gap, tabColumns: s.tabColumns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat,
+    sections: [...(site.pins.length ? [{ widgets: site.pins.map(p => `pins.${p.id}`).filter(k => hub.widget(k)), display: 'cards', place: 'main', overview: true, sizes: {} }] : []), ...config.layout.map(s => ({ title: s.title, icon: s.icon, columns: typeof s.columns === 'object' ? s.columns.desktop ?? s.columns.tablet ?? s.columns.phone : s.columns, grid: typeof s.columns === 'object' ? s.columns : undefined, gap: s.gap, tabColumns: s.tabColumns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat, favorites: s.favorites,
       widgets: s.widgets.map(w => w.widget).filter(k => hub.widget(k)),
       sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium').map(w => [w.widget, w.size])),
       looks: Object.fromEntries(s.widgets.filter(w => 'title' in w || 'icon' in w || 'header' in w || cardLook(w)).map(w => [w.widget, { title: w.title, icon: w.icon, header: w.header, style: cardLook(w) }])) }))],
@@ -308,26 +308,29 @@ app.post('/api/why', async c => {
 });
 // the page has just opened, so give its widgets a moment to report in
 const settled = async () => { for (let i = 0; i < 12 && site.hub.snapshot().length < site.placed.size * .6; i++) await new Promise(r => setTimeout(r, 500)); };
-// Suggestions are rewritten every half hour while the page is in use, or sooner (every ten minutes at most) when something
-// the person cares about changes. Each rewrite takes the GPU for a while, so they're on the daily budget. The assistant's own work must not count as news: its activity would set off the next rewrite.
+// Suggestions are rewritten every half hour while the page is in use, sooner (every ten minutes at most) when what's
+// playing or downloading changes, and at once when what's wrong changes: a chip about what's over is worse than none.
+// Each rewrite takes the GPU for a while, so they're on the daily budget. The assistant's own work must not count as news: its activity would set off the next rewrite.
 const OUTSIDE = new Set(['rss', 'hackernews', 'reddit']);   // written by strangers: see suggestPrompt
-let tailored: { at: number; mood: string; list: string[] | null } | undefined, tailoring: Promise<void> | undefined;
+let tailored: { at: number; mood: string; wrong: string; names: string[]; list: string[] | null } | undefined, tailoring: Promise<void> | undefined;
 app.get('/api/suggest', async c => {
   if (!site.ask || !site.config.assistant?.background.suggest || site.config.chat.suggestions !== 'ai') return c.json({ list: null });
   await settled();
   const states = site.hub.snapshot().filter(s => !OUTSIDE.has(site.meta.get(s.key.split('.')[0])?.type ?? ''));
-  const mood = JSON.stringify([troubles(states).map(t => t.id).sort(), states.flatMap(s => ['play', 'download'].includes(s.card?.activity?.icon ?? '') ? [s.card!.activity!.title] : []).sort()]);
+  const bad = troubles(states), wrong = bad.map(t => t.id).sort().join();
+  const mood = JSON.stringify([wrong, states.flatMap(s => ['play', 'download'].includes(s.card?.activity?.icon ?? '') ? [s.card!.activity!.title] : []).sort()]);
   const age = Date.now() - (tailored?.at ?? 0);
-  if (!tailored || (mood !== tailored.mood && age > 600_000) || age > 1_800_000) {
+  if (!tailored || wrong !== tailored.wrong || (mood !== tailored.mood && age > 600_000) || age > 1_800_000) {
     tailoring ??= (async () => {
       const tools = [...site.instances].flatMap(([, i]) => Object.values(i.tools ?? {}).filter(t => t.access !== 'control').flatMap(t => t.label ?? []));
       const p = suggestPrompt(states, site.timeline.lines(6 * 36e5, 10, true), tools);
       const list = parseSuggestions(await site.ask!(p.system, p.prompt, 'background'));
-      tailored = { at: Date.now(), mood, list: list ?? tailored?.list ?? null };
+      tailored = { at: Date.now(), mood, wrong, names: bad.map(t => t.name), list: list ?? tailored?.list ?? null };
     })().finally(() => { tailoring = undefined; });
     await tailoring;
   }
-  return c.json({ list: tailored?.list ? JSON.parse(site.redact(JSON.stringify(tailored.list))) : null });
+  // `wrong`: what was down when these were written, so the page can drop them the moment it's back
+  return c.json({ list: tailored?.list ? JSON.parse(site.redact(JSON.stringify(tailored.list))) : null, wrong: JSON.parse(site.redact(JSON.stringify(tailored?.names ?? []))) });
 });
 app.get('/api/brief', async c => {
   if (!site.ask || !site.config.assistant?.background.brief) return c.json({ text: null });
