@@ -51,7 +51,7 @@ const Camera = z.object({ id: z.string(), name: z.string(), image: z.string().op
   offline: z.boolean().optional(), detections: z.array(Detection).optional() }).strict();
 
 export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('type', [
-  z.object({ ...base, type: z.literal('cameras'), cameras: z.array(Camera), refresh: z.number().positive().optional(), empty: z.string().optional(),
+  z.object({ ...base, type: z.literal('cameras'), cameras: z.array(Camera), refresh: z.number().positive().optional(), empty: z.string().optional(), sample: z.boolean().optional(),
     events: z.array(z.object({ id: z.string().optional(), camera: z.string(), label: z.string(), at: z.number(), image: z.string().optional(), score: unit.optional() }).strict()).optional() }).strict(),
   z.object({ ...base, type: z.literal('stats'), items: z.array(StatItem), pie: z.array(z.object({ label: z.string(), value: z.number(), tone: Tone.optional() }).strict()).optional(), pieCenter: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('list'), items: z.array(ListItem), empty: z.string().optional(), limit: z.number().int().positive().optional(), layout: z.enum(['temps', 'chips', 'headlines']).optional() }).strict(),
@@ -78,7 +78,7 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
       color: z.string().regex(/^(#[0-9a-f]{3,8}|[a-z]{3,30})$/i, 'not a colour').optional() }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('thermostat'), unit: z.enum(['C', 'F']), state: z.string(), mode: z.enum(['heat', 'cool', 'auto', 'off']).optional(), current: finite.optional(), target: finite.optional(),
     range: z.tuple([finite, finite]).optional(), min: finite, max: finite, step: z.number().positive(), set: z.object({ action: z.string(), args: z.record(z.string(), z.unknown()).optional() }).strict().optional(),
-    modes: z.array(z.object({ id: z.string(), label: z.string(), on: z.boolean().optional(), action: z.string(), args: z.record(z.string(), z.unknown()).optional() }).strict()).optional() }).strict(),
+    modes: z.array(z.object({ id: z.string(), label: z.string(), on: z.boolean().optional(), action: z.string(), args: z.record(z.string(), z.unknown()).optional(), hint: z.string().optional() }).strict()).optional(), note: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('verse'), arabic: z.string().optional(), english: z.string(), reference: z.string(), meaning: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('embed'), src: z.string().url(), height: z.number(), scripts: z.boolean().optional() }).strict(),
   z.object({ ...base, type: z.literal('ranked'), empty: z.string().optional(), items: z.array(z.object({ title: z.string(), subtitle: z.string().optional(), value: z.string().optional(), image: z.string().optional(), backdrop: z.string().optional(), pct: unit.optional(), href: z.string().optional() }).strict()) }).strict(),

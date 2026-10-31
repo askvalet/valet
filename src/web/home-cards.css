@@ -27,6 +27,8 @@
 .wx-live .wx-twinkle { animation: wx-twinkle 4.4s ease-in-out infinite alternate; }
 @keyframes wx-twinkle { from { opacity: .35; } to { opacity: 1; } }
 
+.motion-reduced :is(.wx-live .wx-float, .wx-live .wx-spin, .wx-live .wx-drop, .wx-live .wx-flake, .wx-live .wx-flash, .wx-live .wx-mist, .wx-live .wx-twinkle) { animation: none; }
+
 /* calendar */
 .cal-scroll > div { scrollbar-width: none; }
 .cal-scroll > div::-webkit-scrollbar { display: none; }

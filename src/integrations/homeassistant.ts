@@ -210,7 +210,9 @@ export default defineIntegration({
       ];
       const modes = t.modes ? t.modes.flatMap(m => all.filter(x => x.id === m)) : all;
       const show = (n: number) => `${n.toFixed(step < 1 ? 1 : 0)}°`, shown = target ?? current;
-      return { type: 'thermostat', title, icon: 'home', href: cfg.href, unit, state: away ? 'Unavailable' : worded(action ?? e.state), mode, current, target, range, min, max, step,
+      // Home Assistant's "auto" is a schedule by definition; a hold shows up as a preset on the thermostats that have one
+      const note = away || e.state === 'off' ? undefined : /^(temp|temporary|hold_?temp|temporary_?hold)/i.test(a.preset_mode ?? '') ? 'Temporary hold' : /^(hold|perm)/i.test(a.preset_mode ?? '') ? 'Held until you change it' : e.state === 'auto' ? 'Following its schedule' : undefined;
+      return { type: 'thermostat', title, icon: 'home', href: cfg.href, unit, state: away ? 'Unavailable' : worded(action ?? e.state), mode, current, target, range, min, max, step, note,
         set: target != null ? { action: 'climate', args: { entity_id: id } } : undefined, modes: modes.length ? modes : undefined,
         summary: { label: title, icon: 'thermometer', value: shown != null ? show(shown) : '–', sub: away ? 'Unavailable' : worded(action ?? e.state), detail: target != null && current != null ? `${show(current)} now` : undefined,
           pct: target != null ? Math.max(0, Math.min(1, (target - min) / (max - min))) : undefined } };

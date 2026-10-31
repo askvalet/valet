@@ -221,7 +221,7 @@ export interface CalendarEvent {
 export interface CalendarCard extends Base { type: 'calendar'; events: CalendarEvent[]; from?: string; to?: string; empty?: string }
 
 /** A thermostat's mode button. Set `on` for the active one; pressing runs `action` with `args`. */
-export interface ThermostatMode { id: string; label: string; on?: boolean; action: string; args?: Record<string, unknown> }
+export interface ThermostatMode { id: string; label: string; on?: boolean; action: string; args?: Record<string, unknown>; hint?: string }   // hint: what it does, in one line
 /** A dial. `set` is the action that takes a new target: it's called with its `args` plus `{ temperature }`. No `target`
  *  (a heat-cool range, a fan-only mode) draws the room with no handle; no `set` leaves it read-only. */
 export interface ThermostatCard extends Base {
@@ -235,6 +235,7 @@ export interface ThermostatCard extends Base {
   min: number; max: number; step: number;
   set?: { action: string; args?: Record<string, unknown> };
   modes?: ThermostatMode[];
+  note?: string;          // whether what it's holding is temporary or on a schedule, when the device says
 }
 
 /** A verse or a quote: the original (right-to-left if Arabic), its translation, where it's from. */
@@ -271,7 +272,7 @@ export interface Camera {
 }
 export interface CameraEvent { id?: string; camera: string; label: string; at: number; image?: string; score?: number }   // camera: a Camera's id; at: ms
 /** A live view, a pill per camera, and what they've noticed lately. */
-export interface CamerasCard extends Base { type: 'cameras'; cameras: Camera[]; events?: CameraEvent[]; refresh?: number; empty?: string }   // refresh: seconds between pictures, 1 by default
+export interface CamerasCard extends Base { type: 'cameras'; cameras: Camera[]; events?: CameraEvent[]; refresh?: number; empty?: string; sample?: boolean }   // refresh: seconds between pictures, 1 by default; sample: recorded footage, never called live
 
 export type Card = CamerasCard | ThermostatCard | CalendarCard | EmbedCard | RankedCard | CodeCard | TableCard | LinksCard | VerseCard | ArticleCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
 

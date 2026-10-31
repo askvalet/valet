@@ -753,3 +753,11 @@ test('http: insecure accepts a self-signed certificate, and only when asked', as
   assert.deepEqual(await c.http(url, { insecure: true }), { ok: true });
   s.close();
 });
+
+test('home assistant thermostat: says whether it is holding or on a schedule, only when the entity does', async () => {
+  const note = async (over: object, state?: string) => ((await thermostatHA(climate(over, state)).widgets.hall.fetch()) as any).note;
+  assert.equal(await note({}), undefined);
+  assert.equal(await note({}, 'auto'), 'Following its schedule');
+  assert.equal(await note({ preset_mode: 'temp' }), 'Temporary hold');
+  assert.equal(await note({ preset_mode: 'hold' }), 'Held until you change it');
+});

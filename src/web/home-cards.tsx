@@ -1,10 +1,11 @@
 // The cards that live in a house: weather, the family calendar and the thermostat. They draw their own frame edge to edge
 // (the glass comes from WidgetView), read their own size, and stretch to fill a bento row without leaving a gap.
 import { firstDay } from './format.ts';
-import { Armchair, ArrowUpDown, BedDouble, ChevronLeft, ChevronRight, Droplets, Fan, Flame, House, Leaf, Minus, Moon, Plane, Plus, Power, Snowflake, Sparkles, Thermometer, Zap, type LucideIcon } from 'lucide-react';
+import { Armchair, ArrowUpDown, BedDouble, ChevronLeft, ChevronRight, Droplets, Fan, Flame, House, Leaf, Minus, Moon, Plane, Plus, Power, Snowflake, Sparkles, Zap, type LucideIcon } from 'lucide-react';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import type { CalendarCard, CalendarEvent, ForecastCard, ThermostatCard, ThermostatMode } from '../shared/cards.ts';
+import { Cant, Roll } from './visuals/note.tsx';
 import './home-cards.css';
 
 type Run = (action: string, args?: Record<string, unknown>) => Promise<void>;
@@ -97,7 +98,23 @@ export function WeatherGlyph({ name, size = 40, live, className }: { name: strin
   );
 }
 
-// ── Weather: the glyph beside a huge number, the words under them, the next days along the bottom.
+// ── Weather: the glyph beside a huge number, the words under them, what to do about today, the next days along the bottom.
+const WET = /rain|storm|snow/;
+const fall = (icon: string) => /snow/.test(icon) ? 'Snow' : /storm/.test(icon) ? 'Storms' : 'Rain';
+/** The one thing worth acting on today: when the rain comes, or a temperature out of the ordinary. Nothing on a dull day. */
+export function headsUp({ now, hours: all, days }: ForecastCard): string | undefined {
+  const hours = all.slice(0, 12), wet = (h: ForecastCard['hours'][number]) => h.pop >= 50 || WET.test(h.icon) && h.pop >= 30;
+  if ((now.precip ?? 0) > 0 || WET.test(now.icon)) {
+    const dry = hours.findIndex(h => !wet(h));
+    return dry >= 0 ? `${fall(now.icon)} easing around ${hours[dry].time}` : hours.length ? `${fall(now.icon)} until at least ${hours[hours.length - 1].time}` : undefined;
+  }
+  const from = hours.findIndex(wet);
+  if (from >= 0) { const to = hours.findIndex((h, i) => i > from && !wet(h)); return `${fall(hours[from].icon)} likely from ${hours[from].time}${to > 0 ? ` to ${hours[to].time}` : ''}`; }
+  const ahead = days?.slice(0, 3) ?? [], gap = ahead.length ? Math.round(now.hi - ahead.reduce((n, d) => n + d.hi, 0) / ahead.length) : 0;
+  if (Math.abs(gap) >= 6) return `Today's high of ${now.hi}° is ${Math.abs(gap)}° ${gap > 0 ? 'warmer' : 'cooler'} than the next few days`;
+  if (Math.abs(now.feels - now.temp) >= 5) return `Feels like ${now.feels}° right now`;
+}
+const HeadsUp = ({ card, className }: { card: ForecastCard; className?: string }) => { const line = headsUp(card); return line ? <p className={cn('text-center text-[13.5px] leading-[1.35] font-medium', className)}>{line}</p> : null; };
 const skyOf = (icon: string) => /moon/.test(icon) ? 'night' : icon === 'sun' ? 'clear' : /rain|storm/.test(icon) ? 'wet' : 'grey';
 const Caps = ({ children, className }: { children: ReactNode; className?: string }) => <div className={cn('text-[11px] font-medium tracking-[.09em] uppercase', className)}>{children}</div>;
 
@@ -170,9 +187,10 @@ export function WeatherCard({ card, dense }: { card: ForecastCard; dense?: boole
     <div ref={ref} className={cn('wx-card relative isolate flex h-full min-w-0 flex-1', wide ? 'items-center gap-7 px-7 py-6' : 'flex-col', !wide && (dense ? 'gap-3 p-1' : 'gap-5 px-5 pt-6 pb-5'))} data-sky={skyOf(card.now.icon)}>
       {wide ? <>
         <div className="w-[40%] shrink-0"><Hero card={card} s={w >= 720 ? 1 : .86} /></div>
-        <div className="min-w-0 flex-1 space-y-4"><HourStrip card={card} n={w >= 720 ? 7 : 6} /><DayBars card={card} /></div>
+        <div className="min-w-0 flex-1 space-y-4"><HeadsUp card={card} className="text-left" /><HourStrip card={card} n={w >= 720 ? 7 : 6} /><DayBars card={card} /></div>
       </> : <>
         <div className="flex flex-1 flex-col justify-center"><Hero card={card} s={s} /></div>
+        <HeadsUp card={card} className={dense ? 'text-[12.5px]' : undefined} />
         {tall && <HourStrip card={card} n={w >= 380 ? 6 : 5} />}
         {tall && card.days?.length ? <DayBars card={card} /> : <Outlook card={card} n={4} size={dense ? 26 : 34} />}
       </>}
@@ -212,31 +230,56 @@ export function byDay(events: CalendarEvent[]) {
   return days;
 }
 
+/** Today by what still matters: what's on or next, then the all-day things, with what's over apart. */
+export function splitToday(list: CalendarEvent[], at = Date.now()) {
+  const over = (e: CalendarEvent) => !dated(e.start) && +parse(e.end && !dated(e.end) ? e.end : e.start) <= at;
+  const timed = list.filter(e => !dated(e.start) && !over(e)).sort((a, b) => +parse(a.start) - +parse(b.start));
+  return { ahead: [...timed, ...list.filter(e => dated(e.start))], earlier: list.filter(over) };
+}
+/** How soon, for the next thing on today. */
+const soon = (e: CalendarEvent, at = Date.now()) => {
+  if (dated(e.start)) return '';
+  const mins = Math.round((+parse(e.start) - at) / 6e4);
+  return mins <= 0 ? ' · Now' : mins < 60 ? ` · in ${mins} min` : mins < 360 ? ` · in ${Math.round(mins / 60)} h` : '';
+};
+
 function Agenda({ days, from, today, cap, empty }: { days: Map<string, CalendarEvent[]>; from: Date; today: Date; cap: number; empty: string }) {
-  const groups: { day: Date; list: CalendarEvent[] }[] = [];
+  const groups: { day: Date; list: CalendarEvent[]; earlier: CalendarEvent[] }[] = [];
+  const [open, setOpen] = useState(false), now = Date.now(), todayKey = keyOf(today);
   let left = cap;
   const keys = [...days.keys()].filter(k => k >= keyOf(from)).sort();
-  for (const k of keys) { if (left <= 0) break; const list = days.get(k)!.slice(0, left); groups.push({ day: parse(k), list }); left -= list.length; }
-  const now = Date.now(), tag = (d: Date) => {
+  for (const k of keys) {
+    if (left <= 0) break;
+    const { ahead, earlier } = k === todayKey ? splitToday(days.get(k)!, now) : { ahead: days.get(k)!, earlier: [] }, list = ahead.slice(0, left);
+    groups.push({ day: parse(k), list, earlier }); left -= list.length;
+  }
+  const tag = (d: Date) => {
     const n = Math.round((+d - +today) / 864e5);
     return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : n > 1 && n < 7 ? d.toLocaleDateString('en', { weekday: 'long' }) : d.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
   };
+  const row = (e: CalendarEvent, i: number, lead?: boolean) => (
+    <li key={i} className={cn('flex min-w-0 items-stretch gap-2.5', e.end && !dated(e.end) && +parse(e.end) < now && 'opacity-50')}>
+      <span className="w-[3.5px] shrink-0 rounded-full" style={{ background: colorOf(e) }} />
+      <div className="min-w-0 py-px"><div className="truncate text-[14.5px] leading-[1.3] font-semibold">{e.title}</div><div className="truncate text-[12.5px] leading-[1.35] text-muted-foreground tabular">{span(e)}{lead && soon(e, now)}</div></div>
+    </li>
+  );
   if (!groups.length) return <p className="pt-3 text-[13.5px] text-muted-foreground">{empty}</p>;
   return (
     <div className="space-y-4">
-      {groups.map(g => (
-        <section key={keyOf(g.day)}>
-          <Caps className="mb-2 text-muted-foreground">{tag(g.day)}</Caps>
-          <ul className="space-y-2.5">
-            {g.list.map((e, i) => (
-              <li key={i} className={cn('flex min-w-0 items-stretch gap-2.5', e.end && !dated(e.end) && +parse(e.end) < now && 'opacity-50')}>
-                <span className="w-[3.5px] shrink-0 rounded-full" style={{ background: colorOf(e) }} />
-                <div className="min-w-0 py-px"><div className="truncate text-[14.5px] leading-[1.25] font-semibold">{e.title}</div><div className="truncate text-[12.5px] leading-[1.35] text-muted-foreground tabular">{span(e)}</div></div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      {groups.map(g => {
+        const isToday = keyOf(g.day) === todayKey;
+        return (
+          <section key={keyOf(g.day)}>
+            <Caps className="mb-2 text-muted-foreground">{tag(g.day)}</Caps>
+            {g.list.length > 0 ? <ul className="space-y-2.5">{g.list.map((e, i) => row(e, i, isToday && i === 0))}</ul> : <p className="text-[13px] leading-[1.35] text-muted-foreground">Nothing else today</p>}
+            {g.earlier.length > 0 && <>
+              <button onClick={() => setOpen(o => !o)} aria-expanded={open} className="press mt-1.5 flex h-8 items-center gap-1 text-[12.5px] text-muted-foreground hover:text-foreground">
+                <ChevronRight className={cn('size-4 flex-none transition-transform', open && 'rotate-90')} />{g.earlier.length} earlier today</button>
+              {open && <ul className="mt-1 space-y-2.5 opacity-70">{g.earlier.map((e, i) => row(e, i))}</ul>}
+            </>}
+          </section>
+        );
+      })}
     </div>
   );
 }
@@ -320,9 +363,12 @@ const Zzz = ({ className }: { className?: string }) => (
 );
 const MODE_ICONS: Record<string, LucideIcon | typeof Zzz> = { off: Power, heat: Flame, cool: Snowflake, heat_cool: ArrowUpDown, auto: Sparkles, dry: Droplets, fan_only: Fan, home: House, sleep: Zzz, night: Moon, away: Plane, eco: Leaf, boost: Zap, comfort: Armchair, activity: BedDouble };
 
+// what a preset means, unless the device has said; only the pair people mix up needs saying
+const HINTS: Record<string, string> = { sleep: 'A little cooler, for going to bed', night: 'The lowest setting, right through to morning' };
+
 function ModeButton({ m, on, press, disabled }: { m: ThermostatMode; on: boolean; press: () => void; disabled: boolean }) {
   const I = MODE_ICONS[m.id];
-  return <button onClick={press} disabled={disabled} aria-pressed={on} aria-label={m.label} title={m.label} className={cn('th-mode press grid h-11 min-w-0 flex-1 place-items-center rounded-2xl text-[13px] font-semibold', on && 'is-on')}>{I ? <I className="size-[19px]" /> : m.label.slice(0, 2)}</button>;
+  return <button onClick={press} disabled={disabled} aria-pressed={on} title={m.label} className={cn('th-mode press flex h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-1', on && 'is-on')}>{I && <I className="size-[18px] flex-none" />}<span className="max-w-full truncate text-[11px] leading-[1.3] font-medium">{m.label}</span></button>;
 }
 
 export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: Run; dense?: boolean }) {
@@ -374,6 +420,7 @@ export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: R
   const pct = live ?? (value != null ? pctOf(value) : 0), seg = card.range ? [pctOf(card.range[0]), pctOf(card.range[1])] : null;
   const ticks = useMemo(() => Array.from({ length: 49 }, (_, i) => { const [a, b] = [at(i / 48, R - 22), at(i / 48, R - (i % 4 ? 26 : 29))]; return `M${a[0].toFixed(1)} ${a[1].toFixed(1)}L${b[0].toFixed(1)} ${b[1].toFixed(1)}`; }).join(''), []);
   const [mx, my] = room != null ? at(pctOf(room)) : [0, 0], rise = value != null && room != null && card.mode !== 'off';
+  const hints = (card.modes ?? []).filter(m => (m.hint ?? HINTS[m.id]) && (!dense || m.on));
   const pressMode = (m: ThermostatMode) => { setFlip(m.id); hold(); run?.(m.action, m.args).catch(fail); };
   return (
     <div className={cn('th flex h-full min-w-0 flex-1 flex-col items-center', dense ? 'gap-2' : 'gap-3 p-4')} data-mode={card.mode ?? 'heat'}>
@@ -393,10 +440,11 @@ export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: R
               className="th-hit" fill="none" strokeWidth="58" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onKeyDown={key} />}
           </svg>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pb-[8%] text-center">
-            <div className={cn('font-medium', dense ? 'text-[12px]' : 'text-[15px]', oops ? 'text-bad' : 'text-muted-foreground')}>{oops ? "Couldn't set it" : card.state}</div>
-            <div className={cn('wx-temp tabular', dense ? 'mt-0 text-[38px]' : 'mt-0.5 text-[62px]')}>{big != null ? big.toFixed(value != null ? dp : 1) : '–'}<span className={cn('ml-1 font-medium tracking-normal text-foreground/75', dense ? 'text-[15px]' : 'text-[23px]')}>°{unit}</span></div>
-            {value != null && room != null ? <div className={cn('mt-0.5 flex items-center gap-1 text-muted-foreground tabular', dense ? 'text-[12px]' : 'text-[14px]')}><Thermometer className="size-[15px]" />{room.toFixed(Number.isInteger(room) ? 0 : 1)} °{unit}</div>
-              : card.range ? <div className="mt-0.5 text-[14px] text-muted-foreground tabular">{card.range[0]}–{card.range[1]} °{unit}</div> : null}
+            <div className={cn('font-medium', dense ? 'text-[12px]' : 'text-[14px]', oops ? 'text-bad' : 'text-muted-foreground')}>{oops ? "Couldn't set it" : card.state}</div>
+            <div className={cn('mt-1 leading-[1.3] text-muted-foreground', dense ? 'text-[11px]' : 'text-[13px]')}>{value != null ? 'Set to' : 'Room'}</div>
+            <div className={cn('wx-temp', dense ? 'text-[36px]' : 'text-[58px]')}>{big != null ? <Roll value={big.toFixed(value != null ? dp : 1)} /> : '–'}<span className={cn('ml-1 font-medium tracking-normal text-foreground/75', dense ? 'text-[15px]' : 'text-[22px]')}>°{unit}</span></div>
+            {value != null && room != null ? <div className={cn('mt-1 text-muted-foreground tabular', dense ? 'text-[12px]' : 'text-[14px]')}>Room {room.toFixed(Number.isInteger(room) ? 0 : 1)} °{unit}</div>
+              : card.range ? <div className="mt-1 text-[14px] text-muted-foreground tabular">Set to {card.range[0]}–{card.range[1]} °{unit}</div> : null}
           </div>
           {canSet && (
             <div className="absolute bottom-[2.5%] left-1/2 flex -translate-x-1/2 gap-3">
@@ -407,6 +455,9 @@ export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: R
         </div>
       </div>
       {!!card.modes?.length && <div className="flex w-full gap-1.5">{card.modes.map(m => <ModeButton key={m.id} m={m} on={flip === m.id ? !m.on : !!m.on} disabled={!run} press={() => pressMode(m)} />)}</div>}
+      {card.note && <p className="w-full text-center text-[12.5px] leading-[1.35] text-muted-foreground">{card.note}</p>}
+      {hints.length > 0 && <ul className="w-full space-y-0.5 text-[12.5px] leading-[1.35] text-muted-foreground">{hints.map(m => <li key={m.id}><b className={cn('font-medium', m.on ? 'text-foreground' : 'text-foreground/80')}>{m.label}</b> {m.hint ?? HINTS[m.id]}</li>)}</ul>}
+      {!run ? <Cant className="w-full justify-center">View only: sign in to change this.</Cant> : !card.set && card.range ? <Cant className="w-full justify-center">Its range can't be set from here.</Cant> : null}
     </div>
   );
 }

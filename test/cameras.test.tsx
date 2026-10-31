@@ -9,7 +9,7 @@ import { defineIntegration, session, type Context } from '../src/server/core.ts'
 import { served } from '../src/server/security.ts';
 import { checkCard } from '../src/shared/cards.schema.ts';
 import { registry } from '../src/integrations/index.ts';
-import { boxAt, Cameras } from '../src/web/cameras.tsx';
+import { boxAt, Cameras, EventStill } from '../src/web/cameras.tsx';
 import plugin from '../demo/integrations/homelab.mjs';
 
 const now = () => Date.now() / 1000;
@@ -161,4 +161,17 @@ test('demo: clips are served with ranges, and only clips are served', async () =
   const part = lab.image('street.mp4', 'bytes=100-199');
   assert.deepEqual([part.status, part.headers.get('content-range'), (await part.arrayBuffer()).byteLength], [206, `bytes 100-199/${size}`, 100]);
   for (const bad of ['../homelab.mjs', '/etc/passwd', 'CREDITS.md', 'nothing.mp4']) assert.throws(() => lab.image(bad), /bad image ref/, bad);
+});
+
+test('cameras: a sample card never says LIVE, and an event is its own picture with the way to the camera', () => {
+  const cam = { id: 'a', name: 'Street', video: '/a.mp4', poster: '/a.jpg' }, card = { type: 'cameras' as const, cameras: [cam] };
+  assert.ok(renderToString(<Cameras card={card} />).includes('LIVE'));
+  const sample = renderToString(<Cameras card={{ ...card, sample: true }} />);
+  assert.ok(sample.includes('Sample footage') && !sample.includes('LIVE'));
+  valid({ ...card, sample: true });
+  const event = { camera: 'a', label: 'Bird', at: Date.now(), image: '/e.jpg', score: .95 };
+  const still = renderToString(<EventStill event={event} cam={cam} live={() => {}} />);
+  assert.ok(still.includes('View this camera live') && still.includes('/e.jpg') && still.includes('95%') && still.includes('Bird') && !still.includes('LIVE'));
+  assert.ok(!renderToString(<EventStill event={event} cam={cam} sample live={() => {}} />).includes('camera live'));
+  assert.ok(renderToString(<EventStill event={{ ...event, image: undefined }} live={() => {}} />).includes('No picture saved'));
 });
