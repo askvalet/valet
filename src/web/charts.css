@@ -1,0 +1,58 @@
+/* Valet's charts. Colours come from the page's tokens, so they sit on glass, on a card, in either theme and on the
+   recap's dark stage, which redefines only --race-lead. What moves every frame moves by transform and opacity. */
+
+/* the race: rows slide past each other, a bar grows by sliding out of its lane */
+.race { --row: 46px; --race-lead: var(--primary); --race-bar: color-mix(in oklab, var(--foreground) 15%, transparent); min-width: 0; }
+.race-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; }
+.race-field { position: relative; overflow: hidden; }
+.race-row { position: absolute; inset: 0 0 auto; display: flex; align-items: center; gap: 10px; height: var(--row); }
+.race-art { flex: none; width: 26px; height: 39px; border-radius: 5px; object-fit: cover; background: var(--muted); }
+.race-lane { flex: 1; min-width: 0; }
+.race-name { display: block; overflow: hidden; font-size: 13px; line-height: 17px; white-space: nowrap; text-overflow: ellipsis; }
+.race-line { position: relative; height: 16px; margin-right: 64px; }
+.race-track { position: absolute; inset: 4px 0; overflow: hidden; border-radius: 99px; }
+.race-bar { position: absolute; inset: 0; border-radius: 99px; background: var(--race-bar); }
+.race-bar b { position: absolute; inset: 0; border-radius: 99px; background: var(--race-lead); opacity: 0; transition: opacity var(--dur-move) var(--ease-out); }
+.race-row.is-lead .race-bar b { opacity: 1; }
+.race-end { position: absolute; inset: 0; pointer-events: none; }
+.is-running :is(.race-row, .race-bar, .race-end) { will-change: transform; }
+.race-end span { position: absolute; left: 8px; top: 0; font-size: 12px; line-height: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+.race-row.is-lead .race-end span { color: var(--foreground); }
+.race-foot { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.race-play { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 99px; color: var(--foreground); background: color-mix(in oklab, var(--foreground) 9%, transparent); }
+.race-scale { position: relative; flex: 1; min-width: 0; }
+.race-months { display: flex; justify-content: space-between; margin-top: 1px; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.race-scrub { display: block; width: 100%; height: 20px; margin: 0; appearance: none; background: none; cursor: pointer; touch-action: pan-y; }
+.race-scrub::-webkit-slider-runnable-track { height: 3px; border-radius: 99px; background: color-mix(in oklab, var(--foreground) 16%, transparent); }
+.race-scrub::-moz-range-track { height: 3px; border-radius: 99px; background: color-mix(in oklab, var(--foreground) 16%, transparent); }
+.race-scrub::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; margin-top: -4.5px; border: 0; border-radius: 99px; background: var(--foreground); }
+.race-scrub::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 99px; background: var(--foreground); }
+.race-scrub:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 6px; }
+@media (max-width: 480px) { .race { --row: 42px; } .race-art { width: 24px; height: 36px; } }
+
+/* the stream sits where the columns would, and shares their tip and axis */
+.stream { position: absolute; inset: 0; touch-action: pan-y; }
+.stream svg { display: block; width: 100%; height: 100%; }
+.stream-at { position: absolute; inset: 0; pointer-events: none; }
+.stream-at i { position: absolute; inset: 0 auto 0 0; width: 1px; background: color-mix(in oklab, var(--foreground) 34%, transparent); }
+
+/* the year: a square a day, deeper with more in it */
+.heat { position: relative; touch-action: pan-y; }
+.heat svg { display: block; width: 100%; height: auto; }
+.heat-0 { fill: color-mix(in oklab, var(--foreground) 7%, transparent); }
+.heat-1 { fill: color-mix(in oklab, var(--primary) 34%, transparent); }
+.heat-2 { fill: color-mix(in oklab, var(--primary) 56%, transparent); }
+.heat-3 { fill: color-mix(in oklab, var(--primary) 78%, transparent); }
+.heat-4 { fill: var(--primary); }
+.heat-at { fill: none; stroke: var(--foreground); stroke-width: 1; }
+.heat-months { position: relative; height: 16px; font-size: 11px; line-height: 14px; color: var(--muted-foreground); }
+.heat-months span { position: absolute; top: 0; }
+.heatmap { container-type: inline-size; }
+@container (max-width: 440px) { .heat-months span:nth-child(even) { display: none; } }
+.heat-key { display: flex; align-items: center; gap: 3px; }
+.heat-key svg { width: 10px; height: 10px; }
+
+/* a hundred squares, filled from the bottom left */
+.waffle { flex: none; display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; width: 70px; height: 70px; }
+.waffle i { border-radius: 1.5px; background: color-mix(in oklab, var(--foreground) 11%, transparent); }
+.waffle i.on { background: var(--tint, var(--primary)); }

@@ -15,6 +15,7 @@ export const Summary = z.object({
   label: z.string(), value: z.union([z.string(), z.number()]), sub: z.string().optional(), detail: z.string().optional(),
   tone: Tone.optional(), icon: z.string().optional(), trend: nums.optional(), pct: z.number().optional(), ring: z.string().optional(),
   image: z.string().optional(), marks: z.array(z.object({ pct: z.number().optional(), tone: Tone.optional(), label: z.string().optional() }).strict()).optional(),
+  waffle: z.boolean().optional(), every: z.number().positive().optional(),
 }).strict();
 export const Activity = z.object({
   title: z.string(), subtitle: z.string().optional(), image: z.string().optional(), icon: z.string().optional(), pct: z.number().optional(),
@@ -59,8 +60,11 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
   z.object({ ...base, type: z.literal('shelf'), layout: z.enum(['row', 'spotlight', 'week', 'tickets', 'desk', 'windows']).optional(), items: z.array(ShelfItem), aspect: z.enum(['poster', 'square', 'wide']).optional(), empty: z.string().optional(), stack: z.boolean().optional(), archived: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('status'), items: z.array(StatusItem), layout: z.literal('wall').optional() }).strict(),
   z.object({ ...base, type: z.literal('links'), items: z.array(z.object({ name: z.string(), href: z.string(), icon: z.string().optional(), note: z.string().optional() }).strict()) }).strict(),
-  z.object({ ...base, type: z.literal('chart'), unit: z.string().optional(), headline: z.string().optional(), max: z.number().optional(), span: z.string().optional(), window: z.string().optional(), factsNote: z.string().optional(), from: z.number().optional(), to: z.number().optional(), style: z.enum(['line', 'bars']).optional(), facts: z.array(z.object({ label: z.string(), value: z.string().optional() }).strict()).optional(), labels: z.array(z.string()).optional(),
+  z.object({ ...base, type: z.literal('chart'), unit: z.string().optional(), headline: z.string().optional(), max: z.number().optional(), span: z.string().optional(), window: z.string().optional(), factsNote: z.string().optional(), from: z.number().optional(), to: z.number().optional(), style: z.enum(['line', 'bars', 'stream']).optional(), facts: z.array(z.object({ label: z.string(), value: z.string().optional() }).strict()).optional(), labels: z.array(z.string()).optional(),
     series: z.array(z.object({ name: z.string(), points: nums, tone: Tone.optional(), total: finite.optional() }).strict()) }).strict(),
+  z.object({ ...base, type: z.literal('race'), span: z.string().optional(), unit: z.string().optional(), steps: z.array(z.string()),
+    items: z.array(z.object({ title: z.string(), image: z.string().optional(), points: nums }).strict()) }).strict(),
+  z.object({ ...base, type: z.literal('heatmap'), from: date, days: nums, unit: z.string().optional(), headline: z.string().optional(), span: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('controls'), items: z.array(Control) }).strict(),
   z.object({ ...base, type: z.literal('showcase'), visual: z.object({ kind: z.string(), src: z.string().optional(), data: z.unknown().optional() }).strict(),
     items: z.array(StatItem), caption: z.string().optional() }).strict(),

@@ -15,8 +15,9 @@ import PcCase, { type PcCaseData } from '../src/web/visuals/pc-case.tsx';
 import type { ForecastCard, ThermostatCard } from '../src/shared/cards.ts';
 import Island from '../src/web/island.tsx';
 import { SAMPLES } from '../src/web/samples.ts';
+import { chartless, Heatmap, Race, standing, Waffle } from '../src/web/charts.tsx';
 
-const TYPES = ['cameras', 'stats', 'list', 'media', 'shelf', 'status', 'links', 'chart', 'code', 'table', 'ranked', 'controls', 'showcase', 'forecast', 'calendar', 'thermostat', 'photos', 'schedule', 'verse', 'kv', 'text', 'group'];
+const TYPES = ['cameras', 'stats', 'list', 'media', 'shelf', 'status', 'links', 'chart', 'code', 'table', 'ranked', 'race', 'heatmap', 'controls', 'showcase', 'forecast', 'calendar', 'thermostat', 'photos', 'schedule', 'verse', 'kv', 'text', 'group'];
 
 test('every card type has a sample', () => {
   const have = new Set(SAMPLES.map(s => s.card.type));
@@ -266,4 +267,30 @@ test('pc: presets read without hover, the chosen one is marked, and controls off
   assert.match(html, /aria-pressed="true"[^>]*title="Ocean"/);
   assert.ok(html.includes('>Ocean<') && html.includes('>All off<') && html.includes('41°') && html.includes('Reset view'));
   assert.ok(renderToString(<PcCase data={{ ...data, controls: false, presets: undefined }} run={async () => {}} />).includes('read-only in this install'));
+});
+
+test('race: the board at any moment, overtakes included, and a final frame that reads on its own', () => {
+  const items = [{ title: 'A', points: [0, 10, 10] }, { title: 'B', points: [4, 4, 20] }, { title: 'C', points: [1, 1, 1] }];
+  assert.deepEqual(standing(items, 0).place, [6, 0, 1]);   // nothing yet: not on the board
+  assert.deepEqual(standing(items, 1).place, [0, 1, 2]);
+  const mid = standing(items, 1.5);
+  assert.deepEqual([mid.value[0], mid.value[1]], [10, 12]);
+  assert.deepEqual(mid.place, [1, 0, 2]);
+  const out = renderToString(<Race race={{ steps: ['Jan', 'Feb', 'Mar'], items, unit: 'h' }} span="Hours" />);
+  assert.match(out, /aria-label="B 20 h, A 10 h, C 1 h"/);
+  assert.match(out, />Mar</);
+  assert.ok(chartless({ type: 'race', steps: [], items: [] }));
+});
+
+test('heatmap, stream and waffle: integer counts, and nothing drawn from nothing', () => {
+  assert.equal(renderToString(<Waffle pct={.143} />).match(/class="on"/g)?.length, 14);
+  assert.equal(renderToString(<Waffle pct={.001} />).match(/class="on"/g)?.length, 1);
+  assert.equal(renderToString(<Waffle pct={.999} />).match(/class="on"/g)?.length, 99);
+  assert.equal(renderToString(<Waffle pct={0} />).match(/class="on"/g), null);
+  const out = renderToString(<Heatmap card={{ type: 'heatmap', from: '2026-03-01', days: [0, 1, 3, 0, 9], unit: 'play', span: 'last 12 months' }} />);
+  assert.equal(out.match(/<rect x=/g)?.length, 5);
+  assert.match(out, /13 plays/);
+  assert.ok(chartless({ type: 'heatmap', from: '2026-03-01', days: [0, 0] }));
+  assert.ok(chartless({ type: 'chart', style: 'stream', series: [{ name: 'TV', points: [0, 0] }] }));
+  assert.ok(!chartless({ type: 'chart', style: 'bars', series: [{ name: 'TV', points: [0, 0] }] }));
 });
