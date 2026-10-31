@@ -308,9 +308,9 @@ app.post('/api/why', async c => {
 });
 // the page has just opened, so give its widgets a moment to report in
 const settled = async () => { for (let i = 0; i < 12 && site.hub.snapshot().length < site.placed.size * .6; i++) await new Promise(r => setTimeout(r, 500)); };
-// Suggestions are rewritten every half hour while the page is in use, sooner (every ten minutes at most) when something
-// the person cares about changes, and within a minute when what's wrong changes: a chip about what's over is worse than
-// none. Each rewrite takes the GPU for a while, so they're on the daily budget. The assistant's own work must not count as news: its activity would set off the next rewrite.
+// Suggestions are rewritten every half hour while the page is in use, sooner (every ten minutes at most) when what's
+// playing or downloading changes, and at once when what's wrong changes: a chip about what's over is worse than none.
+// Each rewrite takes the GPU for a while, so they're on the daily budget. The assistant's own work must not count as news: its activity would set off the next rewrite.
 const OUTSIDE = new Set(['rss', 'hackernews', 'reddit']);   // written by strangers: see suggestPrompt
 let tailored: { at: number; mood: string; wrong: string; names: string[]; list: string[] | null } | undefined, tailoring: Promise<void> | undefined;
 app.get('/api/suggest', async c => {
@@ -320,7 +320,7 @@ app.get('/api/suggest', async c => {
   const bad = troubles(states), wrong = bad.map(t => t.id).sort().join();
   const mood = JSON.stringify([wrong, states.flatMap(s => ['play', 'download'].includes(s.card?.activity?.icon ?? '') ? [s.card!.activity!.title] : []).sort()]);
   const age = Date.now() - (tailored?.at ?? 0);
-  if (!tailored || (wrong !== tailored.wrong && age > 60_000) || (mood !== tailored.mood && age > 600_000) || age > 1_800_000) {
+  if (!tailored || wrong !== tailored.wrong || (mood !== tailored.mood && age > 600_000) || age > 1_800_000) {
     tailoring ??= (async () => {
       const tools = [...site.instances].flatMap(([, i]) => Object.values(i.tools ?? {}).filter(t => t.access !== 'control').flatMap(t => t.label ?? []));
       const p = suggestPrompt(states, site.timeline.lines(6 * 36e5, 10, true), tools);
