@@ -37,6 +37,7 @@ In Docker, prefix these with `docker exec -it valet`.
 |---|---|---|
 | `title` | `Home` | the page title |
 | `greeting` | none | the name in "Good evening, Sam". `hero` says whether and how it's shown |
+| `notice` | none | a short line (120 characters at most) in a quiet pill above the greeting, e.g. "Interactive demo · simulated home" |
 | `location` | none | gives the assistant local context |
 | `timezone` | `TZ`, else the first browser's | an IANA name like `America/Toronto`. Times the server writes (assistant answers, watch history) use it; containers default to UTC |
 | `allowedHosts` | `[]` | names Valet answers to besides localhost and IP addresses, e.g. `[valet.example.com, "*.home.example.com"]`. Others get 421 (DNS-rebinding protection) |
@@ -147,10 +148,11 @@ The top of the overview.
 | Option | Default | |
 |---|---|---|
 | `greeting` | `true` | `false` hides it; text replaces "Good evening, Sam", and `{name}` fills in the top-level `greeting` |
-| `status` | `true` | the sentence under it, including the assistant's shared-cause line |
+| `status` | `true` | the lines under it: what needs you (with what to do about it, and the assistant's shared-cause line), then what's merely going on |
 | `search` | `true` | the ask box, or the search box without an assistant |
-| `review` | `true` | the year in review pill. `recap: false` turns off the review itself |
+| `review` | `true` | the year in review link under the suggestions, which can be dismissed for the visit. `recap: false` turns off the review itself |
 | `align` | `center` | `left`, `right` |
+| `scope` | none | what the ask box names instead of "anything": `true` works it out from your integrations ("Ask about downloads, lights, what to watch…"), a list of up to 6 says it yourself. `chat.placeholder` wins over it |
 
 ### `nav`
 
@@ -186,7 +188,7 @@ A list of widget keys, or this, to say more about the bar:
 
 ### `labels`
 
-The words Valet itself writes, for another language or a voice of your own. `{name}`, `{year}` and `{n}` fill in. What
+The words Valet itself writes, for another language or a voice of your own. `{name}`, `{year}`, `{n}` and `{scope}` fill in. What
 services and the assistant write is theirs, and the status sentence is built from English grammar, so turn that off with
 `hero.status: false` on a page in another language.
 
@@ -201,6 +203,10 @@ services and the assistant write is theirs, and the status sentence is built fro
 | `review` | Your {year} in review |
 | `ask` | Ask {name}… |
 | `askAnything` | Ask {name} anything… |
+| `askAbout` | Ask about {scope}… |
+| `askWhy` | Ask why |
+| `allOf` | All {n} |
+| `dismiss` | Dismiss |
 | `message` | Message {name} |
 | `messageHint` | Message {name}, paste a link or drop a file |
 | `chatTitle` | What would you like to know? |
@@ -398,6 +404,7 @@ A list of sections; each is a tab in the rail.
 | `overview` | `true` | `false`: only on its own tab |
 | `tab` | its title | share a tab with other sections |
 | `chat` | `false` | its tab also holds the assistant, full page |
+| `favorites` | none | service names: on the overview, a status card shows only these, plus anything that's down, with a link to all of them on the section's tab |
 
 A widget entry takes these, all optional but `widget`:
 

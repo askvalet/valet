@@ -89,6 +89,7 @@ const Section = z.object({
   icon: z.string().optional(),            // its tab's icon, when the first card's isn't right
   tab: z.string().optional(),             // which tab in the rail it belongs to (default: its title); sections can share one
   chat: z.boolean().default(false),       // its tab also holds the assistant, full page
+  favorites: z.array(z.string()).min(1).optional(),   // on the overview, a status card shows only these services (and whatever's down), with a link to the rest
 }).strict();
 
 // An MCP server whose tools the assistant may use. `access: read` offers only the tools the server marks read-only
@@ -149,8 +150,11 @@ export const Hero = z.object({
   greeting: z.union([z.boolean(), z.string()]).default(true),  // text replaces "Good evening, Sam"; {name} is `greeting`
   status: z.boolean().default(true),       // the sentence under it
   search: z.boolean().default(true),       // the ask box (the search box without an assistant)
-  review: z.boolean().default(true),       // the year in review pill; `recap` turns off the review itself
+  review: z.boolean().default(true),       // the year in review link; `recap` turns off the review itself
   align: z.enum(['center', 'left', 'right']).default('center'),
+  // the ask box names what it can help with ("Ask about downloads, lights, what to watch…"): true works it out from the
+  // integrations present; a list says it yourself
+  scope: z.union([z.boolean(), z.array(z.string().min(1)).min(1).max(6)]).optional(),
 }).strict();
 
 // The assistant's window on the page. What it knows and may do is `assistant`; this is how it looks.
@@ -226,6 +230,7 @@ export const Config = z.object({
   })]).default({ hours: 72, every: 5, background: true }),
   title: z.string().default('Home'),
   greeting: z.string().optional(),         // name to greet, e.g. "Sam"
+  notice: z.string().max(120).optional(),  // a quiet pill above the greeting, e.g. "Demo · simulated home"
   location: z.string().optional(),
   timezone: z.string().refine(validZone, 'an IANA time zone, like America/Toronto').optional(),   // default: TZ, or else the first browser's
   appearance: Appearance.prefault({}),
