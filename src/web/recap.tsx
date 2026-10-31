@@ -1,5 +1,6 @@
 // The year in review, in Valet's own design: one idea per screen, over your artwork and your wallpaper. Tap or arrow
 // through, hold to pause. It ends on a card drawn to a canvas, so the picture you save is exactly the one you see.
+import { ThinkingOrb } from 'thinking-orbs';
 import './recap.css';
 import { Download, ImageOff, Image as ImageIcon, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -162,7 +163,7 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
       {s?.visual && <Model key={s.id} visual={s.visual} />}
       {s?.icons && <Icons key={s.id} icons={s.icons} />}
       {s?.logo && <div key={s.id} className="rc-logo"><img src={s.logo} alt="" /></div>}
-      {!r ? <div className="rc-body"><div className="rc-kicker">{failed ? "Couldn't put your year together." : 'Going through your year…'}</div></div>
+      {!r ? <div className="rc-body">{!failed && <div className="mb-4"><ThinkingOrb state="weaving" size={64} theme="dark" /></div>}<div className="rc-kicker">{failed ? "Couldn't put your year together." : 'Going through your year…'}</div></div>
         : !r.slides.length ? <div className="rc-body"><div className="rc-kicker">Nothing to look back on yet. Connect a service or two and come back.</div></div>
         : i === 0 ? <div className="rc-body" key="open"><div className="rc-kicker">Your homelab</div><div className="rc-value" style={{ fontSize: 'clamp(96px, 22vw, 210px)' }}>{r.year}</div><p className="rc-line">{r.soFar ? 'The year so far.' : 'The whole year.'}</p></div>
         : who ? <div className="rc-body" key="who"><div className="rc-kicker">This year, you were</div><div className="rc-value" style={{ fontSize: 'clamp(50px, 10vw, 100px)' }}>{r.persona.name}</div><p className="rc-line">{r.persona.line}</p></div>

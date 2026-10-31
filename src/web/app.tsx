@@ -228,6 +228,9 @@ function sayHow(cards: (CardData | undefined)[]) {
   return parts.length ? `${and(parts)}.` : '';
 }
 
+// only the once-a-year pill wears it, so a page without one never loads the shader
+const Metal = lazy(() => import('metal-fx').then(m => ({ default: m.MetalFx })));
+
 export function App() {
   const { me, setMe } = useMe();
   const [hash, setHash] = useState(location.hash);
@@ -383,6 +386,7 @@ function Home({ account }: { account: boolean }) {
   const hello = !h || h.greeting === false ? '' : typeof h.greeting === 'string' ? h.greeting.replace('{name}', page?.greeting ?? '').trim() : `${greet(now.getHours())}${page?.greeting ? `, ${page.greeting}` : ''}`;
   const pill = page?.recap !== false && h?.review !== false, boxed = h?.search !== false;
   const side = h?.align === 'left' ? 'mr-auto text-left' : h?.align === 'right' ? 'ml-auto text-right' : 'mx-auto text-center';
+  const reviewLink = <a href="#recap" className="press inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-[13px] font-medium backdrop-blur-md transition-colors hover:bg-white/15"><Sparkles className="size-3.5" />{label('review', { year: now.getFullYear() })}</a>;
   // the hero: ask anything
   const hero = view === 'all' && (hello || h?.status !== false || boxed || pill) && (
           <header className={cn('wall-text w-full max-w-[720px] pt-8 xl:pt-10', side)}>
@@ -414,7 +418,7 @@ function Home({ account }: { account: boolean }) {
                 </div>
               </div>
             )}
-            {pill && <a href="#recap" className="press mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-[13px] font-medium backdrop-blur-md transition-colors hover:bg-white/15"><Sparkles className="size-3.5" />{label('review', { year: now.getFullYear() })}</a>}
+            {pill && <div className="mt-3 flex justify-center"><Suspense fallback={reviewLink}><Metal variant="button">{reviewLink}</Metal></Suspense></div>}
           </header>
         );
 
