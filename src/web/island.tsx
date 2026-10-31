@@ -129,7 +129,7 @@ export default function Island({ live, idle, docked, notice }: { live: Live[]; i
                   <span className="relative shrink-0">
                     <Art a={a} size={44} />
                     {/* which app it's from, on the corner like a phone's notification */}
-                    {a.source?.icon && <span className="absolute -right-1.5 -bottom-1.5 grid size-[22px] place-items-center rounded-[7px] bg-black ring-2 ring-black"><img src={a.source.icon} alt={a.source.name} className="size-[18px] object-contain" /></span>}
+                    {a.source?.icon && <span className="absolute right-0.5 bottom-0.5 grid size-[18px] place-items-center rounded-[5px] bg-black/75 backdrop-blur-sm"><img src={a.source.icon} alt={a.source.name} className="size-3.5 object-contain" /></span>}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14px] font-semibold">{a.title}</span>

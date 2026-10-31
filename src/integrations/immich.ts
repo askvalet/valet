@@ -51,7 +51,7 @@ export default defineIntegration({
               const any = pick.length ? pick : await api<any[]>('search/random', { method: 'POST', body: JSON.stringify({ size: 10, withExif: true }) });
               items = any.map(a => ({ image: ctx.image(a.id), badge: undefined as unknown as string, title: place(a), subtitle: day(a.localDateTime), href: `${web}/photos/${a.id}` }));
             }
-            return { type: 'photos', style: 'flashback', title: flashback ? 'On this day' : 'From your library', icon: 'image', href: web, items, empty: 'No photos yet',
+            return { type: 'photos', style: 'flashback', title: flashback ? 'On this day' : 'From your library', icon: 'image', href: web, source: { name: 'Immich', icon: '/api/icon/immich' }, items, empty: 'No photos yet',
               summary: { label: flashback ? 'On this day' : 'Photos', icon: 'image', value: flashback ? items[0].badge : `${items.length}`, sub: items[0]?.title ?? items[0]?.subtitle } };
           },
         },

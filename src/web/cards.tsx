@@ -295,11 +295,16 @@ function Art({ src, className, alt = '', style, onLoaded }: { src?: string; clas
 }
 
 /** One stream as a cinematic tile: the backdrop is the card, details float over a soft scrim. */
+/** Which app a picture is from, in the corner of a full-bleed card. */
+const AppBadge = ({ of }: { of?: CardT['source'] }) => !of?.icon ? null : (
+  <span className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/45 py-1 pr-2.5 pl-1.5 text-[11px] font-medium text-white backdrop-blur-md"><img src={of.icon} alt="" className="size-4 object-contain" />{of.name}</span>
+);
+
 export function NowPlaying({ m, compact, source }: { m: MediaItem; compact?: boolean; source?: CardT['source'] }) {
   return (
     <div className={cn('@container/np relative isolate w-full overflow-hidden rounded-2xl bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/0.55)]',
       compact ? 'aspect-[16/9] min-h-[170px]' : 'h-full min-h-[210px] flex-1')}>
-      {source?.icon && <span className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/45 py-1 pr-2.5 pl-1.5 text-[11px] font-medium backdrop-blur-md"><img src={source.icon} alt="" className="size-4 object-contain" />{source.name}</span>}
+      <AppBadge of={source} />
       {m.backdrop
         ? <Art src={m.backdrop} className="absolute inset-0 -z-10 size-full object-cover" />
         : <Art src={m.image} className="absolute inset-0 -z-10 size-full scale-125 object-cover blur-2xl saturate-150" />}
@@ -917,6 +922,7 @@ function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?
           onLoaded={img => { const b = letterbox(img); if (b) setBars(s => ({ ...s, [k]: b })); }} />
       ))}
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_top,rgb(0_0_0/.72),rgb(0_0_0/.08)_38%,transparent_60%,rgb(0_0_0/.5))]" />
+      <AppBadge of={card.source} />
       {label && <div className="absolute inset-x-0 top-0 flex items-center gap-2 p-5 text-[15px] font-semibold [text-shadow:0_1px_8px_rgb(0_0_0/.45)]"><span className="min-w-0 truncate">{label}</span>{status}</div>}
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-5">
         <div key={i} className="min-w-0 tick">
