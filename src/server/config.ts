@@ -86,6 +86,7 @@ const Section = z.object({
   variant: z.enum(['full', 'minimal']).default('full'),    // minimal: smaller rows, just the essentials (e.g. services: icon, name, dot)
   header: z.boolean().default(true),      // false: the cards in this section drop their title bar (on the overview)
   heading: z.boolean().default(true),     // false: no section title above it on the page (it still names the tab)
+  icon: z.string().optional(),            // its tab's icon, when the first card's isn't right
   tab: z.string().optional(),             // which tab in the rail it belongs to (default: its title); sections can share one
   chat: z.boolean().default(false),       // its tab also holds the assistant, full page
 }).strict();

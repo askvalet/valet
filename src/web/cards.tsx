@@ -464,7 +464,7 @@ function Desk({ card, header }: { card: ShelfCard; header?: ReactNode }) {
         {card.items.slice(0, 8).map((d, i) => (
           <a key={i} href={d.href} target="_blank" rel="noreferrer" className="desk-page" style={{ '--tilt': `${TILT[i]}deg`, '--i': i } as React.CSSProperties}>
             <span className="desk-sheet"><Art src={d.image} className="size-full object-cover object-top" />{d.badge && <span className="desk-stamp">{d.badge}</span>}</span>
-            <span className="mt-2.5 block truncate text-[13px] font-medium">{d.title}</span>
+            <span className="mt-2.5 block truncate text-sm font-medium">{d.title}</span>
             {d.subtitle && <span className="block truncate text-xs text-muted-foreground">{d.subtitle}</span>}
           </a>
         ))}
@@ -487,8 +487,8 @@ function Windows({ card, header, run }: { card: ShelfCard; header?: ReactNode; r
             <span className="window-bar"><i /><i /><i />{site(w.subtitle) && <img src={`/api/favicon/${w.subtitle}`} alt="" className="ml-1.5 size-3.5 rounded-sm" onError={e => { e.currentTarget.style.display = 'none'; }} />}<span className="min-w-0 truncate">{w.subtitle}</span></span>
             <span className="window-page">{w.image ? <Art src={w.image} className="w-full" /> : <span className="grid h-full place-items-center bg-white/[.04]"><Bookmark className="size-5 text-muted-foreground" /></span>}</span>
             <span className="block p-3.5">
-              <span className="line-clamp-2 text-[14.5px] leading-snug font-semibold tracking-tight">{w.title}</span>
-              {w.note && <span className="mt-1 line-clamp-2 text-[12.5px] leading-snug text-muted-foreground">{w.note}</span>}
+              <span className="line-clamp-2 text-sm leading-snug font-medium">{w.title}</span>
+              {w.note && <span className="mt-1 line-clamp-2 text-xs leading-snug text-muted-foreground">{w.note}</span>}
             </span>
           </a>
         ))}

@@ -42,7 +42,7 @@ interface Page {
   weather?: string;
   calendar?: string;
   recap?: boolean;
-  sections: { title?: string; columns?: number; grid?: Grid; gap?: number; looks?: Record<string, CardOverride>; tabColumns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; sizes?: Record<string, Size>; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; widgets: string[] }[];
+  sections: { title?: string; icon?: string; columns?: number; grid?: Grid; gap?: number; looks?: Record<string, CardOverride>; tabColumns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; sizes?: Record<string, Size>; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
 }
 
@@ -345,7 +345,7 @@ function Home({ account }: { account: boolean }) {
     return c?.activity ? [{ ...c.activity, key, href: c.href, source: c.source }] : [];
   });
   const sections = page?.sections.map((s, i) => ({ ...s, i })).filter(s => view === 'all' ? s.overview !== false : tabOf(s, s.i) === view) ?? [];
-  const sectionIcon = (s: Page['sections'][number]) => state[s.widgets[0]]?.card?.icon;
+  const sectionIcon = (s: Page['sections'][number]) => s.icon ?? state[s.widgets[0]]?.card?.icon;
   const navSide = page?.nav?.side ?? 'left';
   const hasSide = !!page?.sections.some(x => (x.place === 'left' || x.place === 'right') && (view === 'all' ? x.overview !== false : true));
   const tip = ({ left: 'right', right: 'left', top: 'bottom', bottom: 'top' } as const)[navSide];
@@ -413,7 +413,7 @@ function Home({ account }: { account: boolean }) {
   const chatWide = wide && !phone && !!chatTab && view === chatTab && !!page?.assistant;
   const renderSection = (sec: (typeof sections)[number], aside = sec.place === 'left' || sec.place === 'right') => (
           <section key={`${view}:${sec.i}`} className="settle space-y-3" style={{ animationDelay: `${Math.min(sec.i, 6) * 45}ms`, ...(sec.gap != null && { '--card-gap': `${sec.gap}px`, '--tile-gap': `${sec.gap}px` } as React.CSSProperties) }}>
-            {sec.title && sec.heading !== false && (sec.display === 'cards' || sec.display === 'media') && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title) && <h2 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h2>}
+            {view === 'all' && sec.title && sec.heading !== false && (sec.display === 'cards' || sec.display === 'media') && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title) && <h2 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h2>}
             {sec.display === 'media'
               ? (
                 <div className={cn('grid gap-(--card-gap)', sec.grid && 'cols')} style={sec.grid ? gridVars(sec.grid) : { gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${sec.columns ? Math.floor(1200 / sec.columns) - 40 : 420}px), 1fr))` }}>
@@ -546,7 +546,7 @@ function Home({ account }: { account: boolean }) {
         {!wall && topbar?.theme !== false && (page?.look.theme ?? 'auto') === 'auto' && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={theme.toggle}>{theme.dark ? <Sun key="sun" className="spin-in" /> : <Moon key="moon" className="spin-in" />}</RoundButton>}
       </div>
 
-      <main style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-32', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
+      <main style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-20', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
         {!hasSide && hero}
         {page?.welcome && view === 'all' && <Welcome path={page.welcome.path} saved={page.welcome.saved} />}
 
