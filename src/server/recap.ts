@@ -15,7 +15,7 @@ const PER_SERVICE = 3, PER_THEME = 4, STORY = 8, STORY_MIN = 6, OFFERED = 10, SA
 /** The screen between the short story and the rest. The client knows it by its id. */
 export const EXPLORE = 'explore';
 /** How much a slide has to show for itself: an outcome from this year, with a chart, artwork, a comparison or a trait, beats a bare count. */
-const richness = (s: RecapSlide) => (s.score ?? 50) + (s.scope === 'year' ? 10 : 0) + (s.trait ? 15 : 0) + (s.chart ? 12 : 0) + (s.bars ? 10 : 0) + (s.backdrop || s.wall || s.items?.some(i => i.image) || s.show || s.visual ? 10 : 0) + (s.icons ? 4 : 0);
+const richness = (s: RecapSlide) => (s.score ?? 50) + (s.scope === 'year' ? 10 : 0) + (s.trait ? 15 : 0) + (s.chart || s.race ? 12 : 0) + (s.bars ? 10 : 0) + (s.backdrop || s.wall || s.items?.some(i => i.image) || s.show || s.visual ? 10 : 0) + (s.icons ? 4 : 0);
 /** The short version, up to eight: the richest slide each time, each one more from a theme costing it, and no theme past two while there's enough to reach six. */
 function story(all: RecapSlide[]) {
   const chosen: RecapSlide[] = [], key = (s: RecapSlide) => s.theme ?? s.id, had = (s: RecapSlide) => chosen.filter(c => key(c) === key(s)).length, worth = (s: RecapSlide) => richness(s) - had(s) * SAME_THEME;

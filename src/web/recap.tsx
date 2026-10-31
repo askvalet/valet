@@ -6,11 +6,12 @@ import { AlignLeft, ChevronLeft, ChevronRight, Download, Eye, EyeOff, Pause, Pla
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from './cards.tsx';
+import { Race } from './charts.tsx';
 import type { Recap, RecapSlide } from '../shared/cards.ts';
 
 type Stat = Recap['stats'][number];
 
-const STEP = 7000, OPENING = 3200, PAYOFF = 10_000, CARD_MAX = 6, EXPLORE = 'explore', HINT = 'valet-recap-hint', TINTS = ['#64d2ff', '#ff9f6b', '#5ee0c5', '#ffc266', '#ff8ac4', '#7d9cff'];
+const STEP = 7000, RACE = 10_000, OPENING = 3200, PAYOFF = 10_000, CARD_MAX = 6, EXPLORE = 'explore', HINT = 'valet-recap-hint', TINTS = ['#64d2ff', '#ff9f6b', '#5ee0c5', '#ffc266', '#ff8ac4', '#7d9cff'];
 const OUTWARD = new Set(['network', 'reach', 'security']);   // how your network is built and what it shares: nobody's business on a public card
 
 const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches || /motion-(reduced|none)/.test(document.documentElement.className);
@@ -84,6 +85,7 @@ function Extra({ s }: { s: RecapSlide }) {
     const top = Math.max(...s.bars.map(b => b.value));
     return <div className="rc-glass rc-rows">{s.bars.map(b => <div key={b.label}><span>{b.label}</span><em>{b.show}</em><div className="rc-track"><i style={{ width: `${b.value / top * 100}%` }} /></div></div>)}</div>;
   }
+  if (s.race) return null;   // it stands beside the words
   if (s.items?.some(i => i.image)) return <div className="rc-posters">{s.items.slice(0, 5).map((it, i) => <div key={it.name} className="rc-poster" style={{ animationDelay: `${250 + i * 90}ms` }}><img src={it.image} alt="" /><b>{it.name}</b><em>{it.value}</em></div>)}</div>;
   return null;
 }
@@ -92,9 +94,9 @@ const scopeLabel = (s: RecapSlide, year: number) => s.scope === 'year' ? `In ${y
 const said = (s: RecapSlide, year: number) => `${s.kicker} ${s.value}${s.unit ? ` ${s.unit}` : ''}. ${s.line}${s.scope ? ` ${scopeLabel(s, year)}.` : ''}`;
 
 function Slide({ s, year, children }: { s: RecapSlide; year: number; children?: React.ReactNode }) {
-  const size = s.value.length > 18 ? 'clamp(38px, 7vw, 68px)' : s.value.length > 9 ? 'clamp(52px, 10vw, 96px)' : 'clamp(64px, 17vw, 168px)';
+  const size = s.race ? 'clamp(44px, 7vw, 88px)' : s.value.length > 18 ? 'clamp(38px, 7vw, 68px)' : s.value.length > 9 ? 'clamp(52px, 10vw, 96px)' : 'clamp(64px, 17vw, 168px)';
   return (
-    <div className={`rc-body ${s.visual || s.icons || s.logo ? 'rc-beside' : ''}`} key={s.id}>
+    <div className={`rc-body ${s.visual || s.icons || s.logo || s.race ? 'rc-beside' : ''}`} key={s.id}>
       {s.icon && <div className="rc-tile"><Icon name={s.icon} className="size-[22px]" /></div>}
       <div className="rc-kicker">{s.kicker}</div>
       <div className="rc-value" style={{ fontSize: size }}><Count value={s.value} />{s.unit && <span className="rc-unit">{s.unit}</span>}</div>
@@ -207,7 +209,7 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
     addEventListener('keydown', key); return () => removeEventListener('keydown', key);
   }, [go, onClose, text]);
   // the timer keeps what's left, so a hold or a pause carries on from where the bar stopped
-  const ms = i === 0 ? OPENING : who ? PAYOFF : STEP, left = useRef(ms), running = !!r?.slides.length && !held && !paused && !done && !choice && !text;
+  const ms = i === 0 ? OPENING : who ? PAYOFF : s?.race ? RACE : STEP, left = useRef(ms), running = !!r?.slides.length && !held && !paused && !done && !choice && !text;
   useEffect(() => { left.current = ms; }, [i, ms]);
   useEffect(() => { if (!running) return; const t0 = performance.now(), t = setTimeout(() => go(1), left.current); return () => { clearTimeout(t); left.current = Math.max(0, left.current - (performance.now() - t0)); }; }, [running, i, go]);
   useEffect(() => { for (const s of r?.slides ?? []) if (s.backdrop) new Image().src = s.backdrop; }, [r]);
@@ -216,7 +218,7 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
     try { if (localStorage.getItem(HINT)) return; localStorage.setItem(HINT, '1'); } catch { return; }
     setHint(true); const t = setTimeout(() => setHint(false), 9000); return () => clearTimeout(t);
   }, [r]);
-  const pressed = useRef(0), off = (e: React.PointerEvent) => !!(e.target as Element).closest('button, .rc-share, .rc-text');
+  const pressed = useRef(0), off = (e: React.PointerEvent) => !!(e.target as Element).closest('button, .rc-share, .rc-text, .rc-race');
   const drop = () => { pressed.current = 0; setHeld(false); };
   const save = () => document.querySelector<HTMLCanvasElement>('.rc-share canvas')?.toBlob(b => { if (!b) return; const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `my-homelab${yearly ? `-${r!.year}` : ''}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }, 'image/png');
   const toggle = (label: string) => setPicked(p => { const on = p ?? startingStats(r!); return on.includes(label) ? on.filter(l => l !== label) : [...on, label]; });
@@ -231,6 +233,7 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
       {s?.visual && <Model key={s.id} visual={s.visual} />}
       {s?.icons && <Icons key={s.id} icons={s.icons} />}
       {s?.logo && <div key={s.id} className="rc-logo"><img src={s.logo} alt="" /></div>}
+      {s?.race && <div key={s.id} className="rc-race"><Race race={s.race} span={s.race.unit === 'h' ? 'Hours watched' : undefined} now /></div>}
       {!r ? <div className="rc-body">{!failed && <div className="mb-4"><ThinkingOrb state="weaving" size={64} theme="dark" /></div>}<div className="rc-kicker">{failed ? "Couldn't put your year together." : 'Going through your year…'}</div></div>
         : !r.slides.length ? <div className="rc-body"><div className="rc-kicker">Nothing to look back on yet. Connect a service or two and come back.</div></div>
         : i === 0 ? <div className="rc-body" key="open">

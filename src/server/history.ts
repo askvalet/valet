@@ -76,7 +76,7 @@ export class History {
       }
       while (list.length && list[0][0] < cutoff) list.shift();
       this.series.set(id, list);
-      return s.trend?.length || list.length < 3 ? s : { ...s, trend: list.map(p => p[1]) };
+      return s.trend?.length || list.length < 3 ? s : { ...s, trend: list.map(p => p[1]), every: Math.round((list.at(-1)![0] - list[0][0]) / (list.length - 1)) };
     };
     return { ...card, summary: fill(card.summary, 0), ...(card.summaries ? { summaries: card.summaries.map((s, i) => fill(s, i + 1)!) } : {}) };
   }

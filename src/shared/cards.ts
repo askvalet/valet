@@ -17,6 +17,8 @@ export interface Summary {
   ring?: string;          // the number shown inside a ring gauge, if different from `value` (e.g. "23%")
   image?: string;         // artwork that fills the tile, with the text over it
   marks?: Mark[];         // one small bar per thing the tile counts, e.g. a bar for each drive
+  waffle?: boolean;       // draw `pct` as ten rows of ten squares: "14 in every 100" where a share is the whole story
+  every?: number;         // ms between `trend` points, so the graph can say when each one was
 }
 
 /** One thing in a tile's row of bars: `pct` sets the height, `tone` the colour, `label` the tooltip. */
@@ -46,6 +48,7 @@ export interface RecapSlide {
   visual?: { kind: 'home' | 'pc-case'; data: unknown };         // a live 3D model beside the words
   bars?: { label: string; value: number; show?: string }[];     // a small chart of what the number is made of
   chart?: { pct: number; from: string; to: string; mark: string };  // how far along, its two ends, and what's at the marker
+  race?: Race;             // the top titles overtaking each other, beside the words
   facts?: Record<string, number>;   // raw numbers, so slides can be written across services
 }
 export interface Recap { year: number; soFar: boolean; slides: RecapSlide[]; persona: { name: string; line: string }; stats: { label: string; value: string }[]; wall: string[] }
@@ -154,7 +157,7 @@ export interface ChartCard extends Base {
   from?: number;          // when the first point is (ms), so scrubbing can say when
   to?: number;            // when the last point is
   labels?: string[];      // or a name per point, for charts that aren't over time
-  style?: 'line' | 'bars';   // bars: a column per point, the series stacked in order
+  style?: 'line' | 'bars' | 'stream';   // bars: a column per point, the series stacked in order · stream: the same parts flowing around a centre line
   facts?: { label: string; value?: string }[];   // quiet chips under the chart: what the number is made of
   factsNote?: string;     // what those chips are: "Most blocked · last 24 h"
 }
@@ -274,7 +277,15 @@ export interface CameraEvent { id?: string; camera: string; label: string; at: n
 /** A live view, a pill per camera, and what they've noticed lately. */
 export interface CamerasCard extends Base { type: 'cameras'; cameras: Camera[]; events?: CameraEvent[]; refresh?: number; empty?: string; sample?: boolean }   // refresh: seconds between pictures, 1 by default; sample: recorded footage, never called live
 
-export type Card = CamerasCard | ThermostatCard | CalendarCard | EmbedCard | RankedCard | CodeCard | TableCard | LinksCard | VerseCard | ArticleCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
+/** A year of titles overtaking each other. `points` are running totals, one per step, so the last step is the final order. */
+export interface RaceItem { title: string; image?: string; points: number[] }
+export interface Race { steps: string[]; items: RaceItem[]; unit?: string }   // unit: 'h' reads as hours and minutes
+export interface RaceCard extends Base, Race { type: 'race'; span?: string }
+
+/** A year of days as a grid of squares, a column a week. `days` starts at `from`, a count for each day. */
+export interface HeatmapCard extends Base { type: 'heatmap'; from: string; days: number[]; unit?: string; headline?: string; span?: string }   // unit: what's counted, singular: 'play'
+
+export type Card = RaceCard | HeatmapCard | CamerasCard | ThermostatCard | CalendarCard | EmbedCard | RankedCard | CodeCard | TableCard | LinksCard | VerseCard | ArticleCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
 
 /** One widget slot's live state, as pushed to the browser. */
 export interface WidgetState { key: string; card?: Card; error?: string; at: number; source?: string }

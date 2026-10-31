@@ -6,6 +6,7 @@ import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calend
 } from 'lucide-react';
 import { createContext, Fragment, lazy, memo, Suspense, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Cameras } from './cameras.tsx';
+import { chartless, flow, Heatmap, Race, smooth, Stream, Waffle } from './charts.tsx';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -521,7 +522,7 @@ export function NowPlaying({ m, compact, source }: { m: MediaItem; compact?: boo
 }
 
 /** True when a card has nothing worth a slot on the page (e.g. Now Playing with nothing playing). */
-export const isEmpty = (card?: CardT) => (card?.type === 'media' || card?.type === 'photos') && !card.items.length;
+export const isEmpty = (card?: CardT) => ((card?.type === 'media' || card?.type === 'photos') && !card.items.length) || chartless(card);
 
 /** A download getting nowhere, whether its integration says so or only its state does. */
 const stallOf = (m: MediaItem): Stall | undefined => m.stall ?? (m.icon === 'download' && m.state === 'buffering' ? { word: m.tags?.find(t => /stalled|finding/i.test(t)) ?? 'Stalled' } : undefined);
@@ -815,6 +816,7 @@ function Columns({ card }: { card: ChartCard }) {
   };
   const live = !card.labels?.length && card.to != null && Date.now() - card.to < 72e5;
   const ticks = n > 2 && (card.labels?.length || card.from != null) ? [0, (n - 1) >> 1, n - 1] : [];
+  const paint = (s: ChartCard['series'][number]) => card.style === 'stream' ? flow(card.series.indexOf(s)) : s.tone ? toneVar(s.tone) : 'color-mix(in oklab, var(--foreground) 24%, transparent)';
   const sum = (s: ChartCard['series'][number]) => s.total ?? s.points.reduce((a, b) => a + b, 0), whole = tops.reduce((a, b) => a + b, 0), spot = at != null ? (at + .5) / n : 0;
   return (
     <div>
@@ -823,17 +825,17 @@ function Columns({ card }: { card: ChartCard }) {
         <span className="min-w-0 truncate text-xs text-muted-foreground">{card.span}</span>
       </div>
       <div className="columns-chart" onPointerLeave={() => setAt(null)}>
-        {tops.map((t, i) => (
+        {card.style === 'stream' ? <Stream card={card} at={at} onAt={setAt} /> : tops.map((t, i) => (
           <div key={i} className={cn('col', at === i && 'is-at')} onPointerEnter={() => setAt(i)}>
-            {card.series.map(s => <i key={s.name} style={{ height: `${(s.points[i] ?? 0) / max * 100}%`, background: s.tone ? toneVar(s.tone) : 'rgb(255 255 255 / .22)' }} />)}
+            {card.series.map(s => <i key={s.name} style={{ height: `${(s.points[i] ?? 0) / max * 100}%`, background: paint(s) }} />)}
           </div>
         ))}
         {/* the label leans away from the card's edge as the pointer nears it, so it never clips */}
-        {at != null && <div className="col-tip" style={{ left: `${spot * 100}%`, translate: `${-spot * 100}% 0` }}><b>{when(at)}</b>{card.series.map(s => ` · ${written(s.points[at] ?? 0)} ${s.name.toLowerCase()}`).join('')}</div>}
+        {at != null && <div className="col-tip" style={{ left: `${spot * 100}%`, translate: `${-spot * 100}% 0` }}><b>{when(at)}</b>{card.series.map(s => ` · ${written(s.points[at] ?? 0)} ${/^[A-Z]+$/.test(s.name) ? s.name : s.name.toLowerCase()}`).join('')}</div>}
       </div>
       {ticks.length > 0 && <div className="col-axis">{ticks.map((i, k) => <span key={i}>{k === 2 && live ? 'now' : when(i)}</span>)}</div>}
       <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-        {card.series.map(s => <span key={s.name} className="flex items-center gap-1.5 tabular"><i className="size-2 rounded-full" style={{ background: s.tone ? toneVar(s.tone) : 'rgb(255 255 255 / .22)' }} />{s.name} {written(sum(s))}</span>)}
+        {card.series.map(s => <span key={s.name} className="flex items-center gap-1.5 tabular"><i className="size-2 rounded-full" style={{ background: paint(s) }} />{s.name} {written(sum(s))}</span>)}
         {card.window && <span className="ml-auto shrink-0">{card.window}</span>}
       </div>
       {card.facts?.length ? (
@@ -849,7 +851,7 @@ function Columns({ card }: { card: ChartCard }) {
 }
 
 function Chart({ card }: { card: ChartCard }) {
-  if (card.style === 'bars') return <Columns card={card} />;
+  if (card.style === 'bars' || card.style === 'stream') return <Columns card={card} />;
   const w = 300, h = 96, count = Math.max(...card.series.map(s => s.points.length), 0);
   // the scale fits the data, so a number that moves a little still shows its shape; a fixed max (a percentage) keeps zero
   const all = card.series.flatMap(s => s.points), top = Math.max(...all, 0), low = Math.min(...all, top), pad = (top - low) * .2 || Math.abs(top) * .1 || 1;
@@ -865,7 +867,9 @@ function Chart({ card }: { card: ChartCard }) {
     const box = e.currentTarget.getBoundingClientRect();
     setAt(Math.round(Math.max(0, Math.min(1, (e.clientX - box.left) / box.width)) * (count - 1)));
   };
-  const shown = at != null ? lead?.points[at] : last;
+  const shown = at != null ? lead?.points[at] : last, wash = useId(), spot = at != null ? at / Math.max(1, count - 1) * 100 : 0;
+  // what the line covers, under it. Past a day and a half days say more than hours; a line still arriving ends at "now"
+  const timed = card.from != null && card.to != null && !card.labels?.length, tick = (t: number) => card.to! - card.from! > 1296e5 ? dayOf(t) : clockOf(t);
   return (
     <div>
       <div className="mb-2 flex items-baseline gap-2">
@@ -879,17 +883,18 @@ function Chart({ card }: { card: ChartCard }) {
           {card.series.map((s, k) => {
             const pts = s.points.map((p, i) => [x(i, s.points.length), y(p)] as [number, number]), d = smooth(pts);
             const color = k ? 'var(--muted-foreground)' : toneVar(s.tone);
-            return <g key={s.name}>{!k && <path d={`${d}L${w},${h}L0,${h}Z`} fill={color} opacity=".1" />}
+            return <g key={s.name}>{!k && <><defs><linearGradient id={wash} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity=".26" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs><path d={`${d}L${w},${h}L0,${h}Z`} fill={`url(#${wash})`} /></>}
               <path d={d} fill="none" stroke={color} strokeWidth="1.6" vectorEffect="non-scaling-stroke" /></g>;
           })}
         </svg>
         {at != null && lead && (
-          <>
-            <span className="pointer-events-none absolute inset-y-0 w-px bg-foreground/25" style={{ left: `${(at / Math.max(1, count - 1)) * 100}%` }} />
-            {card.series.map((s, k) => s.points[at] != null && <span key={s.name} className="pointer-events-none absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-background" style={{ left: `${(at / Math.max(1, count - 1)) * 100}%`, top: `${(y(s.points[at]) / h) * 100}%`, background: k ? 'var(--muted-foreground)' : toneVar(s.tone) }} />)}
-          </>
+          <div className="pointer-events-none absolute inset-0" style={{ transform: `translateX(${spot}%)` }}>
+            <span className="absolute inset-y-0 left-0 w-px bg-foreground/25" />
+            {card.series.map((s, k) => s.points[at] != null && <span key={s.name} className="absolute left-0 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-background" style={{ top: `${(y(s.points[at]) / h) * 100}%`, background: k ? 'var(--muted-foreground)' : toneVar(s.tone) }} />)}
+          </div>
         )}
       </div>
+      {timed && <div className="col-axis"><span>{tick(card.from!)}</span><span>{tick((card.from! + card.to!) / 2)}</span><span>{Date.now() - card.to! < 72e5 ? 'now' : tick(card.to!)}</span></div>}
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
         {card.series.length > 1 && card.series.map((s, k) => <span key={s.name} className="tabular" style={k ? undefined : { color: toneVar(s.tone) }}>{s.name}{at != null && s.points[at] != null ? ` ${num(s.points[at])}` : card.headline ? '' : s.points.length ? ` ${num(s.points.at(-1)!)}` : ''}</span>)}
         {card.span && !card.headline && <span className="ml-auto">{card.span}</span>}
@@ -1252,6 +1257,8 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
     case 'media': return <Media card={card} run={run} />;
     case 'shelf': return <Shelf card={card} />;
     case 'chart': return <Chart card={card} />;
+    case 'race': return <Race race={card} span={card.span} />;
+    case 'heatmap': return <Heatmap card={card} />;
     case 'code': return <Code card={card} />;
     case 'ranked': return <Ranked card={card} />;
     case 'table': return <Table card={card} />;
@@ -1394,17 +1401,6 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
   );
 }
 
-/** A smooth path through points (Catmull-Rom → cubic Bézier), for graphs that read as calm curves, not zig-zags. */
-function smooth(pts: [number, number][]) {
-  if (pts.length < 2) return '';
-  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const [x0, y0] = pts[i - 1] ?? pts[i], [x1, y1] = pts[i], [x2, y2] = pts[i + 1], [x3, y3] = pts[i + 2] ?? pts[i + 1];
-    d += `C${(x1 + (x2 - x0) / 6).toFixed(1)},${(y1 + (y2 - y0) / 6).toFixed(1)} ${(x2 - (x3 - x1) / 6).toFixed(1)},${(y2 - (y3 - y1) / 6).toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`;
-  }
-  return d;
-}
-
 // a tile's own colour, stable for its icon so integrations get one for free; none of them read as a status colour
 const TINTS = ['#64d2ff', '#7d7aff', '#bf8bff', '#ff8ac4', '#5ee0c5', '#ffc266'];
 const tintOf = (key: string) => TINTS[[...key].reduce((h, c) => (h * 17 + c.charCodeAt(0)) >>> 0, 11) % TINTS.length];
@@ -1448,7 +1444,7 @@ function SummaryTileView({ s, href, explain }: { s: Summary; href?: string; expl
   const body = (
     <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift', art && 'border-transparent text-white')} style={{ '--tint': `color-mix(in oklab, ${tintOf(s.icon ?? s.label)} 80%, var(--foreground))` } as React.CSSProperties}>
       {art && <><Art src={s.image} className={cn('absolute inset-0 -z-10 size-full object-cover transition-transform duration-(--dur-move) ease-out', href && 'group-hover/tile:scale-[1.03]')} /><div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(0_0_0/.78),rgb(0_0_0/.42)_38%,transparent_72%)]" /></>}
-      {!art && !s.marks && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} gauge={s.ring != null} /></div>}
+      {!art && !s.marks && !s.waffle && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} gauge={s.ring != null} /></div>}
       <div className={cn('relative flex flex-1 flex-col p-4', art && '[text-shadow:0_1px_10px_rgb(0_0_0/.7)]')}>
         <div className="flex items-center gap-2.5">
           {s.icon && isWeather(s.icon) && !art && <WeatherGlyph name={s.icon} size={38} className="-my-1 -ml-0.5" />}
@@ -1458,9 +1454,9 @@ function SummaryTileView({ s, href, explain }: { s: Summary; href?: string; expl
           </div>
           {s.tone === 'bad' && <span className="dot dot-bad ml-auto" />}
         </div>
-        <div className={cn('mt-auto flex min-w-0 justify-between gap-3 pt-3', s.marks ? 'items-end' : 'items-baseline')}>
+        <div className={cn('mt-auto flex min-w-0 justify-between gap-3 pt-3', s.marks || s.waffle ? 'items-end' : 'items-baseline')}>
           <div className={cn('metric min-w-0 truncate text-[20px] leading-none @[200px]/tile:text-[22px]', !art && toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}>{s.value}</div>
-          {s.marks?.length ? <TileMarks marks={s.marks} /> : null}
+          {s.marks?.length ? <TileMarks marks={s.marks} /> : s.waffle && s.pct != null ? <Waffle pct={s.pct} label={s.sub} /> : null}
           {s.detail && <div className="hidden min-w-0 truncate text-xs tabular text-muted-foreground @[200px]/tile:block">{s.detail}</div>}
           {trouble && !why.note && <button type="button" className="why-chip" onClick={e => { e.preventDefault(); e.stopPropagation(); why.ask!(`${s.label}: ${s.value} ${s.sub ?? ''}`); }}>Why?</button>}
         </div>
@@ -1528,6 +1524,12 @@ export function ClockMonth({ card, children }: { card?: CardT; children: ReactNo
   );
 }
 
+/** A headline's recent history as a line to scrub, ending now. */
+const trendOf = (s: Summary): ChartCard => {
+  const n = s.trend!.length, to = Date.now(), unit = String(s.value).match(/^\s*-?[\d.,]+\s*([^\d\s]\S*)\s*$/)?.[1];
+  return { type: 'chart', headline: String(s.value), span: [s.label, s.detail].filter(Boolean).join(' · '), unit, from: to - (n - 1) * s.every!, to, series: [{ name: s.label, points: s.trend!, tone: s.tone }] };
+};
+
 /** The menubar version: a small ring with the number inside, label beneath; details on hover. */
 function MiniRingView({ s }: { s: Summary }) {
   const r = 15, c = 2 * Math.PI * r, arc = c * 0.75, pct = Math.max(0, Math.min(1, s.pct ?? 0));
@@ -1544,7 +1546,7 @@ function MiniRingView({ s }: { s: Summary }) {
         <div className="metric absolute inset-0 grid place-items-center text-[11px]">{n.length > 4 ? <Icon name={s.icon} className="size-3.5" /> : <span key={n} className="tick">{n}</span>}</div>
       </div>
       <div className="-mt-1 hidden max-w-[56px] truncate text-[10px] font-medium text-muted-foreground sm:block">{s.label}</div>
-      <Popover group="ring" className="right-1/2 w-[260px] translate-x-1/2"><SummaryTile s={s} /></Popover>
+      <Popover group="ring" className="right-1/2 w-[280px] translate-x-1/2">{s.every && (s.trend?.length ?? 0) > 7 ? <div className="p-3.5"><Chart card={trendOf(s)} /></div> : <SummaryTile s={s} />}</Popover>
     </div>
   );
 }

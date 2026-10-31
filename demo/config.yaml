@@ -108,7 +108,16 @@ layout:
     overview: false
     heading: false
     columns: 3
-    widgets: [lab.mostwatched, lab.plays, lab.people]
+    widgets:
+      - { widget: lab.race, size: large }
+      - { widget: lab.people, size: medium }
+  - tab: Media
+    overview: false
+    heading: false
+    columns: 3
+    widgets:
+      - { widget: lab.plays, size: medium }
+      - { widget: lab.viewing, size: large }
   - tab: Media
     overview: false
     heading: false

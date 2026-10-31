@@ -24,6 +24,16 @@
   .rc-icons span { border-radius: 12px; }
 }
 
+/* the race stands where a model would, on a dark stage of its own */
+.rc-race { --foreground: #fff; --muted-foreground: rgb(255 255 255 / .72); --muted: rgb(255 255 255 / .1); --primary: var(--tint); position: absolute; z-index: 2; right: clamp(24px, 5vw, 72px); top: 50%; width: min(44vw, 620px); padding: 20px 22px 16px; border-radius: 24px; color: #fff; background: rgb(24 24 30 / .55); border: 1px solid rgb(255 255 255 / .14); box-shadow: inset 0 1px 0 rgb(255 255 255 / .12); backdrop-filter: blur(36px) saturate(1.6); transform: translateY(-50%); animation: rc-race 700ms var(--ease-out) backwards; }
+@keyframes rc-race { from { opacity: 0; transform: translateY(-48%); } }
+@media (max-width: 760px) {
+  .rc-race { left: 16px; right: 16px; top: 70px; width: auto; padding: 14px 16px 10px; transform: none; animation-name: rc-fade; }
+  .rc-race .race { --row: 38px; }
+  .rc-race .race-head { margin-bottom: 6px; }
+}
+@media (max-width: 760px) and (max-height: 760px) { .rc-race .race { --row: 32px; } .rc-race .race-art { width: 20px; height: 30px; } .rc-race .race-name { font-size: 12px; line-height: 14px; } .rc-race .race-line { height: 14px; } .rc-race .race-track { inset: 3px 0; } }
+
 /* the wall: your posters, drifting past behind glass */
 .rc-wall { display: flex; gap: 14px; justify-content: center; transform: rotate(-7deg) scale(1.35); opacity: .62; }
 .rc-col { display: flex; flex-direction: column; gap: 14px; flex: none; width: clamp(110px, 13vw, 190px); animation: rc-up 70s linear infinite alternate; }

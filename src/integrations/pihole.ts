@@ -56,7 +56,7 @@ export default defineIntegration({
               banner: off ? { text: timer ? 'Blocking paused' : 'Blocking is off', until: timer ? Date.now() + timer * 1000 : undefined, tone: 'warn', button: { label: 'Resume', action: 'pause', args: { minutes: 0 } } } : undefined,
               buttons: off ? undefined : [{ label: 'Pause 5 min', action: 'pause', args: { minutes: 5 } }, { label: 'Pause 1 hour', action: 'pause', args: { minutes: 60 } }],
               summary: { label: 'Ads blocked', icon: 'shield', value: off ? 'Paused' : s.queries.blocked.toLocaleString(), tone: off ? 'warn' : 'good', ring: pct(s.queries.percent_blocked),
-                sub: `${pct(s.queries.percent_blocked)} of queries`, trend: history.map(x => x.blocked), pct: s.queries.percent_blocked / 100 },
+                sub: `${pct(s.queries.percent_blocked)} of queries`, trend: history.map(x => x.blocked), pct: s.queries.percent_blocked / 100, waffle: true },
             };
           },
         },

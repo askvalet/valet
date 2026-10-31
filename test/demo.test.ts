@@ -211,6 +211,24 @@ test('demo: every figure agrees with every other, whenever you look', async () =
   assert.equal(num(disk.value), Math.round(num(disk.detail.split(' of ')[0]) / num(disk.detail.split(' of ')[1]) * 100));
 });
 
+test('demo: the race and the year of days add up to the rest of the page', async () => {
+  const race = await inst.widgets.race.fetch(), viewing = await inst.widgets.viewing.fetch(), top = await inst.widgets.mostwatched.fetch(), plays = await inst.widgets.plays.fetch();
+  const slide = (await inst.recap({})).find((s: any) => s.id === 'watch.top'), n = race.steps.length - 1;
+  assert.ok(race.steps.length >= 3);
+  assert.ok(race.items.every((i: any) => i.points.every((p: number, k: number) => !k || p >= i.points[k - 1])));
+  assert.deepEqual(slide.race.items.map((i: any) => i.points.at(-1)), race.items.map((i: any) => i.points.at(-1)));
+  assert.equal(slide.value, race.items[0].title);
+  assert.equal(num(slide.items[0].value), race.items[0].points[n]);
+  for (const t of top.items) {   // the last step of the race is the last 30 days the rest of the page shows
+    const it = race.items.find((i: any) => i.title === t.title);
+    assert.equal(it.points[n] - it.points[n - 1], num(t.value.split(' · ')[0]), t.title);
+  }
+  assert.equal(add(viewing.days), 1048);
+  assert.equal(viewing.days.length, 365);
+  assert.ok(viewing.days.every(Number.isInteger));
+  assert.deepEqual(viewing.days.slice(-30), plays.series[0].points.map((v: number, i: number) => v + plays.series[1].points[i]));
+});
+
 test('demo: the vacuum does what its buttons say, then puts itself back', async () => {
   const bot = async () => (await inst.widgets.home.fetch()).visual.data.robot, real = Date.now, run = (a: any) => inst.actions.vacuum.run(a);
   let t = real() + 3_600_000;

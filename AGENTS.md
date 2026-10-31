@@ -75,6 +75,12 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - **Live things announce themselves.** A card sets `activity` only while something's happening; the island shows the
   live ones in the config's order and disappears when nothing is live.
 
+- **Charts are one plain module** (`src/web/charts.tsx`): the race, the stream, the year of days and the waffle, in SVG and CSS with
+  no chart or animation library. Each draws from a card's numbers and says it's empty through `chartless`, which `isEmpty` reads, so
+  a chart with nothing in it gives up its slot. The race's render is its final frame; one rAF loop writes `transform` and `opacity`
+  straight to the DOM, stops when the rows settle, runs once a visit, and reads `calm()` itself because the central motion rule can't
+  reach JavaScript. Line charts stay in `Chart`, columns in `Columns`.
+
 - **The house's cards measure themselves** (`src/web/home-cards.tsx`: `forecast`, `calendar`, `thermostat`). They're glass
   edge to edge with no header, pick their layout from their own box rather than a size name, and must never set a row's
   height by how much they have to show: anything that can grow scrolls inside or spreads out, so a bento row ends flush.

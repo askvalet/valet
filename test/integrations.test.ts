@@ -30,7 +30,7 @@ import releases from '../src/integrations/releases.ts';
 import scrutiny from '../src/integrations/scrutiny.ts';
 import karakeep from '../src/integrations/karakeep.ts';
 import seerr from '../src/integrations/seerr.ts';
-import tautulli from '../src/integrations/tautulli.ts';
+import tautulli, { raceOf } from '../src/integrations/tautulli.ts';
 import { Activity, outcome, sentence } from '../src/server/activity.ts';
 import uptimekuma from '../src/integrations/uptimekuma.ts';
 
@@ -211,6 +211,58 @@ test('seerr: each ticket says what to do next, and what a part-filled one is mis
     media(5, { plexUrl: 'http://plex/5' }), media(3, { downloadStatus: [{ size: 100, sizeLeft: 25 }] }), media(4, { plexUrl: 'http://plex/4', seasons: [{ seasonNumber: 1, status: 5 }, { seasonNumber: 2, status: 3 }] }), media(2)] } : { id: 1, name: 'Show' }));
   const c: any = await s.widgets.requests.fetch(); valid(c);
   assert.deepEqual(c.items.map((i: any) => [i.cta?.label, i.cta?.href, i.note]), [['Watch', 'http://plex/5', undefined], ['See progress', 'http://dl', '75% there'], ['Watch what\'s here', 'http://plex/4', 'Missing S2'], [undefined, undefined, undefined]]);
+});
+
+const watch = (title: string, month: number, day: number, hours: number, show = true) => ({ date: new Date(2025, month, day, 20).getTime() / 1000, media_type: show ? 'episode' : 'movie', title: show ? 'Pilot' : title, grandparent_title: show ? title : '', thumb: `/library/metadata/${title.length}/thumb/1`, play_duration: hours * 3600 });
+
+test('tautulli race: running hours per show or film, a step a month, and only titles that reach the board', () => {
+  const r = raceOf([watch('A', 0, 3, 1), watch('A', 0, 9, 2), watch('B', 1, 1, 5), watch('C', 3, 2, 2, false), watch('A', 3, 9, 1), ...'DEFGH'.split('').map((t, i) => watch(t, 3, 12, 6 + i)), { ...watch('Song', 3, 3, 9), media_type: 'track' }], t => `/img${t}`)!;
+  assert.deepEqual(r.steps, ['Jan', 'Feb', 'Mar', 'Apr']);
+  assert.deepEqual(r.items.find(i => i.title === 'A')!.points, [3, 3, 3, 4]);   // a quiet month carries forward
+  assert.deepEqual(r.items.find(i => i.title === 'B')!.points, [0, 5, 5, 5]);
+  assert.equal(r.items[0].title, 'H');
+  assert.ok(!r.items.some(i => i.title === 'Song'));
+  assert.ok(r.items.every(i => i.points.every((p, k) => !k || p >= i.points[k - 1])));
+  assert.ok(r.items.some(i => i.title === 'A'), 'led early, so it stays on the card');
+  assert.ok(!r.items.some(i => i.title === 'C'), 'never on the board');
+});
+
+test('tautulli race: too few months go day by day, and too little is no race at all', () => {
+  const r = raceOf([watch('A', 9, 20, 1), watch('B', 9, 21, 2), watch('C', 9, 23, 3)], t => t)!;
+  assert.deepEqual(r.steps, ['Oct 20', 'Oct 21', 'Oct 22', 'Oct 23']);
+  assert.deepEqual(r.items.map(i => i.points), [[0, 0, 0, 3], [0, 2, 2, 2], [1, 1, 1, 1]]);
+  assert.equal(raceOf([watch('A', 9, 20, 1), watch('B', 9, 22, 1)], t => t), undefined);
+  assert.equal(raceOf([], t => t), undefined);
+});
+
+test('tautulli race: asks a month at a time in pages, and only ever re-asks this month', async () => {
+  const year = new Date().getFullYear(), month = new Date().getMonth(), asked: URLSearchParams[] = [];
+  const t = make(tautulli, { url: 'http://t', apiKey: 'x' }, fake(url => {
+    const q = new URL(url).searchParams; asked.push(q);
+    const rows = q.get('after') === `${year}-01-01` && q.get('start') === '0' ? Array.from({ length: 1000 }, () => ({ date: new Date(year, 0, 2).getTime() / 1000, media_type: 'movie', title: 'Long', play_duration: 3600 })) : [];
+    return { response: { result: 'success', data: { data: rows } } };
+  }));
+  const card: any = await t.widgets.race.fetch();
+  assert.equal(asked.length, month + 2);   // January took two pages
+  assert.equal(asked[1].get('start'), '1000');
+  assert.ok(asked.every(q => q.get('after')!.slice(0, 7) === q.get('before')!.slice(0, 7)), 'each stays inside its month');
+  assert.ok(checkCard(card).success);
+  assert.equal(card.items.length, 0);   // a single title isn't a race, so the card says there's nothing to draw
+  asked.length = 0;
+  await t.widgets.race.fetch();
+  assert.equal(asked.length, month ? 1 : 2);
+});
+
+test('tautulli: the year of days comes from one call, and a year-in-review slide carries the race', async () => {
+  const rows = [watch('A', 0, 3, 9), watch('B', 1, 3, 7), watch('A', 1, 9, 1), watch('C', 2, 3, 2), watch('B', 3, 3, 6)];
+  const t = make(tautulli, { url: 'http://t', apiKey: 'x' }, fake(url => ({ response: { result: 'success', data: url.includes('get_plays_by_date') ? { categories: ['2025-01-01', '2025-01-02'], series: [{ name: 'TV', data: [1, 2] }, { name: 'Total', data: [1, 3] }] } : url.includes('get_history') ? { data: rows } : url.includes('get_metadata') ? {} : url.includes('get_recently_added') ? { recently_added: [] } : {} } })));
+  const card: any = await t.widgets.viewing.fetch();
+  assert.ok(checkCard(card).success);
+  assert.deepEqual([card.from, card.days], ['2025-01-01', [1, 3]]);
+  const top = (await t.recap!({ year: 2025, from: Date.UTC(2025, 0, 1), to: Date.UTC(2026, 0, 1) })).find(s => s.id === 'watch.top')!;
+  assert.equal(top.value, 'B');
+  assert.equal(top.race?.steps.length, 4);
+  assert.match(top.line, /In front from Apr\./);
 });
 
 test('tautulli: whose viewing and which period are said, and now stays apart from totals', async () => {
