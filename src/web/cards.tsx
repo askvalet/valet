@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import type { CodeCard, RankedCard, TableCard, LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
+import type { ArticleCard, CodeCard, RankedCard, TableCard, LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
 // Icon names cards may use (docs/integrations.md lists them; keep the two in step). Anything else: a URL or a path.
 const ICONS: Record<string, LucideIcon> = {
@@ -183,14 +183,12 @@ function AppIcon({ src, name, small }: { src?: string; name: string; small?: boo
 }
 
 function ServiceRow({ s, minimal }: { s: StatusCard['items'][number]; minimal?: boolean }) {
-  // minimal: one tight line, icon, name and the dot; trouble still says what's wrong
+  // minimal: one tight line, icon, name and the dot; hover says what's wrong
   if (minimal) return (
     <a href={s.href} target="_blank" rel="noreferrer" title={s.ok ? `${s.name} · ${s.ms ?? ''} ms` : `${s.name} · ${s.quiet ? 'offline' : s.detail}`}
       className="flex min-w-0 break-inside-avoid items-center gap-2.5 rounded-lg px-2 py-[5px] transition-colors hover:bg-accent">
       <AppIcon src={s.icon} name={s.name} small />
-      <span className={cn('flex-1 truncate text-[13px]', s.ok || s.quiet ? 'min-w-0' : 'min-w-[60%]')}>{s.name}</span>
-      {!s.ok && !s.quiet && <span className="min-w-0 truncate text-[11px] text-bad">{s.detail}</span>}
-      {!s.ok && !s.quiet && <WhyChip about={`${s.name} is down: ${s.detail ?? ''}`} />}
+      <span className="min-w-0 flex-1 truncate text-[13px]">{s.name}</span>
       <span className={cn('dot size-1.5', s.ok ? 'dot-good' : s.quiet ? 'bg-muted-foreground/40' : 'dot-bad')} />
     </a>
   );
@@ -217,23 +215,58 @@ function Status({ card, columns, minimal }: { card: StatusCard; columns?: number
       {card.items.map(s => <ServiceRow key={s.name} s={s} minimal={minimal} />)}
     </div>
   );
-  // a long group (more than six) runs on into a second column beside itself, under the same heading
-  const blocks = groups.flatMap(g => {
-    const items = card.items.filter(i => (i.group ?? '') === g);
-    if (items.length <= 6 || columns) return [{ g, label: g, items }];
-    const half = Math.ceil(items.length / 2);
-    return [{ g, label: g, items: items.slice(0, half) }, { g: `${g}·2`, label: '', items: items.slice(half) }];
-  });
+  if (!columns) return <Balanced groups={groups.map(g => ({ g, items: card.items.filter(i => (i.group ?? '') === g) }))} minimal={minimal} />;
   return (
-    <div className={cn('-mx-2 gap-x-4', !columns && (minimal ? 'status-tight' : 'status-wide'))} style={columns ? { columnCount: columns } : undefined}>
-      {blocks.map(b => (
-        // with a set column count (a sidebar list) groups flow on across columns; otherwise each stays whole
-        <div key={b.g} className={cn(minimal ? 'mb-2' : 'mb-3', columns ? 'break-inside-auto' : 'break-inside-avoid')}>
-          {groups.some(Boolean) && <div className={cn('break-after-avoid px-2 font-medium text-muted-foreground', minimal ? 'pt-1 pb-0.5 text-[11px]' : 'pt-1 pb-1.5 text-xs')}>{b.label || '\u00a0'}</div>}
-          {b.items.map(s => <ServiceRow key={s.name} s={s} minimal={minimal} />)}
+    <div className="-mx-2 gap-x-4" style={{ columnCount: columns }}>
+      {groups.map(g => (
+        // a sidebar list: groups flow on across its columns
+        <div key={g} className={cn('break-inside-auto', minimal ? 'mb-2' : 'mb-3')}>
+          <div className={cn('break-after-avoid px-2 font-medium text-muted-foreground', minimal ? 'pt-1 pb-0.5 text-[11px]' : 'pt-1 pb-1.5 text-xs')}>{g || '\u00a0'}</div>
+          {card.items.filter(i => (i.group ?? '') === g).map(s => <ServiceRow key={s.name} s={s} minimal={minimal} />)}
         </div>
       ))}
     </div>
+  );
+}
+
+/** Groups side by side across the whole width, each as wide as it needs: the shortest height at which they all fit, so
+ *  no group runs longer than the rest and nothing is left empty on the right. Too narrow for that, they stack. */
+function Balanced({ groups, minimal }: { groups: { g: string; items: StatusCard['items'] }[]; minimal?: boolean }) {
+  const box = useRef<HTMLDivElement>(null), [width, setWidth] = useState(0);
+  useEffect(() => { const o = new ResizeObserver(([e]) => setWidth(e.contentRect.width)); if (box.current) o.observe(box.current); return () => o.disconnect(); }, []);
+  const room = Math.max(1, Math.floor((width || 1100) / (minimal ? 168 : 220))), most = Math.max(...groups.map(g => g.items.length));
+  const widths = (rows: number) => groups.map(g => Math.ceil(g.items.length / rows)), total = (rows: number) => widths(rows).reduce((a, b) => a + b, 0);
+  const side = groups.length <= room;
+  let rows = 1; while (side && rows < most && total(rows) > room) rows++;
+  return (
+    <div ref={box} className="-mx-2 grid gap-x-4 gap-y-2" style={{ gridTemplateColumns: `repeat(${side ? total(rows) : room}, minmax(0, 1fr))` }}>
+      {groups.map(({ g, items }, i) => {
+        const span = side ? widths(rows)[i] : room, down = side ? rows : Math.ceil(items.length / room);
+        return (
+          <div key={g} className="min-w-0" style={{ gridColumn: `span ${span}` }}>
+            {g && <div className={cn('px-2 font-medium text-muted-foreground', minimal ? 'pt-1 pb-0.5 text-[11px]' : 'pt-1 pb-1.5 text-xs')}>{g}</div>}
+            <div className="grid gap-x-4" style={{ gridAutoFlow: 'column', gridTemplateRows: `repeat(${down}, auto)`, gridTemplateColumns: `repeat(${span}, minmax(0, 1fr))` }}>
+              {items.map(s => <ServiceRow key={s.name} s={s} minimal={minimal} />)}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Something saved to read, with the page itself filling the card. Hover and it scrolls by, as if you'd started reading. */
+function Article({ card }: { card: ArticleCard }) {
+  if (!card.headline) return <div className="grid h-full min-h-[200px] place-items-center rounded-2xl bg-card text-sm text-muted-foreground shadow-card">{card.empty ?? 'Nothing saved to read'}</div>;
+  return (
+    <a href={card.link ?? card.href} target="_blank" rel="noreferrer" className="article lift">
+      {card.image && <img src={card.image} alt="" className="article-page" />}
+      <div className="article-text">
+        <div className="flex items-center gap-1.5 text-[12px] font-medium text-white/70">{card.source?.icon && <img src={card.source.icon} alt="" className="size-3.5 object-contain" />}<span className="truncate">{[card.title, card.site].filter(Boolean).join(' · ')}</span></div>
+        <div className="mt-1 line-clamp-2 text-[19px] leading-tight font-semibold tracking-tight text-pretty text-white">{card.headline}</div>
+        {card.blurb && <p className="mt-1.5 line-clamp-3 text-[13.5px] leading-snug text-white/75">{card.blurb}</p>}
+      </div>
+    </a>
   );
 }
 
@@ -262,10 +295,11 @@ function Art({ src, className, alt = '', style, onLoaded }: { src?: string; clas
 }
 
 /** One stream as a cinematic tile: the backdrop is the card, details float over a soft scrim. */
-export function NowPlaying({ m, compact }: { m: MediaItem; compact?: boolean }) {
+export function NowPlaying({ m, compact, source }: { m: MediaItem; compact?: boolean; source?: CardT['source'] }) {
   return (
-    <div className={cn('@container/np relative isolate w-full overflow-hidden rounded-2xl bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/0.55)]',
-      compact ? 'aspect-[16/9] min-h-[170px]' : 'aspect-[16/9] max-h-[210px] min-h-[170px] @3xl/main:aspect-[3.6/1]')}>
+    <div className={cn('group/np @container/np relative isolate w-full overflow-hidden rounded-2xl bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/0.55)]',
+      compact ? 'aspect-[16/9] min-h-[170px]' : 'h-full min-h-[210px] flex-1')}>
+      {source?.icon && <span className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/45 py-1 pr-2.5 pl-1.5 text-[11px] font-medium opacity-0 backdrop-blur-md transition-opacity duration-200 group-hover/np:opacity-100"><img src={source.icon} alt="" className="size-4 object-contain" />{source.name}</span>}
       {m.backdrop
         ? <Art src={m.backdrop} className="absolute inset-0 -z-10 size-full object-cover" />
         : <Art src={m.image} className="absolute inset-0 -z-10 size-full scale-125 object-cover blur-2xl saturate-150" />}
@@ -307,12 +341,12 @@ function Media({ card, compact }: { card: MediaCard; compact?: boolean }) {
       <div><Film className="mx-auto mb-2 size-5 text-muted-foreground" /><div className="text-sm text-muted-foreground">{card.empty ?? 'Nothing playing'}</div></div>
     </div>
   );
-  if (card.items.length === 1) return <NowPlaying m={card.items[0]} />;
+  if (card.items.length === 1) return <NowPlaying m={card.items[0]} source={card.source} />;
   // banners suit something to watch; a pile of downloads, or three of anything, reads better as rows
   if (card.items.length > 2 || card.items.every(m => m.icon === 'download')) return (
-    <Card className="gap-0 divide-y divide-border overflow-hidden py-0 shadow-card">
+    <Card className="flex-1 gap-0 divide-y divide-border overflow-hidden py-0 shadow-card">
       {card.items.map((m, i) => (
-        <div key={i} className="relative isolate flex min-w-0 items-center gap-3 overflow-hidden px-4 py-2.5">
+        <div key={i} className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden px-4 py-2.5">
           {m.pct != null && <span className="absolute inset-y-0 left-0 -z-10 bg-primary/20 transition-[width] duration-1000 ease-out" style={{ width: `${m.pct * 100}%` }} />}
           {m.image ? <Art src={m.image} className="h-12 w-8 shrink-0 rounded-md object-cover" /> : <span className="grid h-12 w-8 shrink-0 place-items-center rounded-md bg-white/10 text-muted-foreground"><Icon name={m.icon ?? 'film'} className="size-4" /></span>}
           <div className="min-w-0 flex-1">
@@ -326,7 +360,7 @@ function Media({ card, compact }: { card: MediaCard; compact?: boolean }) {
   );
   return (
     <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))' }}>
-      {card.items.map((m, i) => <NowPlaying key={i} m={m} compact />)}
+      {card.items.map((m, i) => <NowPlaying key={i} m={m} compact source={card.source} />)}
     </div>
   );
 }
@@ -1007,6 +1041,7 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
   const actions = card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null;
   if (card?.type === 'shelf') return <div className="fade-in-soft min-w-0"><Shelf card={card} small={compact} header={<BareHeader card={card} title={title} status={status} />} />{actions}</div>;
   // a flashback is all picture: its heading sits on the photo, so the card's edges line up with its neighbours
+  if (card?.type === 'article') return <Article card={card} />;
   if (card?.type === 'photos' && card.items.length && !large && card.style !== 'mosaic') return (
     <div className="fade-in-soft h-full min-w-0"><Photos card={card} fill={fill} label={card.title ?? title} status={status} />{actions}</div>
   );

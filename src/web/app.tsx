@@ -2,7 +2,7 @@ import { Sparkles, ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Sea
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import type { ForecastCard, StatusCard, WidgetState } from '../shared/cards.ts';
+import type { Card as CardData, ForecastCard, StatusCard, WidgetState } from '../shared/cards.ts';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import Island, { type Live, type Notice } from './island.tsx';
@@ -187,6 +187,20 @@ function useWide(query = '(min-width: 1280px)') {
 /** Signed in? Show the page; otherwise the sign-in screen (over the wallpaper, which needs no session). */
 const Gallery = lazy(() => import('./gallery.tsx'));
 
+/** The whole place in one sentence, from what the services report right now, so it can't be wrong and never needs a model. */
+function sayHow(cards: (CardData | undefined)[]) {
+  const and = (l: string[]) => l.length < 2 ? l.join('') : `${l.slice(0, -1).join(', ')} and ${l.at(-1)}`;
+  const board = cards.flatMap(c => c?.type === 'status' ? [c.items.filter(i => !i.quiet)] : []).sort((a, b) => b.length - a.length)[0] ?? [];
+  const down = board.filter(i => !i.ok).map(i => i.name), media = cards.flatMap(c => c?.type === 'media' ? c.items : []);
+  const watching = media.filter(m => m.user && m.state !== 'paused'), getting = media.filter(m => m.icon === 'download').length;
+  const parts = [
+    !board.length ? '' : !down.length ? `All ${board.length} services are running` : down.length === 1 ? `Everything's running except ${down[0]}` : down.length <= 3 ? `${and(down)} are down` : `${down.length} of ${board.length} services are down`,
+    watching.length === 1 ? `${watching[0].user} is watching ${watching[0].title}` : watching.length ? `${watching.length} people are watching` : '',
+    getting ? `${getting === 1 ? 'a download is' : `${getting} downloads are`} on the way` : '',
+  ].filter(Boolean);
+  return parts.length ? `${and(parts)}.` : '';
+}
+
 export function App() {
   const { me, setMe } = useMe();
   const [hash, setHash] = useState(location.hash);
@@ -287,7 +301,6 @@ function Home({ account }: { account: boolean }) {
     });
     return f;
   };
-  const p = pulse(state);
   const cause = liveInsight === undefined ? page?.insight : liveInsight;
   const questions = page?.assistant ? suggest(state, page.assistant.suggestions, undefined, tailored) : [];
   // every card's quick actions, for ⌘K: "pause" finds "Pi-hole · Pause 5 min"
@@ -316,12 +329,12 @@ function Home({ account }: { account: boolean }) {
   // remember what's empty (nothing playing), so it doesn't flash a placeholder on the next visit
   useEffect(() => { for (const [k, s] of Object.entries(state)) if (isEmpty(s.card)) noteShape(k, { empty: true }); }, [state]);
 
+  const line = sayHow(Object.values(state).map(s => s.card));
   // the hero: ask anything
   const hero = view === 'all' && (
           <header className="wall-text mx-auto w-full max-w-[720px] pt-8 text-center xl:pt-10">
             <div className="text-[22px] font-semibold tracking-tight">{greet(now.getHours())}{page?.greeting ? `, ${page.greeting}` : ''}</div>
-            {cause ? <div className="brief-in mt-0.5 text-[13px] text-warn">{cause}</div> : p.text && <div className={cn('mt-0.5 text-[13px]', p.tone)}>{p.text}</div>}
-            {brief && !cause && !p.text && <div key={brief} title={brief} className="brief-in mx-auto mt-1 max-w-full truncate text-[13.5px] text-muted-foreground">{brief}</div>}
+            {cause ? <div className="brief-in mt-0.5 text-[13.5px] text-warn">{cause}</div> : line && <div key={line} title={brief ?? undefined} className="brief-in mx-auto mt-1 max-w-full text-[13.5px] text-pretty text-muted-foreground">{line}</div>}
             {page?.assistant && (
               <form className="glass-round mt-5 flex items-center gap-2.5 rounded-[26px] py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>

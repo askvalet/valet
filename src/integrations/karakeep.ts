@@ -40,6 +40,18 @@ export default defineIntegration({
               items: (r.bookmarks ?? []).map((b: any) => { const x = brief(b); return { title: x.title ?? x.url ?? 'Note', subtitle: [host(x.url), ...x.tags.slice(0, 2)].filter(Boolean).join(' · ') || undefined, detail: x.summary ? String(x.summary).slice(0, 500) : undefined, meta: fmt.relativeDay(b.createdAt), href: x.url ?? `${web}/dashboard/preview/${b.id}` }; }) };
           },
         },
+        // something you saved, a new one each day: its page behind it and what it says up front
+        reading: {
+          title: 'From your reading', interval: 3_600_000,
+          async fetch() {
+            const r = await api<any>('bookmarks?limit=100&sortOrder=desc');
+            const worth = (r.bookmarks ?? []).filter((b: any) => b.content?.type === 'link' && (b.summary || b.content?.description));
+            const base = { type: 'article' as const, title: 'From your reading', icon: 'bookmark', href: web, source: { name: 'Karakeep', icon: '/api/icon/karakeep' }, empty: 'Nothing saved to read yet' };
+            if (!worth.length) return { ...base, headline: '' };
+            const b = worth[Math.floor(Date.now() / 864e5) % worth.length], x = brief(b), page = b.content?.screenshotAssetId ?? b.content?.imageAssetId;
+            return { ...base, headline: x.title ?? x.url, blurb: String(x.summary).replace(/[#*_`>]/g, '').slice(0, 280), site: host(x.url), image: page ? ctx.image(page) : b.content?.imageUrl, link: x.url, saved: x.saved };
+          },
+        },
         recent: {
           title: 'Saved', interval: 120_000,
           async fetch() {

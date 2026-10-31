@@ -51,7 +51,7 @@ export interface RecapSlide {
 export interface Recap { year: number; soFar: boolean; slides: RecapSlide[]; persona: { name: string; line: string }; stats: { label: string; value: string }[]; wall: string[] }
 
 /** What an action is about to do, in words a person would use, for the approval card. */
-export interface Confirm { title: string; detail?: string; image?: string; icon?: string; verb?: string; danger?: boolean }
+export interface Confirm { title: string; detail?: string; image?: string; icon?: string; verb?: string; danger?: boolean; logo?: string }
 
 /** Something happening right now, for the island at the top of the page: a stream, a download, a robot cleaning.
  *  A card carries one only while it's live; the island shows the live ones in the order the config lists them. */
@@ -195,6 +195,8 @@ export interface ScheduleCard extends Base {
 /** A verse or a quote: the original (right-to-left if Arabic), its translation, where it's from. */
 export interface VerseCard extends Base { type: 'verse'; arabic?: string; english: string; reference: string; meaning?: string }
 
+/** One thing to read: the page itself behind it, and what it says in a few lines. */
+export interface ArticleCard extends Base { type: 'article'; headline: string; blurb?: string; site?: string; image?: string; link?: string; saved?: string; empty?: string }
 export interface KVCard extends Base { type: 'kv'; rows: [string, string][] }
 
 export interface TextCard extends Base { type: 'text'; text: string; tone?: Tone }
@@ -208,7 +210,7 @@ export interface RankedCard extends Base { type: 'ranked'; items: RankedItem[]; 
 /** A page inside a card, sandboxed. Only addresses the iframe integration allowed can load. */
 export interface EmbedCard extends Base { type: 'embed'; src: string; height: number; scripts?: boolean }
 
-export type Card = EmbedCard | RankedCard | CodeCard | TableCard | LinksCard | VerseCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
+export type Card = EmbedCard | RankedCard | CodeCard | TableCard | LinksCard | VerseCard | ArticleCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
 
 /** One widget slot's live state, as pushed to the browser. */
 export interface WidgetState { key: string; card?: Card; error?: string; at: number; source?: string }

@@ -173,13 +173,14 @@ const plainInput = (input: Record<string, unknown>) => Object.entries(input).fil
  *  (a plan or a config change lists its steps); until they arrive, the action's own name stands in. */
 function Confirmation({ p, name, approve, tools }: { p: any; name: string; approve: (id: string, ok: boolean) => void; tools: Record<string, ToolInfo> }) {
   const [said, setSaid] = useState<Confirm | null>(null), input = p.input ?? {}, listed = !!(input.steps || input.ops);
-  useEffect(() => { if (listed) return; let live = true; fetch('/api/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: name, input }) }).then(r => r.json()).then(c => { if (live && c.title) setSaid(c); }, () => {}); return () => { live = false; }; }, [name, listed]);
+  useEffect(() => { if (listed) return; let live = true; fetch('/api/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: name, input }) }).then(r => r.json()).then(c => { if (live) setSaid(c); }, () => {}); return () => { live = false; }; }, [name, listed]);
   const title = input.steps ? input.title : input.ops ? 'Save this change to your config?' : said?.title ?? `Allow this: ${(tools[name]?.label ?? toolLabel(name)).toLowerCase()}?`;
-  const detail = listed ? undefined : said?.detail ?? (said ? undefined : plainInput(input));
+  const detail = listed ? undefined : said?.detail ?? (said?.title ? undefined : plainInput(input));
   return (
     <div className="chat-card overflow-hidden rounded-2xl border bg-card shadow-card">
       <div className="flex items-center gap-3.5 p-3.5">
         {said?.image ? <img src={said.image} alt="" className="h-[84px] w-14 shrink-0 rounded-lg object-cover shadow-md" />
+          : said?.logo ? <img src={said.logo} alt="" className="size-11 shrink-0 rounded-xl object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />
           : <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/10"><Icon name={said?.icon ?? (input.steps ? 'chart' : input.ops ? 'file' : 'pulse')} className="size-5" /></span>}
         <div className="min-w-0 flex-1">
           <div className="text-[15px] leading-snug font-semibold text-pretty">{title}</div>

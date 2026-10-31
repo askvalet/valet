@@ -256,8 +256,9 @@ const whyCache = new Map<string, { at: number; text: string }>();
 app.post('/api/confirm', async c => {
   const { tool, input } = await c.req.json().catch(() => ({} as any));
   const [inst, name] = String(tool ?? '').split('__'), t = name ? site.instances.get(inst)?.tools?.[name] : undefined;
-  if (!t?.confirm) return c.json({});
-  try { return c.json(JSON.parse(site.redact(JSON.stringify(await t.confirm(input ?? {}))))); } catch { return c.json({}); }
+  const type = site.config.integrations[inst]?.type, logo = type ? `/api/icon/${type}` : undefined;
+  if (!t?.confirm) return c.json({ logo });
+  try { return c.json(JSON.parse(site.redact(JSON.stringify({ logo, ...await t.confirm(input ?? {}) })))); } catch { return c.json({ logo }); }
 });
 
 app.post('/api/why', async c => {

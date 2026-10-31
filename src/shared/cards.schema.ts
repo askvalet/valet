@@ -56,6 +56,7 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
     items: z.array(z.object({ image: z.string(), title: z.string().optional(), subtitle: z.string().optional(), badge: z.string().optional(), href: z.string().optional() }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('schedule'), muted: z.array(z.string()).optional(),
     items: z.array(z.object({ name: z.string(), at: z.string().refine(s => !Number.isNaN(Date.parse(s)), 'not a date') }).strict()) }).strict(),
+  z.object({ ...base, type: z.literal('article'), headline: z.string(), blurb: z.string().optional(), site: z.string().optional(), image: z.string().optional(), link: z.string().optional(), saved: z.string().optional(), empty: z.string().optional() }),
   z.object({ ...base, type: z.literal('verse'), arabic: z.string().optional(), english: z.string(), reference: z.string(), meaning: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('embed'), src: z.string().url(), height: z.number(), scripts: z.boolean().optional() }).strict(),
   z.object({ ...base, type: z.literal('ranked'), empty: z.string().optional(), items: z.array(z.object({ title: z.string(), subtitle: z.string().optional(), value: z.string().optional(), image: z.string().optional(), backdrop: z.string().optional(), pct: unit.optional(), href: z.string().optional() }).strict()) }).strict(),
