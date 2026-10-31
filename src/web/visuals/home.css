@@ -52,3 +52,11 @@
 .homex .bot[data-state="idle"] .ring { border-color: rgb(255 255 255 / .5); box-shadow: none; }
 .homex .bot[data-state="error"] .ring { border-color: #ff453a; box-shadow: 0 0 12px #ff453a; }
 @keyframes homex-pulse { 50% { opacity: .35; } }
+.homex .bot[data-state="sent"] .ring { border-color: #ffd60a; box-shadow: 0 0 12px #ffd60a; animation: homex-pulse 1s ease-in-out infinite; }
+.motion-reduced .homex .bot { transition: none; }
+
+/* the room you've picked, and the rooms the robot has been sent to */
+.homex .world.picking .floor.keep { box-shadow: inset 0 0 0 2px rgb(255 255 255 / .85), inset 0 0 40px rgba(0,0,0,.4); }
+.homex .world.picking .floor.keep .label { font-size: 12px; }
+.homex .floor[data-clean="queued"] { box-shadow: inset 0 0 0 2px #ffd60a; }
+.homex .floor[data-clean="running"] { box-shadow: inset 0 0 0 2px #64d2ff; }

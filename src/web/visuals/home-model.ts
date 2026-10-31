@@ -8,14 +8,42 @@ export interface PlanLight { id: string; name: string; on: boolean; available: b
   kind?: 'ceiling' | 'pendant' | 'lamp' | 'strip' }
 export interface PlanRoom { id: number; name: string; floor: 'wood' | 'tile'; x: number; z: number; w: number; d: number; lights: PlanLight[] }
 export interface PlanRobot { x?: number; z?: number; a?: number; id: string; state: string; status?: string; error?: string; battery?: number;
-  fanSpeed?: string; fanSpeeds: string[]; cleaningMode?: string; cleanedArea?: number; cleaningTime?: number; wear: [string, number][] }
+  fanSpeed?: string; fanSpeeds: string[]; cleaningMode?: string; cleanedArea?: number; cleaningTime?: number; wear: [string, number][];
+  sent?: boolean }                                         // a command is on its way: the page's, not the robot's
 export interface PlanData {
   view?: { turn: number; tilt: number };
   rooms: PlanRoom[];
   furniture: { type: string; room: number; angle: number; x: number; z: number; w: number; d: number }[];
   dock?: { x: number; z: number; a: number };
   robot?: PlanRobot;
+  cleaning?: Record<number, 'queued' | 'running'>;         // rooms sent from this page, until the robot's done
 }
+export type LightChange = { on: boolean; brightness?: number; rgb?: number[]; kelvin?: number };
+
+const rgbOf = (h: string) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+/** Close enough to be the same colour: lights report back what they could actually do. */
+export const near = (a?: string, b?: string) => !!a && !!b && rgbOf(a).reduce((n, v, i) => n + Math.abs(v - rgbOf(b)[i]), 0) < 40;
+/** What it takes to put a light back as it was. */
+export const restoreOf = (l: PlanLight): LightChange => !l.on ? { on: false } : { on: true, ...(l.dims ? { brightness: Math.max(1, l.level) } : {}),
+  ...(l.kelvin && l.canTemp ? { kelvin: l.kelvin } : l.color && l.canColor ? { rgb: rgbOf(l.color) } : {}) };
+/** Lights that go back the same way go back in one call. */
+export function restoreGroups(lights: PlanLight[]) {
+  const groups = new Map<string, { lights: PlanLight[]; change: LightChange }>();
+  for (const l of lights) { const change = restoreOf(l), k = JSON.stringify(change); groups.set(k, { change, lights: [...(groups.get(k)?.lights ?? []), l] }); }
+  return [...groups.values()];
+}
+/** The changes the lights haven't caught up with yet; a light that now agrees has nothing left to wait for. */
+export function unsettled(draft: Record<string, Partial<PlanLight>>, rooms: PlanRoom[]) {
+  const lights = new Map(rooms.flatMap(r => r.lights).map(l => [l.id, l]));
+  const differs = (l: PlanLight, k: string, v: unknown) => k === 'color' ? !near(l.color, v as string) : k === 'level' ? Math.abs(l.level - (v as number)) > 2 : k === 'kelvin' ? Math.abs((l.kelvin ?? 0) - (v as number)) > 150 : l[k as keyof PlanLight] !== v;
+  return Object.fromEntries(Object.entries(draft).filter(([id, p]) => { const l = lights.get(id); return l && Object.entries(p).some(([k, v]) => differs(l, k, v)); }));
+}
+const WANT: Record<string, RegExp> = { start: /clean|mop/i, clean_rooms: /clean|mop/i, dock: /return|dock|charg/i, pause: /paus/i };
+/** Has the robot said it did what it was asked? */
+export const heard = (sent: { command: string; fan?: string }, r: PlanRobot) => sent.command === 'fan_speed' ? r.fanSpeed === sent.fan : !!WANT[sent.command]?.test(`${r.state} ${r.status ?? ''}`);
+/** What a percentage on the robot means, in the fewest words. Parts count down the life they've left. */
+export const wearNote = (n: number) => n < 10 ? 'Replace now' : n < 25 ? 'Replace soon' : 'Due at 10%';
+export const batteryNote = (n: number, r: PlanRobot) => /charg|dock/i.test(`${r.state} ${r.status ?? ''}`) ? n >= 100 ? 'Full' : 'Charging' : n < 20 ? 'Low, dock soon' : 'On battery';
 
 const WALL = 22;   // wall height in plan units
 const mk = (cls: string, html?: string) => { const e = document.createElement('div'); e.className = cls; if (html) e.innerHTML = html; return e; };
@@ -155,7 +183,9 @@ export function paint(world: HTMLElement, d: PlanData) {
     const color = on.find(l => l.color)?.color ?? '#ffd8a8';
     fl.style.setProperty('--lc', color);
     fl.style.setProperty('--lo', on.length ? String(Math.max(.25, Math.max(...on.map(l => l.level)) / 100)) : '0');
-    fl.querySelector('em')!.textContent = !r.lights.length ? '' : on.length ? `${on.length} of ${r.lights.length} on` : 'Off';
+    const clean = d.cleaning?.[r.id];
+    fl.dataset.clean = clean ?? '';
+    fl.querySelector('em')!.textContent = clean ? (clean === 'queued' ? 'Clean queued' : 'Cleaning') : !r.lights.length ? '' : on.length ? `${on.length} of ${r.lights.length} on` : 'Off';
     fl.classList.toggle('lit', on.length > 0);
     for (const l of r.lights) for (const e of world.querySelectorAll<HTMLElement>(`[data-light="${l.id}"]`)) {
       e.style.setProperty('--lc', l.color ?? '#ffd8a8');
@@ -173,7 +203,7 @@ export function paint(world: HTMLElement, d: PlanData) {
   if (bot && r?.x != null) {
     bot.style.transform = `translate3d(${r.x}px, -2px, ${r.z}px) rotateX(90deg) rotateZ(${-(r.a ?? 0)}deg)`;
     const busy = /clean|return|mop/i.test(r.state);
-    bot.dataset.state = r.error ? 'error' : busy ? 'busy' : r.state === 'docked' ? 'docked' : 'idle';
+    bot.dataset.state = r.error ? 'error' : r.sent ? 'sent' : busy ? 'busy' : r.state === 'docked' ? 'docked' : 'idle';
   }
   const led = world.querySelector<HTMLElement>('.dockled');
   if (led && r) led.dataset.state = r.state === 'docked' ? 'docked' : 'away';

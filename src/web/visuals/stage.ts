@@ -17,10 +17,12 @@ export interface Scene<D> {
   focus(pick: string, d: D): Focus | undefined;    // where the camera flies for a pick
   limits?: { tilt: [number, number]; turn: [number, number] };
 }
-export interface StageOptions { turn?: number; tilt?: number; draggable?: boolean; remember?: string; onPick?: (id: string | null) => void }
+export interface StageOptions { turn?: number; tilt?: number; draggable?: boolean; remember?: string; onPick?: (id: string | null) => void; onMove?: (moved: boolean) => void }
+/** Someone asked for less motion, in the system or in Valet's own settings: the camera then cuts instead of flying. */
+export const stillness = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches || /motion-(reduced|none)/.test(document.documentElement.className);
 
 export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOptions = {}) {
-  const { turn = 0, tilt = 0, draggable = true, remember, onPick } = opts;
+  const { turn = 0, tilt = 0, draggable = true, remember, onPick, onMove } = opts;
   // a view you dragged to sticks (this browser only); otherwise the configured angles
   const saved = (() => { try { return remember ? JSON.parse(localStorage.getItem(`valet-view:${remember}`) ?? 'null') : null; } catch { return null; } })();
   const [W, H] = scene.size, [cx, cy, cz] = scene.center;
@@ -32,6 +34,8 @@ export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOpt
   let data: D | null = null, shape = '', sel: string | null = null, dragged = false, boot: ReturnType<typeof setTimeout> | undefined;
   const home: Focus = [cx, cy, cz, 1];
   const cam = { ry: saved?.ry ?? turn, rx: saved?.rx ?? tilt, at: home as number[] };
+  const moved = () => Math.abs(cam.ry - turn) > .5 || Math.abs(cam.rx - tilt) > .5;
+  onMove?.(moved());
 
   const pose = (ox: number, oy: number, fit: number) => {
     const [x, y, z, k] = cam.at;
@@ -57,7 +61,7 @@ export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOpt
   const aim = (animate = true) => {
     const c = world.querySelector<HTMLElement>('.cam'); if (!c) return;
     const target = frame(c);
-    c.style.transition = animate ? 'transform .9s cubic-bezier(.2, .8, .2, 1)' : 'none';
+    c.style.transition = animate && !stillness() ? 'transform .9s cubic-bezier(.2, .8, .2, 1)' : 'none';
     c.style.transform = target;
   };
   const fit = () => { const k = box.clientWidth / W; world.style.transform = `scale(${k})`; box.style.height = H * k + 'px'; aim(false); };
@@ -87,7 +91,7 @@ export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOpt
     if (c) { c.style.transition = 'none'; c.style.transform = c.style.transform.replace(/rotateX\([^)]*\) rotateY\([^)]*\)/, `rotateX(${cam.rx}deg) rotateY(${cam.ry}deg)`); }
   };
   const up = () => {
-    if (start && dragged) { aim(); try { if (remember) localStorage.setItem(`valet-view:${remember}`, JSON.stringify({ rx: cam.rx, ry: cam.ry })); } catch {} }
+    if (start && dragged) { aim(); onMove?.(moved()); try { if (remember) localStorage.setItem(`valet-view:${remember}`, JSON.stringify({ rx: cam.rx, ry: cam.ry })); } catch {} }
     start = null; box.classList.remove('dragging');
   };
   if (draggable) {
@@ -134,6 +138,11 @@ export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOpt
       sel = id;
       cam.at = (id && data && scene.focus(id, data)) || home;
       aim(); dim();
+    },
+    /** back to the configured angles, and forget the dragged-to view */
+    reset() {
+      cam.ry = turn; cam.rx = tilt; aim(); onMove?.(false);
+      try { if (remember) localStorage.removeItem(`valet-view:${remember}`); } catch {}
     },
     destroy() {
       clearTimeout(boot); ro.disconnect(); world.removeEventListener('click', onClick); world.removeEventListener('pointermove', hover); world.removeEventListener('pointerleave', leave);
