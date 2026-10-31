@@ -105,7 +105,7 @@ export default defineIntegration({
           });
           const first = items[dl.indexOf(moving[0])];
           return {
-            type: 'media', title: 'Downloading', icon: 'download', href: cfg.href ?? cfg.url,
+            type: 'media', title: 'Downloading', icon: 'download', href: cfg.href ?? cfg.url, source: { name: 'qBittorrent', icon: '/api/icon/qbittorrent' },
             summary: { label: 'Downloads', icon: 'download', value: fmt.rate(info.dl_info_speed), sub: [moving.length && `${moving.length} active`, stuck.length && `${stuck.length} stuck`].filter(Boolean).join(' · ') || (dl.length ? `${dl.length} paused` : 'Idle'),
               detail: `↑ ${fmt.rate(info.up_info_speed)}`, trend: [...speeds],
               tone: stuck.some(t => t.added_on && Date.now() / 1000 - t.added_on > 3600) ? 'bad' as const : undefined },   // a minute finding peers is normal; hours isn't

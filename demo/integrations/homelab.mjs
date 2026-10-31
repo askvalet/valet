@@ -147,7 +147,7 @@ export default ({ z, defineIntegration }) => {
           items: [{ title: s.title, subtitle: String(s.year), image: poster(s.title), backdrop: backdrop(s.title), pct: s.pct, state: 'playing', user: 'Theo', device: 'Living room TV', tags: ['4K', 'Direct Play', '12 Mbps'], remaining: `${s.left} min left` }],
           activity: { title: s.title, subtitle: 'Theo · Living room TV', image: poster(s.title), icon: 'play', pct: s.pct, trailing: `${s.left}m left` } }; }),
         downloads: w('Downloads', 5_000, () => { const d = downloads(), speed = d.reduce((a, t) => a + t.speed, 0), first = d[0];
-          return { type: 'media', title: 'Downloading', icon: 'download', note: d.length ? `${d.length} downloads · ↓ ${speed.toFixed(0)} MB/s` : undefined, empty: 'Paused for ten minutes',
+          return { type: 'media', title: 'Downloading', icon: 'download', source: { name: 'qBittorrent', icon: '/api/icon/qbittorrent' }, note: d.length ? `${d.length} downloads · ↓ ${speed.toFixed(0)} MB/s` : undefined, empty: 'Paused for ten minutes',
             items: d.map(t => ({ title: t.title, subtitle: t.sub, image: poster(t.title), backdrop: backdrop(t.title), pct: t.pct, state: 'playing', icon: 'download', tags: ['1080p', `${t.speed.toFixed(0)} MB/s`, `${t.left.toFixed(1)} GB left`], remaining: `${Math.floor(t.pct * 100)}%` })),
             summary: { label: 'Downloads', icon: 'download', value: `${speed.toFixed(0)} MB/s`, sub: d.length ? `${d.length} active` : 'Paused' },
             activity: first && { title: `${first.title}${d.length > 1 ? ` +${d.length - 1}` : ''}`, subtitle: `↓ ${speed.toFixed(0)} MB/s`, image: poster(first.title), icon: 'download', pct: first.pct, count: d.length } }; }),

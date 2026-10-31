@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import type { Activity } from '../shared/cards.ts';
 import { Icon } from './cards.tsx';
 
-export type Live = Activity & { key: string; href?: string };
+export type Live = Activity & { key: string; href?: string; source?: { name: string; icon?: string } };
 export type Notice = { key: string; text: string; sub?: string; icon?: string; image?: string; tone: 'good' | 'warn' | 'bad' | 'accent'; n: number };
 
 const TONE: Record<string, string> = { accent: 'var(--primary)', good: 'var(--good)', warn: 'var(--warn)', bad: 'var(--bad)' };
@@ -126,7 +126,11 @@ export default function Island({ live, idle, docked, notice }: { live: Live[]; i
               {live.map((a, i) => (
                 <a key={a.key} href={a.href} target="_blank" rel="noreferrer" tabIndex={expanded ? 0 : -1} onClick={e => e.stopPropagation()}
                   style={{ '--i': i } as React.CSSProperties} className={cn('flex items-center gap-3 rounded-2xl p-2 transition-colors hover:bg-white/[.07]', expanded && 'island-row')}>
-                  <Art a={a} size={44} />
+                  <span className="relative shrink-0">
+                    <Art a={a} size={44} />
+                    {/* which app it's from, on the corner like a phone's notification */}
+                    {a.source?.icon && <span className="absolute -right-1.5 -bottom-1.5 grid size-[22px] place-items-center rounded-[7px] bg-black ring-2 ring-black"><img src={a.source.icon} alt={a.source.name} className="size-[18px] object-contain" /></span>}
+                  </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14px] font-semibold">{a.title}</span>
                     {a.subtitle && <span className="block truncate text-[12px] text-white/55">{a.subtitle}</span>}

@@ -315,7 +315,7 @@ function Home({ account }: { account: boolean }) {
   // what's live right now, most important first (the config's order)
   const live: Live[] = (page?.island?.activities ?? []).flatMap(key => {
     const c = state[key]?.card;
-    return c?.activity ? [{ ...c.activity, key, href: c.href }] : [];
+    return c?.activity ? [{ ...c.activity, key, href: c.href, source: c.source }] : [];
   });
   const sections = page?.sections.map((s, i) => ({ ...s, i })).filter(s => view === 'all' ? s.overview !== false : tabOf(s, s.i) === view) ?? [];
   const sectionIcon = (s: Page['sections'][number]) => state[s.widgets[0]]?.card?.icon;

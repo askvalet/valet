@@ -297,9 +297,9 @@ function Art({ src, className, alt = '', style, onLoaded }: { src?: string; clas
 /** One stream as a cinematic tile: the backdrop is the card, details float over a soft scrim. */
 export function NowPlaying({ m, compact, source }: { m: MediaItem; compact?: boolean; source?: CardT['source'] }) {
   return (
-    <div className={cn('group/np @container/np relative isolate w-full overflow-hidden rounded-2xl bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/0.55)]',
+    <div className={cn('@container/np relative isolate w-full overflow-hidden rounded-2xl bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/0.55)]',
       compact ? 'aspect-[16/9] min-h-[170px]' : 'h-full min-h-[210px] flex-1')}>
-      {source?.icon && <span className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/45 py-1 pr-2.5 pl-1.5 text-[11px] font-medium opacity-0 backdrop-blur-md transition-opacity duration-200 group-hover/np:opacity-100"><img src={source.icon} alt="" className="size-4 object-contain" />{source.name}</span>}
+      {source?.icon && <span className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/45 py-1 pr-2.5 pl-1.5 text-[11px] font-medium backdrop-blur-md"><img src={source.icon} alt="" className="size-4 object-contain" />{source.name}</span>}
       {m.backdrop
         ? <Art src={m.backdrop} className="absolute inset-0 -z-10 size-full object-cover" />
         : <Art src={m.image} className="absolute inset-0 -z-10 size-full scale-125 object-cover blur-2xl saturate-150" />}

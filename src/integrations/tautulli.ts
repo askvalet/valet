@@ -122,7 +122,7 @@ export default defineIntegration({
           const a = await activity();
           bw.push(a.bandwidth / 1000); if (bw.length > 40) bw.shift();
           const items = a.sessions.map(toItem), first = items.find(i => i.state !== 'paused') ?? items[0];
-          return { type: 'media', title: 'Now playing', icon: 'play', href: cfg.href, empty: 'Nothing playing',
+          return { type: 'media', title: 'Now playing', icon: 'play', href: cfg.href, source, empty: 'Nothing playing',
             summary: { label: 'Plex', icon: 'play', value: a.count ? `${a.count} stream${a.count > 1 ? 's' : ''}` : 'Idle',
               sub: a.count ? [...new Set(a.sessions.map(s => s.friendly_name))].join(', ') : 'Nothing playing',
               detail: a.count ? `${(a.bandwidth / 1000).toFixed(0)} Mbps` : undefined, trend: [...bw] },
