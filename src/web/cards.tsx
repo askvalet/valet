@@ -1230,7 +1230,7 @@ export function ClockMonth({ card, children }: { card?: CardT; children: ReactNo
   return (
     <div className="group/wx relative text-right leading-tight outline-none" tabIndex={0}>
       {children}
-      <Popover group="wx" className={cn('right-[-14px]', events ? 'w-[680px]' : 'w-[340px]')}><div className="p-4 text-left"><CalendarView card={events ? card : { type: 'calendar', events: [] }} large={events} /></div></Popover>
+      <Popover group="wx" className={cn('right-[-14px]', events ? 'w-[680px]' : 'w-[340px]')}><div className={cn('text-left', !events && 'cal-month-only')}><CalendarView card={events ? card : { type: 'calendar', events: [] }} large /></div></Popover>
     </div>
   );
 }

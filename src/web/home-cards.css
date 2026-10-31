@@ -66,3 +66,7 @@
 @media (hover: hover) { .th-step:hover:not(:disabled), .th-mode:hover:not(.is-on):not(:disabled) { background: color-mix(in srgb, var(--foreground) 15%, transparent); } }
 .th[data-mode="off"] .th-mode.is-on { background: color-mix(in srgb, var(--foreground) 18%, transparent); color: var(--foreground); }
 html:not(.dark):not(.has-wallpaper) .th-mode.is-on { color: color-mix(in srgb, var(--th-b) 78%, #000); }
+
+/* the clock's month with no calendar behind it: nothing to list, so only the grid */
+.cal-month-only .cal > :first-child { display: none; }
+.cal-month-only .cal > :last-child > :last-child:not(:nth-child(2)) { display: none; }
