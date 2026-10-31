@@ -1,6 +1,7 @@
 # The public demo: real Valet, made-up homelab. Everything on the page comes from integrations/homelab.mjs and the
 # assistant is the scripted stand-in in mock-model.mjs. No secrets, no real services, nothing worth stealing.
 title: Valet
+notice: "Interactive demo · simulated home · guided AI responses"
 greeting: Daniel
 timezone: America/Toronto
 location: Example, Canada
