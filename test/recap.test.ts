@@ -28,15 +28,12 @@ test('recap: with nothing to say it stays quiet', async () => {
   assert.equal(recapYear('2024', at), 2024);
 });
 
-test('recap: the stories only Valet can tell come from real numbers on both sides', async () => {
+test('recap: what only Valet can say comes from real numbers on both sides', async () => {
   clearRecap();
   const r = await buildRecap(new Map([['a', inst(async () => [
-    { id: 'w', kicker: 'k', value: '20', line: 'l', facts: { watchedHours: 25 } },
-    { id: 'l', kicker: 'k', value: '9', line: 'l', facts: { libraryHours: 2500, uploadedBytes: 2 ** 40 } }])]]), 2026, at, { title: 'chotte', editor: 'Sam' });
-  assert.equal(r.paper, 'The Chotte Times');
-  const by = r.slides.find(s => s.id === 'backlog')!;
-  assert.match(by.headline!, /BY 21\d\d/);                                     // 2500 h at about 30 h a year
+    { id: 'w', kicker: 'k', value: '20', line: 'l', facts: { watchedHours: 25 }, art: ['/p1'] },
+    { id: 'l', kicker: 'k', value: '9', line: 'l', facts: { libraryHours: 2500, uploadedBytes: 2 ** 40 }, items: [{ name: 'x', image: '/p2' }] }])]]), 2026, at);
+  assert.match(r.slides.find(s => s.id === 'backlog')!.value, /^21\d\d$/);        // 2500 h at about 30 h a year
   assert.equal(r.slides.find(s => s.id === 'aws')!.value, '$92');
-  assert.match(r.lead!.headline, /1\.0 TB TO STRANGERS/);
-  assert.ok(r.corrections.length >= 2);
+  assert.deepEqual(r.wall, ['/p1', '/p2']);
 });

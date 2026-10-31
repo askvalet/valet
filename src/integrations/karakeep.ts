@@ -27,7 +27,7 @@ export default defineIntegration({
         const s = await api<any>('users/me/stats');
         if (!s?.numBookmarks) return [];
         const top = s.topDomains?.[0];
-        return [{ id: 'saved', section: 'Classifieds', kind: 'classified', kicker: 'You saved for later', value: s.numBookmarks.toLocaleString('en'), unit: 'things', stat: 'Things saved', score: 45, scope: 'All time', headline: `WANTED: READER FOR ${s.numBookmarks.toLocaleString('en')} SAVED ARTICLES`, 
+        return [{ id: 'saved', icon: 'bookmark', kicker: 'You saved for later', value: s.numBookmarks.toLocaleString('en'), unit: 'things', stat: 'Things saved', score: 45, scope: 'All time',
           line: top ? `${top.count} of them came from ${top.domain}. Later is doing a lot of work here.` : 'Later is doing a lot of work here.' }];
       },
       widgets: {

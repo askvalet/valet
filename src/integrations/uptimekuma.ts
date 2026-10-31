@@ -38,10 +38,7 @@ export default defineIntegration({
         const month = (await monitors()).filter(m => m.month != null);
         if (!month.length) return [];
         const avg = month.reduce((s, m) => s + m.month!, 0) / month.length;
-        const nines = -Math.log10(Math.max(1e-6, 1 - avg)), word = nines >= 4.5 ? 'FIVE NINES' : nines >= 3.5 ? 'FOUR NINES' : nines >= 2.5 ? 'THREE NINES' : nines >= 1.8 ? 'TWO NINES' : nines >= 1.3 ? 'ONE AND A HALF NINES' : 'ONE NINE';
-        const down = Math.round((1 - avg) * 30 * 24);
-        return [{ id: 'uptime', section: 'Technology', kicker: 'The lab stayed up', value: pct(avg), stat: 'Uptime', score: 66, scope: 'Last 30 days', headline: `HOMELAB ACHIEVES ${word}`, line: `Across the ${month.length} things Uptime Kuma watches.`,
-          story: `That leaves an average of ${down} hours a month per service unaccounted for. A spokesperson, reached in the kitchen, said it is "probably DNS".`, correction: 'Uptime covers the last 30 days only. Earlier outages have been forgiven.' }];
+        return [{ id: 'uptime', icon: 'pulse', kicker: 'Your homelab stayed up', value: pct(avg), stat: 'Uptime', score: 66, scope: 'Last 30 days', line: `Across the ${month.length} things Uptime Kuma watches.` }];
       },
       widgets: {
         monitors: {

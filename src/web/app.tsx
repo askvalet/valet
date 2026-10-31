@@ -1,4 +1,4 @@
-import { Newspaper, ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Search, Sun } from 'lucide-react';
+import { Sparkles, ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Search, Sun } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -348,7 +348,7 @@ function Home({ account }: { account: boolean }) {
                 </div>
               </div>
             )}
-            {page?.recap !== false && <a href="#recap" className="press mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-[13px] font-medium backdrop-blur-md transition-colors hover:bg-white/15"><Newspaper className="size-3.5" />Read The {(page?.title ?? 'Homelab').replace(/^the /i, '').replace(/^\w/, c => c.toUpperCase())} Times</a>}
+            {page?.recap !== false && <a href="#recap" className="press mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-[13px] font-medium backdrop-blur-md transition-colors hover:bg-white/15"><Sparkles className="size-3.5" />Your {now.getFullYear()} in review</a>}
           </header>
         );
 
@@ -530,7 +530,7 @@ function Home({ account }: { account: boolean }) {
         </div>
       </nav>
 
-      {recap && page?.recap !== false && <Suspense fallback={null}><RecapStory onClose={closeRecap} /></Suspense>}
+      {recap && page?.recap !== false && <Suspense fallback={null}><RecapStory onClose={closeRecap} wallpaper={page?.appearance.wallpaper} /></Suspense>}
       {page && palette && (
         <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} ask={ask} actions={actions} account={account} tools={page.assistant?.tools}
           openChat={() => { setPalette(false); if (phone || !(chatTab && view === chatTab)) setChatOpen(true); }}

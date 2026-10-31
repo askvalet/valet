@@ -35,17 +35,16 @@ export interface RecapSlide {
   stat?: string;           // its label on the shareable card, if it belongs there
   private?: boolean;       // names people, so it stays off the shareable card
   trait?: { name: string; line: string; strength: number };     // who this makes you, 0..1: the strongest wins
-  // the edition: a slide is a story in the year's newspaper. All optional; without them it's set from the lines above.
-  section?: string;        // "Business", "Sports"…
-  headline?: string;       // deadpan, and true
-  story?: string;          // a short paragraph; every number in it has to be real
-  kind?: 'feature' | 'listing' | 'table' | 'classified' | 'obituary';
-  correction?: string;     // what the number really covers, for the corrections box
-  facts?: Record<string, number>;   // raw numbers, so stories can be written across services
-  chart?: { pct: number; from: string; to: string; mark: string };  // an ink bar: how far along, its two ends, and what the marker says
+  icon?: string;
+  backdrop?: string;       // wide artwork, full bleed behind the slide
+  wall?: boolean;          // the drifting wall of posters behind it
+  art?: string[];          // posters to add to that wall
+  scenes?: string[];       // wide artwork for slides that have none of their own
+  bars?: { label: string; value: number; show?: string }[];     // a small chart of what the number is made of
+  chart?: { pct: number; from: string; to: string; mark: string };  // how far along, its two ends, and what's at the marker
+  facts?: Record<string, number>;   // raw numbers, so slides can be written across services
 }
-export interface Recap { year: number; soFar: boolean; slides: RecapSlide[]; persona: { name: string; line: string }; stats: { label: string; value: string }[];
-  paper: string; editor?: string; corrections: string[]; lead?: { headline: string; deck: string } }
+export interface Recap { year: number; soFar: boolean; slides: RecapSlide[]; persona: { name: string; line: string }; stats: { label: string; value: string }[]; wall: string[]; scenes: string[] }
 
 /** Something happening right now, for the island at the top of the page: a stream, a download, a robot cleaning.
  *  A card carries one only while it's live; the island shows the live ones in the order the config lists them. */
