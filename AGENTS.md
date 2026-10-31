@@ -70,6 +70,10 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - **Live things announce themselves.** A card sets `activity` only while something's happening; the island shows the
   live ones in the config's order and disappears when nothing is live.
 
+- **The house's cards measure themselves** (`src/web/home-cards.tsx`: `forecast`, `calendar`, `thermostat`). They're glass
+  edge to edge with no header, pick their layout from their own box rather than a size name, and must never set a row's
+  height by how much they have to show: anything that can grow scrolls inside or spreads out, so a bento row ends flush.
+
 ### Design
 - **Apple-grade restraint.** System tokens (`styles.css`): one accent (system blue), green/orange/red only for
   status, monochrome icons. Geist for text; tabular numerals for numbers.
@@ -131,4 +135,6 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   per-face overlays.
 - **TypeScript 7**: no `baseUrl` (paths are relative); Node's type stripping needs `erasableSyntaxOnly` (no parameter
   properties, no enums).
+- **`demo/config.yaml` and `demo/docker-compose.yml` are ignored** (`.gitignore` matches those names anywhere), yet
+  `test/demo.test.ts` and the demo read them. A fresh worktree needs copies or `npm test` fails; they won't travel with a branch.
 - **SSE keeps pages busy**: headless tools waiting for network idle never finish; wait a fixed time instead.

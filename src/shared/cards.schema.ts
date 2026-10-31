@@ -6,7 +6,10 @@ import type { Card } from './cards.ts';
 
 const Tone = z.enum(['neutral', 'good', 'warn', 'bad', 'accent']);
 const unit = z.number().min(0).max(1.0001);
-const nums = z.array(z.number().refine(Number.isFinite, 'not a finite number'));
+const finite = z.number().refine(Number.isFinite, 'not a finite number');
+const nums = z.array(finite);
+const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'not a date');
+const when = z.string().refine(s => !Number.isNaN(Date.parse(s)), 'not a date');
 
 export const Summary = z.object({
   label: z.string(), value: z.union([z.string(), z.number()]), sub: z.string().optional(), detail: z.string().optional(),
@@ -51,12 +54,19 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
     items: z.array(StatItem), caption: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('forecast'),
     now: z.object({ temp: z.number(), feels: z.number(), words: z.string(), icon: z.string(), hi: z.number(), lo: z.number(), precip: z.number().optional() }).strict(),
-    hours: z.array(z.object({ time: z.string(), temp: z.number(), icon: z.string(), pop: z.number().min(0).max(100), mm: z.number().optional() }).strict()) }).strict(),
+    hours: z.array(z.object({ time: z.string(), temp: z.number(), icon: z.string(), pop: z.number().min(0).max(100), mm: z.number().optional() }).strict()),
+    days: z.array(z.object({ name: z.string(), icon: z.string(), hi: z.number(), lo: z.number(), pop: z.number().min(0).max(100).optional() }).strict()).optional() }).strict(),
   z.object({ ...base, type: z.literal('photos'), style: z.enum(['flashback', 'mosaic']).optional(), empty: z.string().optional(),
     items: z.array(z.object({ image: z.string(), title: z.string().optional(), subtitle: z.string().optional(), badge: z.string().optional(), href: z.string().optional() }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('schedule'), muted: z.array(z.string()).optional(),
     items: z.array(z.object({ name: z.string(), at: z.string().refine(s => !Number.isNaN(Date.parse(s)), 'not a date') }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('article'), headline: z.string(), blurb: z.string().optional(), site: z.string().optional(), image: z.string().optional(), link: z.string().optional(), saved: z.string().optional(), empty: z.string().optional() }),
+  z.object({ ...base, type: z.literal('calendar'), from: date.optional(), to: date.optional(), empty: z.string().optional(),
+    events: z.array(z.object({ title: z.string(), start: when, end: when.optional(), calendar: z.string().optional(), location: z.string().optional(),
+      color: z.string().regex(/^(#[0-9a-f]{3,8}|[a-z]{3,30})$/i, 'not a colour').optional() }).strict()) }).strict(),
+  z.object({ ...base, type: z.literal('thermostat'), unit: z.enum(['C', 'F']), state: z.string(), mode: z.enum(['heat', 'cool', 'auto', 'off']).optional(), current: finite.optional(), target: finite.optional(),
+    range: z.tuple([finite, finite]).optional(), min: finite, max: finite, step: z.number().positive(), set: z.object({ action: z.string(), args: z.record(z.string(), z.unknown()).optional() }).strict().optional(),
+    modes: z.array(z.object({ id: z.string(), label: z.string(), on: z.boolean().optional(), action: z.string(), args: z.record(z.string(), z.unknown()).optional() }).strict()).optional() }).strict(),
   z.object({ ...base, type: z.literal('verse'), arabic: z.string().optional(), english: z.string(), reference: z.string(), meaning: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('embed'), src: z.string().url(), height: z.number(), scripts: z.boolean().optional() }).strict(),
   z.object({ ...base, type: z.literal('ranked'), empty: z.string().optional(), items: z.array(z.object({ title: z.string(), subtitle: z.string().optional(), value: z.string().optional(), image: z.string().optional(), backdrop: z.string().optional(), pct: unit.optional(), href: z.string().optional() }).strict()) }).strict(),

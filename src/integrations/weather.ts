@@ -19,8 +19,8 @@ export default defineIntegration({
     interval: z.number().default(600_000),
   }),
   create(cfg, ctx) {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${cfg.latitude}&longitude=${cfg.longitude}&timezone=auto&forecast_days=2`
-      + '&current=temperature_2m,apparent_temperature,weather_code,is_day,precipitation&daily=temperature_2m_max,temperature_2m_min'
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${cfg.latitude}&longitude=${cfg.longitude}&timezone=auto&forecast_days=6`
+      + '&current=temperature_2m,apparent_temperature,weather_code,is_day,precipitation&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max'
       + '&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,is_day&forecast_hours=13'
       + (cfg.units === 'imperial' ? '&temperature_unit=fahrenheit' : '');
     const get = () => ctx.http<any>(url, { timeout: 8000 });
@@ -39,9 +39,13 @@ export default defineIntegration({
               temp: Math.round(h.temperature_2m[i + 1]), icon: look(h.weather_code[i + 1], h.is_day[i + 1]).icon,
               pop: h.precipitation_probability[i + 1] ?? 0, mm: h.precipitation[i + 1] ?? 0,
             }));
+            const d = w.daily, days = d.time.slice(1, 6).map((iso: string, i: number) => ({
+              name: new Date(`${iso}T12:00:00Z`).toLocaleDateString('en', { weekday: 'short', timeZone: 'UTC' }), icon: describe(d.weather_code[i + 1])[2],
+              hi: Math.round(d.temperature_2m_max[i + 1]), lo: Math.round(d.temperature_2m_min[i + 1]), pop: d.precipitation_probability_max?.[i + 1] ?? undefined,
+            }));
             return { type: 'forecast', title: 'Weather', icon,
               now: { temp: Math.round(t), feels: Math.round(w.current.apparent_temperature), words, icon, hi: Math.round(hi), lo: Math.round(lo), precip: w.current.precipitation },
-              hours,
+              hours, days,
               summary: { label: words, icon, value: `${Math.round(t)}°`,
                 detail: `H ${Math.round(hi)}° · L ${Math.round(lo)}° · feels ${Math.round(w.current.apparent_temperature)}°`,
                 pct: hi > lo ? (t - lo) / (hi - lo) : 0.5,

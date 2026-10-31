@@ -1,7 +1,7 @@
 // Renders any card from the shared catalog with shadcn/ui primitives. The homepage and the assistant both use this,
 // so a generated card looks exactly like the widget it came from.
 import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
-  Activity, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
+  Activity, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Thermometer, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Pause, Play, Shield, Wifi,
   type LucideIcon,
 } from 'lucide-react';
 import { createContext, Fragment, lazy, memo, Suspense, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
@@ -12,13 +12,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
 import type { ArticleCard, CodeCard, RankedCard, TableCard, LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
 // Icon names cards may use (docs/integrations.md lists them; keep the two in step). Anything else: a URL or a path.
 const ICONS: Record<string, LucideIcon> = {
   cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
   search: Search, bulb: Lightbulb, home: House, shield: Shield, chat: MessageCircle, image: ImageIcon, clock: Clock, crescent: MoonIcon, game: Gamepad2, book: BookOpen, coins: Coins, text: Type,
-  file: FileText, bookmark: Bookmark, rss: Rss, news: Newspaper, reddit: MessagesSquare, tag: Tag, chart: TrendingUp, calendar: Calendar, sun: Sun, moon: Moon, cloud: Cloud, 'cloud-sun': CloudSun, 'cloud-moon': CloudMoon, rain: CloudRain, snow: CloudSnow, fog: CloudFog, storm: CloudLightning,
+  file: FileText, bookmark: Bookmark, rss: Rss, news: Newspaper, reddit: MessagesSquare, tag: Tag, chart: TrendingUp, calendar: Calendar, sun: Sun, moon: Moon, cloud: Cloud, 'cloud-sun': CloudSun, 'cloud-moon': CloudMoon, rain: CloudRain, snow: CloudSnow, fog: CloudFog, storm: CloudLightning, thermometer: Thermometer,
 };
 export function Icon({ name, className }: { name?: string; className?: string }) {
   if (!name) return null;
@@ -949,7 +950,9 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
     case 'schedule': return <Times card={card} />;
     case 'embed': return <iframe src={card.src} title={card.title ?? 'Embedded page'} loading="lazy" referrerPolicy="no-referrer" sandbox={card.scripts ? 'allow-scripts allow-same-origin allow-forms' : ''} className="w-full rounded-xl border-0 bg-black/20" style={{ height: card.height }} />;
     case 'verse': return <Verse card={card} />;
-    case 'forecast': return <Forecast card={card} />;
+    case 'forecast': return <WeatherCard card={card} dense />;
+    case 'calendar': return <CalendarView card={card} dense />;
+    case 'thermostat': return <Thermostat card={card} run={run} dense />;
     case 'stats': return <Stats card={card} />;
     case 'list': return <List card={card} />;
     case 'status': return <Status card={card} columns={columns} minimal={minimal} />;
@@ -1057,6 +1060,13 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
   if (card?.type === 'media') return (
     <div className={cn('fade-in-soft flex min-w-0 flex-col gap-3', fill && 'h-full')}><BareHeader card={card} title={title} status={status} /><Media card={card} compact={compact} />{actions}</div>
   );
+  // the house's cards are glass edge to edge, with no header; in chat they're ordinary cards, below
+  if (!compact && (card?.type === 'forecast' || card?.type === 'calendar' || card?.type === 'thermostat')) return (
+    <Card className={cn('lift fade-in-soft relative isolate min-w-0 gap-0 overflow-hidden py-0 shadow-card', fill && 'h-full')}>
+      {status && <div className="absolute top-3 right-4 z-10">{status}</div>}
+      {card.type === 'forecast' ? <WeatherCard card={card} /> : card.type === 'calendar' ? <CalendarView card={card} large={large} /> : <Thermostat card={card} run={run} />}
+    </Card>
+  );
   const t = card?.title ?? title;
   const bare = card?.type === 'group';
   const scene = !compact && card ? card.type === 'schedule' ? <SkyWash card={card} /> : card.type === 'verse' && card.arabic ? <Lattice /> : null : null;
@@ -1148,7 +1158,7 @@ function SummaryTileView({ s, href, explain }: { s: Summary; href?: string; expl
       {!art && !s.marks && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} gauge={s.ring != null} /></div>}
       <div className={cn('relative flex flex-1 flex-col p-4', art && '[text-shadow:0_1px_10px_rgb(0_0_0/.7)]')}>
         <div className="flex items-center gap-2.5">
-          {s.icon && <span className={cn('grid size-8 shrink-0 place-items-center rounded-[10px]', art ? 'bg-white/15 backdrop-blur-md' : 'bg-[color-mix(in_oklab,var(--tint)_16%,transparent)] text-[var(--tint)]')}><Icon name={s.icon} className="size-[17px]" /></span>}
+          {s.icon && (isWeather(s.icon) && !art ? <WeatherGlyph name={s.icon} size={38} className="-my-1 -ml-0.5" /> : <span className={cn('grid size-8 shrink-0 place-items-center rounded-[10px]', art ? 'bg-white/15 backdrop-blur-md' : 'bg-[color-mix(in_oklab,var(--tint)_16%,transparent)] text-[var(--tint)]')}><Icon name={s.icon} className="size-[17px]" /></span>)}
           <div className="min-w-0">
             <div className="truncate text-[14px] font-semibold leading-tight @[200px]/tile:text-[15px]">{s.label}</div>
             {s.sub && <div className={cn('truncate text-[13px] leading-tight', art ? 'text-white/75' : 'text-muted-foreground')}>{s.sub}</div>}

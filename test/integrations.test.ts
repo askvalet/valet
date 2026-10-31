@@ -12,7 +12,9 @@ import { session, type Context, type Instance } from '../src/server/core.ts';
 import { Timeline } from '../src/server/timeline.ts';
 import { checkCard } from '../src/shared/cards.schema.ts';
 import arr from '../src/integrations/arr.ts';
+import calendar from '../src/integrations/calendar.ts';
 import clock from '../src/integrations/clock.ts';
+import weather from '../src/integrations/weather.ts';
 import docker from '../src/integrations/docker.ts';
 import iframe from '../src/integrations/iframe.ts';
 import lobsters from '../src/integrations/lobsters.ts';
@@ -195,6 +197,104 @@ test('home assistant schedule: next time rolls to tomorrow, and shows in the isl
   const later: any = await ha.widgets.p.fetch();
   assert.equal(later.summary.value, 'A');
   assert.equal(later.activity, undefined);
+});
+
+const climate = (over: Record<string, unknown> = {}, state = 'heat') => ({ entity_id: 'climate.hall', state, attributes: { friendly_name: 'Hall', hvac_modes: ['off', 'heat'], preset_modes: ['none', 'home', 'sleep'], preset_mode: 'home',
+  hvac_action: 'idle', temperature: 20, current_temperature: 19.5, min_temp: 7, max_temp: 30, target_temp_step: .5, ...over } });
+const thermostatHA = (entity: object, more: object = {}, seen: { url: string; body?: unknown }[] = [], unit = '°C') => make(homeassistant, { url: 'http://ha', token: 'x', thermostats: { hall: { entity: 'climate.hall', ...more } } }, fake((url, init) => {
+  seen.push({ url, body: init.body ? JSON.parse(init.body as string) : undefined });
+  return url.endsWith('/api/states') ? [entity] : url.endsWith('/api/config') ? { unit_system: { temperature: unit } } : {};
+}));
+
+test('home assistant thermostat: a climate entity becomes a dial with its modes', async () => {
+  const card: any = await thermostatHA(climate()).widgets.hall.fetch();
+  valid(card);
+  assert.deepEqual([card.title, card.unit, card.state, card.mode, card.target, card.current, card.min, card.max, card.step], ['Hall', 'C', 'Idle', 'heat', 20, 19.5, 7, 30, .5]);
+  assert.deepEqual(card.modes.map((m: any) => [m.id, !!m.on]), [['off', false], ['heat', true], ['home', true], ['sleep', false]]);
+  assert.equal(card.modes.find((m: any) => m.id === 'home').args.preset_mode, 'none');   // pressing the active preset clears it
+  assert.equal(card.summary.value, '20.0°');
+  const picked: any = await thermostatHA(climate(), { modes: ['sleep', 'off', 'nope'], title: 'Upstairs' }).widgets.hall.fetch();
+  assert.deepEqual([picked.title, picked.modes.map((m: any) => m.id)], ['Upstairs', ['sleep', 'off']]);
+});
+
+test('home assistant thermostat: nothing broken without a target, and each state stays valid', async () => {
+  for (const [entity, want] of [
+    [climate({ temperature: null, hvac_action: 'fan' }, 'fan_only'), { target: undefined, state: 'Fan', set: undefined }],
+    [climate({ temperature: null, target_temp_low: 20, target_temp_high: 24, hvac_action: undefined }, 'heat_cool'), { target: undefined, range: [20, 24], mode: 'auto' }],
+    [climate({}, 'off'), { target: undefined, mode: 'off', state: 'Idle' }],
+    [{ entity_id: 'climate.hall', state: 'unavailable', attributes: {} }, { state: 'Unavailable', target: undefined, modes: undefined, mode: 'off' }],
+  ] as [object, Record<string, unknown>][]) {
+    const card: any = await thermostatHA(entity).widgets.hall.fetch();
+    valid(card);
+    for (const [k, v] of Object.entries(want)) assert.deepEqual(card[k], v, k);
+    assert.ok(!JSON.stringify(card).match(/NaN|undefined/));
+  }
+  await assert.rejects(make(homeassistant, { url: 'http://ha', token: 'x', thermostats: { hall: { entity: 'climate.hall' } } }, fake(() => [])).widgets.hall.fetch(), /not found/);
+  assert.throws(() => homeassistant.config.parse({ url: 'http://ha', token: 'x', thermostats: { a: { entity: 'light.x' } } }));
+});
+
+test('home assistant thermostat: Fahrenheit comes from Home Assistant, or the config, or the range', async () => {
+  const f = { min_temp: 45, max_temp: 95, temperature: 68, current_temperature: 67, target_temp_step: undefined };
+  const card: any = await thermostatHA(climate(f), {}, [], '°F').widgets.hall.fetch();
+  assert.deepEqual([card.unit, card.step, card.summary.value], ['F', 1, '68°']);
+  assert.equal(((await thermostatHA(climate(), { unit: 'F' }).widgets.hall.fetch()) as any).unit, 'F');
+  const blind = make(homeassistant, { url: 'http://ha', token: 'x', thermostats: { hall: { entity: 'climate.hall' } } }, fake(url => { if (url.endsWith('/api/config')) throw new Error('no'); return [climate(f)]; }));
+  assert.equal(((await blind.widgets.hall.fetch()) as any).unit, 'F');
+});
+
+test('home assistant thermostat: actions stay within the entity and the page', async () => {
+  const seen: { url: string; body?: any }[] = [], ha = thermostatHA(climate(), {}, seen), run = ha.actions!.climate.run;
+  await run({ entity_id: 'climate.hall', temperature: 21.5 });
+  await run({ entity_id: 'climate.hall', hvac_mode: 'off' });
+  await run({ entity_id: 'climate.hall', preset_mode: 'sleep' });
+  const posted = seen.filter(s => s.body).map(s => [s.url.split('/services/')[1], s.body]);
+  assert.deepEqual(posted, [['climate/set_temperature', { entity_id: 'climate.hall', temperature: 21.5 }], ['climate/set_hvac_mode', { entity_id: 'climate.hall', hvac_mode: 'off' }], ['climate/set_preset_mode', { entity_id: 'climate.hall', preset_mode: 'sleep' }]]);
+  await assert.rejects(run({ entity_id: 'climate.hall', temperature: 99 }), /outside/);
+  await assert.rejects(run({ entity_id: 'climate.hall', hvac_mode: 'cool' }), /no mode/);
+  await assert.rejects(run({ entity_id: 'climate.hall', preset_mode: 'party' }), /no preset/);
+  await assert.rejects(run({ entity_id: 'climate.other', temperature: 20 }), /isn't a thermostat on the page/);
+  await assert.rejects(run({ entity_id: 'climate.hall' }), /nothing to change/);
+  assert.equal(seen.filter(s => s.body).length, 3, 'a refused change never reaches Home Assistant');
+  assert.equal(ha.tools!.home_climate.access, 'control');
+  assert.match((await ha.tools!.home_climate.confirm!({ entity_id: 'climate.hall', temperature: 22 })).title, /Set Hall to 22°/);
+});
+
+const ics = (...events: string[]) => ['BEGIN:VCALENDAR', ...events, 'END:VCALENDAR'].join('\r\n');
+const stampICS = (d: Date) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+test('calendar agenda: one download covers the page, the months ahead and the assistant', async () => {
+  const soon = new Date(Date.now() + 2 * 864e5), later = new Date(new Date().getFullYear(), new Date().getMonth() + 4, 15), gone = new Date(new Date().getFullYear(), new Date().getMonth() - 3, 1);
+  const feed = ics(`BEGIN:VEVENT\r\nSUMMARY:Soon\r\nDTSTART;VALUE=DATE:${stampICS(soon)}\r\nEND:VEVENT`, `BEGIN:VEVENT\r\nSUMMARY:Later\r\nDTSTART:${stampICS(later)}T090000\r\nDTEND:${stampICS(later)}T100000\r\nEND:VEVENT`, `BEGIN:VEVENT\r\nSUMMARY:Gone\r\nDTSTART:${stampICS(gone)}T090000\r\nEND:VEVENT`);
+  const ctx = fake(() => new Response(feed)), cal = make(calendar, { calendars: [{ url: 'http://c/a.ics', name: 'Family', color: '#123456' }] }, ctx);
+  const [card, list] = await Promise.all([cal.widgets.agenda.fetch() as Promise<any>, cal.widgets.upcoming.fetch() as Promise<any>]);
+  await cal.widgets.agenda.fetch(); await cal.tools!.calendar_upcoming.run({ days: 7 });
+  assert.equal(ctx.calls.length, 1, 'one download, however many ask');
+  valid(card);
+  assert.deepEqual(card.events.map((e: any) => e.title), ['Soon', 'Later']);
+  assert.equal(card.events[0].start, `${soon.getFullYear()}-${String(soon.getMonth() + 1).padStart(2, '0')}-${String(soon.getDate()).padStart(2, '0')}`);
+  assert.deepEqual([card.events[1].color, card.events[1].calendar], ['#123456', 'Family']);
+  assert.ok(card.from < card.events[0].start && card.to > card.events[1].start.slice(0, 10));
+  assert.deepEqual(list.items.map((i: any) => i.title), ['Soon']);   // the plain list still looks only `days` ahead
+  assert.equal(card.summary.value, 'Soon');
+});
+
+test('calendar agenda: a server that fails keeps what it last gave', async () => {
+  let up = true;
+  const soon = new Date(Date.now() + 864e5), ctx = fake(() => up ? new Response(ics(`BEGIN:VEVENT\r\nSUMMARY:Kept\r\nDTSTART;VALUE=DATE:${stampICS(soon)}\r\nEND:VEVENT`)) : new Response('', { status: 500 }));
+  const cal = make(calendar, { calendars: ['http://c/a.ics'] }, ctx), real = Date.now;
+  assert.equal(((await cal.widgets.agenda.fetch()) as any).events.length, 1);
+  up = false; Date.now = () => real() + 700_000;
+  try { assert.equal(((await cal.widgets.agenda.fetch()) as any).events.length, 1); assert.equal(ctx.calls.length, 2); } finally { Date.now = real; }
+});
+
+test('weather: the next days come with their own icons, and today isn\'t among them', async () => {
+  const days = ['2026-03-02', '2026-03-03', '2026-03-04', '2026-03-05', '2026-03-06', '2026-03-07'];
+  const w = { timezone: 'UTC', current: { temperature_2m: 16.2, apparent_temperature: 15, weather_code: 3, is_day: 1, precipitation: 0 },
+    daily: { time: days, temperature_2m_max: [17, 18, 19, 20, 21, 22], temperature_2m_min: [11, 10, 9, 8, 7, 6], weather_code: [3, 0, 61, 95, 71, 45], precipitation_probability_max: [5, 0, 80, 90, 60, null] },
+    hourly: { time: Array.from({ length: 13 }, (_, i) => `2026-03-02T${String(i).padStart(2, '0')}:00`), temperature_2m: Array(13).fill(16), precipitation_probability: Array(13).fill(0), precipitation: Array(13).fill(0), weather_code: Array(13).fill(3), is_day: Array(13).fill(1) } };
+  const card: any = await make(weather, { latitude: 1, longitude: 2 }, fake(() => w)).widgets.now.fetch();
+  valid(card);
+  assert.deepEqual(card.days.map((d: any) => [d.name, d.icon, d.hi, d.lo]), [['Tue', 'sun', 18, 10], ['Wed', 'rain', 19, 9], ['Thu', 'storm', 20, 8], ['Fri', 'snow', 21, 7], ['Sat', 'fog', 22, 6]]);
+  assert.equal(card.days[4].pop, undefined);
 });
 
 test('quran: picks a verse that reads on its own, and keeps the Arabic clean', async () => {

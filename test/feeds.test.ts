@@ -50,3 +50,15 @@ test('ics: single, all-day, weekly by day, daily with count, exdate, and a windo
   const holiday = parseICS(ics, new Date(2025, 10, 1).getTime(), new Date(2025, 10, 5).getTime(), 'Home').find(e => e.title === 'Holiday')!;
   assert.equal(holiday.allDay, true);
 });
+
+test('calendar: colours come from the event, then the feed, and nothing unsafe gets through', () => {
+  const ics = ['BEGIN:VCALENDAR', 'X-APPLE-CALENDAR-COLOR:#FF2968', 'BEGIN:VEVENT', 'SUMMARY:Plain', 'DTSTART:20260105T090000', 'END:VEVENT',
+    'BEGIN:VEVENT', 'SUMMARY:Own', 'DTSTART:20260105T100000', 'COLOR:crimson', 'END:VEVENT', 'BEGIN:VEVENT', 'SUMMARY:Bad', 'DTSTART:20260105T110000', 'COLOR:url(x)', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const ev = parseICS(ics, new Date(2026, 0, 1).getTime(), new Date(2026, 0, 31).getTime());
+  assert.deepEqual(ev.map(e => e.color), ['#FF2968', 'crimson', '#FF2968']);
+});
+
+test('calendar: a daily event started years ago still reaches the months being browsed', () => {
+  const ics = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'SUMMARY:Pills', 'DTSTART:20100101T090000', 'RRULE:FREQ=DAILY', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  assert.equal(parseICS(ics, new Date(2026, 5, 1).getTime(), new Date(2026, 5, 3, 23).getTime()).length, 3);
+});

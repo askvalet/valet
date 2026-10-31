@@ -86,6 +86,32 @@ Rules of the road:
 - **Images go through `ctx.image(ref)`** and your `image(ref)` handler, so the browser never needs your service's key.
 - **A built-in type can't be replaced** unless the config lists it: `plugins: { replace: [tautulli] }`.
 
+## Cards for the house
+
+Three cards draw their own glass and fill whatever row they land in. Give `forecast` a `days` array for the row along
+the bottom. Give `calendar` the events the browser may page through, and say what they cover with `from` and `to`:
+
+```js
+{ type: 'calendar', title: 'Family', from: '2026-09-01', to: '2027-03-31', events: [
+  { title: 'Daycare', start: '2026-10-05T08:30:00-04:00', end: '2026-10-05T09:00:00-04:00', calendar: 'Family' },
+  { title: 'Long weekend', start: '2026-10-09', end: '2026-10-13', color: '#ff9f6b' },   // plain dates are all day; the end is exclusive
+], summary: { label: 'Family', icon: 'calendar', value: 'Daycare', sub: 'Mon · 8:30 AM' } }
+```
+
+A `thermostat`'s buttons are your own actions, run like any other, so the same permissions apply:
+
+```js
+{ type: 'thermostat', title: 'Hallway', unit: 'C', state: 'Idle', mode: 'heat', current: 19.5, target: 20, min: 7, max: 30, step: .5,
+  set: { action: 'climate' },                                      // called with { temperature }
+  modes: [{ id: 'sleep', label: 'Sleep', action: 'climate', args: { preset: 'sleep' } }],
+  summary: { label: 'Hallway', icon: 'thermometer', value: '20.0°', sub: 'Idle' } }
+```
+
+`mode` (`heat`, `cool`, `auto`, `off`) colours the dial; `id` picks a mode's icon (`off`, `heat`, `cool`, `auto`,
+`heat_cool`, `dry`, `fan_only`, `home`, `sleep`, `night`, `away`, `eco`, `boost`, `comfort`, `activity`), and anything
+else shows its first letters. The dial moves at once and sends one request when you let go, then waits for your next
+card to agree, so return the new `target` on the next fetch. Leave out `target` when there isn't one, and it's a read-out.
+
 ## Start from a template
 
 ```sh

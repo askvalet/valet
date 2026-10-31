@@ -170,11 +170,12 @@ export interface ShowcaseCard extends Base {
   caption?: string;       // a quiet line under the numbers, e.g. "Lights · white at 100%"
 }
 
-/** Weather: now, today's range, and the next hours. */
+/** Weather: now, today's range, the next hours and, if it knows them, the next days. */
 export interface ForecastCard extends Base {
   type: 'forecast';
   now: { temp: number; feels: number; words: string; icon: string; hi: number; lo: number; precip?: number };
   hours: { time: string; temp: number; icon: string; pop: number; mm?: number }[];   // pop: chance of precipitation, 0..100
+  days?: { name: string; icon: string; hi: number; lo: number; pop?: number }[];     // from tomorrow, name as "Tue"
 }
 
 /** Photos to look at, not browse: a slow crossfading flashback, or a mosaic. */
@@ -190,6 +191,35 @@ export interface ScheduleCard extends Base {
   type: 'schedule';
   items: { name: string; at: string }[];   // ISO times, in order
   muted?: string[];                         // shown on the timeline but never "next" (e.g. sunrise)
+}
+
+/** One thing on a calendar. All-day events use plain dates, so they land on their day in any time zone. */
+export interface CalendarEvent {
+  title: string;
+  start: string;          // ISO time, or YYYY-MM-DD for all day
+  end?: string;           // the same form; an all-day end is the day after the last, as in iCal
+  calendar?: string;      // which calendar: gives it a stable colour when `color` isn't set
+  color?: string;         // #hex or a CSS colour name
+  location?: string;
+}
+/** An agenda beside a month you can browse. `from` and `to` are the dates the events cover, so browsing stops there. */
+export interface CalendarCard extends Base { type: 'calendar'; events: CalendarEvent[]; from?: string; to?: string; empty?: string }
+
+/** A thermostat's mode button. Set `on` for the active one; pressing runs `action` with `args`. */
+export interface ThermostatMode { id: string; label: string; on?: boolean; action: string; args?: Record<string, unknown> }
+/** A dial. `set` is the action that takes a new target: it's called with its `args` plus `{ temperature }`. No `target`
+ *  (a heat-cool range, a fan-only mode) draws the room with no handle; no `set` leaves it read-only. */
+export interface ThermostatCard extends Base {
+  type: 'thermostat';
+  unit: 'C' | 'F';
+  state: string;          // the word in the middle: "Idle", "Heating"
+  mode?: 'heat' | 'cool' | 'auto' | 'off';   // sets the dial's colour
+  current?: number;       // the room now
+  target?: number;
+  range?: [number, number];                  // low and high setpoints instead of a target
+  min: number; max: number; step: number;
+  set?: { action: string; args?: Record<string, unknown> };
+  modes?: ThermostatMode[];
 }
 
 /** A verse or a quote: the original (right-to-left if Arabic), its translation, where it's from. */
@@ -210,7 +240,7 @@ export interface RankedCard extends Base { type: 'ranked'; items: RankedItem[]; 
 /** A page inside a card, sandboxed. Only addresses the iframe integration allowed can load. */
 export interface EmbedCard extends Base { type: 'embed'; src: string; height: number; scripts?: boolean }
 
-export type Card = EmbedCard | RankedCard | CodeCard | TableCard | LinksCard | VerseCard | ArticleCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
+export type Card = ThermostatCard | CalendarCard | EmbedCard | RankedCard | CodeCard | TableCard | LinksCard | VerseCard | ArticleCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
 
 /** One widget slot's live state, as pushed to the browser. */
 export interface WidgetState { key: string; card?: Card; error?: string; at: number; source?: string }

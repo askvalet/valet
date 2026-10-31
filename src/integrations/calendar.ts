@@ -1,16 +1,19 @@
 // Calendars from iCal links (Google, iCloud, Nextcloud, Outlook, Proton all publish one): what's coming up in the next
-// days, with simple repeating events expanded. No account access, just the subscription URL.
+// days and a browsable month, with simple repeating events expanded. No account access, just the subscription URL.
 import { z } from 'zod';
 import { defineIntegration, fmt } from '../server/core.ts';
-import type { ListItem } from '../shared/cards.ts';
+import type { CalendarEvent, Card, ListItem } from '../shared/cards.ts';
 
-export interface Event { title: string; start: number; end?: number; allDay: boolean; location?: string; calendar: string }
+export interface Event { title: string; start: number; end?: number; allDay: boolean; location?: string; calendar: string; color?: string }
+
+const paint = (v?: string) => v && /^(#[0-9a-f]{3,8}|[a-z]{3,30})$/i.test(v.trim()) ? v.trim() : undefined;
 
 /** Parse an .ics into the events that fall in [from, to], expanding DAILY/WEEKLY/MONTHLY/YEARLY rules with INTERVAL,
  *  COUNT, UNTIL and (for weekly) BYDAY. Anything fancier shows only its first occurrence. */
 export function parseICS(ics: string, from: number, to: number, calendar = 'Calendar'): Event[] {
   const lines = ics.replace(/\r\n?/g, '\n').replace(/\n[ \t]/g, '').split('\n');   // unfold continuation lines
   const out: Event[] = [];
+  let feed: string | undefined;   // the colour the calendar gives itself: COLOR, or Apple's own property
   let ev: Record<string, { params: Record<string, string>; value: string }> | null = null;
   const when = (p?: { params: Record<string, string>; value: string }) => {
     if (!p) return undefined;
@@ -29,7 +32,7 @@ export function parseICS(ics: string, from: number, to: number, calendar = 'Cale
     if (line === 'END:VEVENT' && ev) {
       const start = when(ev.DTSTART), end = when(ev.DTEND);
       if (start) {
-        const base = { title: unescape(ev.SUMMARY?.value ?? '(untitled)'), allDay: start.allDay, location: ev.LOCATION ? unescape(ev.LOCATION.value) : undefined, calendar };
+        const base = { title: unescape(ev.SUMMARY?.value ?? '(untitled)'), allDay: start.allDay, location: ev.LOCATION ? unescape(ev.LOCATION.value) : undefined, calendar, color: paint(ev.COLOR?.value) ?? feed };
         const len = end ? end.t - start.t : 0;
         const rule = Object.fromEntries((ev.RRULE?.value ?? '').split(';').filter(Boolean).map(kv => kv.split('=') as [string, string]));
         const exdates = new Set(Object.entries(ev).filter(([k]) => k === 'EXDATE').flatMap(([, p]) => p.value.split(',').map(v => when({ params: p.params, value: v })?.t)));
@@ -40,8 +43,9 @@ export function parseICS(ics: string, from: number, to: number, calendar = 'Cale
           let count = rule.COUNT ? Number(rule.COUNT) : Infinity, n = 0;
           const d = new Date(start.t);
           const byday = rule.FREQ === 'WEEKLY' && rule.BYDAY ? rule.BYDAY.split(',').map(x => DAYS.indexOf(x.slice(-2))) : null;
-          // walk occurrences until past the window (or the rule ends); a 2-year cap keeps a runaway rule cheap
-          for (let guard = 0; guard < 2000 && d.getTime() <= Math.min(to, until) && count > 0; guard++) {
+          // walk occurrences until past the window (or the rule ends); the cap keeps a runaway rule cheap, and is high
+          // enough that a daily event started decades ago still reaches the months being browsed
+          for (let guard = 0; guard < 40_000 && d.getTime() <= Math.min(to, until) && count > 0; guard++) {
             if (byday) {
               // a week at a time: every listed weekday in it
               const weekStart = new Date(d); weekStart.setDate(d.getDate() - d.getDay());
@@ -60,7 +64,7 @@ export function parseICS(ics: string, from: number, to: number, calendar = 'Cale
       }
       ev = null; continue;
     }
-    if (!ev) continue;
+    if (!ev) { const c = line.match(/^(?:X-APPLE-CALENDAR-COLOR|COLOR)(?:;[^:]*)?:(.+)$/)?.[1]; if (c) feed = paint(c) ?? feed; continue; }
     const i = line.indexOf(':'); if (i < 0) continue;
     const [name, ...ps] = line.slice(0, i).split(';');
     const params = Object.fromEntries(ps.map(p => p.split('=') as [string, string]));
@@ -71,6 +75,8 @@ export function parseICS(ics: string, from: number, to: number, calendar = 'Cale
 }
 
 const dayOf = (t: number) => new Date(new Date(t).toDateString()).getTime();
+const pad = (n: number) => String(n).padStart(2, '0');
+const dateOf = (t: number) => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 const whenText = (e: Event) => {
   const day = fmt.relativeDay(e.start);
   if (e.allDay) return day;
@@ -81,38 +87,66 @@ export default defineIntegration({
   type: 'calendar',
   name: 'Calendar',
   config: z.object({
-    calendars: z.array(z.union([z.string().url(), z.object({ url: z.string().url(), name: z.string().optional() })])).min(1)
+    calendars: z.array(z.union([z.string().url(), z.object({ url: z.string().url(), name: z.string().optional(), color: z.string().optional() })])).min(1)
       .transform(c => c.map(x => typeof x === 'string' ? { url: x } : x)),
     days: z.number().int().min(1).max(60).default(14),
     limit: z.number().int().min(1).max(50).default(10),
     title: z.string().default('Coming up'),
+    months: z.number().int().min(1).max(24).default(6),   // how far ahead the month view browses (it always reaches one month back)
   }),
   create(cfg, ctx) {
-    let cache: { at: number; events: Event[] } | undefined;
-    async function events() {
-      if (cache && Date.now() - cache.at < 600_000) return cache.events;
-      const from = dayOf(Date.now()), to = from + cfg.days * 864e5;
+    // one download per calendar, parsed once over the whole browsable window, shared by every widget and tool; a calendar
+    // that fails keeps what it last gave, so a flaky server doesn't empty the page or get retried by each of them
+    let cache: { at: number; events: Event[]; from: number; to: number } | undefined, loading: Promise<Event[]> | undefined;
+    const last = new Map<string, Event[]>();
+    const load = async () => {
+      const d = new Date(), from = new Date(d.getFullYear(), d.getMonth() - 1, 1).getTime();
+      const to = Math.max(new Date(d.getFullYear(), d.getMonth() + cfg.months + 1, 1).getTime() - 1, dayOf(d.getTime()) + 61 * 864e5);
       const all = await Promise.all(cfg.calendars.map(async c => {
-        try { return parseICS(await ctx.http<string>(c.url.replace(/^webcal:/, 'https:'), { as: 'text', timeout: 15_000 }), from, to, c.name ?? 'Calendar'); }
-        catch (e) { ctx.log(`${c.name ?? c.url}: ${(e as Error).message}`); return []; }
+        try {
+          const list = parseICS(await ctx.http<string>(c.url.replace(/^webcal:/, 'https:'), { as: 'text', timeout: 15_000 }), from, to, c.name ?? 'Calendar')
+            .map(e => c.color && paint(c.color) ? { ...e, color: paint(c.color) } : e);
+          last.set(c.url, list);
+          return list;
+        } catch (e) { ctx.log(`${c.name ?? c.url}: ${(e as Error).message}`); return last.get(c.url) ?? []; }
       }));
       const list = all.flat().sort((a, b) => a.start - b.start);
-      cache = { at: Date.now(), events: list };
+      cache = { at: Date.now(), events: list, from, to };
       return list;
+    };
+    async function events() {
+      if (cache && Date.now() - cache.at < 600_000) return cache.events;
+      return loading ??= load().finally(() => { loading = undefined; });
     }
+    const coming = async () => { const from = dayOf(Date.now()), to = from + cfg.days * 864e5; return (await events()).filter(e => (e.end ?? e.start) >= from && e.start <= to); };
     const row = (e: Event): ListItem => ({ title: e.title, subtitle: [e.location, cfg.calendars.length > 1 ? e.calendar : undefined].filter(Boolean).join(' · ') || undefined, meta: whenText(e), href: undefined, tone: e.start <= Date.now() && (e.end ?? e.start + 36e5) >= Date.now() ? 'accent' : undefined });
+    const on = (now: number) => (e: Event) => (e.end ?? e.start + (e.allDay ? 864e5 : 36e5)) >= now;
+    const headline = (list: Event[], now: number) => {
+      const next = list[0], today = list.filter(e => dayOf(e.start) === dayOf(now));
+      return { summary: { label: cfg.title, icon: 'calendar', value: next ? next.title : 'Free', sub: next ? whenText(next) : `next ${cfg.days} days`, detail: today.length ? `${today.length} today` : undefined },
+        // the island shows an event while it's on
+        activity: next && !next.allDay && next.start <= now ? { title: next.title, subtitle: `until ${fmt.time(next.end ?? next.start + 36e5)}`, icon: 'calendar' } : undefined };
+    };
     return {
       widgets: {
         upcoming: {
           title: cfg.title, interval: 600_000,
           async fetch() {
-            const now = Date.now(), list = (await events()).filter(e => (e.end ?? e.start + (e.allDay ? 864e5 : 36e5)) >= now).slice(0, cfg.limit);
-            const next = list[0];
-            const today = list.filter(e => dayOf(e.start) === dayOf(now));
-            return { type: 'list', title: cfg.title, icon: 'calendar', items: list.map(row), empty: `Nothing in the next ${cfg.days} days`,
-              summary: { label: cfg.title, icon: 'calendar', value: next ? next.title : 'Free', sub: next ? whenText(next) : `next ${cfg.days} days`, detail: today.length ? `${today.length} today` : undefined },
-              // the island shows an event while it's on
-              activity: next && !next.allDay && next.start <= now ? { title: next.title, subtitle: `until ${fmt.time(next.end ?? next.start + 36e5)}`, icon: 'calendar' } : undefined };
+            const now = Date.now(), list = (await coming()).filter(on(now)).slice(0, cfg.limit);
+            return { type: 'list', title: cfg.title, icon: 'calendar', items: list.map(row), empty: `Nothing in the next ${cfg.days} days`, ...headline(list, now) };
+          },
+        },
+        // the agenda and a month to browse: the browser does the rest, so paging through months asks nothing of anyone
+        agenda: {
+          title: cfg.title, interval: 600_000,
+          async fetch(): Promise<Card> {
+            const now = Date.now(), all = await events(), list = (await coming()).filter(on(now)).slice(0, cfg.limit);
+            // a very busy calendar keeps the days nearest today, so the card stays small enough to push live
+            const near = all.length > 600 ? [...all].sort((a, b) => Math.abs(a.start - now) - Math.abs(b.start - now)).slice(0, 600).sort((a, b) => a.start - b.start) : all;
+            const stamp = (t: number) => new Date(t).toISOString();
+            const event = (e: Event): CalendarEvent => ({ title: e.title, start: e.allDay ? dateOf(e.start) : stamp(e.start), end: e.end == null ? undefined : e.allDay ? dateOf(e.end) : stamp(e.end),
+              calendar: e.calendar, color: e.color, location: e.location });
+            return { type: 'calendar', title: cfg.title, icon: 'calendar', events: near.map(event), from: dateOf(cache?.from ?? now), to: dateOf(cache?.to ?? now), empty: `Nothing in the next ${cfg.days} days`, ...headline(list, now) };
           },
         },
       },
@@ -125,7 +159,7 @@ export default defineIntegration({
           access: 'read', input: z.object({ days: z.number().int().min(1).max(60).default(7), query: z.string().optional().describe('words to look for in titles') }),
           async run({ days, query }) {
             const q = query?.toLowerCase(), to = dayOf(Date.now()) + days * 864e5;
-            const list = (await events()).filter(e => e.start <= to && (!q || e.title.toLowerCase().includes(q)));
+            const list = (await events()).filter(e => (e.end ?? e.start) >= dayOf(Date.now()) && e.start <= to && (!q || e.title.toLowerCase().includes(q)));
             return { data: list.map(e => ({ title: e.title, start: new Date(e.start).toISOString(), end: e.end ? new Date(e.end).toISOString() : undefined, allDay: e.allDay, location: e.location, calendar: e.calendar })),
               card: { type: 'list', title: q ? `Calendar · “${query}”` : `Next ${days} days`, icon: 'calendar', items: list.map(row), empty: 'Nothing scheduled' } };
           },

@@ -165,7 +165,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `aimonitor` | `url` | `usage`, `gpu` |
 | `arr` | `sonarr`, `radarr` (each `{ url, apiKey }`), `days` (14) | `upcoming` |
 | `glances` | `url`, `disks` (mounts, or `{ mount, name, sub }`), `network` (interface), `cpuSensor` (`CPU`) | `tiles`, `overview`, `disks` |
-| `homeassistant` | `url`, `token`, `cards`, `schedules`, `floorplans`, `controllable` (extra entities the assistant may control) | one per entry in `cards`, `schedules`, `floorplans` |
+| `homeassistant` | `url`, `token`, `cards`, `schedules`, `floorplans`, `thermostats` (`{ entity, title, modes, unit }`), `controllable` (extra entities the assistant may control) | one per entry in `cards`, `schedules`, `floorplans`, `thermostats` |
 | `http` | `targets` (`name`, `url`, `href`, `icon`, `group`, `quiet`, `expect`), `interval` (30000 ms) | `status` |
 | `immich` | `url`, `apiKey` | `memories` |
 | `indexers` | `prowlarr`, `bazarr` (each `{ url, apiKey }`) | `health` |
@@ -190,7 +190,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `docker` | `url` (a read-only socket proxy, never the raw socket), `hide` (names to leave out, e.g. containers that are meant to stay stopped), `sources` (container → GitHub `owner/repo` for release notes, when its image doesn't say), `github` (a token, past 60 requests an hour) | `containers`, `updates` |
 | `host` | `url` (the Valet agent), `token`, `title`, `quiet` (services often off on purpose) | `services` |
 | `api` | `url`, `headers`, `method`, `body`, `every` (60s), `title`, `icon`, `href`, `about`, and one of `stats`, `list`, `rows`, `status` (see below) | `data` |
-| `calendar` | `calendars` (iCal URLs, or `{ url, name }`), `days` (14), `limit` (10), `title` | `upcoming` |
+| `calendar` | `calendars` (iCal URLs, or `{ url, name, color }`), `days` (14), `limit` (10), `title`, `months` (6, how far ahead the month browses) | `upcoming`, `agenda` (place it `wide` or `large` for the month beside it) |
 | `links` | (from the top-level `links:` block) | one per group |
 
 ### Services outside Docker: `type: host`
@@ -267,4 +267,4 @@ braces. Paths can pass through formats: `bytes`, `rate`, `duration` (seconds), `
 or the `url` as `${NAME}`.
 
 The comments in each integration's schema (`src/integrations/<type>.ts`, the `config:` block) explain the nested
-options (Home Assistant's `cards`, `schedules` and `floorplans`; the PC `build`). `/#gallery` shows every card type.
+options (Home Assistant's `cards`, `schedules`, `thermostats` and `floorplans`; the PC `build`). `/#gallery` shows every card type.
