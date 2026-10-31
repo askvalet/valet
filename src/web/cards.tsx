@@ -150,7 +150,7 @@ function Chips({ card }: { card: ListCard }) {
         <a key={i} href={it.href} target="_blank" rel="noreferrer" className={cn('chip', it.tone === 'warn' && 'is-warn', !it.href && 'pointer-events-none')}>
           {(it.image || slug(it.title)) && <img src={it.image ?? `/api/icon/${slug(it.title)}`} alt="" className="size-[18px] rounded-[5px] object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />}
           <span className="font-medium">{it.title}</span>
-          {(it.subtitle || it.meta) && <span className="text-muted-foreground">{it.subtitle ?? it.meta}</span>}
+          {(it.subtitle || it.meta) && <span className="max-w-[180px] truncate text-muted-foreground" title={it.subtitle}>{it.subtitle ?? it.meta}</span>}
         </a>
       ))}
     </div>

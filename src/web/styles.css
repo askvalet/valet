@@ -550,7 +550,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 /* a thermometer: cool at the left, hot at the right */
 .temp-track { position: relative; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #64d2ff, #ffd60a 55%, #ff453a); opacity: .9; }
 .temp-track i { position: absolute; top: 50%; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgb(0 0 0 / .5); transform: translateY(-50%); transition: left 700ms var(--ease-out); }
-.chip { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 6px 11px 6px 8px; border-radius: 99px; font-size: 13px; background: rgb(255 255 255 / .07); transition: background 150ms; }
+.chip { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; white-space: nowrap; padding: 6px 11px 6px 8px; border-radius: 99px; font-size: 13px; background: rgb(255 255 255 / .07); transition: background 150ms; }
 .chip.is-warn { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 50%, transparent); }
 @media (hover: hover) and (pointer: fine) { a.chip:hover { background: rgb(255 255 255 / .13); } }
 .motion-reduced :is(.columns-chart .col, .wall-tile) { animation: none; }
