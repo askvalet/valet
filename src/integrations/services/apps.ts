@@ -16,7 +16,7 @@ const total = (h: any) => Number(h?.['x-total-count'] ?? 0);
 const forge = (type: string, name: string) => service({
   type, name, icon: 'file', auth: 'bearer',
   get: { repos: totalOf('/api/v1/repos/search?limit=1'), issues: totalOf('/api/v1/repos/issues/search?type=issues&limit=1'), pulls: totalOf('/api/v1/repos/issues/search?type=pulls&limit=1'), notifications: totalOf('/api/v1/notifications?limit=1') },
-  recap: d => tally(total(d.repos), { id: 'code', theme: 'code', icon: 'file', kicker: 'Your own forge holds', unit: 'repositories', stat: 'Repositories', scope: 'All time', line: `In ${name}, on your hardware, and not training anyone's model.` }),
+  recap: d => tally(total(d.repos), { id: 'code', theme: 'code', icon: 'file', kicker: 'Your own forge holds', unit: 'repositories', stat: 'Repositories', scope: 'All time', line: `In ${name}, on hardware you run.` }),
   stats: d => [
     { label: 'Repositories', value: total(d.repos) }, { label: 'Open issues', value: total(d.issues) },
     { label: 'Open PRs', value: total(d.pulls) }, { label: 'Notifications', value: total(d.notifications) }],
@@ -293,7 +293,7 @@ export default [
         { label: 'Devices online', value: peers.filter(p => p.connected).length, sub: `of ${peers.length}` }, { label: 'Folders', value: rows(d.folders).length },
         { label: 'Received', value: fmt.bytes(d.connections?.total?.inBytesTotal ?? 0) }, { label: 'Sent', value: fmt.bytes(d.connections?.total?.outBytesTotal ?? 0) }];
     },
-    recap: d => { const moved = (d.connections?.total?.inBytesTotal ?? 0) + (d.connections?.total?.outBytesTotal ?? 0); return tally(moved, { id: 'sync.moved', theme: 'files', icon: 'disk', kicker: 'Your devices passed around', value: fmt.bytes(moved), scope: 'Since Syncthing last restarted', line: 'Straight from one to the next, with no server in the middle.' }); },
+    recap: d => { const moved = (d.connections?.total?.inBytesTotal ?? 0) + (d.connections?.total?.outBytesTotal ?? 0); return tally(moved, { id: 'sync.moved', theme: 'files', icon: 'disk', kicker: 'Your devices passed around', value: fmt.bytes(moved), scope: 'Since Syncthing last restarted', line: 'From one to the next, with no cloud account holding the copy.' }); },
     sample: { connections: { total: { at: '2026-10-31T10:00:00Z', inBytesTotal: 1073741824, outBytesTotal: 536870912 }, connections: { 'AAAAAAA-BBBBBBB': { connected: true, paused: false, inBytesTotal: 1073741824, outBytesTotal: 536870912 }, 'CCCCCCC-DDDDDDD': { connected: false, paused: false, inBytesTotal: 0, outBytesTotal: 0 } } },
       folders: [{ id: 'default', label: 'Default', paused: false }, { id: 'photos', label: 'Photos', paused: false }] },
     expect: { 'Devices online': 1, Folders: 2, Received: '1.0 GB', Sent: '512.0 MB' },

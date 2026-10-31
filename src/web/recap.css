@@ -1,5 +1,5 @@
 /* The year in review, in Valet's own materials: your wallpaper, your artwork, frosted glass, one idea per screen. */
-.rc { position: fixed; inset: 0; z-index: 100; overflow: hidden; background: #000; color: #fff; user-select: none; touch-action: manipulation; font-family: "Geist Variable", system-ui, sans-serif; }
+.rc { position: fixed; inset: 0; z-index: 100; overflow: hidden; background: #000; color: #fff; user-select: none; touch-action: manipulation; -webkit-touch-callout: none; outline: none; font-family: "Geist Variable", system-ui, sans-serif; }
 .rc-bg, .rc-bg > * { position: absolute; inset: 0; }
 .rc-wallpaper { width: 100%; height: 100%; object-fit: cover; filter: blur(30px) saturate(1.3); transform: scale(1.12); opacity: .55; }
 .rc-backdrop { width: 100%; height: 100%; object-fit: cover; filter: brightness(.78); animation: rc-drift 16s ease-out both; }
@@ -38,8 +38,8 @@
 @keyframes rc-in { from { opacity: 0; transform: translateY(18px); } }
 .rc-tile { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; background: rgb(255 255 255 / .14); border: 1px solid rgb(255 255 255 / .16); backdrop-filter: blur(24px) saturate(1.6); margin-bottom: 18px; }
 .rc-kicker { font-size: clamp(18px, 2.4vw, 24px); font-weight: 500; color: rgb(255 255 255 / .82); }
-.rc-value { font-weight: 600; letter-spacing: -.04em; line-height: 1; margin-top: 8px; font-variant-numeric: tabular-nums; text-wrap: balance; }
-.rc-unit { font-size: .3em; font-weight: 500; letter-spacing: -.01em; margin-left: .3em; color: rgb(255 255 255 / .8); }
+.rc-value { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .1em; font-weight: 600; letter-spacing: -.04em; line-height: 1; margin-top: 8px; font-variant-numeric: tabular-nums; text-wrap: balance; }
+.rc-unit { font-size: .3em; font-weight: 500; letter-spacing: -.01em; color: rgb(255 255 255 / .8); }
 .rc-line { font-size: clamp(17px, 2.2vw, 22px); line-height: 1.35; margin-top: 14px; max-width: 560px; color: rgb(255 255 255 / .86); text-wrap: pretty; }
 .rc-chip { display: inline-block; margin-top: 16px; padding: 4px 11px; border-radius: 99px; font-size: 13px; font-weight: 500; color: rgb(255 255 255 / .8); background: rgb(255 255 255 / .12); border: 1px solid rgb(255 255 255 / .1); }
 
@@ -70,10 +70,52 @@
 .rc-seg i { display: block; height: 100%; background: #fff; }
 .rc-seg i.on { width: 0; animation: rc-fill linear forwards; }
 @keyframes rc-fill { to { width: 100%; } }
-.rc-share { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -52%); display: flex; flex-direction: column; align-items: center; gap: 14px; animation: rc-rise-in 700ms var(--ease-out) both; }
-@keyframes rc-rise-in { from { opacity: 0; transform: translate(-50%, -48%) scale(.97); } }
-.rc-share canvas { display: block; border-radius: 22px; box-shadow: 0 30px 80px rgb(0 0 0 / .6); height: min(76vh, 118vw); width: auto; }
-@media (prefers-reduced-motion: reduce) { .rc-col, .rc-backdrop, .rc-body, .rc-scene, .rc-share, .rc-track i, .rc-week i, .rc-poster { animation: none; } }
+
+/* a number settles digit by digit, the last one first; the hidden digit holds its width and baseline, and at rest the reel is plain text */
+.rc-reel { position: relative; display: inline-block; clip-path: inset(0 -.08em); }
+.rc-reel > span { visibility: hidden; }
+.rc-reel i { position: absolute; left: 0; bottom: 0; font-style: normal; animation: rc-roll 640ms var(--ease-out) backwards; }
+.rc-reel b { display: block; font-weight: inherit; line-height: 1; }
+@keyframes rc-roll { from { transform: translateY(75%); } }
+
+/* the controls: the same for a finger, a mouse and a keyboard */
+.rc-ctl { position: absolute; z-index: 5; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 3px 14px 3px 3px; border-radius: 99px; background: rgb(34 34 40 / .55); border: 1px solid rgb(255 255 255 / .14); backdrop-filter: blur(24px) saturate(1.6); }
+.rc-ctl button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 99px; }
+.rc-ctl button:disabled { opacity: .32; }
+.rc-ctl span { margin-left: 8px; font-size: 13px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; color: rgb(255 255 255 / .8); }
+.rc-hint { position: absolute; z-index: 5; left: 16px; right: 16px; top: 76px; width: fit-content; max-width: calc(100% - 32px); margin: 0 auto; padding: 8px 14px; border-radius: 16px; font-size: 14px; line-height: 1.35; text-align: center; background: rgb(0 0 0 / .6); backdrop-filter: blur(24px); animation: rc-fade 300ms both; pointer-events: none; }
+.rc :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.rc-btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 18px; border-radius: 99px; font-size: 14px; font-weight: 500; background: rgb(255 255 255 / .15); }
+.rc-primary { background: #fff; color: #000; font-weight: 600; }
+.rc-choice { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+
+/* the card, and what goes on it */
+.rc-share { position: absolute; inset: 24px 0 72px; display: flex; align-items: center; justify-content: center; gap: 32px; padding: 0 72px; animation: rc-fade 500ms both; }
+.rc-share canvas { display: block; flex: none; max-width: min(100%, 620px); max-height: 100%; border-radius: 22px; box-shadow: 0 30px 80px rgb(0 0 0 / .6); }
+.rc-pick { display: flex; flex-direction: column; gap: 10px; width: 300px; flex: none; }
+.rc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.rc-pill { min-height: 36px; padding: 6px 12px; border-radius: 99px; font-size: 13px; font-weight: 500; color: rgb(255 255 255 / .75); background: rgb(255 255 255 / .08); border: 1px solid rgb(255 255 255 / .16); }
+.rc-pill[aria-pressed="true"] { color: #000; background: #fff; border-color: #fff; }
+.rc-pill:disabled { opacity: .4; }
+@media (max-width: 760px) {
+  .rc-share { inset: 72px 0 66px; flex-direction: column; justify-content: flex-start; gap: 14px; padding: 0 16px 8px; overflow-y: auto; }
+  .rc-share canvas { max-width: 100%; max-height: min(44vh, 118vw); }
+  .rc-pick { width: 100%; }
+}
+
+/* the same story as plain text, which you can select */
+.rc-text { position: absolute; inset: 0; z-index: 4; overflow-y: auto; padding: 76px max(20px, calc(50% - 320px)) 40px; background: rgb(0 0 0 / .84); backdrop-filter: blur(30px); user-select: text; font-size: 16px; line-height: 1.45; }
+.rc-text h2 { font-size: 28px; font-weight: 600; letter-spacing: -.02em; margin-bottom: 20px; }
+.rc-text ol > li { padding: 14px 0; border-top: 1px solid rgb(255 255 255 / .14); }
+.rc-text h3 { font-weight: 500; color: rgb(255 255 255 / .8); }
+.rc-text h3 b { font-weight: 600; color: #fff; }
+.rc-text p { color: rgb(255 255 255 / .86); }
+.rc-text ul { margin-top: 4px; font-size: 14px; color: rgb(255 255 255 / .7); }
+.rc-text small { display: block; margin-top: 4px; font-size: 13px; color: rgb(255 255 255 / .6); }
+.rc-text dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 14px; }
+.rc-text dt { font-size: 13px; color: rgb(255 255 255 / .7); }
+.rc-text dd { font-weight: 600; }
+
 
 /* a slide about one app: its icon, and its colours spilling across the room */
 .rc-tint { position: absolute; top: 50%; right: -8vmax; width: 80vmax; height: 80vmax; transform: translateY(-50%); object-fit: cover; filter: blur(90px) saturate(1.8); opacity: .42; animation: rc-tint 900ms ease both; }
@@ -87,4 +129,11 @@
   .rc-tint { top: -10vmax; right: -30vmax; transform: none; }
 }
 @keyframes rc-fade { from { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .rc-tint, .rc-logo { animation: none; } }
+
+/* the system's setting and the page's own mean the same here: nothing drifts, rises, rolls or fills. styles.css already stops everything for motion: none. */
+@media (prefers-reduced-motion: reduce) {
+  .rc-col, .rc-backdrop, .rc-body, .rc-scene, .rc-share, .rc-track i, .rc-week i, .rc-poster, .rc-tint, .rc-logo, .rc-model, .rc-icons span, .rc-reel i, .rc-hint { animation: none; }
+  .rc-seg i.on { animation: none !important; width: 100%; }
+}
+.motion-reduced :is(.rc-col, .rc-backdrop, .rc-body, .rc-track i, .rc-week i, .rc-poster, .rc-logo, .rc-model, .rc-icons span, .rc-reel i) { animation: none; }
+:is(.motion-reduced, .motion-none) .rc-seg i.on { animation: none !important; width: 100%; }
