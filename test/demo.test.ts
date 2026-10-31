@@ -12,7 +12,7 @@ import plugin from '../demo/integrations/homelab.mjs';
 import { FALLBACK, reply, SCRIPT, SUGGESTIONS } from '../demo/mock-model.mjs';
 
 const lab = (plugin as any)({ z, defineIntegration });
-const inst = lab.create(lab.config.parse({}), {} as any);
+const inst = lab.create(lab.config.parse({}), { image: (r: string) => `/x/${r}` } as any);
 
 test('demo: every widget returns a valid card, and the layout only names widgets that exist', async () => {
   for (const [k, w] of Object.entries<any>(inst.widgets)) { const r = checkCard(await w.fetch()); assert.ok(r.success, `${k}: ${r.success ? '' : JSON.stringify(r.error.issues.slice(0, 3))}`); }

@@ -970,7 +970,7 @@ function BareHeader({ card, title, status }: { card?: CardT; title?: string; sta
   return (
     <div className="flex min-w-0 items-center gap-2">
       <h3 className="truncate text-[15px] font-semibold tracking-tight">{card?.title ?? title}</h3>
-      <Source of={card?.source} />
+      {card?.type !== 'media' && <Source of={card?.source} />}
       {status}
       {card?.note && <span className="truncate text-xs tabular text-muted-foreground">{card.note}</span>}
       {card?.href && <a href={card.href} target="_blank" rel="noreferrer" aria-label={`Open ${card.title ?? title}`} className="text-muted-foreground transition-colors hover:text-foreground"><ArrowUpRight className="size-4" /></a>}

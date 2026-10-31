@@ -85,27 +85,26 @@
  "photos": [
   {
    "title": "Lake Louise",
-   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6c/1_lake_louise_pano_2019.jpg/1280px-1_lake_louise_pano_2019.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
    "credit": "https://commons.wikimedia.org/wiki/File:1_lake_louise_pano_2019.jpg",
    "licence": "CC BY-SA 4.0"
   },
   {
    "title": "Isle of Skye",
-   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/72/Quiraing%2C_Isle_of_Skye%2C_Scotland_-_Diliff.jpg/1280px-Quiraing%2C_Isle_of_Skye%2C_Scotland_-_Diliff.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
    "credit": "https://commons.wikimedia.org/wiki/File:Quiraing,_Isle_of_Skye,_Scotland_-_Diliff.jpg",
    "licence": "CC BY-SA 3.0"
   },
   {
    "title": "Torres del Paine Patagonia",
-   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/76/Cuernos_del_Paine_in_Torres_del_Paine_National_Park.jpg/1280px-Cuernos_del_Paine_in_Torres_del_Paine_National_Park.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
    "credit": "https://commons.wikimedia.org/wiki/File:Cuernos_del_Paine_in_Torres_del_Paine_National_Park.jpg",
    "licence": "CC BY-SA 2.0"
   },
   {
    "title": "Moraine Lake Banff",
-   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c5/Moraine_Lake_17092005.jpg/1280px-Moraine_Lake_17092005.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
    "credit": "https://commons.wikimedia.org/wiki/File:Moraine_Lake_17092005.jpg",
    "licence": "Public domain"
   }
- ]
+ ],
+ "article": {
+  "link": "https://www.inkandswitch.com/essay/local-first/"
+ }
 }
