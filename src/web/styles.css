@@ -564,3 +564,18 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 @media (hover: hover) and (pointer: fine) { .headline:hover { background: rgb(255 255 255 / .1); transform: translateY(-2px); } }
 .motion-reduced .headline { animation: none; }
 @media (prefers-reduced-motion: reduce) { .headline { animation: none; } }
+
+/* the shell: a line that comes and goes opens and closes rather than jumping, and a chip on its way out gives its room back */
+.fold { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 320ms var(--ease-out), opacity 240ms var(--ease-out); }
+.fold.is-open { grid-template-rows: 1fr; opacity: 1; }
+.fold > div { min-height: 0; overflow: hidden; }
+.chip-out { animation: chip-out 240ms var(--ease-out) both; pointer-events: none; overflow: hidden; white-space: nowrap; }
+@keyframes chip-out { to { opacity: 0; max-width: 0; padding-inline: 0; } }
+.motion-reduced .fold, .motion-none .fold { transition: none; }
+.motion-reduced .chip-out, .motion-none .chip-out { display: none; }
+@media (prefers-reduced-motion: reduce) { .fold { transition: none; } .chip-out { display: none; } }
+/* phones: a menubar ring says what it is when tapped */
+@media (max-width: 639px) {
+  .menubar .group\/ring > .truncate { display: block; position: absolute; top: calc(100% + 4px); left: 50%; translate: -50% 0; max-width: none; padding: 1px 6px; border-radius: 6px; background: rgb(0 0 0 / .72); color: #fff; opacity: 0; pointer-events: none; transition: opacity 160ms var(--ease-out); }
+  .menubar .group\/ring:focus > .truncate { display: block; opacity: 1; }
+}
