@@ -294,6 +294,8 @@ test('heatmap, stream and waffle: integer counts, and nothing drawn from nothing
   assert.ok(chartless({ type: 'heatmap', from: '2026-03-01', days: [0, 0] }));
   assert.ok(chartless({ type: 'chart', style: 'stream', series: [{ name: 'TV', points: [0, 0] }] }));
   assert.ok(!chartless({ type: 'chart', style: 'bars', series: [{ name: 'TV', points: [0, 0] }] }));
+});
+
 test('feel: a throw lands on the stop its speed reaches, and rubber never passes its limit', () => {
   const stops = [0, 100, 200, 300];
   assert.equal(landing(40, 0, stops), 0);
