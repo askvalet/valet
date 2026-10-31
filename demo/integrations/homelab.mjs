@@ -60,7 +60,7 @@ const PAPERS = [
   { title: 'Bike warranty', org: 'Trail Cycles', date: 'Jun 18', color: '#2e7d4f', lines: ['Frame: lifetime', 'Parts: two years'] },
   { title: 'Internet plan', org: 'Fibre North', date: 'Jun 2', color: '#0077c8', rows: [['Gigabit, monthly', '$69.00']], total: '$69.00' },
 ];
-const FILMS = ['Dune: Part Two', 'The Bear', 'Arrival', 'Interstellar', 'Blade Runner 2049', 'Severance', 'Spirited Away', 'Andor', 'Shōgun', 'The Grand Budapest Hotel'];
+const FILMS = ['Spider-Man: Brand New Day', 'The Bear', 'Arrival', 'Interstellar', 'Blade Runner 2049', 'Severance', 'Spirited Away', 'Andor', 'Shōgun', 'The Grand Budapest Hotel'];
 const STACK = ['plex', 'tautulli', 'sonarr', 'radarr', 'prowlarr', 'bazarr', 'qbittorrent', 'navidrome', 'lidarr', 'komga', 'audiobookshelf', 'miniflux', 'immich', 'paperless', 'karakeep', 'mealie', 'tandoor-recipes', 'home-assistant', 'frigate', 'nextcloud', 'syncthing', 'vaultwarden', 'authentik', 'crowdsec', 'pi-hole', 'tailscale', 'caddy', 'nginx-proxy-manager', 'uptime-kuma', 'grafana', 'changedetection', 'forgejo', 'proxmox', 'portainer'];
 const SETBACKS = { home: 20, sleep: 18, night: 17 };
 const pad = n => String(n).padStart(2, '0');
