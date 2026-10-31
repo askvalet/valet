@@ -84,7 +84,7 @@ export const whyPrompt = (name: string, about: string | undefined, state: Widget
 /** Questions worth asking right now, from what's on the page. A tapped suggestion goes out as the person's own words, so
  *  these must never carry a stranger's text: feeds stay out of the prompt, and anything with a link in it is dropped. */
 export const suggestPrompt = (states: WidgetState[], journal: string[], tools: string[], now = new Date()) => ({
-  system: `You suggest what the owner of a homelab would actually want to ask its assistant right now. Write 4, one per line, at most 7 words each.
+  system: `You suggest what the owner of a homelab would actually want to ask its assistant right now. Write 4, one per line, at most 7 words each, in everyday words: never an internal name like downloads.active.
 A good one gets something the page can't show at a glance: an explanation, a comparison, a recommendation, or something to do. Trouble first, then what's live, then what suits the time of day and day of the week.
 Never ask about something the page already answers, like whether a thing is idle, how many of something there are, or a number that's on screen. Don't invent names; name a service or title only if it's below. Each must be possible with the tools listed.
 No numbering, no quotes, nothing else.\n${SEP}`,
@@ -92,7 +92,7 @@ No numbering, no quotes, nothing else.\n${SEP}`,
 });
 export function parseSuggestions(reply: string | null) {
   const list = (reply ?? '').split('\n').map(l => l.replace(/^[\s\-*•\d.)"'“]+|["'”\s]+$/g, '').trim())
-    .filter(l => l.length >= 6 && l.length <= 60 && !/https?:|www\.|\w\.(com|net|org|io|dev)\b|file id|\[/i.test(l));
+    .filter(l => l.length >= 6 && l.length <= 60 && !/https?:|www\.|\w\.(com|net|org|io|dev)\b|\b[a-z]+\.[a-z]+\b|file id|\[/i.test(l));
   const asked = list.map(l => /^(what|which|why|how|when|who|where|should|is|are|did|do|does|can|will)\b/i.test(l) && !/[?.!]$/.test(l) ? `${l}?` : l);
   return asked.length >= 2 ? [...new Set(asked)].slice(0, 4) : null;
 }

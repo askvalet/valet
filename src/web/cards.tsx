@@ -1224,6 +1224,17 @@ function Popover({ group, className, children }: { group: 'ring' | 'wx'; classNa
   );
 }
 
+/** The clock, with the month behind it on hover: your calendar's events when there is one, or just the month. */
+export function ClockMonth({ card, children }: { card?: CardT; children: ReactNode }) {
+  const events = card?.type === 'calendar';
+  return (
+    <div className="group/wx relative text-right leading-tight outline-none" tabIndex={0}>
+      {children}
+      <Popover group="wx" className={cn('right-[-14px]', events ? 'w-[680px]' : 'w-[340px]')}><div className="p-4 text-left"><CalendarView card={events ? card : { type: 'calendar', events: [] }} large={events} /></div></Popover>
+    </div>
+  );
+}
+
 /** The menubar version: a small ring with the number inside, label beneath; details on hover. */
 function MiniRingView({ s }: { s: Summary }) {
   const r = 15, c = 2 * Math.PI * r, arc = c * 0.75, pct = Math.max(0, Math.min(1, s.pct ?? 0));

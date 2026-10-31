@@ -153,6 +153,7 @@ app.get('/api/page', c => {
     nav: config.nav,
     island: config.island && { ...config.island, activities: config.island.activities.filter(k => hub.widget(k)) },
     weather: config.weather && hub.widget(config.weather) ? config.weather : undefined,
+    calendar: config.calendar && hub.widget(config.calendar) ? config.calendar : undefined,
     insight: site.watcher?.insight?.text,
     sections: [...(site.pins.length ? [{ widgets: site.pins.map(p => `pins.${p.id}`).filter(k => hub.widget(k)), display: 'cards', place: 'main', overview: true, sizes: {} }] : []), ...config.layout.map(s => ({ title: s.title, columns: s.columns, tabColumns: s.tabColumns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat,
       widgets: s.widgets.map(w => w.widget).filter(k => hub.widget(k)),

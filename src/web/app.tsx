@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import Island, { type Live, type Notice } from './island.tsx';
 import { SignIn, useMe } from './signin.tsx';
 import { suggest } from './suggest.ts';
-import { type Explain, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, shapeOf, TileSkeleton, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
+import { ClockMonth, type Explain, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, shapeOf, TileSkeleton, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
 
 // The assistant (and the AI SDK client) loads only when someone asks something.
 const Assistant = lazy(() => import('./assistant.tsx'));
@@ -27,6 +27,7 @@ interface Page {
   nav?: { side: 'left' | 'right' | 'top' | 'bottom' };
   island?: { activities: string[]; idle: 'notch' | 'hide' };
   weather?: string;
+  calendar?: string;
   recap?: boolean;
   sections: { title?: string; columns?: number; tabColumns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; sizes?: Record<string, 'small' | 'wide' | 'tall' | 'large'>; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
@@ -193,10 +194,11 @@ function sayHow(cards: (CardData | undefined)[]) {
   const board = cards.flatMap(c => c?.type === 'status' ? [c.items.filter(i => !i.quiet)] : []).sort((a, b) => b.length - a.length)[0] ?? [];
   const down = board.filter(i => !i.ok).map(i => i.name), media = cards.flatMap(c => c?.type === 'media' ? c.items : []);
   const watching = media.filter(m => m.user && m.state !== 'paused'), getting = media.filter(m => m.icon === 'download').length;
+  const stalled = cards.some(c => c?.type === 'media' && c.items.some(m => m.icon === 'download') && /(^|\s)0 B\/s/.test(c.note ?? ''));   // nothing's moving
   const parts = [
     !board.length ? '' : !down.length ? `All ${board.length} services are running` : down.length === 1 ? `Everything's running except ${down[0]}` : down.length <= 3 ? `${and(down)} are down` : `${down.length} of ${board.length} services are down`,
     watching.length === 1 ? `${watching[0].user} is watching ${watching[0].title}` : watching.length ? `${watching.length} people are watching` : '',
-    getting ? `${getting === 1 ? 'a download is' : `${getting} downloads are`} on the way` : '',
+    getting ? `${getting === 1 ? 'a download is' : `${getting} downloads are`} ${stalled ? 'waiting for peers' : 'on the way'}` : '',
   ].filter(Boolean);
   return parts.length ? `${and(parts)}.` : '';
 }
@@ -488,10 +490,10 @@ function Home({ account }: { account: boolean }) {
         )}
         <div className="glass-bar relative flex shrink-0 items-center gap-2.5 rounded-full border py-1 pr-3.5 pl-1.5 sm:gap-4 sm:py-1.5 sm:pr-5 sm:pl-2">
           {page?.weather && state[page.weather]?.card?.type === 'forecast' && <WeatherRing card={state[page.weather]!.card as ForecastCard} />}
-          <div className="text-right leading-tight">
+          <ClockMonth card={page?.calendar ? state[page.calendar]?.card : undefined}>
           <div className="text-sm font-semibold tabular">{now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</div>
           <div className="hidden text-xs text-muted-foreground sm:block">{now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-          </div>
+          </ClockMonth>
         </div>
         {!wall && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={theme.toggle}>{theme.dark ? <Sun key="sun" className="spin-in" /> : <Moon key="moon" className="spin-in" />}</RoundButton>}
       </div>

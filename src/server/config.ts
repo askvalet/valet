@@ -146,6 +146,7 @@ export const Config = z.object({
     notify: z.array(z.object({ widget: z.string(), on: z.enum(['start', 'end', 'down', 'up']), text: z.string().optional(), push: z.boolean().default(false) })).default([]),
   }).optional(),
   weather: z.string().optional(),               // a widget key (e.g. weather.now) shown as a ring beside the clock
+  calendar: z.string().optional(),              // a calendar widget (e.g. family.agenda) whose events appear when you hover the clock
   // web search from ⌘K: a provider name, or a URL with {q} for the words
   search: z.union([z.enum(['duckduckgo', 'google', 'kagi', 'brave', 'startpage', 'searxng']), z.string().url()]).optional(),
   // links on the page, grouped: `links.<group>` is a widget key, e.g. links: { Media: [{ name: Plex, url: https://… }] }
