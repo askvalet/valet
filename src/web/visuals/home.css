@@ -54,7 +54,6 @@
 @keyframes homex-pulse { 50% { opacity: .35; } }
 
 /* the dollhouse (home-gl.ts): a canvas and one label that follows the room under the pointer */
-.homex.gl { position: relative; }
 .homex.gl canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .homex.gl.draggable { cursor: grab; }
 .homex.gl.over { cursor: pointer; }

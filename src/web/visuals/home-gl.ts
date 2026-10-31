@@ -9,7 +9,7 @@ import { buildHouse, buildRobot } from './home-mesh.ts';
 import { plan, roomAt, WALL, type Layout } from './home-plan.ts';
 import { createRobot, type Pose } from './home-robot.ts';
 
-export interface HomeOptions { turn?: number; tilt?: number; draggable?: boolean; remember?: string; hour?: number; fill?: boolean
+export interface HomeOptions { onLost?: () => void; turn?: number; tilt?: number; draggable?: boolean; remember?: string; hour?: number; fill?: boolean
   onPick?: (id: string | null) => void; onToggle?: (room: number) => void; onLight?: (id: string) => void }
 export interface HomeStage { update(d: PlanData): void; select(id: string | null): void; destroy(): void }
 
@@ -23,20 +23,20 @@ const LAYOUT = `layout(location=0) in vec3 aP; layout(location=1) in vec4 aN; la
 
 const VS = COMMON + LAYOUT + /* glsl */`
 uniform mat4 uVP, uModel; uniform vec4 uCut, uBounds; uniform vec3 uCutC; uniform float uRise;
-float cut(vec2 p) { return mix(H, uCut.z, smoothstep(-.38, .42, dot(p - uCutC.xy, uCut.xy) / uCutC.z)) * uRise; }
-out vec3 vP, vN, vC; flat out uvec4 vI;
+float cut(vec2 p) { return mix(H, uCut.z, clamp((dot(p - uCutC.xy, uCut.xy) / uCutC.z + .42) / .86, 0., 1.)) * uRise; }
+out vec3 vP, vN, vC; out float vCap; flat out uvec4 vI;
 void main() {
-  vec4 w = uModel * vec4(aP, 1.); vec3 p = w.xyz; bool gone = false;
+  vec4 w = uModel * vec4(aP, 1.); vec3 p = w.xyz; bool gone = false; vCap = 0.;
   if (aI.w > 0u) {                                         // a wall: the side nearest the camera is cut away, on a slope
     gone = aI.w > 1u && cut(uBounds.xy + vec2(aN.w * .5 + .5, aC.w) * uBounds.zw) < float(aI.w);   // a piece over a gap goes whole
-    p.y = min(p.y, cut(p.xz));
+    float t = cut(p.xz); vCap = p.y > t ? 1. : 0.; p.y = min(p.y, t);
   }
   vP = p; vN = mat3(uModel) * aN.xyz; vC = pow(aC.rgb, vec3(2.2)); vI = aI;
   gl_Position = gone ? vec4(2., 2., 2., 1.) : uVP * vec4(p, 1.);
 }`;
 
 const FS = COMMON + /* glsl */`
-in vec3 vP, vN, vC; flat in uvec4 vI; out vec4 O;
+in vec3 vP, vN, vC; in float vCap; flat in uvec4 vI; out vec4 O;
 uniform vec3 uEye, uKeyDir, uKeyCol, uSky, uGnd, uBot, uBotC; uniform vec4 uLP[${MAX_L}], uLC[${MAX_L}], uFill[${MAX_R}], uMap, uAtlasInfo; uniform ivec4 uList[${MAX_R * 2}];
 uniform mat4 uKeyM; uniform sampler2DShadow uAtlas, uKey; uniform sampler2D uAO, uClean; uniform float uTime, uExpo, uStill;
 float sat(float x) { return clamp(x, 0., 1.); }
@@ -65,6 +65,10 @@ void main() {
   float g = hash(gl_FragCoord.xy * .0173); g = 6.283 * g; turn = mat2(cos(g), -sin(g), sin(g), cos(g));
   if (dot(N, V) < 0. && (kind == 10u || kind == 6u)) N = -N;
   vec2 q = vP.xz; bool floorish = false;
+  if (vCap > .995) {                                       // a cut face has no shadows of its own: it's inside what was baked
+    vec3 c = vC * (uSky * 1.3 + uKeyCol * .34 + uFill[room].rgb * 1.5 + .012) * uFill[room].a * uExpo;
+    O = vec4(pow(c / (1. + c), vec3(1. / 2.2)), 1.); return;
+  }
   if (kind == 1u || kind == 2u) {                          // oak boards: staggered, each its own tone, a grain, a seam
     if (kind == 2u) q = q.yx;
     float w = 13., row = floor(q.y / w), run = (q.x + hash(vec2(row, 3.)) * 300.) / 170., b = floor(run), id = hash(vec2(row, b) * .37);
@@ -120,14 +124,18 @@ void main() {
   }
   if (kind == 12u) {                                       // glass: sky by day, the room's light by night
     float f = .08 + .92 * pow(1. - sat(abs(dot(N, V))), 4.), lit = dot(fill.rgb, vec3(.33));
-    vec3 c = uSky * (.5 + f) + fill.rgb * 3.2 + uKeyCol * .05; float al = sat(.26 + f + lit * 1.6);
+    vec3 r = reflect(-V, N); float up = sat(r.y * .7 + .35), day = sat(dot(uSky, vec3(2.)));
+    vec3 c = mix(uGnd * 3., uSky * vec3(2., 2.5, 3.2), up) * (.6 + f) + vec3(.8, .9, 1.) * smoothstep(.62, .66, fract((vP.x + vP.z) * .008 + vP.y * .012)) * .12 * day + fill.rgb * 3.2;
+    float al = sat(.42 + f + lit * 1.6);
     c *= fill.a; c = c * uExpo; c = c / (1. + c * .6);
     O = vec4(pow(c, vec3(1. / 2.2)) * al, al); return;
   }
   vec3 c = alb * light + spec + emit;
   c *= fill.a * uExpo;
-  c = (c * (2.51 * c + .03)) / (c * (2.43 * c + .59) + .14);   // filmic: lamps roll off instead of clipping
-  c = pow(sat(c.r) * vec3(1., 0., 0.) + sat(c.g) * vec3(0., 1., 0.) + sat(c.b) * vec3(0., 0., 1.), vec3(1. / 2.2));
+  // filmic, on the brightest channel as well as each: a warm lamp rolls off to warm, not to yellow
+  float top = max(max(c.r, c.g), max(c.b, 1e-4)), t = (top * (2.51 * top + .03)) / (top * (2.43 * top + .59) + .14);
+  vec3 f = (c * (2.51 * c + .03)) / (c * (2.43 * c + .59) + .14);
+  c = pow(clamp(mix(c * t / top, f, .4), 0., 1.), vec3(1. / 2.2));
   O = vec4(c + (hash(gl_FragCoord.xy * .0037) - .5) / 200., 1.);   // dithered: dark gradients don't band
 }`;
 
@@ -166,15 +174,15 @@ const smooth = (a: number, b: number, x: number) => { const t = Math.max(0, Math
 
 // The light outside through the day: [hour, key colour × strength, sky, ground, exposure]
 const MOODS: [number, number[], number[], number[], number][] = [
-  [0, [.05, .075, .15], [.018, .026, .05], [.008, .009, .014], 1.15],
-  [5.5, [.06, .08, .15], [.024, .03, .055], [.01, .01, .016], 1.15],
+  [0, [.1, .14, .27], [.036, .05, .09], [.012, .014, .022], 1.15],
+  [5.5, [.1, .14, .25], [.04, .052, .09], [.014, .015, .024], 1.15],
   [7, [1.1, .62, .34], [.17, .17, .22], [.06, .05, .05], 1],
   [10, [1.45, 1.3, 1.08], [.34, .39, .47], [.11, .1, .09], .92],
   [14, [1.5, 1.4, 1.22], [.36, .41, .49], [.12, .11, .1], .9],
   [17.5, [1.35, .8, .42], [.2, .2, .27], [.07, .055, .05], 1],
   [19, [.42, .22, .2], [.07, .065, .11], [.02, .018, .022], 1.1],
-  [20.5, [.05, .075, .15], [.02, .028, .055], [.008, .009, .014], 1.15],
-  [24, [.05, .075, .15], [.018, .026, .05], [.008, .009, .014], 1.15],
+  [20.5, [.1, .14, .27], [.036, .05, .09], [.012, .014, .022], 1.15],
+  [24, [.1, .14, .27], [.036, .05, .09], [.012, .014, .022], 1.15],
 ];
 function moodAt(h: number) {
   const i = Math.max(0, MOODS.findIndex(m => m[0] > h) - 1), [a, b] = [MOODS[i], MOODS[i + 1] ?? MOODS[i]], t = smooth(a[0], b[0], h);
@@ -186,7 +194,7 @@ function moodAt(h: number) {
 export const glReady = () => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; } };
 
 export function createDollhouse(box: HTMLElement, opts: HomeOptions = {}): HomeStage {
-  const { turn = -36, tilt = -46, draggable = true, remember, hour, fill = false, onPick, onToggle, onLight } = opts;
+  const { turn = -36, tilt = -46, draggable = true, remember, hour, fill = false, onPick, onToggle, onLight, onLost } = opts;
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const saved = (() => { try { return remember ? JSON.parse(localStorage.getItem(`valet-view:${remember}`) ?? 'null') : null; } catch { return null; } })();
   box.classList.add('homex', 'gl');
@@ -259,7 +267,6 @@ export function createDollhouse(box: HTMLElement, opts: HomeOptions = {}): HomeS
     const tx = TAN * Math.max(aspect, .01), ty = TAN; let D = 400, ca = 0, cb = 0;
     for (let i = 0; i < 3; i++) {
       D = 0; for (const [a, c, w] of pts) D = Math.max(D, w + Math.abs(a - ca) / tx, w + Math.abs(c - cb) / ty);
-      D *= 1.0;
       let lo = Infinity, hi = -Infinity, l2 = Infinity, h2 = -Infinity;
       for (const [a, c, w] of pts) { const s = D / (D - w), sa = a * s, sc = c * s; lo = Math.min(lo, sa); hi = Math.max(hi, sa); l2 = Math.min(l2, sc); h2 = Math.max(h2, sc); }
       ca = (lo + hi) / 2; cb = (l2 + h2) / 2;
@@ -356,7 +363,7 @@ export function createDollhouse(box: HTMLElement, opts: HomeOptions = {}): HomeS
   };
 
   // ─ the frame
-  let raf = 0, last = 0, clock = 0, rise = 1, onScreen = true, running = false, lastDraw = 0, slow = 0, frames = 0, scale = 1, cleanDirty = 0, cleanT = 0, tagKey = '', hint = 0, down: { x: number; y: number; ry: number; rx: number; t: number } | null = null, dragged = false;
+  let raf = 0, last = 0, clock = 0, rise = 1, onScreen = true, lastDraw = 0, slow = 0, frames = 0, scale = 1, cleanDirty = 0, cleanT = 0, tagKey = '', hint = 0, down: { x: number; y: number; ry: number; rx: number; t: number } | null = null, dragged = false;
   const settled = () => Math.abs(cam.vy) + Math.abs(cam.vx) < .02 && Math.abs(cam.k - (sel ? 1 : 0)) < .002 && rise >= 1 && glowing.every(g => g.wait <= 0 && g.cur.every((v, i) => Math.abs(v - g.to[i]) < .002) && g.reach > .995 || g.to.every(v => v === 0) && g.cur.every(v => v < .002));
   const kick = () => { if (!raf && onScreen && !document.hidden && layout) { last = 0; raf = requestAnimationFrame(frame); } };
 
@@ -370,8 +377,8 @@ export function createDollhouse(box: HTMLElement, opts: HomeOptions = {}): HomeS
     }
     const want = calm || sel ? 0 : smooth(2.5, 5, cam.idle); cam.drift += (want - cam.drift) * Math.min(1, dt * 2);
     // two followers in a row: starts and lands softly
-    const s = 1 - Math.exp(-dt * 7); cam.k1 += ((sel ? 1 : 0) - cam.k1) * s; cam.k += (cam.k1 - cam.k) * s;
-    const z = 1 - Math.exp(-dt * 6); cam.x += (cam.tx - cam.x) * z; cam.y += (cam.ty - cam.y) * z; cam.z += (cam.tz - cam.z) * z; cam.zoom += (cam.tzoom - cam.zoom) * z;
+    const s = calm ? 1 : 1 - Math.exp(-dt * 7); cam.k1 += ((sel ? 1 : 0) - cam.k1) * s; cam.k += (cam.k1 - cam.k) * s;
+    const z = calm ? 1 : 1 - Math.exp(-dt * 6); cam.x += (cam.tx - cam.x) * z; cam.y += (cam.ty - cam.y) * z; cam.z += (cam.tz - cam.z) * z; cam.zoom += (cam.tzoom - cam.zoom) * z;
     if (rise < 1) rise = Math.min(1, rise + dt / 1.5);
     for (const g of glowing) {
       if (g.wait > 0) { g.wait -= dt; continue; }
@@ -381,10 +388,10 @@ export function createDollhouse(box: HTMLElement, opts: HomeOptions = {}): HomeS
       g.reach = on ? g.reach + (1 - g.reach) * (1 - Math.exp(-dt / (calm ? .001 : .42))) : g.reach < .01 ? 0 : g.reach * Math.exp(-dt * .4);
       if (!on && g.cur[0] < .002) g.reach = 0;
     }
-    // the TV shimmers
     if (data?.robot && sim) {
-      const p = sim.step(dt, data.robot);
-      if (p.moving) stamp(p);
+      const r = data.robot, dock = r.state === 'docked' ? data.dock : undefined;
+      if (calm) { sim.pose.x = dock?.x ?? r.x ?? sim.pose.x; sim.pose.z = dock?.z ?? r.z ?? sim.pose.z; sim.pose.a = dock?.a ?? r.a ?? sim.pose.a; }   // no driving about: it's simply where it is
+      else if (sim.step(dt, r).moving) stamp(sim.pose);
     }
   };
   const stamp = (p: Pose) => {
@@ -411,7 +418,7 @@ export function createDollhouse(box: HTMLElement, opts: HomeOptions = {}): HomeS
       const sum = [0, 0, 0];
       for (const e of r.list) if (e >= 0) for (let n = 0; n < 3; n++) sum[n] += glowing[e].cur[n] * glowing[e].reach * (lit[e].screen ? .3 : 1);
       const mine = pick == null || r.src.id === pick, goal = (mine ? 1 : 1 - cam.k * .62) * (hover === r.i && !sel ? 1.2 : 1);
-      gains[r.i] += (goal - gains[r.i]) * .2;
+      gains[r.i] += (goal - gains[r.i]) * (calm ? 1 : .2);
       fills.set([sum[0] * .1, sum[1] * .1, sum[2] * .1, gains[r.i]], r.i * 4);
     }
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, h); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -450,7 +457,7 @@ export function createDollhouse(box: HTMLElement, opts: HomeOptions = {}): HomeS
       sprite(f.x, f.y + 1, f.z, big, g.cur.map(v => Math.min(1, v) * gain));
     }
     // light falling out through the windows at night, onto the plinth
-    const dark = 1 - smooth(.1, .7, m.key[1]);
+    const dark = 1 - smooth(.2, .7, m.key[1]);
     if (dark > .01) for (const g of layout.gaps) if (g.kind === 'window' && n < MAX_S - 2) {
       const w = layout.walls[g.wall], room = w.a || w.b, out = w.a ? 1 : -1, s = (g.from + g.to) / 2, f = [fills[room * 4], fills[room * 4 + 1], fills[room * 4 + 2]], o = out * 14;
       if (f[0] + f[1] + f[2] > .004) sprite(w.along === 'x' ? s : w.at + o, -.2, w.along === 'x' ? w.at + o : s, 40, f.map(v => v * .5 * dark), true);
@@ -470,15 +477,21 @@ export function createDollhouse(box: HTMLElement, opts: HomeOptions = {}): HomeS
   };
 
   const roomTag = () => {
-    const id = sel?.startsWith('room:') ? Number(sel.slice(5)) : hover ? layout?.rooms[hover - 1]?.src.id : null;
+    const id = sel?.startsWith('room:') ? Number(sel.slice(5)) : !sel && hover ? layout?.rooms[hover - 1]?.src.id : null;
     return data?.rooms.find(r => r.id === id) ?? null;
   };
   const placeTag = () => {
     const r = roomTag(), info = r && layout?.rooms.find(x => x.src.id === r.id);
     if (!r || !info) { if (tagKey) { tagKey = ''; tag.classList.remove('on'); } return; }
-    const on = r.lights.filter(l => l.on).length, n = r.lights.length, sub = sel && clock < hint ? (n ? `Tap again to turn ${on ? 'off' : 'on'}` : '') : n ? (on ? `${on} of ${n} on` : 'Off') : '', key = r.name + sub;
-    if (key !== tagKey) { tagKey = key; tag.innerHTML = ''; const b = document.createElement('b'); b.textContent = r.name; tag.append(b); if (sub) { const e = document.createElement('span'); e.textContent = sub; tag.append(e); } tag.classList.add('on'); }
-    const [x, y] = project(info.cx, 2, info.cz);
+    const on = r.lights.filter(l => l.on).length, n = r.lights.length, picked = !!sel;
+    // the room's own controls are under the model, so once it's picked all that's left to say is the hint
+    const name = picked ? '' : r.name, sub = picked ? (n && clock < hint ? `Tap again to turn ${on ? 'off' : 'on'}` : '') : n ? (on ? `${on} of ${n} on` : 'Off') : '', key = name + sub;
+    if (key !== tagKey) {
+      tagKey = key; tag.textContent = ''; tag.classList.toggle('on', !!key);
+      if (name) tag.append(Object.assign(document.createElement('b'), { textContent: name }));
+      if (sub) tag.append(Object.assign(document.createElement('span'), { textContent: sub }));
+    }
+    const [x, y] = picked ? [box.clientWidth / 2, box.clientHeight - 24] : project(info.cx, 2, info.cz);
     tag.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0) translate(-50%, -50%)`;
   };
 
@@ -486,23 +499,24 @@ export function createDollhouse(box: HTMLElement, opts: HomeOptions = {}): HomeS
     raf = 0;
     const dt = last ? Math.min(.05, (t - last) / 1000) : .016;
     // nothing but the slow drift doesn't need every frame
-    const idle = settled() && !sim?.pose.moving;
+    const idle = settled() && !sim?.pose.moving, asleep = idle && cam.idle > 40;   // an open tab left alone costs nothing
     if (idle && t - lastDraw < 30) { raf = requestAnimationFrame(frame); return; }
     if (last && !idle) { frames++; slow += t - last; if (frames >= 45) { if (slow / frames > 26 && scale > .55) { scale *= .8; size(); } frames = 0; slow = 0; } }
     const gap = lastDraw ? Math.min(.05, (t - lastDraw) / 1000) : dt; last = t; lastDraw = t;
     step(gap); draw();
-    if (running || !idle) { if (!calm || !idle) raf = requestAnimationFrame(frame); }
+    if (!idle || (!calm && !asleep)) raf = requestAnimationFrame(frame);
   }
   const size = () => {
     const w = box.clientWidth; if (!w) return;
-    if (!fill) box.style.height = Math.round(Math.max(w * .6, Math.min(w * .92, 300))) + 'px';
-    const h = box.clientHeight, dpr = Math.min(devicePixelRatio || 1, 2) * scale, cap = Math.min(1, Math.sqrt(2_400_000 / (w * h * dpr * dpr)));
+    if (!fill) box.style.height = !layout || layout.rooms.length ? Math.round(Math.max(w * .6, Math.min(w * .92, 300))) + 'px' : '0';
+    const h = box.clientHeight; if (!h) return;
+    const dpr = Math.min(devicePixelRatio || 1, 2) * scale, cap = Math.min(1, Math.sqrt(2_400_000 / (w * h * dpr * dpr)));
     canvas.width = Math.round(w * dpr * cap); canvas.height = Math.round(h * dpr * cap); aspect = w / Math.max(1, h);
     draw(); kick();
   };
   const ro = new ResizeObserver(size); ro.observe(box);
-  const io = new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; if (onScreen) kick(); }, { rootMargin: '80px' }); io.observe(box);
-  const vis = () => { if (!document.hidden) kick(); };
+  const io = new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; if (onScreen) { cam.idle = Math.min(cam.idle, 30); kick(); } }, { rootMargin: '80px' }); io.observe(box);
+  const vis = () => { if (!document.hidden) { cam.idle = Math.min(cam.idle, 30); kick(); } };
   document.addEventListener('visibilitychange', vis);
   const hours = setInterval(() => { const h = hour ?? new Date().getHours() + new Date().getMinutes() / 60; if (Math.abs(h - bakedHour) > .08) { bakedHour = h; mood = moodAt(h); bakeKey(); gl.bindFramebuffer(gl.FRAMEBUFFER, null); kick(); } }, 60_000);
 
@@ -516,6 +530,7 @@ export function createDollhouse(box: HTMLElement, opts: HomeOptions = {}): HomeS
   const pmove = (e: PointerEvent) => {
     if (!down) {
       if (e.pointerType !== 'mouse') return;
+      if (cam.idle > 30) { cam.idle = 30; kick(); }
       const [x, y] = at(e), p = pickAt(x, y), id = p?.startsWith('room:') ? layout?.rooms.find(r => `room:${r.src.id}` === p)?.i ?? 0 : 0;
       box.classList.toggle('over', !!p);
       if (id !== hover) { hover = id; kick(); }
@@ -551,7 +566,7 @@ export function createDollhouse(box: HTMLElement, opts: HomeOptions = {}): HomeS
   }
 
   const lost = (e: Event) => { e.preventDefault(); cancelAnimationFrame(raf); raf = 0; };
-  canvas.addEventListener('webglcontextlost', lost);
+  canvas.addEventListener('webglcontextlost', lost); canvas.addEventListener('webglcontextrestored', () => onLost?.());
   const api: HomeStage = {
     update(d) {
       data = d;
@@ -559,7 +574,6 @@ export function createDollhouse(box: HTMLElement, opts: HomeOptions = {}): HomeS
       const first = !layout;
       if (s !== shape) { shape = s; const h = hour ?? new Date().getHours() + new Date().getMinutes() / 60; bakedHour = h; mood = moodAt(h); rebuild(d); if (!first) rise = 1; if (first) size(); }
       retarget();
-      running = !calm;
       kick();
     },
     select(id) {
@@ -567,7 +581,6 @@ export function createDollhouse(box: HTMLElement, opts: HomeOptions = {}): HomeS
       const r = id?.startsWith('room:') ? layout?.rooms.find(x => `room:${x.src.id}` === id) : undefined;
       if (r) { cam.tx = r.cx; cam.ty = 8; cam.tz = r.cz; cam.tzoom = Math.max(1.3, Math.min(2.6, 290 / Math.max(r.box.w, r.box.d))); }
       else if (id === 'robot' && sim) { cam.tx = sim.pose.x; cam.ty = 4; cam.tz = sim.pose.z; cam.tzoom = 2.4; }
-      else cam.tzoom = cam.tzoom;
       if (cam.k < .02 && id) { cam.x = cam.tx; cam.y = cam.ty; cam.z = cam.tz; cam.zoom = cam.tzoom; }
       kick();
     },

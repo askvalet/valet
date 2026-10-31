@@ -29,7 +29,7 @@ export function mesher() {
     const [px, pz, ax, az] = q === 0 ? [x, z, nx, nz] : q === 1 ? [-z, x, -nz, nx] : q === 2 ? [-x, -z, -nx, -nz] : [z, -x, nz, -nx];
     const o = n * 6, b = n * 24;
     f[o] = cx + px; f[o + 1] = y; f[o + 2] = cz + pz;
-    i8[b + 12] = ax * 127; i8[b + 13] = ny * 127; i8[b + 14] = az * 127; u[b + 15] = spot[0]; u[b + 19] = spot[1];
+    i8[b + 12] = ax * 127; i8[b + 13] = ny * 127; i8[b + 14] = az * 127; i8[b + 15] = spot[0] - 128; u[b + 19] = spot[1];
     u[b + 16] = c[0]; u[b + 17] = c[1]; u[b + 18] = c[2]; u[b + 20] = c[3]; u[b + 21] = room; u[b + 22] = link; u[b + 23] = wall;
     return n++;
   };
@@ -214,7 +214,7 @@ const PIECES: [RegExp, Build][] = [
     M.box(0, 0, U, V, 0, 18, C.oak, .7); M.box(U / 2 - .2, V - .1, .4, .3, 1, 16, C.walnut); M.box(-.6, -.2, U + 1.2, V + .8, 18, 1.6, C.stone, .4);
     M.cyl(U / 2, V * .55, Math.min(U, V) * .36, 19.6, 2.6, C.porcelain, Math.min(U, V) * .42, 18);
     M.cyl(U / 2, V * .14, .7, 19.6, 5, C.steel, .7, 6); M.box(U / 2 - .6, V * .14, 1.2, V * .2, 24, .9, C.steel);
-    M.box(U * .12, 0, U * .76, .8, 34, 24, C.ink, .4); M.box(U * .14, .8, U * .72, .1, 35, 22, C.glass);
+    M.set({ wall: 1 }); M.box(U * .12, 0, U * .76, .8, 34, 24, C.ink, .4); M.box(U * .14, .8, U * .72, .1, 35, 22, C.stone); M.set({ wall: 0 });
   }],
   [/bath|tub|shower/i, (M, U, V) => {
     M.box(0, 0, U, V, 0, 17, C.porcelain, 2.4);
@@ -287,7 +287,7 @@ export function buildHouse(p: Layout, dock?: { x: number; z: number; a: number }
   }
   const spotOf = ([x, z]: number[]) => [Math.round((x - b.x) / b.w * 255), Math.round((z - b.z) / b.d * 255)], along = (w: Wall, s: number) => w.along === 'x' ? [s, w.at] : [w.at, s];
   const sideOf = (i: number) => ({ room: i, mat: i ? C.plaster : C.outside });
-  const piece = (w: Wall, from: number, to: number, y0: number, y1: number, kill: number) => {
+  const piece = (w: Wall, from: number, to: number, y0: number, y1: number, kill: number, capA = false, capB = false) => {
     // a run of wall, cut into short lengths so the sloping cutaway stays straight
     const T = THICK / 2, n = Math.max(1, Math.round((to - from) / 26)), [A, B] = [sideOf(w.a), sideOf(w.b)];
     const pt = (s: number, c: number, y: number) => w.along === 'x' ? [s, y, w.at + c] : [w.at + c, y, s];
@@ -300,7 +300,7 @@ export function buildHouse(p: Layout, dock?: { x: number; z: number; a: number }
       M.set({ room: w.a || w.b }); M.face([pt(s, -T, y1), pt(e, -T, y1), pt(e, T, y1), pt(s, T, y1)], [0, 1, 0], C.cap);
     }
     const end = (s: number, sign: number) => { const nn = w.along === 'x' ? [sign, 0, 0] : [0, 0, sign]; M.set({ room: w.a || w.b }); M.face([pt(s, -T, y0), pt(s, T, y0), pt(s, T, y1), pt(s, -T, y1)], nn, C.plaster); };
-    end(from, -1); end(to, 1);
+    if (capA) end(from, -1); if (capB) end(to, 1);
     M.set({ wall: 0 });
   };
   const skirt = (w: Wall, from: number, to: number) => {
@@ -312,22 +312,23 @@ export function buildHouse(p: Layout, dock?: { x: number; z: number; a: number }
   };
   p.walls.forEach((w, n) => {
     const gaps = p.gaps.filter(g => g.wall === n).sort((a, b) => a.from - b.from);
-    const ext = (a: boolean) => a ? THICK / 2 : 0;
-    let s = w.from - ext(true);
+    // corners overlap by half a wall; a wall carrying straight on into the next doesn't
+    const joins = (at: number) => p.walls.some(o => o !== w && o.along === w.along && o.at === w.at && (o.from === at || o.to === at));
+    let s = w.from - (joins(w.from) ? 0 : THICK / 2 - .3), open = false;
     for (const g of gaps) {
-      if (g.from > s) { piece(w, s, g.from, 0, WALL, 0); skirt(w, s, g.from); }
+      if (g.from > s) { piece(w, s, g.from, 0, WALL, 0, open && g.kind !== 'window', g.kind !== 'window'); skirt(w, s, g.from); }
       if (g.kind === 'window') window_(w, g); else if (g.kind === 'door') doorLeaf(w, g);
-      s = g.to;
+      s = g.to; open = g.kind !== 'window';
     }
-    const e = w.to + ext(true);
-    if (e > s) { piece(w, s, e, 0, WALL, 0); skirt(w, s, e); }
+    const e = w.to + (joins(w.to) ? 0 : THICK / 2 - .3);
+    if (e > s) { piece(w, s, e, 0, WALL, 0, open); skirt(w, s, e); }
   });
   function window_(w: Wall, g: Gap) {
     const S = 22, T = 66, room = w.a || w.b, H = THICK / 2;
     piece(w, g.from, g.to, 0, S, 0); skirt(w, g.from, g.to); M.set({ spot: spotOf(along(w, (g.from + g.to) / 2)) }); piece(w, g.from, g.to, T, WALL, T);
     const pt = (s: number, c: number, y: number) => w.along === 'x' ? [s, y, w.at + c] : [w.at + c, y, s];
     const sign = w.a ? 1 : -1, nr = w.along === 'x' ? [0, 0, sign] : [sign, 0, 0];
-    M.set({ room, wall: 1 });
+    M.set({ room, wall: S + 2, spot: spotOf(along(w, (g.from + g.to) / 2)) });
     // a frame and a glazing bar, then the pane
     const n = Math.max(1, Math.round((g.to - g.from) / 30)), step = (g.to - g.from) / n;
     for (let i = 0; i <= n; i++) { const s = g.from + i * step, [x, z, W, D] = w.along === 'x' ? [s - .8, w.at - 1.2, 1.6, 2.4] : [w.at - 1.2, s - .8, 2.4, 1.6]; M.box(x, z, W, D, S, T - S, C.ink); }
@@ -340,13 +341,11 @@ export function buildHouse(p: Layout, dock?: { x: number; z: number; a: number }
     M.set({ layer: 0, wall: 0 });
   }
   function doorLeaf(w: Wall, g: Gap) {
-    // left ajar into the room on its high side
-    const hinge = g.hinge ? g.from : g.to, sign = g.hinge ? 1 : -1, len = g.to - g.from - 2, ang = 72 * Math.PI / 180, room = w.b;
-    const ca = Math.cos(ang) * len * sign, sa = Math.sin(ang) * len, T = THICK / 2;
-    const pt = (s: number, c: number, y: number) => w.along === 'x' ? [s, y, w.at + T + c] : [w.at + T + c, y, s];
-    const nnx = -sa / len, nnz = ca / len * sign, nr = w.along === 'x' ? [nnx * sign, 0, nnz * sign] : [nnz * sign, 0, nnx * sign];
-    M.set({ room, wall: 1 });
-    for (const off of [-.7, .7]) M.face([pt(hinge + off * nnx, off * nnz, 0), pt(hinge + ca + off * nnx, sa + off * nnz, 0), pt(hinge + ca + off * nnx, sa + off * nnz, 66), pt(hinge + off * nnx, off * nnz, 66)], off > 0 ? nr : nr.map(v => -v), C.white);
+    // a slab of oak, standing open against the room on the wall's high side
+    const at = (g.hinge ? g.from + 1 : g.to - 3), len = g.to - g.from - 3, c = w.at + THICK / 2, side = w.b ? w.b : w.a;
+    M.set({ room: side, wall: 1 });
+    if (w.along === 'x') { M.box(at, c, 2, len, 0, 68, C.ash, .3); M.cyl(at + (g.hinge ? 2.8 : -.8), c + len - 4, .8, 31, 1.2, C.brass, .8, 6); }
+    else { M.box(c, at, len, 2, 0, 68, C.ash, .3); M.cyl(c + len - 4, at + (g.hinge ? 2.8 : -.8), .8, 31, 1.2, C.brass, .8, 6); }
     M.set({ wall: 0 });
   }
   // art on the tall walls, one per room, wherever there's clear wall

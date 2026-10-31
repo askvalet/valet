@@ -13,7 +13,7 @@ export interface Emitter { x: number; y: number; z: number; reach: number; room:
 export interface Room { i: number; src: PlanRoom; cx: number; cz: number; box: Rect; floors: Rect[]; list: number[] }
 export interface Layout {
   x0: number; z0: number; cols: number; rows: number; grid: Int16Array;
-  bounds: Rect; rooms: Room[]; walls: Wall[]; gaps: Gap[]; emitters: Emitter[]; fixtures: Fixture[]; furniture: PlanData['furniture'];
+  bounds: Rect; rooms: Room[]; walls: Wall[]; gaps: Gap[]; emitters: Emitter[]; fixtures: Fixture[]; furniture: NonNullable<PlanData['furniture']>;
 }
 
 const FLAT = /rug|carpet/i, TALL = /fridge|wardrobe|closet|shelf|bookcase/i;
