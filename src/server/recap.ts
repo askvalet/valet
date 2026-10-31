@@ -61,7 +61,7 @@ export async function buildRecap(instances: Map<string, Instance>, year: number,
   const across = acrossServices(facts, year, now);
   const everything = [...valid.flat(), ...across].sort(bestFirst);
   const seen = new Map<string, number>();
-  const slides = spread([...valid.flatMap(l => [...l].sort(bestFirst).slice(0, PER_SERVICE)), ...across].sort(bestFirst)
+  const slides = spread([...valid.flatMap(l => [...new Set(l.map(s => s.theme))].flatMap(t => l.filter(s => s.theme === t).sort(bestFirst).slice(0, PER_SERVICE))), ...across].sort(bestFirst)
     .filter(s => { const n = (seen.get(s.theme ?? s.id) ?? 0) + 1; seen.set(s.theme ?? s.id, n); return n <= PER_THEME; }));
   // who you are: the strongest trait any slide claims. Plugins can bring their own.
   const persona = slides.flatMap(s => s.trait ? [s.trait] : []).sort((a, b) => b.strength - a.strength)[0] ?? FALLBACK;
