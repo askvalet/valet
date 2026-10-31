@@ -34,7 +34,7 @@ export default defineIntegration({
           async fetch() {
             const s = await state(), bad = s.indexers?.filter(i => !i.ok) ?? [], missing = (s.subs?.episodes ?? 0) + (s.subs?.movies ?? 0);
             return {
-              type: 'status', title: 'Indexers', icon: 'search', href: cfg.prowlarr?.href ?? cfg.prowlarr?.url,
+              type: 'status', layout: 'wall', title: 'Indexers', icon: 'search', href: cfg.prowlarr?.href ?? cfg.prowlarr?.url,
               note: s.subs ? (missing ? `${missing} missing subtitles` : 'subtitles complete') : undefined,
               summary: { label: 'Indexers', icon: 'search', value: s.indexers ? `${s.indexers.length - bad.length}/${s.indexers.length}` : '–', tone: bad.length ? 'warn' : 'good',
                 sub: bad.length ? `${bad.map(b => b.name).join(', ')} failing` : 'All working', detail: s.subs ? (missing ? `${missing} subs missing` : 'subs complete') : undefined },
