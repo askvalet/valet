@@ -436,7 +436,7 @@ function Article({ card, run }: { card: ArticleCard; run?: RunAction }) {
   if (!a?.headline) return <div className="relative grid h-full min-h-[200px] place-items-center rounded-2xl bg-card text-sm text-muted-foreground shadow-card">{card.empty ?? 'Nothing saved to read'}<div className="article-corner"><UndoBar a={arch} /></div></div>;
   const n = pile.length, link = a.link ?? card.href;
   return (
-    <div className={cn('article lift', a.id && arch.leaving.includes(a.id) && 'is-leaving')}>
+    <div className={cn('article', link && 'lift', a.id && arch.leaving.includes(a.id) && 'is-leaving')}>
       {a.image && <img key={a.image} src={a.image} alt="" className="article-page" />}
       {link && <a href={link} target="_blank" rel="noreferrer" aria-label={a.headline} className="article-open" />}
       {arch.last || arch.slip ? <div className="article-corner"><UndoBar a={arch} /></div> : card.archived && run ? <div className="article-corner"><SeeArchived href={card.archived} className="article-chip" /></div> : null}
@@ -1197,7 +1197,7 @@ function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?
       <div className="grid aspect-[2/1] grid-cols-4 grid-rows-2 gap-1.5 overflow-hidden rounded-2xl">
         {[first, ...rest.slice(0, 4)].map((p, k) => (
           <a key={k} href={p.href} target="_blank" rel="noreferrer" className={cn('group/ph relative overflow-hidden bg-muted', k === 0 && 'col-span-2 row-span-2')}>
-            <Art src={p.image} alt={p.title ?? ''} className="size-full object-cover transition-transform duration-700 ease-out group-hover/ph:scale-[1.03]" />
+            <Art src={p.image} alt={p.title ?? ''} className={cn('size-full object-cover transition-transform duration-700 ease-out', p.href && 'group-hover/ph:scale-[1.03]')} />
             {k === 0 && p.badge && <span className="absolute bottom-3 left-3 rounded-full bg-black/50 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md">{p.badge}</span>}
           </a>
         ))}
@@ -1207,7 +1207,7 @@ function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?
   const cur = items[i], [lead, ...rest] = [cur.badge, cur.title, cur.subtitle].filter(Boolean);
   return (
     <a href={cur.href} target="_blank" rel="noreferrer" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
-      className={cn('lift relative isolate block overflow-hidden rounded-[calc(var(--radius)*1.6)] bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/.55)]', fill ? 'h-full min-h-[280px]' : 'aspect-[4/3] max-h-[460px] w-full')}>
+      className={cn(cur.href && 'lift', 'relative isolate block overflow-hidden rounded-[calc(var(--radius)*1.6)] bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/.55)]', fill ? 'h-full min-h-[280px]' : 'aspect-[4/3] max-h-[460px] w-full')}>
       {items.map((p, k) => (
         <Art key={k} src={p.image} alt={p.title ?? ''} className={cn('photo-slide absolute inset-0 -z-10 size-full object-cover', k === i && 'is-on')}
           style={bars[k] && { height: `${100 / (1 - bars[k][0] - bars[k][1])}%`, top: `${-100 * bars[k][0] / (1 - bars[k][0] - bars[k][1])}%` }}
@@ -1371,7 +1371,7 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
   const scene = !compact && card ? card.type === 'schedule' ? <SkyWash card={card} /> : card.type === 'verse' && card.arabic ? <Lattice /> : null : null;
   return (
     <Dense.Provider value={!!compact}><WhyAsk.Provider value={why.ask}>
-    <Card className={cn('@container/card min-w-0 shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'gap-4 py-5', !compact && card?.type === 'verse' && 'lift', bare && 'border-0 bg-transparent py-0 shadow-none', fill && 'h-full', scene && 'relative isolate overflow-hidden')}>
+    <Card className={cn('@container/card min-w-0 shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'gap-4 py-5', !compact && card?.type === 'verse' && card.href && 'lift', bare && 'border-0 bg-transparent py-0 shadow-none', fill && 'h-full', scene && 'relative isolate overflow-hidden')}>
       {scene}
       {t && !bare && !headless && (
         <CardHeader className={cn('flex items-center gap-2', compact ? 'px-3.5' : 'px-5')}>

@@ -495,7 +495,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .window-page img { display: block; transition: transform 1s cubic-bezier(.3, 0, .2, 1); }
 @keyframes desk-rise { from { opacity: 0; transform: translateY(14px); } }
 @media (hover: hover) and (pointer: fine) {
-  .window:hover { transform: translateY(-3px); border-color: rgb(255 255 255 / .22); }
+  .window[href]:hover { transform: translateY(-3px); border-color: rgb(255 255 255 / .22); }
   .window:hover .window-bar > i:nth-child(1) { background: #ff5f57; }
   .window:hover .window-bar > i:nth-child(2) { background: #febc2e; }
   .window:hover .window-bar > i:nth-child(3) { background: #28c840; }

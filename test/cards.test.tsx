@@ -107,6 +107,19 @@ test('hover lift stays on links: a plain card and a tile with nowhere to go sit 
   assert.match(renderToString(<SummaryTile s={{ label: 'x', value: 1 }} href="http://x" />), /\blift\b/);
 });
 
+test('without a link nothing looks clickable: rows are plain, posters and pictures sit still', () => {
+  const rows = (href?: string, minimal?: boolean) => renderToString(<TooltipProvider><Widget card={{ type: 'status', items: [{ name: 'x', ok: true, href }] }} minimal={minimal} /></TooltipProvider>);
+  for (const minimal of [false, true]) {
+    assert.doesNotMatch(rows(undefined, minimal), /<a |hover:bg-accent/);
+    assert.match(rows('http://x', minimal), /<a [^>]*hover:bg-accent/);
+  }
+  const shelf = (href?: string) => html({ type: 'shelf', items: [{ title: 'T', href }] });
+  assert.doesNotMatch(shelf(), /group-hover:|<a /); assert.match(shelf('http://x'), /group-hover:-translate-y-1/);
+  assert.doesNotMatch(html({ type: 'photos', style: 'flashback', items: [{ image: '/a.jpg' }] }), /\blift\b/);
+  assert.match(html({ type: 'photos', style: 'flashback', items: [{ image: '/a.jpg', href: 'http://x' }] }), /\blift\b/);
+  assert.doesNotMatch(html({ type: 'verse', title: 'v', english: 'e', reference: 'r' }), /\blift\b/);
+});
+
 test('archive offers a way to find what went, only where it can act', () => {
   const card = { type: 'shelf', layout: 'windows', title: 'Saved', archived: 'http://k/archive', items: [{ id: 'a', title: 'A', note: 'n' }] };
   assert.match(html(card, { run: true }), /See archived/); assert.doesNotMatch(html(card), /See archived/);
