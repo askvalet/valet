@@ -117,7 +117,7 @@ function RoundButton({ label, active, onClick, children, tip = 'right', words }:
 function DockButton({ name, active, onClick, children }: { name: string; active?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button onClick={onClick} aria-current={active ? 'page' : undefined}
-      className={cn('press relative flex h-[46px] min-w-[54px] flex-[1_0_auto] flex-col items-center justify-center gap-0.5 rounded-[23px] px-1.5 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 focus-visible:ring-inset [&_svg]:size-[18px]',
+      className={cn('press relative flex h-[46px] min-w-[54px] flex-[1_0_auto] flex-col items-center justify-center gap-0.5 rounded-[23px] px-1.5 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 focus-visible:ring-inset [&_svg]:size-[18px]',
         active ? 'bg-[var(--nav-pill,var(--foreground))] text-[var(--nav-pill-ink,#fff)] dark:text-[var(--nav-pill-ink,#000)]' : 'text-foreground/85')}>
       {children}<span className="max-w-[64px] truncate text-[10.5px] leading-3 font-medium">{name}</span>
     </button>
@@ -168,6 +168,10 @@ function Walls({ list, every }: { list: Paper[]; every?: number }) {
 function Wall({ src, style }: { src: string; style?: React.CSSProperties }) {
   return <img src={src} alt="" style={style} ref={el => { if (el?.complete && el.naturalWidth) el.classList.add('is-on'); }} onLoad={e => e.currentTarget.classList.add('is-on')} onError={e => { e.currentTarget.style.display = 'none'; }} />;
 }
+
+const arrived = new Set<string>();
+/** A fade the first time something lands on the page, and only then: a tab you come back to is already there. */
+const arrival = (key: string) => { if (arrived.has(key)) return ''; arrived.add(key); return 'fade-in-soft'; };
 
 /** A line or a block that opens and closes instead of jumping, and keeps its words while it closes. */
 function Fold({ open, className, children }: { open: boolean; className?: string; children: React.ReactNode }) {
@@ -306,7 +310,7 @@ function Home({ account }: { account: boolean }) {
   const [chatOpen, setChatOpen] = useState(false);
   const wide = useWide();
   const phone = useWide('(max-width: 639px)');
-  const bar = useRef<HTMLDivElement>(null);
+  const bar = useRef<HTMLDivElement>(null), flipped = useRef(false);
   // the chat sheet follows the on-screen keyboard (phones report it through the visual viewport)
   useEffect(() => {
     const v = window.visualViewport, root = document.documentElement.style;
@@ -470,14 +474,14 @@ function Home({ account }: { account: boolean }) {
                 {/* centred when it fits, scrolls from the start when it doesn't */}
                 <div className={cn('flex max-w-full flex-wrap justify-center gap-1.5', h?.align === 'left' ? 'mr-auto' : h?.align === 'right' ? 'ml-auto' : 'mx-auto')}>
                   {shownChips.map(({ s, out }) => (
-                    <button key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={cn('shrink-0 rounded-full px-2.5 py-1 text-[12.5px] text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground', out ? 'chip-out' : 'fade-in-soft')} style={out ? { maxWidth: 320 } : undefined}>{s}</button>
+                    <button key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={cn('press shrink-0 rounded-full px-2.5 py-1 text-[12.5px] text-muted-foreground hover:bg-white/10 hover:text-foreground', out ? 'chip-out' : arrival(`chip:${s}`))} style={out ? { maxWidth: 320 } : undefined}>{s}</button>
                   ))}
                 </div>
               </div>
             )}
             <Fold open={pill}><div className={cn('mt-1.5 flex items-center gap-0.5 text-[12px] text-muted-foreground', h?.align === 'left' ? 'justify-start' : h?.align === 'right' ? 'justify-end' : 'justify-center')}>
               <a href="#recap" className="underline-offset-2 transition-colors hover:text-foreground hover:underline">{label('review', { year: now.getFullYear() })}</a>
-              <button onClick={dismissReview} aria-label={label('dismiss')} className="grid size-6 flex-none place-items-center rounded-full transition-colors hover:text-foreground"><X className="size-3" /></button>
+              <button onClick={dismissReview} aria-label={label('dismiss')} className="press grid size-6 flex-none place-items-center rounded-full hover:text-foreground"><X className="size-3" /></button>
             </div></Fold>
           </header>
         );
@@ -495,7 +499,7 @@ function Home({ account }: { account: boolean }) {
               ? (
                 <div className={cn('grid gap-(--card-gap)', sec.grid && 'cols')} style={sec.grid ? gridVars(sec.grid) : { gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${sec.columns ? Math.floor(1200 / sec.columns) - 40 : 420}px), 1fr))` }}>
                   {mediaOf(sec.widgets).map(({ m, href, k }) => (
-                    <a key={k} href={href} target="_blank" rel="noreferrer" className="block min-w-0 transition-transform duration-300 hover:-translate-y-0.5"><NowPlaying m={m} compact /></a>
+                    <a key={k} href={href} target="_blank" rel="noreferrer" className="block min-w-0 transition-[translate] duration-(--dur-pop) hover:-translate-y-0.5"><NowPlaying m={m} compact /></a>
                   ))}
                 </div>
               )
@@ -516,7 +520,7 @@ function Home({ account }: { account: boolean }) {
                   {sec.widgets.flatMap(key => {
                     const o = sec.looks?.[key], c = dress(state[key]?.card, o);
                     if (!c) return [<TileSkeleton key={key} />];
-                    return (c.summaries ?? (c.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} className={cn('fade-in-soft min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} href={c.href} explain={explainFor(key)} /></div>);
+                    return (c.summaries ?? (c.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} className={cn(arrival(key), 'min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} href={c.href} explain={explainFor(key)} /></div>);
                   })}
                 </div>
               )
@@ -625,7 +629,7 @@ function Home({ account }: { account: boolean }) {
           {topbar?.date !== false && <div className={cn('text-xs text-muted-foreground sm:block', topbar?.clock !== false && 'hidden')}>{day(now)}</div>}
           </ClockMonth>}
         </div>}
-        {!wall && topbar?.theme !== false && (page?.look.theme ?? 'auto') === 'auto' && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={theme.toggle}>{theme.dark ? <Sun key="sun" className="spin-in" /> : <Moon key="moon" className="spin-in" />}</RoundButton>}
+        {!wall && topbar?.theme !== false && (page?.look.theme ?? 'auto') === 'auto' && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={() => { flipped.current = true; theme.toggle(); }}>{theme.dark ? <Sun key="sun" className={cn(flipped.current && 'spin-in')} /> : <Moon key="moon" className={cn(flipped.current && 'spin-in')} />}</RoundButton>}
       </div>
 
       <main style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-20', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>

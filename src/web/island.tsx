@@ -20,7 +20,7 @@ function Progress({ a, size = 20 }: { a: Live; size?: number }) {
   return (
     <svg viewBox="0 0 20 20" style={{ width: size, height: size }} className="-rotate-90 shrink-0" aria-hidden>
       <circle cx="10" cy="10" r={r} fill="none" stroke="rgb(255 255 255 / .16)" strokeWidth="2.6" />
-      <circle cx="10" cy="10" r={r} fill="none" stroke={tint(a)} strokeWidth="2.6" strokeLinecap="round" strokeDasharray={`${p * c} ${c}`} className="transition-[stroke-dasharray] duration-700" />
+      <circle cx="10" cy="10" r={r} fill="none" stroke={tint(a)} strokeWidth="2.6" strokeLinecap="round" strokeDasharray={`${p * c} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move)" />
     </svg>
   );
 }
@@ -49,7 +49,7 @@ function Badge({ a, size }: { a: Live; size: number }) {
       {a.pct != null && (
         <svg viewBox="0 0 34 34" className="absolute inset-0 size-full -rotate-90" aria-hidden>
           <circle cx="17" cy="17" r={r} fill="none" stroke="rgb(255 255 255 / .16)" strokeWidth="2.4" />
-          <circle cx="17" cy="17" r={r} fill="none" stroke={tint(a)} strokeWidth="2.4" strokeLinecap="round" strokeDasharray={`${p * c} ${c}`} className="transition-[stroke-dasharray] duration-700" />
+          <circle cx="17" cy="17" r={r} fill="none" stroke={tint(a)} strokeWidth="2.4" strokeLinecap="round" strokeDasharray={`${p * c} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move)" />
         </svg>
       )}
       {a.image ? <img src={a.image} alt="" className="rounded-full object-cover" style={{ width: inner, height: inner }} />
@@ -107,7 +107,7 @@ export default function Island({ live, idle, docked, notice, position = 'top', l
           style={size ? { width: size.w, height: size.h } : undefined}>
           {/* compact: the most important activity */}
           <div ref={small} aria-hidden={expanded}
-            className={cn(layer, 'duration-200', expanded || shout ? 'pointer-events-none scale-95 opacity-0 blur-[3px]' : 'opacity-100 delay-100 duration-300')}>
+            className={cn(layer, 'duration-(--dur-pop)', expanded || shout ? 'pointer-events-none scale-95 opacity-0 blur-[3px]' : 'opacity-100 delay-100 duration-(--dur-move)')}>
             <div className={cn('flex h-[44px] items-center gap-3 pr-4 pl-2', label && !quiet && 'min-w-[280px]', quiet && 'gap-2 pr-3', !live.length && 'h-[30px] w-[170px] min-w-0 p-0')}>
               {main && quiet ? (<>
                 <Art a={main} size={28} />
@@ -120,7 +120,7 @@ export default function Island({ live, idle, docked, notice, position = 'top', l
             </div>
           </div>
           {/* a notice: icon or artwork, the news, a line under it */}
-          <div ref={loud} aria-live="polite" className={cn(layer, shout ? 'opacity-100 delay-100 duration-300' : 'pointer-events-none scale-95 opacity-0 blur-[3px] duration-200')}>
+          <div ref={loud} aria-live="polite" className={cn(layer, shout ? 'opacity-100 delay-100 duration-(--dur-move)' : 'pointer-events-none scale-95 opacity-0 blur-[3px] duration-(--dur-pop)')}>
             {shout && (
               <div className="flex h-[58px] min-w-[300px] items-center gap-3 pr-5 pl-2.5">
                 {shout.image ? <img src={shout.image} alt="" className="size-10 rounded-[11px] object-cover" />
@@ -134,7 +134,7 @@ export default function Island({ live, idle, docked, notice, position = 'top', l
           </div>
           {/* open: everything that's live */}
           <div ref={big} aria-hidden={!expanded}
-            className={cn(layer, expanded && !shout ? 'opacity-100 delay-100 duration-300' : 'pointer-events-none scale-[.97] opacity-0 blur-[3px] duration-150')}>
+            className={cn(layer, expanded && !shout ? 'opacity-100 delay-100 duration-(--dur-move)' : 'pointer-events-none scale-[.97] opacity-0 blur-[3px] duration-(--dur-press)')}>
             <div className="w-[min(420px,calc(100vw-24px))] space-y-1 p-3 pt-4">
               {live.map((a, i) => (
                 <a key={a.key} href={a.href} target="_blank" rel="noreferrer" tabIndex={expanded ? 0 : -1} onClick={e => e.stopPropagation()}
@@ -149,7 +149,7 @@ export default function Island({ live, idle, docked, notice, position = 'top', l
                     {a.subtitle && <span className="block truncate text-[12px] text-white/55">{a.subtitle}</span>}
                     {a.pct != null && (
                       <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-white/15">
-                        <span className="block h-full rounded-full transition-[width] duration-700" style={{ width: `${Math.round(a.pct * 100)}%`, background: tint(a) }} />
+                        <span className="block h-full rounded-full transition-transform duration-(--dur-move)" style={{ transform: `translateX(${Math.round(a.pct * 100) - 100}%)`, background: tint(a) }} />
                       </span>
                     )}
                   </span>
@@ -162,7 +162,7 @@ export default function Island({ live, idle, docked, notice, position = 'top', l
         {/* the others ride alongside as bubbles, like the iPhone's split island: artwork inside a progress ring */}
         {rest.slice(0, 2).map(a => (
           <div key={a.key} title={`${a.title}${a.trailing ? ` · ${a.trailing}` : ''}`}
-            className={cn('island-bubble grid shrink-0 place-items-center rounded-full bg-black text-white transition-[opacity,scale] duration-300',
+            className={cn('island-bubble grid shrink-0 place-items-center rounded-full bg-black text-white transition-[opacity,scale] duration-(--dur-move)',
               docked ? 'mt-1 size-[36px]' : 'size-[42px]', (expanded || shout || quiet) && 'pointer-events-none scale-50 opacity-0')}>
             <Badge a={a} size={docked ? 34 : 36} />
           </div>

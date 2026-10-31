@@ -55,7 +55,7 @@ function Spark({ points, tone }: { points: number[]; tone?: Tone }) {
 
 const Bar = ({ pct, tone }: { pct: number; tone?: Tone }) => (
   <div role="progressbar" aria-valuenow={Math.round(pct * 100)} aria-valuemin={0} aria-valuemax={100} className="h-1 overflow-hidden rounded-full bg-primary/20">
-    <div className={cn('h-full rounded-full bg-primary transition-[width] duration-700 ease-out', toneBar[tone ?? 'neutral'])} style={{ width: `${Math.max(1.5, Math.min(100, pct * 100))}%` }} />
+    <div className={cn('h-full rounded-full bg-primary transition-transform duration-(--dur-move) ease-out', toneBar[tone ?? 'neutral'])} style={{ transform: `translateX(${Math.max(1.5, Math.min(100, pct * 100)) - 100}%)` }} />
   </div>
 );
 
@@ -172,7 +172,7 @@ function Temps({ card }: { card: ListCard }) {
             </div>
             <div className="reading mt-1.5" role="meter" aria-label={`${it.title} temperature`} aria-valuenow={Math.round(at * 100)} aria-valuemin={0} aria-valuemax={100} aria-valuetext={it.meta}>
               <b style={{ left: `${lo * 100}%`, width: `${(hi - lo) * 100}%` }} />
-              <i className={cn(it.tone === 'bad' ? 'bg-bad' : it.tone === 'warn' ? 'bg-warn' : 'bg-foreground/55')} style={{ width: `${at * 100}%` }} />
+              <i className={cn(it.tone === 'bad' ? 'bg-bad' : it.tone === 'warn' ? 'bg-warn' : 'bg-foreground/55')} style={{ transform: `translateX(${at * 100 - 100}%)` }} />
             </div>
             {it.subtitle && <div className={cn('mt-1 truncate text-xs', it.tone === 'bad' ? 'text-bad' : 'text-muted-foreground')}>{it.subtitle}</div>}
           </div>
@@ -259,7 +259,7 @@ function WhyNote({ note, close }: { note: { busy: boolean; text?: string } | nul
   return (
     <div className="why-note mt-3 flex items-start gap-2 rounded-xl bg-white/[.06] px-3 py-2 text-[13px] leading-relaxed">
       <span className={cn('min-w-0 flex-1', note.busy && 'chat-shimmer')}>{note.busy ? 'Looking into it' : note.text}</span>
-      {!note.busy && <button type="button" aria-label="Dismiss" onClick={close} className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"><X className="size-3.5" /></button>}
+      {!note.busy && <button type="button" aria-label="Dismiss" onClick={close} className="press shrink-0 text-muted-foreground hover:text-foreground"><X className="size-3.5" /></button>}
     </div>
   );
 }
@@ -474,8 +474,9 @@ function Links({ card }: { card: LinksCard }) {
 function Art({ src, className, alt = '', style, onLoaded }: { src?: string; className?: string; alt?: string; style?: React.CSSProperties; onLoaded?: (img: HTMLImageElement) => void }) {
   const [ready, setReady] = useState(false);
   if (!src) return null;
-  return <img src={src} alt={alt} loading="lazy" decoding="async" style={style} onLoad={e => { setReady(true); onLoaded?.(e.currentTarget); }}
-    className={cn('transition-opacity duration-700 ease-out', ready ? 'opacity-100' : 'opacity-0', className)} />;
+  // one the browser already has is simply there: a tab you come back to doesn't fade its pictures up again
+  return <img src={src} alt={alt} loading="lazy" decoding="async" style={style} ref={el => { if (el?.complete && el.naturalWidth) setReady(true); }} onLoad={e => { setReady(true); onLoaded?.(e.currentTarget); }}
+    className={cn('transition-opacity duration-(--dur-move) ease-out', ready ? 'opacity-100' : 'opacity-0', className)} />;
 }
 
 /** One stream as a cinematic tile: the backdrop is the card, details float over a soft scrim. */
@@ -508,7 +509,7 @@ export function NowPlaying({ m, compact, source }: { m: MediaItem; compact?: boo
             {/* a status, not a button: nothing here controls the stream */}
             {m.icon ? <Icon name={m.icon} className="size-3.5 shrink-0" /> : <span className={cn('np-state', m.state === 'paused' && 'is-paused')} role="img" aria-label={m.state === 'paused' ? 'Paused' : m.state === 'buffering' ? 'Buffering' : 'Playing'} />}
             <div className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/25">
-              <div className="h-full rounded-full bg-white transition-[width] duration-1000" style={{ width: `${Math.round((m.pct ?? 0) * 100)}%` }} />
+              <div className="h-full rounded-full bg-white transition-transform duration-(--dur-move)" style={{ transform: `translateX(${Math.round((m.pct ?? 0) * 100) - 100}%)` }} />
             </div>
             {m.remaining && <span className="shrink-0 text-xs tabular text-white/80">{m.remaining}</span>}
           </div>
@@ -555,7 +556,7 @@ function Media({ card, compact, run }: { card: MediaCard; compact?: boolean; run
         const stall = stallOf(m);
         return (
           <div key={i} className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden px-4 py-2.5">
-            {m.pct != null && <span className={cn('absolute inset-y-0 left-0 -z-10 transition-[width] duration-1000 ease-out', stall ? 'bg-warn/15' : 'bg-primary/20')} style={{ width: `${m.pct * 100}%` }} />}
+            {m.pct != null && <span className={cn('absolute inset-0 -z-10 transition-transform duration-(--dur-move) ease-out', stall ? 'bg-warn/15' : 'bg-primary/20')} style={{ transform: `translateX(${m.pct * 100 - 100}%)` }} />}
             {m.image ? <Art src={m.image} className="h-12 w-8 shrink-0 rounded-md object-cover" /> : <span className="grid h-12 w-8 shrink-0 place-items-center rounded-md bg-white/10 text-muted-foreground"><Icon name={m.icon ?? 'film'} className="size-4" /></span>}
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium">{m.title}</div>
@@ -637,7 +638,7 @@ function Spotlight({ card, header }: { card: ShelfCard; header?: ReactNode }) {
       <div className="mb-3 flex items-center gap-2">{header}</div>
       <div className="grid gap-4 @4xl/main:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <Tile href={first.href} className="group relative block aspect-[16/9] overflow-hidden rounded-2xl @4xl/main:aspect-auto @4xl/main:h-full bg-muted shadow-[0_18px_40px_-20px_rgb(0_0_0/.6)]">
-          <Art src={first.backdrop ?? first.image} alt={first.title} className={cn('absolute inset-0 size-full object-cover transition-transform duration-700 ease-out', first.href && 'group-hover:scale-[1.03]')} />
+          <Art src={first.backdrop ?? first.image} alt={first.title} className={cn('absolute inset-0 size-full object-cover transition-transform duration-(--dur-move) ease-out', first.href && 'group-hover:scale-[1.03]')} />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-4 text-white">
             {first.backdrop && first.image && <Art src={first.image} alt="" className="h-[92px] w-[62px] shrink-0 rounded-lg object-cover shadow-lg" />}
@@ -777,7 +778,7 @@ function ShelfRow({ card, header, small, beside, lines }: { card: ShelfCard; hea
             const href = it.cta?.href ?? it.href;
             const inner = (
               <>
-                <div className={cn('relative overflow-hidden rounded-xl bg-muted shadow-[0_10px_24px_-12px_rgb(0_0_0/0.45)] transition-all duration-300 ease-out', href && 'group-hover:-translate-y-1 group-hover:shadow-[0_18px_32px_-12px_rgb(0_0_0/0.5)]', ratio)}>
+                <div className={cn('relative overflow-hidden rounded-xl bg-muted shadow-[0_10px_24px_-12px_rgb(0_0_0/0.45)] transition-[translate,box-shadow] duration-(--dur-pop) ease-out', href && 'group-hover:-translate-y-1 group-hover:shadow-[0_18px_32px_-12px_rgb(0_0_0/0.5)]', ratio)}>
                   <Art src={it.image} alt={it.title} className="size-full object-cover" />
                   {it.badge && !lines && <span className={cn('absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[10.5px] font-medium text-white backdrop-blur-md', it.badge === 'Ready' ? 'bg-good/80' : it.badge === 'Today' ? 'bg-primary/85' : 'bg-black/55')}>{it.badge}</span>}
                   {lines && <i className={`ticket-line is-${lineOf(it)}`} />}
@@ -1196,7 +1197,7 @@ function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?
       <div className="grid aspect-[2/1] grid-cols-4 grid-rows-2 gap-1.5 overflow-hidden rounded-2xl">
         {[first, ...rest.slice(0, 4)].map((p, k) => (
           <a key={k} href={p.href} target="_blank" rel="noreferrer" className={cn('group/ph relative overflow-hidden bg-muted', k === 0 && 'col-span-2 row-span-2')}>
-            <Art src={p.image} alt={p.title ?? ''} className={cn('size-full object-cover transition-transform duration-700 ease-out', p.href && 'group-hover/ph:scale-[1.03]')} />
+            <Art src={p.image} alt={p.title ?? ''} className={cn('size-full object-cover transition-transform duration-(--dur-move) ease-out', p.href && 'group-hover/ph:scale-[1.03]')} />
             {k === 0 && p.badge && <span className="absolute bottom-3 left-3 rounded-full bg-black/50 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md">{p.badge}</span>}
           </a>
         ))}
@@ -1222,7 +1223,7 @@ function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?
         </div>
         {items.length > 1 && (
           <div className="mb-1 flex shrink-0 gap-1">
-            {items.slice(0, 8).map((_, k) => <span key={k} className={cn('h-1.5 rounded-full bg-white transition-all duration-500', k === i % 8 ? 'w-4 opacity-90' : 'w-1.5 opacity-40')} />)}
+            {items.slice(0, 8).map((_, k) => <span key={k} className={cn('h-1.5 rounded-full bg-white transition-opacity', k === i % 8 ? 'w-4 opacity-90' : 'w-1.5 opacity-40')} />)}
           </div>
         )}
       </div>
@@ -1343,24 +1344,24 @@ export const TileSkeleton = () => (
 );
 
 function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, fill, kind, explain, failed }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; fill?: boolean; kind?: string; explain?: Explain; failed?: string }) {
-  const why = useWhy(explain);
+  const why = useWhy(explain), fade = useRef(card ? '' : 'fade-in-soft').current;   // up from its skeleton; a tab you come back to is already there
   // artwork-led cards sit directly on the page, without a card frame
   const actions = card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null;
-  if (card?.type === 'shelf') return <div className="fade-in-soft min-w-0"><Shelf card={card} small={compact} run={run} header={<BareHeader card={card} title={title} status={status} />} />{actions}</div>;
+  if (card?.type === 'shelf') return <div className={cn(fade, 'min-w-0')}><Shelf card={card} small={compact} run={run} header={<BareHeader card={card} title={title} status={status} />} />{actions}</div>;
   // a flashback is all picture: its heading sits on the photo, so the card's edges line up with its neighbours
   if (card?.type === 'article') return <Article card={card} run={run} />;
   if (card?.type === 'photos' && card.items.length && !large && card.style !== 'mosaic') return (
-    <div className="fade-in-soft h-full min-w-0"><Photos card={card} fill={fill} label={card.title ?? title} status={status} />{actions}</div>
+    <div className={cn(fade, 'h-full min-w-0')}><Photos card={card} fill={fill} label={card.title ?? title} status={status} />{actions}</div>
   );
   if (card?.type === 'photos') return (
-    <div className="fade-in-soft min-w-0 space-y-3"><BareHeader card={card} title={title} status={status} /><Photos card={card} large={large} />{actions}</div>
+    <div className={cn(fade, 'min-w-0 space-y-3')}><BareHeader card={card} title={title} status={status} /><Photos card={card} large={large} />{actions}</div>
   );
   if (card?.type === 'media') return (
-    <WhyAsk.Provider value={why.ask}><div className={cn('fade-in-soft flex min-w-0 flex-col gap-3', fill && 'h-full')}><BareHeader card={card} title={title} status={status} /><Media card={card} compact={compact} run={run} />{actions}<WhyNote note={why.note} close={why.close} /></div></WhyAsk.Provider>
+    <WhyAsk.Provider value={why.ask}><div className={cn(fade, 'flex min-w-0 flex-col gap-3', fill && 'h-full')}><BareHeader card={card} title={title} status={status} /><Media card={card} compact={compact} run={run} />{actions}<WhyNote note={why.note} close={why.close} /></div></WhyAsk.Provider>
   );
   // the house's cards are glass edge to edge, with no header; in chat they're ordinary cards, below
   if (!compact && (card?.type === 'forecast' || card?.type === 'calendar' || card?.type === 'thermostat')) return (
-    <Card className={cn('fade-in-soft relative isolate min-w-0 gap-0 overflow-hidden py-0 shadow-card', fill && 'h-full')}>
+    <Card className={cn(fade, 'relative isolate min-w-0 gap-0 overflow-hidden py-0 shadow-card', fill && 'h-full')}>
       {status && <div className="absolute top-3 right-4 z-10">{status}</div>}
       {card.type === 'forecast' ? <WeatherCard card={card} /> : card.type === 'calendar' ? <CalendarView card={card} large={large} /> : <Thermostat card={card} run={run} />}
     </Card>
@@ -1384,7 +1385,7 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
       )}
       <CardContent className={cn(bare ? 'p-0' : compact ? 'px-3.5' : 'px-5', fill && 'flex flex-1 flex-col')}>
         {card?.banner && <BannerLine b={card.banner} run={run} />}
-        {card ? <div className={cn('fade-in-soft', fill && 'flex flex-1 flex-col')}><CardBody card={card} run={run} large={large} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /></div> : <CardSkeleton kind={kind} />}
+        {card ? <div className={cn(fade, fill && 'flex flex-1 flex-col')}><CardBody card={card} run={run} large={large} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /></div> : <CardSkeleton kind={kind} />}
         {card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null}
         <WhyNote note={why.note} close={why.close} />
       </CardContent>
@@ -1446,7 +1447,7 @@ function SummaryTileView({ s, href, explain }: { s: Summary; href?: string; expl
   const art = !!s.image;
   const body = (
     <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift', art && 'border-transparent text-white')} style={{ '--tint': `color-mix(in oklab, ${tintOf(s.icon ?? s.label)} 80%, var(--foreground))` } as React.CSSProperties}>
-      {art && <><Art src={s.image} className={cn('absolute inset-0 -z-10 size-full object-cover transition-transform duration-700 ease-out', href && 'group-hover/tile:scale-[1.03]')} /><div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(0_0_0/.78),rgb(0_0_0/.42)_38%,transparent_72%)]" /></>}
+      {art && <><Art src={s.image} className={cn('absolute inset-0 -z-10 size-full object-cover transition-transform duration-(--dur-move) ease-out', href && 'group-hover/tile:scale-[1.03]')} /><div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(0_0_0/.78),rgb(0_0_0/.42)_38%,transparent_72%)]" /></>}
       {!art && !s.marks && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} gauge={s.ring != null} /></div>}
       <div className={cn('relative flex flex-1 flex-col p-4', art && '[text-shadow:0_1px_10px_rgb(0_0_0/.7)]')}>
         <div className="flex items-center gap-2.5">
@@ -1485,7 +1486,7 @@ export function Ring({ s }: { s: Summary }) {
         <svg viewBox="0 0 100 100" className="size-full rotate-[135deg]" aria-hidden>
           <circle cx="50" cy="50" r={r} fill="none" stroke="currentColor" strokeOpacity=".12" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} />
           <circle cx="50" cy="50" r={r} fill="none" stroke={color} strokeWidth="7" strokeLinecap="round"
-            strokeDasharray={`${Math.max(0.001, pct) * arc} ${c}`} className="transition-[stroke-dasharray] duration-700 ease-out"
+            strokeDasharray={`${Math.max(0.001, pct) * arc} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move) ease-out"
             style={{ filter: `drop-shadow(0 0 6px color-mix(in srgb, ${color} 45%, transparent))` }} />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -1509,9 +1510,9 @@ function Popover({ group, className, children }: { group: 'ring' | 'wx'; classNa
     ? 'group-hover/ring:opacity-100 group-hover/ring:translate-y-0 group-hover/ring:scale-100 group-focus/ring:opacity-100 group-focus/ring:translate-y-0 group-focus/ring:scale-100'
     : 'group-hover/wx:opacity-100 group-hover/wx:translate-y-0 group-hover/wx:scale-100 group-focus/wx:opacity-100 group-focus/wx:translate-y-0 group-focus/wx:scale-100';
   return (
-    <div className={cn('invisible absolute top-full z-30 pt-3 transition-[visibility] duration-300', show, className,
+    <div className={cn('invisible absolute top-full z-30 pt-3 transition-[visibility] duration-(--dur-pop)', show, className,
       'max-lg:fixed max-lg:inset-x-3 max-lg:top-auto max-lg:bottom-24 max-lg:w-auto max-lg:translate-x-0 max-lg:pt-0')}>
-      <div className={cn('glass-pop origin-top -translate-y-1 scale-95 opacity-0 transition-[opacity,translate,scale] duration-300 ease-out', pop)}>{children}</div>
+      <div className={cn('glass-pop -translate-y-1 scale-95 opacity-0 transition-[opacity,translate,scale] duration-(--dur-pop) ease-out max-lg:origin-bottom', group === 'ring' ? 'origin-top' : 'origin-top-right', pop)}>{children}</div>
     </div>
   );
 }
@@ -1534,11 +1535,11 @@ function MiniRingView({ s }: { s: Summary }) {
   const n = String(s.ring ?? s.value).replace(/%$/, '');
   return (
     <div className="group/ring relative flex flex-col items-center outline-none" tabIndex={0} aria-label={[s.label, s.value, s.detail].filter(Boolean).join(', ')}>
-      <div className="relative size-[32px] transition-transform duration-300 ease-out group-hover/ring:scale-110 sm:size-[38px]">
+      <div className="relative size-[32px] transition-transform duration-(--dur-pop) ease-out group-hover/ring:scale-110 sm:size-[38px]">
         <svg viewBox="0 0 38 38" className="size-full rotate-[135deg]" aria-hidden>
           <circle cx="19" cy="19" r={r} fill="none" stroke="currentColor" strokeOpacity=".16" strokeWidth="3.2" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} />
           <circle cx="19" cy="19" r={r} fill="none" stroke={color} strokeWidth="3.2" strokeLinecap="round"
-            strokeDasharray={`${Math.max(0.001, pct) * arc} ${c}`} className="transition-[stroke-dasharray] duration-700 ease-out" />
+            strokeDasharray={`${Math.max(0.001, pct) * arc} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move) ease-out" />
         </svg>
         <div className="metric absolute inset-0 grid place-items-center text-[11px]">{n.length > 4 ? <Icon name={s.icon} className="size-3.5" /> : <span key={n} className="tick">{n}</span>}</div>
       </div>

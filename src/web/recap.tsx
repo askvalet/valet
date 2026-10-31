@@ -255,7 +255,7 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
           </div>}</Slide>}
       {text && r && <Transcript r={r} heading={heading} closing={closing} list={list} />}
       <div className="sr-only" aria-live="polite">{text ? '' : say}</div>
-      {!!r?.slides.length && <div className="rc-seg" aria-hidden>{Array.from({ length: last + 1 }, (_, n) => <span key={n}><i className={n === i && !done ? 'on' : ''} style={n < i || done || (n === i && choice) ? { width: '100%', animation: 'none' } : n === i ? { animationDuration: `${ms}ms`, animationPlayState: running ? 'running' : 'paused' } : { width: 0 }} /></span>)}</div>}
+      {!!r?.slides.length && <div className="rc-seg" aria-hidden>{Array.from({ length: last + 1 }, (_, n) => <span key={n}><i className={n === i && !done ? 'on' : ''} style={n < i || done || (n === i && choice) ? { animation: 'none' } : n === i ? { animationDuration: `${ms}ms`, animationPlayState: running ? 'running' : 'paused' } : { transform: 'scaleX(0)' }} /></span>)}</div>}
       {hint && i < 2 && !text && <div className="rc-hint">Tap the right to go on, the left to go back. Hold to pause. Arrow keys work too.</div>}
       {!!r?.slides.length && !text && <div className="rc-ctl">
         <button aria-label="Previous" disabled={i === 0} onClick={() => go(-1)} className="press"><ChevronLeft className="size-5" /></button>

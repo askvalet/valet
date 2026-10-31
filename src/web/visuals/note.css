@@ -1,13 +1,13 @@
 /* A number that rolls: only the digits that changed move. A word in a slot: every label a button can wear, stacked, so
    the button is as wide as its longest and changing one never moves anything. */
 .roll { display: inline-block; }
-.roll-on .roll-new { animation: roll-in 260ms var(--ease-out) both; }
+.roll-on .roll-new { animation: roll-in var(--dur-move) var(--ease-out) backwards; }
 @keyframes roll-in { from { opacity: 0; transform: translateY(.4em); } }
 .slots { display: inline-grid; justify-items: center; }
-.slots > span { grid-area: 1 / 1; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: opacity 180ms var(--ease-out), transform 220ms var(--ease-out); }
+.slots > span { grid-area: 1 / 1; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: opacity var(--dur-pop) var(--ease-out), transform var(--dur-pop) var(--ease-out); }
 .slots > span[data-off] { opacity: 0; transform: translateY(4px); }
 .swatch { display: grid; flex: none; place-items: center; width: 32px; height: 32px; border-radius: 99px; outline: none; }
-.swatch > i { display: block; width: 24px; height: 24px; border-radius: 99px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .22); outline: 2px solid transparent; outline-offset: 2px; transition: outline-color 160ms var(--ease-out); }
+.swatch > i { display: block; width: 24px; height: 24px; border-radius: 99px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .22); outline: 2px solid transparent; outline-offset: 2px; transition: outline-color var(--dur-press) var(--ease-out); }
 .swatch[aria-pressed="true"] > i { outline-color: var(--foreground); }
 .swatch:focus-visible { box-shadow: inset 0 0 0 2px var(--ring); }
 .swatch:disabled { opacity: .4; }

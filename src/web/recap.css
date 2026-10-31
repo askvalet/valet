@@ -45,8 +45,8 @@
 
 .rc-glass { margin-top: 22px; padding: 16px 18px; border-radius: 20px; background: rgb(34 34 40 / .5); border: 1px solid rgb(255 255 255 / .14); box-shadow: inset 0 1px 0 rgb(255 255 255 / .12); backdrop-filter: blur(36px) saturate(1.6); }
 .rc-track { position: relative; height: 10px; border-radius: 99px; background: rgb(255 255 255 / .16); overflow: hidden; }
-.rc-track i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: var(--tint); animation: rc-grow 1100ms 350ms var(--ease-out) both; }
-@keyframes rc-grow { from { width: 0; } }
+.rc-track i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: var(--tint); transform-origin: left; animation: rc-grow 1100ms 350ms var(--ease-out) both; }
+@keyframes rc-grow { from { transform: scaleX(0); } }
 .rc-ends { display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; color: rgb(255 255 255 / .75); font-variant-numeric: tabular-nums; }
 .rc-rows { display: grid; gap: 12px; }
 .rc-rows > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; font-size: 15px; font-weight: 500; }
@@ -68,8 +68,9 @@
 .rc-seg { position: absolute; top: 10px; left: 12px; right: 12px; display: flex; gap: 4px; z-index: 3; }
 .rc-seg span { flex: 1; height: 3px; border-radius: 3px; background: rgb(255 255 255 / .26); overflow: hidden; }
 .rc-seg i { display: block; height: 100%; background: #fff; }
-.rc-seg i.on { width: 0; animation: rc-fill linear forwards; }
-@keyframes rc-fill { to { width: 100%; } }
+.rc-seg i { transform-origin: left; }
+.rc-seg i.on { animation: rc-fill linear both; }
+@keyframes rc-fill { from { transform: scaleX(0); } }
 
 /* a number settles digit by digit, the last one first; the hidden digit holds its width and baseline, and at rest the reel is plain text */
 .rc-reel { position: relative; display: inline-block; clip-path: inset(0 -.08em); }
@@ -83,14 +84,14 @@
 .rc-ctl button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 99px; }
 .rc-ctl button:disabled { opacity: .32; }
 .rc-ctl span { margin-left: 8px; font-size: 13px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; color: rgb(255 255 255 / .8); }
-.rc-hint { position: absolute; z-index: 5; left: 16px; right: 16px; top: 76px; width: fit-content; max-width: calc(100% - 32px); margin: 0 auto; padding: 8px 14px; border-radius: 16px; font-size: 14px; line-height: 1.35; text-align: center; background: rgb(0 0 0 / .6); backdrop-filter: blur(24px); animation: rc-fade 300ms both; pointer-events: none; }
+.rc-hint { position: absolute; z-index: 5; left: 16px; right: 16px; top: 76px; width: fit-content; max-width: calc(100% - 32px); margin: 0 auto; padding: 8px 14px; border-radius: 16px; font-size: 14px; line-height: 1.35; text-align: center; background: rgb(0 0 0 / .6); backdrop-filter: blur(24px); animation: rc-fade var(--dur-move) var(--ease-out) both; pointer-events: none; }
 .rc :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .rc-btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 18px; border-radius: 99px; font-size: 14px; font-weight: 500; background: rgb(255 255 255 / .15); }
 .rc-primary { background: #fff; color: #000; font-weight: 600; }
 .rc-choice { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
 
 /* the card, and what goes on it */
-.rc-share { position: absolute; inset: 24px 0 72px; display: flex; align-items: center; justify-content: center; gap: 32px; padding: 0 72px; animation: rc-fade 500ms both; }
+.rc-share { position: absolute; inset: 24px 0 72px; display: flex; align-items: center; justify-content: center; gap: 32px; padding: 0 72px; animation: rc-fade var(--dur-move) var(--ease-out) both; }
 .rc-share canvas { display: block; flex: none; max-width: min(100%, 620px); max-height: 100%; border-radius: 22px; box-shadow: 0 30px 80px rgb(0 0 0 / .6); }
 .rc-pick { display: flex; flex-direction: column; gap: 10px; width: 300px; flex: none; }
 .rc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
@@ -118,9 +119,8 @@
 
 
 /* a slide about one app: its icon, and its colours spilling across the room */
-.rc-tint { position: absolute; top: 50%; right: -8vmax; width: 80vmax; height: 80vmax; transform: translateY(-50%); object-fit: cover; filter: blur(90px) saturate(1.8); opacity: .42; animation: rc-tint 900ms ease both; }
-@keyframes rc-tint { from { opacity: 0; } }
-.rc-logo { position: absolute; z-index: 2; top: 50%; right: 13%; transform: translateY(-50%); pointer-events: none; animation: rc-logo 700ms cubic-bezier(.2, 1.3, .4, 1) both; }
+.rc-tint { position: absolute; top: 50%; right: -8vmax; width: 80vmax; height: 80vmax; transform: translateY(-50%); object-fit: cover; filter: blur(90px) saturate(1.8); opacity: .42; animation: rc-fade 900ms var(--ease-out) both; }
+.rc-logo { position: absolute; z-index: 2; top: 50%; right: 13%; transform: translateY(-50%); pointer-events: none; animation: rc-logo 700ms var(--ease-spring) both; }
 .rc-logo img { box-sizing: border-box; width: min(24vw, 260px); height: min(24vw, 260px); padding: min(4.6vw, 50px); object-fit: contain; border-radius: 23%; background: #fff; box-shadow: 0 30px 80px rgb(0 0 0 / .5); }   /* on white, so a black logo shows too */
 @keyframes rc-logo { from { opacity: 0; transform: translateY(-46%) scale(.86); } }
 @media (max-width: 720px) {
@@ -128,7 +128,6 @@
   .rc-logo img { width: 96px; height: 96px; padding: 18px; }
   .rc-tint { top: -10vmax; right: -30vmax; transform: none; }
 }
-@keyframes rc-fade { from { opacity: 0; } }
 
 /* the system's setting and the page's own mean the same here: nothing drifts, rises, rolls or fills. styles.css already stops everything for motion: none. */
 @media (prefers-reduced-motion: reduce) {
