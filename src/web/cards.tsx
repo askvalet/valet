@@ -148,7 +148,7 @@ function Headlines({ card }: { card: ListCard }) {
         return (
           <a key={i} href={it.href} target="_blank" rel="noreferrer" className={cn('headline', !it.href && 'pointer-events-none')}>
             {it.image ? <img src={it.image} alt="" loading="lazy" className="headline-art" />
-              : <span className="headline-mark">{h ? <img src={`/api/favicon/${h}`} alt="" loading="lazy" onError={e => { e.currentTarget.style.display = 'none'; }} /> : <Icon name={card.icon} className="size-4" />}</span>}
+              : h && <span className="headline-mark"><img src={`/api/favicon/${h}`} alt="" loading="lazy" onError={e => { e.currentTarget.style.display = 'none'; }} /></span>}
             <span className="min-w-0">
               <span className="line-clamp-2 text-[14px] leading-snug font-medium">{it.title}</span>
               <span className="mt-1 block truncate text-xs text-muted-foreground">{[h ?? it.subtitle, it.meta].filter(Boolean).join(' · ')}</span>
