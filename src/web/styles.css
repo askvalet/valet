@@ -5,8 +5,8 @@
 /* dark: follows the system (html.dark is set before first paint in index.html) */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Light: Apple's off-white page with white cards. Dark: true black with raised #1c1c1e cards.
-   One accent (system blue); system green / orange / red only for status. */
+/* Graphite neutrals, so the content carries the colour. One accent, brass, from the valet's key tag: the page's selection and
+   the one number that leads. Green, orange and red only for status, toned to sit inside the ramp. */
 :root {
   --radius: 0.9rem;
   --background: #f5f5f7;
@@ -15,7 +15,7 @@
   --card-foreground: #1d1d1f;
   --popover: #ffffff;
   --popover-foreground: #1d1d1f;
-  --primary: #0071e3;
+  --primary: #7d5f16;
   --primary-foreground: #ffffff;
   --secondary: #f0f0f3;
   --secondary-foreground: #1d1d1f;
@@ -23,54 +23,54 @@
   --muted-foreground: #626267;
   --accent: #ececf0;
   --accent-foreground: #1d1d1f;
-  --destructive: #ff3b30;
+  --destructive: #dc2626;
   --border: rgb(0 0 0 / 0.08);
   --input: rgb(0 0 0 / 0.12);
-  --ring: #0071e3;
-  --good: #28a745; --warn: #e08600; --bad: #ff3b30;
+  --ring: #7d5f16;
+  --good: #16a34a; --warn: #c97500; --bad: #dc2626;
   --sidebar: #f5f5f7;
   --sidebar-foreground: #1d1d1f;
-  --sidebar-primary: #0071e3;
+  --sidebar-primary: #7d5f16;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: rgb(0 0 0 / 0.05);
   --sidebar-accent-foreground: #1d1d1f;
   --sidebar-border: rgb(0 0 0 / 0.06);
-  --sidebar-ring: #0071e3;
+  --sidebar-ring: #7d5f16;
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px -4px rgb(0 0 0 / 0.06);
   --card-tint: #ffffff; --card-alpha: 1;
   --card-gap: calc(var(--spacing) * 4); --tile-gap: calc(var(--spacing) * 3); --section-gap: calc(var(--spacing) * 8);
 }
 
 .dark {
-  --background: #000000;
-  --foreground: #f5f5f7;
-  --card: #1c1c1e;
-  --card-foreground: #f5f5f7;
-  --popover: #1c1c1e;
-  --popover-foreground: #f5f5f7;
-  --primary: #0a84ff;
-  --primary-foreground: #ffffff;
-  --secondary: #2c2c2e;
-  --secondary-foreground: #f5f5f7;
-  --muted: #2c2c2e;
-  --muted-foreground: #a6a6ac;
-  --accent: #2c2c2e;
-  --accent-foreground: #f5f5f7;
-  --destructive: #ff453a;
+  --background: #0f0f10;
+  --foreground: #ededed;
+  --card: #19191b;
+  --card-foreground: #ededed;
+  --popover: #19191b;
+  --popover-foreground: #ededed;
+  --primary: #d9b56c;
+  --primary-foreground: #1a1508;
+  --secondary: #232325;
+  --secondary-foreground: #ededed;
+  --muted: #232325;
+  --muted-foreground: #a1a1a6;
+  --accent: #232325;
+  --accent-foreground: #ededed;
+  --destructive: #e5484d;
   --border: rgb(255 255 255 / 0.08);
   --input: rgb(255 255 255 / 0.12);
-  --ring: #0a84ff;
-  --good: #30d158; --warn: #ff9f0a; --bad: #ff453a;
-  --sidebar: #000000;
-  --sidebar-foreground: #f5f5f7;
-  --sidebar-primary: #0a84ff;
-  --sidebar-primary-foreground: #ffffff;
+  --ring: #d9b56c;
+  --good: #4cc38a; --warn: #f0a23c; --bad: #e5484d;
+  --sidebar: #0f0f10;
+  --sidebar-foreground: #ededed;
+  --sidebar-primary: #d9b56c;
+  --sidebar-primary-foreground: #1a1508;
   --sidebar-accent: rgb(255 255 255 / 0.07);
-  --sidebar-accent-foreground: #f5f5f7;
+  --sidebar-accent-foreground: #ededed;
   --sidebar-border: rgb(255 255 255 / 0.06);
-  --sidebar-ring: #0a84ff;
+  --sidebar-ring: #d9b56c;
   --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.02);
-  --card-tint: #1c1c1e;
+  --card-tint: #19191b;
 }
 
 @theme inline {
@@ -129,10 +129,10 @@
 .tabular { font-variant-numeric: tabular-nums; }
 .metric { font-weight: 600; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; }
 
-.dot { width: 7px; height: 7px; border-radius: 999px; flex: none; transition: background-color var(--dur-move) var(--ease-out), box-shadow var(--dur-move) var(--ease-out); }
-.dot-good { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 18%, transparent); }
-.dot-bad { background: var(--bad); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 20%, transparent); }
-.dot-warn { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 20%, transparent); }
+.dot { width: 6px; height: 6px; border-radius: 999px; flex: none; transition: background-color var(--dur-move) var(--ease-out), box-shadow var(--dur-move) var(--ease-out); }
+.dot-good { background: color-mix(in srgb, var(--good) 72%, transparent); }   /* what's fine stays quiet, so trouble reads at once */
+.dot-bad { background: var(--bad); }
+.dot-warn { background: var(--warn); }
 .dot-off { background: transparent; box-shadow: inset 0 0 0 1.5px var(--muted-foreground); }   /* hollow: off by choice, nothing wrong */
 
 .prose-chat p { margin: 0 0 .5em; } .prose-chat p:last-child { margin: 0; }
@@ -164,11 +164,11 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 /* no blur means none, utilities included: glass without frost, which is what asking for it looks like */
 .no-blur *, .no-blur *::before, .no-blur *::after { backdrop-filter: none !important; }
 /* what floats over the page can't lean on frost to stay readable */
-.no-blur { --glass-sheet: rgb(28 28 31 / .97); } .no-blur.glass-light { --glass-sheet: rgb(255 255 255 / .97); }
+.no-blur { --glass-sheet: rgb(24 24 26 / .97); } .no-blur.glass-light { --glass-sheet: rgb(255 255 255 / .97); }
 
 /* ── Glass: with a wallpaper, every surface is frosted glass over it (visionOS-style material). ──
-   Translucent tint + heavy blur with boosted saturation (what lets the wallpaper's colour glow through), a hairline
-   light edge, a soft sheen from the top, and depth. Hooks onto shadcn's data-slot attributes, so components stay stock. */
+   Translucent graphite + heavy blur, a hairline light edge and a soft shadow. Saturation stays near 1: boosted, it turns every
+   surface the wallpaper's colour, and the chrome stops being quiet. Hooks onto shadcn's data-slot attributes, so components stay stock. */
 .wallpaper { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: #0b0b0d; }
 .wallpaper img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.04); filter: var(--wall-filter, none); }
 .wall-paint { position: absolute; inset: 0; animation: fade-in-soft var(--dur-scene) var(--ease-out) backwards; }
@@ -177,21 +177,21 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 
 .has-wallpaper {
   --background: transparent;
-  --card-tint: rgb(34 34 40); --card-alpha: .5;
-  --card: rgb(34 34 40 / 0.5);
-  --popover: rgb(30 30 33 / 0.86);
+  --card-tint: rgb(24 24 26); --card-alpha: .56;
+  --card: rgb(24 24 26 / 0.56);
+  --popover: rgb(24 24 26 / 0.88);
   --muted: rgb(255 255 255 / 0.08);
   --secondary: rgb(255 255 255 / 0.1);
   --accent: rgb(255 255 255 / 0.1);
-  --border: rgb(255 255 255 / 0.1);
-  --input: rgb(255 255 255 / 0.14);
-  --muted-foreground: rgb(255 255 255 / 0.7);
+  --border: rgb(255 255 255 / 0.08);
+  --input: rgb(255 255 255 / 0.12);
+  --muted-foreground: rgb(255 255 255 / 0.68);
   --sidebar: transparent;
   --sidebar-accent: rgb(255 255 255 / 0.1);
   --sidebar-border: transparent;
-  --glass-blur: blur(calc(36px * var(--frost, 1))) saturate(1.6);
-  --glass-edge: rgb(255 255 255 / 0.14);
-  --glass-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 24px 48px -24px rgb(0 0 0 / 0.6);
+  --glass-blur: blur(calc(36px * var(--frost, 1))) saturate(1.1);
+  --glass-edge: rgb(255 255 255 / 0.09);
+  --glass-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 24px 48px -24px rgb(0 0 0 / 0.6);
 }
 .has-wallpaper body { background: transparent; }
 .has-wallpaper [data-slot="card"],
@@ -199,22 +199,17 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
   position: relative; background: var(--card); border-color: var(--glass-edge); box-shadow: var(--glass-shadow);
   backdrop-filter: var(--glass-blur);
 }
-/* the sheen: light catching the top edge of the pane */
-.has-wallpaper [data-slot="card"]::before {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  background: linear-gradient(170deg, rgb(255 255 255 / 0.08) 0%, rgb(255 255 255 / 0.02) 28%, transparent 55%);
-}
 .has-wallpaper [data-slot="sidebar-inset"] { background: transparent !important; box-shadow: none !important; }
 .has-wallpaper [data-slot="popover-content"], .has-wallpaper [data-slot="select-content"],
 .has-wallpaper [data-slot="dialog-content"], .has-wallpaper [data-slot="sheet-content"] {
-  backdrop-filter: blur(calc(40px * var(--frost, 1))) saturate(1.8);
-  background: var(--glass-sheet, rgb(28 28 31 / 0.72)); border-color: var(--glass-edge);
+  backdrop-filter: blur(calc(40px * var(--frost, 1))) saturate(1.1);
+  background: var(--glass-sheet, rgb(24 24 26 / 0.76)); border-color: var(--glass-edge);
 }
 /* Floating chrome (top bars). The frost lives on ::before so things inside (the ring popovers) can blur the page
    themselves; a backdrop-filter on the bar itself would trap them. Values go through variables because the CSS
    minifier otherwise keeps only the -webkit- form, which Chrome ignores. */
 :root { --bar-blur: blur(calc(40px * var(--frost, 1))) saturate(1.6); --bar-bg: rgb(255 255 255 / .75); }
-.has-wallpaper, .dark { --bar-blur: blur(calc(60px * var(--frost, 1))) saturate(1.8); --bar-bg: rgb(22 22 26 / .66); }
+.has-wallpaper, .dark { --bar-blur: blur(calc(60px * var(--frost, 1))) saturate(1.1); --bar-bg: rgb(20 20 22 / .66); }
 /* the light material, when the config asks for light over a wallpaper: the same glass, tinted the other way */
 .glass-light {
   --card-tint: #ffffff; --card-alpha: .62;
@@ -232,10 +227,10 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 }
 .glass-light.has-wallpaper .wall-text { text-shadow: 0 1px 10px rgb(255 255 255 / .5); }
 .glass-bar { isolation: isolate; border-color: var(--glass-edge, var(--border));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .1), 0 10px 30px -12px rgb(0 0 0 / .6); }
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .05), 0 10px 30px -12px rgb(0 0 0 / .6); }
 .glass-bar::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--bar-bg);
   backdrop-filter: var(--bar-blur); }
-.glass-pop { --pop-blur: blur(calc(60px * var(--frost, 1))) saturate(1.8); border-radius: calc(var(--radius) * 1.4); background: var(--glass-sheet, rgb(24 24 28 / .96));
+.glass-pop { --pop-blur: blur(calc(60px * var(--frost, 1))) saturate(1.1); border-radius: calc(var(--radius) * 1.4); background: var(--glass-sheet, rgb(22 22 24 / .96));
   backdrop-filter: var(--pop-blur); box-shadow: 0 24px 60px -20px rgb(0 0 0 / .7); }
 .glass-pop [data-slot="card"] { background: transparent !important; backdrop-filter: none !important; }
 /* the round glass controls are the same material as the cards */
@@ -250,9 +245,9 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .icon-tile svg { width: 15px; height: 15px; }
 
 /* round glass controls (rail buttons, chips, the phone nav) */
-.glass-round { background: rgb(255 255 255 / .1); border: 1px solid rgb(255 255 255 / .14);
-  backdrop-filter: blur(calc(24px * var(--frost, 1))) saturate(1.6);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .15), 0 8px 20px -10px rgb(0 0 0 / .5); }
+.glass-round { background: rgb(255 255 255 / .1); border: 1px solid rgb(255 255 255 / .09);
+  backdrop-filter: blur(calc(24px * var(--frost, 1))) saturate(1.1);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .05), 0 8px 20px -10px rgb(0 0 0 / .5); }
 :root:not(.dark) .glass-round { background: rgb(255 255 255 / .7); border-color: rgb(0 0 0 / .06); }
 
 .no-scrollbar { scrollbar-width: none; } .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -310,7 +305,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 @media (hover: hover) and (pointer: fine) {
   .lift { transition: transform var(--dur-pop) var(--ease-out), box-shadow var(--dur-pop) var(--ease-out); }
   .lift:hover { transform: translateY(calc(-1px * var(--move))); box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 14px 32px -12px rgb(0 0 0 / .22); }
-  .has-wallpaper .lift:hover, .dark .lift:hover { box-shadow: inset 0 1px 0 rgb(255 255 255 / .14), 0 28px 56px -24px rgb(0 0 0 / .75); }
+  .has-wallpaper .lift:hover, .dark .lift:hover { box-shadow: inset 0 1px 0 rgb(255 255 255 / .08), 0 28px 56px -24px rgb(0 0 0 / .75); }
 }
 /* the Mac dock: the size follows the pointer directly while it's over the rail, and eases back when it leaves */
 .dock button { width: calc(var(--nav-size, 44px) * var(--k, 1)); height: calc(var(--nav-size, 44px) * var(--k, 1)); transition: width var(--dur-pop) var(--ease-out), height var(--dur-pop) var(--ease-out), color var(--dur-press) var(--ease-out), background-color var(--dur-press) var(--ease-out); }
@@ -368,7 +363,6 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .chat-card { max-height: 300px; overflow-y: auto; overscroll-behavior: auto; border-radius: calc(var(--radius) * 1.111); scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / .16) transparent; }
 .chat-peek { max-width: 560px; }
 .chat-card [data-slot="card"], .chat-card .glass { backdrop-filter: none !important; background: rgb(255 255 255 / .05); box-shadow: none; }
-.chat-card [data-slot="card"]::before { display: none; }
 /* the numbers beside the chat, small */
 .chat-aside .grid { grid-template-columns: 1fr !important; gap: .5rem; }
 .chat-aside [data-slot="card"] { height: 84px; border-radius: 16px; }
@@ -403,8 +397,8 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 /* a reply that failed: a quiet card with a way back */
 .chat-error { animation: chat-card var(--dur-move) var(--ease-out) backwards; }
 
-/* the bubble: the accent, unless chat.bubble says otherwise */
-.chat-bubble { background: var(--chat-bubble, var(--primary)); color: var(--chat-ink, var(--primary-foreground)); }
+/* the bubble: a surface step, unless chat.bubble says otherwise; the accent is for what needs an answer */
+.chat-bubble { background: var(--chat-bubble, var(--secondary)); color: var(--chat-ink, var(--secondary-foreground)); }
 /* the chat window: rises in from slightly below and smaller, eased out; leaves faster than it came. chat.open places it. */
 .chat-pop { width: min(var(--chat-w, 760px), calc(100vw - 1.5rem)); height: min(var(--chat-h, min(82vh, 820px)), calc(100dvh - 1.5rem)); border-radius: calc(var(--radius) * 1.944); }
 @media (min-width: 640px) {

@@ -86,11 +86,13 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   height by how much they have to show: anything that can grow scrolls inside or spreads out, so a bento row ends flush.
 
 ### Design
-- **Apple-grade restraint.** System tokens (`styles.css`): one accent (system blue), green/orange/red only for
+- **Quiet chrome, rich content.** System tokens (`styles.css`): graphite neutrals, one accent (brass, from the valet key tag), green/orange/red only for
   status, monochrome icons. Geist for text; tabular numerals for numbers.
-- **Glass over a wallpaper.** With a wallpaper, every surface is frosted glass (`has-wallpaper`): translucent tint,
-  heavy blur with boosted saturation, a hairline light edge, a sheen from the top. Floating chrome (top bars,
+- **Glass over a wallpaper.** With a wallpaper, every surface is frosted glass (`has-wallpaper`): translucent graphite,
+  heavy blur, saturation near 1 so surfaces stay neutral, a hairline light edge. Floating chrome (top bars,
   popovers) is frostier than cards so it stays legible over content while scrolling.
+- **The accent is rare.** In a chart one thing leads in the accent and the rest are neutral steps; a colour that isn't a
+  status or the leader doesn't belong in the chrome. Posters, the house and photos carry the colour.
 - **Numbers as shapes.** Health reads at a glance: rings coloured by tone, area graphs behind tiles. Values sit inside
   the shape; labels stay quiet.
 - **Motion follows one vocabulary** (`styles.css`, after Emil Kowalski's skills): `--ease-out` for arriving/leaving,

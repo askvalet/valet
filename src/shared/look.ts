@@ -85,7 +85,7 @@ export function cardLook(w: { tint?: string; opacity?: number; blur?: number; ba
   // a picture needs its tint thinned, or the card hides it
   if (w.tint != null || w.opacity != null || w.background) vars['--card'] = tinted(w.tint, w.opacity ?? (w.background ? .45 : undefined));
   if (w.background) vars['--card-image'] = `url("${w.background}")`;
-  if (w.blur != null) vars['--glass-blur'] = w.blur ? `blur(${w.blur}px) saturate(1.6)` : 'none';
+  if (w.blur != null) vars['--glass-blur'] = w.blur ? `blur(${w.blur}px) saturate(1.1)` : 'none';
   return vars;
 }
 

@@ -187,7 +187,7 @@ function Confirmation({ p, name, approve, tools }: { p: any; name: string; appro
   const detail = listed ? undefined : said?.detail ?? (said?.title ? undefined : plainInput(input));
   return (
     // a slow beam around the edge: nothing goes further until this has an answer
-    <BorderBeam size="md" colorVariant={said?.danger ? 'sunset' : 'ocean'} strength={.75} duration={3.2} className="chat-card rounded-2xl" style={{ display: 'block', width: 'min(560px, calc(100vw - 48px))' }}>
+    <BorderBeam size="md" colorVariant={said?.danger ? 'sunset' : 'gold'} strength={.6} duration={3.2} className="chat-card rounded-2xl" style={{ display: 'block', width: 'min(560px, calc(100vw - 48px))' }}>
     <div className="overflow-hidden rounded-2xl border bg-card shadow-card">
       <div className="flex items-center gap-3.5 p-3.5">
         {said?.image ? <img src={said.image} alt="" className="h-[84px] w-14 shrink-0 rounded-lg object-cover shadow-md" />

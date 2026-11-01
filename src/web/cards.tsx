@@ -34,7 +34,7 @@ export function Icon({ name, className }: { name?: string; className?: string })
 }
 
 const toneText: Record<Tone, string> = { neutral: '', good: 'text-good', warn: 'text-warn', bad: 'text-bad', accent: 'text-primary' };
-const toneBar: Record<Tone, string> = { neutral: '', good: 'bg-good', warn: 'bg-warn', bad: 'bg-bad', accent: '' };
+const toneBar: Record<Tone, string> = { neutral: '', good: 'bg-good', warn: 'bg-warn', bad: 'bg-bad', accent: 'bg-primary' };
 const toneVar = (t?: Tone) => (t && t !== 'neutral' && t !== 'accent' ? `var(--${t})` : 'var(--primary)');
 
 // Cards in chat are dense: same content, about half the height (smaller numbers, tighter rows, a smaller header)
@@ -56,8 +56,8 @@ function Spark({ points, tone }: { points: number[]; tone?: Tone }) {
 }
 
 const Bar = ({ pct, tone }: { pct: number; tone?: Tone }) => (
-  <div role="progressbar" aria-valuenow={Math.round(pct * 100)} aria-valuemin={0} aria-valuemax={100} className="h-1 overflow-hidden rounded-full bg-primary/20">
-    <div className={cn('h-full rounded-full bg-primary transition-transform duration-(--dur-move) ease-out', toneBar[tone ?? 'neutral'])} style={{ transform: `translateX(${Math.max(1.5, Math.min(100, pct * 100)) - 100}%)` }} />
+  <div role="progressbar" aria-valuenow={Math.round(pct * 100)} aria-valuemin={0} aria-valuemax={100} className="h-1 overflow-hidden rounded-full bg-foreground/10">
+    <div className={cn('h-full rounded-full bg-foreground/50 transition-transform duration-(--dur-move) ease-out', toneBar[tone ?? 'neutral'])} style={{ transform: `translateX(${Math.max(1.5, Math.min(100, pct * 100)) - 100}%)` }} />
   </div>
 );
 
@@ -570,7 +570,7 @@ function Media({ card, compact, run }: { card: MediaCard; compact?: boolean; run
         const stall = stallOf(m);
         return (
           <div key={i} className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden px-4 py-2.5">
-            {m.pct != null && <span className={cn('absolute inset-0 -z-10 transition-transform duration-(--dur-move) ease-out', stall ? 'bg-warn/15' : 'bg-primary/20')} style={{ transform: `translateX(${m.pct * 100 - 100}%)` }} />}
+            {m.pct != null && <span className={cn('absolute inset-0 -z-10 transition-transform duration-(--dur-move) ease-out', stall ? 'bg-warn/15' : 'bg-foreground/[.07]')} style={{ transform: `translateX(${m.pct * 100 - 100}%)` }} />}
             {m.image ? <Art src={m.image} className="h-12 w-8 shrink-0 rounded-md object-cover" /> : <span className="grid h-12 w-8 shrink-0 place-items-center rounded-md bg-white/10 text-muted-foreground"><Icon name={m.icon ?? 'film'} className="size-4" /></span>}
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium">{m.title}</div>
@@ -787,13 +787,13 @@ function ShelfRow({ card, header, small, beside, lines }: { card: ShelfCard; hea
               <div className="carousel-face">
                 <div className={cn('relative overflow-hidden rounded-xl bg-muted shadow-[0_10px_24px_-12px_rgb(0_0_0/0.45)] transition-[translate,box-shadow] duration-(--dur-pop) ease-out', href && 'group-hover:-translate-y-1 group-hover:shadow-[0_18px_32px_-12px_rgb(0_0_0/0.5)]', ratio)}>
                   <Art src={it.image} alt={it.title} className="size-full object-cover" />
-                  {it.badge && !lines && <span className={cn('absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-md', it.badge === 'Ready' ? 'bg-good/80' : it.badge === 'Today' ? 'bg-primary/85' : 'bg-black/55')}>{it.badge}</span>}
+                  {it.badge && !lines && <span className={cn('absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-md', 'bg-black/60', it.badge === 'Ready' ? 'text-good' : it.badge === 'Today' && 'text-primary')}>{it.badge}</span>}
                   {lines && <i className={`ticket-line is-${lineOf(it)}`} />}
                 </div>
                 <div className="mt-2.5 truncate text-[13px] font-medium">{it.title}</div>
                 {(lines ? it.badge ?? it.subtitle : it.subtitle) && <div className="truncate text-xs text-muted-foreground">{lines ? it.badge ?? it.subtitle : it.subtitle}</div>}
                 {lines && it.note && <div className="truncate text-xs text-muted-foreground">{it.note}</div>}
-                {it.cta && <div className="mt-0.5 flex items-center gap-0.5 text-xs font-medium text-primary"><span className="truncate">{it.cta.label}</span><ArrowUpRight className="size-3 shrink-0" /></div>}
+                {it.cta && <div className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground"><span className="truncate">{it.cta.label}</span><ArrowUpRight className="size-3 shrink-0" /></div>}
               </div>
             );
             return href
@@ -1407,9 +1407,6 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
   );
 }
 
-// a tile's own colour, stable for its icon so integrations get one for free; none of them read as a status colour
-const TINTS = ['#64d2ff', '#7d7aff', '#bf8bff', '#ff8ac4', '#5ee0c5', '#ffc266'];
-const tintOf = (key: string) => TINTS[[...key].reduce((h, c) => (h * 17 + c.charCodeAt(0)) >>> 0, 11) % TINTS.length];
 
 /** A bar for each thing a tile counts: it shows at a glance what a word like "Healthy" only tells you. */
 function TileMarks({ marks }: { marks: NonNullable<Summary['marks']> }) {
@@ -1448,7 +1445,7 @@ function SummaryTileView({ s, href, explain }: { s: Summary; href?: string; expl
   const trouble = why.ask && (s.tone === 'bad' || s.tone === 'warn');
   const art = !!s.image;
   const body = (
-    <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift', art && 'border-transparent text-white')} style={{ '--tint': `color-mix(in oklab, ${tintOf(s.icon ?? s.label)} 80%, var(--foreground))` } as React.CSSProperties}>
+    <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift', art && 'border-transparent text-white')} style={{ '--tint': 'color-mix(in oklab, var(--foreground) 55%, transparent)' } as React.CSSProperties}>
       {art && <><Art src={s.image} className={cn('absolute inset-0 -z-10 size-full object-cover transition-transform duration-(--dur-move) ease-out', href && 'group-hover/tile:scale-[1.03]')} /><div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(0_0_0/.78),rgb(0_0_0/.42)_38%,transparent_72%)]" /></>}
       {!art && !s.marks && !s.waffle && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} gauge={s.ring != null} /></div>}
       <div className={cn('relative flex flex-1 flex-col p-4', art && '[text-shadow:0_1px_10px_rgb(0_0_0/.7)]')}>
@@ -1489,7 +1486,7 @@ export function Ring({ s }: { s: Summary }) {
           <circle cx="50" cy="50" r={r} fill="none" stroke="currentColor" strokeOpacity=".12" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} />
           <circle cx="50" cy="50" r={r} fill="none" stroke={color} strokeWidth="7" strokeLinecap="round"
             strokeDasharray={`${Math.max(0.001, pct) * arc} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move) ease-out"
-            style={{ filter: `drop-shadow(0 0 6px color-mix(in srgb, ${color} 45%, transparent))` }} />
+            />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <Icon name={s.icon} className="mb-0.5 size-4 text-muted-foreground" />

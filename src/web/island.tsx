@@ -13,7 +13,7 @@ export type Notice = { key: string; text: string; sub?: string; icon?: string; i
 
 const QUIET_AFTER = 20_000;
 const TONE: Record<string, string> = { accent: 'var(--primary)', good: 'var(--good)', warn: 'var(--warn)', bad: 'var(--bad)' };
-const tint = (a: Live) => TONE[a.tone ?? ''] ?? (a.icon === 'play' ? '#ff9f0a' : a.icon === 'download' ? 'var(--primary)' : 'var(--good)');
+const tint = (a: Live) => TONE[a.tone ?? ''] ?? (a.icon === 'play' ? 'var(--primary)' : a.icon === 'download' ? 'var(--foreground)' : 'var(--good)');
 
 function Progress({ a, size = 20 }: { a: Live; size?: number }) {
   const r = 8, c = 2 * Math.PI * r, p = Math.max(0, Math.min(1, a.pct ?? 0));
