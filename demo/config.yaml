@@ -13,6 +13,7 @@ appearance:
   wallpaper: /demo/wallpaper.jpg
   dim: 0.3
   blur: 4
+  rim: 0.7
 
 assistant:
   baseURL: http://valet-demo-model:8080/v1
@@ -28,7 +29,7 @@ integrations:
   lab:
     type: demo-homelab
 
-chat: { beam: always }
+chat: { beam: thinking, beamColor: colorful }
 hero: { scope: [downloads, lights, what to watch] }
 
 menubar: [lab.system]

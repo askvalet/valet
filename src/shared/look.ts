@@ -8,6 +8,7 @@ interface Look {
     font?: { family?: string; mono?: string; scale?: number; headingWeight?: number };
     shape?: { radius?: number; border?: number; borderColor?: string; shadow?: 'none' | 'soft' | 'deep' };
     glass?: { opacity?: number; blur?: number };
+    rim?: number;
     dim: number; blur: number;
     density: 'compact' | 'comfortable' | 'spacious';
     gap?: number; sectionGap?: number; maxWidth?: string; rowHeight?: number;
@@ -59,6 +60,8 @@ export function lookOf({ appearance: a, chat, nav, menubar, island }: Look) {
   // every blur in the stylesheet is a multiple of the cards', so the page's frost stays in proportion
   if (g?.blur === 0) classes.push('no-blur');
   else if (g?.blur != null) set(+(g.blur / 36).toFixed(3), '--frost');
+
+  if (a.rim) { set(a.rim, '--rim'); classes.push('has-rim'); }
 
   if (a.dim !== .35) set(a.dim, '--wall-dim');
   if (a.blur) set(`blur(${a.blur}px)`, '--wall-filter');

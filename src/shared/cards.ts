@@ -99,6 +99,7 @@ export interface StatItem {
 export interface StatsCard extends Base { type: 'stats'; items: StatItem[]; pie?: { label: string; value: number; tone?: Tone }[]; pieCenter?: string }   // pie: parts of a whole, drawn as a ring instead
 
 export interface ListItem {
+  id?: string;             // what makes it this row when its words change
   title: string;
   href?: string;           // the row opens this (a new tab)
   dot?: Tone;              // a status dot on the right, instead of a word
@@ -112,7 +113,7 @@ export interface ListItem {
   band?: [number, number];   // temps: the normal stretch of the track, 0..1 at each end
   section?: string;       // rows: a quiet heading wherever this changes, e.g. "Watching now" above "Last 30 days"
 }
-export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; limit?: number; layout?: 'temps' | 'chips' | 'headlines' }   // headlines: a grid of stories, each anchored by its site's favicon · temps: a reading per row (pct along the track, meta the number) · chips: pills, an icon by name · limit: chips show this many, "19 in all" opens the rest in place
+export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; limit?: number; log?: boolean; layout?: 'temps' | 'chips' | 'headlines' }   // headlines: a grid of stories, each anchored by its site's favicon · temps: a reading per row (pct along the track, meta the number) · chips: pills, an icon by name · limit: chips show this many, "19 in all" opens the rest in place
 
 export interface MediaItem {
   title: string;

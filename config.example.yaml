@@ -16,6 +16,7 @@ location: Toronto, Canada          # gives the assistant local context
 #   shape: { radius: 14 }            # 0 is sharp corners
 #   glass: { opacity: 0.5, blur: 36 }
 #   density: comfortable             # or compact, spacious
+#   rim: 0.6                         # a fixed bevel of light on the edge of dark glass, 0 to 1
 # notice: Family server            # a quiet pill above the greeting
 # hero: { align: center, review: true, scope: true }   # scope: the ask box names real examples, from your integrations or a list
 # chat: { open: center, suggestions: ai }   # open: center, right, left, bottom, page
