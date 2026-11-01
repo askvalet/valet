@@ -14,7 +14,7 @@ x-hardened: &hardened
 services:
   valet-demo2:
     <<: *hardened
-    image: local/valet:feedback
+    image: local/valet:unslop
     container_name: valet-demo2
     environment: { TZ: America/Toronto, VALET_CONFIG: /demo/config.yaml }
     volumes:
@@ -27,13 +27,13 @@ services:
 
   valet-demo2-model:
     <<: *hardened
-    image: local/valet:feedback
+    image: local/valet:unslop
     container_name: valet-demo2-model
     mem_limit: 64m
     entrypoint: ["node", "/demo/mock-model.mjs"]
     healthcheck: { disable: true }
     volumes: [./:/demo:ro]
-    networks: [sealed]
+    networks: { sealed: { aliases: [valet-demo-model] } }   # the config names the first demo's model
 
   valet-demo2-edge:
     <<: *hardened
