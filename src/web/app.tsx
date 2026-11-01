@@ -119,7 +119,7 @@ function DockButton({ name, active, onClick, children }: { name: string; active?
     <button onClick={onClick} aria-current={active ? 'page' : undefined}
       className={cn('press relative flex h-[46px] min-w-[54px] flex-[1_0_auto] flex-col items-center justify-center gap-0.5 rounded-[23px] px-1.5 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 focus-visible:ring-inset [&_svg]:size-[18px]',
         active ? 'bg-[var(--nav-pill,var(--foreground))] text-[var(--nav-pill-ink,#fff)] dark:text-[var(--nav-pill-ink,#000)]' : 'text-foreground/85')}>
-      {children}<span className="max-w-[64px] truncate text-[10.5px] leading-3 font-medium">{name}</span>
+      {children}<span className="max-w-[64px] truncate text-[11px] leading-3 font-medium">{name}</span>
     </button>
   );
 }
@@ -216,7 +216,7 @@ function Welcome({ path, saved }: { path: string; saved: boolean }) {
   return (
     <Card className="settle gap-4 px-6 py-5 shadow-card">
       <div><div className="text-[17px] font-semibold tracking-tight">Welcome to your homepage</div>
-        <p className="mt-0.5 text-[13.5px] text-muted-foreground">This page is built from one file. Edit it and watch here: changes appear as you save.</p></div>
+        <p className="mt-0.5 text-[14px] text-muted-foreground">This page is built from one file. Edit it and watch here: changes appear as you save.</p></div>
       <div className="grid gap-4 md:grid-cols-3">
         {step(1, saved ? 'Open your config' : 'Create your config', <>{saved ? 'A starter is at' : 'Save a config at'} <code className={code}>{path}</code>{!saved && ' (that folder is read-only to Valet, so this page is a sample until then)'}</>)}
         {step(2, 'Add your services', <>Each one is a few lines. Secrets go in <code className={code}>.env</code> as <code className={code}>{'${NAME}'}</code>. Anything with a JSON API works with <code className={code}>type: api</code>.</>)}
@@ -442,7 +442,7 @@ function Home({ account }: { account: boolean }) {
             {hello && <h1 className="hero-title text-[22px] font-semibold tracking-tight">{hello}</h1>}
             {h?.status !== false && <>
               {/* what needs someone gets its own line and what to do about it; what's merely going on stays quiet */}
-              <Fold open={lines.length > 0}><div role="status" className="mt-0.5 text-[13.5px] text-pretty text-warn">
+              <Fold open={lines.length > 0}><div role="status" className="mt-0.5 text-[14px] text-pretty text-warn">
                 {lines.map(p => (
                   <div key={p.id}><span key={p.text} className="brief-in">{p.text}</span>
                     {page?.canAct !== false && p.fix && <> · <button onClick={() => { runAction(p.fix!.key, p.fix!.action, p.fix!.args).catch(() => {}); }} className="py-1 font-medium underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none">{p.fix.label}</button></>}
@@ -450,7 +450,7 @@ function Home({ account }: { account: boolean }) {
                   </div>
                 ))}
               </div></Fold>
-              <Fold open={!!how.quiet}><div key={how.quiet} title={brief ?? undefined} className="brief-in mx-auto mt-1 max-w-full text-[13.5px] text-pretty text-muted-foreground">{how.quiet}</div></Fold>
+              <Fold open={!!how.quiet}><div key={how.quiet} title={brief ?? undefined} className="brief-in mx-auto mt-1 max-w-full text-[14px] text-pretty text-muted-foreground">{how.quiet}</div></Fold>
             </>}
             {askHere && boxed && (
               <ChatBeam ui={ui} className="mt-5"><form className="glass-round flex items-center gap-2.5 rounded-[26px] py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
@@ -474,7 +474,7 @@ function Home({ account }: { account: boolean }) {
                 {/* centred when it fits, scrolls from the start when it doesn't */}
                 <div className={cn('flex max-w-full flex-wrap justify-center gap-1.5', h?.align === 'left' ? 'mr-auto' : h?.align === 'right' ? 'ml-auto' : 'mx-auto')}>
                   {shownChips.map(({ s, out }) => (
-                    <button key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={cn('press shrink-0 rounded-full px-2.5 py-1 text-[12.5px] text-muted-foreground hover:bg-white/10 hover:text-foreground', out ? 'chip-out' : arrival(`chip:${s}`))} style={out ? { maxWidth: 320 } : undefined}>{s}</button>
+                    <button key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={cn('press shrink-0 rounded-full px-2.5 py-1 text-[13px] text-muted-foreground hover:bg-white/10 hover:text-foreground', out ? 'chip-out' : arrival(`chip:${s}`))} style={out ? { maxWidth: 320 } : undefined}>{s}</button>
                   ))}
                 </div>
               </div>
@@ -585,7 +585,7 @@ function Home({ account }: { account: boolean }) {
             {(() => {   // favourites: the way to the rest of them
               const whole = view === 'all' && sec.favorites ? sec.widgets.map(k => state[k]?.card).find(c => c?.type === 'status') : undefined, key = tabOf(sec, sec.i);
               if (whole?.type !== 'status' || !tabs.some(t => t.key === key) || (favorites(whole, sec.favorites) as StatusCard).items.length >= whole.items.length) return null;
-              return <div className="wall-text flex justify-end"><button onClick={() => go(key)} className="press px-0.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground"><span key={whole.items.length} className="tick">{label('allOf', { n: whole.items.length })}</span> →</button></div>;
+              return <div className="wall-text flex justify-end"><button onClick={() => go(key)} className="press px-0.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"><span key={whole.items.length} className="tick">{label('allOf', { n: whole.items.length })}</span> →</button></div>;
             })()}
           </section>
   );

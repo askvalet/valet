@@ -41,7 +41,7 @@ export function SignIn({ setup, wallpaper, onDone, provider }: { setup: boolean;
       {wallpaper}
       <div className="settle glass w-full max-w-[360px] rounded-[28px] border p-7">
         <div className="text-[22px] font-semibold tracking-tight">Sign in</div>
-        <p className="mt-1 text-[13.5px] text-muted-foreground">Your homelab is waiting.</p>
+        <p className="mt-1 text-[14px] text-muted-foreground">Your homelab is waiting.</p>
         <a href={`/api/auth/oidc/start?to=${encodeURIComponent(location.pathname + location.hash)}`}
           className="press mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white text-[15px] font-medium text-black">
           Continue with {provider}<ArrowRight className="size-4" />
@@ -55,7 +55,7 @@ export function SignIn({ setup, wallpaper, onDone, provider }: { setup: boolean;
       <form onSubmit={submit} className="settle glass w-full max-w-[360px] rounded-[28px] border p-7">
         <div className="mb-6">
           <div className="text-[22px] font-semibold tracking-tight">{setup ? 'Welcome' : 'Sign in'}</div>
-          <p className="mt-1 text-[13.5px] text-muted-foreground">{setup ? 'Create the first account. The setup code is in the server log.' : 'Your homelab is waiting.'}</p>
+          <p className="mt-1 text-[14px] text-muted-foreground">{setup ? 'Create the first account. The setup code is in the server log.' : 'Your homelab is waiting.'}</p>
         </div>
         <div className="space-y-3.5">
           {setup && <Field label="Setup code" value={code} onChange={e => setCode(e.target.value)} placeholder="xxxx-xxxx-xxxx" autoFocus autoComplete="one-time-code" />}

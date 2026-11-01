@@ -79,7 +79,7 @@ function Donut({ slices, center }: { slices: NonNullable<StatsCard['pie']>; cent
         </svg>
         {center && <span className="metric absolute inset-0 grid place-items-center text-[15px]">{center}</span>}
       </div>
-      <ul className="min-w-0 flex-1 space-y-1 text-[12.5px]">
+      <ul className="min-w-0 flex-1 space-y-1 text-[13px]">
         {slices.map((s, i) => (
           <li key={s.label} className="flex items-center gap-2">
             <span className="size-2 shrink-0 rounded-full" style={{ background: s.tone ? toneVar(s.tone) : colors[i % 4] }} />
@@ -115,7 +115,7 @@ function Stats({ card }: { card: StatsCard }) {
         <div className={cn('grid divide-x border-t', dense ? 'pt-2.5' : 'pt-3.5')} style={{ gridTemplateColumns: `repeat(${facts.length}, minmax(0, 1fr))` }}>
           {facts.map(f => (
             <div key={f.label} className="min-w-0 px-3 first:pl-0 last:pr-0">
-              <div className={cn('truncate text-muted-foreground', dense ? 'text-[11px]' : 'text-[11.5px]')}>{f.label}</div>
+              <div className={cn('truncate text-muted-foreground', dense ? 'text-[11px]' : 'text-[12px]')}>{f.label}</div>
               <div className={cn('metric truncate', dense ? 'text-[14px]' : 'text-[17px]', toneText[f.tone ?? 'neutral'])}>
                 {f.value}{f.unit && <span className="ml-0.5 text-[12px] font-medium text-muted-foreground">{f.unit}</span>}
               </div>
@@ -150,7 +150,7 @@ function Headlines({ card }: { card: ListCard }) {
             {it.image ? <img src={it.image} alt="" loading="lazy" className="headline-art" />
               : <span className="headline-mark">{h ? <img src={`/api/favicon/${h}`} alt="" loading="lazy" onError={e => { e.currentTarget.style.display = 'none'; }} /> : <Icon name={card.icon} className="size-4" />}</span>}
             <span className="min-w-0">
-              <span className="line-clamp-2 text-[13.5px] leading-snug font-medium">{it.title}</span>
+              <span className="line-clamp-2 text-[14px] leading-snug font-medium">{it.title}</span>
               <span className="mt-1 block truncate text-xs text-muted-foreground">{[h ?? it.subtitle, it.meta].filter(Boolean).join(' · ')}</span>
             </span>
           </a>
@@ -180,7 +180,7 @@ function Temps({ card }: { card: ListCard }) {
           </div>
         );
       })}
-      <div className="text-[11.5px] text-muted-foreground">Shaded: the normal range</div>
+      <div className="text-[12px] text-muted-foreground">Shaded: the normal range</div>
     </div>
   );
 }
@@ -234,7 +234,7 @@ function Rows({ card, dense }: { card: ListCard; dense: boolean }) {
               {it.href && <ArrowUpRight className="row-arrow size-3.5 shrink-0 text-muted-foreground" />}
             </div>
             {it.subtitle && <div className={cn('truncate text-xs', it.tone && it.tone !== 'neutral' ? toneText[it.tone] : 'text-muted-foreground')}>{it.subtitle}</div>}
-            {it.detail && <Clamp text={it.detail} className="mt-1 text-[12.5px] leading-snug text-foreground/70" />}
+            {it.detail && <Clamp text={it.detail} className="mt-1 text-[13px] leading-snug text-foreground/70" />}
             {it.pct != null && <div className={dense ? 'mt-1' : 'mt-2'}><Bar pct={it.pct} tone={it.tone} /></div>}
           </div>
         </li>
@@ -292,7 +292,7 @@ function ServiceRow({ s, minimal }: { s: StatusCard['items'][number]; minimal?: 
   const st = stateOf(s), dot = DOT[st];
   // minimal: one tight line, icon, name and the dot; hover says what's wrong
   if (minimal) return (
-    <Tile href={s.href} title={stateTip(s)} className={cn('flex min-w-0 break-inside-avoid items-center gap-2.5 rounded-lg px-2 py-[5px] transition-colors', s.href && 'hover:bg-accent')}>
+    <Tile href={s.href} title={stateTip(s)} className={cn('flex min-w-0 break-inside-avoid items-center gap-2.5 rounded-lg px-2 py-1 transition-colors', s.href && 'hover:bg-accent')}>
       <AppIcon src={s.icon} name={s.name} small />
       <span className="min-w-0 flex-1 truncate text-[13px]">{s.name}</span>
       <span className={cn('dot size-1.5', dot)} />
@@ -333,7 +333,7 @@ function Wall({ items }: { items: StatusItem[] }) {
           return (
             <Tile key={s.name} href={s.href} title={stateTip(s)} className={cn('wall-tile', `is-${st}`, wrong && 'is-worded', k > 0 && 'is-joined')}>
               <Glyph src={s.icon} name={s.name} />
-              {wrong && <div className="min-w-0"><div className="truncate text-[12.5px] leading-tight font-medium">{s.name}</div><div className={cn('truncate text-[11.5px] leading-tight', st === 'down' ? 'text-bad' : 'text-warn')}>{stateLine(s)}</div></div>}
+              {wrong && <div className="min-w-0"><div className="truncate text-[13px] leading-tight font-medium">{s.name}</div><div className={cn('truncate text-[12px] leading-tight', st === 'down' ? 'text-bad' : 'text-warn')}>{stateLine(s)}</div></div>}
               {k === 0 && g.length > 1 && <i className="wall-count" aria-label={`${g.length} together`}>{g.length}</i>}
             </Tile>
           );
@@ -450,7 +450,7 @@ function Article({ card, run }: { card: ArticleCard; run?: RunAction }) {
         <div className="article-text">
           <div className="flex items-center gap-1.5 text-[12px] font-medium text-white/70">{card.source?.icon && <img src={card.source.icon} alt="" className="size-3.5 object-contain" />}<span className="truncate">{[card.title, p.site].filter(Boolean).join(' · ')}</span>{n > 1 && <span className="ml-auto shrink-0 tabular">{i + 1} of {n}</span>}</div>
           <div className="mt-1 line-clamp-2 text-[19px] leading-tight font-semibold tracking-tight text-pretty text-white">{p.headline}</div>
-          {p.blurb && <Clamp text={p.blurb} className="article-blurb mt-1.5 text-[13.5px] leading-snug text-white/75" />}
+          {p.blurb && <Clamp text={p.blurb} className="article-blurb mt-1.5 text-[14px] leading-snug text-white/75" />}
         </div>
       </div>
     );
@@ -474,7 +474,7 @@ function Links({ card }: { card: LinksCard }) {
   return (
     <div className="-mx-2 grid gap-0.5" style={{ gridTemplateColumns: dense ? undefined : 'repeat(auto-fill, minmax(180px, 1fr))' }}>
       {card.items.map(l => (
-        <a key={l.href + l.name} href={l.href} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-2.5 rounded-lg px-2 py-[6px] transition-colors hover:bg-accent">
+        <a key={l.href + l.name} href={l.href} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent">
           <AppIcon src={l.icon} name={l.name} small />
           <span className="min-w-0 flex-1 truncate text-[13px]">{l.name}</span>
           {l.note && <span className="shrink-0 truncate text-[11px] text-muted-foreground">{l.note}</span>}
@@ -787,7 +787,7 @@ function ShelfRow({ card, header, small, beside, lines }: { card: ShelfCard; hea
               <div className="carousel-face">
                 <div className={cn('relative overflow-hidden rounded-xl bg-muted shadow-[0_10px_24px_-12px_rgb(0_0_0/0.45)] transition-[translate,box-shadow] duration-(--dur-pop) ease-out', href && 'group-hover:-translate-y-1 group-hover:shadow-[0_18px_32px_-12px_rgb(0_0_0/0.5)]', ratio)}>
                   <Art src={it.image} alt={it.title} className="size-full object-cover" />
-                  {it.badge && !lines && <span className={cn('absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[10.5px] font-medium text-white backdrop-blur-md', it.badge === 'Ready' ? 'bg-good/80' : it.badge === 'Today' ? 'bg-primary/85' : 'bg-black/55')}>{it.badge}</span>}
+                  {it.badge && !lines && <span className={cn('absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-md', it.badge === 'Ready' ? 'bg-good/80' : it.badge === 'Today' ? 'bg-primary/85' : 'bg-black/55')}>{it.badge}</span>}
                   {lines && <i className={`ticket-line is-${lineOf(it)}`} />}
                 </div>
                 <div className="mt-2.5 truncate text-[13px] font-medium">{it.title}</div>
@@ -916,7 +916,7 @@ function Code({ card }: { card: CodeCard }) {
   return (
     <div className="group/code relative -mx-1">
       <button type="button" onClick={copy} aria-label="Copy" className="chat-icon absolute top-1 right-1 z-10 text-muted-foreground">{copied ? <Check className="morph size-3.5 text-good" /> : <Copy className="size-3.5" />}</button>
-      <pre className="max-h-72 overflow-auto rounded-xl bg-black/25 py-2 font-mono text-[11.5px] leading-[1.65]">
+      <pre className="max-h-72 overflow-auto rounded-xl bg-black/25 py-2 font-mono text-[12px] leading-[1.65]">
         {card.lines.map((l, i) => {
           const tone = card.diff && l[0] === '+' ? 'bg-good/10 text-good' : card.diff && l[0] === '-' ? 'bg-bad/10 text-bad' : '';
           return <div key={i} className={cn('flex min-w-max gap-3 pr-10 pl-2', tone)}><span className="w-6 shrink-0 text-right text-muted-foreground/50 tabular select-none">{i + 1}</span><span className="whitespace-pre">{l || ' '}</span></div>;
@@ -1049,7 +1049,7 @@ function Verse({ card }: { card: VerseCard }) {
   return (
     <a href={card.href} target="_blank" rel="noreferrer" className="flex flex-1 flex-col gap-3">
       {card.arabic && <p dir="rtl" lang="ar" className={cn('verse-ar leading-[2.1] text-foreground', dense ? 'text-[20px]' : 'text-[26px]')}>{card.arabic}</p>}
-      <p className={cn('leading-relaxed text-foreground/80', dense ? 'text-[13px]' : 'text-[14.5px]')}>{card.english.replace(/[˹˺]/g, '')}</p>
+      <p className={cn('leading-relaxed text-foreground/80', dense ? 'text-[13px]' : 'text-[14px]')}>{card.english.replace(/[˹˺]/g, '')}</p>
       <p className="mt-auto text-[12px] text-muted-foreground">{card.reference}{card.meaning ? ` · ${card.meaning}` : ''}</p>
     </a>
   );
@@ -1168,7 +1168,7 @@ function Schedule({ card }: { card: ScheduleCard }) {
           ? <span key={x.name} title={`${x.name} · ${clock(x.t)}`} className="absolute top-[2px] h-[7px] w-px -translate-x-1/2 bg-white/35" style={{ left: `${pos(k) * 100}%` }} />
           : <div key={x.name} className={cn('absolute top-3 text-center', k === 0 ? '' : k === n - 1 ? '-translate-x-full text-right' : '-translate-x-1/2')} style={{ left: `${pos(k) * 100}%` }}>
               <div className={cn('text-[11px] font-medium', x.name === next.name ? 'text-foreground' : 'text-muted-foreground')}>{x.name}</div>
-              {!dense && <div className="text-[10.5px] tabular text-muted-foreground/70">{clock(x.t)}</div>}
+              {!dense && <div className="text-[11px] tabular text-muted-foreground/70">{clock(x.t)}</div>}
             </div>)}
       </div>
     </div>
@@ -1497,7 +1497,7 @@ export function Ring({ s }: { s: Summary }) {
         </div>
       </div>
       <div className="mt-1 max-w-full truncate text-[13px] font-medium">{s.label}</div>
-      {s.detail && <div className="max-w-full truncate text-[11.5px] text-muted-foreground">{s.detail}</div>}
+      {s.detail && <div className="max-w-full truncate text-[12px] text-muted-foreground">{s.detail}</div>}
     </div>
   );
 }

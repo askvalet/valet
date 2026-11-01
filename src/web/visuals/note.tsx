@@ -41,7 +41,7 @@ export function Said({ note, className }: { note: Note | null; className?: strin
   }, [note?.id]);
   const here = note && note.id !== away ? note : null;
   return (
-    <div ref={box} role="status" className={cn('flex min-h-8 min-w-0 items-center gap-2 text-[12.5px] leading-[1.35]', className)}>
+    <div ref={box} role="status" className={cn('flex min-h-8 min-w-0 items-center gap-2 text-[13px] leading-[1.35]', className)}>
       {here && <span key={here.id} className={cn('min-w-0 animate-in fade-in duration-(--dur-pop)', TONES[here.tone ?? 'good'])}>{here.text}</span>}
       {here?.undo && <button onClick={here.undo} className="h-8 flex-none rounded-full px-2.5 font-medium text-primary hover:bg-foreground/10">Undo</button>}
     </div>

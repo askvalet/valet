@@ -115,7 +115,7 @@ export function headsUp({ now, hours: all, days }: ForecastCard): string | undef
   if (Math.abs(gap) >= 6) return `Today's high of ${now.hi}° is ${Math.abs(gap)}° ${gap > 0 ? 'warmer' : 'cooler'} than the next few days`;
   if (Math.abs(now.feels - now.temp) >= 5) return `Feels like ${now.feels}° right now`;
 }
-const HeadsUp = ({ card, className }: { card: ForecastCard; className?: string }) => { const line = headsUp(card); return line ? <p className={cn('text-center text-[13.5px] leading-[1.35] font-medium', className)}>{line}</p> : null; };
+const HeadsUp = ({ card, className }: { card: ForecastCard; className?: string }) => { const line = headsUp(card); return line ? <p className={cn('text-center text-[14px] leading-[1.35] font-medium', className)}>{line}</p> : null; };
 const skyOf = (icon: string) => /moon/.test(icon) ? 'night' : icon === 'sun' ? 'clear' : /rain|storm/.test(icon) ? 'wet' : 'grey';
 const Caps = ({ children, className }: { children: ReactNode; className?: string }) => <div className={cn('text-[11px] font-medium tracking-[.09em] uppercase', className)}>{children}</div>;
 
@@ -155,7 +155,7 @@ function HourStrip({ card, n }: { card: ForecastCard; n: number }) {
     <div className="grid" style={{ gridTemplateColumns: `repeat(${hours.length}, minmax(0, 1fr))` }}>
       {hours.map((h, i) => (
         <div key={i} className="flex flex-col items-center gap-1">
-          <div className="text-[11.5px] text-muted-foreground">{h.time}</div>
+          <div className="text-[12px] text-muted-foreground">{h.time}</div>
           <WeatherGlyph name={h.icon} size={24} />
           <div className="tabular text-[13px] font-semibold">{h.temp}°</div>
         </div>
@@ -169,7 +169,7 @@ function DayBars({ card }: { card: ForecastCard }) {
   return (
     <div className="space-y-1.5">
       {days.map(d => (
-        <div key={d.name} className="grid grid-cols-[38px_28px_30px_minmax(0,1fr)_30px] items-center gap-2 text-[13.5px]">
+        <div key={d.name} className="grid grid-cols-[38px_28px_30px_minmax(0,1fr)_30px] items-center gap-2 text-[14px]">
           <div className="font-semibold">{d.name}</div>
           <WeatherGlyph name={d.icon} size={26} />
           <div className="tabular text-right text-muted-foreground">{d.lo}°</div>
@@ -191,7 +191,7 @@ export function WeatherCard({ card, dense }: { card: ForecastCard; dense?: boole
         <div className="min-w-0 flex-1 space-y-4"><HeadsUp card={card} className="text-left" /><HourStrip card={card} n={w >= 720 ? 7 : 6} /><DayBars card={card} /></div>
       </> : <>
         <div className="flex flex-1 flex-col justify-center"><Hero card={card} s={s} /></div>
-        <HeadsUp card={card} className={dense ? 'text-[12.5px]' : undefined} />
+        <HeadsUp card={card} className={dense ? 'text-[13px]' : undefined} />
         {tall && <HourStrip card={card} n={w >= 380 ? 6 : 5} />}
         {tall && card.days?.length ? <DayBars card={card} /> : <Outlook card={card} n={4} size={dense ? 26 : 34} />}
       </>}
@@ -261,10 +261,10 @@ function Agenda({ days, from, today, cap, empty }: { days: Map<string, CalendarE
   const row = (e: CalendarEvent, i: number, lead?: boolean) => (
     <li key={i} className={cn('flex min-w-0 items-stretch gap-2.5', e.end && !dated(e.end) && +parse(e.end) < now && 'opacity-50')}>
       <span className="w-[3.5px] shrink-0 rounded-full" style={{ background: colorOf(e) }} />
-      <div className="min-w-0 py-px"><div className="truncate text-[14.5px] leading-[1.3] font-semibold">{e.title}</div><div className="truncate text-[12.5px] leading-[1.35] text-muted-foreground tabular">{span(e)}{lead && soon(e, now)}</div></div>
+      <div className="min-w-0 py-px"><div className="truncate text-[14px] leading-[1.3] font-semibold">{e.title}</div><div className="truncate text-[13px] leading-[1.35] text-muted-foreground tabular">{span(e)}{lead && soon(e, now)}</div></div>
     </li>
   );
-  if (!groups.length) return <p className="pt-3 text-[13.5px] text-muted-foreground">{empty}</p>;
+  if (!groups.length) return <p className="pt-3 text-[14px] text-muted-foreground">{empty}</p>;
   return (
     <div className="space-y-4">
       {groups.map(g => {
@@ -274,7 +274,7 @@ function Agenda({ days, from, today, cap, empty }: { days: Map<string, CalendarE
             <Caps className="mb-2 text-muted-foreground">{tag(g.day)}</Caps>
             {g.list.length > 0 ? <ul className="space-y-2.5">{g.list.map((e, i) => row(e, i, isToday && i === 0))}</ul> : <p className="text-[13px] leading-[1.35] text-muted-foreground">Nothing else today</p>}
             {g.earlier.length > 0 && <>
-              <button onClick={() => setOpen(o => !o)} aria-expanded={open} className="press mt-1.5 flex h-8 items-center gap-1 text-[12.5px] text-muted-foreground hover:text-foreground">
+              <button onClick={() => setOpen(o => !o)} aria-expanded={open} className="press mt-1.5 flex h-8 items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
                 <ChevronRight className={cn('size-4 flex-none transition-transform', open && 'rotate-90')} />{g.earlier.length} earlier today</button>
               {open && <ul className="mt-1 space-y-2.5 opacity-70">{g.earlier.map((e, i) => row(e, i))}</ul>}
             </>}
@@ -323,7 +323,7 @@ export function CalendarView({ card, large, dense }: { card: CalendarCard; large
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="mb-3 flex items-baseline justify-between gap-2">
           <h3 className={cn('truncate font-semibold tracking-tight', dense ? 'text-[15px]' : 'text-[20px]')}>{longDay(day)}</h3>
-          {away && !dense && <button onClick={home} className="press shrink-0 text-[12.5px] font-medium text-primary">Today</button>}
+          {away && !dense && <button onClick={home} className="press shrink-0 text-[13px] font-medium text-primary">Today</button>}
         </div>
         {/* side by side the month sets the height, and the agenda scrolls in whatever's left: it can't stretch the row */}
         {two ? <div className="cal-scroll relative min-h-0 flex-1"><div className="absolute inset-0 overflow-y-auto pb-3">{list}</div></div> : list}
@@ -331,7 +331,7 @@ export function CalendarView({ card, large, dense }: { card: CalendarCard; large
       {month && (
         <div className={cn('flex min-w-0 flex-col', two && 'w-[47%] shrink-0')}>
           <div className="mb-1 flex items-center justify-between">
-            <div className="text-[14.5px] font-semibold tracking-tight">{new Date(y, m, 1).toLocaleDateString('en', { month: 'long', ...(y !== today.getFullYear() ? { year: 'numeric' } : {}) })}</div>
+            <div className="text-[14px] font-semibold tracking-tight">{new Date(y, m, 1).toLocaleDateString('en', { month: 'long', ...(y !== today.getFullYear() ? { year: 'numeric' } : {}) })}</div>
             <div className="-mr-1.5 flex">
               <button aria-label="Previous month" disabled={!!low && new Date(y, m, 1) <= low} onClick={() => go(-1)} className="press grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"><ChevronLeft className="size-[17px]" /></button>
               <button aria-label="Next month" disabled={!!high && new Date(y, m + 1, 1) > high} onClick={() => go(1)} className="press grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"><ChevronRight className="size-[17px]" /></button>
@@ -340,7 +340,7 @@ export function CalendarView({ card, large, dense }: { card: CalendarCard; large
           <div className="mb-1 grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground" aria-hidden>{Array.from({ length: 7 }, (_, i) => 'SMTWTFS'[(firstDay() + i) % 7]).map((l, i) => <div key={i}>{l}</div>)}</div>
           <div key={`${y}-${m}`} className={cn('flex min-h-0 flex-1 flex-col', view?.dir && 'cal-page')} style={{ '--from': `${(view?.dir ?? 0) * 10}px` } as CSSProperties}><Month year={y} month={m} days={days} today={today} picked={key} pick={pick} /></div>
           {/* two quiet lines for the chosen day; always this tall, so choosing a day doesn't move anything */}
-          <ul className="mt-2 h-[38px] space-y-0.5 overflow-hidden text-[11.5px] leading-[18px]">
+          <ul className="mt-2 h-[38px] space-y-0.5 overflow-hidden text-[12px] leading-[18px]">
             {chosen.slice(0, 2).map((e, i) => <li key={i} className="flex min-w-0 items-center gap-1.5"><i className="size-1.5 shrink-0 rounded-full" style={{ background: colorOf(e) }} /><span className="truncate font-medium">{e.title}</span><span className="ml-auto shrink-0 tabular text-muted-foreground">{i === 1 && chosen.length > 2 ? `+${chosen.length - 2} more` : dated(e.start) ? 'All day' : clock(parse(e.start))}</span></li>)}
             {!chosen.length && <li className="text-muted-foreground">Nothing on</li>}
           </ul>
@@ -456,8 +456,8 @@ export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: R
         </div>
       </div>
       {!!card.modes?.length && <div className="flex w-full gap-1.5">{card.modes.map(m => <ModeButton key={m.id} m={m} on={flip === m.id ? !m.on : !!m.on} disabled={!run} press={() => pressMode(m)} />)}</div>}
-      {card.note && <p className="w-full text-center text-[12.5px] leading-[1.35] text-muted-foreground">{card.note}</p>}
-      {hints.length > 0 && <ul className="w-full space-y-0.5 text-[12.5px] leading-[1.35] text-muted-foreground">{hints.map(m => <li key={m.id}><b className={cn('font-medium', m.on ? 'text-foreground' : 'text-foreground/80')}>{m.label}</b> {m.hint ?? HINTS[m.id]}</li>)}</ul>}
+      {card.note && <p className="w-full text-center text-[13px] leading-[1.35] text-muted-foreground">{card.note}</p>}
+      {hints.length > 0 && <ul className="w-full space-y-0.5 text-[13px] leading-[1.35] text-muted-foreground">{hints.map(m => <li key={m.id}><b className={cn('font-medium', m.on ? 'text-foreground' : 'text-foreground/80')}>{m.label}</b> {m.hint ?? HINTS[m.id]}</li>)}</ul>}
       {!run ? <Cant className="w-full justify-center">View only: sign in to change this.</Cant> : !card.set && card.range ? <Cant className="w-full justify-center">Its range can't be set from here.</Cant> : null}
     </div>
   );

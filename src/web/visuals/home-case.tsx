@@ -26,7 +26,7 @@ type Sent = { command: string; label: string; rooms?: number[]; fan?: string };
 function Reading({ label, note, value, tone }: { label: string; note: string; value: number; tone?: 'warn' | 'bad' }) {
   const r = 7.5, c = 2 * Math.PI * r, p = Math.max(0, Math.min(1, value / 100)), color = tone === 'bad' ? 'var(--bad)' : tone === 'warn' ? 'var(--warn)' : 'var(--good)';
   return (
-    <div className="flex h-7 min-w-0 items-center gap-2 text-[12.5px] leading-[1.35]">
+    <div className="flex h-7 min-w-0 items-center gap-2 text-[13px] leading-[1.35]">
       <svg viewBox="0 0 20 20" className="size-5 flex-none -rotate-90" aria-hidden>
         <circle cx="10" cy="10" r={r} fill="none" stroke="currentColor" strokeOpacity=".14" strokeWidth="3" />
         <circle cx="10" cy="10" r={r} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${Math.max(.001, p) * c} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move)" />
@@ -130,7 +130,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
   const mine = room && queue?.rooms.includes(room.id), roomAt = mine ? queue!.running ? 'running' : 'sent' : 'clean';
   const sentWord = (...commands: string[]) => !!sent && commands.includes(sent.command);
   const viewOnly = !canAct && <Cant>View only: sign in to change this.</Cant>;
-  const back = <button onClick={() => choose(null)} className="press flex h-8 flex-none items-center gap-1 rounded-full pr-3 pl-1.5 text-[12.5px] text-muted-foreground ring-1 ring-foreground/15 hover:bg-foreground/10 hover:text-foreground"><ChevronLeft className="size-4" />All rooms</button>;
+  const back = <button onClick={() => choose(null)} className="press flex h-8 flex-none items-center gap-1 rounded-full pr-3 pl-1.5 text-[13px] text-muted-foreground ring-1 ring-foreground/15 hover:bg-foreground/10 hover:text-foreground"><ChevronLeft className="size-4" />All rooms</button>;
   return (
     <div className="case"><div className="case-body">
       <div className="relative">
@@ -142,11 +142,11 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
           <div className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1.5">
             {note ? <Said note={note} /> : <>
               <Counter value={String(lit.length)} className="metric text-[22px] leading-none" />
-              <span className="text-[12.5px] text-muted-foreground">{lit.length === 1 ? 'light on' : 'lights on'}</span>
+              <span className="text-[13px] text-muted-foreground">{lit.length === 1 ? 'light on' : 'lights on'}</span>
               <Pill icon={Power} disabled={!canAct || !lit.length} onClick={() => flip(lit, false, `Turned off ${plural(lit.length, 'light')}`)}>All off</Pill>
             </>}
             {r && (
-              <button onClick={() => choose('robot')} className="press ml-auto flex h-8 flex-none items-center gap-2 rounded-full bg-foreground/[.06] pr-3 pl-2.5 text-[12.5px] hover:bg-foreground/10">
+              <button onClick={() => choose('robot')} className="press ml-auto flex h-8 flex-none items-center gap-2 rounded-full bg-foreground/[.06] pr-3 pl-2.5 text-[13px] hover:bg-foreground/10">
                 <i className={cn('size-2 flex-none rounded-full', r.error ? 'bg-bad' : sent ? 'bg-warn' : busy ? 'bg-[#64d2ff]' : 'bg-good')} />
                 <span>Vacuum · {sent ? 'Sent' : said(r)}</span>
                 {r.battery != null && <span className="tabular text-muted-foreground">{r.battery}%</span>}
@@ -157,7 +157,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
             {shown.rooms.filter(rm => rm.lights.length || r).map(rm => {
               const on = rm.lights.filter(l => l.on), clean = cleaning?.[rm.id], c = on[0]?.color ?? '#ffd8a8';
               return (
-                <button key={rm.id} onClick={() => choose(`room:${rm.id}`)} className="press flex h-8 flex-none items-center gap-2 rounded-full px-3 text-[12.5px] ring-1 ring-foreground/15 hover:bg-foreground/10">
+                <button key={rm.id} onClick={() => choose(`room:${rm.id}`)} className="press flex h-8 flex-none items-center gap-2 rounded-full px-3 text-[13px] ring-1 ring-foreground/15 hover:bg-foreground/10">
                   <i className="size-2 flex-none rounded-full" style={on.length ? { background: c, boxShadow: `0 0 6px ${c}` } : { boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--foreground) 35%, transparent)' }} />
                   {rm.name}<span className="text-muted-foreground">{clean ? (clean === 'queued' ? 'Queued' : 'Cleaning') : !rm.lights.length ? 'No lights' : on.length ? `${on.length}/${rm.lights.length}` : 'Off'}</span>
                 </button>
@@ -173,7 +173,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
           <div className="flex min-h-8 items-center gap-2">
             {back}
             <h4 className="min-w-0 truncate text-[15px] font-semibold">{room.name}</h4>
-            {room.lights.length > 0 && <span className="flex-none text-[12.5px] text-muted-foreground">{lamped.length ? `${lamped.length} of ${room.lights.length} on` : 'All off'}</span>}
+            {room.lights.length > 0 && <span className="flex-none text-[13px] text-muted-foreground">{lamped.length ? `${lamped.length} of ${room.lights.length} on` : 'All off'}</span>}
           </div>
           {!room.lights.length && <Cant>No lights in this room. Add them under <code className="text-[11px]">floorplans → rooms</code>.</Cant>}
           {room.lights.length > 0 && <>
@@ -207,7 +207,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
           <div className="flex min-h-8 items-center gap-2">
             {back}
             <h4 className="flex-none text-[15px] font-semibold">Vacuum</h4>
-            <span className={cn('min-w-0 truncate text-[12.5px]', r.error ? 'text-bad' : 'text-muted-foreground')}>{sent ? `Sent, ${said(r).toLowerCase()} for now` : said(r)}</span>
+            <span className={cn('min-w-0 truncate text-[13px]', r.error ? 'text-bad' : 'text-muted-foreground')}>{sent ? `Sent, ${said(r).toLowerCase()} for now` : said(r)}</span>
           </div>
           <div className="grid grid-cols-3 gap-1.5">
             <Pill variant={busy ? 'secondary' : 'default'} disabled={!canAct || !!sent} aria-label={busy ? 'Pause' : paused ? 'Resume' : 'Clean'} onClick={() => busy ? vac('pause', 'pause') : vac('start', paused ? 'resume' : 'clean everywhere')}>
@@ -216,7 +216,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
             <Pill disabled={!canAct || !!sent || r.state === 'docked'} aria-label="Dock" onClick={() => vac('dock', 'dock')}><Slots at={sentWord('dock') ? 'sent' : r.state === 'docked' ? 'docked' : 'dock'} words={{ dock: 'Dock', docked: 'Docked', sent: 'Sent' }} /></Pill>
             <Pill disabled={!canAct || !!sent} aria-label="Find" onClick={() => vac('locate', 'find the robot')}><Slots at={sentWord('locate') ? 'sent' : 'find'} words={{ find: <><Zap className="size-4" fill="currentColor" />Find</>, sent: 'Sent' }} /></Pill>
           </div>
-          <div className="flex min-h-8 items-center gap-2 text-[12.5px]">
+          <div className="flex min-h-8 items-center gap-2 text-[13px]">
             {r.fanSpeeds.length > 0 ? <>
               <span className="flex-none font-medium">Suction</span>
               <Select disabled={!canAct} value={sent?.fan ?? r.fanSpeed} onValueChange={v => vac('fan_speed', `suction ${pretty(v).toLowerCase()}`, { fan_speed: v })}>

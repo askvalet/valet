@@ -137,7 +137,7 @@
 
 .prose-chat p { margin: 0 0 .5em; } .prose-chat p:last-child { margin: 0; }
 .prose-chat strong { font-weight: 600; }
-.prose-chat code { font-size: .9em; padding: 1px 5px; border-radius: 6px; background: var(--muted); }
+.prose-chat code { font-size: .9em; padding: 1px 4px; border-radius: 6px; background: var(--muted); }
 
 /* Reduced motion, all of it, here. The system's setting and appearance.motion: none stop everything; reduced stops what
    moves or loops and keeps plain fades. Hover and press movement scale by --move, so they hold still with the rest. */
@@ -347,7 +347,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 @media (max-width: 639px) { .fade-x { mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); } }
 /* services: two tight columns even on a phone */
 /* "why?": a small question that opens a line of explanation at the foot of the card */
-.why-chip { flex: none; border-radius: 99px; padding: 1px 7px; font-size: 11px; line-height: 16px; color: var(--muted-foreground); background: rgb(255 255 255 / .08); transition: color var(--dur-press) var(--ease-out), background-color var(--dur-press) var(--ease-out), transform var(--dur-press) var(--ease-out); }
+.why-chip { flex: none; border-radius: 99px; padding: 1px 8px; font-size: 11px; line-height: 16px; color: var(--muted-foreground); background: rgb(255 255 255 / .08); transition: color var(--dur-press) var(--ease-out), background-color var(--dur-press) var(--ease-out), transform var(--dur-press) var(--ease-out); }
 @media (hover: hover) and (pointer: fine) { .why-chip:hover { color: var(--foreground); background: rgb(255 255 255 / .14); } }
 .why-note { animation: why-note var(--dur-move) var(--ease-out) backwards; }
 @keyframes why-note { from { opacity: 0; transform: translateY(-4px); } }
@@ -377,7 +377,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 /* a ring's segments ease to their new size when the numbers change */
 .donut-seg { transition: stroke-dasharray var(--dur-move) var(--ease-out), stroke-dashoffset var(--dur-move) var(--ease-out); }
 /* a chat card that's keeping itself current: one small dot */
-.live-dot { position: sticky; float: right; top: 14px; margin: 14px 14px -20px 0; left: auto; z-index: 2; width: 6px; height: 6px; border-radius: 99px; background: var(--good); }
+.live-dot { position: sticky; float: right; top: 14px; margin: 12px 12px -20px 0; left: auto; z-index: 2; width: 6px; height: 6px; border-radius: 99px; background: var(--good); }
 .chart-scrub { cursor: crosshair; }
 /* a theme switch: the sun and moon turn into each other */
 .spin-in { animation: spin-in var(--dur-move) var(--ease-out) backwards; }
@@ -471,14 +471,14 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .article { position: relative; isolation: isolate; container-type: size; display: flex; align-items: flex-end; height: 100%; min-height: 240px; overflow: hidden; border-radius: 1rem; background: #fff; box-shadow: var(--shadow-card); }
 .article-page { position: absolute; inset: 0 0 auto; z-index: -2; width: 100%; min-height: 100%; object-fit: cover; object-position: top; transition: transform var(--dur-scene) var(--ease-out); }
 .article::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to top, rgb(10 10 16 / .96) 8%, rgb(10 10 16 / .82) 42%, rgb(10 10 16 / .12) 78%); }
-.article-text { min-width: 0; padding: 18px 20px; }
+.article-text { min-width: 0; padding: 20px; }
 @media (hover: hover) and (pointer: fine) { .article:hover .article-page { transform: translateY(min(0px, max(-60%, calc(-100% + 100cqh))));   /* down the page, and only if there's more of it */ transition-duration: 14s; transition-timing-function: linear; } }
 
 /* documents on a desk: hover picks a page up */
-.desk { display: flex; justify-content: space-between; gap: 0; padding: 18px 10px 6px; overflow-x: auto; scrollbar-width: none; }
-.desk-page { position: relative; flex: 1 1 0; max-width: 200px; min-width: 104px; margin-inline: 2px; padding-inline: 3px; transform: rotate(var(--tilt)); transition: transform var(--dur-move) var(--ease-out); }
+.desk { display: flex; justify-content: space-between; gap: 0; padding: 20px 10px 6px; overflow-x: auto; scrollbar-width: none; }
+.desk-page { position: relative; flex: 1 1 0; max-width: 200px; min-width: 104px; margin-inline: 2px; padding-inline: 4px; transform: rotate(var(--tilt)); transition: transform var(--dur-move) var(--ease-out); }
 .desk-sheet { position: relative; display: block; aspect-ratio: 8.5 / 11; overflow: hidden; border-radius: 6px; background: #fbfaf6; box-shadow: 0 1px 1px rgb(0 0 0 / .3), 0 14px 26px -12px rgb(0 0 0 / .65); transition: box-shadow var(--dur-move) var(--ease-out); }
-.desk-stamp { position: absolute; right: 10px; bottom: 12px; rotate: -9deg; padding: 1px 7px; border: 1.5px solid currentColor; border-radius: 4px; color: #c2352b; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+.desk-stamp { position: absolute; right: 10px; bottom: 12px; rotate: -9deg; padding: 1px 8px; border: 1.5px solid currentColor; border-radius: 4px; color: #c2352b; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
 @media (hover: hover) and (pointer: fine) {
   .desk-page[href]:hover { z-index: 5; transform: translateY(calc(-12px * var(--move))) scale(calc(1 + .09 * var(--move))); }
   .desk-page[href]:hover .desk-sheet { box-shadow: 0 2px 2px rgb(0 0 0 / .3), 0 30px 46px -14px rgb(0 0 0 / .75); }
@@ -486,7 +486,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 /* saved pages as small browser windows */
 .windows { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 16px; }
 .window { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: rgb(255 255 255 / .03); transition: transform var(--dur-move) var(--ease-out), border-color var(--dur-move) var(--ease-out); }
-.window-bar { display: flex; align-items: center; gap: 5px; height: 30px; padding-inline: 11px; font-size: 11.5px; color: var(--muted-foreground); background: rgb(255 255 255 / .05); }
+.window-bar { display: flex; align-items: center; gap: 4px; height: 30px; padding-inline: 12px; font-size: 12px; color: var(--muted-foreground); background: rgb(255 255 255 / .05); }
 .window-bar > i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: rgb(255 255 255 / .18); transition: background-color var(--dur-pop) var(--ease-out); }
 .window-page { display: block; height: 170px; overflow: hidden; background: #fff; }
 .window-page img { display: block; transition: transform var(--dur-scene) var(--ease-out); }
@@ -501,7 +501,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 
 .glass-light .glass-pop { --glass-sheet: rgb(255 255 255 / .96); }
 /* the reading card's controls: on hover, always on touch */
-.article-tools { position: absolute; top: 10px; right: 10px; z-index: 3; display: flex; gap: 2px; padding: 3px; border-radius: 99px; color: #fff; background: rgb(0 0 0 / .62); backdrop-filter: blur(14px); opacity: 0; translate: 0 -4px; transition: opacity var(--dur-pop) var(--ease-out), translate var(--dur-pop) var(--ease-out); }
+.article-tools { position: absolute; top: 10px; right: 10px; z-index: 3; display: flex; gap: 2px; padding: 4px; border-radius: 99px; color: #fff; background: rgb(0 0 0 / .62); backdrop-filter: blur(14px); opacity: 0; translate: 0 -4px; transition: opacity var(--dur-pop) var(--ease-out), translate var(--dur-pop) var(--ease-out); }
 .article-tools button, .article-tools a { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; transition: background-color var(--dur-press) var(--ease-out), transform var(--dur-press) var(--ease-out); }
 .article-tools button[aria-disabled="true"] { opacity: .35; cursor: default; }
 .pile:focus-within .article-tools { opacity: 1; translate: 0; }
@@ -515,8 +515,8 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .article-corner { position: absolute; top: 10px; left: 10px; z-index: 3; }
 .article-chip { display: block; padding: 4px 10px; border-radius: 99px; color: #fff; background: rgb(0 0 0 / .55); backdrop-filter: blur(14px); }
 /* the moment after archiving: it says so, offers the way back, and goes by itself. The same pill carries the page's notes (feel.tsx) */
-.undo-bar { display: inline-flex; align-items: center; gap: 10px; padding: 6px 7px 6px 14px; border-radius: 99px; font-size: 13px; color: #fff; background: rgb(20 20 24 / .86); backdrop-filter: blur(14px); box-shadow: 0 10px 28px -10px rgb(0 0 0 / .6); animation: desk-rise var(--dur-pop) var(--ease-out) backwards; }
-.undo-bar:not(:has(button)) { padding-right: 14px; }
+.undo-bar { display: inline-flex; align-items: center; gap: 10px; padding: 6px 8px 6px 12px; border-radius: 99px; font-size: 13px; color: #fff; background: rgb(20 20 24 / .86); backdrop-filter: blur(14px); box-shadow: 0 10px 28px -10px rgb(0 0 0 / .6); animation: desk-rise var(--dur-pop) var(--ease-out) backwards; }
+.undo-bar:not(:has(button)) { padding-right: 12px; }
 .undo-bar button { padding: 2px 10px; border-radius: 99px; font-weight: 500; color: #111; background: #fff; transition: transform var(--dur-press) var(--ease-out); }
 .clamp.is-more { cursor: pointer; }
 @media (hover: hover) and (pointer: fine) { .clamp.is-more:hover { color: var(--foreground); } }
@@ -525,7 +525,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .seg button { padding: 2px 10px; border-radius: 99px; font-size: 12px; color: var(--muted-foreground); transition: color var(--dur-press) var(--ease-out), background-color var(--dur-press) var(--ease-out), transform var(--dur-press) var(--ease-out); }
 .seg button[aria-pressed="true"] { color: var(--foreground); background: rgb(255 255 255 / .13); }
 :root:not(.dark) .seg { background: rgb(0 0 0 / .05); }
-.doc-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) minmax(0, 170px) 100px minmax(0, 110px); align-items: center; gap: 14px; padding: 8px; border-radius: 10px; font-size: 13px; transition: background-color var(--dur-press) var(--ease-out); }
+.doc-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) minmax(0, 170px) 100px minmax(0, 110px); align-items: center; gap: 12px; padding: 8px; border-radius: 10px; font-size: 13px; transition: background-color var(--dur-press) var(--ease-out); }
 @media (hover: hover) and (pointer: fine) { .doc-row.is-link:hover { background: var(--accent); } }
 .doc-thumb { width: 32px; height: 42px; border-radius: 3px; object-fit: cover; object-position: top; background: #fbfaf6; }
 .doc-title { font-weight: 500; line-height: 1.3; }
@@ -552,10 +552,10 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .columns-chart .col { display: flex; flex: 1 1 0; flex-direction: column-reverse; min-width: 0; height: 100%; border-radius: 3px 3px 0 0; overflow: hidden; transition: opacity var(--dur-press) var(--ease-out); }
 .columns-chart .col i { display: block; flex: none; min-height: 0; }
 @media (hover: hover) and (pointer: fine) { .columns-chart:hover .col:not(.is-at) { opacity: .45; } }
-.col-tip { position: absolute; bottom: calc(100% + 4px); z-index: 2; max-width: 100%; padding: 3px 8px; overflow: hidden; border-radius: 7px; font-size: 12px; line-height: 16px; white-space: nowrap; text-overflow: ellipsis; color: var(--muted-foreground); background: var(--popover); box-shadow: 0 6px 18px -6px rgb(0 0 0 / .5); pointer-events: none; font-variant-numeric: tabular-nums; }
+.col-tip { position: absolute; bottom: calc(100% + 4px); z-index: 2; max-width: 100%; padding: 4px 8px; overflow: hidden; border-radius: 7px; font-size: 12px; line-height: 16px; white-space: nowrap; text-overflow: ellipsis; color: var(--muted-foreground); background: var(--popover); box-shadow: 0 6px 18px -6px rgb(0 0 0 / .5); pointer-events: none; font-variant-numeric: tabular-nums; }
 .col-tip b { font-weight: 500; color: var(--foreground); }
-.col-axis { display: flex; justify-content: space-between; margin-top: 5px; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
-.state-legend { display: flex; flex-wrap: wrap; gap: 3px 14px; margin-top: 10px; font-size: 11.5px; color: var(--muted-foreground); }
+.col-axis { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.state-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 10px; font-size: 12px; color: var(--muted-foreground); }
 .state-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .card-banner { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border-radius: 12px; }
 .card-banner.is-warn { background: color-mix(in srgb, var(--warn) 16%, transparent); }
@@ -566,7 +566,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 @media (hover: hover) and (pointer: fine) { .shelf-arrow:hover { color: var(--foreground); } }
 .shelf-arrow:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .shelf-arrow[aria-disabled="true"] { color: var(--muted-foreground); opacity: .35; cursor: default; }
-.fact { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 9px; border-radius: 99px; font-size: 12px; color: var(--muted-foreground); background: rgb(255 255 255 / .07); }
+.fact { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 8px; border-radius: 99px; font-size: 12px; color: var(--muted-foreground); background: rgb(255 255 255 / .07); }
 .fact b { font-weight: 500; color: var(--foreground); font-variant-numeric: tabular-nums; }
 /* the wall: icons, and only trouble gets a word */
 .wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); grid-auto-flow: dense; gap: 8px; }
@@ -577,20 +577,20 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 .wall-tile.is-down { background: color-mix(in srgb, var(--bad) 18%, transparent); box-shadow: inset 0 0 0 1.5px var(--bad); } .wall-tile.is-down::after { background: var(--bad); }
 .wall-tile.is-degraded { background: color-mix(in srgb, var(--warn) 16%, transparent); box-shadow: inset 0 0 0 1.5px var(--warn); } .wall-tile.is-degraded::after { background: var(--warn); }
 /* only trouble gets words: a tile wide enough to say who and what */
-.wall-tile.is-worded { grid-column: span 3; display: flex; align-items: center; gap: 9px; aspect-ratio: auto; min-width: 0; min-height: 44px; padding-inline: 11px 16px; }
+.wall-tile.is-worded { grid-column: span 3; display: flex; align-items: center; gap: 8px; aspect-ratio: auto; min-width: 0; min-height: 44px; padding-inline: 12px 16px; }
 .wall-tile.is-worded > img, .wall-tile.is-worded > span { flex: none; }
 /* one app's containers, joined; the first carries how many */
 .wall-tile.is-joined::before { content: ''; position: absolute; left: -8px; top: 34%; bottom: 34%; width: 8px; background: rgb(255 255 255 / .07); }
-.wall-count { position: absolute; top: 3px; left: 5px; font-size: 9.5px; font-style: normal; font-weight: 600; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.wall-count { position: absolute; top: 3px; left: 5px; font-size: 10px; font-style: normal; font-weight: 600; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
 @media (hover: hover) and (pointer: fine) { a.wall-tile:hover { background: rgb(255 255 255 / .14); } }
 /* a thermometer: cool at the left, hot at the right */
 /* a reading, not a control: a thin filled track with no knob, the normal range a faint band behind it */
 .reading { position: relative; height: 4px; overflow: hidden; border-radius: 2px; background: rgb(127 127 127 / .14); }
 .reading b { position: absolute; inset-block: 0; background: rgb(127 127 127 / .24); box-shadow: inset 1px 0 rgb(127 127 127 / .55), inset -1px 0 rgb(127 127 127 / .55); }
 .reading i { position: absolute; inset: 0; border-radius: 2px; transition: transform var(--dur-move) var(--ease-out); }
-.chip { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; white-space: nowrap; padding: 6px 11px 6px 8px; border-radius: 99px; font-size: 13px; background: rgb(255 255 255 / .07); transition: background-color var(--dur-press) var(--ease-out); }
+.chip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; white-space: nowrap; padding: 6px 12px 6px 8px; border-radius: 99px; font-size: 13px; background: rgb(255 255 255 / .07); transition: background-color var(--dur-press) var(--ease-out); }
 .chip-mark { font-size: 11px; font-weight: 600; }
-.chip-more { padding-left: 11px; color: var(--muted-foreground); }
+.chip-more { padding-left: 12px; color: var(--muted-foreground); }
 @media (hover: hover) and (pointer: fine) { .chip-more:hover { color: var(--foreground); } }
 .chip-in { animation: desk-rise var(--dur-move) var(--ease-out) backwards; }
 .chip.is-warn { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 50%, transparent); }
@@ -606,7 +606,7 @@ form.glass-round { border-radius: calc(var(--radius) * 1.806) !important; }
 
 /* headlines: a grid of stories, where they're from first */
 .headlines { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 10px; }
-.headline { display: flex; gap: 11px; align-items: flex-start; min-width: 0; padding: 11px 12px; border-radius: 14px; background: rgb(255 255 255 / .05); transition: background-color var(--dur-press) var(--ease-out); }
+.headline { display: flex; gap: 12px; align-items: flex-start; min-width: 0; padding: 12px; border-radius: 14px; background: rgb(255 255 255 / .05); transition: background-color var(--dur-press) var(--ease-out); }
 .headline-mark { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: rgb(255 255 255 / .08); color: var(--muted-foreground); }
 .headline-mark img { width: 18px; height: 18px; border-radius: 4px; }
 .headline-art { flex: none; width: 54px; height: 54px; border-radius: 10px; object-fit: cover; background: var(--muted); }

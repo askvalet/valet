@@ -49,7 +49,7 @@
 .heat-months span { position: absolute; top: 0; }
 .heatmap { container-type: inline-size; }
 @container (max-width: 440px) { .heat-months span:nth-child(even) { display: none; } }
-.heat-key { display: flex; align-items: center; gap: 3px; }
+.heat-key { display: flex; align-items: center; gap: 4px; }
 .heat-key svg { width: 10px; height: 10px; }
 
 /* a hundred squares, filled from the bottom left */

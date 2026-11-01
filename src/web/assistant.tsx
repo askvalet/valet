@@ -162,7 +162,7 @@ function ToolChips({ parts: all, settled, tools, fresh }: { parts: any[]; settle
               <button type="button" disabled={!card} onClick={() => setPeek(x => x === p.toolCallId ? null : p.toolCallId)} className={cn('flex w-full min-w-0 items-center gap-2 text-left text-muted-foreground', card && 'transition-colors hover:text-foreground')}>
                 <I className="size-3.5 shrink-0" />
                 <span className={cn('shrink-0', !done && !failed && !denied && 'chat-shimmer')}>{denied ? `Skipped: ${verb.toLowerCase()}` : verb}</span>
-                {arg && <span className="truncate rounded-md bg-white/[.06] px-1.5 py-px font-mono text-[11.5px] text-foreground/75">{arg}</span>}
+                {arg && <span className="truncate rounded-md bg-white/[.06] px-1.5 py-px font-mono text-[12px] text-foreground/75">{arg}</span>}
                 <span className="ml-auto shrink-0">{failed ? <X className="size-3.5 text-bad" /> : done ? <Check className="size-3.5 text-good" /> : denied ? null : <ThinkingOrb state={(tools[name(p)]?.access ?? 'read') === 'read' ? 'searching' : 'working'} size={20} />}</span>
               </button>
               {peek === p.toolCallId && card && <div className="chat-peek py-1"><ChatCard first={card} name={name(p)} input={p.input} tools={tools} fresh={fresh} /></div>}
@@ -311,7 +311,7 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
       const t = splitThink(p.text);
       if (t.thought) thoughts.push(t.thought);
       thinking ||= live && t.thinking;
-      if (t.said) { flush(); const more = m.parts.slice(i + 1).some((x: any) => x.type.startsWith('tool-') || x.type === 'dynamic-tool'); blocks.push(more ? <div key={i} className="text-[13.5px] text-muted-foreground"><Text text={t.said} live={live} /></div> : <Text key={i} text={t.said} live={live} />); }
+      if (t.said) { flush(); const more = m.parts.slice(i + 1).some((x: any) => x.type.startsWith('tool-') || x.type === 'dynamic-tool'); blocks.push(more ? <div key={i} className="text-[14px] text-muted-foreground"><Text text={t.said} live={live} /></div> : <Text key={i} text={t.said} live={live} />); }
     }
   });
   if (ui.thinking === 'hidden') thinking = false;
@@ -330,14 +330,14 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
           <button aria-label="Copy" title="Copy" onClick={() => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1400); }}
             className="chat-icon">{copied ? <Check className="size-3.5 text-good" /> : <Copy className="size-3.5" />}</button>
           {isLast && <button aria-label="Ask again" title="Ask again" onClick={act.regenerate} className="chat-icon"><RotateCcw className="size-3.5" /></button>}
-          {tookMs != null && <span className="ml-1 text-[11.5px] tabular">{label('worked', { n: (tookMs / 1000).toFixed(tookMs < 10_000 ? 1 : 0) })}</span>}
+          {tookMs != null && <span className="ml-1 text-[12px] tabular">{label('worked', { n: (tookMs / 1000).toFixed(tookMs < 10_000 ? 1 : 0) })}</span>}
         </div>
       )}
       {follow.length > 0 && (
         <div className="space-y-0.5 pt-1">
           {follow.map((f: string) => (
             <button key={f} onClick={() => act.ask(f)}
-              className="press flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left max-sm:py-2.5 text-[13.5px] text-muted-foreground hover:bg-white/[.05] hover:text-foreground">
+              className="press flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left max-sm:py-2.5 text-[14px] text-muted-foreground hover:bg-white/[.05] hover:text-foreground">
               <CornerDownRight className="size-3.5 shrink-0 opacity-60" />{f}
             </button>
           ))}
@@ -452,7 +452,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
         {onDismiss && <button onClick={onDismiss} aria-label="Close" className="chat-icon text-muted-foreground"><X className="size-4" /></button>}
       </header>
 
-      {external && <div className="border-b px-5 py-2 text-[12.5px] text-muted-foreground">{name} runs its own tools. Valet's approvals and access levels don't apply, and answers are plain text.</div>}
+      {external && <div className="border-b px-5 py-2 text-[13px] text-muted-foreground">{name} runs its own tools. Valet's approvals and access levels don't apply, and answers are plain text.</div>}
       <div ref={scroller} onScroll={onScroll} className={cn('relative flex-1 overflow-y-auto overscroll-contain px-5', sheet && !messages.length && 'flex flex-col justify-end')}>
         <div ref={column} className="mx-auto w-full max-w-[820px] space-y-4 py-4">
         {!messages.length && (
@@ -477,14 +477,14 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
         {error && (
           <div className="chat-error flex items-center gap-3 rounded-2xl border border-bad/20 bg-bad/[.06] px-4 py-3 text-sm">
             <span className="min-w-0 flex-1"><span className="font-medium">Couldn't reach the model.</span> <span className="text-muted-foreground">{error.message}</span></span>
-            <button onClick={() => regenerate()} className="press shrink-0 rounded-full bg-white/10 px-3 py-1 text-[12.5px] transition-colors hover:bg-white/15">Try again</button>
+            <button onClick={() => regenerate()} className="press shrink-0 rounded-full bg-white/10 px-3 py-1 text-[13px] transition-colors hover:bg-white/15">Try again</button>
           </div>
         )}
         </div>
       </div>
       {away && (
         <button onClick={toLatest} aria-label="Jump to the latest"
-          className="to-latest glass-round absolute bottom-[88px] left-1/2 z-10 flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-full px-3 text-[12.5px] text-foreground/85">
+          className="to-latest glass-round absolute bottom-[88px] left-1/2 z-10 flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-full px-3 text-[13px] text-foreground/85">
           <ArrowDown className="size-3.5" />{busy ? 'Writing…' : 'Latest'}
         </button>
       )}
@@ -510,7 +510,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
           <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={label(sheet || external || !canAttach ? 'message' : 'messageHint', { name })} aria-label="Message"
             onKeyDown={e => { if (e.key === 'Enter' && (ui.send === 'enter' ? !e.shiftKey : e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
             onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
-            className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-[7px] text-[16px] leading-[22px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-[15px]" autoFocus={!sheet} />
+            className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-[16px] leading-[22px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-[15px]" autoFocus={!sheet} />
           {busy
             ? <Button type="button" size="icon" variant="secondary" className="mb-0.5 size-8 rounded-full" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" /></Button>
             : <Button type="submit" size="icon" className="mb-0.5 size-8 rounded-full" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
