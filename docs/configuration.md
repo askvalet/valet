@@ -341,8 +341,8 @@ The assistant's window. Its name is `assistant.name`.
 | `thinking` | `collapsed` | a model's reasoning: `collapsed` (a line that opens), `open`, `hidden` |
 | `send` | `enter` | `mod-enter`: ⌘/Ctrl+Enter sends, Enter starts a new line |
 | `bubble` | the accent | your messages; for a hex colour, the text turns black or white to suit |
-| `beam` | `off` | a light travelling around the chat box: `always`, `focus` (while typing) or `thinking` (while it answers) |
-| `beamColor` | `colorful` | `colorful`, `mono`, `ocean` or `sunset` |
+| `beam` | `off` | a light travelling around the chat box: `always`, `focus` (while typing) or `thinking` (one band, only while it answers) |
+| `beamColor` | `colorful` | `colorful`, `mono`, `ocean` or `sunset`. With `thinking`, `colorful` is the accent |
 | `beamStrength` | `0.45` | how bright the beam is, 0 to 1 |
 | `icon` | a speech bubble | an icon name from docs/integrations.md, or an image path or URL, on its buttons and header |
 
