@@ -60,7 +60,7 @@
 .elastic.is-pulling [data-slot="slider-thumb"] { transition: scale var(--dur-press) var(--ease-out), box-shadow var(--dur-press) var(--ease-out); scale: calc(1 + .15 * var(--move)); }
 
 /* A number: only the digits that changed move. The old digit leaves as the new one arrives, the last digit first. */
-.digit { position: relative; display: inline-block; }
+.digit { position: relative; display: inline-block; white-space: pre; }   /* a lone space in an inline-block otherwise collapses */
 .digit-new { animation: digit-in var(--dur-move) var(--ease-out) calc(var(--i, 0) * 45ms) backwards; }
 .digit-new[data-was]::before { content: attr(data-was); position: absolute; inset: 0; opacity: 0; animation: digit-out var(--dur-pop) var(--ease-out) calc(var(--i, 0) * 45ms) backwards; }
 @keyframes digit-in { from { opacity: 0; transform: translateY(.42em); } }
@@ -69,6 +69,22 @@
 .digit-new.is-down[data-was]::before { animation-name: digit-out-down; }
 @keyframes digit-in-down { from { opacity: 0; transform: translateY(-.42em); } }
 @keyframes digit-out-down { from { opacity: 1; transform: translateY(-.42em); } to { opacity: 0; transform: translateY(.42em); } }
+
+/* appearance.rim: light on the edge of a pane, fixed. Bright where it falls on the top, dark down the sides, a little thrown back
+   along the bottom. One conic gradient, flat along each edge and turning near the corners, which --lit says where to expect (a bar's are
+   far from the top's middle, a card's nearer), and a mask that leaves only the 1px ring of it. It sits under the content and paints once.
+   Over no wallpaper, or light or unfrosted glass, there's no pane for it to be the edge of. */
+.has-rim.has-wallpaper:not(.no-blur, .glass-light) :is([data-slot="card"]:not(.chat-card *, .glass-pop *), .glass, .glass-bar, form.glass-round, .composer) {
+  isolation: isolate;
+  &:is(form, .composer) { position: relative; }
+  &:is(.glass-bar, form, .composer)::after { --lit: 84deg; }
+  &::after {
+    content: ""; position: absolute; inset: 0; z-index: -1; padding: 1px; border-radius: inherit; pointer-events: none; opacity: var(--rim, 0);
+    --lit: 64deg;
+    background: conic-gradient(rgb(255 255 255 / .55) calc(var(--lit) - 10deg), rgb(0 0 0 / .28) calc(var(--lit) + 12deg), rgb(0 0 0 / .22) calc(170deg - var(--lit)), rgb(255 255 255 / .14) calc(186deg - var(--lit)), rgb(255 255 255 / .14) calc(174deg + var(--lit)), rgb(0 0 0 / .22) calc(190deg + var(--lit)), rgb(0 0 0 / .28) calc(348deg - var(--lit)), rgb(255 255 255 / .55) calc(370deg - var(--lit)));
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  }
+}
 
 /* What just happened: at the bottom of the page, clear of the phone's section bar and the chat, or beside what it's about. */
 .toasts { position: fixed; z-index: 60; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 84px); display: flex; flex-direction: column; align-items: center; gap: 6px; translate: -50% 0; max-width: calc(100vw - 32px); pointer-events: none; }

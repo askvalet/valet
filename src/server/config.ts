@@ -140,6 +140,7 @@ export const Appearance = z.object({
   rowHeight: z.number().min(60).max(600).optional(),           // px, the least a row in a section with sizes takes; rows otherwise fit their tallest card
   // what the sizes mean, in a grid of 2, 4 or 6 columns as the screen widens: { tall: { rows: 3 }, large: { cols: 6 } }
   sizes: z.partialRecord(z.enum(CARD_SIZES), z.object({ cols: z.number().int().min(1).max(6).optional(), rows: z.number().int().min(1).max(6).optional() }).strict()).default({}),
+  rim: z.number().min(0).max(1).optional(),   // a lit bevel on the edge of dark glass, 0 to 1; left out, or 0, there's none
   motion: z.enum(['full', 'reduced', 'none']).default('full'),   // reduced: nothing moves or settles in; none: not even fades. A system's reduce-motion always counts.
   css: z.string().optional(),              // your own CSS, loaded after everything else
   cssFile: z.string().regex(/\.css$/i, 'a path to a .css file').optional(),   // the same from a file; css comes after it

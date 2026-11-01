@@ -36,6 +36,13 @@ test('defaults: an old config keeps the old look, to the letter', () => {
   assert.equal(plain.favorites, undefined);
 });
 
+test('appearance.rim: strength from 0 to 1, nothing on the page unless asked for', () => {
+  assert.equal(Config.parse({}).appearance.rim, undefined);
+  assert.deepEqual(look({ appearance: { rim: 0 } }), { vars: {}, classes: [] });
+  assert.deepEqual(look({ appearance: { rim: .6 } }), { vars: { '--rim': '0.6' }, classes: ['has-rim'] });
+  refused({ appearance: { rim: 1.5 } }); refused({ appearance: { rim: -.1 } }); refused({ appearance: { rim: 'bright' } });
+});
+
 test('every appearance option reaches the page as a variable or a class', () => {
   const { vars: v, classes } = look({
     appearance: {
