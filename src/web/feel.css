@@ -1,4 +1,5 @@
-/* The motion in feel.tsx. Everything here is transform and opacity; the reduced-motion rule in styles.css covers all of it. */
+/* The motion in feel.tsx. Everything here is transform and opacity, but for a row's room as it opens; the reduced-motion rule in
+   styles.css covers all of it. */
 
 /* A row of things. The edges fade where there's more, and something half out of view sits a little back until it arrives.
    The scroll drives that on the compositor, with nothing written per frame; a browser that can't simply leaves it out. */
@@ -69,6 +70,19 @@
 .digit-new.is-down[data-was]::before { animation-name: digit-out-down; }
 @keyframes digit-in-down { from { opacity: 0; transform: translateY(-.42em); } }
 @keyframes digit-out-down { from { opacity: 1; transform: translateY(-.42em); } to { opacity: 0; transform: translateY(.42em); } }
+
+/* A row that comes or goes. Its room opens or closes and the row itself slides from under the one above; a list that fills its
+   card shares out the spare height the same way, so its neighbours give way with it. */
+.row-slot { display: grid; flex: 1 1 auto; grid-template-rows: 1fr; min-width: 0; }
+.row-clip { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.row-slot.is-in { animation: row-open var(--dur-move) var(--ease-out) backwards; }
+.row-slot.is-in > .row-clip > * { animation: row-from var(--dur-move) var(--ease-out) backwards; }
+.row-slot.is-out { pointer-events: none; animation: row-close var(--dur-pop) var(--ease-out) both; }
+.row-slot.is-out > .row-clip > * { animation: row-back var(--dur-pop) var(--ease-out) both; }
+@keyframes row-open { from { flex-grow: 0; grid-template-rows: 0fr; opacity: 0; } }
+@keyframes row-close { to { flex-grow: 0; grid-template-rows: 0fr; opacity: 0; border-block-end-width: 0; } }
+@keyframes row-from { from { transform: translateY(-100%); } }
+@keyframes row-back { to { transform: translateY(-100%); } }
 
 /* chat.beam: thinking. One band around the composer, there only while it answers. */
 .edge { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; overflow: visible; pointer-events: none; color: var(--primary); opacity: var(--edge-a, .8); animation: fade-in-soft var(--dur-pop) var(--ease-out) backwards; }

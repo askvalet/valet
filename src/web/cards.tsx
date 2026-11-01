@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn, useOnScreen } from '@/lib/utils';
-import { Arrows, Counter, Pile, toast, useRow } from './feel.tsx';
+import { Arrows, Counter, Pile, RowSlot, toast, useRow, useRows } from './feel.tsx';
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
 import { clock as clockOf, day as dayOf, num as written } from './format.ts';
 import { stateOf } from '../shared/cards.ts';
@@ -218,11 +218,12 @@ function Clamp({ text, className }: { text: string; className?: string }) {
 }
 
 function Rows({ card, dense }: { card: ListCard; dense: boolean }) {
+  const rows = useRows(card.items, it => it.id ?? it.title, !!card.log), Row = card.log ? 'div' : 'li';
   return (
     <ul className="-my-1 divide-y">
-      {card.items.map((it, i) => <Fragment key={i}>
-        {it.section && it.section !== card.items[i - 1]?.section && <li className="pt-2.5 pb-1 text-xs font-medium text-muted-foreground first:pt-1">{it.section}</li>}
-        <li className={cn('flex min-w-0 items-center gap-3', dense ? 'py-1.5' : 'py-2.5', it.href && 'row-link -mx-2 cursor-pointer px-2 transition-colors hover:bg-accent')}
+      {rows.map(({ key, item: it, state }, i) => <Fragment key={key}>
+        {it.section && it.section !== rows[i - 1]?.item.section && <li className="pt-2.5 pb-1 text-xs font-medium text-muted-foreground first:pt-1">{it.section}</li>}
+        <RowSlot as="li" state={state} on={!!card.log}><Row className={cn('flex min-w-0 items-center gap-3', dense ? 'py-1.5' : 'py-2.5', it.href && 'row-link -mx-2 cursor-pointer px-2 transition-colors hover:bg-accent')}
           onClick={it.href ? () => window.open(it.href, '_blank', 'noopener') : undefined} role={it.href ? 'link' : undefined}>
           {it.image && <img src={it.image} alt="" loading="lazy" className={cn('shrink-0 rounded-md bg-muted object-cover', dense ? 'h-9 w-6' : 'h-12 w-8')} />}
           <div className="min-w-0 flex-1">
@@ -237,7 +238,7 @@ function Rows({ card, dense }: { card: ListCard; dense: boolean }) {
             {it.detail && <Clamp text={it.detail} className="mt-1 text-[12.5px] leading-snug text-foreground/70" />}
             {it.pct != null && <div className={dense ? 'mt-1' : 'mt-2'}><Bar pct={it.pct} tone={it.tone} /></div>}
           </div>
-        </li>
+        </Row></RowSlot>
       </Fragment>)}
     </ul>
   );
@@ -554,6 +555,7 @@ function StallLine({ m, stall, card, run }: { m: MediaItem; stall: Stall; card: 
 }
 
 function Media({ card, compact, run }: { card: MediaCard; compact?: boolean; run?: RunAction }) {
+  const rows = useRows(card.items, m => m.title);
   // in chat, an empty answer is one quiet line, not a big empty frame
   if (!card.items.length) return compact
     ? <div className="flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-[13px] text-muted-foreground"><Film className="size-4" />{card.empty ?? 'Nothing playing'}</div>
@@ -566,10 +568,10 @@ function Media({ card, compact, run }: { card: MediaCard; compact?: boolean; run
   // banners suit something to watch; a pile of downloads, or three of anything, reads better as rows
   if (card.items.length > 2 || card.items.every(m => m.icon === 'download')) return (
     <Card className="flex-1 gap-0 divide-y divide-border overflow-hidden py-0 shadow-card">
-      {card.items.map((m, i) => {
+      {rows.map(({ key, item: m, state }) => {
         const stall = stallOf(m);
         return (
-          <div key={i} className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden px-4 py-2.5">
+          <RowSlot key={key} state={state}><div className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden px-4 py-2.5">
             {m.pct != null && <span className={cn('absolute inset-0 -z-10 transition-transform duration-(--dur-move) ease-out', stall ? 'bg-warn/15' : 'bg-primary/20')} style={{ transform: `translateX(${m.pct * 100 - 100}%)` }} />}
             {m.image ? <Art src={m.image} className="h-12 w-8 shrink-0 rounded-md object-cover" /> : <span className="grid h-12 w-8 shrink-0 place-items-center rounded-md bg-white/10 text-muted-foreground"><Icon name={m.icon ?? 'film'} className="size-4" /></span>}
             <div className="min-w-0 flex-1">
@@ -577,7 +579,7 @@ function Media({ card, compact, run }: { card: MediaCard; compact?: boolean; run
               {stall ? <StallLine m={m} stall={stall} card={card} run={run} /> : <div className="truncate text-xs text-muted-foreground">{m.tags?.join(' · ') ?? m.subtitle}</div>}
             </div>
             {m.pct != null && <Counter value={`${Math.floor(m.pct * 100)}%`} className="shrink-0 text-sm font-medium" />}
-          </div>
+          </div></RowSlot>
         );
       })}
     </Card>

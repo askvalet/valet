@@ -31,7 +31,7 @@ const base = {
 };
 const StatItem = z.object({ label: z.string(), value: z.union([z.string(), z.number()]), unit: z.string().optional(), sub: z.string().optional(),
   tone: Tone.optional(), pct: z.number().optional(), trend: nums.optional() }).strict();
-const ListItem = z.object({ detail: z.string().optional(), title: z.string(), href: z.string().optional(), dot: Tone.optional(), subtitle: z.string().optional(), meta: z.string().optional(), pct: unit.optional(), tone: Tone.optional(),
+const ListItem = z.object({ id: z.string().optional(), detail: z.string().optional(), title: z.string(), href: z.string().optional(), dot: Tone.optional(), subtitle: z.string().optional(), meta: z.string().optional(), pct: unit.optional(), tone: Tone.optional(),
   image: z.string().optional(), badge: z.string().optional(), band: z.tuple([unit, unit]).optional(), section: z.string().optional() }).strict();
 const MediaItem = z.object({ title: z.string(), subtitle: z.string().optional(), image: z.string().optional(), backdrop: z.string().optional(), pct: unit.optional(),
   state: z.enum(['playing', 'paused', 'buffering']).optional(), user: z.string().optional(), device: z.string().optional(), detail: z.string().optional(),
@@ -55,7 +55,7 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
   z.object({ ...base, type: z.literal('cameras'), cameras: z.array(Camera), refresh: z.number().positive().optional(), empty: z.string().optional(), sample: z.boolean().optional(),
     events: z.array(z.object({ id: z.string().optional(), camera: z.string(), label: z.string(), at: z.number(), image: z.string().optional(), score: unit.optional() }).strict()).optional() }).strict(),
   z.object({ ...base, type: z.literal('stats'), items: z.array(StatItem), pie: z.array(z.object({ label: z.string(), value: z.number(), tone: Tone.optional() }).strict()).optional(), pieCenter: z.string().optional() }).strict(),
-  z.object({ ...base, type: z.literal('list'), items: z.array(ListItem), empty: z.string().optional(), limit: z.number().int().positive().optional(), layout: z.enum(['temps', 'chips', 'headlines']).optional() }).strict(),
+  z.object({ ...base, type: z.literal('list'), items: z.array(ListItem), empty: z.string().optional(), limit: z.number().int().positive().optional(), log: z.boolean().optional(), layout: z.enum(['temps', 'chips', 'headlines']).optional() }).strict(),
   z.object({ ...base, type: z.literal('media'), items: z.array(MediaItem), empty: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('shelf'), layout: z.enum(['row', 'spotlight', 'week', 'tickets', 'desk', 'windows']).optional(), items: z.array(ShelfItem), aspect: z.enum(['poster', 'square', 'wide']).optional(), empty: z.string().optional(), stack: z.boolean().optional(), archived: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('status'), items: z.array(StatusItem), layout: z.literal('wall').optional() }).strict(),

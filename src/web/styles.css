@@ -146,13 +146,13 @@
 .motion-none *, .motion-none *::before, .motion-none *::after { animation: none !important; transition: none !important; }
 .motion-reduced *, .motion-reduced *::before, .motion-reduced *::after { animation: none !important; transition-property: opacity, color, background-color, border-color !important; }
 :is(.motion-none, .motion-reduced) :is(.article .article-page, .window .window-page img) { transform: none !important; }
-:is(.motion-none, .motion-reduced) :is(.chip-out, .edge-head) { display: none; }
+:is(.motion-none, .motion-reduced) :is(.chip-out, .row-slot.is-out, .edge-head) { display: none; }
 :is(.motion-none, .motion-reduced) .edge-tail { stroke-dasharray: none !important; stroke-opacity: .5; }
 @media (prefers-reduced-motion: reduce) {
   :root { --move: 0; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .article .article-page, .window .window-page img { transform: none !important; }
-  .chip-out, .edge-head { display: none; }
+  .chip-out, .row-slot.is-out, .edge-head { display: none; }
   .edge-tail { stroke-dasharray: none !important; stroke-opacity: .5; }
 }
 

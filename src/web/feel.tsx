@@ -224,6 +224,31 @@ export function Counter({ value, className }: { value: string | number; classNam
   );
 }
 
+const CLOSE = 200;   // --dur-pop
+interface Gone<T> { key: string; item: T; after?: string }
+/** A list whose rows come and go: a new one is marked `in`, and one that's gone stays a moment as `out`, where it was. Nothing
+ *  on first paint, and a list with nothing in common with the last is another list, so that simply shows. */
+export function useRows<T>(items: T[], keyOf: (item: T) => string, on = true) {
+  const seen = new Map<string, number>();
+  const rows = items.map(item => { const k = keyOf(item), n = seen.get(k) ?? 0; seen.set(k, n + 1); return { key: n ? `${k}#${n}` : k, item }; });
+  const sig = rows.map(r => r.key).join('\n'), last = useRef(rows), [s, setS] = useState({ sig, fresh: [] as string[], gone: [] as Gone<T>[], n: 0 });
+  if (on && s.sig !== sig) {
+    const had = new Set(last.current.map(r => r.key)), has = new Set(rows.map(r => r.key)), same = rows.some(r => had.has(r.key));
+    const left = last.current.flatMap((r, i) => has.has(r.key) ? [] : [{ ...r, after: last.current[i - 1]?.key }]);
+    setS({ sig, fresh: same ? rows.filter(r => !had.has(r.key)).map(r => r.key) : [], gone: same ? [...s.gone.filter(g => !has.has(g.key)), ...left] : [], n: s.n + 1 });
+  }
+  useEffect(() => { last.current = rows; });
+  useEffect(() => { if (!s.gone.length) return; const t = setTimeout(() => setS(x => ({ ...x, gone: [] })), CLOSE); return () => clearTimeout(t); }, [s.n]);
+  const out: { key: string; item: T; state?: 'in' | 'out' }[] = rows.map(r => s.fresh.includes(r.key) ? { ...r, state: 'in' } : r);
+  for (const g of s.gone) { const at = g.after == null ? 0 : out.findIndex(r => r.key === g.after) + 1 || out.length; out.splice(at, 0, { key: g.key, item: g.item, state: 'out' }); }
+  return out;
+}
+/** A row's room in the list: it opens as the row slides out from under the one above, and closes quicker. */
+export function RowSlot({ state, as: As = 'div', on = true, className, children }: { state?: 'in' | 'out'; as?: 'div' | 'li'; on?: boolean; className?: string; children: ReactNode }) {
+  if (!on) return children;
+  return <As className={cn('row-slot', state && `is-${state}`, className)}><div className="row-clip">{children}</div></As>;
+}
+
 // One place for what just happened. Most things keep their note beside the control; this is for a note whose place is out
 // of view, and for what can pile up. A stack of independent notes, each with its own lapse, kept in a tiny store so anything
 // can call it. It mounts itself on first use, and nothing lapses under the pointer: an Undo never leaves as you reach for it.
