@@ -33,7 +33,7 @@ services:
     entrypoint: ["node", "/demo/mock-model.mjs"]
     healthcheck: { disable: true }
     volumes: [./:/demo:ro]
-    networks: [sealed]
+    networks: { sealed: { aliases: [valet-demo-model] } }   # the config names the first demo's model
 
   valet-demo2-edge:
     <<: *hardened
