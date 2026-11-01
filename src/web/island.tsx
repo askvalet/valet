@@ -114,7 +114,7 @@ export default function Island({ live, idle, docked, notice, position = 'top', l
                 <span className="island-dot size-2 flex-none rounded-full" style={{ background: tint(main) }} />
               </>) : main && (<>
                 <Art a={main} size={28} />
-                {label && <span key={main.key} className="tick max-w-[260px] flex-1 truncate text-[14px] font-medium tracking-[-.01em]">{main.title}</span>}
+                {label && <span key={main.key} className="tick max-w-[260px] flex-1 truncate text-[14px] font-medium">{main.title}</span>}
                 <span className={cn('flex items-center', label && 'ml-3')}>{main.icon === 'play' ? <Bars a={main} /> : main.pct != null ? <Progress a={main} /> : main.trailing && <span className="text-[12px] tabular text-white/60">{main.trailing}</span>}</span>
               </>)}
             </div>

@@ -53,7 +53,7 @@ function LightRow({ dot, name, state, label, middle, control }: { dot?: string; 
   );
 }
 
-const Pill = ({ icon: I, children, ...p }: { icon?: LucideIcon } & React.ComponentProps<typeof Button>) => <Button size="sm" variant="secondary" {...p} className={cn('h-8 flex-none rounded-full text-xs', p.className)}>{I && <I className="size-4" />}{children}</Button>;
+const Pill = ({ icon: I, children, ...p }: { icon?: LucideIcon } & React.ComponentProps<typeof Button>) => <Button size="sm" variant="secondary" {...p} className={cn('h-8 flex-none rounded-sm text-xs', p.className)}>{I && <I className="size-4" />}{children}</Button>;
 
 export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
   const box = useRef<HTMLDivElement>(null);
@@ -130,7 +130,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
   const mine = room && queue?.rooms.includes(room.id), roomAt = mine ? queue!.running ? 'running' : 'sent' : 'clean';
   const sentWord = (...commands: string[]) => !!sent && commands.includes(sent.command);
   const viewOnly = !canAct && <Cant>View only: sign in to change this.</Cant>;
-  const back = <button onClick={() => choose(null)} className="press flex h-8 flex-none items-center gap-1 rounded-full pr-3 pl-1.5 text-[13px] text-muted-foreground ring-1 ring-foreground/15 hover:bg-foreground/10 hover:text-foreground"><ChevronLeft className="size-4" />All rooms</button>;
+  const back = <button onClick={() => choose(null)} className="press flex h-8 flex-none items-center gap-1 rounded-sm pr-3 pl-1.5 text-[13px] text-muted-foreground ring-1 ring-foreground/15 hover:bg-foreground/10 hover:text-foreground"><ChevronLeft className="size-4" />All rooms</button>;
   return (
     <div className="case"><div className="case-body">
       <div className="relative">
@@ -146,7 +146,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
               <Pill icon={Power} disabled={!canAct || !lit.length} onClick={() => flip(lit, false, `Turned off ${plural(lit.length, 'light')}`)}>All off</Pill>
             </>}
             {r && (
-              <button onClick={() => choose('robot')} className="press ml-auto flex h-8 flex-none items-center gap-2 rounded-full bg-foreground/[.06] pr-3 pl-2.5 text-[13px] hover:bg-foreground/10">
+              <button onClick={() => choose('robot')} className="press ml-auto flex h-8 flex-none items-center gap-2 rounded-sm bg-foreground/[.06] pr-3 pl-2.5 text-[13px] hover:bg-foreground/10">
                 <i className={cn('size-2 flex-none rounded-full', r.error ? 'bg-bad' : sent ? 'bg-warn' : busy ? 'bg-[#64d2ff]' : 'bg-good')} />
                 <span>Vacuum · {sent ? 'Sent' : said(r)}</span>
                 {r.battery != null && <span className="tabular text-muted-foreground">{r.battery}%</span>}
@@ -157,7 +157,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
             {shown.rooms.filter(rm => rm.lights.length || r).map(rm => {
               const on = rm.lights.filter(l => l.on), clean = cleaning?.[rm.id], c = on[0]?.color ?? '#ffd8a8';
               return (
-                <button key={rm.id} onClick={() => choose(`room:${rm.id}`)} className="press flex h-8 flex-none items-center gap-2 rounded-full px-3 text-[13px] ring-1 ring-foreground/15 hover:bg-foreground/10">
+                <button key={rm.id} onClick={() => choose(`room:${rm.id}`)} className="press flex h-8 flex-none items-center gap-2 rounded-sm px-3 text-[13px] ring-1 ring-foreground/15 hover:bg-foreground/10">
                   <i className="size-2 flex-none rounded-full" style={on.length ? { background: c, boxShadow: `0 0 6px ${c}` } : { boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--foreground) 35%, transparent)' }} />
                   {rm.name}<span className="text-muted-foreground">{clean ? (clean === 'queued' ? 'Queued' : 'Cleaning') : !rm.lights.length ? 'No lights' : on.length ? `${on.length}/${rm.lights.length}` : 'Off'}</span>
                 </button>
@@ -220,7 +220,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
             {r.fanSpeeds.length > 0 ? <>
               <span className="flex-none font-medium">Suction</span>
               <Select disabled={!canAct} value={sent?.fan ?? r.fanSpeed} onValueChange={v => vac('fan_speed', `suction ${pretty(v).toLowerCase()}`, { fan_speed: v })}>
-                <SelectTrigger size="sm" className="ml-auto h-8 w-auto flex-none rounded-full text-xs" aria-label="Suction"><SelectValue /></SelectTrigger>
+                <SelectTrigger size="sm" className="ml-auto h-8 w-auto flex-none rounded-sm text-xs" aria-label="Suction"><SelectValue /></SelectTrigger>
                 <SelectContent>{r.fanSpeeds.map(s => <SelectItem key={s} value={s}>{pretty(s)}</SelectItem>)}</SelectContent>
               </Select>
             </> : <Cant>This robot doesn't report suction levels.</Cant>}

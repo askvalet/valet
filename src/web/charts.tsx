@@ -134,7 +134,7 @@ export function Race({ race, span, now }: { race: RaceData; span?: string; now?:
 }
 
 /** The stream's parts: one hue, deep to pale, so it reads as one flow rather than rival colours. */
-export const flow = (k: number) => k ? `color-mix(in oklab, var(--foreground) ${Math.max(20, 34 - k * 8)}%, transparent)` : 'var(--primary)';
+export const flow = (k: number) => k ? `color-mix(in oklab, var(--foreground) ${Math.max(20, 34 - k * 8)}%, transparent)` : 'color-mix(in oklab, var(--primary) 62%, transparent)';
 const SOFT = [.25, .5, .25];
 /** The shape of a day's counts with its neighbours', so the stream flows; the tip still reads the real count. */
 const soften = (l: number[]) => l.map((_, i) => SOFT.reduce((sum, w, k) => sum + w * (l[i + k - 1] ?? l[i]), 0));

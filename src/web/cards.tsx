@@ -514,7 +514,7 @@ export function NowPlaying({ m, compact, source }: { m: MediaItem; compact?: boo
         <div className="min-w-0 flex-1">
           {m.tags && m.tags.length > 0 && (
             <div className="mb-2.5 flex flex-wrap gap-1.5">
-              {m.tags.map(t => <span key={t} className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-medium tracking-wide backdrop-blur-md">{t}</span>)}
+              {m.tags.map(t => <span key={t} className="rounded-sm bg-white/15 px-2 py-0.5 text-[12px] font-medium backdrop-blur-md">{t}</span>)}
             </div>
           )}
           <div className="truncate text-xl font-semibold tracking-tight @md/np:text-2xl">{m.title}</div>
@@ -613,7 +613,7 @@ function Stack({ card, header, onOpen }: { card: ShelfCard; header?: ReactNode; 
             </div>
           );
         })}
-        {more > 0 && <span className="absolute bottom-1 left-[140px] z-10 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-md">+{more}</span>}
+        {more > 0 && <span className="absolute bottom-1 left-[140px] z-10 rounded-sm bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-md">+{more}</span>}
       </button>
       <div className="mt-2 pl-1">
         <div className="truncate text-[13px] font-medium">{top.title}</div>
@@ -656,7 +656,7 @@ function Spotlight({ card, header }: { card: ShelfCard; header?: ReactNode }) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-4 text-white">
             {first.backdrop && first.image && <Art src={first.image} alt="" className="h-[92px] w-[62px] shrink-0 rounded-lg object-cover shadow-lg" />}
-            <div className="min-w-0"><div className="text-[11px] font-medium tracking-wide text-white/70 uppercase">{first.badge ?? 'New'}</div>
+            <div className="min-w-0"><div className="text-[12px] text-white/75">{first.badge ?? 'New'}</div>
               <div className="truncate text-[20px] font-semibold tracking-tight">{first.title}</div>{first.subtitle && <div className="truncate text-[13px] text-white/75">{first.subtitle}</div>}</div>
           </div>
         </Tile>
@@ -787,7 +787,7 @@ function ShelfRow({ card, header, small, beside, lines }: { card: ShelfCard; hea
               <div className="carousel-face">
                 <div className={cn('relative overflow-hidden rounded-xl bg-muted shadow-[0_10px_24px_-12px_rgb(0_0_0/0.45)] transition-[translate,box-shadow] duration-(--dur-pop) ease-out', href && 'group-hover:-translate-y-1 group-hover:shadow-[0_18px_32px_-12px_rgb(0_0_0/0.5)]', ratio)}>
                   <Art src={it.image} alt={it.title} className="size-full object-cover" />
-                  {it.badge && !lines && <span className={cn('absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-md', 'bg-black/60', it.badge === 'Ready' ? 'text-good' : it.badge === 'Today' && 'text-primary')}>{it.badge}</span>}
+                  {it.badge && !lines && <span className={cn('absolute bottom-2 left-2 rounded-sm px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-md', 'bg-black/60', it.badge === 'Ready' ? 'text-good' : it.badge === 'Today' && 'text-primary')}>{it.badge}</span>}
                   {lines && <i className={`ticket-line is-${lineOf(it)}`} />}
                 </div>
                 <div className="mt-2.5 truncate text-[13px] font-medium">{it.title}</div>
@@ -1209,7 +1209,7 @@ function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?
         {[first, ...rest.slice(0, 4)].map((p, k) => (
           <a key={k} href={p.href} target="_blank" rel="noreferrer" className={cn('group/ph relative overflow-hidden bg-muted', k === 0 && 'col-span-2 row-span-2')}>
             <Art src={p.image} alt={p.title ?? ''} className={cn('size-full object-cover transition-transform duration-(--dur-move) ease-out', p.href && 'group-hover/ph:scale-[1.03]')} />
-            {k === 0 && p.badge && <span className="absolute bottom-3 left-3 rounded-full bg-black/50 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md">{p.badge}</span>}
+            {k === 0 && p.badge && <span className="absolute bottom-3 left-3 rounded-sm bg-black/50 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md">{p.badge}</span>}
           </a>
         ))}
       </div>
@@ -1298,7 +1298,7 @@ function BannerLine({ b, run }: { b: Banner; run?: RunAction }) {
   return (
     <div className={cn('card-banner mb-3', b.tone === 'bad' ? 'is-bad' : 'is-warn')} role="status">
       <span className="min-w-0 flex-1 text-[14px] font-medium">{b.text}{b.until ? ` until ${clockOf(b.until)}` : ''}</span>
-      {b.button && run && <button type="button" disabled={busy} onClick={go} className="press flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-foreground/15 px-3 text-[12px] font-medium text-foreground transition-colors hover:bg-foreground/25 disabled:opacity-60">{busy && <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />}{b.button.label}</button>}
+      {b.button && run && <button type="button" disabled={busy} onClick={go} className="press flex h-7 shrink-0 items-center gap-1.5 rounded-sm bg-foreground/15 px-3 text-[12px] font-medium text-foreground transition-colors hover:bg-foreground/25 disabled:opacity-60">{busy && <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />}{b.button.label}</button>}
     </div>
   );
 }
@@ -1313,7 +1313,7 @@ function CardButtons({ buttons, run }: { buttons: NonNullable<CardT['buttons']>;
         <button key={b.label} disabled={!!busy} onClick={async () => {
           setBusy(b.label);
           try { await run(b.action, b.args); setDone(b.label); setTimeout(() => setDone(null), 1600); } finally { setBusy(null); }
-        }} className="press flex h-7 items-center gap-1.5 rounded-full bg-white/[.07] px-3 text-[12px] text-foreground/85 transition-colors hover:bg-white/[.12] disabled:opacity-60">
+        }} className="press flex h-7 items-center gap-1.5 rounded-sm bg-white/[.07] px-3 text-[12px] text-foreground/85 transition-colors hover:bg-white/[.12] disabled:opacity-60">
           {busy === b.label ? <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" /> : done === b.label ? <span className="tick">✓</span> : null}
           {b.label}
         </button>

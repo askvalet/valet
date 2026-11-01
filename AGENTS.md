@@ -93,6 +93,11 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   popovers) is frostier than cards so it stays legible over content while scrolling.
 - **The accent is rare.** In a chart one thing leads in the accent and the rest are neutral steps; a colour that isn't a
   status or the leader doesn't belong in the chrome. Posters, the house and photos carry the colour.
+- **The valet key is the signature.** `.key-tag`, a punched brass tag, sits on what waits for your say (the approval card) and
+  `.key-note` on the promise beside the chat. Nothing else gets a key, and nothing else is rendered like an object.
+- **The title says whose homelab it is, not hello.** `hero.greeting: "{greeting}, {name}"` brings the time of day back.
+- **One weight of emphasis.** `font-semibold` is mapped to 500 in `@theme` and `tracking-tight` to 0, so hierarchy comes from size
+  and colour. Corners follow `--radius` (controls `* .6`, tags `* .4`); only things that hold no words stay round.
 - **Numbers as shapes.** Health reads at a glance: rings coloured by tone, area graphs behind tiles. Values sit inside
   the shape; labels stay quiet.
 - **Motion follows one vocabulary** (`styles.css`, after Emil Kowalski's skills): `--ease-out` for arriving/leaving,

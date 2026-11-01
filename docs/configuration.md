@@ -36,7 +36,7 @@ In Docker, prefix these with `docker exec -it valet`.
 | Option | Default | |
 |---|---|---|
 | `title` | `Home` | the page title |
-| `greeting` | none | the name in "Good evening, Sam". `hero` says whether and how it's shown |
+| `greeting` | none | the name in "Sam's homelab". `hero` says whether and how it's shown |
 | `notice` | none | a short line (120 characters at most) in a quiet pill above the greeting, e.g. "Interactive demo · simulated home" |
 | `location` | none | gives the assistant local context |
 | `timezone` | `TZ`, else the first browser's | an IANA name like `America/Toronto`. Times the server writes (assistant answers, watch history) use it; containers default to UTC |
@@ -147,7 +147,7 @@ The top of the overview.
 
 | Option | Default | |
 |---|---|---|
-| `greeting` | `true` | `false` hides it; text replaces "Good evening, Sam", and `{name}` fills in the top-level `greeting` |
+| `greeting` | `true` | `false` hides it; text replaces "Sam's homelab": `{name}` fills in the top-level `greeting`, `{greeting}` the time of day |
 | `status` | `true` | the lines under it: what needs you (with what to do about it, and the assistant's shared-cause line), then what's merely going on |
 | `search` | `true` | the ask box, or the search box without an assistant |
 | `review` | `true` | the year in review link under the suggestions, which can be dismissed for the visit. `recap: false` turns off the review itself |
@@ -195,6 +195,8 @@ services and the assistant write is theirs, and the status sentence is built fro
 
 | Key | Default |
 |---|---|
+| `homelab` | {name}'s homelab |
+| `yourHomelab` | Your homelab |
 | `goodMorning` | Good morning |
 | `goodAfternoon` | Good afternoon |
 | `goodEvening` | Good evening |
@@ -202,16 +204,16 @@ services and the assistant write is theirs, and the status sentence is built fro
 | `overview` | Overview |
 | `search` | Search services and actions |
 | `review` | Your {year} in review |
-| `ask` | Ask {name}… |
-| `askAnything` | Ask {name} anything… |
-| `askAbout` | Ask about {scope}… |
+| `ask` | Ask {name} |
+| `askAnything` | Ask {name} anything |
+| `askAbout` | Ask about {scope} |
 | `askWhy` | Ask why |
 | `allOf` | All {n} |
 | `dismiss` | Dismiss |
 | `message` | Message {name} |
 | `messageHint` | Message {name}, paste a link or drop a file |
-| `chatTitle` | What would you like to know? |
-| `chatHint` | Ask about anything on your homepage. |
+| `chatTitle` | Talk to your homelab |
+| `chatHint` | Reads freely, changes nothing without asking |
 | `thinking` | Thinking |
 | `writing` | Writing |
 | `thought` | Thought |
@@ -247,7 +249,7 @@ appearance:
   cssFile: /config/valet.css
   css: "main h2 { text-transform: uppercase; }"
 
-hero: { greeting: "Welcome back, {name}", status: true, search: true, review: false, align: left }
+hero: { greeting: "{greeting}, {name}", status: true, search: true, review: false, align: left }
 
 chat:
   open: right
@@ -334,7 +336,7 @@ The assistant's window. Its name is `assistant.name`.
 | `open` | `center` | where it opens: `center`, `right` or `left` (a panel, and the page stays usable beside it), `bottom`, `page` (the whole window). Phones always get the full sheet. A section with `chat: true` holds it on its own tab as well |
 | `width`, `height` | suit `open` | sizes, never past the window: `520`, `40rem`, `80vh` |
 | `overview` | `true` | `false`: no ask box or chips on the overview. It's still in ⌘K, the tab or the rail's button |
-| `placeholder` | `Ask {name} anything…` | in the ask box and ⌘K; `{name}` is the assistant's name |
+| `placeholder` | `Ask {name} anything` | in the ask box and ⌘K; `{name}` is the assistant's name |
 | `suggestions` | `ai` | `ai`: questions written from what's happening (`assistant.background.suggest`), with the cards' own and `assistant.suggestions` to fall back on. `fixed`: exactly `assistant.suggestions`, and no model call. `off`: none, here or in the empty chat |
 | `steps` | `true` | `false` hides the list of tool calls. Approvals and result cards always show |
 | `thinking` | `collapsed` | a model's reasoning: `collapsed` (a line that opens), `open`, `hidden` |

@@ -4,7 +4,7 @@ import { Chat, useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
 import {
   Activity, ArrowDown, ArrowUp, Bookmark, Check, ChevronDown, ChevronRight, Copy, CornerDownRight, FileText, Lightbulb, Loader2, Paperclip, RotateCcw,
-  Pin, Search, Square, X, Zap,
+  KeyRound, Pin, Search, Square, X, Zap,
 } from 'lucide-react';
 import { createContext, Fragment, memo, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { BorderBeam } from 'border-beam';
@@ -188,7 +188,9 @@ function Confirmation({ p, name, approve, tools }: { p: any; name: string; appro
   return (
     // a slow beam around the edge: nothing goes further until this has an answer
     <BorderBeam size="md" colorVariant={said?.danger ? 'sunset' : 'gold'} strength={.6} duration={3.2} className="chat-card rounded-2xl" style={{ display: 'block', width: 'min(560px, calc(100vw - 48px))' }}>
-    <div className="overflow-hidden rounded-2xl border bg-card shadow-card">
+    <div className="flex overflow-hidden rounded-2xl border bg-card shadow-card">
+      <span className="key-tag" role="img" aria-label="Needs your approval"><KeyRound className="size-4" /></span>
+      <div className="min-w-0 flex-1">
       <div className="flex items-center gap-3.5 p-3.5">
         {said?.image ? <img src={said.image} alt="" className="h-[84px] w-14 shrink-0 rounded-lg object-cover shadow-md" />
           : said?.logo ? <img src={said.logo} alt="" className="size-11 shrink-0 rounded-xl object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />
@@ -221,15 +223,16 @@ function Confirmation({ p, name, approve, tools }: { p: any; name: string; appro
       ) : null}
       </div>}
       <div className="flex gap-2 px-3.5 pb-3.5 sm:hidden">{buttons()}</div>
+      </div>
     </div>
     </BorderBeam>
   );
   function buttons() {
     return <>
-      <button onClick={() => approve(p.approval.id, false)} className="press h-9 flex-1 rounded-full px-4 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:flex-none">{label('notNow')}</button>
-      {said?.danger ? <Hold verb={said.verb ?? label('allow')} onConfirm={() => approve(p.approval.id, true)} className="h-9 flex-1 rounded-full bg-bad px-5 text-[14px] font-semibold text-white sm:flex-none" />
+      <button onClick={() => approve(p.approval.id, false)} className="press h-9 flex-1 rounded-sm px-4 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:flex-none">{label('notNow')}</button>
+      {said?.danger ? <Hold verb={said.verb ?? label('allow')} onConfirm={() => approve(p.approval.id, true)} className="h-9 flex-1 rounded-sm bg-bad px-5 text-[14px] font-semibold text-white sm:flex-none" />
         // waits for the words: until they arrive nobody knows yet whether this one needs holding
-        : <button disabled={!listed && !said} onClick={() => approve(p.approval.id, true)} className="press h-9 flex-1 rounded-full bg-white px-5 text-[14px] font-semibold text-black transition-opacity disabled:opacity-40 sm:flex-none">{said?.verb ?? label('allow')}</button>}
+        : <button disabled={!listed && !said} onClick={() => approve(p.approval.id, true)} className="press h-9 flex-1 rounded-sm bg-primary px-5 text-[14px] font-semibold text-primary-foreground transition-opacity disabled:opacity-40 sm:flex-none">{said?.verb ?? label('allow')}</button>}
     </>;
   }
 }
@@ -459,7 +462,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
           // on a phone the suggestions sit low, where the thumb is
           <div className={cn('text-center', !sheet && 'pt-10')}>
             <div className="text-lg font-semibold tracking-tight">{label('chatTitle')}</div>
-            <p className="mt-1 text-sm text-muted-foreground">{label('chatHint')}</p>
+            <p className="key-note mt-1 text-sm text-muted-foreground"><KeyRound className="size-3.5" />{label('chatHint')}</p>
             <div className="mx-auto mt-6 grid max-w-[560px] gap-1.5 sm:grid-cols-2">
               {suggestions.map(s => (
                 <button key={s} onClick={() => onAsk(s)}
@@ -477,14 +480,14 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
         {error && (
           <div className="chat-error flex items-center gap-3 rounded-2xl border border-bad/20 bg-bad/[.06] px-4 py-3 text-sm">
             <span className="min-w-0 flex-1"><span className="font-medium">Couldn't reach the model.</span> <span className="text-muted-foreground">{error.message}</span></span>
-            <button onClick={() => regenerate()} className="press shrink-0 rounded-full bg-white/10 px-3 py-1 text-[13px] transition-colors hover:bg-white/15">Try again</button>
+            <button onClick={() => regenerate()} className="press shrink-0 rounded-sm bg-white/10 px-3 py-1 text-[13px] transition-colors hover:bg-white/15">Try again</button>
           </div>
         )}
         </div>
       </div>
       {away && (
         <button onClick={toLatest} aria-label="Jump to the latest"
-          className="to-latest glass-round absolute bottom-[88px] left-1/2 z-10 flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-full px-3 text-[13px] text-foreground/85">
+          className="to-latest glass-round absolute bottom-[88px] left-1/2 z-10 flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-sm px-3 text-[13px] text-foreground/85">
           <ArrowDown className="size-3.5" />{busy ? 'Writing…' : 'Latest'}
         </button>
       )}
@@ -512,8 +515,8 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
             onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
             className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-[16px] leading-[22px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-[15px]" autoFocus={!sheet} />
           {busy
-            ? <Button type="button" size="icon" variant="secondary" className="mb-0.5 size-8 rounded-full" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" /></Button>
-            : <Button type="submit" size="icon" className="mb-0.5 size-8 rounded-full" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
+            ? <Button type="button" size="icon" variant="secondary" className="mb-0.5 size-8 rounded-sm" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" /></Button>
+            : <Button type="submit" size="icon" className="mb-0.5 size-8 rounded-sm bg-foreground text-background hover:bg-foreground/90" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
         </div>
         </ChatBeam>
       </form>

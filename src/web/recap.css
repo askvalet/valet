@@ -48,8 +48,8 @@
 @keyframes rc-in { from { opacity: 0; transform: translateY(18px); } }
 .rc-tile { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; background: rgb(255 255 255 / .14); border: 1px solid rgb(255 255 255 / .16); backdrop-filter: blur(24px) saturate(1.6); margin-bottom: 18px; }
 .rc-kicker { font-size: clamp(18px, 2.4vw, 24px); font-weight: 500; color: rgb(255 255 255 / .82); }
-.rc-value { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .1em; font-weight: 600; letter-spacing: -.04em; line-height: 1; margin-top: 8px; font-variant-numeric: tabular-nums; text-wrap: balance; }
-.rc-unit { font-size: .3em; font-weight: 500; letter-spacing: -.01em; color: rgb(255 255 255 / .8); }
+.rc-value { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .1em; font-weight: 500; letter-spacing: -.03em; line-height: 1; margin-top: 8px; font-variant-numeric: tabular-nums; text-wrap: balance; }
+.rc-unit { font-size: .3em; font-weight: 500; color: rgb(255 255 255 / .8); }
 .rc-line { font-size: clamp(17px, 2.2vw, 22px); line-height: 1.35; margin-top: 14px; max-width: 560px; color: rgb(255 255 255 / .86); text-wrap: pretty; }
 .rc-chip { display: inline-block; margin-top: 16px; padding: 4px 11px; border-radius: 99px; font-size: 13px; font-weight: 500; color: rgb(255 255 255 / .8); background: rgb(255 255 255 / .12); border: 1px solid rgb(255 255 255 / .1); }
 
@@ -66,13 +66,13 @@
 .rc-week { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; align-items: end; height: 120px; }
 .rc-week div { display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; height: 100%; font-size: 12px; text-align: center; color: rgb(255 255 255 / .7); }
 .rc-week i { display: block; border-radius: 7px; background: rgb(255 255 255 / .2); animation: rc-rise 700ms 350ms var(--ease-out) both; transform-origin: bottom; }
-.rc-week div.top { color: #fff; font-weight: 600; }
+.rc-week div.top { color: #fff; font-weight: 500; }
 .rc-week div.top i { background: var(--tint); }
 @keyframes rc-rise { from { transform: scaleY(.05); } }
 .rc-posters { display: flex; gap: 10px; margin-top: 22px; }
 .rc-poster { flex: 1; min-width: 0; max-width: 118px; animation: rc-in 600ms var(--ease-out) both; }
 .rc-poster img { display: block; width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 10px; background: #1c1c1e; box-shadow: 0 10px 26px rgb(0 0 0 / .5); }
-.rc-poster b { display: block; margin-top: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rc-poster b { display: block; margin-top: 6px; font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rc-poster em { font-style: normal; font-size: 12px; color: rgb(255 255 255 / .7); }
 
 .rc-seg { position: absolute; top: 10px; left: 12px; right: 12px; display: flex; gap: 4px; z-index: 3; }
@@ -97,7 +97,7 @@
 .rc-hint { position: absolute; z-index: 5; left: 16px; right: 16px; top: 76px; width: fit-content; max-width: calc(100% - 32px); margin: 0 auto; padding: 8px 14px; border-radius: 16px; font-size: 14px; line-height: 1.35; text-align: center; background: rgb(0 0 0 / .6); backdrop-filter: blur(24px); animation: rc-fade var(--dur-move) var(--ease-out) both; pointer-events: none; }
 .rc :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .rc-btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 18px; border-radius: 99px; font-size: 14px; font-weight: 500; background: rgb(255 255 255 / .15); }
-.rc-primary { background: #fff; color: #000; font-weight: 600; }
+.rc-primary { background: #fff; color: #000; font-weight: 500; }
 .rc-choice { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
 
 /* the card, and what goes on it */
@@ -116,16 +116,16 @@
 
 /* the same story as plain text, which you can select */
 .rc-text { position: absolute; inset: 0; z-index: 4; overflow-y: auto; padding: 76px max(20px, calc(50% - 320px)) 40px; background: rgb(0 0 0 / .84); backdrop-filter: blur(30px); user-select: text; font-size: 16px; line-height: 1.45; }
-.rc-text h2 { font-size: 28px; font-weight: 600; letter-spacing: -.02em; margin-bottom: 20px; }
+.rc-text h2 { font-size: 28px; font-weight: 500; margin-bottom: 20px; }
 .rc-text ol > li { padding: 14px 0; border-top: 1px solid rgb(255 255 255 / .14); }
 .rc-text h3 { font-weight: 500; color: rgb(255 255 255 / .8); }
-.rc-text h3 b { font-weight: 600; color: #fff; }
+.rc-text h3 b { font-weight: 500; color: #fff; }
 .rc-text p { color: rgb(255 255 255 / .86); }
 .rc-text ul { margin-top: 4px; font-size: 14px; color: rgb(255 255 255 / .7); }
 .rc-text small { display: block; margin-top: 4px; font-size: 13px; color: rgb(255 255 255 / .6); }
 .rc-text dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 14px; }
 .rc-text dt { font-size: 13px; color: rgb(255 255 255 / .7); }
-.rc-text dd { font-weight: 600; }
+.rc-text dd { font-weight: 500; }
 
 
 /* a slide about one app: its icon, and its colours spilling across the room */

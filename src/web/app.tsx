@@ -428,7 +428,7 @@ function Home({ account }: { account: boolean }) {
   const named = { name: page?.assistant?.name ?? '' };
   const placeholder = (ui?.placeholder ?? (h?.scope?.length ? label('askAbout', { scope: h.scope.slice(0, phone ? 2 : 6).join(', ') }) : label('askAnything'))).replace('{name}', page?.assistant?.name ?? '');
   const askHere = !!page?.assistant && ui?.overview !== false, chips = askHere && chatMode !== 'off';
-  const hello = !h || h.greeting === false ? '' : typeof h.greeting === 'string' ? h.greeting.replace('{name}', page?.greeting ?? '').trim() : `${greet(now.getHours())}${page?.greeting ? `, ${page.greeting}` : ''}`;
+  const hello = !h || h.greeting === false ? '' : typeof h.greeting === 'string' ? h.greeting.replace('{greeting}', greet(now.getHours())).replace('{name}', page?.greeting ?? '').trim() : page?.greeting ? label('homelab', { name: page.greeting }) : label('yourHomelab');
   const boxed = h?.search !== false, shownChips = useLeaving(chips ? questions.slice(0, 3) : []);
   const [reviewed, setReviewed] = useState(() => { try { return !!sessionStorage.getItem('valet-review'); } catch { return false; } });   // dismissed, for this visit
   const pill = page?.recap !== false && h?.review !== false && !reviewed;
@@ -438,35 +438,35 @@ function Home({ account }: { account: boolean }) {
   const lines = cause ? [{ ...trouble[0], id: 'cause', text: cause }] : trouble;
   const hero = view === 'all' && (hello || h?.status !== false || boxed || pill || page?.notice) && (
           <header className={cn('wall-text w-full max-w-[720px] pt-8 xl:pt-10', side)}>
-            {page?.notice && <p className="mb-2.5 inline-block max-w-full rounded-full bg-foreground/[.08] px-3 py-1 text-[12px] text-muted-foreground">{page.notice}</p>}
-            {hello && <h1 className="hero-title text-[22px] font-semibold tracking-tight">{hello}</h1>}
+            {page?.notice && <p className="mb-2 text-[12px] text-muted-foreground">{page.notice}</p>}
+            {hello && <h1 className="hero-title text-[28px] leading-tight font-medium">{hello}</h1>}
             {h?.status !== false && <>
               {/* what needs someone gets its own line and what to do about it; what's merely going on stays quiet */}
-              <Fold open={lines.length > 0}><div role="status" className="mt-0.5 text-[14px] text-pretty text-warn">
+              <Fold open={lines.length > 0}><div role="status" className="mt-1 text-[14px] text-pretty text-foreground/85">
                 {lines.map(p => (
-                  <div key={p.id}><span key={p.text} className="brief-in">{p.text}</span>
-                    {page?.canAct !== false && p.fix && <> · <button onClick={() => { runAction(p.fix!.key, p.fix!.action, p.fix!.args).catch(() => {}); }} className="py-1 font-medium underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none">{p.fix.label}</button></>}
-                    {page?.assistant && p.why && <>{p.fix && page.canAct !== false ? ' / ' : ' · '}<button onClick={() => ask(p.why!)} className="py-1 font-medium underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none">{label('askWhy')}</button></>}
+                  <div key={p.id}><span className="dot dot-warn mr-2 inline-block align-middle" /><span key={p.text} className="brief-in">{p.text}</span>
+                    {page?.canAct !== false && p.fix && <> · <button onClick={() => { runAction(p.fix!.key, p.fix!.action, p.fix!.args).catch(() => {}); }} className="py-1 text-muted-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none">{p.fix.label}</button></>}
+                    {page?.assistant && p.why && <>{p.fix && page.canAct !== false ? ' / ' : ' · '}<button onClick={() => ask(p.why!)} className="py-1 text-muted-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none">{label('askWhy')}</button></>}
                   </div>
                 ))}
               </div></Fold>
               <Fold open={!!how.quiet}><div key={how.quiet} title={brief ?? undefined} className="brief-in mx-auto mt-1 max-w-full text-[14px] text-pretty text-muted-foreground">{how.quiet}</div></Fold>
             </>}
             {askHere && boxed && (
-              <ChatBeam ui={ui} className="mt-5"><form className="glass-round flex items-center gap-2.5 rounded-[26px] py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
+              <ChatBeam ui={ui} className="mt-5"><form className="glass-round flex items-center gap-2.5 py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
                 <label htmlFor="ask-box" className="sr-only">{label('ask', named)}</label>
                 <input id="ask-box" value={draft} onChange={e => setDraft(e.target.value)} onFocus={warm} placeholder={placeholder}
                   className="h-11 min-w-0 flex-1 bg-transparent text-[16px] text-ellipsis outline-none placeholder:text-muted-foreground" />
-                {!draft.trim() && <kbd className="hidden rounded-md border border-white/15 px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground sm:block">⌘K</kbd>}
+                {!draft.trim() && <kbd className="hidden rounded-[6px] border border-white/15 px-1.5 py-0.5 font-sans text-[12px] text-muted-foreground sm:block">⌘K</kbd>}
                 <button type="submit" aria-label="Ask" disabled={!draft.trim()}
-                  className="send-round grid size-10 shrink-0 place-items-center rounded-full bg-white text-black transition-opacity disabled:opacity-25"><ArrowUp className="size-[18px]" /></button>
+                  className="send-round grid size-10 shrink-0 place-items-center rounded-sm bg-white text-black transition-opacity disabled:opacity-25"><ArrowUp className="size-[18px]" /></button>
               </form></ChatBeam>
             )}
             {page && !askHere && boxed && (
-              <button onClick={() => setPalette(true)} className="glass-round mt-5 flex h-11 w-full items-center gap-2.5 rounded-full px-5 text-left text-[15px] text-muted-foreground">
+              <button onClick={() => setPalette(true)} className="glass-round mt-5 flex h-11 w-full items-center gap-2.5 rounded-sm px-5 text-left text-[15px] text-muted-foreground">
                 <Search className="size-4" /><span className="flex-1">{label('search')}</span>
-                <kbd className="hidden rounded-md border border-white/15 px-1.5 py-0.5 font-sans text-[11px] sm:block">⌘K</kbd>
+                <kbd className="hidden rounded-[6px] border border-white/15 px-1.5 py-0.5 font-sans text-[12px] sm:block">⌘K</kbd>
               </button>
             )}
             {chips && (
@@ -474,7 +474,7 @@ function Home({ account }: { account: boolean }) {
                 {/* centred when it fits, scrolls from the start when it doesn't */}
                 <div className={cn('flex max-w-full flex-wrap justify-center gap-1.5', h?.align === 'left' ? 'mr-auto' : h?.align === 'right' ? 'ml-auto' : 'mx-auto')}>
                   {shownChips.map(({ s, out }) => (
-                    <button key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={cn('press shrink-0 rounded-full px-2.5 py-1 text-[13px] text-muted-foreground hover:bg-white/10 hover:text-foreground', out ? 'chip-out' : arrival(`chip:${s}`))} style={out ? { maxWidth: 320 } : undefined}>{s}</button>
+                    <button key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={cn('press shrink-0 rounded-sm px-2.5 py-1 text-[13px] text-muted-foreground hover:bg-white/10 hover:text-foreground', out ? 'chip-out' : arrival(`chip:${s}`))} style={out ? { maxWidth: 320 } : undefined}>{s}</button>
                   ))}
                 </div>
               </div>
@@ -615,14 +615,14 @@ function Home({ account }: { account: boolean }) {
       {/* phones: one row, condensed; wide screens: top right, level with the island */}
       <div ref={bar} data-labels={topbar?.labels !== false || undefined} className={cn('menubar wall-text z-20 flex items-center justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:gap-4 xl:p-0', { left: 'xl:left-5', center: 'xl:left-1/2 xl:-translate-x-1/2', right: 'xl:right-5' }[topbar?.position ?? 'right'])}>
         {!!topbar?.widgets.length && (
-          <div className="glass-bar relative flex shrink items-center gap-1 rounded-full border px-2 py-1 sm:gap-3 sm:px-4 sm:py-1.5">
+          <div className="glass-bar glass-plate relative flex shrink items-center gap-1 border px-2 py-1 sm:gap-3 sm:px-4 sm:py-1.5">
             {topbar.widgets.flatMap(key => {
               const c = state[key]?.card;
               return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} role="group" aria-label={`${t.label} ${t.value}`} className="fade-in-soft"><MiniRing s={t} /></div>);
             })}
           </div>
         )}
-        {(topbar?.clock !== false || topbar?.date !== false || weatherCard) && <div className="glass-bar relative flex shrink-0 items-center gap-2.5 rounded-full border py-1 pr-3.5 pl-1.5 sm:gap-4 sm:py-1.5 sm:pr-5 sm:pl-2">
+        {(topbar?.clock !== false || topbar?.date !== false || weatherCard) && <div className="glass-bar glass-plate relative flex shrink-0 items-center gap-2.5 rounded-full border py-1 pr-3.5 pl-1.5 sm:gap-4 sm:py-1.5 sm:pr-5 sm:pl-2">
           {weatherCard && <WeatherRing card={weatherCard} />}
           {(topbar?.clock !== false || topbar?.date !== false) && <ClockMonth card={page?.calendar ? state[page.calendar]?.card : undefined}>
           {topbar?.clock !== false && <div className="text-sm font-semibold tabular">{clock(now)}</div>}
@@ -639,7 +639,7 @@ function Home({ account }: { account: boolean }) {
 
         {/* phones: the assistant's tab is its stats plus a way into the chat sheet */}
         {phone && chatTab && view === chatTab && page?.assistant && (
-          <button onClick={() => setChatOpen(true)} className="glass-round press flex h-12 items-center gap-2.5 rounded-full px-5 text-left text-[16px] text-muted-foreground"><MessageCircle className="size-[18px]" />{label('ask', named)}</button>
+          <button onClick={() => setChatOpen(true)} className="glass-round press flex h-12 items-center gap-2.5 rounded-sm px-5 text-left text-[16px] text-muted-foreground"><MessageCircle className="size-[18px]" />{label('ask', named)}</button>
         )}
         {!phone && chatTab && view === chatTab && page?.assistant && (
           <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_200px]">

@@ -1,5 +1,5 @@
 /* The house's cards: weather, calendar, thermostat. Colours are theirs alone; everything else comes from the tokens. */
-.wx-temp { font-weight: 500; letter-spacing: -.04em; line-height: 1; }
+.wx-temp { font-weight: 500; letter-spacing: -.03em; line-height: 1; }
 
 /* a breath of sky behind the weather: blue by default, warmer in sun, indigo at night */
 .wx-card { --sky: 96 150 240; }

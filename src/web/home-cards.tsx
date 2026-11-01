@@ -117,7 +117,7 @@ export function headsUp({ now, hours: all, days }: ForecastCard): string | undef
 }
 const HeadsUp = ({ card, className }: { card: ForecastCard; className?: string }) => { const line = headsUp(card); return line ? <p className={cn('text-center text-[14px] leading-[1.35] font-medium', className)}>{line}</p> : null; };
 const skyOf = (icon: string) => /moon/.test(icon) ? 'night' : icon === 'sun' ? 'clear' : /rain|storm/.test(icon) ? 'wet' : 'grey';
-const Caps = ({ children, className }: { children: ReactNode; className?: string }) => <div className={cn('text-[11px] font-medium tracking-[.09em] uppercase', className)}>{children}</div>;
+const Caps = ({ children, className }: { children: ReactNode; className?: string }) => <div className={cn('text-[12px] font-medium', className)}>{children}</div>;
 
 function Hero({ card, s }: { card: ForecastCard; s: number }) {
   const { now } = card;
@@ -127,7 +127,7 @@ function Hero({ card, s }: { card: ForecastCard; s: number }) {
         <WeatherGlyph name={now.icon} size={112 * s} />
         <div className="wx-temp tabular" style={{ fontSize: 82 * s }}>{now.temp}°</div>
       </div>
-      <div className="mt-1 font-semibold tracking-tight" style={{ fontSize: 21 * s }}>{now.words}.</div>
+      <div className="mt-1 font-semibold tracking-tight" style={{ fontSize: 21 * s }}>{now.words}</div>
       <Caps className="mt-1.5 text-muted-foreground">High {now.hi}° <span className="ml-1.5">Low {now.lo}°</span></Caps>
     </div>
   );

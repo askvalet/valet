@@ -3,7 +3,7 @@ export const STARTER = `# Valet. Save this file and the page updates by itself; 
 # Every option: docs/configuration.md. To check this file: node dist/server.js config check
 
 title: Home
-# greeting: Sam                   # "Good evening, Sam"
+# greeting: Sam                   # "Sam's homelab"
 welcome: true                     # the getting-started card. Delete this line when you're done with it.
 
 # Without sign-in Valet only shows things. To use its controls, turn on sign-in, or say your network is private:

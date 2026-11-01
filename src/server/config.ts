@@ -147,7 +147,7 @@ export const Appearance = z.object({
 
 // The top of the overview.
 export const Hero = z.object({
-  greeting: z.union([z.boolean(), z.string()]).default(true),  // text replaces "Good evening, Sam"; {name} is `greeting`
+  greeting: z.union([z.boolean(), z.string()]).default(true),  // text replaces "Sam's homelab"; {name} is `greeting`, {greeting} is "Good evening"
   status: z.boolean().default(true),       // the sentence under it
   search: z.boolean().default(true),       // the ask box (the search box without an assistant)
   review: z.boolean().default(true),       // the year in review link; `recap` turns off the review itself
@@ -229,7 +229,7 @@ export const Config = z.object({
     background: z.boolean().default(true),
   })]).default({ hours: 72, every: 5, background: true }),
   title: z.string().default('Home'),
-  greeting: z.string().optional(),         // name to greet, e.g. "Sam"
+  greeting: z.string().optional(),         // whose homelab it is, e.g. "Sam"
   notice: z.string().max(120).optional(),  // a quiet pill above the greeting, e.g. "Demo · simulated home"
   location: z.string().optional(),
   timezone: z.string().refine(validZone, 'an IANA time zone, like America/Toronto').optional(),   // default: TZ, or else the first browser's
