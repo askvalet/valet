@@ -98,6 +98,10 @@
 @keyframes row-from { from { transform: translateY(-100%); } }
 @keyframes row-back { to { transform: translateY(-100%); } }
 
+/* A tick that has only just become true. */
+.tick-draw path { animation: tick-draw var(--dur-move) var(--ease-out) backwards; }
+@keyframes tick-draw { from { stroke-dasharray: 1 1; stroke-dashoffset: 1; } to { stroke-dasharray: 1 1; stroke-dashoffset: 0; } }
+
 /* chat.beam: thinking. One band around the composer, there only while it answers. */
 .edge { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; overflow: visible; pointer-events: none; color: var(--primary); opacity: var(--edge-a, .8); animation: fade-in-soft var(--dur-pop) var(--ease-out) backwards; }
 .edge[data-tone="mono"] { color: var(--foreground); } .edge[data-tone="ocean"] { color: #64d2ff; } .edge[data-tone="sunset"] { color: var(--warn); }

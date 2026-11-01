@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import type { Card, Confirm } from '../shared/cards.ts';
 import { splitThink } from '../shared/think.ts';
 import { Icon, Widget } from './cards.tsx';
-import { Hold } from './feel.tsx';
+import { Hold, Tick } from './feel.tsx';
 import { label } from './format.ts';
 
 /** What `chat:` says about the window. */
@@ -142,6 +142,7 @@ function ToolChips({ parts: all, settled, tools, fresh }: { parts: any[]; settle
   const parts = all.filter(p => p.state !== 'approval-requested' || p.approval?.isAutomatic);   // the card asking says it, and nothing has happened yet
   const [open, setOpen] = useState<boolean | null>(null);
   const [peek, setPeek] = useState<string | null>(null);   // a step's card, opened from its line
+  const waited = useRef(new Set<string>());   // only what was seen unfinished draws its tick; the chat reopened just has them
   const shown = open ?? !settled;
   const name = (p: any) => p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, '');
   if (!parts.length || !useContext(Ui).steps) return null;
@@ -157,13 +158,14 @@ function ToolChips({ parts: all, settled, tools, fresh }: { parts: any[]; settle
           {parts.map((p, i) => {
             const [verb, I] = verbOf(name(p), tools), arg = argOf(p.input), card = p.output?.card as Card | undefined;
             const done = p.state === 'output-available', failed = p.state === 'output-error' || p.output?.data?.error, denied = p.state === 'output-denied';
+            if (!done) waited.current.add(p.toolCallId);
             return (
               <Fragment key={i}>
               <button type="button" disabled={!card} onClick={() => setPeek(x => x === p.toolCallId ? null : p.toolCallId)} className={cn('flex w-full min-w-0 items-center gap-2 text-left text-muted-foreground', card && 'transition-colors hover:text-foreground')}>
                 <I className="size-3.5 shrink-0" />
                 <span className={cn('shrink-0', !done && !failed && !denied && 'chat-shimmer')}>{denied ? `Skipped: ${verb.toLowerCase()}` : verb}</span>
                 {arg && <span className="truncate rounded-md bg-white/[.06] px-1.5 py-px font-mono text-[11.5px] text-foreground/75">{arg}</span>}
-                <span className="ml-auto shrink-0">{failed ? <X className="size-3.5 text-bad" /> : done ? <Check className="size-3.5 text-good" /> : denied ? null : <ThinkingOrb state={(tools[name(p)]?.access ?? 'read') === 'read' ? 'searching' : 'working'} size={20} />}</span>
+                <span className="ml-auto shrink-0">{failed ? <X className="size-3.5 text-bad" /> : done ? <Tick className="size-3.5 text-good" draw={waited.current.has(p.toolCallId) && (tools[name(p)]?.access ?? 'read') !== 'read'} /> : denied ? null : <ThinkingOrb state={(tools[name(p)]?.access ?? 'read') === 'read' ? 'searching' : 'working'} size={20} />}</span>
               </button>
               {peek === p.toolCallId && card && <div className="chat-peek py-1"><ChatCard first={card} name={name(p)} input={p.input} tools={tools} fresh={fresh} /></div>}
               </Fragment>

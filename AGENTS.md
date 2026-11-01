@@ -105,7 +105,8 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   here). `useRow` + `Arrows`: rows scroll natively, so touch keeps the phone's momentum and vertical scroll, and a mouse can
   throw them; `Pile`: the reading card; `Hold`: anything `danger`, where a quick press asks for a second one, with no clock;
   `ElasticSlider`: Radix's slider with give at the ends; `Counter`: every number that changes, still on first paint and
-  faster than 1.5 s; `toast(key, note)`: the page's stack, only for what piles up or a note whose place is out of view, with
+  faster than 1.5 s (`flap` makes it a departures board, for a countdown); `useRows` + `RowSlot`: a list whose rows come and go, never
+  on first paint or when the whole list is another list; `Tick`: draws itself only for what was seen unfinished; `toast(key, note)`: the page's stack, only for what piles up or a note whose place is out of view, with
   `by` to stay beside the action on a large screen. A note beside its control stays there. A gesture writes transform and
   opacity directly and hands off to a CSS transition, so it can be caught mid-flight; `still()` reads `--move` for what JS moves.
 - **Alive, not busy.** Motion explains a change. The chat shows work happening (a shimmering label with a timer, tool
@@ -117,6 +118,9 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   for a camera flying to a part. Finished entrances use `backwards`, not `both`: a held fill stays in the page's
   animation list and keeps the element in its own stacking context.
 - **Things don't jump.** Controls that change with a selection live in fixed-height rows; panels never resize their card.
+- **The rim is painted once** (`appearance.rim`, feel.css): one `::after` under the content on every pane, on dark glass only, so `z-index: -1`
+  needs its pane to be a stacking context (the rule isolates it) and full-bleed art covers it. A pane's corners aren't known to CSS: `--lit` is
+  where to expect them.
 - **Pointer on everything clickable** (global rule in `styles.css`); hover gives a slight lift, never a jump.
 - **3D models are faithful to the real thing.** Model from photos of the user's hardware, keep proportions honest, and
   light parts in the colours they really are. If a state can't be read, draw what the hardware ships as and say so.

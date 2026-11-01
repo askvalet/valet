@@ -8,7 +8,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { stateOf } from '../src/shared/cards.ts';
 import { checkCard } from '../src/shared/cards.schema.ts';
 import { MiniRing, SummaryTile, Widget } from '../src/web/cards.tsx';
-import { Counter, ElasticSlider, Hold, landing, pose, rubber } from '../src/web/feel.tsx';
+import { Counter, ElasticSlider, Flap, Hold, landing, pose, RowSlot, rubber, Tick, useRows } from '../src/web/feel.tsx';
 import { byDay, CalendarView, headsUp, span, splitToday, Thermostat, WeatherCard } from '../src/web/home-cards.tsx';
 import HomeCase from '../src/web/visuals/home-case.tsx';
 import { batteryNote, heard, near, restoreGroups, restoreOf, unsettled, wearNote, type PlanData, type PlanLight } from '../src/web/visuals/home-model.ts';
@@ -336,6 +336,24 @@ test('feel: hold says what it does, keeps a way that needs no holding, and nothi
   const out = renderToString(<Hold verb="Stop" onConfirm={() => fired++} />);
   assert.match(out, /Hold to stop/); assert.match(out, /Press again/); assert.match(out, /aria-label="Stop\. Asks for a second press"/);
   assert.match(out, /hold-fill/); assert.equal(fired, 0);
+});
+
+test('feel: a flap Counter starts as plain digits, and a flip ends on the plain digit', () => {
+  const n = renderToString(<Counter flap value="1h 5m" />);
+  assert.match(n, /sr-only">1h 5m/); assert.doesNotMatch(n, /flap|digit-new/);
+  assert.equal(n.match(/class="digit"/g)?.length, 5);
+  const f = renderToString(<Flap was="5" now="4" />);
+  assert.match(f, /flap-face">4</);
+  assert.deepEqual(['next', 'last', 'fall', 'rise'].map(k => new RegExp(`flap-${k}">(\\d)`).exec(f)?.[1]), ['4', '5', '5', '4']);
+});
+
+test('feel: rows show plainly on first paint, a tick is still unless it just happened', () => {
+  const Rows = () => <>{useRows([{ t: 'a' }, { t: 'b' }, { t: 'a' }], x => x.t).map(r => <RowSlot key={r.key} state={r.state}>{r.key}</RowSlot>)}</>;
+  const out = renderToString(<Rows />);
+  assert.equal(out.match(/class="row-slot"/g)?.length, 3); assert.doesNotMatch(out, /is-in|is-out/);
+  assert.match(out, /a#1/);   // the same words twice are two rows
+  assert.equal(renderToString(<RowSlot on={false}><li>x</li></RowSlot>), '<li>x</li>');
+  assert.doesNotMatch(renderToString(<Tick />), /tick-draw/); assert.match(renderToString(<Tick draw />), /tick-draw/);
 });
 
 test('feel: the slider keeps its range and value, and a Counter says the whole number once, unanimated at first', () => {

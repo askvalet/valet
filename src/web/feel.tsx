@@ -257,6 +257,11 @@ export function RowSlot({ state, as: As = 'div', on = true, className, children 
   return <As className={cn('row-slot', state && `is-${state}`, className)}><div className="row-clip">{children}</div></As>;
 }
 
+/** A tick. `draw` strokes it on, once: for something that has only now finished. */
+export function Tick({ draw, className }: { draw?: boolean; className?: string }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={cn(draw && 'tick-draw', className)}><path pathLength={1} d="M4 12l5 5L20 6" /></svg>;
+}
+
 // One place for what just happened. Most things keep their note beside the control; this is for a note whose place is out
 // of view, and for what can pile up. A stack of independent notes, each with its own lapse, kept in a tiny store so anything
 // can call it. It mounts itself on first use, and nothing lapses under the pointer: an Undo never leaves as you reach for it.
