@@ -207,8 +207,9 @@ export function ElasticSlider({ className, ...p }: ComponentProps<typeof Slider>
 
 const QUICK = 1500;   // a number changing faster than this just changes: a slider under a finger, a clock's seconds
 /** A number where only the digits that changed move, in from the side it's heading, the last digit first. Nothing on first
- *  paint, and nothing while it's changing too fast to follow. A value that isn't a number crossfades. */
-export function Counter({ value, className }: { value: string | number; className?: string }) {
+ *  paint, and nothing while it's changing too fast to follow. A value that isn't a number crossfades. `flap`: a departures board,
+ *  for a countdown: a digit flips, and what isn't a digit just changes. */
+export function Counter({ value, className, flap }: { value: string | number; className?: string; flap?: boolean }) {
   const text = String(value), [s, setS] = useState({ now: text, was: text, n: 0, at: 0 });
   if (s.now !== text) { const at = Date.now(); setS(at - s.at < QUICK ? { now: text, was: text, n: s.n, at } : { now: text, was: s.now, n: s.n + 1, at }); }
   const was = [...s.was].reverse(), to = [...s.now], down = parseFloat(s.now) < parseFloat(s.was), numbers = /\d/.test(s.now) && /\d/.test(s.was);
@@ -218,10 +219,17 @@ export function Counter({ value, className }: { value: string | number; classNam
       <span className="sr-only">{s.now}</span>
       {to.map((c, i) => {
         const back = to.length - 1 - i, from = was[back], on = s.was !== s.now && from !== c, order = on ? to.slice(i + 1).filter((d, k) => d !== was[to.length - 1 - (i + 1 + k)]).length : 0;
-        return <span key={`${back}:${on ? s.n : 0}`} aria-hidden className={cn('digit', on && 'digit-new', down && 'is-down')} data-was={on ? from : undefined} style={on ? { '--i': order } as CSSProperties : undefined}>{c}</span>;
+        const flip = flap && on && /\d/.test(c) && /\d/.test(from ?? '');
+        return <span key={`${back}:${on ? s.n : 0}`} aria-hidden className={cn('digit', on && !flap && 'digit-new', down && 'is-down')} data-was={on && !flap ? from : undefined} style={on ? { '--i': order } as CSSProperties : undefined}>{flip ? <Flap was={from} now={c} /> : c}</span>;
       })}
     </span>
   );
+}
+
+/** One digit's flip. The face is the plain digit, hidden while four half-digits play over it and back when they finish, so
+ *  nothing is left split down the middle, and with motion off the face is all there is. */
+export function Flap({ was, now }: { was: string; now: string }) {
+  return <><span className="flap-face">{now}</span><i className="flap flap-next">{now}</i><i className="flap flap-last">{was}</i><i className="flap flap-fall">{was}</i><i className="flap flap-rise">{now}</i></>;
 }
 
 const CLOSE = 200;   // --dur-pop

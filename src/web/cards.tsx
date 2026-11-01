@@ -1099,7 +1099,7 @@ function Sky({ card }: { card: ScheduleCard }) {
     <div className="flex flex-1 flex-col justify-between gap-2">
       <div className="flex items-end justify-between">
         <div><div className="metric text-[24px] leading-none">{next.name}</div><div className="mt-1.5 text-[13px] text-muted-foreground tabular">{clock(next.t)}</div></div>
-        <div className="text-right"><div className={cn('metric text-[22px] tabular leading-none', mins <= 15 && 'text-good')}><Counter value={mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`} /></div>
+        <div className="text-right"><div className={cn('metric text-[22px] tabular leading-none', mins <= 15 && 'text-good')}><Counter flap value={mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`} /></div>
           <div className="mt-1.5 text-[12px] text-muted-foreground">to go</div></div>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block max-h-[150px] w-full overflow-visible" aria-hidden>
@@ -1156,7 +1156,7 @@ function Schedule({ card }: { card: ScheduleCard }) {
         </div>
         <div className="text-right">
           <div className={cn('metric tabular leading-none', dense ? 'text-[18px]' : 'text-[22px]', mins <= 15 && 'text-good')}>
-            <Counter value={mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`} />
+            <Counter flap value={mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`} />
           </div>
           <div className="mt-1.5 text-[12px] text-muted-foreground">to go</div>
         </div>

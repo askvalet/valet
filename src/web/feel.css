@@ -71,6 +71,20 @@
 @keyframes digit-in-down { from { opacity: 0; transform: translateY(-.42em); } }
 @keyframes digit-out-down { from { opacity: 1; transform: translateY(-.42em); } to { opacity: 0; transform: translateY(.42em); } }
 
+/* A departures board: the old top half falls, the new bottom half rises past flat and settles. There's no leaf behind the digit, as
+   glass has nothing to hide with, so what a leaf would cover fades as it's covered. See Flap: all of it ends back on the plain digit. */
+.flap, .flap-face { --flap: calc(var(--dur-press) + var(--dur-pop)); }
+.flap-face { display: inline-block; animation: flap-hide var(--flap) linear calc(var(--i, 0) * 45ms) backwards; }
+.flap { position: absolute; inset: 0; font-style: normal; opacity: 0; animation: var(--flap) linear calc(var(--i, 0) * 45ms) backwards; }
+.flap-next, .flap-fall { clip-path: inset(-.2em -.2em 50% -.2em); }
+.flap-last, .flap-rise { clip-path: inset(50% -.2em -.2em -.2em); }
+.flap-next { animation-name: flap-next; } .flap-last { animation-name: flap-last; } .flap-fall { animation-name: flap-fall; } .flap-rise { animation-name: flap-rise; }
+@keyframes flap-hide { from, to { opacity: 0; } }
+@keyframes flap-next { from { opacity: 0; } 45%, to { opacity: 1; } }
+@keyframes flap-last { from, 45% { opacity: 1; } 70%, to { opacity: 0; } }
+@keyframes flap-fall { from { opacity: 1; transform: perspective(2.5em) rotateX(0); animation-timing-function: var(--ease-in-out); } 45% { opacity: 1; transform: perspective(2.5em) rotateX(-90deg); } 45.1%, to { opacity: 0; } }
+@keyframes flap-rise { from, 40% { opacity: 0; } 40.1% { opacity: 1; transform: perspective(2.5em) rotateX(90deg); animation-timing-function: var(--ease-spring); } to { opacity: 1; transform: perspective(2.5em) rotateX(0); } }
+
 /* A row that comes or goes. Its room opens or closes and the row itself slides from under the one above; a list that fills its
    card shares out the spare height the same way, so its neighbours give way with it. */
 .row-slot { display: grid; flex: 1 1 auto; grid-template-rows: 1fr; min-width: 0; }
