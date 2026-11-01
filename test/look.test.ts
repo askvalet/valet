@@ -156,7 +156,7 @@ test('the new options say what they mean', () => {
   assert.equal(c.notice, 'Demo'); assert.deepEqual(c.hero.scope, ['downloads', 'lights']); assert.deepEqual(c.layout[0].favorites, ['Plex']);
   assert.deepEqual(scopeOf(['qbittorrent', 'homeassistant', 'tautulli', 'docker']), ['downloads', 'lights', 'what to watch']);
   assert.equal(scopeOf(['http']), undefined);
-  assert.equal(label('askAbout', { scope: 'downloads, lights' }), 'Ask about downloads, lights…');
+  assert.equal(label('askAbout', { scope: 'downloads, lights' }), 'Ask about downloads, lights');
 });
 
 test('⌘K: an exact name beats asking, asking beats a loose match, and Enter takes what\'s first', () => {

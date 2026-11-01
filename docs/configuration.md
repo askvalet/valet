@@ -77,9 +77,9 @@ anything CSS calls a colour: `"#0a84ff"`, `rgb(10 132 255)`, `oklch(.7 .2 250)`,
 
 | Option | Default | |
 |---|---|---|
-| `accent` | system blue | buttons, focus rings, chat. Text on it turns black or white to suit, for a hex colour |
-| `good`, `warn`, `bad` | system green, orange, red | status tones |
-| `card` | white, `#1c1c1e`, or a dark tint over a wallpaper | the card's tint |
+| `accent` | brass | buttons, focus rings, chat. Text on it turns black or white to suit, for a hex colour |
+| `good`, `warn`, `bad` | green, orange, red, toned down | status tones |
+| `card` | white, `#19191b`, or a dark tint over a wallpaper | the card's tint |
 
 `font`
 
