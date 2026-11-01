@@ -108,7 +108,7 @@ offline, so it's the choice if you'd rather no browser talks to a font CDN.
 
 | Option | Default | |
 |---|---|---|
-| `glass.opacity` | `1`; `0.5` over a wallpaper | how much of the card's tint shows, 0–1 |
+| `glass.opacity` | `1`; `0.56` over a wallpaper | how much of the card's tint shows, 0–1 |
 | `glass.blur` | 36 | px behind cards; bars and popovers keep in proportion. `0` turns blur off everywhere, and floating sheets go nearly solid so they stay readable |
 | `wallpaper` | none | a file (a path Valet can read: it serves it), an image URL, a colour, or a gradient like `"linear-gradient(135deg, #0f2027, #2c5364)"`. Any of them turns cards to glass. A list takes turns |
 | `rotate` | none | how long each one in a list stays: `10m`, `1h` |

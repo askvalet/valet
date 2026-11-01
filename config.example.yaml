@@ -4,7 +4,7 @@ auth: { mode: none, trustNetwork: false }
 
 # Valet configuration. `${NAME}` is replaced from the environment, so keep secrets in .env or Docker secrets.
 title: Home
-greeting: Sam                      # "Good evening, Sam"
+greeting: Sam                      # "Sam's homelab"
 location: Toronto, Canada          # gives the assistant local context
 
 # The look. Everything's optional; docs/configuration.md has the rest (fonts, shape, glass, hero, chat, nav, format…).
