@@ -154,7 +154,7 @@ weather: weather.now
 # What's happening right now, as rings in the top bar, in this order.
 live:
   activities: [plex.streams, downloads.active]
-  notify:                          # short notices when things change (none unless listed)
+  notify:                          # a short toast at the bottom of the page when things change (none unless listed)
     - { widget: downloads.active, on: end, text: "{title} finished downloading" }
     - { widget: services.status, on: down }   # also: up, start
 

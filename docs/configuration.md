@@ -176,7 +176,7 @@ A list of widget keys, or this, to say more about the bar:
 | Option | Default | |
 |---|---|---|
 | `widgets` | `[]` | widget keys whose headline numbers sit as small rings |
-| `position` | `right` | `left`, `center`, on wide screens; below that it's centred at the top of the page. `center` sits behind the island, if you use one |
+| `position` | `right` | `left`, `center`, on wide screens; below that it's centred at the top of the page |
 | `labels` | `true` | the words under the rings |
 | `clock`, `date`, `theme` | `true` | the time, the date, and the light/dark switch |
 | `size` | `1` | 0.6–2 |
@@ -275,7 +275,7 @@ chat:
 
 nav: { side: top, style: both, order: [Lately], hide: [Reading], size: 0.9 }
 menubar: { widgets: [system.tiles], position: left, labels: false, clock: true, date: false, theme: false, size: 1.2 }
-island: { activities: [plex.streams], idle: hide, position: bottom, label: false, size: 1.1 }
+live: { activities: [plex.streams] }
 format: { clock: 24h, date: iso, weekStart: monday, temperature: f, distance: mi, locale: en-GB }
 labels: { overview: Everything, goodMorning: Morning }
 
@@ -386,19 +386,17 @@ Each entry is an MCP server whose tools the assistant may use, under the same ru
 | `readOnly` | `[]` | tool names to treat as read-only even if the server doesn't mark them |
 | `name` | the key | |
 
-## `island`
+## `live`
 
-The black notch at the top that shows what's happening.
+What's happening right now, as rings in the top bar: what's playing, what's downloading, the vacuum, an event in progress.
+They share the plate with the `menubar` rings, to their left with a thin divider. Artwork inside, progress around. Hover
+or tap one for the story, like every other ring. On phones they sit in their own small plate above the top row. When
+nothing is live, they're not there.
 
 | Option | Default | |
 |---|---|---|
 | `activities` | `[]` | widget keys, most important first |
-| `idle` | `hide` | `notch` keeps a small empty notch when nothing is live |
-| `position` | `top` | `top-left`, `top-right`, or `bottom` (floating, and no notch), on wide screens. Phones float it at the top |
-| `label` | `true` | `false`: artwork and progress only, until it's opened |
-| `style` | `notch` | `rings`: on wide screens, activities join the top bar's rings, or sit in their own plate with `position: top-left`. Notices still pop up |
-| `size` | `1` | 0.6–2 |
-| `notify` | `[]` | short notices: `{ widget, on: start\|end\|down\|up, text, push }`; `{title}` and `{name}` fill in; `push: true` also sends it to your channels |
+| `notify` | `[]` | a short toast at the bottom of the page when something changes: `{ widget, on: start\|end\|down\|up, text, push }`; `{title}` and `{name}` fill in; `push: true` also sends it to your channels |
 
 ## `layout`
 

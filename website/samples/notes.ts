@@ -134,7 +134,7 @@ export const NOTES: Record<string, string> = {
   'hackernews.limit': 'How many stories.',
   'homeassistant.token': 'A long-lived access token, best from a separate non-admin user. Use `${VAR}`.',
   'homeassistant.cards': 'Each entry becomes a widget, `<instance>.<key>`, of controls: `{ title, icon, entities }`. Entities are ids, or `{ id, name }` to rename one.',
-  'homeassistant.schedules': 'Each entry becomes a schedule widget from timestamp sensors: `{ title, icon, entities, soon }`. Within `soon` minutes the next one also shows in the island.',
+  'homeassistant.schedules': 'Each entry becomes a schedule widget from timestamp sensors: `{ title, icon, entities, soon }`. Within `soon` minutes the next one also shows as a live ring.',
   'homeassistant.thermostats': 'Each entry becomes a thermostat dial: `{ entity, title, modes, unit }`.',
   'homeassistant.floorplans': 'Each entry becomes a 3D floor plan from a robot vacuum\'s map: `{ title, map, vacuum, rooms, hide, rotate, flip, view }`.',
   'host.token': 'The agent\'s token. Use `${VAR}`.',

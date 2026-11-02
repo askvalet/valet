@@ -81,7 +81,7 @@ A widget has a `title`, an optional `interval` in milliseconds, and `fetch()`, w
 - A widget not in the layout is never polled.
 - Throw with a clear message when it fails: `throw new Error('qBittorrent login failed')`. It shows on the card.
 - Give every card a `summary`, so it works at the small size, in the menubar and as a tile. The layout chooses the size, not the integration.
-- Set `activity` on a card only while something's live, and the [island](/concepts/cards/) shows it.
+- Set `activity` on a card only while something's live, and it shows as a [ring in the top bar](/concepts/layout/#live-activities).
 
 ## Actions
 

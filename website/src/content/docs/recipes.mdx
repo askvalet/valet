@@ -7,7 +7,7 @@ Each block is a complete `config.yaml` and passes `config check`. Secrets go in 
 
 ## A media stack
 
-Plex through Tautulli, downloads, what's coming and requests. The island shows what's playing and what's downloading.
+Plex through Tautulli, downloads, what's coming and requests. Rings in the top bar show what's playing and what's downloading.
 
 ```yaml
 greeting: Sam
@@ -34,7 +34,7 @@ integrations:
     url: http://seerr:5055
     apiKey: ${SEERR_KEY}
 
-island:
+live:
   activities: [plex.streams, downloads.active]
   notify:
     - { widget: downloads.active, on: end, text: "{title} finished downloading" }
@@ -242,7 +242,7 @@ Authelia is also an [integration](/integrations/authelia/), if you want its numb
 
 ## Notifications
 
-Reminders go here when you're not looking: ask the assistant "tell me when this finishes", or set `push: true` on a notice in the island.
+Reminders go here when you're not looking: ask the assistant "tell me when this finishes", or set `push: true` on a notice in `live.notify`.
 
 ```yaml
 notify:
@@ -264,7 +264,7 @@ integrations:
       - { name: Plex, url: "http://plex:32400/identity", href: "https://plex.example.com" }
       - { name: Home Assistant, url: "http://homeassistant:8123" }
 
-island:
+live:
   notify:
     - { widget: services.status, on: down, text: "{name} is down", push: true }
     - { widget: services.status, on: up, text: "{name} is back" }
@@ -274,7 +274,7 @@ layout:
     widgets: [services.status]
 ```
 
-Keep the ones you use and delete the rest. An island notice needs its widget placed on the page, and `apprise` reaches dozens more services.
+Keep the ones you use and delete the rest. A `live.notify` notice needs its widget placed on the page, and `apprise` reaches dozens more services.
 
 ## A public demo
 

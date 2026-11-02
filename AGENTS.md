@@ -78,8 +78,8 @@ https://askvalet.dev.
   A new arrangement is a new option with a default, never a fork of the page.
 - **Sizes are the layout's job.** Every card works small (its `summary` as a tile), medium, large (four of six tracks, more room)
   and dense in chat. Integrations give a good `summary`; they don't pick sizes.
-- **Live things announce themselves.** A card sets `activity` only while something's happening; the island shows the
-  live ones in the config's order and disappears when nothing is live.
+- **Live things announce themselves.** A card sets `activity` only while something's happening; the live ones are rings in
+  the top bar, in the config's order, and they're gone when nothing is live. Notices from `live.notify` are toasts.
 
 - **Charts are one plain module** (`src/web/charts.tsx`): the race, the stream, the year of days and the waffle, in SVG and CSS with
   no chart or animation library. Each draws from a card's numbers and says it's empty through `chartless`, which `isEmpty` reads, so
@@ -109,7 +109,7 @@ https://askvalet.dev.
   the shape; labels stay quiet.
 - **Motion follows one vocabulary** (`styles.css`, after Emil Kowalski's skills): `--ease-out` for arriving/leaving,
   `--ease-in-out` for moving on screen, never ease-in; `--dur-press`, `--dur-pop`, `--dur-move` for UI (under ~300ms),
-  `--dur-spring` for the island, `--dur-scene` for what isn't UI (a wallpaper, a photo, a room's light); animate transform,
+  `--dur-scene` for what isn't UI (a wallpaper, a photo, a room's light); animate transform,
   opacity and small blurs only, so a bar that ticks with every poll moves by `translateX`, not `width`; `scale(0.97)` press
   feedback; hover effects gated by `(hover: hover)`; nothing animates on keyboard actions. Name transitioned properties,
   never `transition: all`. Reduced motion lives in one rule near the top of `styles.css`, not beside each animation: new
@@ -153,7 +153,7 @@ https://askvalet.dev.
   touched. It catches what scripted tests can't: the wrong tool, a claim it can't back up, a poisoned document. When the
   assistant gets something wrong in real use, add it as a case. Run it after changing a tool description or the prompt.
 - `npm run test:live` checks every widget in your `config.yaml` against your real services. `/#gallery` shows the whole
-  library, including the island and its notices.
+  library, including the live rings.
 - Integration tests use made-up data only. Never commit recorded responses from real services (they carry personal data).
 
 - A new option goes in the schema with a comment and default, in `config.example.yaml` if it's common, and in
@@ -202,4 +202,4 @@ https://askvalet.dev.
   `palette.tsx` scores each group with `rank` and sorts them itself. A new group goes in that list, not straight into the JSX.
 - **Two small libraries from libraries.dev are in on purpose**, pinned exactly: `thinking-orbs` (the chat's working states and the
   recap's loading) and `border-beam` (`chat.beam` and the approval card). All MIT, no dependencies, no network. Left out:
-  `img-fx` needs three.js, `liquid-gooey` lags the island's spring, `bot-avatars` and `voice-glow` have no job here yet.
+  `img-fx` needs three.js; `liquid-gooey`, `bot-avatars` and `voice-glow` have no job here yet.

@@ -623,10 +623,10 @@ function Home({ account }: { account: boolean }) {
       {/* phones: one row, condensed, with what's live in its own row above; wide screens: top right */}
       {phone && live.length > 0 && <div className="wall-text z-20 flex justify-center px-3 pt-3"><div className="glass-bar glass-plate relative flex items-center gap-3 border px-3 py-1"><LiveRings live={live} /></div></div>}
       <div ref={bar} data-labels={topbar?.labels !== false || undefined} className={cn(!settled && 'invisible', 'menubar wall-text z-20 flex items-stretch justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:gap-4 xl:p-0', { left: 'xl:left-5', center: 'xl:left-1/2 xl:-translate-x-1/2', right: 'xl:right-5' }[topbar?.position ?? 'right'])}>
-        {!!topbar?.widgets.length && (
+        {(!!topbar?.widgets.length || liveInBar) && (
           <div className="glass-bar glass-plate relative flex shrink items-center gap-1 border px-2 py-1 sm:gap-3 sm:px-4 sm:py-1.5">
-            {liveInBar && <><LiveRings live={live} /><i className="live-rule" aria-hidden /></>}
-            {topbar.widgets.flatMap(key => {
+            {liveInBar && <><LiveRings live={live} />{!!topbar?.widgets.length && <i className="live-rule" aria-hidden />}</>}
+            {topbar?.widgets.flatMap(key => {
               const c = state[key]?.card;
               return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} role="group" aria-label={`${t.label} ${t.value}`} className="fade-in-soft"><MiniRing s={t} /></div>);
             })}

@@ -146,7 +146,7 @@ Any card can also carry:
 - `summary` (or `summaries`): its headline, shown when the widget is placed with `size: small`, in the menubar, or as a
   tile. `trend` draws a graph behind it and `color` (a hex colour) tints that graph; `pct` fills a ring, `waffle` draws it
   as ten rows of ten squares, `marks` is a row of small bars, and `image` fills the tile.
-- `activity`: set only while something is happening; the island shows it.
+- `activity`: set only while something is happening; it shows as a ring in the top bar.
 - `buttons`: quick actions along the bottom (`{ label, action, args }`), run through the integration's `actions`.
 - `banner`: a state the person chose and shouldn't forget, at the top of the card: `{ text, until, tone, button }`, as in
   "Blocking paused until 14:05" with Resume beside it. `until` is in milliseconds.

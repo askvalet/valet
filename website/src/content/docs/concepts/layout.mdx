@@ -1,6 +1,6 @@
 ---
 title: Sections and layout
-description: How sections, display modes, columns, sidebars, the menubar and the island arrange the page.
+description: How sections, display modes, columns, sidebars, the menubar and live activities arrange the page.
 sidebar:
   order: 4
 ---
@@ -103,22 +103,23 @@ calendar: family.agenda   # events when you hover the clock
 
 Use the object form for more: `position`, `labels`, `clock`, `date`, `theme` and `size`.
 
-## The island
+## Live activities
 
-A black notch at the top that shows what's happening, and disappears when nothing is.
+What's playing, what's downloading, the vacuum, an event in progress. They're rings in the top bar, in the same plate as the menubar's, to their left with a thin divider. Artwork inside, progress around.
 
-<Shot id="scene/island-open" label="Opened" alt="The island opened, showing a stream and a download with progress bars." />
+Hover or tap one for the story, like every other ring. On phones they sit in their own small plate above the top row. When nothing is live, they're not there.
+
+<Shot id="scene/island-open" label="A ring opened" alt="A ring in the top bar with its popover open, showing what's playing and how far along it is." />
 
 ```yaml
-island:
+live:
   activities: [plex.streams, downloads.active, home.house]
-  idle: hide
   notify:
     - { widget: downloads.active, on: end, text: "{title} finished downloading" }
     - { widget: services.status, on: down, push: true }
 ```
 
-List widgets in order of importance. `notify` shows a short notice on `start`, `end`, `down` or `up`, and the widget must be placed on the page. `push: true` also sends it to your [notification channels](/recipes/#notifications).
+List widgets in order of importance. `notify` shows a short toast at the bottom of the page on `start`, `end`, `down` or `up`, and the widget must be placed on the page. `push: true` also sends it to your [notification channels](/recipes/#notifications).
 
 ## The palette
 

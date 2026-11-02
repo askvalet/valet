@@ -68,7 +68,7 @@ So `config: read` lets it read and preview, and `config: control` lets it save w
 
 The limits are in the code, and they apply to saves and previews alike:
 
-- It can only touch these keys: `integrations`, `layout`, `links`, `menubar`, `weather`, `island`, `nav`, `hero`, `chat`, `format`, `labels`, `title`, `greeting`, `location`, `timezone`, `search`, `history`, `welcome`.
+- It can only touch these keys: `integrations`, `layout`, `links`, `menubar`, `weather`, `live`, `nav`, `hero`, `chat`, `format`, `labels`, `title`, `greeting`, `location`, `timezone`, `search`, `history`, `welcome`.
 - It can't touch `assistant`, `auth`, `allowedHosts`, `plugins`, `mcp`, `appearance` or anything else. It can't raise its own access.
 - It can't write a secret. A value that looks like one is refused unless it's a `${NAME}`, and you add the real value to `.env` yourself.
 - It won't save with problems in the result, or with a `${NAME}` that isn't set.
