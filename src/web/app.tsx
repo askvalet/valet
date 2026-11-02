@@ -427,6 +427,14 @@ function Home({ account }: { account: boolean }) {
   // remember what's empty (nothing playing), so it doesn't flash a placeholder on the next visit
   useEffect(() => { for (const [k, s] of Object.entries(state)) if (isEmpty(s.card)) noteShape(k, { empty: true }); }, [state]);
 
+  // the page waits a moment for its first readings and arrives whole, rather than cards popping in and pushing each other
+  const [settled, setSettled] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setSettled(true), 900); return () => clearTimeout(t); }, []);
+  useEffect(() => {
+    if (settled || !page) return;
+    const want = page.sections.filter(s => s.overview !== false).flatMap(s => s.widgets);
+    if (want.filter(k => state[k]).length >= want.length * .8) setSettled(true);
+  }, [page, state, settled]);
   const h = page?.hero, chatUi = page?.chat;
   // follow-ups outlive what they were about too: none about a service that's fine again
   const fresh = chatUi?.followUps && stillTrue(chatUi.followUps, [], Object.values(state)).join('\n');
@@ -446,7 +454,8 @@ function Home({ account }: { account: boolean }) {
           <header className={cn('wall-text w-full max-w-[720px] pt-8 xl:pt-10', side)}>
             {page?.notice && <p className="mb-2 text-[12px] text-muted-foreground">{page.notice}</p>}
             {hello && <h1 className="hero-title text-[28px] leading-tight font-medium">{hello}</h1>}
-            {h?.status !== false && <Fold open={!!line}><div key={line} role="status" title={brief ?? undefined} className="brief-in mx-auto mt-1 max-w-full text-[14px] text-pretty text-muted-foreground sm:truncate">{line}</div></Fold>}
+            {/* its line is held from the start, so its words arriving move nothing */}
+            {h?.status !== false && <div key={line} role="status" title={brief ?? undefined} className="brief-in mx-auto mt-1 min-h-[21px] max-w-full text-[14px] leading-[1.5] text-pretty text-muted-foreground sm:truncate">{line}</div>}
             {askHere && boxed && (
               <ChatBeam ui={ui} className="mt-5"><form className="glass-round flex items-center gap-2.5 py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
@@ -467,7 +476,7 @@ function Home({ account }: { account: boolean }) {
             {(chips || pill) && (
               <div className="fade-x no-scrollbar mt-2.5 overflow-x-auto">
                 {/* centred when it fits, scrolls from the start when it doesn't */}
-                <div className={cn('flex max-w-full flex-wrap justify-center gap-1.5', h?.align === 'left' ? 'mr-auto' : h?.align === 'right' ? 'ml-auto' : 'mx-auto')}>
+                <div className={cn('flex min-h-7 w-max min-w-full justify-center gap-1.5', h?.align === 'left' ? 'mr-auto' : h?.align === 'right' ? 'ml-auto' : 'mx-auto')}>
                   {shownChips.map(({ s, out }) => (
                     <button key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={cn('press shrink-0 rounded-sm px-2.5 py-1 text-[13px] text-muted-foreground hover:bg-white/10 hover:text-foreground', out ? 'chip-out' : arrival(`chip:${s}`))} style={out ? { maxWidth: 320 } : undefined}>{s}</button>
                   ))}
@@ -608,7 +617,7 @@ function Home({ account }: { account: boolean }) {
           Below lg it sits at the top of the page instead, centred and wrapping, so phones see it too. */}
       {page?.island && <Island live={live} idle={page.island.idle} docked={wide && page.island.position !== 'bottom'} position={wide ? page.island.position : 'top'} label={page.island.label} notice={notice} />}
       {/* phones: one row, condensed; wide screens: top right, level with the island */}
-      <div ref={bar} data-labels={topbar?.labels !== false || undefined} className={cn('menubar wall-text z-20 flex items-stretch justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:gap-4 xl:p-0', { left: 'xl:left-5', center: 'xl:left-1/2 xl:-translate-x-1/2', right: 'xl:right-5' }[topbar?.position ?? 'right'])}>
+      <div ref={bar} data-labels={topbar?.labels !== false || undefined} className={cn(!settled && 'invisible', 'menubar wall-text z-20 flex items-stretch justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:gap-4 xl:p-0', { left: 'xl:left-5', center: 'xl:left-1/2 xl:-translate-x-1/2', right: 'xl:right-5' }[topbar?.position ?? 'right'])}>
         {!!topbar?.widgets.length && (
           <div className="glass-bar glass-plate relative flex shrink items-center gap-1 border px-2 py-1 sm:gap-3 sm:px-4 sm:py-1.5">
             {topbar.widgets.flatMap(key => {
@@ -627,7 +636,7 @@ function Home({ account }: { account: boolean }) {
         {!wall && topbar?.theme !== false && (page?.look.theme ?? 'auto') === 'auto' && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={() => { flipped.current = true; theme.toggle(); }}>{theme.dark ? <Sun key="sun" className={cn(flipped.current && 'spin-in')} /> : <Moon key="moon" className={cn(flipped.current && 'spin-in')} />}</RoundButton>}
       </div>
 
-      <main ref={pageEl} style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-28', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide && navSide === 'left' && (topbar?.position ?? 'right') === 'right' ? 'max-w-none md:pr-5!' : chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
+      <main ref={pageEl} data-settling={settled ? undefined : ''} style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-28', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide && navSide === 'left' && (topbar?.position ?? 'right') === 'right' ? 'max-w-none md:pr-5!' : chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
         {(view !== 'all' || !hello) && <h1 className="sr-only">{view === 'all' ? page?.title : view}</h1>}
         {!hasSide && hero}
         {page?.welcome && view === 'all' && <Welcome path={page.welcome.path} saved={page.welcome.saved} />}

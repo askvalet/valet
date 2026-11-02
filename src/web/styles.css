@@ -623,3 +623,4 @@ main[data-view] :is([data-slot="card"], .wall-text, section > :not(:has([data-sl
 main[data-view="out"] :is([data-slot="card"], .wall-text, section > :not(:has([data-slot="card"]))) { opacity: 0; transition: opacity 110ms var(--ease-out); }
 main[data-view="in"] :is([data-slot="card"], .wall-text, section > :not(:has([data-slot="card"]))) { animation: view-in 220ms var(--ease-out) backwards; }
 @keyframes view-in { from { opacity: 0; translate: 0 6px; } }
+main[data-settling] { visibility: hidden; }
