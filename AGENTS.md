@@ -21,7 +21,7 @@ https://askvalet.dev.
   images go through `/api/image/:instance`, icons through `/api/icon/:slug`.
 - **Light by default.** Only widgets placed on the page are polled, only while someone has it open, once for all tabs.
   Heavy things (the assistant, the AI SDK, MCP, 3D visuals) load on first use.
-- **Secure by default** (SECURITY.md is the contract). Keys stay on the server and pass through the redactor
+- **Secure by default** (the docs' security page is the contract). Keys stay on the server and pass through the redactor
   (`src/server/security.ts`) on the way out; without sign-in Valet is read-only unless `auth.trustNetwork`; strict CSP,
   so no inline scripts; image proxies validate every ref; new tools pick the narrowest access (`read` < `write` <
   `control`) and anything with consequences is `control`. Before committing: `npm audit --omit=dev` and the tests.

@@ -14,7 +14,7 @@ A fast, beautiful, self-hosted homepage with an optional assistant that only get
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
 [![186 integrations](https://img.shields.io/badge/integrations-186-d9b56c)](docs/services.md)
 
-[**Live demo**](https://demo.askvalet.dev) · [**Docs**](https://askvalet.dev) · [Quick start](#quick-start) · [Integrations](#integrations) · [Security](#security) · [Roadmap](ROADMAP.md)
+[**Live demo**](https://demo.askvalet.dev) · [**Docs**](https://askvalet.dev) · [Quick start](#quick-start) · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 <br>
 
@@ -67,9 +67,6 @@ It works like a valet key, which drives the car but can't open the boot. You cho
 </tr>
 </table>
 
-> [!TIP]
-> The [live demo](https://demo.askvalet.dev) is a sandbox. Restart things, turn off the lights and break what you like: every visitor gets a private copy and nothing is saved.
-
 ## Quick start
 
 ```sh
@@ -79,103 +76,23 @@ docker run -d --name valet -p 127.0.0.1:7575:7575 \
   ghcr.io/ibrahimirfan/valet:latest
 ```
 
-Open <http://localhost:7575>. On first start Valet writes a starter `config/config.yaml` and the page walks you through it. A [`docker-compose.example.yml`](docker-compose.example.yml) is there too.
-
-Copy [`.env.example`](.env.example) to `.env` for your keys: it says where each one lives in that app's settings. Secrets never go in the config, which refers to them as `${NAME}`, so you can share or commit it safely.
-
-```yaml
-# config/config.yaml
-title: Home
-integrations:
-  plex:      { type: tautulli, url: http://tautulli:8181, apiKey: "${TAUTULLI_KEY}" }
-  downloads: { type: qbittorrent, url: http://qbittorrent:8080, username: "${QBIT_USER}", password: "${QBIT_PASS}" }
-  dns:       { type: pihole, url: http://pi.hole, password: "${PIHOLE_PASSWORD}" }
-assistant:                        # optional
-  provider: openai-compatible
-  baseURL: http://ollama:11434/v1
-  model: your-model
-  access: { default: read, downloads: control }
-```
-
-Edits apply live, and `docker exec valet node dist/server.js config check` names every problem in the file. [`config.example.yaml`](config.example.yaml) is a full example, and [docs/configuration.md](docs/configuration.md) lists every option.
-
-<details>
-<summary><b>Run from source</b> (Node 22.18+)</summary>
-
-```sh
-git clone https://github.com/IbrahimIrfan/valet.git && cd valet
-npm install
-npm run build
-cp config.example.yaml config.yaml   # then edit
-npm start
-```
-
-</details>
-
-## Features
-
-| | |
-|---|---|
-| **Cards** | A small catalog of cards, each working as a tile, a card and an answer in chat |
-| **Views** | Draw any numbers as any chart and any pictures as any gallery: `view: coverflow`, `view: race`, `view: album` |
-| **Layout** | Sections, tabs, sizes and a bento grid, all from YAML |
-| **Appearance** | Theme, colours, font, glass, wallpapers and density |
-| **The island** | A live notch for what's playing, downloading or finishing |
-| **Palette** | `⌘K` to find a service, run an action or ask a question |
-| **Reminders** | "Tell me when this download finishes", even with the page closed |
-| **Year in review** | A shareable story of your homelab, written from your services' own numbers |
-| **MCP** | Point Valet at any MCP server and its tools join the assistant, under the same rules |
-| **Sandbox** | `sandbox: true` saves nothing and gives each visitor a private copy, for demos |
-
-## Integrations
-
-**186 services** work out of the box, and [the full list is here](docs/services.md). `type: api` turns any other JSON API into a card from YAML alone.
-
-| | |
-|---|---|
-| **Media** | Plex, Tautulli, Jellyfin, Emby, Navidrome, Audiobookshelf, Komga, RomM, Immich |
-| **Downloads** | Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Seerr, qBittorrent, Transmission, SABnzbd |
-| **Home** | Home Assistant, Frigate, robot vacuums, thermostats, RGB and PC lighting |
-| **Documents** | Paperless, Karakeep, Mealie, Tandoor, Miniflux, Nextcloud, calendars from any iCal link |
-| **Infrastructure** | Docker, Proxmox, TrueNAS, Unraid, Glances, Scrutiny, systemd services through a read-only agent |
-| **Network** | Pi-hole, AdGuard Home, Tailscale, Uptime Kuma, Caddy, Traefik, UniFi |
-| **AI** | Ollama and local model monitors |
-| **The rest** | Weather, RSS, Hacker News, Reddit, GitHub releases, markets |
-
-Writing your own is usually about ten lines. An integration is one TypeScript file with its config, widgets, actions and assistant tools. Community integrations are single files you drop into `data/integrations/`: see [docs/integrations.md](docs/integrations.md), [docs/plugins.md](docs/plugins.md) and [`examples/hello-plugin.mjs`](examples/hello-plugin.mjs).
-
-## Security
-
-Valet holds keys to your services, so it's built to keep them.
-
-- **Keys stay on the server.** They never reach the browser or the model, and they're redacted from anything Valet sends out.
-- **Read-only by default.** Controls stay off until you turn on sign-in or trust your network.
-- **You grant access per integration.** Each is `none`, `read`, `write` or `control`.
-- **Every change asks first.** `write` and `control` tools wait for your approval, on a card that says exactly what will happen.
-
-```yaml
-assistant:
-  access: { default: read, home: control, downloads: none }
-```
-
-[SECURITY.md](SECURITY.md) has the threat model, how to report a vulnerability and the least-privilege key to give each service.
+Open <http://localhost:7575> and the page walks you through the rest. The [install guide](https://askvalet.dev/start/install/) covers Docker Compose and running from source.
 
 ## Documentation
 
-| | |
-|---|---|
-| [Docs site](https://askvalet.dev) | Guides, and a page with screenshots for every integration and card |
-| [Configuration](docs/configuration.md) | Every option |
-| [Supported services](docs/services.md) | The full list |
-| [Writing integrations](docs/integrations.md) | The integration API |
-| [Plugins](docs/plugins.md) | Single-file community integrations |
-| [Roadmap](ROADMAP.md) | What's planned |
-| [Changelog](CHANGELOG.md) | What's changed |
+Everything else lives at **[askvalet.dev](https://askvalet.dev)**:
+
+- [Your first config](https://askvalet.dev/start/first-config/)
+- [186 integrations](https://askvalet.dev/integrations/), each with screenshots
+- [The assistant](https://askvalet.dev/assistant/)
+- [Security](https://askvalet.dev/security/)
+- [Configuration reference](https://askvalet.dev/reference/configuration/)
+- [Build an integration](https://askvalet.dev/build/)
 
 ## Contributing
 
-Contributions are welcome, and new integrations are the easiest place to start. [CONTRIBUTING.md](CONTRIBUTING.md) covers setup, and [AGENTS.md](AGENTS.md) holds the design and code principles. In short: `npm install`, `npm run dev`, and `npm test` before a pull request.
+Contributions are welcome, and new integrations are the easiest place to start. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licence
 
-[MIT](LICENSE). Geist is bundled under the SIL Open Font License. Third-party credits are on the [credits page](https://askvalet.dev/credits/). Product names and logos belong to their owners, and Valet isn't affiliated with any of them.
+[MIT](LICENSE). Product names and logos belong to their owners, and Valet isn't affiliated with any of them.
