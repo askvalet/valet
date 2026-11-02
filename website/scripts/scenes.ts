@@ -37,7 +37,10 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
     const page = await context.newPage(), cdp = await context.newCDPSession(page);
     return { context, page, cdp };
   };
+  // the island shows what's playing: in the shots about it, not in every picture
+  const ISLAND = new Set(['scene/overview', 'scene/overview-full', 'scene/island', 'scene/island-open', 'scene/phone']);
   const shot = async (page: any, cdp: any, id: string, box?: any, pad = 16) => {
+    await page.evaluate((show: boolean) => { document.querySelector<HTMLElement>('.island-wrap')?.style.setProperty('display', show ? '' : 'none'); }, ISLAND.has(id));
     if (!wanted(id)) return;
     const text = await page.evaluate(() => document.body.innerText);
     if (forbidden.test(text)) problems.push(`${id}: the page text has a forbidden word`);
