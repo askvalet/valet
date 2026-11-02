@@ -102,6 +102,7 @@ export function reply(body) {
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const between = (lo, hi) => lo + Math.random() * (hi - lo);
 const server = createServer((req, res) => {
   if (req.method !== 'POST' || !req.url.endsWith('/chat/completions')) { res.writeHead(404).end(); return; }
   let raw = '', size = 0;
@@ -119,8 +120,10 @@ const server = createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store' });
     const send = (delta, finish_reason = null) => res.write(`data: ${JSON.stringify({ ...base, object: 'chat.completion.chunk', choices: [{ index: 0, delta, finish_reason }] })}\n\n`);
     send({ role: 'assistant', content: '' });
-    if (toolCall) { await sleep(300); send({ tool_calls: [{ index: 0, ...toolCall }] }); }
-    else for (const w of r.text.split(/(?<= )/)) { send({ content: w }); await sleep(22); }
+    // paced like a model on a home GPU: a moment to think, then words in uneven runs, a beat after each sentence
+    await sleep(between(900, 1600));
+    if (toolCall) send({ tool_calls: [{ index: 0, ...toolCall }] });
+    else for (const w of r.text.split(/(?<= )/)) { send({ content: w }); await sleep(between(28, 62) + (/[.,:;?!]\s*$/.test(w) ? between(80, 220) : 0)); }
     send({}, toolCall ? 'tool_calls' : 'stop');
     res.write(`data: ${JSON.stringify({ ...base, object: 'chat.completion.chunk', choices: [], usage })}\n\ndata: [DONE]\n\n`);
     res.end();
