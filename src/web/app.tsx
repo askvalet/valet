@@ -279,11 +279,21 @@ function Home({ account }: { account: boolean }) {
     .filter((s, j, all) => all.findIndex(x => x.key === s.key) === j);
   const view = tabs.find(t => `#${tabHash(t.key)}` === hash)?.key ?? 'all';   // 'all' (the overview) or a tab's name
   const seen = useRef('all'), spots = useRef(new Map<string, number>()), recapHere = useRef(false);
+  // tabs change with a quick fade: the old one goes, the new one arrives. Each card fades itself, because fading the
+  // page around it would cut the glass off from what's behind it.
+  const pageEl = useRef<HTMLElement>(null), leaving = useRef<ReturnType<typeof setTimeout>>(undefined), arriving = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches || /motion-(reduced|none)/.test(document.documentElement.className);
   const go = useCallback((key: string) => {
-    if (key === seen.current) return;
-    spots.current.set(seen.current, scrollY);
-    history.pushState(null, '', key === 'all' ? location.pathname + location.search : `#${tabHash(key)}`);
-    setHash(hashNow());
+    clearTimeout(leaving.current);
+    if (key === seen.current) { delete pageEl.current?.dataset.view; return; }
+    const change = () => {
+      spots.current.set(seen.current, scrollY);
+      history.pushState(null, '', key === 'all' ? location.pathname + location.search : `#${tabHash(key)}`);
+      setHash(hashNow());
+    };
+    if (still() || !pageEl.current) { change(); return; }
+    pageEl.current.dataset.view = 'out';
+    leaving.current = setTimeout(change, 110);
   }, []);
   useEffect(() => {
     history.scrollRestoration = 'manual';
@@ -291,7 +301,13 @@ function Home({ account }: { account: boolean }) {
     addEventListener('hashchange', on); return () => removeEventListener('hashchange', on);
   }, []);
   useLayoutEffect(() => {
+    const moved = seen.current !== view;
     seen.current = view;
+    if (moved && pageEl.current && !still()) {
+      pageEl.current.dataset.view = 'in';
+      clearTimeout(arriving.current);
+      arriving.current = setTimeout(() => { delete pageEl.current?.dataset.view; }, 260);
+    }
     const y = spots.current.get(view) ?? 0;
     scrollTo({ top: y, behavior: 'instant' });
     // a tab drawn again can need a moment to be tall enough
@@ -592,7 +608,7 @@ function Home({ account }: { account: boolean }) {
           Below lg it sits at the top of the page instead, centred and wrapping, so phones see it too. */}
       {page?.island && <Island live={live} idle={page.island.idle} docked={wide && page.island.position !== 'bottom'} position={wide ? page.island.position : 'top'} label={page.island.label} notice={notice} />}
       {/* phones: one row, condensed; wide screens: top right, level with the island */}
-      <div ref={bar} data-labels={topbar?.labels !== false || undefined} className={cn('menubar wall-text z-20 flex items-center justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:gap-4 xl:p-0', { left: 'xl:left-5', center: 'xl:left-1/2 xl:-translate-x-1/2', right: 'xl:right-5' }[topbar?.position ?? 'right'])}>
+      <div ref={bar} data-labels={topbar?.labels !== false || undefined} className={cn('menubar wall-text z-20 flex items-stretch justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:gap-4 xl:p-0', { left: 'xl:left-5', center: 'xl:left-1/2 xl:-translate-x-1/2', right: 'xl:right-5' }[topbar?.position ?? 'right'])}>
         {!!topbar?.widgets.length && (
           <div className="glass-bar glass-plate relative flex shrink items-center gap-1 border px-2 py-1 sm:gap-3 sm:px-4 sm:py-1.5">
             {topbar.widgets.flatMap(key => {
@@ -611,7 +627,7 @@ function Home({ account }: { account: boolean }) {
         {!wall && topbar?.theme !== false && (page?.look.theme ?? 'auto') === 'auto' && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={() => { flipped.current = true; theme.toggle(); }}>{theme.dark ? <Sun key="sun" className={cn(flipped.current && 'spin-in')} /> : <Moon key="moon" className={cn(flipped.current && 'spin-in')} />}</RoundButton>}
       </div>
 
-      <main style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-28', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
+      <main ref={pageEl} style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-28', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide && navSide === 'left' && (topbar?.position ?? 'right') === 'right' ? 'max-w-none md:pr-5!' : chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
         {(view !== 'all' || !hello) && <h1 className="sr-only">{view === 'all' ? page?.title : view}</h1>}
         {!hasSide && hero}
         {page?.welcome && view === 'all' && <Welcome path={page.welcome.path} saved={page.welcome.saved} />}
