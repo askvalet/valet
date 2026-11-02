@@ -286,24 +286,17 @@ function Glyph({ src }: { src?: string }) {
   return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className="object-contain" />;
 }
 
-/** Every app as one icon, however many containers it runs: the eye finds the one that's wrong, and only that gets words. */
+/** Every app as one icon, however many containers it runs. Its dot says how it is; hover says what's wrong. */
 function Wall({ items }: { items: StatusItem[] }) {
-  const trouble = (s: StatusItem) => { const st = stateOf(s); return st === 'down' || st === 'degraded'; };
   const apps = new Map<string, StatusItem[]>();
   for (const i of items) { const k = (i.group ?? i.name).split(/[-_]/)[0].toLowerCase(); apps.set(k, [...apps.get(k) ?? [], i]); }
-  const wrong = items.filter(trouble);
-  const fine = [...apps].flatMap(([k, all]) => { const g = all.filter(i => !trouble(i)); return g.length ? [{ k, g, lead: g.find(i => i.name.toLowerCase() === k) ?? g[0] }] : []; });
+  const worst = (g: StatusItem[]) => { const st = g.map(stateOf); return st.includes('down') ? 'down' : st.includes('degraded') ? 'degraded' : st.every(x => x === 'off') ? 'off' : 'up'; };
+  const rank = { down: 0, degraded: 1, up: 2, off: 3 };
+  const tiles = [...apps].map(([k, g]) => ({ k, g, st: worst(g), lead: g.find(i => i.name.toLowerCase() === k) ?? g[0] })).sort((a, b) => rank[a.st] - rank[b.st]);
   return (
     <div className="wall">
-      {/* what's wrong comes first: a wide tile anywhere else leaves a hole in the rows */}
-      {wrong.map(s => { const st = stateOf(s); return (
-        <Tile key={s.name} href={s.href} title={stateTip(s)} className={cn('wall-tile is-worded', `is-${st}`)}>
-          <Glyph src={s.icon} />
-          <div className="min-w-0"><div className="truncate text-[13px] leading-tight font-medium">{s.name}</div><div className={cn('truncate text-[12px] leading-tight', st === 'down' ? 'text-bad' : 'text-warn')}>{stateLine(s)}</div></div>
-        </Tile>
-      ); })}
-      {fine.map(({ k, g, lead }) => (
-        <Tile key={k} href={lead.href} title={g.map(i => i.name).join(', ')} className={cn('wall-tile', g.every(i => stateOf(i) === 'off') && 'is-off')}>
+      {tiles.map(({ k, g, st, lead }) => (
+        <Tile key={k} href={lead.href} title={g.map(stateTip).join('\n')} className={cn('wall-tile', `is-${st}`)}>
           <Glyph src={lead.icon} />
           {g.length > 1 && <i className="wall-count" aria-label={`${g.length} containers`}>{g.length}</i>}
         </Tile>

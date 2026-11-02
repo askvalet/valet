@@ -333,7 +333,7 @@ export default ({ z, defineIntegration }) => {
         services: w('Services', 15_000, () => { const s = services(), bad = s.filter(x => !x.ok && !x.quiet), off = s.filter(x => x.quiet).length; return { ...statusCard('Services', 'pulse', s),
           summary: { label: 'Services', icon: 'pulse', value: `${s.filter(x => x.ok).length}/${s.length}`, tone: bad.length ? 'bad' : 'good', sub: bad.length ? `${bad.map(b => b.name).join(', ')} down` : off ? `${off} off by choice` : 'All up' } }; }),
         uptime: w('Uptime', 60_000, () => ({ ...statusCard('Uptime', 'pulse', services().map(({ group, ...s }) => s)), note: '99.8% over 30 days' })),
-        containers: w('Containers', 30_000, () => ({ ...statusCard('Containers', 'disk', containers()), layout: 'wall' })),
+        containers: w('Containers', 30_000, () => ({ ...statusCard('Containers', 'disk', containers()), layout: 'wall', source: { name: 'Docker', icon: '/api/icon/docker' } })),
         drives: w('Drives', 300_000, () => ({ type: 'list', layout: 'temps', title: 'Drives', icon: 'disk', items: drives.map(([title, t, age]) => ({ title, subtitle: `Powered on ${age}`, meta: `${t}°C`, pct: (t - 20) / 40, tone: t >= HOT ? 'warn' : undefined })),
           summary: { label: 'Drives', icon: 'disk', value: `${hottest[1]}°C`, sub: hottest[1] >= HOT ? `${hottest[0]} is running warm` : `All ${drives.length} healthy`, tone: hottest[1] >= HOT ? 'warn' : 'good', marks: drives.map(([title, t]) => ({ pct: (t - 20) / 40, label: `${title} · ${t}°C` })) } })),
         dns: w('Pi-hole', 60_000, () => { const { asked, blocks, total, blocked } = dnsDay(), pct = `${Math.round(blocked / total * 100)}%`, until = got('dnsPause', 0), off = until > now();

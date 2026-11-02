@@ -55,12 +55,12 @@ test('status: a state follows from ok and quiet unless it says, and off is hollo
   assert.match(out, /dot-off/); assert.doesNotMatch(out, /Offline/);
 });
 
-test('wall: one tile per app with a count, trouble comes first with words, and a family split by trouble keeps both', () => {
+test('wall: one tile per app with a count, trouble first, its dot says so and nothing else', () => {
   const out = html({ type: 'status', layout: 'wall', items: [{ name: 'a', ok: true }, { name: 'immich_server', group: 'immich', ok: true }, { name: 'immich_postgres', group: 'immich', ok: true }, { name: 'immich_redis', group: 'immich', ok: true }, { name: 'paperless', ok: true }, { name: 'paperless-tika', ok: false, detail: 'exited (1)' }] });
-  assert.equal(out.match(/class="[^"]*wall-tile/g)!.length, 4);
-  assert.ok(out.indexOf('paperless-tika') < out.indexOf('wall-count'));
+  assert.equal(out.match(/class="[^"]*wall-tile/g)!.length, 3);
+  assert.ok(out.indexOf('is-down') < out.indexOf('is-up'));
   assert.match(out, /wall-count[^>]*>3</);
-  assert.match(out, /exited \(1\)/);
+  assert.doesNotMatch(out, />exited \(1\)</);
 });
 
 test('chips: past the limit they fold behind a count, and a mark shows', () => {

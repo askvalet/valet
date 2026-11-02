@@ -132,7 +132,7 @@ export default defineIntegration({
           title: 'Containers', interval: 30_000,
           async fetch() {
             const list = await containers(), bad = list.filter(c => !healthy(c) && !idle(c));
-            return { type: 'status', layout: 'wall', title: 'Containers', icon: 'disk', items: list.map(item),
+            return { type: 'status', layout: 'wall', title: 'Containers', icon: 'disk', source: { name: 'Docker', icon: iconFor('docker') }, items: list.map(item),
               summary: { label: 'Containers', icon: 'disk', value: bad.length ? `${bad.length} down` : `${list.filter(c => c.state === 'running').length} up`, tone: bad.length ? 'bad' : 'good' } };
           },
         },

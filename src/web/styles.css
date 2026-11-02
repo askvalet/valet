@@ -565,11 +565,8 @@
 .wall-tile img, .wall-tile > span { width: 22px; height: 22px; }
 .wall-tile::after { content: ''; position: absolute; right: 4px; bottom: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 2px var(--card); }
 .wall-tile.is-off > img, .wall-tile.is-off > span { opacity: .4; } .wall-tile.is-off::after { background: var(--card); box-shadow: 0 0 0 2px var(--card), inset 0 0 0 1.5px var(--muted-foreground); }
-.wall-tile.is-down { background: color-mix(in srgb, var(--bad) 18%, transparent); box-shadow: inset 0 0 0 1.5px var(--bad); } .wall-tile.is-down::after { background: var(--bad); }
-.wall-tile.is-degraded { background: color-mix(in srgb, var(--warn) 16%, transparent); box-shadow: inset 0 0 0 1.5px var(--warn); } .wall-tile.is-degraded::after { background: var(--warn); }
-/* only trouble gets words: a tile wide enough to say who and what */
-.wall-tile.is-worded { grid-column: span 3; display: flex; align-items: center; gap: 8px; aspect-ratio: auto; min-width: 0; min-height: 44px; padding-inline: 12px 16px; }
-.wall-tile.is-worded > img, .wall-tile.is-worded > span { flex: none; }
+.wall-tile.is-down::after { background: var(--bad); }
+.wall-tile.is-degraded::after { background: var(--warn); }
 /* an app that runs several containers says how many */
 .wall-count { position: absolute; top: -5px; right: -5px; display: grid; place-items: center; min-width: 18px; height: 18px; padding-inline: 4px; border-radius: 9px; font-size: 11px; font-style: normal; font-weight: 500; color: var(--foreground); background: var(--secondary); box-shadow: 0 0 0 2px var(--card); font-variant-numeric: tabular-nums; }
 @media (hover: hover) and (pointer: fine) { a.wall-tile:hover { background: rgb(255 255 255 / .14); } }

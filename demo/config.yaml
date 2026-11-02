@@ -58,8 +58,9 @@ layout:
       - { widget: lab.dns, size: large }
       - { widget: lab.drives, size: medium }
       - { widget: lab.containers, size: large }
-      - { widget: lab.updates, size: medium }
-      - { widget: valet.activity, size: medium }
+      - { widget: lab.updates, size: tall }
+      - { widget: lab.jobs, size: medium }
+      - { widget: lab.system, size: medium }
   - title: AI
     display: tiles
     overview: false
