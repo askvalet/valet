@@ -14,7 +14,7 @@ Make a folder with this `docker-compose.yml`, which is `docker-compose.example.y
 ```yaml title="docker-compose.yml"
 services:
   valet:
-    image: ghcr.io/ibrahimirfan/valet:latest
+    image: ghcr.io/askvalet/valet:latest
     container_name: valet
     restart: unless-stopped
     environment: { TZ: America/Toronto }
@@ -48,17 +48,17 @@ On first start Valet writes a starter `config/config.yaml` and shows a getting-s
 ```sh
 docker run -d --name valet -p 127.0.0.1:7575:7575 \
   -v ./config:/config -v ./data:/app/data --env-file .env \
-  ghcr.io/ibrahimirfan/valet:latest
+  ghcr.io/askvalet/valet:latest
 ```
 
 This leaves out the hardening flags. Prefer Compose, or add `--read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true`.
 
 ## Getting the image
 
-The README and the Compose file name `ghcr.io/ibrahimirfan/valet:latest`. The repo doesn't yet have a workflow that publishes it: that's still on the roadmap. If the pull fails, build the image yourself. The Dockerfile needs nothing but the repo.
+The README and the Compose file name `ghcr.io/askvalet/valet:latest`. The repo doesn't yet have a workflow that publishes it: that's still on the roadmap. If the pull fails, build the image yourself. The Dockerfile needs nothing but the repo.
 
 ```sh
-git clone https://github.com/IbrahimIrfan/valet
+git clone https://github.com/askvalet/valet
 cd valet
 docker build -t local/valet:dev .
 ```
@@ -99,7 +99,7 @@ For systemd services, the [`host`](/integrations/host/) integration talks to a s
 You need Node 22.18 or newer.
 
 ```sh
-git clone https://github.com/IbrahimIrfan/valet
+git clone https://github.com/askvalet/valet
 cd valet
 npm install
 npm run build

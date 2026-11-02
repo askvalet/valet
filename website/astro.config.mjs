@@ -31,7 +31,7 @@ export default defineConfig({
     logo: { src: './src/assets/logo.svg', alt: 'Valet' },
     favicon: '/favicon.svg',
     description: 'An open-source homepage for your homelab: YAML-configured, self-hosted, with an optional assistant.',
-    social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/IbrahimIrfan/valet' }],
+    social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/askvalet/valet' }],
     customCss: ['@fontsource-variable/geist', '@fontsource-variable/geist-mono', './src/styles/valet.css'],
     expressiveCode: { themes: ['github-dark-default', 'github-light-default'], styleOverrides: { borderRadius: '0.75rem', frames: { shadowColor: 'transparent', editorActiveTabIndicatorTopColor: 'transparent', terminalTitlebarDotsOpacity: '0.4' } } },
     pagination: true,

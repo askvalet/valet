@@ -8,7 +8,7 @@
 
 A fast, beautiful, self-hosted homepage with an optional assistant that only gets the keys you hand it.
 
-[![CI](https://github.com/IbrahimIrfan/valet/actions/workflows/ci.yml/badge.svg)](https://github.com/IbrahimIrfan/valet/actions/workflows/ci.yml)
+[![CI](https://github.com/askvalet/valet/actions/workflows/ci.yml/badge.svg)](https://github.com/askvalet/valet/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
 [![Node 22.18+](https://img.shields.io/badge/node-22.18%2B-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
@@ -73,7 +73,7 @@ It works like a valet key, which drives the car but can't open the boot. You cho
 mkdir valet && cd valet
 docker run -d --name valet -p 127.0.0.1:7575:7575 \
   -v ./config:/config -v ./data:/app/data --env-file .env \
-  ghcr.io/ibrahimirfan/valet:latest
+  ghcr.io/askvalet/valet:latest
 ```
 
 Open <http://localhost:7575> and the page walks you through the rest. The [install guide](https://askvalet.dev/start/install/) covers Docker Compose and running from source.
