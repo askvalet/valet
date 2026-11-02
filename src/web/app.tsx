@@ -464,7 +464,7 @@ function Home({ account }: { account: boolean }) {
                   className="h-11 min-w-0 flex-1 bg-transparent text-[16px] text-ellipsis outline-none placeholder:text-muted-foreground" />
                 {!draft.trim() && <kbd className="hidden rounded-[6px] border border-white/15 px-1.5 py-0.5 font-sans text-[12px] text-muted-foreground sm:block">⌘K</kbd>}
                 <button type="submit" aria-label="Ask" disabled={!draft.trim()}
-                  className="send-round grid size-10 shrink-0 place-items-center rounded-sm bg-white text-black transition-opacity disabled:opacity-25"><ArrowUp className="size-[18px]" /></button>
+                  className="send-round grid size-10 shrink-0 place-items-center rounded-sm bg-white text-black transition-colors disabled:bg-white/20 disabled:text-white"><ArrowUp className="size-[18px]" /></button>
               </form></ChatBeam>
             )}
             {page && !askHere && boxed && (

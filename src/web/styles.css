@@ -322,6 +322,7 @@
 .glass-round.is-on { background: var(--nav-pill, #fff) !important; border-color: transparent; box-shadow: 0 8px 20px -8px rgb(0 0 0 / .5); backdrop-filter: none; color: var(--nav-pill-ink, #000); }
 .glass-light { --nav-pill: var(--primary); --nav-pill-ink: var(--primary-foreground); }
 .glass-light .send-round { background: var(--primary); color: var(--primary-foreground); }
+.glass-light .send-round:disabled { background: color-mix(in srgb, var(--primary) 25%, transparent); color: var(--primary); }
 /* menubar and island: their own size, and the rings without their words */
 .menubar { zoom: var(--bar-zoom, 1); }
 .menubar:not([data-labels]) .group\/ring > .truncate { display: none; }

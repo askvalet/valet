@@ -32,6 +32,7 @@ integrations:
 chat:
   beam: once
   beamColor: colorful
+  beamStrength: 1
   followUps: [Why is Mealie down?, Restart Mealie, Turn off the living room lights, What should we watch tonight?, Anything happen overnight?, How are the downloads doing?]
 hero: { scope: [downloads, lights, what to watch], review: end }
 
