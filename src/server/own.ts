@@ -2,6 +2,7 @@
 // changed, and "tell me when". Access defaults to write (see chat.ts), so these work without any config.
 import { z } from 'zod';
 import { outcome, sentence, type Activity } from './activity.ts';
+import { guideTools } from './guide.ts';
 import type { Hub } from './hub.ts';
 import type { History } from './history.ts';
 import type { Instance } from './core.ts';
@@ -24,6 +25,7 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
     widgets: { activity: { title: 'Activity', interval: 15_000, fetch: async () => log() } },
     actions: { undo: { description: 'Undo something from the activity log', input: z.object({ id: z.number() }), run: ({ id }: { id: number }) => o.undo(id) } },
     tools: {
+      ...guideTools(),
       year_in_review: {
         label: 'Looked back over the year', followUps: ['What was my most watched thing?'],
         description: 'The year in review: the headline numbers from every service, and who that makes the person this year. Use for "my year", "wrapped", "year in review".',

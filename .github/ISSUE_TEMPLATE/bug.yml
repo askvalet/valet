@@ -1,20 +1,75 @@
 name: Bug report
-description: Something isn't working
+description: Something in Valet isn't working
+title: "Bug: "
 labels: [bug]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. If the assistant filled this in for you, read it over before you submit: remove anything you'd rather not post.
+        A service being down usually isn't a Valet bug, and a security problem belongs in a [private report](https://github.com/askvalet/valet/security/advisories/new).
   - type: textarea
     id: what
-    attributes: { label: What happened? }
+    attributes:
+      label: What happened?
+      placeholder: The Watching card stays blank after a reload.
     validations: { required: true }
   - type: textarea
+    id: steps
+    attributes:
+      label: How can we make it happen?
+      placeholder: |
+        1. Add a changedetection integration
+        2. Open the overview
+        3. See the card
+  - type: textarea
     id: expected
-    attributes: { label: What did you expect? }
+    attributes: { label: "What did you expect?" }
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where is it?
+      options:
+        - A page or layout
+        - A widget or card
+        - An integration
+        - The assistant
+        - Sign-in or security
+        - Install or update
+        - Something else
+    validations: { required: true }
+  - type: input
+    id: integration
+    attributes:
+      label: Integration
+      description: Its `type:` in your config, if this is about one.
+      placeholder: uptimekuma
   - type: input
     id: version
-    attributes: { label: Valet version or commit }
+    attributes:
+      label: Valet version or commit
+      placeholder: 0.1.0
+    validations: { required: true }
+  - type: dropdown
+    id: install
+    attributes:
+      label: How do you run it?
+      options: [Docker, From source, Something else]
+  - type: dropdown
+    id: device
+    attributes:
+      label: Where do you see it?
+      multiple: true
+      options: [Desktop browser, Phone, Tablet, Not on the page]
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error or logs
+      description: A few lines is plenty. `docker logs valet` has them.
+      render: text
   - type: textarea
     id: config
     attributes:
       label: Relevant config
-      description: Leave out secrets. Your config should refer to them as ${NAME}.
+      description: Only the lines that matter. Leave out secrets and addresses. Your config should refer to secrets as ${NAME}.
       render: yaml

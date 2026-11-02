@@ -12,6 +12,9 @@ FROM node:24.11-alpine@sha256:682368d8253e0c3364b803956085c456a612d738bd635926d7
 WORKDIR /app
 ENV NODE_ENV=production PORT=7575 VALET_CONFIG=/config/config.yaml
 COPY --from=build /app/dist ./dist
+# the assistant's reference: it answers questions about Valet from these
+COPY --from=build /app/docs ./docs
+COPY --from=build /app/website/src/content/docs ./website/src/content/docs
 COPY package.json ./
 USER node
 EXPOSE 7575

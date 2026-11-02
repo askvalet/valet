@@ -3,4 +3,7 @@ dist
 config.yaml
 .env
 .git
-website
+website/node_modules
+website/dist
+website/public
+website/.cache

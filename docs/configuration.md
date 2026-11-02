@@ -320,11 +320,17 @@ layout:
 
 What `assistant` sets is what it knows and may do. How it looks on the page is `chat`, below, apart from its name.
 
-**Setting up by talking.** With `access: { config: control }` you can say "add a card for http://box/status". It reads
-this file and the integration's options, tries the change without saving (a diff, problems, and the real card in chat),
-and saves only when you approve; hot reload does the rest. It changes only the lines it must. It can't touch `auth`,
-`assistant`, `appearance` (which names files on disk), `mcp`, `plugins` or `allowedHosts`, and it refuses to write a secret: it asks you to put `${NAME}` in `.env`.
+**Setting up by talking.** With `access: { config: control }` you can change the page from chat: "move Plex above the
+weather", "make the cards more compact", "add a card for http://box/status". It reads this file and what a section or
+integration accepts, tries the change without saving (a diff, problems, and the real card in chat), and saves only when
+you approve; hot reload does the rest, and it can undo the last save. It changes only the lines it must. It can't touch
+`auth`, `allowedHosts`, `mcp`, `plugins`, `notify`, or its own access, model and instructions in `assistant`; it can't
+point `appearance` at a file on disk, and it refuses to write a secret: it asks you to put `${NAME}` in `.env`.
 Mount the config folder read-only and it hands you the diff to paste instead.
+
+**It knows Valet.** Whatever its access, the assistant searches these docs to answer questions about Valet, and
+`report_issue` writes up a bug, an idea or a missing integration as a filled-in GitHub issue for you to read and submit.
+It sends nothing itself.
 
 **On the page, not in chat:** A summary when you hover the status sentence, ⌘K answers and approvals in
 place, and pin on a chat card to keep it on the page. A pin re-runs the same tool, so no model is involved after that;

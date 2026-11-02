@@ -59,17 +59,19 @@ With `assistant.access.config`, the assistant can help set Valet up by talking t
 | Tool | Access | What it does |
 |---|---|---|
 | `config_read` | `read` | Reads the file. Secrets appear as `${NAME}`. |
-| `config_options` | `read` | Looks up what an integration accepts. |
+| `config_options` | `read` | Looks up what an integration or a section of the config accepts. |
 | `config_preview` | `read` | Tries an edit without saving. Shows the diff, any problems, and the new card. |
 | `api_sample` | `write` | Fetches a JSON URL you gave it, to write a `type: api` block. Asks first. |
 | `config_apply` | `control` | Saves. Always asks. |
+| `config_undo` | `control` | Puts back the version before the last save. Always asks. |
 
 So `config: read` lets it read and preview, and `config: control` lets it save with your approval.
 
 The limits are in the code, and they apply to saves and previews alike:
 
-- It can only touch these keys: `integrations`, `layout`, `links`, `menubar`, `weather`, `live`, `nav`, `hero`, `chat`, `format`, `labels`, `title`, `greeting`, `location`, `timezone`, `search`, `history`, `welcome`.
-- It can't touch `assistant`, `auth`, `allowedHosts`, `plugins`, `mcp`, `appearance` or anything else. It can't raise its own access.
+- It can change `integrations`, `layout`, `links`, `menubar`, `weather`, `live`, `nav`, `hero`, `chat`, `format`, `labels`, `title`, `greeting`, `location`, `timezone`, `search`, `history`, `welcome`, `appearance`, `calendar`, `recap`, `notice`, and `name` and `suggestions` under `assistant`.
+- It can't touch `auth`, `allowedHosts`, `plugins`, `mcp`, `notify`, `sandbox` or the rest of `assistant`, which holds its access, model and instructions. It can't raise its own access.
+- In `appearance` it can't name a file on disk: no `cssFile`, and a wallpaper has to be a URL, a colour or a gradient.
 - It can't write a secret. A value that looks like one is refused unless it's a `${NAME}`, and you add the real value to `.env` yourself.
 - It won't save with problems in the result, or with a `${NAME}` that isn't set.
 - A read-only mount stops it too. Add `:ro` to the config volume and nothing can be saved: it hands you the diff to paste instead.
@@ -80,3 +82,11 @@ These edits go through the same live reload as yours, and your comments and spac
 ## Attachments
 
 Files attached in chat are kept under `data/uploads` for a day, up to 50 MB each, and never served back out. They're for filing. On a read-only page or in a sandbox, attaching is off.
+
+## Its own docs
+
+The assistant carries these docs and searches them with `docs_search` and `docs_read`, so a question about Valet gets an answer from the docs rather than from what a model remembers. Both only read, and they exist with or without `assistant.access.config`.
+
+## Reporting a problem
+
+`report_issue` turns a bug, a feature idea or a missing integration into a link to the project's issue form on GitHub, with the fields filled in. It sends nothing: you read it and submit it yourself. Secrets and private addresses are taken out of the text before it goes into the link, but read it over before you post it.

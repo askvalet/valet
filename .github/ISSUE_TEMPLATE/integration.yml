@@ -1,14 +1,22 @@
 name: Integration request
 description: Ask for a service Valet doesn't support
+title: "Integration: "
 labels: [integration]
 body:
+  - type: markdown
+    attributes:
+      value: "Worth knowing first: `type: api` turns any JSON API into a card from YAML, and a plugin is about ten lines."
   - type: input
     id: service
-    attributes: { label: Service }
+    attributes: { label: Service, placeholder: Mealie }
     validations: { required: true }
   - type: input
     id: api
     attributes: { label: Link to its API docs }
   - type: textarea
     id: show
-    attributes: { label: What should the card show? }
+    attributes: { label: "What should the card show?" }
+  - type: textarea
+    id: tools
+    attributes:
+      label: What should the assistant be able to do with it?

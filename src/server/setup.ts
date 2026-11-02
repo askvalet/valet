@@ -1,16 +1,18 @@
 // Setting Valet up by talking to it. The assistant can read the config, look up what an integration accepts, try a
 // change without saving (a diff, every problem, and the new card), and, with the person's approval, save it. Only with
-// `assistant.access.config`. It can't touch sign-in, plugins, MCP or its own access, and it can't write a secret into
-// the file: those stay in .env. Saved edits go through the same hot reload as a person's.
+// `assistant.access.config`. It can't touch sign-in, plugins, MCP or its own access, point at files on disk, or write a
+// secret into the file: those stay in .env. The save before this one is kept, so a change can be undone. Saved edits go through the same hot reload as a person's.
 import { readFile, writeFile } from 'node:fs/promises';
 import { isMap, isSeq, parseDocument, stringify } from 'yaml';
 import { z } from 'zod';
-import { parseConfig } from './config.ts';
+import { Config, parseConfig } from './config.ts';
 import { makeContext, type Instance, type Integration, type Tool } from './core.ts';
 import { check } from './site.ts';
 import type { Card } from '../shared/cards.ts';
 
-const EDITABLE = new Set(['integrations', 'layout', 'links', 'menubar', 'weather', 'live', 'nav', 'hero', 'chat', 'format', 'labels', 'title', 'greeting', 'location', 'timezone', 'search', 'history', 'welcome']);
+const EDITABLE = new Set(['integrations', 'layout', 'links', 'menubar', 'weather', 'live', 'nav', 'hero', 'chat', 'format', 'labels', 'title', 'greeting', 'location', 'timezone', 'search', 'history', 'welcome', 'appearance', 'calendar', 'recap', 'notice']);
+// Of `assistant`, only how it comes across. Its access, model and prompt stay with the owner: it can't raise its own power.
+const ASSISTANT = new Set(['name', 'suggestions']);
 const SECRET_KEY = /^(api[-_]?key|token|password|secret|client[-_]?secret|authorization|x-api-key)$/i;
 
 const Op = z.object({
@@ -20,10 +22,25 @@ const Op = z.object({
 });
 export type Op = z.infer<typeof Op>;
 
+// Appearance can name files, and Valet serves those: the assistant may set looks, never point it at something on disk.
+const LOCAL = /^(\/|\.{1,2}\/|~|file:)/;
+function namesAFile(o: Op): string | null {
+  const walk = (v: unknown, key: string): string | null => {
+    if (/file$/i.test(key)) return `"${key}" names a file on disk; the owner sets that by hand`;
+    if (typeof v === 'string' && LOCAL.test(v)) return `"${v}" is a file on disk; use an image URL, a colour or a gradient, or the owner sets it by hand`;
+    if (Array.isArray(v)) { for (const x of v) { const r = walk(x, key); if (r) return r; } }
+    else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) { const r = walk(x, k); if (r) return r; }
+    return null;
+  };
+  return o.op === 'remove' ? null : walk(o.value, String(o.path.at(-1)));
+}
+
 /** Why these edits aren't allowed, if they aren't. */
 export function refused(ops: Op[]): string | null {
   for (const o of ops) {
-    if (!EDITABLE.has(String(o.path[0]))) return `"${o.path[0]}" isn't something the assistant may change; the owner edits that by hand`;
+    const head = String(o.path[0]);
+    if (head === 'assistant' ? !ASSISTANT.has(String(o.path[1])) : !EDITABLE.has(head)) return `"${o.path.slice(0, head === 'assistant' ? 2 : 1).join('.')}" isn't something the assistant may change; the owner edits that by hand`;
+    if (head === 'appearance') { const why = namesAFile(o); if (why) return why; }
     const walk = (v: unknown, key: string): string | null => {
       if (typeof v === 'string' && v && (SECRET_KEY.test(key) || /^(bearer|token|basic)\s+\S/i.test(v)) && !/\$\{[^}]+\}/.test(v)) return `"${key}" looks like a secret: use \${SOME_NAME} and have the person add it to .env`;
       if (Array.isArray(v)) { for (const x of v) { const r = walk(x, key); if (r) return r; } }
@@ -50,6 +67,11 @@ function splice(text: string, o: Op): string | null {
   const parent = doc.getIn(o.path.slice(0, -1), true) ?? doc.contents, target = doc.getIn(o.path, true) as any;
   const put = (at: number, s: string) => text.slice(0, at) + s + text.slice(at);
   if (o.op === 'set' && target?.range && !(target.items && !target.flow)) return text.slice(0, target.range[0]) + flow(o.value) + text.slice(target.range[1]);
+  // a whole block replaced: its lines and nothing else, so the file around it and the diff stay readable
+  if (o.op === 'set' && target?.range && target.items?.length && !target.flow) {
+    const start = lineStart(text, target.range[0]), pad = text.slice(start).match(/^\s*/)![0];
+    return text.slice(0, start) + indented(stringify(o.value, YAML), pad) + text.slice(after(text, target.range[1]));
+  }
   if (o.op === 'set' && target == null && isMap(parent) && !parent.flow && parent.items.length) {
     const first = (parent.items[0].key as any).range[0], pad = text.slice(lineStart(text, first), first);
     return put(after(text, parent.range![1]), indented(stringify({ [o.path.at(-1)!]: o.value }, YAML), pad));
@@ -110,6 +132,7 @@ export function validate(text: string, registry: Record<string, Integration>) {
 }
 
 export function setupTools(path: string, registry: Record<string, Integration>): Record<string, Tool<any>> {
+  const previous = `${path}.previous`;   // the one save before this, for undo
   const edits = z.object({ ops: z.array(Op).min(1), summary: z.string().describe('in plain words, what this changes') });
   const trial = async (ops: Op[]) => {
     const why = refused(ops); if (why) throw new Error(why);
@@ -119,14 +142,21 @@ export function setupTools(path: string, registry: Record<string, Integration>):
   return {
     config_read: {
       label: 'Read the config', access: 'read', input: z.object({}),
-      description: 'The config file as it stands (secrets appear as ${NAME}), and every integration type available. Start here when asked to add or change something on the page.',
-      async run() { return { data: { config: await readFile(path, 'utf8'), types: Object.values(registry).map(i => `${i.type} (${i.name})`) } }; },
+      description: 'The config file as it stands (secrets appear as ${NAME}), every integration type available, and the widgets each instance really offers, named as `layout` wants them. Start here when asked to add or change anything on the page.',
+      async run() {
+        const config = await readFile(path, 'utf8');
+        return { data: { config, types: Object.values(registry).map(i => `${i.type} (${i.name})`), sections: Object.keys(Config.shape),
+          widgets: Object.fromEntries([...validate(config, registry).instances].map(([id, inst]) => [id, Object.keys(inst.widgets).map(w => `${id}.${w}`)])),
+          changeable: [...EDITABLE, ...[...ASSISTANT].map(k => `assistant.${k}`)], ownerOnly: ['auth', 'allowedHosts', 'plugins', 'mcp', 'notify', 'sandbox', 'the rest of assistant'] } };
+      },
     },
     config_options: {
       label: 'Looked up the options', access: 'read', input: z.object({ type: z.string() }),
-      description: 'What an integration type accepts, as JSON schema. Look before writing a block. For a service with no type of its own, use type "api"; its fields are paths like data.speed or items[0].name, with formats like size|bytes. Icons: cpu gpu memory wifi disk download pulse play film bulb home shield chat image clock crescent game book coins text file bookmark rss news reddit tag chart calendar sun moon cloud, or an image URL.',
+      description: 'What an integration type, or a section of the config such as layout, appearance, hero, nav or chat, accepts, as JSON schema. Look before writing a block. For a service with no type of its own, use type "api"; its fields are paths like data.speed or items[0].name, with formats like size|bytes. Icons: cpu gpu memory wifi disk download pulse play film bulb home shield chat image clock crescent game book coins text file bookmark rss news reddit tag chart calendar sun moon cloud, or an image URL.',
       async run({ type }) {
-        const i = registry[type]; if (!i) return { data: { error: `no type ${type}` } };
+        const part = (Config.shape as Record<string, z.ZodType>)[type];
+        if (part && !registry[type]) return { data: z.toJSONSchema(part, { io: 'input', unrepresentable: 'any' }) };
+        const i = registry[type]; if (!i) return { data: { error: `no type or section ${type}` } };
         return { data: z.toJSONSchema(i.config, { io: 'input', unrepresentable: 'any' }) };
       },
     },
@@ -143,7 +173,7 @@ export function setupTools(path: string, registry: Record<string, Integration>):
     },
     config_preview: {
       label: 'Tried the change', access: 'read', input: edits,
-      description: 'Try edits WITHOUT saving: returns the diff, any problems, env variables it still needs, and shows the person the new card. Always do this before config_apply, and fix what it reports. New cards go in `layout` too, or they won\'t appear. Secrets are never written: use ${NAME}.',
+      description: 'Try edits WITHOUT saving: returns the diff, any problems, env variables it still needs, and shows the person the new card. Always do this before config_apply, and fix what it reports. Edit the smallest path that does the job: one widget or section, by index, never the whole of `layout`. New cards go in `layout` too, or they won\'t appear. Secrets are never written: use ${NAME}.',
       async run({ ops }) {
         try {
           const t = await trial(ops);
@@ -160,17 +190,30 @@ export function setupTools(path: string, registry: Record<string, Integration>):
       },
     },
     config_apply: {
-      label: 'Changed the config', access: 'control', input: edits,
+      label: 'Changed the config', access: 'control', input: edits, undo: 'config_undo',
       description: 'Save edits you already previewed, once the problems list is empty. The page updates by itself. Asks the person first.',
       async run({ ops }) {
         try {
           const t = await trial(ops);
           if (t.missing.length) return { data: { error: `add ${t.missing.join(', ')} to .env and recreate the container first` } };
           if (t.problems.length) return { data: { error: 'not saved', problems: t.problems } };
-          try { await writeFile(path, t.after); }
+          try { await writeFile(previous, t.before); await writeFile(path, t.after); }
           catch { return { data: { error: 'the config folder is read-only to Valet, so nothing was saved; give the person this to paste in', diff: diff(t.before, t.after) } }; }
           return { data: { saved: true } };
         } catch (e) { return { data: { error: (e as Error).message } }; }
+      },
+    },
+    config_undo: {
+      label: 'Undid the last config change', access: 'control', input: z.object({}),
+      confirm: async () => ({ title: 'Undo the last config change?', detail: await readFile(previous, 'utf8').then(old => readFile(path, 'utf8').then(now => diff(now, old).slice(0, 600))).catch(() => 'There is nothing to undo.'), icon: 'pulse', verb: 'Undo' }),
+      description: 'Put the config back as it was before the last save. Undoing twice puts the change back.',
+      async run() {
+        const old = await readFile(previous, 'utf8').catch(() => null);
+        if (old == null) return { data: { error: 'nothing to undo' } };
+        const now = await readFile(path, 'utf8'), { problems } = validate(old, registry);
+        if (problems.length) return { data: { error: 'the earlier version no longer works', problems } };
+        await writeFile(previous, now); await writeFile(path, old);
+        return { data: { undone: true } };
       },
     },
   };

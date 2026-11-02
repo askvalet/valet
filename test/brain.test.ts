@@ -99,6 +99,32 @@ test('setup: edits keep comments; it can\'t touch sign-in or its own access, or 
   assert.match(await readFile(file, 'utf8'), /title: Den/);
   const bad = await tools.config_apply.run({ ops: [{ op: 'set', path: ['auth', 'mode'], value: 'none' }], summary: 's' }) as any;
   assert.match(bad.data.error, /by hand/);
+  assert.equal((await tools.config_undo.run({}) as any).data.undone, true);
+  assert.match(await readFile(file, 'utf8'), /title: Home/);
+  assert.equal(tools.config_apply.undo, 'config_undo');
+});
+
+test('setup: the look and how it comes across can change; files, access and model can\'t', async () => {
+  const yes = (path: (string | number)[], value: unknown) => assert.equal(refused([{ op: 'set', path, value }]), null);
+  const no = (path: (string | number)[], value: unknown) => assert.ok(refused([{ op: 'set', path, value }]), path.join('.'));
+  yes(['appearance', 'theme'], 'dark'); yes(['appearance', 'wallpaper'], 'https://example.com/a.jpg'); yes(['appearance', 'wallpaper'], 'linear-gradient(#000, #111)');
+  yes(['assistant', 'name'], 'Jeeves'); yes(['assistant', 'suggestions'], ['Hi']); yes(['hero', 'status'], false);
+  no(['appearance', 'wallpaper'], '/etc/passwd'); no(['appearance', 'wallpaper'], ['../.env']); no(['appearance', 'cssFile'], 'x.css'); no(['appearance'], { font: { file: 'x.woff2' } });
+  for (const k of ['access', 'model', 'baseURL', 'apiKey', 'instructions', 'agent']) no(['assistant', k], 'x');
+  no(['assistant'], { name: 'x' }); no(['notify'], {}); no(['sandbox'], true);
+});
+
+test('setup: replacing a block leaves the rest of the file exactly as it was', () => {
+  const text = '# mine\ntitle: Home   # keep\nlayout:\n  - title: A\n    widgets: [a.b]\n  - title: B\n\nhero: { status: true }\n';
+  const out = applyOps(text, [{ op: 'set', path: ['layout'], value: [{ title: 'B' }, { title: 'A' }] }]);
+  assert.equal(out, '# mine\ntitle: Home   # keep\nlayout:\n  - title: B\n  - title: A\n\nhero: { status: true }\n');
+  assert.doesNotMatch(diff(text, out), /title: Home/);
+});
+
+test('setup: the options cover the config\'s sections as well as integrations', async () => {
+  const file = join(tmpdir(), `valet-sections-${process.pid}.yaml`); await writeFile(file, 'title: Home\n');
+  const out = await setupTools(file, registry).config_options.run({ type: 'hero' }) as any;
+  assert.ok(out.data.properties.status);
 });
 
 test('pins: re-run a looking tool with no model; anything that changes things can\'t be pinned', async () => {
