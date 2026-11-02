@@ -107,7 +107,7 @@ function Stats({ card }: { card: StatsCard }) {
       <div className={cn('flex items-end', dense ? 'gap-4' : 'gap-5')}>
         <div className="min-w-0 shrink-0">
           <div className={cn('metric leading-[0.95]', dense ? 'text-[26px]' : 'text-[44px]', toneText[hero.tone ?? 'neutral'])}>
-            {hero.value}{hero.unit && <span className={cn('ml-1 font-medium tracking-normal text-muted-foreground', dense ? 'text-[13px]' : 'text-[18px]')}>{hero.unit}</span>}
+            <Counter value={hero.value} />{hero.unit && <span className={cn('ml-1 font-medium tracking-normal text-muted-foreground', dense ? 'text-[13px]' : 'text-[18px]')}>{hero.unit}</span>}
           </div>
           <div className={cn('truncate text-muted-foreground', dense ? 'mt-1 text-[12px]' : 'mt-1.5 text-[13px]')}>{[hero.label, hero.sub].filter(Boolean).join(' · ')}</div>
         </div>
@@ -121,7 +121,7 @@ function Stats({ card }: { card: StatsCard }) {
             <div key={f.label} className="min-w-0 px-3 first:pl-0 last:pr-0">
               <div className={cn('truncate text-muted-foreground', dense ? 'text-[11px]' : 'text-[12px]')}>{f.label}</div>
               <div className={cn('metric truncate', dense ? 'text-[14px]' : 'text-[17px]', toneText[f.tone ?? 'neutral'])}>
-                {f.value}{f.unit && <span className="ml-0.5 text-[12px] font-medium text-muted-foreground">{f.unit}</span>}
+                <Counter value={f.value} />{f.unit && <span className="ml-0.5 text-[12px] font-medium text-muted-foreground">{f.unit}</span>}
               </div>
             </div>
           ))}
@@ -174,7 +174,7 @@ function Temps({ card }: { card: ListCard }) {
           <div key={i} className="min-w-0">
             <div className="flex items-baseline justify-between gap-3 text-sm">
               <span className="truncate font-medium">{it.title}</span>
-              <span className="shrink-0 tabular"><span key={it.meta} className={cn('tick inline-block font-medium', toneText[it.tone ?? 'neutral'])}>{it.meta}</span> <span className="text-xs text-muted-foreground">now</span></span>
+              <span className="shrink-0 tabular"><Counter value={it.meta ?? ''} className={cn('font-medium', toneText[it.tone ?? 'neutral'])} /> <span className="text-xs text-muted-foreground">now</span></span>
             </div>
             <div className="reading mt-1.5" role="meter" aria-label={`${it.title} temperature`} aria-valuenow={Math.round(at * 100)} aria-valuemin={0} aria-valuemax={100} aria-valuetext={it.meta}>
               <i style={{ clipPath: `inset(0 ${(1 - at) * 100}% 0 0 round 3px)` }} />
@@ -790,7 +790,7 @@ function Columns({ card }: { card: ChartCard }) {
   return (
     <div className="chart-body">
       <div className="mb-3 flex items-baseline gap-2">
-        <span className="metric text-[28px] leading-none">{card.headline ?? written(whole)}</span>
+        <span className="metric text-[28px] leading-none"><Counter value={card.headline ?? written(whole)} /></span>
         <span className="min-w-0 truncate text-xs text-muted-foreground">{card.span}</span>
       </div>
       <div className="columns-chart" onPointerLeave={() => setAt(null)}>
@@ -983,7 +983,7 @@ function Showcase({ card, run }: { card: ShowcaseCard; run?: RunAction }) {
           <div key={s.label} className="min-w-0">
             <dt className="text-[12px] text-muted-foreground">{s.label}</dt>
             <dd className={cn('metric mt-0.5 truncate text-[26px] leading-none', toneText[s.tone ?? 'neutral'])}>
-              {s.value}{s.unit && <span className="ml-0.5 text-[14px] font-medium text-muted-foreground">{s.unit}</span>}
+              <Counter value={s.value} />{s.unit && <span className="ml-0.5 text-[14px] font-medium text-muted-foreground">{s.unit}</span>}
             </dd>
             {s.sub && <div className="mt-1 truncate text-[12px] text-muted-foreground">{s.sub}</div>}
           </div>
@@ -1522,7 +1522,7 @@ export function WeatherRing({ card }: { card: ForecastCard }) {
         <div className="absolute inset-0 grid place-items-center"><Icon name={s.icon} className="size-4" /></div>
       </div>
       <div className="text-left leading-tight">
-        <div className="text-sm font-semibold tabular">{s.value}</div>
+        <div className="text-sm font-semibold tabular"><Counter value={s.value} /></div>
         <div className="hidden max-w-[90px] truncate text-xs text-muted-foreground sm:block">{s.label}</div>
       </div>
       <Popover group="wx" className="right-[-8px] w-[440px]"><Forecast card={card} /></Popover>
@@ -1540,7 +1540,7 @@ export function Forecast({ card }: { card: ForecastCard }) {
     <div className="p-5">
       <div className="flex items-start justify-between">
         <div>
-          <div className="metric text-[44px] leading-none">{now.temp}°</div>
+          <div className="metric text-[44px] leading-none"><Counter value={`${now.temp}°`} /></div>
           <div className="mt-1.5 text-sm font-medium">{now.words}</div>
           <div className="text-xs text-muted-foreground">Feels {now.feels}° · H {now.hi}° · L {now.lo}°</div>
         </div>

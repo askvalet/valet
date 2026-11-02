@@ -179,7 +179,7 @@ const QUICK = 1500;   // a number changing faster than this just changes: a slid
 /** A number where only the digits that changed move, in from the side it's heading, the last digit first. Nothing on first
  *  paint, and nothing while it's changing too fast to follow. A value that isn't a number crossfades. `flap`: a departures board,
  *  for a countdown: a digit flips, and what isn't a digit just changes. */
-export function Counter({ value, className, flap }: { value: string | number; className?: string; flap?: boolean }) {
+export function Counter({ value, className, flap = true }: { value: string | number; className?: string; flap?: boolean }) {
   const text = String(value), [s, setS] = useState({ now: text, was: text, n: 0, at: 0 });
   if (s.now !== text) { const at = Date.now(); setS(at - s.at < QUICK ? { now: text, was: text, n: s.n, at } : { now: text, was: s.now, n: s.n + 1, at }); }
   const was = [...s.was].reverse(), to = [...s.now], down = parseFloat(s.now) < parseFloat(s.was), numbers = /\d/.test(s.now) && /\d/.test(s.was);

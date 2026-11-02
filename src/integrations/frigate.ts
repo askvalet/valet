@@ -20,7 +20,7 @@ export function frigateCameras<T extends Integration<any>>(stats: T): T {
   return { ...stats, create(cfg: Cfg, ctx: Context): Instance {
     const base = cfg.url.replace(/\/$/, ''), rtc = cfg.go2rtc?.replace(/\/$/, ''), insecure = cfg.insecure === true;
     const api = <R = any>(path: string) => ctx.http<R>(`${base}${path}`, { timeout: 10_000, insecure });
-    const source = { name: 'Frigate', icon: '/api/icon/frigate' };
+    const source = { name: 'Frigate', icon: '/api/icon/frigate-light' };
     const named = new Map<string, string>(), seen = new Set<string>();   // all image() will ever ask Frigate for
     let listedAt = 0;
 

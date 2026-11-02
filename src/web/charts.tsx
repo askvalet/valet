@@ -6,6 +6,7 @@ import { Pause, Play } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { day as dayOf, firstDay, num as written } from './format.ts';
 import type { Card, ChartCard, HeatmapCard, Race as RaceData, RaceItem } from '../shared/cards.ts';
+import { Counter } from './feel.tsx';
 
 /** True when a chart has nothing in it, so the card shouldn't take a slot on the page. */
 export const chartless = (card?: Card) => card?.type === 'race' ? card.steps.length < 2 || !card.items.length
@@ -176,7 +177,7 @@ export function Heatmap({ card }: { card: HeatmapCard }) {
   return (
     <div className="heatmap">
       <div className="mb-3 flex items-baseline gap-2">
-        <span className="metric text-[28px] leading-none">{card.headline ?? count(whole)}</span>
+        <span className="metric text-[28px] leading-none"><Counter value={card.headline ?? count(whole)} /></span>
         {card.span && <span className="min-w-0 truncate text-xs text-muted-foreground">{card.span}</span>}
       </div>
       <div className="heat-months" aria-hidden>{months.map(m => <span key={m.x} style={{ left: `${m.x * 100}%` }}>{m.name}</span>)}</div>

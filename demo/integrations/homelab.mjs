@@ -326,7 +326,7 @@ export default ({ z, defineIntegration }) => {
       const w = (title, interval, fetch) => ({ title, interval, fetch: async () => fetch() });
       const art = name => ctx.image?.(name) ?? name;
       const widgets = {
-        cameras: w('Cameras', 4_000, () => { const seen = sightings(); return { type: 'cameras', title: 'Cameras', icon: 'camera', sample: true, source: { name: 'Frigate', icon: '/api/icon/frigate' },
+        cameras: w('Cameras', 4_000, () => { const seen = sightings(); return { type: 'cameras', title: 'Cameras', icon: 'camera', sample: true, source: { name: 'Frigate', icon: '/api/icon/frigate-light' },
           cameras: CAMERAS.map(([id, name, loop, d]) => ({ id, name, loop, video: art(`${id}.mp4`), poster: art(`${id}.jpg`), detections: d.map(([label, score, , , path]) => ({ label, score, path })) })),
           events: seen.map(({ name, image, ...e }) => ({ ...e, image: art(`${image}.jpg`) })),
           summary: { label: 'Cameras', icon: 'camera', value: CAMERAS.length, sub: `${seen[0].label} · ${seen[0].name}` } }; }),

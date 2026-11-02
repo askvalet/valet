@@ -169,6 +169,7 @@ export const ChatView = z.object({
   overview: z.boolean().default(true),     // false: no ask box or chips on the overview; it's a tab or button away
   placeholder: z.string().optional(),      // in the ask box; {name} is the assistant's name
   suggestions: z.enum(['ai', 'fixed', 'off']).default('ai'),   // ai: written for what's happening, no model calls with fixed (assistant.suggestions as they are) or off
+  followUps: z.array(z.string()).optional(),   // offered under every answer, in place of what the tool it used suggests
   steps: z.boolean().default(true),        // the tool calls it made; approvals and result cards show either way
   thinking: z.enum(['collapsed', 'open', 'hidden']).default('collapsed'),
   send: z.enum(['enter', 'mod-enter']).default('enter'),       // mod-enter: ⌘/Ctrl+Enter sends and Enter starts a line

@@ -19,7 +19,7 @@ import { Tick } from './feel.tsx';
 import { label } from './format.ts';
 
 /** What `chat:` says about the window. */
-export interface ChatUi { steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string; beam?: 'off' | 'always' | 'focus' | 'thinking'; beamColor?: 'colorful' | 'mono' | 'ocean' | 'sunset'; beamStrength?: number }
+export interface ChatUi { followUps?: string[]; steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string; beam?: 'off' | 'always' | 'focus' | 'thinking'; beamColor?: 'colorful' | 'mono' | 'ocean' | 'sunset'; beamStrength?: number }
 const Ui = createContext<ChatUi>({ steps: true, thinking: 'collapsed', send: 'enter' });
 
 // One conversation for the whole page session, so closing and reopening the panel keeps it.
@@ -321,7 +321,7 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
   const text = m.parts.filter((p: any) => p.type === 'text').map((p: any) => splitThink(p.text).said).join('\n\n').trim();
   // the last tool it used that suggests next questions
   const used = m.parts.filter((p: any) => p.type.startsWith('tool-') || p.type === 'dynamic-tool').map((p: any) => p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, ''));
-  const follow = isLast && !busy ? used.map((t: string) => tools[t]?.followUps).filter(Boolean).at(-1)?.slice(0, 2) ?? [] : [];
+  const follow = isLast && !busy ? ui.followUps?.slice(0, 6) ?? used.map((t: string) => tools[t]?.followUps).filter(Boolean).at(-1)?.slice(0, 2) ?? [] : [];
   return (
     <div className="chat-msg space-y-3">
       {blocks}
