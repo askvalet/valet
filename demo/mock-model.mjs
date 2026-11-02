@@ -4,7 +4,7 @@
 // cost and nothing for a stranger to misuse. It never repeats what's typed into it.
 import { createServer } from 'node:http';
 
-const BAZARR = "Bazarr's container is running, but its health check is failing, so subtitles may lag. Nothing else depends on it.";
+const BAZARR = 'Bazarr is running fine, and subtitles are keeping up.';
 const lit = '(?:living room|kitchen|dining room|hallway|office|bedroom|bathroom|guest room)', cleaned = `(?:${lit}|laundry)`;
 const titled = s => s.replace(/\b\w/g, c => c.toUpperCase());
 const robot = String.raw`(?:the |my )?(?:vacuum|robot|robot vacuum)`;

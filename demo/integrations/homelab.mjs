@@ -107,7 +107,7 @@ const cpuTemp = () => 42 + 5 * Math.sin(now() / 90_000), gpuTemp = () => 38 + 6 
 const takenTb = 4.5, givenTb = 14.3;
 const STACK = ['plex', 'tautulli', 'sonarr', 'radarr', 'prowlarr', 'bazarr', 'qbittorrent', 'navidrome', 'lidarr', 'komga', 'audiobookshelf', 'miniflux', 'immich', 'paperless', 'karakeep', 'mealie', 'tandoor-recipes', 'home-assistant', 'frigate', 'nextcloud', 'syncthing', 'vaultwarden', 'authentik', 'crowdsec', 'pi-hole', 'tailscale', 'caddy', 'nginx-proxy-manager', 'uptime-kuma', 'grafana', 'changedetection', 'forgejo', 'proxmox', 'portainer'];
 const ARCHIVE = '#library';   // there's no Karakeep behind this: the nearest real place, rather than a dead link
-const SWITCHED_OFF = ['Tautulli', 'tautulli'], SICK = 'bazarr';   // one thing off by choice, and one running but failing its health check
+const SWITCHED_OFF = ['Tautulli', 'tautulli'];   // one thing off by choice
 const SETBACKS = { home: 20, sleep: 18, night: 17 };
 const pad = n => String(n).padStart(2, '0');
 const dateOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -321,7 +321,7 @@ export default ({ z, defineIntegration }) => {
       const statusCard = (title, icon, items) => ({ type: 'status', title, icon, items });
       const containers = () => ['bazarr', 'caddy', 'home-assistant', 'immich', 'immich-postgres', 'immich-redis', 'karakeep', 'mealie', 'paperless', 'pi-hole', 'plex', 'prowlarr', 'qbittorrent', 'radarr', 'sonarr', 'tautulli', 'uptime-kuma']
         .map(n => {
-          const state = n === 'mealie' && !mealieUp() ? 'down' : n === SICK && !mealieUp() ? 'degraded' : n === SWITCHED_OFF[1] ? 'off' : 'up';
+          const state = n === 'mealie' && !mealieUp() ? 'down' : n === SWITCHED_OFF[1] ? 'off' : 'up';
           return { name: n, icon: `/api/icon/${n}`, ok: state === 'up', state, quiet: state === 'off' || undefined, detail: { down: 'exited (137)', degraded: 'unhealthy', off: 'exited (0)' }[state] ?? (n === 'plex' ? 'healthy' : undefined) };
         });
       const LOGS = ['03:11:58 INFO  importing recipe batch (412 items)', '03:12:04 WARN  worker memory at 251 MiB of 256 MiB', '03:12:06 ERROR Out of memory: killed process 41 (gunicorn)', '03:12:06 INFO  container exited with code 137'];
