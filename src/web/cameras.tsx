@@ -24,13 +24,6 @@ export function boxAt(d: Detection, t: number, loop = 0): Box | null {
   const i = Math.max(1, k.findIndex(p => p[0] >= at)), a = k[i - 1] ?? k[0], b = k[i] ?? a, u = b[0] > a[0] ? (at - a[0]) / (b[0] - a[0]) : 0;
   return [1, 2, 3, 4].map(n => a[n] + (b[n] - a[n]) * u) as Box;
 }
-/** Has something just come into view? A box that's been there a while isn't news, so the pill's dot settles down again. */
-const justSeen = (c: Camera) => !!c.detections?.some(d => {
-  if (!d.path) return true;
-  const t = c.loop ? seconds() % c.loop : seconds(), first = d.path[0][0];
-  return !!boxAt(d, t, c.loop) && (c.loop && t < first ? t + c.loop : t) - first < 2.5;
-});
-
 /** Awake while the tab is showing and the element is on screen. */
 function useAwake(el: RefObject<HTMLElement | null>) {
   const [awake, set] = useState(true);
@@ -141,14 +134,13 @@ function Feed({ cam, refresh, on, full, open, sample }: { cam: Camera; refresh?:
   );
 }
 
-function Pills({ cameras, at, pick, busy, row }: { cameras: Camera[]; at: string; pick: (id: string) => void; busy: string[]; row?: boolean }) {
+function Pills({ cameras, at, pick, row }: { cameras: Camera[]; at: string; pick: (id: string) => void; row?: boolean }) {
   return (
     <div role="tablist" aria-label="Cameras" className={cn('cam-pills no-scrollbar', row && 'is-row')}>
       {cameras.map(c => (
         <button key={c.id} role="tab" aria-selected={c.id === at} onClick={() => pick(c.id)} className={cn('cam-pill press', c.id === at && 'is-on')}>
           {(c.poster ?? c.image) && <img src={c.poster ?? c.image} alt="" loading="lazy" onError={e => { e.currentTarget.removeAttribute('src'); }} />}
           <span className="min-w-0 flex-1 truncate">{c.name}</span>
-          {busy.includes(c.id) && <i className="cam-ping" title="Just seen" />}
         </button>
       ))}
     </div>
@@ -188,7 +180,7 @@ export function EventStill({ event, cam, sample, live }: { event: CameraEvent; c
 
 /** Full screen. It lives on the body because glass makes a card the containing block for anything fixed inside it, and
  *  it's its own overlay because iPhones won't put anything but a bare video in real full screen. */
-function Theatre({ card, at, pick, busy, close }: { card: CamerasCard; at: string; pick: (id: string) => void; busy: string[]; close: () => void }) {
+function Theatre({ card, at, pick, close }: { card: CamerasCard; at: string; pick: (id: string) => void; close: () => void }) {
   const box = useRef<HTMLDivElement>(null), cam = card.cameras.find(c => c.id === at) ?? card.cameras[0];
   useEffect(() => {
     const el = box.current, step = (n: number) => pick(card.cameras[(card.cameras.findIndex(c => c.id === at) + n + card.cameras.length) % card.cameras.length].id);
@@ -206,19 +198,13 @@ function Theatre({ card, at, pick, busy, close }: { card: CamerasCard; at: strin
     <div ref={box} role="dialog" aria-modal aria-label={cam.name} tabIndex={-1} className="cam-theatre">
       <Feed key={cam.id} cam={cam} refresh={card.refresh} on full sample={card.sample} />
       <button onClick={close} aria-label="Close" className="cam-close press"><X /></button>
-      {card.cameras.length > 1 && <div className="cam-dock"><Pills cameras={card.cameras} at={at} pick={pick} busy={busy} row /></div>}
+      {card.cameras.length > 1 && <div className="cam-dock"><Pills cameras={card.cameras} at={at} pick={pick} row /></div>}
     </div>, document.body);
 }
 
 export function Cameras({ card }: { card: CamerasCard }) {
-  const [at, setAt] = useState(card.cameras[0]?.id ?? ''), [full, setFull] = useState(false), [busy, setBusy] = useState<string[]>([]), [still, setStill] = useState<CameraEvent | null>(null);
+  const [at, setAt] = useState(card.cameras[0]?.id ?? ''), [full, setFull] = useState(false), [still, setStill] = useState<CameraEvent | null>(null);
   const cam = card.cameras.find(c => c.id === at) ?? card.cameras[0], many = card.cameras.length > 1;
-  useEffect(() => {
-    const check = () => { const now = card.cameras.filter(justSeen).map(c => c.id); setBusy(b => b.join() === now.join() ? b : now); };
-    check();
-    const t = setInterval(check, 500);
-    return () => clearInterval(t);
-  }, [card.cameras]);
   const pick = (id: string) => { setAt(id); setStill(null); };
   if (!cam) return <p className="py-6 text-center text-sm text-muted-foreground">{card.empty ?? 'No cameras'}</p>;
   return (
@@ -226,10 +212,10 @@ export function Cameras({ card }: { card: CamerasCard }) {
       <div className={cn('cam-grid', many && 'has-pills')}>
         {still ? <EventStill event={still} cam={card.cameras.find(c => c.id === still.camera)} sample={card.sample} live={() => pick(still.camera)} />
           : <Feed key={cam.id} cam={cam} refresh={card.refresh} on={!full} open={() => setFull(true)} sample={card.sample} />}
-        {many && <Pills cameras={card.cameras} at={cam.id} pick={pick} busy={busy} />}
+        {many && <Pills cameras={card.cameras} at={cam.id} pick={pick} />}
       </div>
       {!!card.events?.length && <Events events={card.events} cameras={card.cameras} at={still} open={e => { setAt(e.camera); setStill(e); }} />}
-      {full && <Theatre card={card} at={cam.id} pick={pick} busy={busy} close={() => setFull(false)} />}
+      {full && <Theatre card={card} at={cam.id} pick={pick} close={() => setFull(false)} />}
     </div>
   );
 }
