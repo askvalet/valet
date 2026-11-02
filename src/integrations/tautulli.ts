@@ -207,7 +207,7 @@ export default defineIntegration({
       recent: {
         title: 'Recently added', interval: 300_000,
         async fetch() {
-          const d = await api('get_recently_added', { count: 12 });
+          const d = await api('get_recently_added', { count: 24 });
           return { type: 'shelf', title: 'Recently added', icon: 'film', href: cfg.href, aspect: 'poster', layout: 'spotlight', source,
             items: (d.recently_added as any[]).map(r => ({
               backdrop: r.art || r.grandparent_art || r.parent_art ? ctx.image(r.art || r.grandparent_art || r.parent_art) : undefined,

@@ -91,13 +91,12 @@ layout:
   - widgets:
       - { widget: lab.recent, view: coverflow }
   - widgets:
-      - { widget: lab.reading, size: large, rows: 2 }
       - { widget: lab.sky, size: medium }
+      - { widget: lab.photos, size: tall }
+      - { widget: lab.reading, size: medium }
       - { widget: lab.dns, size: small }
       - { widget: lab.drives, size: small }
-      - { widget: lab.photos, size: medium }
       - { widget: lab.upcoming, size: wide }
-      - { widget: lab.weather, size: medium }
   - title: Media
     overview: false
     heading: false
@@ -129,5 +128,7 @@ layout:
   - title: Reading
     tab: Library
     overview: false
-    columns: 1
-    widgets: [lab.news, lab.feeds]
+    widgets:
+      - { widget: lab.reading, size: large, rows: 2 }
+      - { widget: lab.news, size: medium, rows: 2 }
+      - { widget: lab.feeds, size: large }

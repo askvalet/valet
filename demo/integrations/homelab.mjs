@@ -65,7 +65,7 @@ const PAPERS = [
 ];
 const FILMS = ['Spider-Man: Brand New Day', 'The Bear', 'Arrival', 'Interstellar', 'Blade Runner 2049', 'Severance', 'Spirited Away', 'Andor', 'Shōgun', 'The Grand Budapest Hotel'];
 // What's new on the shelf, newest first, and what the calendar has next: [days away, title, badge, what it is]
-const SHELF = ['Severance', 'Blade Runner 2049', 'Spirited Away', 'The Grand Budapest Hotel', 'Andor', 'The Bear', 'Arrival', 'Interstellar'];
+const SHELF = ['Severance', 'Blade Runner 2049', 'Spirited Away', 'The Grand Budapest Hotel', 'Andor', 'The Bear', 'Arrival', 'Interstellar', 'Dune: Part Two', 'Shōgun', 'Oppenheimer', 'Spider-Man: Brand New Day'];
 const episode = 'New episode', NEXT = ['Shōgun', 3];
 const CALENDAR = [[0, 'Severance', 'Ready'], [0, 'Arrival', 'Ready', 'Film · 4K release'], [1, 'The Bear'], [NEXT[1], NEXT[0]], [6, 'Severance'], [8, 'The Bear'], [10, 'Shōgun'], [10, 'Severance'], [13, 'Dune: Part Two', undefined, 'Film · 4K release']];
 // Everything watched in the last 30 days: [title, kind, hours a play, plays by each viewer]. Plays, Most watched and Who's
