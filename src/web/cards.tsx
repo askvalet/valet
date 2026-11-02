@@ -6,6 +6,7 @@ import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calend
 } from 'lucide-react';
 import { createContext, Fragment, lazy, memo, Suspense, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Cameras } from './cameras.tsx';
+import { CoverFlow } from './coverflow.tsx';
 import { chartless, flow, Heatmap, Race, smooth, Stream, Waffle } from './charts.tsx';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -629,6 +630,7 @@ function Shelf({ card, header, small, run }: { card: ShelfCard; header?: ReactNo
   const [spread, setSpread] = useState(false);
   if (card.stack && !spread && card.items.length) return <Stack card={card} header={header} onOpen={() => setSpread(true)} />;
   if (!small && card.layout === 'spotlight' && card.items.length) return <Spotlight card={card} header={header} />;
+  if (!small && card.layout === 'coverflow' && card.items.length > 2) return <CoverFlow card={card} header={header} />;
   if (!small && card.layout === 'desk' && card.items.length) return <Desk card={card} header={header} />;
   if (!small && card.layout === 'windows' && card.items.length) return <Windows card={card} header={header} run={run} />;
   // what's coming and what's asked for wear the same shelf as what's new: one shape, three times
