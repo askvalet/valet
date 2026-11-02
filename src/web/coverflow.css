@@ -10,3 +10,6 @@
 .cover.is-blank .cover-mark { inset: 9% 0 auto; width: 100%; height: 56%; }
 .truncate-3 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .flow:focus-visible .cover[aria-current] { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* posters and books stand tall, and show the whole cover */
+.flow.is-poster { --size: min(184px, 38cqw, 38vw); height: calc(var(--size) * 1.5 * 1.3); }
+.flow.is-poster .cover { height: calc(var(--size) * 1.5); }

@@ -26,7 +26,7 @@ export function CoverFlow({ card, header }: { card: ShelfCard; header?: ReactNod
   useEffect(() => {
     const el = box.current; if (!el) return;
     const fit = () => {
-      const size = el.clientHeight / 1.3, sides = Math.min(reach, Math.ceil((n - 1) / 2));
+      const size = (el.querySelector('.cover') as HTMLElement | null)?.offsetWidth ?? 0, sides = Math.min(reach, Math.ceil((n - 1) / 2));
       if (size > 0 && sides > 1) setStep(Math.max(.2, Math.min(.7, (el.clientWidth / 2 / size - 1.08) / (sides - 1))));
     };
     fit();
@@ -58,7 +58,7 @@ export function CoverFlow({ card, header }: { card: ShelfCard; header?: ReactNod
           ))}
         </div>
       </div>
-      <div ref={box} tabIndex={0} role="group" aria-roledescription="carousel" aria-label={card.title} className={cn('flow', pull != null && 'is-drag')}
+      <div ref={box} tabIndex={0} role="group" aria-roledescription="carousel" aria-label={card.title} className={cn('flow', card.aspect === 'poster' && 'is-poster', pull != null && 'is-drag')}
         onKeyDown={e => { const by = { ArrowLeft: -1, ArrowRight: 1 }[e.key]; if (by) { e.preventDefault(); go(at + by); } else if (e.key === 'Home') go(0); else if (e.key === 'End') go(n - 1); }}
         onPointerDown={e => { if (e.button === 0) drag.current = { x: e.clientX, from: at, moved: false, t: e.timeStamp, v: 0, last: at }; }}
         onPointerMove={move} onPointerUp={up} onPointerCancel={up}
