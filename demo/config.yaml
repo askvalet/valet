@@ -131,4 +131,8 @@ layout:
     widgets:
       - { widget: lab.reading, size: large, rows: 2 }
       - { widget: lab.news, size: medium, rows: 2 }
-      - { widget: lab.feeds, size: large }
+  - tab: Library
+    heading: false
+    overview: false
+    columns: 1
+    widgets: [lab.feeds]
