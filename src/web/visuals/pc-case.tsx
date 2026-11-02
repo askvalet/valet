@@ -107,7 +107,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
               </button>
             ))}
           </div>
-          {data.controls === false ? <Cant>Lighting is read-only in this install.</Cant> : !run ? <Cant>View only: sign in to change this.</Cant> : <Said note={note} />}
+          {data.controls === false ? <Cant>Lighting is read-only in this install.</Cant> : !run ? <Cant>View only: sign in to change this.</Cant> : note && <Said note={note} />}
         </div>
       ) : (
         <section key={pick.id} aria-label={`${pick.name} controls`} className="space-y-1.5 animate-in fade-in duration-(--dur-pop)">
