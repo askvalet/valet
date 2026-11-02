@@ -30,7 +30,7 @@ interface Page {
   title: string; greeting?: string; notice?: string; location?: string; canAct?: boolean; sandbox?: boolean;
   appearance: { walls: Paper[]; tabWalls: Record<string, Paper[]>; rotate?: number; sizes: Partial<Record<Size, { cols?: number; rows?: number }>> };
   look: Look;
-  hero: { greeting: boolean | string; status: boolean; search: boolean; review: boolean; align: 'center' | 'left' | 'right'; scope?: string[] };
+  hero: { greeting: boolean | string; status: boolean; search: boolean; review: boolean | 'end'; align: 'center' | 'left' | 'right'; scope?: string[] };
   chat: ChatUi & { open: 'center' | 'right' | 'left' | 'bottom' | 'page'; overview: boolean; placeholder?: string; suggestions: 'ai' | 'fixed' | 'off' };
   format: Format; labels: Labels;
   assistant: { name: string; model: string; suggestions: string[]; tools: Record<string, ToolInfo>; external?: boolean } | null;
@@ -421,7 +421,7 @@ function Home({ account }: { account: boolean }) {
   const hello = !h || h.greeting === false ? '' : typeof h.greeting === 'string' ? h.greeting.replace('{greeting}', greet(now.getHours())).replace('{name}', page?.greeting ?? '').trim() : page?.greeting ? label('homelab', { name: page.greeting }) : label('yourHomelab');
   const boxed = h?.search !== false, shownChips = useLeaving(chips ? questions.slice(0, 3) : []);
   const [reviewed, setReviewed] = useState(() => { try { return !!sessionStorage.getItem('valet-review'); } catch { return false; } });   // dismissed, for this visit
-  const pill = page?.recap !== false && h?.review !== false && !reviewed;
+  const offered = page?.recap !== false && h?.review !== false && !reviewed, pill = offered && h?.review !== 'end', closing = offered && h?.review === 'end' && view === 'all';
   const dismissReview = () => { setReviewed(true); try { sessionStorage.setItem('valet-review', '1'); } catch { /* private mode */ } };
   const side = h?.align === 'left' ? 'mr-auto text-left' : h?.align === 'right' ? 'ml-auto text-right' : 'mx-auto text-center';
   // the hero: ask anything
@@ -645,6 +645,16 @@ function Home({ account }: { account: boolean }) {
             </div>
           );
         })()}
+        {closing && (
+          <div data-slot="card" className="review-end rounded-[calc(var(--radius)*1.4)] border bg-card shadow-card">
+            <div className="min-w-0 flex-1">
+              <div className="text-[17px] font-medium">{label('review', { year: now.getFullYear() })}</div>
+              <div className="mt-0.5 truncate text-[14px] text-muted-foreground">{label('reviewMore')}</div>
+            </div>
+            <a href="#recap" className="review-end-go press">{label('reviewGo')}<ArrowUp className="size-4 rotate-90" /></a>
+            <button onClick={dismissReview} aria-label={label('dismiss')} className="press grid size-8 flex-none place-items-center rounded-full text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
+          </div>
+        )}
       </main>
 
       {/* phones: the rail becomes a floating pill at the bottom */}

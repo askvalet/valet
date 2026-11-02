@@ -154,7 +154,7 @@ export const Hero = z.object({
   greeting: z.union([z.boolean(), z.string()]).default(true),  // text replaces "Sam's homelab"; {name} is `greeting`, {greeting} is "Good evening"
   status: z.boolean().default(true),       // the sentence under it
   search: z.boolean().default(true),       // the ask box (the search box without an assistant)
-  review: z.boolean().default(true),       // the year in review link; `recap` turns off the review itself
+  review: z.union([z.boolean(), z.literal('end')]).default(true),   // the year in review link, or `end`: a card closing the overview; `recap` turns off the review itself
   align: z.enum(['center', 'left', 'right']).default('center'),
   // the ask box names what it can help with ("Ask about downloads, lights, what to watch…"): true works it out from the
   // integrations present; a list says it yourself

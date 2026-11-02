@@ -363,7 +363,7 @@
 .chat-card [data-slot="card"], .chat-card .glass { backdrop-filter: none !important; background: rgb(255 255 255 / .05); box-shadow: none; }
 /* the numbers beside the chat, small */
 .chat-aside .grid { grid-template-columns: 1fr !important; gap: .5rem; }
-.chat-aside [data-slot="card"] { height: 84px; border-radius: 16px; }
+.chat-aside [data-slot="card"] { border-radius: 16px; }
 .chat-aside [data-slot="card"] > .relative { padding: .625rem .75rem; }
 .chat-aside .metric { font-size: 17px; }
 /* a ring's segments ease to their new size when the numbers change */
@@ -610,4 +610,8 @@
 }
 /* beside the chat, the tiles share its full height evenly */
 .chat-aside > section { display: flex; flex: 1; flex-direction: column; min-height: 0; }
-.chat-aside > section > :last-child { flex: 1; grid-auto-rows: minmax(96px, 1fr); }
+.chat-aside > section > :last-child { flex: 1; min-height: 0; grid-auto-rows: minmax(0, 1fr); }
+.chat-aside [data-slot="card"] { height: 100%; min-height: 0; }
+/* the year in review as the page's last word: an invitation, and easy to wave away */
+.review-end { position: relative; display: flex; align-items: center; gap: 16px; padding: 20px 24px; overflow: hidden; }
+.review-end-go { display: inline-flex; flex: none; align-items: center; gap: 6px; height: 40px; padding: 0 16px; border-radius: var(--radius); font-size: 14px; font-weight: 600; color: var(--primary-foreground); background: var(--primary); }
