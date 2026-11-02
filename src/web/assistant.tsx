@@ -283,7 +283,7 @@ export function InlineAnswer({ text, tools, onMore, ui }: { text: string; tools:
 }
 
 /** One message. Memoised, so a reply streaming in doesn't re-render everything above it. */
-const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, since, tools, act }: { m: any; isLast: boolean; busy: boolean; tookMs?: number; fresh: boolean; since: number; tools: Record<string, ToolInfo>; act: { approve: (id: string, ok: boolean) => void; regenerate: () => void; ask: (t: string) => void } }) {
+const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, since, tools, act, next }: { m: any; isLast: boolean; next?: string; busy: boolean; tookMs?: number; fresh: boolean; since: number; tools: Record<string, ToolInfo>; act: { approve: (id: string, ok: boolean) => void; regenerate: () => void; ask: (t: string) => void } }) {
   const [copied, setCopied] = useState(false), ui = useContext(Ui);
   if (m.role === 'user') return (
     <div className="chat-msg flex justify-end">
@@ -321,7 +321,8 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
   const text = m.parts.filter((p: any) => p.type === 'text').map((p: any) => splitThink(p.text).said).join('\n\n').trim();
   // the last tool it used that suggests next questions
   const used = m.parts.filter((p: any) => p.type.startsWith('tool-') || p.type === 'dynamic-tool').map((p: any) => p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, ''));
-  const follow = isLast && !busy ? ui.followUps?.slice(0, 6) ?? used.map((t: string) => tools[t]?.followUps).filter(Boolean).at(-1)?.slice(0, 2) ?? [] : [];
+  const waiting = m.parts.some((p: any) => p.state === 'approval-requested');
+  const follow = !isLast || busy || waiting ? [] : next ? next.split('\n') : ui.followUps ? [] : used.map((t: string) => tools[t]?.followUps).filter(Boolean).at(-1)?.slice(0, 2) ?? [];
   return (
     <div className="chat-msg space-y-3">
       {blocks}
@@ -331,7 +332,7 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
           <button aria-label="Copy" title="Copy" onClick={() => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1400); }}
             className="chat-icon">{copied ? <Check className="size-3.5 text-good" /> : <Copy className="size-3.5" />}</button>
           {isLast && <button aria-label="Ask again" title="Ask again" onClick={act.regenerate} className="chat-icon"><RotateCcw className="size-3.5" /></button>}
-          {tookMs != null && <span className="ml-1 text-[12px] tabular">{label('worked', { n: (tookMs / 1000).toFixed(tookMs < 10_000 ? 1 : 0) })}</span>}
+          {tookMs != null && tookMs >= 1000 && <span className="ml-1 text-[12px] tabular">{label('worked', { n: (tookMs / 1000).toFixed(tookMs < 10_000 ? 1 : 0) })}</span>}
         </div>
       )}
       {follow.length > 0 && (
@@ -440,6 +441,9 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
     sendMessage({ text: [draft.trim() || 'File this.', ...lines].join('\n') }); setDraft(''); setFiles([]);
   };
 
+  // what's offered next: three at a time, nothing already asked
+  const said = new Set(messages.filter((m: any) => m.role === 'user').flatMap((m: any) => m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text.trim())));
+  const nextUp = ui.followUps?.filter(f => !said.has(f)).slice(0, 3).join('\n');
   return (
     <Ui.Provider value={ui}><div className="relative flex h-full flex-col">
       <header {...(sheet ? grab : {})} className={cn('relative flex items-center gap-2.5 px-5', sheet ? 'border-b ' : '', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'py-2.5')}>
@@ -472,7 +476,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
           </div>
         )}
         {messages.map((m, mi) => (
-          <MessageRow key={m.id} m={m} isLast={mi === messages.length - 1} busy={busy} tookMs={took[m.id]} fresh={mi >= messages.length - 4} since={started.current} tools={tools} act={act} />
+          <MessageRow key={m.id} m={m} isLast={mi === messages.length - 1} next={mi === messages.length - 1 ? nextUp : undefined} busy={busy} tookMs={took[m.id]} fresh={mi >= messages.length - 4} since={started.current} tools={tools} act={act} />
         ))}
         {status === 'submitted' && messages.at(-1)?.role === 'user' && <Pending since={started.current || Date.now()} />}
         {error && (

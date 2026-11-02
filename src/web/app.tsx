@@ -411,7 +411,10 @@ function Home({ account }: { account: boolean }) {
   // remember what's empty (nothing playing), so it doesn't flash a placeholder on the next visit
   useEffect(() => { for (const [k, s] of Object.entries(state)) if (isEmpty(s.card)) noteShape(k, { empty: true }); }, [state]);
 
-  const h = page?.hero, ui = page?.chat;
+  const h = page?.hero, chatUi = page?.chat;
+  // follow-ups outlive what they were about too: none about a service that's fine again
+  const fresh = chatUi?.followUps && stillTrue(chatUi.followUps, [], Object.values(state)).join('\n');
+  const ui = useMemo(() => chatUi && (fresh == null ? chatUi : { ...chatUi, followUps: fresh ? fresh.split('\n') : [] }), [chatUi, fresh]);
   const named = { name: page?.assistant?.name ?? '' };
   const placeholder = (ui?.placeholder ?? (h?.scope?.length ? label('askAbout', { scope: h.scope.slice(0, phone ? 2 : 6).join(', ') }) : label('askAnything'))).replace('{name}', page?.assistant?.name ?? '');
   const askHere = !!page?.assistant && ui?.overview !== false, chips = askHere && chatMode !== 'off';
@@ -655,7 +658,7 @@ function Home({ account }: { account: boolean }) {
 
       {recap && page?.recap !== false && <Suspense fallback={null}><RecapStory onClose={closeRecap} wallpaper={page?.appearance.walls.find(w => w.image)?.image} /></Suspense>}
       {page && palette && (
-        <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} placeholder={page.assistant && (page.chat.placeholder || page.hero.scope?.length) ? placeholder : undefined} ui={page.chat} ask={ask} actions={actions} account={account} tools={page.assistant?.tools}
+        <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} placeholder={page.assistant && (page.chat.placeholder || page.hero.scope?.length) ? placeholder : undefined} ui={ui} ask={ask} actions={actions} account={account} tools={page.assistant?.tools}
           openChat={() => { setPalette(false); if (phone || !(chatTab && view === chatTab)) setChatOpen(true); }}
           runAction={runAction} services={services} SUGGESTIONS={questions} setView={go} nav={nav} sectionIcon={sectionIcon} search={page.search} /></Suspense>
       )}
