@@ -90,6 +90,7 @@ const typeName = (s: any): string => {
   if (s.const !== undefined) return `\`${s.const}\``;
   if (s.type === 'array') return `list of ${typeName(s.items)}`;
   if (s.type === 'object') return s.additionalProperties && !s.properties ? `map of ${typeName(s.additionalProperties)}` : 'object';
+  if (Array.isArray(s.type)) return s.type.join(' or ');
   return s.type === 'integer' ? 'whole number' : s.format === 'uri' ? 'URL' : s.type ?? 'any';
 };
 function optionsOf(schema: any, block: string, prefix = ''): any[] {

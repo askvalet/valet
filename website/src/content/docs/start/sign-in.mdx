@@ -104,7 +104,7 @@ Any reverse proxy works. Keep the port on `127.0.0.1` if the proxy is on the sam
 
 Valet streams live updates over server-sent events, so don't buffer `/api/events`.
 
-```caddyfile title="Caddyfile"
+```text title="Caddyfile"
 valet.example.com {
   reverse_proxy valet:7575
 }
