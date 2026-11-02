@@ -15,7 +15,10 @@ export const place = (d: number) => {
 
 export function CoverFlow({ card, header }: { card: ShelfCard; header?: ReactNode }) {
   const items = card.items, n = items.length;
-  const [at, setAt] = useState(() => Math.floor((n - 1) / 2)), [pull, setPull] = useState<number | null>(null);
+  const [at, setAt] = useState(() => {   // open near the middle, on something with artwork
+    const mid = Math.floor((n - 1) / 2), near = items.map((it, i) => ({ i, off: Math.abs(i - mid) })).filter(x => items[x.i].image).sort((a, b) => a.off - b.off)[0];
+    return near?.i ?? mid;
+  }), [pull, setPull] = useState<number | null>(null);
   const drag = useRef<{ x: number; from: number; moved: boolean; t: number; v: number; last: number } | null>(null), box = useRef<HTMLDivElement>(null), wheel = useRef(0);
   useEffect(() => setAt(a => clamp(a, n)), [n]);
   const go = (i: number) => setAt(clamp(i, n)), pos = pull ?? at, front = items[at];
