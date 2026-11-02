@@ -18,7 +18,7 @@ in them is real.
 
 # Game covers
 
-The Games card links box art from https://github.com/libretro-thumbnails. The art belongs to the games' publishers.
+The covers in `covers/` are resized copies, so the demo fetches nothing from outside. Box art comes from https://github.com/libretro-thumbnails. The art belongs to the games' publishers.
 
 # Wallpaper
 
@@ -26,4 +26,4 @@ The Games card links box art from https://github.com/libretro-thumbnails. The ar
 
 # Book covers
 
-The Books card links covers from Open Library (https://openlibrary.org). The art belongs to the publishers.
+Book covers come from Open Library (https://openlibrary.org), film art from TMDB (https://www.themoviedb.org), album art from Apple Music. The art belongs to the publishers.

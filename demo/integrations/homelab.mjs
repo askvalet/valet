@@ -416,8 +416,8 @@ export default ({ z, defineIntegration }) => {
         widgets,
         // the clips, with the byte ranges phones ask for. Nothing but the files named above can be reached
         image(ref, range) {
-          const still = ref === 'article' ? 'article.jpg' : /^photo[0-3]$/.test(ref) ? `photos/${ref[5]}.jpg` : /^page[0-4]$/.test(ref) ? `pages/${ref[4]}.jpg` : /^doc[0-7]$/.test(ref) ? `docs/${ref[3]}.jpg` : null;
-          if (still) return readFile(`${dir}/${still}`).then(b => new Response(b, { headers: { 'Content-Type': 'image/jpeg' } }));
+          const still = /^cover-[0-9a-f]{12}$/.test(ref) ? `covers/${ref.slice(6)}.jpg` : ref === 'article' ? 'article.jpg' : /^photo[0-3]$/.test(ref) ? `photos/${ref[5]}.jpg` : /^page[0-4]$/.test(ref) ? `pages/${ref[4]}.jpg` : /^doc[0-7]$/.test(ref) ? `docs/${ref[3]}.jpg` : null;
+          if (still) return readFile(`${dir}/${still}`).then(b => new Response(b, { headers: { 'Content-Type': 'image/jpeg', ...(still.startsWith('covers/') && { 'Cache-Control': 'public, max-age=31536000, immutable' }) } }));
           if (!CLIPS.has(ref)) throw new Error('bad image ref');
           const file = join(cfg.art, ref), size = statSync(file).size, [, a, b] = /^bytes=(\d+)-(\d*)/.exec(range ?? '') ?? [];
           const start = Number(a ?? 0), end = Math.min(b ? Number(b) : size - 1, size - 1), headers = { 'Content-Type': ref.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg', 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1) };
