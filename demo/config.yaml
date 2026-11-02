@@ -51,11 +51,6 @@ layout:
     variant: minimal
     header: false
     widgets: [lab.services]
-  - title: Now
-    heading: false
-    tab: Media
-    columns: 2
-    widgets: [lab.streams, lab.downloads]
   - tab: Services
     heading: false
     overview: false
@@ -86,6 +81,11 @@ layout:
     tabColumns: 1
     header: false
     widgets: [lab.home, lab.pc]
+  - title: Now
+    heading: false
+    tab: Media
+    columns: 2
+    widgets: [lab.streams, lab.downloads]
   - tab: Home
     heading: false
     header: false
