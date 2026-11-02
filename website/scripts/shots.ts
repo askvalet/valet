@@ -14,7 +14,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..'), repo = reso
 const CHROME = process.env.CHROME_PATH ?? '/usr/bin/google-chrome-stable', WORKERS = Number(process.env.SHOT_WORKERS ?? 4);
 const only = process.env.SHOTS?.split(',').filter(Boolean);
 const catalog = JSON.parse(readFileSync(resolve(root, '.cache/catalog.json'), 'utf8'));
-const FORBIDDEN = /chotte|ibrahim|192\.168/i;
+const FORBIDDEN = new RegExp(['192\\.168', ...(process.env.PRIVATE_WORDS?.split(',') ?? [])].join('|'), 'i');
 
 type Size = 'small' | 'wide' | 'medium' | 'tall' | 'large';
 // medium first: when two sizes come out the same, the one kept should be the one most people use
