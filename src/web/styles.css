@@ -608,3 +608,6 @@
   .menubar .group\/ring > .truncate { display: block; position: absolute; top: calc(100% + 4px); left: 50%; translate: -50% 0; max-width: none; padding: 1px 6px; border-radius: 6px; background: rgb(0 0 0 / .72); color: #fff; opacity: 0; pointer-events: none; transition: opacity var(--dur-press) var(--ease-out); }
   .menubar .group\/ring:focus > .truncate { display: block; opacity: 1; }
 }
+/* beside the chat, the tiles share its full height evenly */
+.chat-aside > section { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.chat-aside > section > :last-child { flex: 1; grid-auto-rows: minmax(96px, 1fr); }

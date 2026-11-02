@@ -22,4 +22,4 @@ The Games card links box art from https://github.com/libretro-thumbnails. The ar
 
 # Wallpaper
 
-`../wallpaper.jpg`: photo from Unsplash, https://unsplash.com/photos/1477346611705-65d1883cee1e (Unsplash License).
+`../wallpaper.jpg`: photo from Unsplash, https://images.unsplash.com/photo-1506905925346-21bda4d32df4 (Unsplash License).

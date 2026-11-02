@@ -628,7 +628,7 @@ function Home({ account }: { account: boolean }) {
             </Suspense>
           </div>
           {/* the tab's numbers sit small beside the chat, which gets the room */}
-          {chatWide && <aside className="chat-aside no-scrollbar flex max-h-[calc(100dvh-7.5rem)] flex-col gap-3 overflow-y-auto">{sections.map(x => renderSection(x, true))}</aside>}
+          {chatWide && <aside className="chat-aside no-scrollbar flex h-[calc(100dvh-7.5rem)] min-h-[520px] flex-col gap-3 overflow-y-auto">{sections.map(x => renderSection(x, true))}</aside>}
           </div>
         )}
         {!chatWide && (() => {

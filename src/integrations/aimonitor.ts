@@ -19,7 +19,7 @@ export default defineIntegration({
     const heat = (t: number) => t >= 85 ? 'bad' : t >= 75 ? 'warn' : 'neutral';
 
     const widgets = {
-      // the day at a glance: cost, requests, tokens and power, each with its last 24 hours drawn behind it
+      // the day at a glance: cost, requests, tokens, power, memory and heat, each with its last 24 hours drawn behind it
       usage: {
         title: 'Local AI usage', interval: 60_000,
         async fetch() {
@@ -38,6 +38,8 @@ export default defineIntegration({
               { label: 'Tokens', icon: 'text', value: tok(today.tokens), sub: 'generated today', detail: `${tok(h.totals.prompt_tokens)} read`, trend: per(3) },
               { label: 'Power', icon: 'gpu', value: `${Math.round(j.gpu.power)} W`, sub: j.model.name, detail: `${Math.round(j.gpu.temp)}°C`,
                 trend: (h.gpu as number[][]).map(r => r[2]), tone: (j.running?.length ?? 0) > 0 ? 'accent' : 'neutral' },
+              { label: 'GPU memory', icon: 'disk', value: `${(j.gpu.mem / 1024).toFixed(1)} GB`, sub: `of ${Math.round(j.gpu.mem_total / 1024)} GB`, trend: (h.gpu as number[][]).map(r => r[4]) },
+              { label: 'Temperature', icon: 'pulse', value: `${Math.round(j.gpu.temp)}°C`, sub: 'GPU', trend: (h.gpu as number[][]).map(r => r[5]), tone: heat(j.gpu.temp) },
             ],
           };
         },
