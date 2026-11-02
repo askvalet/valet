@@ -39,7 +39,7 @@ Media, photo and chart cards with nothing to show give up their slot. It comes b
 
 ## How much does it use?
 
-About 100 MB of RAM. It's one Node process, with no database. Heavy things, such as the assistant and the 3D models, load on first use.
+About 65 MB of RAM. It's one Node process, with no database. Heavy things, such as the assistant and the 3D models, load on first use.
 
 ## How often does it call my services?
 
@@ -76,6 +76,8 @@ Only with `access: { config: control }`, and it shows you a diff and saves after
 ## Is there a demo?
 
 The screenshots on this site are from the demo in the repo's `demo/` folder: real Valet, a made-up homelab, and a scripted model. You can run it yourself with Docker. See `demo/README.md`.
+
+It runs with `sandbox: true`: nothing is saved, and each visitor gets a private copy. See [the recipe](/recipes/#a-public-demo).
 
 ## Licence?
 

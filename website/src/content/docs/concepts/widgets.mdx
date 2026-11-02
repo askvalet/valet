@@ -36,6 +36,7 @@ layout:
 | `size` | `small`, `wide`, `medium`, `tall` or `large`. See [sizes](/concepts/sizes/). |
 | `every` | How often it refreshes while someone's looking: seconds, or `30s`, `5m`, `1h`. |
 | `view` | How it's drawn, whatever the data. See [views](#views). |
+| `rows` | How many rows it spans, 1 to 6, so smaller cards can stack beside it. |
 | `title`, `icon` | Its name and icon. On a tile, its label and icon. |
 | `header` | `false` drops its title bar. `true` keeps it in a section that drops them. |
 | `tint`, `opacity`, `blur` | Its surface: a colour, how much of it shows, and the blur behind it. |
@@ -58,7 +59,7 @@ layout:
 | Views | Work on |
 |---|---|
 | Charts: `line`, `bars`, `stream`, `race`, `heatmap`, `ranked`, `pie` | Anything with numbers: a chart, race, heatmap or ranked card, or a stats card with a pie. |
-| Galleries: `row`, `spotlight`, `coverflow`, `desk`, `windows`, `tickets`, `mosaic`, `flashback` | Anything with pictures: a shelf, photos, ranked, race or media card. |
+| Galleries: `row`, `spotlight`, `coverflow`, `desk`, `windows`, `tickets`, `mosaic`, `flashback`, `album` | Anything with pictures: a shelf, photos, ranked, race or media card. |
 
 `heatmap` needs dates, because its squares are days. A view that doesn't fit leaves the card as it was. A name that isn't on this list is a config problem.
 
@@ -79,6 +80,10 @@ A card reports what's going on. These come from the integration, so not every ca
 - **Can't reach it.** The card names the error. If it had data before, it keeps showing that and says `stale`.
 - **Empty.** Media, photo and chart cards with nothing in them give up their slot, so the page closes the gap. Other cards say so in a line.
 - **A banner** is a state you chose and shouldn't forget, such as paused blocking. It sits at the top of the card with the way out beside it.
+
+## Opening the page
+
+The page holds itself hidden for a moment, until most of its cards have their first data or 0.9 seconds have passed. Then it appears whole, so cards don't pop in and push each other around.
 
 ## Live things
 

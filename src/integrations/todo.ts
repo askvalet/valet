@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { z } from 'zod';
 import { defineIntegration } from '../server/core.ts';
+import { sandbox } from '../server/sandbox.ts';
 import type { Card } from '../shared/cards.ts';
 
 interface Todo { id: string; text: string; done: boolean }
@@ -17,6 +18,7 @@ export default defineIntegration({
     let writing = Promise.resolve();
     const change = (f: (l: Todo[]) => Todo[]) => (writing = writing.then(async () => {
       const next = f(await load());
+      if (sandbox.on) return;
       await mkdir(dirname(file), { recursive: true });
       await writeFile(`${file}.tmp`, JSON.stringify(next)); await rename(`${file}.tmp`, file);
     }));

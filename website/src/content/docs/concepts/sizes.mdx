@@ -58,6 +58,12 @@ appearance:
 
 A size can't overrun the last column. A section can also set its own grid with `columns: { phone: 2, tablet: 4, desktop: 6 }`.
 
+One widget can also take its own number of rows, 1 to 6, so smaller cards stack beside it:
+
+```yaml
+- { widget: plex.top, size: tall, rows: 3 }
+```
+
 ## Density
 
 `appearance.density` scales all the spacing at once: `compact`, `comfortable` or `spacious`.

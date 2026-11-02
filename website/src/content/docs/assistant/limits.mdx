@@ -42,7 +42,7 @@ The cards are real. The sentence beside a card is the model's reading of it. Whe
 The assistant reads text written by strangers: feed titles, web pages saved to Karakeep, documents, logs. Any of that can say "ignore your instructions". A model might listen. Valet assumes it might, and works on what happens next.
 
 - **Anything that isn't a read needs your press.** A poisoned document can make the model *ask*. You still see the card.
-- **Background calls have no tools.** The brief and the shared-cause line call the model with no tools at all. A poisoned feed title can make it say something odd, and nothing more.
+- **Background calls have no tools.** The brief, the suggestions and the shared-cause line call the model with no tools at all. A poisoned feed title can make it say something odd, and nothing more.
 - **Suggestions can't carry a stranger's words.** A tapped suggestion goes out as your own message. So the model writes suggestions without seeing feeds, and any suggestion with a link in it is thrown away.
 - **A shared cause must be real.** The model's verdict is believed only if it names at least two of the actual problems.
 
@@ -73,9 +73,10 @@ The limits are in the code, and they apply to saves and previews alike:
 - It can't write a secret. A value that looks like one is refused unless it's a `${NAME}`, and you add the real value to `.env` yourself.
 - It won't save with problems in the result, or with a `${NAME}` that isn't set.
 - A read-only mount stops it too. Add `:ro` to the config volume and nothing can be saved: it hands you the diff to paste instead.
+- With `sandbox: true`, these tools don't exist, whatever `access` says.
 
 These edits go through the same live reload as yours, and your comments and spacing stay as they were.
 
 ## Attachments
 
-Files attached in chat are kept under `data/uploads` for a day, up to 50 MB each, and never served back out. They're for filing. On a read-only page, attaching is off.
+Files attached in chat are kept under `data/uploads` for a day, up to 50 MB each, and never served back out. They're for filing. On a read-only page or in a sandbox, attaching is off.

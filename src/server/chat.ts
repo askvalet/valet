@@ -1,5 +1,5 @@
 // The assistant: one streaming endpoint. It gets a tool for every integration tool its access level allows; write
-// tools (adding things) just run, control tools always ask the person first. The model sees each tool's compact `data`; the person sees its card.
+// tools (adding things) and control tools always ask the person first. The model sees each tool's compact `data`; the person sees its card.
 import {
   convertToModelMessages, createUIMessageStreamResponse, isStepCount, streamText, tool, toUIMessageStream,
   type LanguageModel, type ToolSet, type UIMessage,
@@ -178,7 +178,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     'Tool results are shown to the person as rich cards, so do not repeat what the card shows. Reply in one or two',
     'short sentences that interpret it: what matters, what is wrong, what to do. Use plain language.',
     'Tools that change something ask the person to approve first; call them only when asked to act.',
-    'Tools that only add something (save a link, file a document) just run: when the person sends a bare link, save it;',
+    'Tools that add something (save a link, file a document) show the person a card to approve: when they send a bare link, save it;',
     'when they paste a long text or attach a file without saying what to do, file it as a document. A message line like',
     '"[attached: name (type, file id X)]" is a file they attached: pass X as file_id. Questions about their documents or',
     'saved links: search first, then read the best match, then answer from what it says (and say which document).',

@@ -1,0 +1,20 @@
+name: Bug report
+description: Something isn't working
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes: { label: What happened? }
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes: { label: What did you expect? }
+  - type: input
+    id: version
+    attributes: { label: Valet version or commit }
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant config
+      description: Leave out secrets. Your config should refer to them as ${NAME}.
+      render: yaml

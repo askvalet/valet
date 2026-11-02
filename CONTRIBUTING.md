@@ -13,7 +13,7 @@ npm run dev                          # server with --watch, plus Vite on :5173
 
 `npm run check` type-checks the server and the web app. `npm test` runs every test (no network, no real services).
 `npm run test:live` checks your config's widgets against your real services, and `npm run test:services` does the same for catalog entries. `/#gallery` shows every card type in
-every size.
+every size. `docs/services.md` is generated: run `npm run docs:services` after adding a service, or a test fails.
 
 ## Adding things
 
@@ -27,8 +27,9 @@ every size.
   [docs/integrations.md](docs/integrations.md) covers widgets, actions, tools and access levels.
 - **A card type:** the type in `src/shared/cards.ts`, its schema in `cards.schema.ts`, a renderer in `src/web/cards.tsx`,
   a sample in `src/web/samples.ts`. The tests then render it in every size.
-- **An option:** a schema entry with a comment and a default, so existing configs keep working, and a line in
-  [docs/configuration.md](docs/configuration.md).
+- **An option:** a schema entry with a comment and a default, so existing configs keep working, a line in
+  [docs/configuration.md](docs/configuration.md), and in `config.example.yaml` if it's common. The docs site's reference
+  is generated from the schema's comments.
 
 ## Before a pull request
 

@@ -8,10 +8,11 @@ secrets convention). `${secret:name}` reads `/run/secrets/name` and `${file:/pat
 Valet redacts every replaced value from anything it sends out.
 
 Edits to the file apply live (`reload: true`): a broken edit is reported and the last good config keeps running, and
-open pages pick up the new layout. Sign-in settings and plugins are read once, so those need a restart. A misspelt
-top-level option is an error with its path; `node dist/server.js config check` lists every problem (unknown types,
-options and widget keys) without starting the server, and `config schema` prints a JSON schema editors and agents can
-work from (`# yaml-language-server: $schema=valet.schema.json`).
+open pages pick up the new layout. Sign-in settings and plugins are read once, so those need a restart. An unknown key
+in the core config is an error with its path, and Valet names the closest match; an integration's unknown option is
+reported and ignored. `node dist/server.js config check` lists every problem (unknown types, options and widget keys)
+without starting the server, and `config schema` prints a JSON schema editors and agents can work from
+(`# yaml-language-server: $schema=valet.schema.json`).
 
 ## Environment and commands
 
@@ -26,7 +27,8 @@ node dist/server.js config check                            # every problem in c
 node dist/server.js config print                            # the effective config, defaults filled in, secrets redacted
 node dist/server.js config schema > valet.schema.json      # JSON schema of the whole file, every integration included
 node dist/server.js user add|passwd|remove|signout <name>   # local accounts (asks for the password)
-node dist/server.js new-integration <name>                  # scaffold a plugin in data/integrations/
+node dist/server.js new-integration <name> [--full]         # scaffold a plugin in data/integrations/
+node dist/server.js check-integration <file>                # run a plugin against the sample it carries
 ```
 
 In Docker, prefix these with `docker exec -it valet`.
@@ -44,17 +46,18 @@ In Docker, prefix these with `docker exec -it valet`.
 | `history` | `{ hours: 72, every: 5, background: true }` | remember headline numbers, so tiles can draw a graph and the assistant can say how they moved. `every` is minutes between samples; `background` keeps sampling while nobody has the page open; `false` turns it off |
 | `plugins` | `[]` | npm packages of community integrations, or `{ packages, replace }` where `replace` lets a plugin take over a built-in type. Files in `data/integrations/` load on their own |
 | `weather` | none | a widget key (e.g. `weather.now`) shown as a ring beside the clock |
+| `calendar` | none | a calendar widget (e.g. `family.agenda`) whose events appear when you hover the clock |
 | `search` | none | web search from ⌘K: `duckduckgo`, `google`, `kagi`, `brave`, `startpage`, `searxng`, or a URL with `{q}` |
 | `links` | `{}` | bookmarks by group, each group a widget `links.<group-slug>`: `Media: [{ name, url, icon?, note? }]`. Without `icon`, the site's favicon (fetched by Valet) |
 | `notify` | `{ channels: [] }` | where reminders go when you're not looking: see below. `insights: true` also pushes the shared-cause line |
 | `reload` | `true` | watch the file and apply edits live |
-| `sandbox` | `false` | for trying Valet out: nothing is saved anywhere, and each visitor gets a private copy in memory, gone when they leave. The public demo runs this way |
+| `sandbox` | `false` | for trying Valet out: nothing is saved, and each visitor gets a private copy of the site in memory, told apart by a cookie. At most 40 at once (a new visitor replaces the one idle longest), each dropped after 15 idle minutes. No file uploads and no config tools. It doesn't turn controls on, that's `auth`, and integrations still reach whatever they're pointed at, so use made-up services. The demo runs this way |
 | `recap` | `true` | your year in review, at `#recap` and on the overview: the strongest slides first, then all the rest without a break, and a share card where you choose what shows |
 | `welcome` | `false` | the getting-started card; a fresh starter config turns it on |
 
 ## Look and feel
 
-Everything here is optional, and a config that says nothing looks exactly as Valet always has. Options reach the page as
+Everything here is optional, and a config that says nothing gets the default look: graphite, with a brass accent. Options reach the page as
 CSS variables on `:root` (`/api/page` carries them), so a saved edit shows up in open tabs at once, without a rebuild.
 Sizes in px are plain numbers; where it says "size" you can also write `"40rem"`, `"80vw"` or `"70dvh"`. Colours are
 anything CSS calls a colour: `"#0a84ff"`, `rgb(10 132 255)`, `oklch(.7 .2 250)`, `tomato`. Quote hex colours.
@@ -150,9 +153,9 @@ The top of the overview.
 | Option | Default | |
 |---|---|---|
 | `greeting` | `true` | `false` hides it; text replaces "Sam's homelab": `{name}` fills in the top-level `greeting`, `{greeting}` the time of day |
-| `status` | `true` | one sentence under it: "All 30 services are running, Sam is watching Dune and 2 downloads are on the way." or "Everything's running except Mealie." When something needs attention, it gets a dot and heavier text in the same sentence. If the assistant finds what several problems share, that's the sentence |
+| `status` | `true` | one sentence under it, two things at most: "All 30 services are running and Sam is watching Dune." or "Everything's running except Mealie." What needs someone comes first, and services off by choice aren't counted. If the assistant finds what several problems share, that's the sentence. Hover it for the assistant's brief |
 | `search` | `true` | the ask box, or the search box without an assistant |
-| `review` | `true` | the year in review link, under the suggested questions, which can be dismissed for the visit. It's also offered in the chat. `end` adds a card closing the overview. `recap: false` turns off the review itself |
+| `review` | `true` | the year in review link, on its own line under the suggested questions. It can be dismissed for the visit, and the chat offers it as well. `end` adds a card closing the overview as well as the link; `false` is neither. `recap: false` turns off the review itself |
 | `align` | `center` | `left`, `right` |
 | `scope` | none | what the ask box names instead of "anything": `true` works it out from your integrations ("Ask about downloads, lights, what to watch…"), a list of up to 6 says it yourself. `chat.placeholder` wins over it |
 
@@ -187,7 +190,7 @@ A list of widget keys, or this, to say more about the bar:
 | `locale` | `auto` | a language tag like `en-GB` or `de-DE`: sets month names and how numbers are written (`1.234,5`) on what Valet formats itself. Values a service writes out in full stay as they are |
 | `temperature` | `auto` | `c`, `f`: converts anything a service reports as `°C` or `°F` on any card, and is the default for the `weather` integration's `units`. `auto` leaves everything as reported |
 | `distance` | `auto` | `km`, `mi`: the same for distances |
-| `weekStart` | `auto` | `monday`, `sunday`, `saturday`. For cards that draw a week as a calendar; `auto` follows the locale. Nothing in Valet draws one yet, so it's a setting waiting for its card. Integrations read it as `ctx.format`, the page as `firstDay()` |
+| `weekStart` | `auto` | `monday`, `sunday`, `saturday`: the first column of the calendar card's month and the year-of-days heatmap. `auto` follows the locale. Integrations read it as `ctx.format`, the page as `firstDay()` |
 
 ### `labels`
 
@@ -206,6 +209,8 @@ services and the assistant write is theirs, and the status sentence is built fro
 | `overview` | Overview |
 | `search` | Search services and actions |
 | `review` | Your {year} in review |
+| `reviewMore` | What your homelab got up to this year, in a few screens |
+| `reviewGo` | Play |
 | `ask` | Ask {name} |
 | `askAnything` | Ask {name} anything |
 | `askAbout` | Ask about {scope} |
@@ -259,12 +264,16 @@ chat:
   placeholder: "What's up, {name}?"
   suggestions: fixed
   steps: false
+  followUps: ["Is anything down?", "What's new?"]
   thinking: hidden
   send: mod-enter
   bubble: "#ffd400"
+  beam: once
+  beamColor: ocean
+  beamStrength: 0.6
   icon: bulb
 
-nav: { side: top, style: both, hide: [Reading], size: 0.9 }
+nav: { side: top, style: both, order: [Lately], hide: [Reading], size: 0.9 }
 menubar: { widgets: [system.tiles], position: left, labels: false, clock: true, date: false, theme: false, size: 1.2 }
 island: { activities: [plex.streams], idle: hide, position: bottom, label: false, size: 1.1 }
 format: { clock: 24h, date: iso, weekStart: monday, temperature: f, distance: mi, locale: en-GB }
@@ -278,6 +287,7 @@ layout:
       - { widget: plex.recent, size: tall, title: New on Plex, icon: film, header: false }
       - { widget: dns.stats, size: small, tint: "#0a7d4f", opacity: 0.8, blur: 12 }
       - { widget: drives.health, size: wide, background: "https://example.com/rack.jpg" }
+      - { widget: plex.top, size: tall, view: coverflow, rows: 3 }
 ```
 
 ## `auth`
@@ -304,9 +314,9 @@ layout:
 | `instructions` | none | added to the system prompt |
 | `access` | `{ default: read }` | per integration (by its id): `none`, `read`, `write` (adds things, like saving a link) or `control` (changes or removes things). Both ask you every time. `config: control` lets it edit this file: see below |
 | `maxSteps` | `6` | tool calls per answer, 1–20 |
-| `agent` | none | hand the chat to another agent: `{ name, baseURL, apiKey, model }`, anything OpenAI-compatible (Hermes Agent's API server, say). Remove it to go back. It runs its own tools, so access levels and approvals don't apply; it gets only the conversation, answers are plain text, and a read-only page stays on Valet's assistant. "Why?", the brief and shared causes stay on `model` |
+| `agent` | none | hand the chat to another agent: `{ name, baseURL, apiKey, model }`, anything OpenAI-compatible (Hermes Agent's API server, say). Remove it to go back. It runs its own tools, so access levels and approvals don't apply; it gets only the conversation, answers are plain text, and a read-only page stays on Valet's assistant. The brief and shared causes stay on `model` |
 | `suggestions` | four examples | questions offered until the model has written its own, or if `background.suggest` is off |
-| `background` | `{ watch: true, brief: true, suggest: true, perDay: 100 }` | what it does unasked. `watch`: when two or more things break, say what they share, if the data shows it. `brief`: a short summary, shown when you hover the status sentence and rewritten every half hour while the page is in use. `suggest`: write the suggested questions from what's on the page, every half hour or when something changes (`suggestions` is the fallback). `perDay` caps the first two. None of them get tools |
+| `background` | `{ watch: true, brief: true, suggest: true, perDay: 100 }` | what it does unasked. `watch`: when two or more things break, say what they share, if the data shows it. `brief`: a short summary, shown when you hover the status sentence and rewritten every half hour while the page is in use. `suggest`: write the suggested questions from what's on the page, every half hour or when something changes (`suggestions` is the fallback). `perDay` caps the model calls all three make in a day. None of them get tools |
 
 What `assistant` sets is what it knows and may do. How it looks on the page is `chat`, below, apart from its name.
 
@@ -338,6 +348,7 @@ The assistant's window. Its name is `assistant.name`.
 | `overview` | `true` | `false`: no ask box or chips on the overview. It's still in ⌘K, the tab or the rail's button |
 | `placeholder` | `Ask {name} anything` | in the ask box and ⌘K; `{name}` is the assistant's name |
 | `suggestions` | `ai` | `ai`: questions written from what's happening (`assistant.background.suggest`), with the cards' own and `assistant.suggestions` to fall back on. `fixed`: exactly `assistant.suggestions`, and no model call. `off`: none, here or in the empty chat |
+| `followUps` | none | a list of your own, offered under each answer in place of what the tool it used suggests. One already asked drops out, and so does one about a service that's fine again |
 | `steps` | `true` | `false` hides the list of tool calls. Approvals and result cards always show |
 | `thinking` | `collapsed` | a model's reasoning: `collapsed` (a line that opens), `open`, `hidden` |
 | `send` | `enter` | `mod-enter`: ⌘/Ctrl+Enter sends, Enter starts a new line |
@@ -407,6 +418,7 @@ A list of sections; each is a tab in the rail. Sections appear in this order, to
 | `heading` | `true` | `false`: no title above it (it still names its tab) |
 | `overview` | `true` | `false`: only on its own tab |
 | `tab` | its title | share a tab with other sections |
+| `icon` | its first card's | its tab's icon |
 | `chat` | `false` | its tab also holds the assistant, full page |
 | `favorites` | none | service names: on the overview, a status card shows only these, plus anything that's down, with a link to all of them on the section's tab |
 
@@ -418,7 +430,7 @@ A widget entry takes these, all optional but `widget`:
 | `size` | `medium` | `small`, `wide`, `medium`, `tall`, `large`: see [sizes](#appearance) |
 | `every` | the widget's own | how often it refreshes: seconds, or `30s`, `5m`, `1h` |
 | `view` | the widget's own | how it's drawn, whatever the data: below |
-| `rows` | the size's own | how many rows it spans, so smaller cards can stack beside it |
+| `rows` | the size's own | how many rows it spans, 1 to 6, so smaller cards can stack beside it |
 | `title`, `icon` | the card's | its name and icon; on a tile, its label and icon |
 | `header` | the section's | `false` drops its title bar, `true` keeps it in a section that drops them |
 | `tint` | `colors.card` | a colour for its surface |
@@ -450,25 +462,34 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | Type | Options | Widgets |
 |---|---|---|
 | `aimonitor` | `url` | `usage`, `gpu` |
-| `arr` | `sonarr`, `radarr` (each `{ url, apiKey }`), `days` (14) | `upcoming` |
+| `apcups` | `host`, `port` (3551), `title` | `status` |
+| `arr` | `sonarr`, `radarr` (each `{ url, apiKey, href }`), `days` (14), `plex` (its web address, so what's ready opens there) | `upcoming` |
+| `camera` | `cameras` (`{ name, url, video }`), `title`, `href`, `refresh` (seconds), `username`, `password`, `insecure` | `cameras` |
+| `clock` | `clocks` (`{ name, zone }`), `title` | `times` |
 | `glances` | `url`, `disks` (mounts, or `{ mount, name, sub }`), `network` (interface), `cpuSensor` (`CPU`) | `tiles`, `overview`, `disks` |
 | `homeassistant` | `url`, `token`, `cards`, `schedules`, `floorplans`, `thermostats` (`{ entity, title, modes, unit }`), `controllable` (extra entities the assistant may control) | one per entry in `cards`, `schedules`, `floorplans`, `thermostats` |
 | `http` | `targets` (`name`, `url`, `href`, `icon`, `group`, `quiet`, `expect`), `interval` (30000 ms) | `status` |
+| `iframe` | `url`, `title`, `height` (360), `scripts` (`true`) | `page` |
 | `immich` | `url`, `apiKey` | `memories` |
 | `indexers` | `prowlarr`, `bazarr` (each `{ url, apiKey }`) | `health` |
-| `karakeep` | `url`, `apiKey` | `recent` |
+| `karakeep` | `url`, `apiKey` | `recent`, `digest`, `reading` |
+| `lobsters` | `tags`, `sort` (`hottest`, `newest`), `limit` (8) | `stories` |
+| `minecraft` | `host`, `port` (25565), `title` | `status` |
 | `ollama` | `url` | `models` |
 | `paperless` | `url`, `token` | `recent` |
 | `pihole` | `url`, `password` (an app password) | `stats` |
 | `qbittorrent` | `url`, `username`, `password`, `arr` (Sonarr/Radarr `{ type, url, apiKey }` for titles and posters) | `active` |
 | `quran` | `url` | `today` |
+| `repository` | `repos` (`owner/name`), `token`, `title` | `repos` |
 | `rgb-control` | `url`, `build`, `view` (`turn`, `tilt`, `draggable`), `presets`, `controls`, `interval` | `pc` |
 | `romm` | `url`, `username`, `password` | `recent` |
 | `scrutiny` | `url`, `hotC` (55) | `drives` |
-| `seerr` | `url`, `apiKey` | `requests` |
+| `seerr` | `url`, `apiKey`, `downloads` (where "See progress" goes) | `requests` |
 | `tautulli` | `url`, `apiKey` | `streams`, `recent`, `top`, `people`, `library`, `plays` (a stream of 30 days), `race` (the year's titles overtaking each other; refreshes every few hours), `viewing` (a year of days) |
+| `todo` | `title` | `list` |
+| `twitch` | `clientId`, `clientSecret`, `channels`, `limit` (8) | `channels`, `games` |
 | `uptimekuma` | `url`, `username` (empty with an API key), `password` (or the key), `certWarnDays` (14) | `monitors` |
-| `weather` | `latitude`, `longitude`, `units` (`metric`), `interval` (600000 ms) | `now` |
+| `weather` | `latitude`, `longitude`, `units` (from `format.temperature`, else `metric`), `interval` (600000 ms) | `now` |
 | `rss` | `feeds` (URLs, or `{ url, name }`; YouTube channels via `youtube.com/feeds/videos.xml?channel_id=…`), `limit` (12), `style` (`list` or `shelf` for thumbnails), `title`, `every` (900 s) | `latest` |
 | `hackernews` | `sort` (`top`, `new`, `best`), `limit` (10), `comments` (rows open the discussion) | `stories` |
 | `reddit` | `subreddits`, `sort` (`hot`), `limit` (10), `style` (`list` or `shelf`) | `posts` |

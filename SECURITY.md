@@ -27,7 +27,7 @@ the damage if something goes wrong, and how to give it as little power as possib
   `read`, `write` (may add things, like saving a link) or `control` (may change or remove things). Anything that isn't
   `read` waits for you to approve it. A document or web page the assistant reads can't talk it into acting: it can make
   the assistant ask, and the click is yours.
-- **What the assistant does unasked can only talk.** The morning brief, the shared-cause line and "Why?" call the model
+- **What the assistant does unasked can only talk.** The brief, the suggestions and the shared-cause line call the model
   with no tools at all, so a poisoned feed title can at worst make it say something odd. They have a daily budget, and
   the model is only consulted when rules say it's worth it (one problem never is).
 - **Suggestions can't carry a stranger's words.** A tapped suggestion is sent as your own message, so the model writes
@@ -48,6 +48,9 @@ the damage if something goes wrong, and how to give it as little power as possib
 - **Everything it changes is written down.** `data/activity.json` records who asked, how, what it did and whether it
   worked, with secrets redacted. Plans run only tools its access level allows, after you've seen every step.
 - **Reminders can only tell you things.** A reminder fires a message; it can't run a tool.
+- **A sandbox keeps Valet's own state apart, nothing more.** With `sandbox: true` nothing is saved, each visitor gets a
+  private copy of the site in memory, and there are no file uploads or config tools. Integrations still reach whatever
+  they're pointed at, so on a page that may act, a visitor's press reaches the real service. Use it with made-up services.
 - **Pins only look.** Only `read` tools can be pinned, and no model runs after that.
 - **Browser hardening.** A strict content-security policy (only Valet's own scripts run), no framing, same-origin
   referrers, microphone only for Valet, and every request that changes something must come from Valet's own origin.

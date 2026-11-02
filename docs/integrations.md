@@ -70,23 +70,37 @@ answer that used it. Pick the narrowest `access`:
 - `read`: only looks.
 - `write`: adds something the person asked for (save a link, file a document). Every call asks first. That's what stops
   a web page from talking the assistant into acting.
-- Set `live: true` on a cheap look-only tool whose answer changes by itself, and its card keeps itself current in chat.
 - `control`: changes or removes something (pause, stop, turn off, request). Every call asks first, and it only exists
   for the assistant if the user grants `control`.
 
-**`image(ref)`** serves images (posters, snapshots) through Valet so the browser never needs the service's key. Put
-`ctx.image(ref)` in a card; validate `ref` before fetching.
+A tool can also carry:
+
+- `confirm(input)`: what the approval card says, `{ title, detail, image, icon, verb, danger }`. `danger` makes the button
+  red. It may look things up but never change them, and should show what the service says, not what the model typed.
+- `undo`: the tool that reverses this one, given the same input. It adds Undo in the activity log.
+- `find`: the input field that takes search words, which puts the tool in the assistant's `search_everything`.
+- `live: true`, on a cheap look-only tool whose answer changes by itself: its card keeps itself current in chat.
+
+**`image(ref, range)`** serves images (posters, snapshots) through Valet so the browser never needs the service's key.
+Put `ctx.image(ref)` in a card; validate `ref` before fetching.
+
+**`recap(range)`** adds slides to the year in review: see [plugins.md](plugins.md#the-year-in-review).
+
+**`onChat()`** is called when someone asks the assistant something. It returns the widgets to refresh right away, for a
+service that shows the assistant at work.
 
 ## Context
 
-`ctx.http(url, init)` fetches with a timeout and a readable error, and parses JSON unless you pass `as: 'text'` or
-`as: 'response'`. `ctx.log` prefixes output with the instance name. `ctx.session(login)` shares one sign-in between
+`ctx.http(url, init)` fetches with a timeout (8 s, or `timeout`) and a readable error, and parses JSON unless you pass
+`as: 'text'` or `as: 'response'`; `insecure: true` accepts a self-signed certificate. `ctx.id` is the instance's name and
+`ctx.format` the config's `format:`. `ctx.log` prefixes output with the instance name. `ctx.session(login)` shares one sign-in between
 parallel requests (call `.get()` for the token, `.reset()` after a 401). `ctx.upload(id)` reads a file the person
 attached in chat. `fmt` (from `core.ts`) formats bytes, rates, speeds, durations, percentages, days (`fmt.day`,
 `fmt.relativeDay`: "Today", "Tomorrow", "Fri") and times consistently.
 
-Icons in cards are names: `cpu gpu memory wifi disk download pulse play film bulb home shield chat image clock crescent
-game book coins text file bookmark camera sun moon cloud cloud-sun cloud-moon rain snow fog storm thermometer`, or an image URL.
+Icons in cards are names: `camera cpu gpu memory wifi disk download pulse play film search bulb home shield chat image
+clock crescent game book coins text file bookmark rss news reddit tag chart calendar sun moon cloud cloud-sun cloud-moon
+rain snow fog storm thermometer`, or an image URL or path.
 
 ## Guidelines
 
@@ -97,16 +111,22 @@ game book coins text file bookmark camera sun moon cloud cloud-sun cloud-moon ra
 
 ## Cards
 
-A widget returns one card from the catalog in `src/shared/cards.ts`. Pick the one that fits what the data *is*:
+A widget returns one card from the catalog in `src/shared/cards.ts`. Pick the one that fits what the data *is*; a person
+can still draw it another way with a widget's [`view`](configuration.md#layout).
 
 | Card | For | Notes |
 |---|---|---|
 | `stats` | a few numbers, one leading | first item is the hero; `trend` draws a sparkline, `pct` a meter |
-| `list` | rows of things with a status | `pct` adds a progress bar; `tone` colours a row |
-| `status` | services that are up or down | `group` sections them; `quiet` for things that sleep on purpose |
+| `list` | rows of things with a status | `pct` adds a progress bar; `tone` colours a row; `layout` is `temps`, `chips` or `headlines` |
+| `status` | services that are up or down | `group` sections them; `quiet` for things that sleep on purpose. `layout: wall` is one icon per app (by `group`, or the name up to its first `-` or `_`), with a count when it has several, its worst state on the dot and what's wrong on hover |
 | `media` | what's playing or downloading | full-bleed artwork; `tags`, progress, time left |
-| `shelf` | a row of artwork | `aspect` poster/square/wide; `stack: true` piles them up (documents, photos) |
-| `photos` | photos to look at | `flashback` crossfades; `mosaic` (or size large) tiles them |
+| `shelf` | a row of artwork | `aspect` poster/square/wide; `stack: true` piles them up (documents, photos); `layout` is `row`, `spotlight`, `coverflow`, `desk`, `windows`, `tickets` or `week` |
+| `photos` | photos to look at | `style`: `flashback` crossfades, `mosaic` (or size large) tiles them, `album` is tall strips, and the one under the pointer slides open |
+| `ranked` | who or what comes top | the leader gets its artwork, the rest a bar |
+| `race` | titles overtaking each other | `steps`, and each item's `points` as running totals |
+| `heatmap` | a year of days | `from`, and a count per day in `days` |
+| `article` | one thing to read | the page behind it and a few lines; `more` is the pile to step through |
+| `links` | bookmarks | `name`, `href`, `icon`, `note` |
 | `cameras` | live cameras | a big view, a pill per camera, `events` as a strip; each camera has an `image` (refreshed every `refresh` seconds, 1 by default) or a `video`, and `detections` draw a box that flashes as it lands. Goes full screen on a tap |
 | `schedule` | a day's times | next one counts down live; `muted` times show but are never "next" |
 | `forecast` | weather | a large glyph and temperature, high/low, the next `days`; more room adds the hours and range bars |
@@ -114,15 +134,19 @@ A widget returns one card from the catalog in `src/shared/cards.ts`. Pick the on
 | `thermostat` | a dial | `target`, `current`, `min`, `max`, `step`, `unit`; `set` names the action for a new target, `modes` the buttons |
 | `verse` | a verse or quote | original (right-to-left if Arabic), translation, reference |
 | `controls` | switches, sliders, choices | each control names an action of the same integration |
-| `chart`, `kv`, `text` | a graph, key–value rows, a sentence | |
-| `code` | Logs or config: numbered lines, copy, and `diff: true` colours lines starting `+` and `-` | |
-| `table` | `columns` and `rows`; numbers line up, and a tap on a heading sorts | |
+| `chart` | a graph | `style` is `line`, `bars` or `stream` |
+| `kv`, `text` | key–value rows, a sentence | |
+| `code` | logs or config | numbered lines, copy, and `diff: true` colours lines starting `+` and `-` |
+| `table` | rows and columns | `columns` and `rows`; numbers line up, and a tap on a heading sorts |
+| `embed` | a page inside a card | sandboxed; only addresses the `iframe` integration allowed can load |
 | `showcase` | a custom visual with its panel | renderers live in `src/web/visuals/` |
 | `group` | cards side by side | mostly for the assistant |
 
 Any card can also carry:
 
-- `summary` (or `summaries`): its headline, shown when the widget is placed with `size: small`, in the menubar, or as a tile.
+- `summary` (or `summaries`): its headline, shown when the widget is placed with `size: small`, in the menubar, or as a
+  tile. `trend` draws a graph behind it and `color` (a hex colour) tints that graph; `pct` fills a ring, `waffle` draws it
+  as ten rows of ten squares, `marks` is a row of small bars, and `image` fills the tile.
 - `activity`: set only while something is happening; the island shows it.
 - `buttons`: quick actions along the bottom (`{ label, action, args }`), run through the integration's `actions`.
 - `banner`: a state the person chose and shouldn't forget, at the top of the card: `{ text, until, tone, button }`, as in
@@ -136,7 +160,7 @@ Some cards and rows take a little more:
 | `window` | `chart` | what the columns cover, under them: "last 24 h" |
 | `factsNote` | `chart` | what the chips under it are: "Most blocked · last 24 h" |
 | `series[].total` | `chart` | the service's own figure, when summing the points would disagree with the headline |
-| `limit` | `list` | how many rows show before the rest fold away |
+| `limit` | `list`, `layout: chips` | how many chips show; "19 in all" opens the rest in place |
 | `band` | `list` item, `layout: temps` | the normal stretch of the track, `[low, high]`, each 0..1 |
 | `section` | `list` item | a quiet heading wherever it changes: "Watching now" above "Last 30 days" |
 | `cta` | `shelf` item | its next step, `{ label, href }`, which the whole tile then opens: "Open in Plex", "See progress" |

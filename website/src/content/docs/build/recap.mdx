@@ -31,7 +31,7 @@ No model writes any of this. A paper full of real numbers can't have one inventi
 ## Rules
 
 - **Only real numbers.** If your service can't really know something, leave it out.
-- **Say what it covers.** `scope` is `'year'`, or what the number covers: `'All time'`, `'Last 30 days'`. Left out, it's `'Right now'`. A slide that doesn't say doesn't get to claim the year.
+- **Say what it covers.** `scope` is `'year'`, or what the number covers: `'All time'`, `'Last 30 days'`. Left out, it's `'Right now'`. A slide that doesn't say doesn't get to claim the year. When more than half the slides are `'year'`, the review opens on the year. Otherwise it opens "Your homelab" and "Busy, wasn't it?".
 - **An empty value is dropped.**
 - **Mark `private: true` if it names people.** It stays off the shareable card unless chosen.
 
@@ -42,7 +42,7 @@ Most services can only say a count. In a built-in `service()`, `tally(count, sli
 ```ts
 import { service, tally } from '../../server/service.ts';
 
-recap: d => tally(d.stats.total, { id: 'code', theme: 'code', icon: 'file', kicker: 'Your own forge holds', unit: 'repositories', stat: 'Repositories', line: 'On hardware you run.' }),
+recap: d => tally(d.stats.total, { id: 'code', theme: 'code', kicker: 'Your own forge holds', unit: 'repositories', stat: 'Repositories', line: 'On hardware you run.' }),
 ```
 
 It sets `value` from the number, `score: 55` and `scope: 'Right now'`. You can override the scope.
@@ -74,7 +74,6 @@ Valet keeps up to 3 slides per theme from each service and 4 per theme overall, 
 | `stat` | Its label on the shareable card, if it belongs there. |
 | `private` | It names people. |
 | `trait` | `{ name, line, strength }`. Who this makes you, 0 to 1. The strongest across all services wins. |
-| `icon` | A small icon. |
 | `logo` | The app's icon, large, tinting the slide with its colours. |
 | `items` | A top five: `{ name, value, image }`. |
 | `bars` | A small chart of what the number is made of: `{ label, value, show }`. |

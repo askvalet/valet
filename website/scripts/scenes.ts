@@ -1,18 +1,11 @@
 // The whole product, not one card: real Valet (the repo's own build) running the demo's config and its made-up homelab,
 // with the demo's scripted model as the assistant. Nothing real is reachable: the only plugin is demo/integrations/homelab.mjs.
-// The demo names real films and hot-links their posters, which is fine for a demo and wrong for documentation: here its
-// copy gets invented titles, its pictures are drawn, and no request leaves 127.0.0.1.
+// These shots are the demo exactly as visitors see it, with its own covers from demo/art, and no request leaves 127.0.0.1.
 import { spawn } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { drawn, freePort } from './serve.ts';
-
-const TITLES: Record<string, string> = {
-  'Spider-Man: Brand New Day': 'The Long Tide', 'Dune: Part Two': 'Salt Road', 'The Bear': 'Night Kitchen', Arrival: 'First Light', Interstellar: 'Far Harbour', 'Blade Runner 2049': 'Rain City', Severance: 'Quiet Floor',
-  'Spirited Away': 'The Paper Lantern', Andor: 'Northern Line', 'Shōgun': 'Iron Coast', 'The Grand Budapest Hotel': 'Hotel Meridian', Oppenheimer: 'The Last Winter',
-};
-const invented = (text: string) => Object.entries(TITLES).reduce((t, [real, made]) => t.replaceAll(real, made), text);
 
 export async function scenes({ browser, root, repo, out, manifest, problems, stop, wanted, forbidden }: any) {
   const dir = resolve(root, '.cache/demo'), data = resolve(dir, 'data');
@@ -20,13 +13,11 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(resolve(data, 'integrations'), { recursive: true });
   // pausing the downloads is marked dangerous here, so the docs can show the red button: the demo has nothing dangerous to do
-  writeFileSync(resolve(data, 'integrations/homelab.mjs'), invented(readFileSync(resolve(repo, 'demo/integrations/homelab.mjs'), 'utf8')).replace("title: 'Pause all downloads?',", "title: 'Pause all downloads?', danger: true,")
-    // the same films under their new names, with no poster, so the demo draws one
-    .replace(/^const ART = .*$/m, m => `${m}\nART.films = Object.fromEntries(Object.entries(ART.films).map(([k, v]) => [(${JSON.stringify(TITLES)})[k] ?? k, { year: v.year }]));`));
+  writeFileSync(resolve(data, 'integrations/homelab.mjs'), readFileSync(resolve(repo, 'demo/integrations/homelab.mjs'), 'utf8').replace("const dir = existsSync('/demo/art') ? '/demo/art' : resolve('demo/art');", `const dir = ${JSON.stringify(resolve(repo, 'demo/art'))};`).replace("title: 'Pause all downloads?',", "title: 'Pause all downloads?', danger: true,"));
   cpSync(resolve(repo, 'demo/icons'), resolve(data, 'icons'), { recursive: true });
   const modelPort = await freePort(7730), port = await freePort(7760);
   // the demo's own model and config, on free ports, with the public host names taken out
-  writeFileSync(resolve(dir, 'model.mjs'), invented(readFileSync(resolve(repo, 'demo/mock-model.mjs'), 'utf8')).replace(/if \(process\.argv\[1\].*server\.listen\(8080[^\n]*/, `server.listen(${modelPort}, '127.0.0.1');`));
+  writeFileSync(resolve(dir, 'model.mjs'), readFileSync(resolve(repo, 'demo/mock-model.mjs'), 'utf8').replace(/if \(process\.argv\[1\].*server\.listen\(8080[^\n]*/, `server.listen(${modelPort}, '127.0.0.1');`));
   writeFileSync(resolve(dir, 'config.yaml'), readFileSync(resolve(repo, 'demo/config.yaml'), 'utf8')
     .replace(/^allowedHosts:.*$/m, 'allowedHosts: []').replace(/^notice:.*$/m, '').replace('http://valet-demo-model:8080/v1', `http://127.0.0.1:${modelPort}/v1`)
     .replace('/demo/wallpaper.jpg', resolve(repo, 'demo/wallpaper.jpg')).replace('type: demo-homelab', `type: demo-homelab\n    art: ${resolve(repo, 'demo/art/cameras')}`));

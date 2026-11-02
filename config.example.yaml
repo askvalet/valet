@@ -18,8 +18,12 @@ location: Toronto, Canada          # gives the assistant local context
 #   density: comfortable             # or compact, spacious
 #   rim: 0.6                         # a fixed bevel of light on the edge of dark glass, 0 to 1
 # notice: Family server            # a quiet pill above the greeting
-# hero: { align: center, review: true, scope: true }   # scope: the ask box names real examples, from your integrations or a list
-# chat: { open: center, suggestions: ai }   # open: center, right, left, bottom, page
+# sandbox: true                    # for trying Valet on made-up services: nothing is saved, each visitor gets a private copy in memory
+# hero: { align: center, review: true, scope: true }   # review: true, false or end (a card closing the overview as well as the link). scope: the ask box names real examples, from your integrations or a list
+# chat: { open: center, suggestions: ai, beam: once, beamColor: mono, beamStrength: 0.45, followUps: ["Is anything down?"] }
+#   open: center, right, left, bottom, page
+#   beam: a light around the ask box: off, always, focus (while typing), thinking, once (a lap on load, then while typing)
+#   followUps: offered under each answer, in place of what the tool suggests
 # format: { clock: 24h, temperature: c }
 
 # The assistant. Any OpenAI-compatible server (Ollama, llama.cpp, vLLM, LM Studio, OpenRouter, OpenAI) or Anthropic.
@@ -152,7 +156,7 @@ menubar: [system.tiles]
 weather: weather.now
 # The island: a black notch at the top that shows what's happening, in this order, and hides when nothing is.
 island:
-  activities: [plex.streams, downloads.active, home.plan]
+  activities: [plex.streams, downloads.active]
   notify:                          # short notices when things change (none unless listed)
     - { widget: downloads.active, on: end, text: "{title} finished downloading" }
     - { widget: services.status, on: down }   # also: up, start
@@ -173,7 +177,8 @@ nav: { side: left }               # where the tab buttons sit: left, right, top 
 #   tall = the card over two rows (a photo card as the centrepiece), large = wider, with room for more
 # It can also say how it's drawn, whatever the data, as in { widget: plex.top, view: coverflow }. What doesn't fit stays as it was:
 #   numbers: line, bars, stream, race, heatmap (needs dates), ranked, pie
-#   pictures: row, spotlight, coverflow, desk, windows, tickets, mosaic, flashback
+#   pictures: row, spotlight, coverflow, desk, windows, tickets, mosaic, flashback, album
+# rows: n is how many rows it spans, so smaller cards can stack beside it, as in { widget: plex.top, size: tall, rows: 3 }
 layout:
   - title: Now
     widgets: [system.overview, downloads.active]

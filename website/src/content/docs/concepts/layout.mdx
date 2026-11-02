@@ -87,9 +87,9 @@ hero: { greeting: "Welcome back, {name}", align: left, review: false }
 
 The title is "Sam's homelab" until you say otherwise. `hero.greeting` replaces it: `{name}` is your `greeting`, and `{greeting}` is the time of day, as in `"{greeting}, {name}"`.
 
-`status` is one sentence under the title: "All 30 services are running, Sam is watching Dune and 2 downloads are on the way." or "Everything's running except Mealie." When something needs attention, the same sentence gets a dot and heavier text.
+`status` is one sentence under the title, two things at most: "All 30 services are running and Sam is watching Dune." or "Everything's running except Mealie." What needs someone comes first, and services off by choice aren't counted. With an assistant, hover it for the brief.
 
-`search` is the ask box, or a search box when there's no assistant. `review` is the year in review link, in the same row as the suggested questions. You can dismiss it for the visit.
+`search` is the ask box, or a search box when there's no assistant. `review` is the year in review link, on its own line under the suggested questions. You can dismiss it for the visit, and the chat offers it too. `review: end` also closes the overview with a card, and `false` drops both.
 
 ## The menubar
 

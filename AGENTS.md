@@ -6,7 +6,8 @@ new gotcha is learned. `CLAUDE.md`-style tools should treat this file as their i
 ## What Valet is
 
 A homepage for a homelab: live cards for the services you run, controls for the things you can change, and an
-assistant that answers with the same cards. One Node process, one YAML file, about 100 MB of RAM.
+assistant that answers with the same cards. One Node process, one YAML file, about 65 MB of RAM. The public site is
+https://askvalet.dev.
 
 ## Principles
 
@@ -34,7 +35,8 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   catalog plus one renderer in `src/web/cards.tsx`, and then every integration and the assistant can use it.
 - **An integration is one file** (`src/integrations/<name>.ts`): `defineIntegration` with a zod config schema,
   `widgets` (what the page shows), `actions` (what the page can do), `tools` (what the assistant can use), and optionally
-  `image()` for proxied pictures. Register it in `src/integrations/index.ts`. Nothing else should need to change.
+  `image()` for proxied pictures, `recap()` for the year in review and `onChat()`, which names the widgets to refresh when
+  someone asks the assistant something. Register it in `src/integrations/index.ts`. Nothing else should need to change.
 - **Widgets summarise themselves.** A card may carry `summary`/`summaries` (label, value, tone, trend, pct) so the same
   data can appear as a tile, a ring in the menubar, or a full card, chosen in YAML.
 - **Community integrations are plugins** (`src/server/plugins.ts`, docs/plugins.md): the same integration shape, one
@@ -52,9 +54,13 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - **A config is a Site** (`src/server/site.ts`): `check()` turns a config into instances and the list of problems
   (the CLI and tests use it alone); `buildSite()` adds the hub. `main.ts` keeps one `site` and swaps it when
   config.yaml changes, so routes read `site.x` at request time, never a captured copy.
+- **A sandbox is a Site per visitor** (`sandbox: true`, `src/server/sandbox.ts`, `main.ts`). A cookie picks the visitor's own
+  copy, `site` reads it through `AsyncLocalStorage`, and at most 40 live, each dropped after 15 idle minutes. Anything that
+  saves must check `sandbox.on` and stay in memory instead; uploads and the config tools are off.
 
 - **AI is everywhere and required nowhere.** Without an `assistant:` block the page loses nothing. Rules decide when a
-  model is worth asking; if a rule can do the job, no model runs. What it does unasked (`src/server/insight.ts`, through
+  model is worth asking; if a rule can do the job, no model runs. The status sentence is one of those rules (`sayHow` and
+  `oneLine` in `format.ts`): two things at most, what needs someone first, and services off by choice don't count. What it does unasked (`src/server/insight.ts`, through
   `brain.ts`) gets no tools. What it builds (pins, config edits in `setup.ts`) runs without it afterwards.
 - **Valet stays in its box; agents go on the machines.** The container never gets the host. Anything from outside it
   comes through a narrow read-only door: a socket proxy for Docker, `agent/valet-agent.py` for systemd. Keep the agent one
@@ -70,7 +76,7 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - **Layout is data.** Sections choose how they draw (`display`), where they sit (`place`), how dense they are
   (`variant`, `header`, `columns`) and whether they're on the overview (`overview`); the tab buttons' side is `nav.side`.
   A new arrangement is a new option with a default, never a fork of the page.
-- **Sizes are the layout's job.** Every card works small (its `summary` as a tile), medium, large (two columns, more room)
+- **Sizes are the layout's job.** Every card works small (its `summary` as a tile), medium, large (four of six tracks, more room)
   and dense in chat. Integrations give a good `summary`; they don't pick sizes.
 - **Live things announce themselves.** A card sets `activity` only while something's happening; the island shows the
   live ones in the config's order and disappears when nothing is live.
@@ -119,8 +125,10 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   opacity directly and hands off to a CSS transition, so it can be caught mid-flight; `still()` reads `--move` for what JS moves.
 - **Alive, not busy.** Motion explains a change. The chat shows work happening (a shimmering label with a timer, tool
   calls as chips that settle into a collapsed "n steps"), words fade in as they stream. Live numbers change digit by digit (`Counter`). Anything
-  that happens many times a day stays still: no loops on status elements, no entrances on a tab or a load, no charts
-  redrawing. A card fades up only from its skeleton. What must loop (a model's fans, a chat.beam someone asked for) rests
+  that happens many times a day stays still: no loops on status elements, no entrances on a load, no charts redrawing. The
+  page holds itself hidden until 80% of the overview's widgets have reported, 0.9 s at most, and appears whole (`settled`,
+  `main[data-settling]`). A tab change is a quick fade that each card does for itself, because fading the page around it
+  would cut its glass off from what's behind. A card fades up only from its skeleton. What must loop (a model's fans, a chat.beam someone asked for) rests
   off screen (`useOnScreen`, `.is-away`).
 - **Motion is short and purposeful.** ~200 ms fades and scales for popovers, growing from their trigger; ~900 ms ease-out
   for a camera flying to a part. Finished entrances use `backwards`, not `both`: a held fill stays in the page's
@@ -149,7 +157,7 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - Integration tests use made-up data only. Never commit recorded responses from real services (they carry personal data).
 
 - A new option goes in the schema with a comment and default, in `config.example.yaml` if it's common, and in
-  `docs/configuration.md`.
+  `docs/configuration.md`. `docs/services.md` is generated (`npm run docs:services`), and a test fails if it's out of date.
 - `npm run dev` (server with `--watch` + Vite), `npm run check` (both tsconfigs), `npm run build`, `npm start`.
 - Verify UI changes by looking at them: build, run, and screenshot the page (a headless Chrome over CDP works; set
   `Emulation.setEmulatedMedia` `hover: hover` to test hover states). Check desktop and phone widths.
@@ -183,8 +191,6 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   per-face overlays.
 - **TypeScript 7**: no `baseUrl` (paths are relative); Node's type stripping needs `erasableSyntaxOnly` (no parameter
   properties, no enums).
-- **`demo/config.yaml` and `demo/docker-compose.yml` are ignored** (`.gitignore` matches those names anywhere), yet
-  `test/demo.test.ts` and the demo read them. A fresh worktree needs copies or `npm test` fails; they won't travel with a branch.
 - **Video through the image proxy needs ranges.** Phones won't play a video from a server that ignores `Range`; `image(ref, range)`
   gets the header and `served()` passes the answer on. A picture that changes needs `Cache-Control: no-store` on the
   handler's response, or the browser keeps it for a day.
@@ -195,5 +201,5 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - **cmdk 1.1.1 doesn't reorder groups.** Its `filter` orders the items inside a group and never the groups themselves, so
   `palette.tsx` scores each group with `rank` and sorts them itself. A new group goes in that list, not straight into the JSX.
 - **Two small libraries from libraries.dev are in on purpose**, pinned exactly: `thinking-orbs` (the chat's working states and the
-  recap's loading) and `border-beam` (the approval card). All MIT, no dependencies, no network. Left out:
+  recap's loading) and `border-beam` (`chat.beam` and the approval card). All MIT, no dependencies, no network. Left out:
   `img-fx` needs three.js, `liquid-gooey` lags the island's spring, `bot-avatars` and `voice-glow` have no job here yet.

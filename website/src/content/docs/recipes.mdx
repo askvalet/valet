@@ -276,6 +276,28 @@ layout:
 
 Keep the ones you use and delete the rest. An island notice needs its widget placed on the page, and `apprise` reaches dozens more services.
 
+## A public demo
+
+`sandbox: true` is for letting people try Valet. Nothing is saved, and each visitor gets a private copy of the site in memory, told apart by a cookie. There are at most 40 at once, each dropped after 15 idle minutes. File uploads and the config tools are off.
+
+```yaml
+sandbox: true
+notice: Demo · made-up data
+allowedHosts: [demo.example.com]
+auth: { mode: none, trustNetwork: true }   # so visitors can press things
+
+integrations:
+  news:
+    type: hackernews
+    limit: 6
+
+layout:
+  - title: Start
+    widgets: [news.stories]
+```
+
+A sandbox keeps Valet's own state apart, and that's all. Integrations still reach whatever they're pointed at, so point them at made-up services. Leave out `trustNetwork` and the page is read-only. The repo's `demo/` folder is a full example, with a made-up house and a scripted model.
+
 ## A service with no integration
 
 Any JSON API, from YAML. `value` is a path into the response, and `|round` is a filter. See [`api`](/integrations/api/).

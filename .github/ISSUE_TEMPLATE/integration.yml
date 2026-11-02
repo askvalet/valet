@@ -1,0 +1,14 @@
+name: Integration request
+description: Ask for a service Valet doesn't support
+labels: [integration]
+body:
+  - type: input
+    id: service
+    attributes: { label: Service }
+    validations: { required: true }
+  - type: input
+    id: api
+    attributes: { label: Link to its API docs }
+  - type: textarea
+    id: show
+    attributes: { label: What should the card show? }

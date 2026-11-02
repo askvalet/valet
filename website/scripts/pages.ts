@@ -60,7 +60,7 @@ function integrationPage(it: any) {
   }
   // the assistant
   if (it.tools.length) {
-    parts.push(`## Assistant tools\n\nWhat the assistant can use, once its [access level](/assistant/access/) allows it. Read tools run freely. Control tools [ask first](/assistant/approvals/).`);
+    parts.push(`## Assistant tools\n\nWhat the assistant can use, once its [access level](/assistant/access/) allows it. Read tools run freely. Everything else asks first.`);
     parts.push(table(['Tool', 'Access', 'What it does'], it.tools.map((t: any) => [`\`${t.name}\``, ACCESS[t.access] ?? t.access, cell(firstSentence(t.about))])));
   }
   if (it.actions.length) parts.push(`## Actions\n\nWhat the page's own buttons and controls can do. They need a [signed-in person or a trusted network](/start/sign-in/).\n\n${table(['Action', 'What it does'], it.actions.map((a: any) => [`\`${a.name}\``, cell(firstSentence(a.about))]))}`);
@@ -185,7 +185,7 @@ writeFileSync(join(gen, 'cards.json'), JSON.stringify([{ label: 'Card gallery', 
 
 // the configuration reference: every key in the schema, in the order config.ts has them
 const SECTIONS: [string, string[], string][] = [
-  ['Page', ['title', 'greeting', 'notice', 'location', 'timezone', 'weather', 'calendar', 'search', 'recap', 'welcome', 'reload', 'links'], 'The top level of `config.yaml`.'],
+  ['Page', ['title', 'greeting', 'notice', 'location', 'timezone', 'weather', 'calendar', 'search', 'recap', 'welcome', 'reload', 'sandbox', 'links'], 'The top level of `config.yaml`.'],
   ['Appearance', ['appearance'], 'Look and feel. Every option becomes a CSS variable or a class, so a change shows without a rebuild. Left out, it sets nothing and the stylesheet\'s own value stands.'],
   ['Hero', ['hero'], 'The top of the overview.'], ['Chat', ['chat'], 'The assistant\'s window on the page. What it knows and may do is under `assistant`.'],
   ['Nav', ['nav'], 'The tab buttons.'], ['Menubar', ['menubar'], 'The rings in the top bar. A plain list of widget keys works too.'], ['Island', ['island'], 'The notch at the top that shows what\'s happening.'],

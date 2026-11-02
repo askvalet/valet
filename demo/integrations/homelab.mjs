@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { readFile } from 'node:fs/promises';
 // A made-up homelab, for the public demo. Every number and person is invented; the films, albums and books are real ones
-// so the page reads like a real home, their art linked from art/art.json. It moves on its own (streams play, downloads fill, graphs
+// so the page reads like a real home, their art kept in art/covers. It moves on its own (streams play, downloads fill, graphs
 // wander) from the clock alone, and whatever a visitor changes puts itself back after ten minutes.
 // The camera footage is real, free and credited too: art/cameras/CREDITS.md.
 const hash = s => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);

@@ -42,7 +42,8 @@ That runs what Valet's own tests run: the card is valid, the numbers land where 
 the key never appears in an error. To ship it for everyone, move it into a family file in `src/integrations/services/`
 and open a pull request: `npm test` picks it up by itself.
 
-`auth` is `'none'`, `'bearer'`, `'token'`, `'basic'`, `{ header: 'X-Api-Key' }`, `{ query: 'apikey' }`, or
+`auth` is `'none'`, `'bearer'`, `'token'`, `'basic'`, `{ header: 'X-Api-Key' }`, `{ query: 'apikey' }`,
+`{ handshake: { status: 409, header: 'X-Session-Id' } }` for a session id handed out on a refused first request, or
 `{ login: '/api/login', token: r => r.jwt }` to trade a password for a session (add `expired`, `ttl`, `text` or `needs` for
 the awkward ones, and `authOptional: true` where many installs run without a login). `then` is a second step that uses the
 first's answers, and `every: '5m'` slows down heavy calls. [docs/services.md](services.md) lists what's supported. Use `list` or `status` instead of
@@ -53,7 +54,8 @@ For controls, write tools or several widgets: use the full form below (`new-inte
 ## Write one
 
 A plugin's default export is either an integration object, or a function that receives Valet's toolkit
-(`{ z, fmt, defineIntegration, checkCard }`) and returns one. The function form needs no imports and no build step:
+(`{ z, fmt, defineIntegration, service, checkCard }`) and returns one, or a list of them. The function form needs no
+imports and no build step:
 
 ```js
 // data/integrations/hello.mjs
@@ -82,7 +84,7 @@ Rules of the road:
   when to use it.
 - **Say what you're about to do.** A tool that asks can have `confirm(input)`, returning `{ title, detail, image, icon, verb, danger }`
   for its approval card: `Request The Mob?`, with a button that says Request. It may look things up but never change them, and
-  it should show what the service says rather than what the model typed.
+  it should show what the service says rather than what the model typed. `danger: true` makes the button red.
 - **Images go through `ctx.image(ref)`** and your `image(ref)` handler, so the browser never needs your service's key.
 - **A built-in type can't be replaced** unless the config lists it: `plugins: { replace: [tautulli] }`.
 
@@ -118,9 +120,10 @@ card to agree, so return the new `target` on the next fetch. Leave out `target` 
 docker exec valet node dist/server.js new-integration my-service     # from source: node dist/server.js new-integration my-service
 ```
 
-writes `data/integrations/my-service.mjs` (a widget with a summary and a button, an action, a read tool and a control
-tool) and `my-service.web.js` (its visual), commented line by line. Point it at your service, add it to `config.yaml`
-(the file's first lines show how), restart, and it's on the page and in the assistant.
+writes `data/integrations/my-service.mjs`, a short `service()` that passes its own check. Add `--full` for the long form:
+a widget with a summary and a button, an action, a read tool and a control tool, plus `my-service.web.js` (its visual),
+commented line by line. Point it at your service, add it to `config.yaml` (the file's first lines show how), place
+`my-service.status` in the layout, restart, and it's on the page and in the assistant.
 
 ## The year in review
 
@@ -138,14 +141,16 @@ async recap({ year, from, to }) {
 ```
 
 - **Only real numbers.** If your service can't really know something, leave it out. Set `scope` to what the number
-  covers (`'year'`, `'All time'`, `'Last 30 days'`).
+  covers (`'year'`, `'All time'`, `'Last 30 days'`). Left out, it's `'Right now'`. When most slides aren't about this year,
+  the review opens "Your homelab / Busy, wasn't it?" rather than on the year.
 - `score` orders the story (higher comes earlier, 50 by default), and `stat` puts the number on the shareable card.
 - `items` is a top five, with an optional `image`. Mark a slide `private: true` if it names people.
 - `trait` is a personality: the strongest across all services becomes who the person was this year.
 - `backdrop` is wide artwork behind the slide, `wall: true` puts the drifting wall of posters behind it, and `art` adds
   posters to that wall. `bars` is a small chart of what the number is made of, `chart` a progress bar.
 - `logo` is the app's icon, shown large with its colours across the slide. A `service()` gets its own without asking.
-- In a `service()`, `tally(count, slide)` makes the usual slide from one number, and nothing at all when it's zero.
+- In a built-in `service()`, `tally(count, slide)` makes the usual slide from one number, and nothing at all when it's
+  zero. It isn't in the plugin toolkit, so a plugin writes that slide out.
 - No model writes any of this: a recap of real numbers can't have one inventing a few.
 
 ## Visuals of your own

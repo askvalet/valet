@@ -1,4 +1,4 @@
-// One-shot questions to the model, for everything that isn't the chat: "why is this red?", the daily brief, spotting a
+// One-shot questions to the model, for everything that isn't the chat: the daily brief, spotting a
 // shared cause. These calls get no tools at all, so whatever a feed or a document says, the worst they can do is say
 // something odd. They run one at a time, and background jobs have a daily budget so a GPU isn't kept busy.
 import type { Config } from './config.ts';

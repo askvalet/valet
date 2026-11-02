@@ -41,8 +41,8 @@ export default defineIntegration({
               { label: 'Tokens', icon: 'text', color: '#bf9bff', value: tok(today.tokens), sub: 'generated today', detail: `${tok(h.totals.prompt_tokens)} read`, trend: per(3) },
               { label: 'Power', icon: 'gpu', color: '#ffb454', value: `${Math.round(j.gpu.power)} W`, sub: j.model.name, detail: `${Math.round(j.gpu.temp)}°C`,
                 trend: (h.gpu as number[][]).map(r => r[2]), tone: (j.running?.length ?? 0) > 0 ? 'accent' : 'neutral' },
-              { label: 'GPU memory', icon: 'disk', color: '#ff7eb6', value: `${(j.gpu.mem / 1024).toFixed(1)} GB`, sub: `of ${Math.round(j.gpu.mem_total / 1024)} GB`, trend: (h.gpu as number[][]).map(r => r[4]) },
-              { label: 'Temperature', icon: 'pulse', color: '#ff6f59', value: `${Math.round(j.gpu.temp)}°C`, sub: 'GPU', trend: (h.gpu as number[][]).map(r => r[5]), tone: heat(j.gpu.temp) },
+              { label: 'GPU memory', icon: 'disk', color: '#ff7eb6', value: `${(j.gpu.mem / 1024).toFixed(1)} GB`, sub: `of ${Math.round(j.gpu.mem_total / 1024)} GB`, trend: (h.gpu as number[][]).map(r => r[4]).filter(n => n != null) },
+              { label: 'Temperature', icon: 'pulse', color: '#ff6f59', value: `${Math.round(j.gpu.temp)}°C`, sub: 'GPU', trend: (h.gpu as number[][]).map(r => r[5]).filter(n => n != null), tone: heat(j.gpu.temp) },
             ],
           };
         },

@@ -147,7 +147,7 @@ const cached = async (file: string, url: string, type: string, c: Context) => {
     const r = await fetch(url, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'Valet' } }).catch(() => null);
     if (!r?.ok || !(r.headers.get('content-type') ?? '').startsWith('image/')) return c.notFound();
     body = Buffer.from(await r.arrayBuffer());
-    await mkdir(resolve(file, '..'), { recursive: true }).then(() => writeFile(file, body!)).catch(() => {});
+    if (!sandbox.on) await mkdir(resolve(file, '..'), { recursive: true }).then(() => writeFile(file, body!)).catch(() => {});
   }
   return c.body(body, 200, { 'Content-Type': type, 'Cache-Control': 'public, max-age=604800' });
 };
@@ -320,7 +320,7 @@ const settled = async () => { for (let i = 0; i < 12 && site.hub.snapshot().leng
 // Suggestions are rewritten every half hour while the page is in use, sooner (every ten minutes at most) when what's
 // playing or downloading changes, and at once when what's wrong changes: a chip about what's over is worse than none.
 // Each rewrite takes the GPU for a while, so they're on the daily budget. The assistant's own work must not count as news: its activity would set off the next rewrite.
-const OUTSIDE = new Set(['rss', 'hackernews', 'reddit']);   // written by strangers: see suggestPrompt
+const OUTSIDE = new Set(['rss', 'hackernews', 'reddit', 'lobsters']);   // written by strangers: see suggestPrompt
 let tailored: { at: number; mood: string; wrong: string; names: string[]; list: string[] | null } | undefined, tailoring: Promise<void> | undefined;
 app.get('/api/suggest', async c => {
   if (!site.ask || !site.config.assistant?.background.suggest || site.config.chat.suggestions !== 'ai') return c.json({ list: null });
