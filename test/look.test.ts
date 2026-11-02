@@ -187,9 +187,10 @@ test('the status is one sentence, and says each thing once', () => {
   assert.equal(line([status('s.a', ok)]), '2 of 3 running, 1 off by choice.');
   assert.equal(line([status('s.a', ok.slice(0, 2))]), 'All 2 services are running.');
   const sick = sayHow([status('s.a', [...ok.slice(0, 2), { name: 'bazarr', ok: false, state: 'degraded' }]), status('s.b', [{ name: 'Bazarr', ok: true }])]);
-  assert.equal(oneLine(sick.problems, sick.parts), 'Bazarr is unhealthy and 2 of 3 running.');
+  assert.equal(oneLine(sick.problems, sick.parts), 'Everything\'s running except Bazarr.');
   assert.equal(line([status('s.b', [...ok, { name: 'mealie', ok: false }, { name: 'x', ok: true }]), status('s.a', [{ name: 'Mealie', ok: false }])]), 'Everything\'s running except Mealie.');
-  assert.equal(line([status('s.a', 'abcd'.split('').map(name => ({ name, ok: false })))]), '4 of 4 services are down.');
+  assert.equal(line([status('s.a', 'abcd'.split('').map(name => ({ name, ok: false })))]), '4 of 4 services need a look.');
+  assert.equal(line([status('s.a', [{ name: 'Mealie', ok: false }, { name: 'Bazarr', ok: false, state: 'degraded' }]), dl('↓ 9 MB/s'), dl('↓ 9 MB/s')]), 'Everything\'s running except Mealie and Bazarr and 4 downloads are on the way.');
   assert.equal(line([dl('2 downloads · ↓ 0 B/s', [{ label: 'Pause all', action: 'pause' }])]), '2 downloads are stalled.');
   assert.deepEqual(sayHow([dl('↓ 0 B/s', [{ label: 'Resume all', action: 'resume' }])]).problems, []);   // paused on purpose
   assert.equal(line([dl('↓ 9 MB/s')]), '2 downloads are on the way.');

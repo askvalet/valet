@@ -38,7 +38,7 @@ export function tabHash(key: string) {
   return /^(recap|gallery|overview)$/.test(s) ? `tab-${s}` : s;
 }
 
-export interface Problem { id: 'services' | 'health' | 'downloads' | 'widgets'; text: string; why: string }
+export interface Problem { id: 'services' | 'downloads' | 'widgets'; text: string; why: string }
 const and = (l: string[]) => l.length < 2 ? l.join('') : `${l.slice(0, -1).join(', ')} and ${l.at(-1)}`;
 
 /** One service can show on several cards, spelled differently ("mealie", "Mealie"): lowercased name → its nicest spelling. */
@@ -58,10 +58,9 @@ export function sayHow(states: WidgetState[]) {
   const down = named(wrong.filter(i => stateOf(i) !== 'degraded')), sick = named(wrong.filter(i => stateOf(i) === 'degraded'));
   const count = (st: ReturnType<typeof stateOf>) => (boards[0] ?? []).filter(i => stateOf(i) === st).length;
   const total = boards[0]?.length ?? 0, up = count('up'), off = count('off'), problems: Problem[] = [];
-  if (down.length) problems.push({ id: 'services', text: down.length === 1 ? `Everything's running except ${down[0]}` : down.length <= 3 ? `${and(down)} are down` : total >= down.length ? `${down.length} of ${total} services are down` : `${down.length} services are down`,
-    why: down.length === 1 ? `Why is ${down[0]} down?` : down.length <= 3 ? `Why are ${and(down)} down?` : 'Why are so many services down?' });
-  if (sick.length) problems.push({ id: 'health', text: sick.length === 1 ? `${sick[0]} is unhealthy` : sick.length <= 3 ? `${and(sick)} are unhealthy` : `${sick.length} services are unhealthy`,
-    why: sick.length === 1 ? `Why is ${sick[0]} unhealthy?` : 'Why are these services unhealthy?' });
+  const hurt = [...down, ...sick];
+  if (hurt.length) problems.push({ id: 'services', text: hurt.length <= 3 ? `Everything's running except ${and(hurt)}` : total >= hurt.length ? `${hurt.length} of ${total} services need a look` : `${hurt.length} services need a look`,
+    why: hurt.length === 1 ? `What's wrong with ${hurt[0]}?` : 'What\'s wrong with these services?' });
   const getting = states.flatMap(s => s.card?.type === 'media' ? [{ key: s.key, card: s.card, items: s.card.items.filter(m => m.icon === 'download' && m.state !== 'paused') }] : []).filter(g => g.items.length);
   // nothing's moving, and not because someone paused it
   const stuck = getting.filter(g => /(^|\s)0 B\/s/.test(g.card.note ?? '') && !g.card.buttons?.some(b => /^resume/i.test(b.label)));
@@ -74,16 +73,16 @@ export function sayHow(states: WidgetState[]) {
   const media = states.flatMap(s => s.card?.type === 'media' ? s.card.items : []);
   const watching = media.filter(m => m.user && m.state !== 'paused'), coming = getting.filter(g => !stuck.includes(g)).reduce((n, g) => n + g.items.length, 0);
   const parts = [
-    !total || down.length ? '' : up === total ? `All ${total} services are running` : `${up} of ${total} running${off ? `, ${off} off by choice` : ''}`,
+    !total || hurt.length ? '' : up === total ? `All ${total} services are running` : `${up} of ${total} running${off ? `, ${off} off by choice` : ''}`,
     watching.length === 1 ? `${watching[0].user} is watching ${watching[0].title}` : watching.length ? `${watching.length} people are watching` : '',
     coming ? `${coming === 1 ? 'a download is' : `${coming} downloads are`} on the way` : '',
   ].filter(Boolean);
   return { problems, parts };
 }
 
-/** The whole place in one sentence: what needs someone first, then what's merely going on. */
+/** The whole place in one short sentence: what needs someone first, then what's going on. Two things at most, so it stays on a line. */
 export function oneLine(problems: Problem[], parts: string[]) {
-  const all = [...problems.map(p => p.text), ...parts].map((t, i) => i ? t.replace(/^(A|All) /, m => m.toLowerCase()) : t);
+  const all = [...problems.map(p => p.text), ...parts].slice(0, 2).map((t, i) => i ? t.replace(/^(A|All) /, m => m.toLowerCase()) : t);
   return all.length ? `${and(all)}.` : '';
 }
 

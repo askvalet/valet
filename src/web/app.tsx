@@ -422,15 +422,12 @@ function Home({ account }: { account: boolean }) {
   const dismissReview = () => { setReviewed(true); try { sessionStorage.setItem('valet-review', '1'); } catch { /* private mode */ } };
   const side = h?.align === 'left' ? 'mr-auto text-left' : h?.align === 'right' ? 'ml-auto text-right' : 'mx-auto text-center';
   // the hero: ask anything
-  const line = cause || oneLine(trouble, how.parts), wrong = !!cause || trouble.length > 0;
+  const line = cause || oneLine(trouble, how.parts);
   const hero = view === 'all' && (hello || h?.status !== false || boxed || pill || page?.notice) && (
           <header className={cn('wall-text w-full max-w-[720px] pt-8 xl:pt-10', side)}>
             {page?.notice && <p className="mb-2 text-[12px] text-muted-foreground">{page.notice}</p>}
             {hello && <h1 className="hero-title text-[28px] leading-tight font-medium">{hello}</h1>}
-            {/* one sentence, always the same place; only its weight changes when something needs someone */}
-            {h?.status !== false && <Fold open={!!line}><div key={line} role="status" title={brief ?? undefined} className={cn('brief-in mx-auto mt-1 max-w-full text-[14px] text-pretty', wrong ? 'font-medium text-foreground' : 'text-muted-foreground')}>
-              {wrong && <span className="dot dot-warn mr-2 inline-block align-middle" />}{line}
-            </div></Fold>}
+            {h?.status !== false && <Fold open={!!line}><div key={line} role="status" title={brief ?? undefined} className="brief-in mx-auto mt-1 max-w-full text-[14px] text-pretty text-muted-foreground sm:truncate">{line}</div></Fold>}
             {askHere && boxed && (
               <ChatBeam ui={ui} className="mt-5"><form className="glass-round flex items-center gap-2.5 py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>

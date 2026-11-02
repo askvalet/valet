@@ -31,7 +31,7 @@ export default defineIntegration({
           return {
             type: 'stats', title: 'Local AI usage', icon: 'gpu', href: cfg.href, items: [],
             summaries: [
-              { label: 'Cost today', icon: 'coins', value: `${Math.round(today.cost * 100)}¢`, sub: `${Math.round(c.month * 100)}¢ this month`,
+              { label: 'Electricity cost', icon: 'coins', value: `${Math.round(today.cost * 100)}¢`, sub: `today · ${Math.round(c.month * 100)}¢ this month`,
                 detail: `${today.kwh?.toFixed(2) ?? '–'} kWh`, trend: c.days.map((d: any) => d.cost) },
               { label: 'Requests', icon: 'pulse', value: j.today.requests.toLocaleString(), sub: 'today',
                 detail: `${Math.round(h.totals.avg_tok_s ?? 0)} tok/s avg`, trend: per(2) },

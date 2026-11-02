@@ -28,7 +28,7 @@ integrations:
   lab:
     type: demo-homelab
 
-chat: { beam: focus, beamColor: colorful }
+chat: { beam: always, beamColor: colorful }
 hero: { scope: [downloads, lights, what to watch] }
 
 menubar: [lab.system]
@@ -91,11 +91,11 @@ layout:
   - widgets:
       - { widget: lab.recent, view: coverflow }
   - widgets:
+      - { widget: lab.reading, size: large, rows: 2 }
       - { widget: lab.sky, size: medium }
-      - { widget: lab.photos, size: tall }
-      - { widget: lab.reading, size: tall, rows: 3 }
       - { widget: lab.dns, size: small }
       - { widget: lab.drives, size: small }
+      - { widget: lab.photos, size: medium }
       - { widget: lab.upcoming, size: wide }
       - { widget: lab.weather, size: medium }
   - title: Media

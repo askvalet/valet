@@ -290,13 +290,13 @@ function Glyph({ src }: { src?: string }) {
 function Wall({ items }: { items: StatusItem[] }) {
   const apps = new Map<string, StatusItem[]>();
   for (const i of items) { const k = (i.group ?? i.name).split(/[-_]/)[0].toLowerCase(); apps.set(k, [...apps.get(k) ?? [], i]); }
-  const worst = (g: StatusItem[]) => { const st = g.map(stateOf); return st.includes('down') ? 'down' : st.includes('degraded') ? 'degraded' : st.every(x => x === 'off') ? 'off' : 'up'; };
+  const worst = (g: StatusItem[]): ServiceState => { const st = g.map(s => stateOf(s)); return st.includes('down') ? 'down' : st.includes('degraded') ? 'degraded' : st.every(x => x === 'off') ? 'off' : 'up'; };
   const rank = { down: 0, degraded: 1, up: 2, off: 3 };
   const tiles = [...apps].map(([k, g]) => ({ k, g, st: worst(g), lead: g.find(i => i.name.toLowerCase() === k) ?? g[0] })).sort((a, b) => rank[a.st] - rank[b.st]);
   return (
     <div className="wall">
       {tiles.map(({ k, g, st, lead }) => (
-        <Tile key={k} href={lead.href} title={g.map(stateTip).join('\n')} className={cn('wall-tile', `is-${st}`)}>
+        <Tile key={k} href={lead.href} title={g.map(s => stateTip(s)).join('\n')} className={cn('wall-tile', `is-${st}`)}>
           <Glyph src={lead.icon} />
           {g.length > 1 && <i className="wall-count" aria-label={`${g.length} containers`}>{g.length}</i>}
         </Tile>
