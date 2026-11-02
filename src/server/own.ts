@@ -67,6 +67,7 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
       },
       watch_add: {
         label: 'Set a reminder', followUps: ['What am I waiting on?'],
+        confirm: ({ say }) => ({ title: 'Set this reminder?', detail: say, icon: 'clock', verb: 'Set reminder' }),
         description: `Tell the person later when something happens, even with the page closed. Use for "tell me when…", "let me know if…", "warn me if…". on: ends / starts (a download or stream; name = part of its title), down / up (a service; name = its name), above / below (a number; name = its label, value = the limit, minutes = how long it must hold). say is the message they'll get. Widgets: ${o.widgets.join(', ') || 'see the page'}.`,
         access: 'write',
         input: z.object({ widget: z.string().describe('widget key, e.g. downloads.active'), on: z.enum(['ends', 'starts', 'down', 'up', 'above', 'below']), name: z.string().optional(), value: z.number().optional(), minutes: z.number().min(0).max(1440).default(0), say: z.string().max(200), hours: z.number().min(1).max(720).default(48).describe('give up after this long') }),
@@ -83,7 +84,7 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
         async run() { return { data: o.watches.list.map(w => ({ id: w.id, widget: w.widget, on: w.on, name: w.name, value: w.value, say: w.say, expires: when(w.until) })) }; },
       },
       watch_remove: {
-        label: 'Cancelled a reminder', access: 'write', input: z.object({ id: z.string() }),
+        label: 'Cancelled a reminder', confirm: () => ({ title: 'Cancel this reminder?', icon: 'clock', verb: 'Cancel it' }), access: 'write', input: z.object({ id: z.string() }),
         description: 'Cancel a reminder by id.',
         async run({ id }) { return { data: { removed: await o.watches.remove(id) } }; },
       },

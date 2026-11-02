@@ -180,7 +180,7 @@ function ToolChips({ parts: all, settled, tools, fresh }: { parts: any[]; settle
 }
 
 // ids and hashes mean nothing to a person, and the service has the real name of anything they point at
-const plainInput = (input: Record<string, unknown>) => Object.entries(input).filter(([k, v]) => !/(^|_)(id|hash|uuid|key|token)$/i.test(k) && v !== '' && v != null && typeof v !== 'object').map(([, v]) => String(v)).join(' · ');
+const plainInput = (input: Record<string, unknown>) => Object.entries(input).filter(([k, v]) => !/(^|_)(id|hash|uuid|key|token)$/i.test(k) && typeof v === 'string' && v !== '').map(([, v]) => v).slice(0, 2).join(' · ');
 
 /** Asking before something happens: what it is, in words, and two buttons. The service supplies the words and the picture
  *  (a plan or a config change lists its steps); until they arrive, the action's own name stands in. */
@@ -191,7 +191,7 @@ function Confirmation({ p, name, approve, tools }: { p: any; name: string; appro
   const detail = listed ? undefined : said?.detail ?? (said?.title ? undefined : plainInput(input));
   return (
     // a slow beam around the edge: nothing goes further until this has an answer
-    <BorderBeam size="md" colorVariant={said?.danger ? 'sunset' : 'gold'} strength={.6} duration={3.2} className="chat-card rounded-2xl" style={{ display: 'block', width: 'min(560px, calc(100vw - 48px))' }}>
+    <BorderBeam size="md" colorVariant={said?.danger ? 'sunset' : 'gold'} strength={.6} duration={3.2} className="chat-card is-asking rounded-2xl" style={{ display: 'block', width: 'min(560px, calc(100vw - 48px))' }}>
     <div className="overflow-hidden rounded-2xl border bg-card shadow-card">
       <div className="flex items-center gap-3.5 p-3.5">
         {said?.image ? <img src={said.image} alt="" className="h-[84px] w-14 shrink-0 rounded-lg object-cover shadow-md" />

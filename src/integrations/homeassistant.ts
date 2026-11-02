@@ -73,6 +73,12 @@ export default defineIntegration({
     // "L50 Ultra  L50 Ultra" → "L50 Ultra"; a configured name always wins
     const nameOf = (e: any) => names.get(e.entity_id) ?? String(e.attributes?.friendly_name ?? e.entity_id).replace(/\s+/g, ' ').replace(/^(.+?) \1$/, '$1');
 
+    // timestamp sensors report ISO times in UTC: show them as a person would say them, in the home's own time
+    const readable = (state: string) => {
+      if (!/^\d{4}-\d\d-\d\dT/.test(state) || Number.isNaN(Date.parse(state))) return state;
+      const at = new Date(state), time = at.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      return at.toDateString() === new Date().toDateString() ? time : `${at.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`;
+    };
     function control(e: any): Control {
       const [domain] = e.entity_id.split('.');
       const a = e.attributes ?? {};
@@ -92,7 +98,7 @@ export default defineIntegration({
       };
       const unit = a.unit_of_measurement ? ` ${a.unit_of_measurement}` : '';
       const n = Number(e.state);
-      return { id: e.entity_id, label, kind: 'value', value: Number.isFinite(n) && e.state !== '' ? `${Math.round(n * 10) / 10}${unit}` : e.state };
+      return { id: e.entity_id, label, kind: 'value', value: Number.isFinite(n) && e.state !== '' ? `${Math.round(n * 10) / 10}${unit}` : readable(e.state) };
     }
 
     const widgets: Record<string, Widget> = {};
@@ -322,7 +328,7 @@ export default defineIntegration({
             const hits = (await states()).filter(s => (!domain || s.entity_id.startsWith(domain + '.')) &&
               words.every(w => `${s.entity_id} ${s.attributes?.friendly_name ?? ''}`.toLowerCase().includes(w))).slice(0, 25);
             return {
-              data: hits.map(s => ({ entity_id: s.entity_id, name: s.attributes?.friendly_name, state: s.state, unit: s.attributes?.unit_of_measurement,
+              data: hits.map(s => ({ entity_id: s.entity_id, name: s.attributes?.friendly_name, state: readable(s.state), unit: s.attributes?.unit_of_measurement,
                 brightnessPct: s.attributes?.brightness != null ? Math.round(s.attributes.brightness / 2.55) : undefined, controllable: allowed.has(s.entity_id),
                 ...(s.entity_id.startsWith('climate.') ? { current: s.attributes?.current_temperature, target: s.attributes?.temperature, hvac_modes: s.attributes?.hvac_modes, preset_modes: s.attributes?.preset_modes } : {}) })),
               card: hits.length ? { type: 'controls', title: 'Home', icon: 'home', items: hits.slice(0, 12).map(control) } : { type: 'text', text: `Nothing matches “${query}”.` },

@@ -35,7 +35,7 @@ export default defineIntegration({
         clear: { description: 'Clear what is finished', input: z.object({}), run: () => change(l => l.filter(t => !t.done)) },
       },
       tools: {
-        todo_add: { label: 'Added to the list', access: 'write', input: z.object({ text: z.string().min(1).max(200) }), description: `Add something to the "${cfg.title}" list.`, async run({ text }) { await add(text); return { data: { added: text }, card: await card() }; } },
+        todo_add: { label: 'Added to the list', confirm: ({ text }) => ({ title: 'Add this to your list?', detail: text, icon: 'file', verb: 'Add' }), access: 'write', input: z.object({ text: z.string().min(1).max(200) }), description: `Add something to the "${cfg.title}" list.`, async run({ text }) { await add(text); return { data: { added: text }, card: await card() }; } },
         todo_list: { label: 'Checked the list', access: 'read', input: z.object({}), description: `What's on the "${cfg.title}" list.`, async run() { return { data: await load(), card: await card() }; } },
       },
     };

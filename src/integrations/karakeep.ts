@@ -89,6 +89,7 @@ export default defineIntegration({
         bookmark_summarize: {
           label: 'Summarized a bookmark', followUps: ['Summarize the next one'],
           description: 'Have Karakeep write its AI summary of a saved link or note, by id (bookmarks_search finds the id). Use for "summarize that article I saved". If it has one already, that comes back. Answer from what it returns.',
+          confirm: () => ({ title: 'Summarise this bookmark?', detail: 'Karakeep writes a summary and saves it with the link.', icon: 'bookmark', verb: 'Summarise' }),
           access: 'write', input: z.object({ id: z.string() }),
           async run({ id }) {
             let b = await api<any>(`bookmarks/${encodeURIComponent(id)}`);
@@ -110,6 +111,7 @@ export default defineIntegration({
         },
         bookmark_save: {
           label: 'Saved a link',
+          confirm: ({ url, text }) => ({ title: 'Save this to Karakeep?', detail: url ?? text, icon: 'bookmark', verb: 'Save' }),
           description: 'Save a link (or a text note) to Karakeep. Optionally a note, tags, or a list to put it in. Karakeep crawls the page and adds its own summary and tags.',
           access: 'write',
           input: z.object({ url: z.string().url().optional(), text: z.string().optional(), note: z.string().optional(), tags: z.array(z.string()).optional(), list: z.string().optional() }),

@@ -88,6 +88,7 @@ export default defineIntegration({
         },
         docs_add: {
           label: 'Filed a document',
+          confirm: ({ title }) => ({ title: 'File this in Paperless?', detail: title, icon: 'file', verb: 'File it' }),
           description: 'File something in Paperless: a file the person attached in chat (pass its file id from the message), or text they pasted (pass `text`; it\'s saved as a text document). Optionally a title and tags. Paperless OCRs and indexes it within a minute or two.',
           access: 'write',
           input: z.object({ file_id: z.string().optional(), text: z.string().optional(), title: z.string().optional(), tags: z.array(z.string()).optional() }),

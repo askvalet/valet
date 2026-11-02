@@ -341,7 +341,7 @@
    drop the frosted blur: every blurred card in a scrolling list is repainted each frame, and it shows as jitter. */
 .chat-cards { columns: 2 300px; column-gap: .75rem; }
 .chat-cards:empty { display: none; }
-.chat-cards:has(> :only-child) { columns: 1; max-width: 560px; }
+.chat-cards:has(> :only-child), .chat-cards:has(.is-asking) { columns: 1; max-width: 560px; }   /* something waiting for an answer gets the column to itself */
 .chat-cards > * { break-inside: avoid; margin-bottom: .75rem; }
 .chat-cards > :last-child { margin-bottom: 0; }
 .chat-card { max-height: 300px; overflow-y: auto; overscroll-behavior: auto; border-radius: calc(var(--radius) * 1.111); scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / .16) transparent; }
