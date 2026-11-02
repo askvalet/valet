@@ -128,7 +128,7 @@ layout:
   - title: Library
     columns: 1
     overview: false
-    widgets: [lab.docs, lab.saved]
+    widgets: [lab.books, lab.docs, lab.saved]
   - title: Reading
     tab: Library
     overview: false

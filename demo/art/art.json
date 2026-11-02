@@ -227,5 +227,77 @@
       "system": "PSP",
       "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sony_-_PlayStation_Portable/master/Named_Boxarts/Daxter%20%28USA%29.png"
     }
+  ],
+  "library": [
+    {
+      "title": "Project Hail Mary",
+      "author": "Andy Weir",
+      "cover": "https://covers.openlibrary.org/b/id/11200092-L.jpg"
+    },
+    {
+      "title": "Dune",
+      "author": "Frank Herbert",
+      "cover": "https://covers.openlibrary.org/b/id/11481354-L.jpg"
+    },
+    {
+      "title": "The Hobbit",
+      "author": "J.R.R. Tolkien",
+      "cover": "https://covers.openlibrary.org/b/id/14627509-L.jpg"
+    },
+    {
+      "title": "Atomic Habits",
+      "author": "James Clear",
+      "cover": "https://covers.openlibrary.org/b/id/12539702-L.jpg"
+    },
+    {
+      "title": "Sapiens",
+      "author": "Yuval Noah Harari",
+      "cover": "https://covers.openlibrary.org/b/id/8634250-L.jpg"
+    },
+    {
+      "title": "The Martian",
+      "author": "Andy Weir",
+      "cover": "https://covers.openlibrary.org/b/id/11447888-L.jpg"
+    },
+    {
+      "title": "Neuromancer",
+      "author": "William Gibson",
+      "cover": "https://covers.openlibrary.org/b/id/283860-L.jpg"
+    },
+    {
+      "title": "Thinking, Fast and Slow",
+      "author": "Daniel Kahneman",
+      "cover": "https://covers.openlibrary.org/b/id/13290711-L.jpg"
+    },
+    {
+      "title": "Educated",
+      "author": "Tara Westover",
+      "cover": "https://covers.openlibrary.org/b/id/8314077-L.jpg"
+    },
+    {
+      "title": "The Pragmatic Programmer",
+      "author": "Andy Hunt",
+      "cover": "https://covers.openlibrary.org/b/id/10143650-L.jpg"
+    },
+    {
+      "title": "Circe",
+      "author": "Madeline Miller",
+      "cover": "https://covers.openlibrary.org/b/id/8739376-L.jpg"
+    },
+    {
+      "title": "Foundation",
+      "author": "Isaac Asimov",
+      "cover": "https://covers.openlibrary.org/b/id/14612610-L.jpg"
+    },
+    {
+      "title": "Klara and the Sun",
+      "author": "Kazuo Ishiguro",
+      "cover": "https://covers.openlibrary.org/b/id/10648686-L.jpg"
+    },
+    {
+      "title": "The Three-Body Problem",
+      "author": "刘慈欣",
+      "cover": "https://covers.openlibrary.org/b/id/10526598-L.jpg"
+    }
   ]
 }

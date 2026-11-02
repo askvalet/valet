@@ -23,3 +23,7 @@ The Games card links box art from https://github.com/libretro-thumbnails. The ar
 # Wallpaper
 
 `../wallpaper.jpg`: photo from Unsplash, https://images.unsplash.com/photo-1506905925346-21bda4d32df4 (Unsplash License).
+
+# Book covers
+
+The Books card links covers from Open Library (https://openlibrary.org). The art belongs to the publishers.
