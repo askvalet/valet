@@ -26,14 +26,25 @@ A fast, beautiful, self-hosted homepage with an optional assistant that only get
 
 ## Why Valet
 
-A homelab homepage should tell you how things are at a glance, let you act without opening ten apps, and answer when you ask. Valet does all three from one YAML file.
+### Beautiful, and proud of it
 
-- **Pictures over words.** Live cards, posters, charts, a 3D floor plan from your robot vacuum's map and a 3D model of your PC.
-- **Ask instead of hunt.** "Why is Mealie down?" gets the logs read and a one-click restart. Answers arrive as the same live cards the page uses, not walls of text.
-- **The assistant is optional.** Valet is a complete homepage with no model at all, so nothing here depends on AI.
-- **The valet key.** Like the key that drives the car but can't open the boot: you decide what the assistant can reach, it never sees your API keys, and anything that changes something asks you first.
-- **Light.** One Node process, about 65 MB of RAM and a 165 MB image. The page is about 95 KB of gzipped JavaScript, and the assistant loads only when you ask something.
-- **Yours.** MIT licensed, runs on your hardware, and works with local models (Ollama, llama.cpp, vLLM, LM Studio) or hosted ones (OpenRouter, OpenAI, Anthropic).
+Your homelab deserves better than a grid of links. Valet has live cards, real artwork, charts that tell a story, a 3D floor plan from your robot vacuum's map and a 3D model of your PC. It feels like an app you'd pay for, on your desk and on your phone.
+
+### One place for everything
+
+Stop opening ten tabs to do one thing. Pause a download, restart a container, dim the lights, check the cameras, read what's playing and see what needs an update, all from one page. With 186 integrations, your services stop being separate apps and start being one home.
+
+### Fully customizable and extensible
+
+One YAML file controls every section, size, colour and wallpaper. Draw any numbers as any chart and any pictures as any gallery. Add a service with about ten lines, or drop a single file into `data/integrations/`. Nothing is locked behind a theme.
+
+### Built for the AI age
+
+Talk to your homelab. Ask why something is down and it reads the logs, explains what happened and offers the fix, with answers arriving as live cards instead of walls of text. Bring a local model (Ollama, llama.cpp, vLLM, LM Studio) or a hosted one (OpenRouter, OpenAI, Anthropic), and connect any MCP server.
+
+It works like a valet key, which drives the car but can't open the boot. You choose what the assistant can reach, it never sees your API keys, and every change waits for your approval. Prefer no AI? Leave it off, and Valet is still a complete homepage.
+
+**And it stays light:** one Node process, about 65 MB of RAM, a 165 MB image, MIT licensed and running on your own hardware.
 
 ## A look around
 
