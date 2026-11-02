@@ -97,12 +97,11 @@ function Slide({ s, year, children }: { s: RecapSlide; year: number; children?: 
   const size = s.race ? (s.value.length > 10 ? 'clamp(36px, 4.6vw, 60px)' : 'clamp(44px, 7vw, 88px)') : s.value.length > 18 ? 'clamp(38px, 7vw, 68px)' : s.value.length > 9 ? 'clamp(52px, 10vw, 96px)' : 'clamp(64px, 17vw, 168px)';
   return (
     <div className={`rc-body ${s.visual || s.icons || s.logo || s.race ? 'rc-beside' : ''}`} key={s.id}>
-      {s.icon && <div className="rc-tile"><Icon name={s.icon} className="size-[22px]" /></div>}
       <div className="rc-kicker">{s.kicker}</div>
       <div className="rc-value" style={{ fontSize: size }}><Count value={s.value} />{s.unit && <span className="rc-unit">{s.unit}</span>}</div>
       <p className="rc-line">{s.line}</p>
       <Extra s={s} />
-      {s.scope && <div className="rc-chip">{scopeLabel(s, year)}</div>}
+      {s.scope && s.scope !== 'year' && <div className="rc-scope">{scopeLabel(s, year)}</div>}
       {children}
     </div>
   );
@@ -238,7 +237,7 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
         : !r.slides.length ? <div className="rc-body"><div className="rc-kicker">Nothing to look back on yet. Connect a service or two and come back.</div></div>
         : i === 0 ? <div className="rc-body" key="open">
             {yearly ? <><div className="rc-kicker">Your</div><div className="rc-value" style={{ fontSize: 'clamp(96px, 22vw, 210px)' }}>{r.year}</div><p className="rc-line">{r.soFar ? 'The year so far.' : 'The whole year.'}</p></>
-              : <><div className="rc-value" style={{ fontSize: 'clamp(64px, 13vw, 132px)' }}>Your homelab</div><p className="rc-line">Some of this is {r.year}, some goes further back. Each screen says which.</p></>}
+              : <><div className="rc-kicker">Your homelab</div><div className="rc-value" style={{ fontSize: 'clamp(64px, 12vw, 124px)' }}>Busy, wasn't it?</div><p className="rc-line">Here's what it got up to while you weren't looking.</p></>}
           </div>
         : who ? <div className="rc-body" key="who"><div className="rc-kicker">{closing}</div><div className="rc-value" style={{ fontSize: 'clamp(50px, 10vw, 100px)' }}>{r.persona.name}</div><p className="rc-line">{r.persona.line}</p></div>
         : done ? <div className="rc-share" key="card">

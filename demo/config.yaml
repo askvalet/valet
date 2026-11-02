@@ -105,11 +105,6 @@ layout:
   - title: Media
     overview: false
     heading: false
-    columns: 1
-    widgets: [lab.recent]
-  - tab: Media
-    overview: false
-    heading: false
     columns: 3
     widgets:
       - { widget: lab.race, size: large }
@@ -125,7 +120,7 @@ layout:
     overview: false
     heading: false
     columns: 1
-    widgets: [lab.week, lab.requests, lab.games]
+    widgets: [lab.games, lab.recent]
   - title: Library
     columns: 1
     overview: false

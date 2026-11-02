@@ -46,12 +46,10 @@
 
 .rc-body { z-index: 2; position: absolute; left: clamp(24px, 8vw, 120px); right: clamp(24px, 8vw, 120px); bottom: clamp(84px, 13vh, 130px); max-width: 720px; animation: rc-in 720ms var(--ease-out) both; }
 @keyframes rc-in { from { opacity: 0; transform: translateY(18px); } }
-.rc-tile { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; background: rgb(255 255 255 / .14); border: 1px solid rgb(255 255 255 / .16); backdrop-filter: blur(24px) saturate(1.6); margin-bottom: 18px; }
 .rc-kicker { font-size: clamp(18px, 2.4vw, 24px); font-weight: 500; color: rgb(255 255 255 / .82); }
 .rc-value { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .1em; font-weight: 500; letter-spacing: -.03em; line-height: 1; margin-top: 8px; font-variant-numeric: tabular-nums; text-wrap: balance; }
 .rc-unit { font-size: .3em; font-weight: 500; color: rgb(255 255 255 / .8); }
 .rc-line { font-size: clamp(17px, 2.2vw, 22px); line-height: 1.35; margin-top: 14px; max-width: 560px; color: rgb(255 255 255 / .86); text-wrap: pretty; }
-.rc-chip { display: inline-block; margin-top: 16px; padding: 4px 11px; border-radius: 99px; font-size: 13px; font-weight: 500; color: rgb(255 255 255 / .8); background: rgb(255 255 255 / .12); border: 1px solid rgb(255 255 255 / .1); }
 
 .rc-glass { margin-top: 22px; padding: 16px 18px; border-radius: 20px; background: rgb(34 34 40 / .5); border: 1px solid rgb(255 255 255 / .14); box-shadow: inset 0 1px 0 rgb(255 255 255 / .12); backdrop-filter: blur(36px) saturate(1.6); }
 .rc-track { position: relative; height: 10px; border-radius: 99px; background: rgb(255 255 255 / .16); overflow: hidden; }
@@ -137,3 +135,5 @@
   .rc-logo img { width: 96px; height: 96px; padding: 18px; }
   .rc-tint { top: -10vmax; right: -30vmax; transform: none; }
 }
+/* what a number covers, when it isn't the year: a quiet footnote */
+.rc-scope { margin-top: 14px; font-size: 14px; color: rgb(255 255 255 / .6); }
