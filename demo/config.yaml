@@ -123,7 +123,7 @@ layout:
     overview: false
     heading: false
     columns: 1
-    widgets: [lab.week, lab.requests]
+    widgets: [lab.week, lab.requests, lab.games]
   - title: Library
     columns: 1
     overview: false

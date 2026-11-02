@@ -11,7 +11,7 @@ export default defineIntegration({
     const auth = { Authorization: `Basic ${Buffer.from(`${cfg.username}:${cfg.password}`).toString('base64')}` };
     const api = <T = any>(path: string) => ctx.http<T>(`${base}/api/${path}`, { headers: auth, timeout: 10_000 });
     const tile = (r: any) => ({ title: r.name, subtitle: r.platform_display_name, image: r.path_cover_large ? ctx.image(String(r.id)) : r.url_cover, href: `${web}/rom/${r.id}`,
-      badge: r.last_played ? 'Played' : undefined });
+      badge: r.last_played ? 'Played' : undefined, mark: r.platform_fs_slug ? ctx.image(`p-${r.platform_fs_slug}`) : undefined });
     return {
       async recap() {
         const [stats, roms] = await Promise.all([api<any>('stats'), api<any>('roms?limit=40&order_by=created_at&order_dir=desc')]);
@@ -25,8 +25,8 @@ export default defineIntegration({
         recent: {
           title: 'Games', interval: 900_000,
           async fetch() {
-            const [stats, roms] = await Promise.all([api<any>('stats'), api<any>('roms?limit=12&order_by=created_at&order_dir=desc')]);
-            return { type: 'shelf', title: 'Games', icon: 'game', href: web, aspect: 'square', source: { name: 'RomM', icon: '/api/icon/romm' }, note: `${stats.ROMS} games · ${stats.PLATFORMS} systems`, items: (roms.items ?? []).map(tile),
+            const [stats, roms] = await Promise.all([api<any>('stats'), api<any>('roms?limit=24&order_by=created_at&order_dir=desc')]);
+            return { type: 'shelf', layout: 'coverflow', title: 'Games', icon: 'game', href: web, aspect: 'square', source: { name: 'RomM', icon: '/api/icon/romm' }, note: `${stats.ROMS} games · ${stats.PLATFORMS} systems`, items: (roms.items ?? []).map(tile),
               summary: { label: 'Games', icon: 'game', value: String(stats.ROMS), sub: `${stats.PLATFORMS} systems · ${fmt.bytes(stats.TOTAL_FILESIZE_BYTES, 0)}` } };
           },
         },
@@ -46,6 +46,7 @@ export default defineIntegration({
         },
       },
       image(ref) {
+        if (/^p-[a-z0-9-]{1,40}$/.test(ref)) return fetch(`${base}/assets/platforms/${ref.slice(2)}.ico`, { signal: AbortSignal.timeout(10_000) });   // the console itself, as RomM draws it
         if (!/^\d+$/.test(ref)) throw new Error('bad image ref');
         return api<any>(`roms/${ref}`).then(r => fetch(`${base}${r.path_cover_large}`, { headers: auth, signal: AbortSignal.timeout(10_000) }));
       },

@@ -1,6 +1,7 @@
 // The card library: every card type validates, every sample renders in every size (homepage, chat, large) and as a
 // headline tile, without throwing. Rendering runs through React's server renderer, so effects don't run, but every
 // branch of every renderer that a card's data selects is exercised.
+import { place } from '../src/web/coverflow.tsx';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { renderToString } from 'react-dom/server';
@@ -364,4 +365,10 @@ test('feel: the slider keeps its range and value, and a Counter says the whole n
   assert.equal(n.match(/class="digit"/g)?.length, 3);
   const word = renderToString(<Counter value="Off" />);
   assert.doesNotMatch(word, /digit/); assert.doesNotMatch(word, /tick/);
+});
+
+test('cover flow: the front is flat and in front, and the fan turns towards it from both sides', () => {
+  assert.deepEqual(place(0), { x: 0, turn: -0, sink: 0, z: 100 });
+  assert.ok(place(1).turn < 0 && place(-1).turn > 0 && place(1).x === -place(-1).x);
+  assert.ok(place(3).x > place(2).x && place(2).x - place(1).x < place(1).x && place(3).z < place(1).z && place(1).z < place(0).z);
 });
