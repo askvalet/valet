@@ -60,8 +60,8 @@ test('digest stays compact, and the status line is written at most every half ho
 test('status line: rewritten soon after what\'s wrong changes, and a failed action in the log isn\'t trouble', async () => {
   let n = 0; const ask = async () => `Line ${++n}`;
   const at = (m: number) => new Date(2026, 10, 2, 8, m);
-  await statusLine(ask, [], down('Quran'), at(0));
-  await statusLine(ask, [], down('Quran'), at(3));
+  await statusLine(ask, [], down('Mealie'), at(0));
+  await statusLine(ask, [], down('Mealie'), at(3));
   await statusLine(ask, [], down('Plex'), at(3));
   assert.equal(n, 1);                                                                     // not more than once in five minutes
   assert.equal((await statusLine(ask, [], down('Plex'), at(6)))?.text, 'Line 2');

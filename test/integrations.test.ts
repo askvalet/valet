@@ -1,5 +1,5 @@
 // Integrations against made-up service responses: the cards they produce validate, and the logic that's easy to get
-// wrong (sign-in reuse, parsing, roll-over to tomorrow, picking a verse) does what it says.
+// wrong (sign-in reuse, parsing, roll-over to tomorrow, a sensor's state) does what it says.
 import assert from 'node:assert/strict';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -25,7 +25,6 @@ import homeassistant from '../src/integrations/homeassistant.ts';
 import http from '../src/integrations/http.ts';
 import pihole from '../src/integrations/pihole.ts';
 import qbittorrent from '../src/integrations/qbittorrent.ts';
-import quran from '../src/integrations/quran.ts';
 import releases from '../src/integrations/releases.ts';
 import scrutiny from '../src/integrations/scrutiny.ts';
 import karakeep from '../src/integrations/karakeep.ts';
@@ -108,15 +107,15 @@ test('docker: a container that was made and never run is not down', async () => 
 
 test('http: one failed answer gets a second look before it counts as down', async () => {
   let n = 0;
-  const h = make(http, { targets: [{ name: 'Quran', url: 'https://q' }] }, fake(() => { if (!n++) throw new Error('slow DNS'); return new Response('ok'); }));
+  const h = make(http, { targets: [{ name: 'Mealie', url: 'https://q' }] }, fake(() => { if (!n++) throw new Error('slow DNS'); return new Response('ok'); }));
   const c: any = await h.widgets.status.fetch();
   assert.deepEqual([c.items[0].ok, n], [true, 2]);
 });
 
 test('timeline: a problem never cleared stays unresolved until it is', async () => {
   const t = new Timeline();
-  t.add('problem', 'Quran is down'); t.add('problem', 'Plex is down'); t.add('cleared', 'Plex is down');
-  assert.deepEqual(t.unresolved(), ['Quran is down']);
+  t.add('problem', 'Mealie is down'); t.add('problem', 'Plex is down'); t.add('cleared', 'Plex is down');
+  assert.deepEqual(t.unresolved(), ['Mealie is down']);
   assert.deepEqual(t.lines(36e5, 40, true).map(l => l.split(' ').at(-1)), ['down']);       // only the "cleared" line
 });
 
@@ -327,7 +326,7 @@ test('home assistant schedule: next time rolls to tomorrow, and shows in the isl
     { entity_id: 'sensor.b', state: t(10), attributes: {} },     // in 10 minutes
     { entity_id: 'sensor.c', state: t(-100), attributes: {} },   // muted
   ];
-  const ha = make(homeassistant, { url: 'http://ha', token: 'x', schedules: { p: { title: 'Prayers', soon: 15,
+  const ha = make(homeassistant, { url: 'http://ha', token: 'x', schedules: { p: { title: 'Tides', soon: 15,
     entities: [{ id: 'sensor.a', name: 'A' }, { id: 'sensor.b', name: 'B' }, { id: 'sensor.c', name: 'C', muted: true }] } } }, fake(() => states));
   const card: any = await ha.widgets.p.fetch();
   valid(card);
@@ -437,20 +436,6 @@ test('weather: the next days come with their own icons, and today isn\'t among t
   assert.equal(card.days[4].pop, undefined);
 });
 
-test('quran: picks a verse that reads on its own, and keeps the Arabic clean', async () => {
-  const words = (s: string) => s.split(' ').map(w => [[w, null]]).concat([[['', null]]]);
-  const data: Record<string, unknown> = {
-    'index.json': { surahs: [{ n: 1, ar: 'x', en: 'Test', meaning: 'Testing', verses: 3 }] },
-    's/1.json': [[1, words('كلمة'), {}], [2, words('كلمة اخرى'), {}], [3, words('ثالثة'), {}]],
-    'en/1.json': { v: ['and then', 'Indeed, this is a complete sentence that is long enough to stand on its own as a verse.', 'short'] },
-  };
-  const q = make(quran, { url: 'http://q' }, fake(url => data[url.split('/data/')[1]]));
-  const card: any = await q.widgets.today.fetch();
-  valid(card);
-  assert.equal(card.reference, 'Test 1:2');
-  assert.equal(card.arabic, 'كلمة اخرى');
-});
-
 test('notices: only configured changes, never on first load, quiet services stay quiet', async () => {
   const { noticesFor } = await import('../src/server/notices.ts');
   const dl = (live: boolean) => ({ type: 'media', items: [], activity: live ? { title: 'Film', icon: 'download' } : undefined }) as any;
@@ -466,7 +451,7 @@ test('notices: only configured changes, never on first load, quiet services stay
 
 test('history: reads numbers out of headlines, and gives a graph to headlines that have none', async () => {
   const { History, numberOf } = await import('../src/server/history.ts');
-  assert.deepEqual(['13%', '62 W', '1.38M', '4,452', 7, 'Healthy', 'Fajr'].map(numberOf), [13, 62, 1.38e6, 4452, 7, null, null]);
+  assert.deepEqual(['13%', '62 W', '1.38M', '4,452', 7, 'Healthy', 'Idle'].map(numberOf), [13, 62, 1.38e6, 4452, 7, null, null]);
   const h = new History(24, 0);
   let card: any;
   for (const v of ['10%', '12%', '15%']) card = h.apply('w', { type: 'text', text: '', summary: { label: 'x', value: v } } as any);

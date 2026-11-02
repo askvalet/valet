@@ -7,7 +7,7 @@ import type { Fixture } from './types.ts';
 // ── Home Assistant
 const entity = (entity_id: string, state: string, attributes: Record<string, unknown> = {}) => ({ entity_id, state, attributes });
 const light = (id: string, name: string, on: boolean, brightness = 200, rgb?: number[]) => entity(`light.${id}`, on ? 'on' : 'off', { friendly_name: name, brightness: on ? brightness : undefined, rgb_color: on ? rgb : undefined, supported_color_modes: ['color_temp', 'rgb'] });
-const prayer = (h: number, m: number) => { const d = new Date(); d.setHours(h, m, 0, 0); return d.toISOString(); };
+const clock = (h: number, m: number) => { const d = new Date(); d.setHours(h, m, 0, 0); return d.toISOString(); };
 const climate = (attrs: Record<string, unknown>, state = 'heat') => entity('climate.hallway', state, { friendly_name: 'Hallway', hvac_modes: ['off', 'heat', 'auto'], preset_modes: ['none', 'home', 'sleep', 'away'], preset_mode: 'home', hvac_action: 'idle', temperature: 20.5, current_temperature: 19.8, min_temp: 7, max_temp: 30, target_temp_step: .5, ...attrs });
 const rooms = { 1: ['Living room', 0, 0, 5200, 4200, 'Wood'], 2: ['Kitchen', 5200, 0, 8600, 4200, 'Tile'], 3: ['Bedroom', 0, 4200, 4200, 7600, 'Wood'], 4: ['Bathroom', 4200, 4200, 6000, 7600, 'Tile'], 5: ['Office', 6000, 4200, 8600, 7600, 'Wood'] };
 const mapAttributes = {
@@ -22,7 +22,7 @@ const states = (extra: ReturnType<typeof entity>[] = []) => [
   entity('media_player.living_room', 'playing', { friendly_name: 'Living room TV', media_title: 'The Long Tide' }), entity('light.porch', 'unavailable', { friendly_name: 'Porch' }),
   entity('vacuum.robot', 'docked', { friendly_name: 'Robot', status: 'charging', battery_level: 88, fan_speed: 'Standard', fan_speed_list: ['Quiet', 'Standard', 'Strong'], main_brush_left: 62, side_brush_left: 41, filter_left: 18, error: 'No error' }),
   entity('camera.robot_map', 'idle', mapAttributes),
-  entity('sensor.fajr', prayer(5, 31)), entity('sensor.sunrise', prayer(6, 50)), entity('sensor.dhuhr', prayer(12, 3)), entity('sensor.asr', prayer(15, 31)), entity('sensor.maghrib', prayer(17, 14)), entity('sensor.isha', prayer(18, 34)),
+  entity('sensor.first_bus', clock(5, 31)), entity('sensor.sunrise', clock(6, 50)), entity('sensor.midday_bus', clock(12, 3)), entity('sensor.school_bus', clock(15, 31)), entity('sensor.sunset', clock(17, 14)), entity('sensor.last_bus', clock(18, 34)),
   climate({}), ...extra,
 ];
 const haConfig = { unit_system: { temperature: '°C' } };
@@ -68,7 +68,7 @@ export const home: Record<string, Fixture> = {
         lights: { title: 'Lights', icon: 'bulb', entities: ['light.living_room', 'light.kitchen', 'light.bedroom', 'light.office', { id: 'light.porch', name: 'Porch' }, 'scene.movie_night'] },
         house: { title: 'House', icon: 'home', entities: ['sensor.outdoor', 'sensor.humidity', 'select.heating_mode', 'switch.coffee', 'media_player.living_room', 'vacuum.robot'] },
       },
-      schedules: { prayers: { title: 'Prayer times', icon: 'crescent', soon: 15, entities: [{ id: 'sensor.fajr', name: 'Fajr' }, { id: 'sensor.sunrise', name: 'Sunrise', muted: true }, { id: 'sensor.dhuhr', name: 'Dhuhr' }, { id: 'sensor.asr', name: 'Asr' }, { id: 'sensor.maghrib', name: 'Maghrib' }, { id: 'sensor.isha', name: 'Isha' }] } },
+      schedules: { buses: { title: 'Bus times', icon: 'clock', soon: 15, entities: [{ id: 'sensor.first_bus', name: 'First bus' }, { id: 'sensor.sunrise', name: 'Sunrise', muted: true }, { id: 'sensor.midday_bus', name: 'Midday bus' }, { id: 'sensor.school_bus', name: 'School bus' }, { id: 'sensor.sunset', name: 'Sunset' }, { id: 'sensor.last_bus', name: 'Last bus' }] } },
       thermostats: { hallway: { entity: 'climate.hallway', title: 'Hallway' } },
       floorplans: { flat: { title: 'Home', map: 'camera.robot_map', vacuum: 'vacuum.robot', rooms: { 'Living room': ['light.living_room'], Kitchen: ['light.kitchen'], Bedroom: ['light.bedroom'], Bathroom: ['light.bathroom'], Office: ['light.office'] } } },
     },
@@ -83,7 +83,7 @@ export const home: Record<string, Fixture> = {
       { widget: 'hallway', state: 'unavailable', label: 'Unavailable', http: withClimate({}, 'unavailable') },
       { widget: 'flat', state: 'cleaning', label: 'Cleaning', http: withVacuum('cleaning', 'cleaning') },
       { widget: 'flat', state: 'stuck', label: 'Vacuum stuck', http: withVacuum('error', 'error', 'Main brush jammed') },
-      { widget: 'prayers', state: 'soon', label: 'Coming up soon', http: over([['/api/states', states().map(s => s.entity_id === 'sensor.maghrib' ? { ...s, state: ahead(9 * MIN) } : s)]], haHttp()) },
+      { widget: 'buses', state: 'soon', label: 'Coming up soon', http: over([['/api/states', states().map(s => s.entity_id === 'sensor.sunset' ? { ...s, state: ahead(9 * MIN) } : s)]], haHttp()) },
     ],
   },
   weather: {
@@ -121,9 +121,4 @@ export const home: Record<string, Fixture> = {
     before() { mkdirSync(process.env.VALET_DATA!, { recursive: true }); writeFileSync(join(process.env.VALET_DATA!, 'todo-todo.json'), JSON.stringify([['Replace the furnace filter', false], ['Renew the domain', false], ['Print the lease addendum', true], ['Back up the old laptop', false], ['Book the boiler service', true]].map(([text, done], i) => ({ id: `t${i}`, text, done })))); },
   },
   clock: { config: { title: 'Clocks', clocks: [{ name: 'Toronto', zone: 'America/Toronto' }, { name: 'London', zone: 'Europe/London' }, { name: 'Karachi', zone: 'Asia/Karachi' }, { name: 'Tokyo', zone: 'Asia/Tokyo' }] } },
-  quran: {
-    config: { url: 'http://quran:8080', href: 'https://quran.example.com' },
-    // one surah, so the code's search for a longer verse ends on its first verse
-    http: route([['index.json', { surahs: [{ n: 1, ar: 'الفاتحة', en: 'Al-Fatihah', meaning: 'The Opening', verses: 7 }] }], ['s/1.json', [[1, [[['بِسْمِ']], [['ٱللَّهِ']], [['ٱلرَّحْمَٰنِ']], [['ٱلرَّحِيمِ']]]]]], ['en/1.json', { v: ['In the Name of Allah, the Most Compassionate, Most Merciful.'] }]]),
-  },
 };

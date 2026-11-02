@@ -8,7 +8,7 @@ import { sandbox } from './sandbox.ts';
 
 const FILE = resolve(process.env.VALET_DATA ?? 'data', 'history.json');
 
-/** "13%", "62 W", "1.38M", "4,452", 7 → a number; words ("Healthy", "Fajr") → nothing */
+/** "13%", "62 W", "1.38M", "4,452", 7 → a number; words ("Healthy", "Idle") → nothing */
 export function numberOf(v: Summary['value']): number | null {
   if (typeof v === 'number') return Number.isFinite(v) ? v : null;
   const m = String(v).replace(/,/g, '').match(/^\s*(-?\d+(?:\.\d+)?)\s*([kKMG]?)/);

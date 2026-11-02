@@ -2,7 +2,7 @@
 
 Generated from the code by `npm run docs:services`: please don't edit by hand.
 
-186 integrations. If yours isn't here, `type: api` turns any JSON API into a card from YAML, and a new integration is
+185 integrations. If yours isn't here, `type: api` turns any JSON API into a card from YAML, and a new integration is
 usually about ten lines ([docs/plugins.md](plugins.md)).
 
 **How these are tested:** every service below runs in `npm test` against a sample of its API, which proves the card, the
@@ -41,7 +41,6 @@ Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to 
 | Plex (Tautulli) | `tautulli` |
 | Prowlarr / Bazarr | `indexers` |
 | qBittorrent | `qbittorrent` |
-| Quran | `quran` |
 | Reddit | `reddit` |
 | Releases | `releases` |
 | RomM | `romm` |

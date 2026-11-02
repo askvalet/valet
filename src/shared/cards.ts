@@ -206,11 +206,12 @@ export interface PhotosCard extends Base {
   empty?: string;
 }
 
-/** A day's times (prayers, a timetable): the next one large with a live countdown, the rest on a timeline. */
+/** A day's times (a timetable, tides, opening hours): the next one large with a live countdown, the rest on a timeline. */
 export interface ScheduleCard extends Base {
   type: 'schedule';
   items: { name: string; at: string }[];   // ISO times, in order
   muted?: string[];                         // shown on the timeline but never "next" (e.g. sunrise)
+  sunset?: string;                          // which item marks sunset, when none is called that
 }
 
 /** One thing on a calendar. All-day events use plain dates, so they land on their day in any time zone. */
@@ -243,8 +244,6 @@ export interface ThermostatCard extends Base {
   note?: string;          // whether what it's holding is temporary or on a schedule, when the device says
 }
 
-/** A verse or a quote: the original (right-to-left if Arabic), its translation, where it's from. */
-export interface VerseCard extends Base { type: 'verse'; arabic?: string; english: string; reference: string; meaning?: string }
 
 /** One thing to read: the page itself behind it, and what it says in a few lines. */
 export interface ArticlePick { id?: string; headline: string; blurb?: string; site?: string; image?: string; link?: string; saved?: string }
@@ -287,7 +286,7 @@ export interface RaceCard extends Base, Race { type: 'race'; span?: string }
 /** A year of days as a grid of squares, a column a week. `days` starts at `from`, a count for each day. */
 export interface HeatmapCard extends Base { type: 'heatmap'; from: string; days: number[]; unit?: string; headline?: string; span?: string }   // unit: what's counted, singular: 'play'
 
-export type Card = RaceCard | HeatmapCard | CamerasCard | ThermostatCard | CalendarCard | EmbedCard | RankedCard | CodeCard | TableCard | LinksCard | VerseCard | ArticleCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
+export type Card = RaceCard | HeatmapCard | CamerasCard | ThermostatCard | CalendarCard | EmbedCard | RankedCard | CodeCard | TableCard | LinksCard | ArticleCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
 
 /** One widget slot's live state, as pushed to the browser. */
 export interface WidgetState { key: string; card?: Card; error?: string; at: number; source?: string }

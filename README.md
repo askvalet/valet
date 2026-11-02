@@ -12,7 +12,7 @@ A fast, beautiful, self-hosted homepage with an optional assistant that only get
 [![License: MIT](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
 [![Node 22.18+](https://img.shields.io/badge/node-22.18%2B-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
-[![186 integrations](https://img.shields.io/badge/integrations-186-d9b56c)](docs/services.md)
+[![185 integrations](https://img.shields.io/badge/integrations-185-d9b56c)](docs/services.md)
 
 [**Live demo**](https://demo.askvalet.dev) · [**Docs**](https://askvalet.dev) · [Quick start](#quick-start) · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
@@ -32,7 +32,7 @@ Your homelab deserves better than a grid of links. Valet has live cards, real ar
 
 ### One place for everything
 
-Stop opening ten tabs to do one thing. Pause a download, restart a container, dim the lights, check the cameras, read what's playing and see what needs an update, all from one page. With 186 integrations, your services stop being separate apps and start being one home.
+Stop opening ten tabs to do one thing. Pause a download, restart a container, dim the lights, check the cameras, read what's playing and see what needs an update, all from one page. With 185 integrations, your services stop being separate apps and start being one home.
 
 ### Fully customizable and extensible
 
@@ -83,7 +83,7 @@ Open <http://localhost:7575> and the page walks you through the rest. The [insta
 Everything else lives at **[askvalet.dev](https://askvalet.dev)**:
 
 - [Your first config](https://askvalet.dev/start/first-config/)
-- [186 integrations](https://askvalet.dev/integrations/), each with screenshots
+- [185 integrations](https://askvalet.dev/integrations/), each with screenshots
 - [The assistant](https://askvalet.dev/assistant/)
 - [Security](https://askvalet.dev/security/)
 - [Configuration reference](https://askvalet.dev/reference/configuration/)

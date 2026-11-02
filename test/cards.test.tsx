@@ -19,7 +19,7 @@ import Island from '../src/web/island.tsx';
 import { SAMPLES } from '../src/web/samples.ts';
 import { chartless, Heatmap, Race, standing, Waffle } from '../src/web/charts.tsx';
 
-const TYPES = ['cameras', 'stats', 'list', 'media', 'shelf', 'status', 'links', 'chart', 'code', 'table', 'ranked', 'race', 'heatmap', 'controls', 'showcase', 'forecast', 'calendar', 'thermostat', 'photos', 'schedule', 'verse', 'kv', 'text', 'group'];
+const TYPES = ['cameras', 'stats', 'list', 'media', 'shelf', 'status', 'links', 'chart', 'code', 'table', 'ranked', 'race', 'heatmap', 'controls', 'showcase', 'forecast', 'calendar', 'thermostat', 'photos', 'schedule', 'kv', 'text', 'group'];
 
 test('every card type has a sample', () => {
   const have = new Set(SAMPLES.map(s => s.card.type));
@@ -51,7 +51,7 @@ const html = (card: any, o: { run?: boolean; compact?: boolean } = {}) => render
 test('status: a state follows from ok and quiet unless it says, and off is hollow', () => {
   assert.deepEqual([stateOf({ ok: true }), stateOf({ ok: false }), stateOf({ ok: false, quiet: true }), stateOf({ ok: true, state: 'degraded' })], ['up', 'down', 'off', 'degraded']);
   assert.equal(checkCard({ type: 'status', items: [{ name: 'x', ok: true, state: 'sideways' }] }).success, false);
-  const out = html({ type: 'status', items: [{ name: 'Prayer Clock', ok: false, quiet: true }, { name: 'Plex', ok: true, ms: 9 }] });
+  const out = html({ type: 'status', items: [{ name: 'Garage door', ok: false, quiet: true }, { name: 'Plex', ok: true, ms: 9 }] });
   assert.match(out, /dot-off/); assert.doesNotMatch(out, /Offline/);
 });
 
@@ -118,7 +118,6 @@ test('without a link nothing looks clickable: rows are plain, posters and pictur
   assert.doesNotMatch(shelf(), /group-hover:|<a /); assert.match(shelf('http://x'), /group-hover:-translate-y-1/);
   assert.doesNotMatch(html({ type: 'photos', style: 'flashback', items: [{ image: '/a.jpg' }] }), /\blift\b/);
   assert.match(html({ type: 'photos', style: 'flashback', items: [{ image: '/a.jpg', href: 'http://x' }] }), /\blift\b/);
-  assert.doesNotMatch(html({ type: 'verse', title: 'v', english: 'e', reference: 'r' }), /\blift\b/);
 });
 
 test('archive offers a way to find what went, only where it can act', () => {
@@ -130,7 +129,7 @@ test('schema rejects a malformed card', () => {
   assert.equal(checkCard({ type: 'stats', items: [{ label: 'x' }] }).success, false);            // no value
   assert.equal(checkCard({ type: 'stats', items: [], colour: 'red' }).success, false);          // unknown field
   assert.equal(checkCard({ type: 'nope' }).success, false);
-  assert.equal(checkCard({ type: 'schedule', items: [{ name: 'Fajr', at: 'soon' }] }).success, false);
+  assert.equal(checkCard({ type: 'schedule', items: [{ name: 'First bus', at: 'soon' }] }).success, false);
   assert.equal(checkCard({ type: 'list', items: [{ title: 'x', pct: 3 }] }).success, false);     // progress past 100%
 });
 

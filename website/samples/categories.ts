@@ -7,7 +7,7 @@ export const CATEGORY: Record<string, string> = {
   ...group('Downloads', 'qbittorrent indexers'),
   ...group('Network', 'pihole'),
   ...group('Infrastructure', 'docker glances host uptimekuma scrutiny apcups minecraft ollama aimonitor'),
-  ...group('Home and daily life', 'homeassistant weather calendar camera rgb-control todo clock quran frigate esphome evcc homebridge opendtu octoprint moonraker spoolman'),
+  ...group('Home and daily life', 'homeassistant weather calendar camera rgb-control todo clock frigate esphome evcc homebridge opendtu octoprint moonraker spoolman'),
   ...group('Feeds and web', 'rss hackernews lobsters reddit releases repository markets twitch'),
   ...group('Apps', 'karakeep paperless'),
   ...group('Build your own', 'api http iframe links'),

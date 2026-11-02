@@ -20,7 +20,7 @@ import { Arrows, Counter, Pile, RowSlot, toast, useRow, useRows } from './feel.t
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
 import { clock as clockOf, day as dayOf, num as written } from './format.ts';
 import { stateOf } from '../shared/cards.ts';
-import type { ServiceState, Banner, Stall, ArticleCard, CodeCard, RankedCard, ShelfItem, StatusItem, TableCard, LinksCard, Card as CardT, VerseCard, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
+import type { ServiceState, Banner, Stall, ArticleCard, CodeCard, RankedCard, ShelfItem, StatusItem, TableCard, LinksCard, Card as CardT, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
 // Icon names cards may use (docs/integrations.md lists them; keep the two in step). Anything else: a URL or a path.
 const ICONS: Record<string, LucideIcon> = {
@@ -995,29 +995,8 @@ function Showcase({ card, run }: { card: ShowcaseCard; run?: RunAction }) {
   );
 }
 
-/** Geometric star lattice, the kind that frames a mushaf page, fading out from the card's corner. */
-function Lattice() {
-  return (
-    <svg className="verse-lattice pointer-events-none absolute inset-0 -z-10 size-full text-foreground" aria-hidden>
-      <defs><pattern id="lattice" width="56" height="56" patternUnits="userSpaceOnUse">
-        <g fill="none" stroke="currentColor" strokeWidth=".8"><rect x="17" y="17" width="22" height="22" /><rect x="17" y="17" width="22" height="22" transform="rotate(45 28 28)" /><path d="M0 0 12.4 12.4M56 0 43.6 12.4M0 56l12.4-12.4M56 56 43.6 43.6" /></g>
-      </pattern></defs>
-      <rect width="100%" height="100%" fill="url(#lattice)" />
-    </svg>
-  );
-}
-
-/** A verse: the Arabic large and right-to-left, its meaning beneath, the reference quietly at the end. */
-function Verse({ card }: { card: VerseCard }) {
-  const dense = useContext(Dense);
-  return (
-    <a href={card.href} target="_blank" rel="noreferrer" className="flex flex-1 flex-col gap-3">
-      {card.arabic && <p dir="rtl" lang="ar" className={cn('verse-ar leading-[2.1] text-foreground', dense ? 'text-[20px]' : 'text-[26px]')}>{card.arabic}</p>}
-      <p className={cn('leading-relaxed text-foreground/80', dense ? 'text-[13px]' : 'text-[14px]')}>{card.english.replace(/[˹˺]/g, '')}</p>
-      <p className="mt-auto text-[12px] text-muted-foreground">{card.reference}{card.meaning ? ` · ${card.meaning}` : ''}</p>
-    </a>
-  );
-}
+/** Which of a schedule's times marks sunset: the card can name it, and otherwise it's the one called that. */
+const sunsetOf = (card: ScheduleCard) => card.sunset ? new RegExp(`^${card.sunset.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') : /sunset/i;
 
 /** The card's backdrop is the sky outside right now: dawn, day, golden hour, dusk or a night with stars. It needs a
  *  sunrise and a sunset in the times; any other schedule stays plain. */
@@ -1025,7 +1004,7 @@ function SkyWash({ card }: { card: ScheduleCard }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 60_000); return () => clearInterval(t); }, []);
   const time = (re: RegExp) => { const x = card.items.find(i => re.test(i.name)); return x ? Date.parse(x.at) : NaN; };
-  const rise = time(/sunrise/i), set = time(/maghrib|sunset/i), min = 60_000;
+  const rise = time(/sunrise/i), set = time(sunsetOf(card)), min = 60_000;
   if (Number.isNaN(rise) || Number.isNaN(set)) return null;
   const sky = Math.abs(now - rise) < 50 * min ? ['#ff8a5c', '#6a5ae0'] : Math.abs(now - set) < 50 * min && now >= set ? ['#c2487f', '#2f2a7a']
     : now > set - 80 * min && now < set ? ['#ffab4d', '#c2557a'] : now > rise && now < set ? ['#4fb0ff', '#2a6fd6'] : ['#26338a', '#0d1140'];
@@ -1038,14 +1017,14 @@ function SkyWash({ card }: { card: ScheduleCard }) {
   );
 }
 
-/** The large prayer card: the sky over a day. The sun rides an arc from sunrise to sunset, each prayer sits where the
- *  sun is at its time (night prayers below the horizon), now glows on the path, and the next prayer counts down. */
+/** The large schedule card: the sky over a day. The sun rides an arc from sunrise to sunset, each time sits where the
+ *  sun is then (night times below the horizon), now glows on the path, and the next one counts down. */
 function Sky({ card }: { card: ScheduleCard }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t); }, []);
   const items = card.items.map(x => ({ ...x, t: Date.parse(x.at), muted: card.muted?.includes(x.name) }));
   if (items.length < 2) return <Schedule card={card} />;
-  const rise = items.find(x => /sunrise/i.test(x.name))?.t ?? items[1].t, set = items.find(x => /maghrib|sunset/i.test(x.name))?.t ?? items[items.length - 2].t;
+  const rise = items.find(x => /sunrise/i.test(x.name))?.t ?? items[1].t, set = items.find(x => sunsetOf(card).test(x.name))?.t ?? items[items.length - 2].t;
   const W = 600, H = 250, base = 168, r = 230, cx = W / 2;
   // daylight maps onto the arc (0 at sunrise, 1 at sunset); before and after, the path dips below the horizon
   const point = (t: number) => {
@@ -1217,7 +1196,6 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
     case 'photos': return <Photos card={card} large={large} />;
     case 'schedule': return <Times card={card} />;
     case 'embed': return <iframe src={card.src} title={card.title ?? 'Embedded page'} loading="lazy" referrerPolicy="no-referrer" sandbox={card.scripts ? 'allow-scripts allow-same-origin allow-forms' : ''} className="w-full rounded-xl border-0 bg-black/20" style={{ height: card.height }} />;
-    case 'verse': return <Verse card={card} />;
     case 'forecast': return <WeatherCard card={card} dense />;
     case 'calendar': return <CalendarView card={card} dense />;
     case 'thermostat': return <Thermostat card={card} run={run} dense />;
@@ -1347,10 +1325,10 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
   );
   const t = card?.title ?? title;
   const bare = card?.type === 'group';
-  const scene = !compact && card ? card.type === 'schedule' ? <SkyWash card={card} /> : card.type === 'verse' && card.arabic ? <Lattice /> : null : null;
+  const scene = !compact && card ? card.type === 'schedule' ? <SkyWash card={card} /> : null : null;
   return (
     <Dense.Provider value={!!compact}>
-    <Card className={cn('@container/card relative min-w-0 overflow-hidden shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'gap-4 py-5', !compact && card?.type === 'verse' && card.href && 'lift', bare && 'border-0 bg-transparent py-0 shadow-none', fill && 'h-full', scene && 'relative isolate overflow-hidden')}>
+    <Card className={cn('@container/card relative min-w-0 overflow-hidden shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'gap-4 py-5', bare && 'border-0 bg-transparent py-0 shadow-none', fill && 'h-full', scene && 'relative isolate overflow-hidden')}>
       {scene}
       {t && !bare && !headless && (
         <CardHeader className={cn('flex items-center gap-2', compact ? 'px-3.5' : 'px-5')}>

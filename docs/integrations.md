@@ -132,7 +132,6 @@ can still draw it another way with a widget's [`view`](configuration.md#layout).
 | `forecast` | weather | a large glyph and temperature, high/low, the next `days`; more room adds the hours and range bars |
 | `calendar` | an agenda and a month | `events` with ISO times, or plain dates for all day; browsing a month happens in the browser, within `from`..`to` |
 | `thermostat` | a dial | `target`, `current`, `min`, `max`, `step`, `unit`; `set` names the action for a new target, `modes` the buttons |
-| `verse` | a verse or quote | original (right-to-left if Arabic), translation, reference |
 | `controls` | switches, sliders, choices | each control names an action of the same integration |
 | `chart` | a graph | `style` is `line`, `bars` or `stream` |
 | `kv`, `text` | key–value rows, a sentence | |

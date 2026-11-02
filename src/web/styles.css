@@ -454,14 +454,12 @@
 /* tiles: the graph fades out behind the number; numbers don't redraw themselves each time they're seen */
 .tile-graph { mask-image: linear-gradient(to right, transparent 22%, black 62%); }
 .twinkle { opacity: .5; }
-.verse-lattice { opacity: .1; mask-image: radial-gradient(90% 110% at 100% 100%, black, transparent 70%); }
 
 /* flashback photos crossfade and otherwise hold still */
 .photo-slide { opacity: 0; transition: opacity var(--dur-scene) var(--ease-in-out); }
 .photo-slide.is-on { opacity: 1; }
 
 /* Arabic: a classical Naskh face where the system has one */
-.verse-ar { font-family: "Scheherazade New", "Amiri", "Noto Naskh Arabic", "Geeza Pro", "Al Bayan", serif; font-feature-settings: normal; }
 
 /* the page behind a saved article: it reads top down, and scrolls by on hover */
 .article { position: relative; isolation: isolate; container-type: size; display: flex; align-items: flex-end; height: 100%; min-height: 240px; overflow: hidden; border-radius: 1rem; background: #fff; box-shadow: var(--shadow-card); }

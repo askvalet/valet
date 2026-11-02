@@ -479,7 +479,6 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `paperless` | `url`, `token` | `recent` |
 | `pihole` | `url`, `password` (an app password) | `stats` |
 | `qbittorrent` | `url`, `username`, `password`, `arr` (Sonarr/Radarr `{ type, url, apiKey }` for titles and posters) | `active` |
-| `quran` | `url` | `today` |
 | `repository` | `repos` (`owner/name`), `token`, `title` | `repos` |
 | `rgb-control` | `url`, `build`, `view` (`turn`, `tilt`, `draggable`), `presets`, `controls`, `interval` | `pc` |
 | `romm` | `url`, `username`, `password` | `recent` |

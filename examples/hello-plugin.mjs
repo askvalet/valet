@@ -18,7 +18,7 @@ export default ({ z, defineIntegration }) => defineIntegration({
           title: 'Quote', interval: 3_600_000,
           async fetch() {
             const q = await today();
-            return { type: 'verse', title: 'Quote of the day', icon: 'book', english: q.q, reference: q.a, summary: { label: 'Quote', value: q.a } };
+            return { type: 'text', title: 'Quote of the day', icon: 'book', text: `${q.q} (${q.a})`, summary: { label: 'Quote', value: q.a } };
           },
         },
       },

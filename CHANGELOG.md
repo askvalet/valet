@@ -9,7 +9,7 @@ The first public version, 0.1.0, is being prepared.
 
 ### Added
 
-- Live cards, tabs and layout from one YAML file, with 186 integrations.
+- Live cards, tabs and layout from one YAML file, with 185 integrations.
 - An optional assistant with per-integration access and an approval for every change.
 - `view`, to draw any numbers as any chart and any pictures as any gallery, including `coverflow` and `album`.
 - `rows`, so a widget can span rows.

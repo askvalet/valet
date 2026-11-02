@@ -69,9 +69,6 @@ integrations:
   ollama:
     type: ollama                   # installed and loaded models
     url: http://ollama:11434
-  quran:
-    type: quran                    # a verse of the day from a self-hosted Quran site (its data/ folder)
-    url: https://quran.example.com
   photos:
     type: immich                   # search photos by what's in them, by person or date; "on this day" on the page
     url: http://immich:2283

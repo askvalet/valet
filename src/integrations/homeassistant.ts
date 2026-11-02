@@ -21,12 +21,13 @@ export default defineIntegration({
     cards: z.record(z.string(), z.object({ title: z.string(), icon: z.string().optional(),
       entities: z.array(z.union([z.string(), z.object({ id: z.string(), name: z.string() })])) })).default({}),
     controllable: z.array(z.string()).default([]),   // extra entities the assistant may control (cards' entities always may)
-    // each entry becomes a schedule widget `<instance>.<key>`: timestamp sensors (e.g. Islamic Prayer Times) as a day's
+    // each entry becomes a schedule widget `<instance>.<key>`: timestamp sensors (bin days, a timetable) as a day's
     // timeline with the next one counting down; within `soon` minutes it also shows in the island
     schedules: z.record(z.string(), z.object({
       title: z.string(),
       icon: z.string().optional(),
       entities: z.array(z.object({ id: z.string(), name: z.string(), muted: z.boolean().default(false) })),
+      sunset: z.string().optional(),   // which entity's name marks sunset, for the sky behind the card
       soon: z.number().int().min(0).max(240).default(15),
     })).default({}),
     // each entry becomes a thermostat widget `<instance>.<key>`: a dial for one climate entity. `modes` picks and orders
@@ -119,7 +120,7 @@ export default defineIntegration({
           const nexts = items.filter(x => !x.muted).map(x => ({ ...x, t: Date.parse(x.at) <= now ? Date.parse(x.at) + 864e5 : Date.parse(x.at) })).sort((a, b) => a.t - b.t);
           const next = nexts[0], mins = next ? Math.round((next.t - now) / 60_000) : 0;
           const left = mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`;
-          return { type: 'schedule', title: sch.title, icon: sch.icon ?? 'clock', items: items.map(({ name, at }) => ({ name, at })), muted: items.filter(x => x.muted).map(x => x.name),
+          return { type: 'schedule', title: sch.title, icon: sch.icon ?? 'clock', sunset: sch.sunset, items: items.map(({ name, at }) => ({ name, at })), muted: items.filter(x => x.muted).map(x => x.name),
             summary: next && { label: sch.title, icon: sch.icon ?? 'clock', value: next.name, sub: new Date(next.t).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }), detail: `in ${left}` },
             activity: next && mins <= sch.soon ? { title: `${next.name} in ${left}`, subtitle: sch.title, icon: sch.icon ?? 'clock', tone: 'good', pct: 1 - mins / Math.max(1, sch.soon) } : undefined };
         },
