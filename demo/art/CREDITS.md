@@ -19,3 +19,7 @@ in them is real.
 # Game covers
 
 The Games card links box art from https://github.com/libretro-thumbnails. The art belongs to the games' publishers.
+
+# Wallpaper
+
+`../wallpaper.jpg`: photo from Unsplash, https://unsplash.com/photos/1477346611705-65d1883cee1e (Unsplash License).
