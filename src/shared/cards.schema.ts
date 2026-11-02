@@ -13,7 +13,7 @@ const when = z.string().refine(s => !Number.isNaN(Date.parse(s)), 'not a date');
 
 export const Summary = z.object({
   label: z.string(), value: z.union([z.string(), z.number()]), sub: z.string().optional(), detail: z.string().optional(),
-  tone: Tone.optional(), icon: z.string().optional(), trend: nums.optional(), pct: z.number().optional(), ring: z.string().optional(),
+  tone: Tone.optional(), icon: z.string().optional(), trend: nums.optional(), color: z.string().regex(/^#[0-9a-f]{3,8}$/i).optional(), pct: z.number().optional(), ring: z.string().optional(),
   image: z.string().optional(), marks: z.array(z.object({ pct: z.number().optional(), tone: Tone.optional(), label: z.string().optional() }).strict()).optional(),
   waffle: z.boolean().optional(), every: z.number().positive().optional(),
 }).strict();

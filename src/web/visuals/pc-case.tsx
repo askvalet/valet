@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Counter, ElasticSlider } from '../feel.tsx';
-import { Cant, Said, Swatch, useNote } from './note.tsx';
+import { Cant, Said, Swatch, useNote, useSteady } from './note.tsx';
 import { createViewer, hex, PICKS, topFans, type Light, type Metric, type ModelData } from './pc-model.ts';
 
 
@@ -81,9 +81,9 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
   const active = preset ?? data.presets?.find(p => p.active)?.id;
   const value = (id: string) => { const m = (id === 'fans' ? data.metrics?.[fanId] : data.metrics?.[id])?.[0]; return m ? `${m.value}${m.unit === '°C' ? '°' : ` ${m.unit}`}` : undefined; };
   const dotOf = (id: string) => { const z = shown.parts.find(p => p.id === lightId(id))?.zones[0]; return z && z.mode !== 'Off' ? hex(z.color) : undefined; };
-  const canAct = !!run && data.controls !== false;
+  const canAct = !!run && data.controls !== false, steady = useSteady(!!pick);
   return (
-    <div className="case"><div className="case-body">
+    <div className="case"><div ref={steady.body} className="case-body" style={{ height: steady.height }}>
       <div className="relative">
         <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-xl" aria-label="3D model of the PC. Select a part to see it and change its lighting; every part is also in the list below." role="img" />
       </div>

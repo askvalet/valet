@@ -325,6 +325,9 @@ export default ({ z, defineIntegration }) => {
       const LOGS = ['03:11:58 INFO  importing recipe batch (412 items)', '03:12:04 WARN  worker memory at 251 MiB of 256 MiB', '03:12:06 ERROR Out of memory: killed process 41 (gunicorn)', '03:12:06 INFO  container exited with code 137'];
       const w = (title, interval, fetch) => ({ title, interval, fetch: async () => fetch() });
       const art = name => ctx.image?.(name) ?? name;
+      // the AI tiles: what the assistant is doing shows up on them as it happens
+      let asked = 0, thinking = 0;
+      const rolling = { requests: past(40, 2, 30, 170_000), tokens: past(40, 10, 60, 230_000), power: past(40, 30, 90, 310_000), cost: past(40, 2.2, 2.6, 410_000), memory: past(40, 20.6, 21.4, 530_000), heat: past(40, 44, 50, 670_000) };
       const widgets = {
         cameras: w('Cameras', 4_000, () => { const seen = sightings(); return { type: 'cameras', title: 'Cameras', icon: 'camera', sample: true, source: { name: 'Frigate', icon: '/api/icon/frigate-light' },
           cameras: CAMERAS.map(([id, name, loop, d]) => ({ id, name, loop, video: art(`${id}.mp4`), poster: art(`${id}.jpg`), detections: d.map(([label, score, , , path]) => ({ label, score, path })) })),
@@ -367,8 +370,16 @@ export default ({ z, defineIntegration }) => {
         reading: w('From your reading', 3_600_000, () => { const more = pile().map(p => ({ id: p.title, headline: p.title, blurb: p.note, site: p.subtitle, image: ctx.image(p.image ?? `page${ART.saved.indexOf(p)}`), link: p.href })); return { type: 'article', title: 'From your reading', icon: 'bookmark', archived: ARCHIVE, source: { name: 'Karakeep', icon: '/api/icon/karakeep' }, ...(more[0] ?? { headline: '' }), more }; }),
         upcoming: w('Coming up', 900_000, () => ({ type: 'list', title: 'Coming up', icon: 'film', items: [{ title: NEXT[0], subtitle: `${episode} · ${inDays(NEXT[1])}` }],
           summary: { label: 'Coming up', icon: 'film', value: NEXT[0], sub: `${episode} · ${inDays(NEXT[1])}`, image: backdrop(NEXT[0]) } })),
-        ai: w('AI', 60_000, () => ({ type: 'stats', title: 'AI', icon: 'chart', items: [{ label: 'Requests', value: 24 }],
-          summaries: [{ label: 'Requests', icon: 'pulse', value: '24', sub: 'today', trend: past(40, 2, 30, 120_000) }, { label: 'Tokens', icon: 'text', value: '6k', sub: 'generated today', trend: past(40, 10, 60, 170_000) }, { label: 'Power', icon: 'gpu', value: `${gpuWatts} W`, sub: 'idle', trend: past(40, 30, 90, 230_000) }, { label: 'Electricity cost', icon: 'coins', value: '38¢', sub: '2.6 kWh today', trend: past(40, 20, 50, 310_000) }, { label: 'GPU memory', icon: 'disk', value: '21 GB', sub: 'of 32 GB', trend: past(40, 19, 23, 410_000) }, { label: 'Temperature', icon: 'pulse', value: '46°C', sub: 'GPU', trend: past(40, 40, 58, 530_000) }] })),
+        ai: w('AI', 3_000, () => {
+          const busy = now() < thinking, roll = (k, v) => { const t = rolling[k]; t.shift(); t.push(v); return t; };
+          const shift = a => a + Math.random() * a * .04 - a * .02, watts = Math.round(busy ? shift(286) : gpuWatts), hot = Math.round(busy ? 62 : 46 + Math.random() * 2), ram = busy ? 23.4 : 21 + Math.random() * .3, words = 6000 + asked * 420, day = 2.6 + asked * .02;
+          return { type: 'stats', title: 'AI', icon: 'chart', items: [{ label: 'Requests', value: 24 + asked }], summaries: [
+            { label: 'Requests', icon: 'pulse', color: '#64d2ff', value: String(24 + asked), sub: 'today', trend: roll('requests', busy ? 28 : 3 + Math.random() * 6) },
+            { label: 'Tokens', icon: 'text', color: '#bf9bff', value: `${(words / 1000).toFixed(1)}k`, sub: 'generated today', trend: roll('tokens', busy ? 60 : 8 + Math.random() * 10) },
+            { label: 'Power', icon: 'gpu', color: '#ffb454', value: `${watts} W`, sub: busy ? 'working' : 'idle', tone: busy ? 'accent' : undefined, trend: roll('power', watts) },
+            { label: 'Electricity cost', icon: 'coins', color: '#5ee0a5', value: `${Math.round(day * 14.7)}¢`, sub: `${day.toFixed(2)} kWh today`, trend: roll('cost', day) },
+            { label: 'GPU memory', icon: 'disk', color: '#ff7eb6', value: `${ram.toFixed(1)} GB`, sub: 'of 32 GB', trend: roll('memory', ram) },
+            { label: 'Temperature', icon: 'pulse', color: '#ff6f59', value: `${hot}°C`, sub: 'GPU', trend: roll('heat', hot) }] }; }),
         library: w('Library', 3_600_000, () => ({ type: 'stats', title: 'Library', icon: 'film', items: [{ label: 'Movies', value: 412 }], summaries: [{ label: 'Movies', icon: 'film', value: '412' }, { label: 'Shows', icon: 'play', value: '38', sub: '164 seasons' }, { label: 'Episodes', icon: 'pulse', value: '2,986' }] })),
         recent: w('Recently added', 3_600_000, () => ({ type: 'shelf', title: 'Recently added', icon: 'film', aspect: 'poster', layout: 'spotlight', source: { name: 'Plex', icon: '/api/icon/plex' },
           items: SHELF.map((title, i) => ({ title, subtitle: String(ART.films[title].year), image: poster(title), href: poster(title), backdrop: backdrop(title), badge: i < 2 ? 'Today' : i < 5 ? 'This week' : 'This month' })) })),
@@ -398,6 +409,7 @@ export default ({ z, defineIntegration }) => {
       const pile = () => { const ids = got('archived', []); return [...ART.saved].reverse().filter(p => !ids.includes(p.title)); };
       const textCard = text => ({ type: 'text', tone: 'good', text });
       return {
+        onChat() { asked += 1; thinking = now() + 9_000; return ['ai']; },
         widgets,
         // the clips, with the byte ranges phones ask for. Nothing but the files named above can be reached
         image(ref, range) {

@@ -397,6 +397,8 @@ let chats = new WeakMap<Site, (c: any) => Promise<Response>>();
 app.post('/api/chat', async c => {
   if (!site.config.assistant) return c.json({ error: 'no assistant configured' }, 404);
   const key = own.getStore() ?? base;
+  // whatever watches the assistant at work gets told, and shows it straight away
+  for (const [id, inst] of site.instances) for (const w of inst.onChat?.() ?? []) void site.hub.refresh(`${id}.${w}`);
   let chat = chats.get(key);
   if (!chat) chats.set(key, chat = (await import('./chat.ts')).chatRoute(site.config, site.instances, site.meta, { acting: site.acting, redact: site.redact, activity: site.activity }));
   return chat(c);

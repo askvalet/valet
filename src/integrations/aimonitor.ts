@@ -10,6 +10,7 @@ export default defineIntegration({
   create(cfg, ctx) {
     const base = cfg.url.replace(/\/$/, '');
     const hist = { util: [] as number[], power: [] as number[] };
+    let day: { at: number; h?: any; c?: any } = { at: 0 };
     const push = (a: number[], v: number) => { a.push(Math.round(v)); if (a.length > 60) a.shift(); };
     async function live() {
       const j = await ctx.http(`${base}/api/live`);
@@ -21,9 +22,11 @@ export default defineIntegration({
     const widgets = {
       // the day at a glance: cost, requests, tokens, power, memory and heat, each with its last 24 hours drawn behind it
       usage: {
-        title: 'Local AI usage', interval: 60_000,
+        title: 'Local AI usage', interval: 5000,
         async fetch() {
-          const [h, c, j] = await Promise.all([ctx.http<any>(`${base}/api/history`), ctx.http<any>(`${base}/api/cost`), live()]);
+          // the live numbers every few seconds; the day's history and cost don't need asking for as often
+          if (Date.now() - day.at > 60_000) day = { at: Date.now(), h: await ctx.http<any>(`${base}/api/history`), c: await ctx.http<any>(`${base}/api/cost`) };
+          const { h, c } = day, j = await live();
           const buckets = (h.gpu as number[][]).map(r => r[0]);
           const per = (i: 2 | 3) => buckets.map(ts => (h.requests as any[]).filter(r => r[0] === ts).reduce((s, r) => s + r[i], 0));
           const today = c.days.at(-1) ?? { cost: 0, tokens: 0 };
@@ -31,15 +34,15 @@ export default defineIntegration({
           return {
             type: 'stats', title: 'Local AI usage', icon: 'gpu', href: cfg.href, items: [],
             summaries: [
-              { label: 'Electricity cost', icon: 'coins', value: `${Math.round(today.cost * 100)}¢`, sub: `today · ${Math.round(c.month * 100)}¢ this month`,
+              { label: 'Electricity cost', icon: 'coins', color: '#5ee0a5', value: `${Math.round(today.cost * 100)}¢`, sub: `today · ${Math.round(c.month * 100)}¢ this month`,
                 detail: `${today.kwh?.toFixed(2) ?? '–'} kWh`, trend: c.days.map((d: any) => d.cost) },
-              { label: 'Requests', icon: 'pulse', value: j.today.requests.toLocaleString(), sub: 'today',
+              { label: 'Requests', icon: 'pulse', color: '#64d2ff', value: j.today.requests.toLocaleString(), sub: 'today',
                 detail: `${Math.round(h.totals.avg_tok_s ?? 0)} tok/s avg`, trend: per(2) },
-              { label: 'Tokens', icon: 'text', value: tok(today.tokens), sub: 'generated today', detail: `${tok(h.totals.prompt_tokens)} read`, trend: per(3) },
-              { label: 'Power', icon: 'gpu', value: `${Math.round(j.gpu.power)} W`, sub: j.model.name, detail: `${Math.round(j.gpu.temp)}°C`,
+              { label: 'Tokens', icon: 'text', color: '#bf9bff', value: tok(today.tokens), sub: 'generated today', detail: `${tok(h.totals.prompt_tokens)} read`, trend: per(3) },
+              { label: 'Power', icon: 'gpu', color: '#ffb454', value: `${Math.round(j.gpu.power)} W`, sub: j.model.name, detail: `${Math.round(j.gpu.temp)}°C`,
                 trend: (h.gpu as number[][]).map(r => r[2]), tone: (j.running?.length ?? 0) > 0 ? 'accent' : 'neutral' },
-              { label: 'GPU memory', icon: 'disk', value: `${(j.gpu.mem / 1024).toFixed(1)} GB`, sub: `of ${Math.round(j.gpu.mem_total / 1024)} GB`, trend: (h.gpu as number[][]).map(r => r[4]) },
-              { label: 'Temperature', icon: 'pulse', value: `${Math.round(j.gpu.temp)}°C`, sub: 'GPU', trend: (h.gpu as number[][]).map(r => r[5]), tone: heat(j.gpu.temp) },
+              { label: 'GPU memory', icon: 'disk', color: '#ff7eb6', value: `${(j.gpu.mem / 1024).toFixed(1)} GB`, sub: `of ${Math.round(j.gpu.mem_total / 1024)} GB`, trend: (h.gpu as number[][]).map(r => r[4]) },
+              { label: 'Temperature', icon: 'pulse', color: '#ff6f59', value: `${Math.round(j.gpu.temp)}°C`, sub: 'GPU', trend: (h.gpu as number[][]).map(r => r[5]), tone: heat(j.gpu.temp) },
             ],
           };
         },

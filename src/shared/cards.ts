@@ -13,6 +13,7 @@ export interface Summary {
   tone?: Tone;
   icon?: string;
   trend?: number[];       // recent values, drawn as a live area graph behind the tile
+  color?: string;         // that graph's colour
   pct?: number;           // 0..1, for ring gauges
   ring?: string;          // the number shown inside a ring gauge, if different from `value` (e.g. "23%")
   image?: string;         // artwork that fills the tile, with the text over it

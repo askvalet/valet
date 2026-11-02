@@ -13,6 +13,6 @@
 .tap::after { content: ""; position: absolute; inset: -7px -2px; }
 /* a 3D model and its panel: stacked, or side by side once the card is wide enough that scrolling to the panel would lose the model */
 .case { container-type: inline-size; display: flex; flex: 1; flex-direction: column; min-width: 0; }
-.case-body { display: grid; flex: 1; gap: 8px; grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr auto; align-items: start; }
-.case-body > .relative { align-self: center; }
+.case-body { display: grid; flex: 1; gap: 8px; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; align-items: start; }
+.case-body > .relative { display: grid; place-items: center; align-self: stretch; min-height: 0; overflow: hidden; }
 @container (min-width: 880px) { .case-body { grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; } }

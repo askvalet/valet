@@ -56,3 +56,15 @@ export function Slots({ at, words }: { at: string; words: Record<string, ReactNo
 export function Swatch({ name, color, on, press, disabled }: { name: string; color: string; on: boolean; press: () => void; disabled?: boolean }) {
   return <button type="button" className="swatch press" aria-label={name} title={name} aria-pressed={on} disabled={disabled} onClick={press}><i style={{ background: color }} /></button>;
 }
+
+/** Opening a part's controls mustn't move the page: the card keeps the height it had, and the model gives up the room.
+ *  Only where the controls sit under the model and there's room to spare. */
+export function useSteady(open: boolean) {
+  const body = useRef<HTMLDivElement>(null), rest = useRef(0), [height, setHeight] = useState<number>();
+  useLayoutEffect(() => {
+    const el = body.current; if (!el) return;
+    if (!open) { setHeight(undefined); rest.current = el.offsetHeight; return; }
+    if (el.offsetWidth >= 480 && el.offsetWidth < 880) setHeight(rest.current);
+  }, [open]);
+  return { body, height };
+}

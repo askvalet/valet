@@ -49,6 +49,8 @@ export interface Tool<A = any> {
 }
 
 export interface Instance {
+  /** Someone just asked the assistant something; returns the widgets to refresh now. */
+  onChat?(): string[] | void;
   widgets: Record<string, Widget>;
   actions?: Record<string, Action>;
   tools?: Record<string, Tool>;

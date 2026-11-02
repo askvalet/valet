@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { batteryNote, createHome, heard, near, restoreGroups, unsettled, wearNote, type LightChange, type PlanData, type PlanLight, type PlanRobot } from './home-model.ts';
 import { Counter, ElasticSlider } from '../feel.tsx';
-import { Cant, Said, Slots, Swatch, useNote } from './note.tsx';
+import { Cant, Said, Slots, Swatch, useNote, useSteady } from './note.tsx';
 
 type Run = (action: string, args?: Record<string, unknown>) => Promise<void>;
 const WARMTH: [string, number, string][] = [['Candle', 2200, '#ffb46b'], ['Warm', 2700, '#ffc98f'], ['Neutral', 4000, '#ffe8d1'], ['Daylight', 6500, '#e6efff']];
@@ -130,9 +130,10 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
   const mine = room && queue?.rooms.includes(room.id), roomAt = mine ? queue!.running ? 'running' : 'sent' : 'clean';
   const sentWord = (...commands: string[]) => !!sent && commands.includes(sent.command);
   const viewOnly = !canAct && <Cant>View only: sign in to change this.</Cant>;
+  const steady = useSteady(!!sel);
   const back = <button onClick={() => choose(null)} className="press flex h-8 flex-none items-center gap-1 rounded-sm pr-3 pl-1.5 text-[13px] text-muted-foreground ring-1 ring-foreground/15 hover:bg-foreground/10 hover:text-foreground"><ChevronLeft className="size-4" />All rooms</button>;
   return (
-    <div className="case"><div className="case-body">
+    <div className="case"><div ref={steady.body} className="case-body" style={{ height: steady.height }}>
       <div className="relative">
         <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-xl" role="img" aria-label="3D floor plan. Drag to look around; select a room or the robot. Every room is also in the list below." />
       </div>

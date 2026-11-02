@@ -1404,7 +1404,7 @@ function TileGraph({ points, gauge }: { points: number[]; gauge?: boolean }) {
 function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
   const art = !!s.image;
   const body = (
-    <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift', art && 'border-transparent text-white')} style={{ '--tint': 'color-mix(in oklab, var(--foreground) 55%, transparent)' } as React.CSSProperties}>
+    <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift', art && 'border-transparent text-white')} style={{ '--tint': s.color ?? 'color-mix(in oklab, var(--foreground) 55%, transparent)' } as React.CSSProperties}>
       {art && <><Art src={s.image} className={cn('absolute inset-0 -z-10 size-full object-cover transition-transform duration-(--dur-move) ease-out', href && 'group-hover/tile:scale-[1.03]')} /><div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(0_0_0/.78),rgb(0_0_0/.42)_38%,transparent_72%)]" /></>}
       {!art && !s.marks && !s.waffle && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} gauge={s.ring != null} /></div>}
       <div className={cn('relative flex flex-1 flex-col p-4', art && '[text-shadow:0_1px_10px_rgb(0_0_0/.7)]')}>
