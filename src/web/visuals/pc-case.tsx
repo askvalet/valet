@@ -92,7 +92,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
           {!!data.presets?.length && (
             <div role="group" aria-label="Lighting presets" className="flex flex-wrap gap-1">
               {data.presets.map(p => (
-                <button key={p.id} disabled={!run} onClick={() => applyPreset(p)} aria-pressed={p.id === active} className="press flex h-14 w-[60px] flex-none flex-col items-center gap-1 rounded-xl pt-1 hover:bg-foreground/[.06] aria-pressed:bg-foreground/10">
+                <button key={p.id} disabled={!run} onClick={() => applyPreset(p)} aria-pressed={p.id === active} className="press flex h-14 w-[60px] flex-none flex-col items-center gap-1.5 pt-1">
                   <i className="size-7 flex-none rounded-full outline-offset-1" style={{ background: p.swatch.length > 1 ? `conic-gradient(${[...p.swatch, p.swatch[0]].join(', ')})` : p.swatch[0], boxShadow: 'inset 0 0 0 1px rgb(255 255 255 / .22)', outline: p.id === active ? '2px solid var(--foreground)' : '2px solid transparent' }} />
                   <span className={cn('max-w-full truncate text-[11px] leading-[1.3]', p.id === active ? 'font-medium' : 'text-muted-foreground')}>{p.name}</span>
                 </button>
