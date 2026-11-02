@@ -282,7 +282,7 @@
 }
 /* press feedback: a slight give under the finger */
 .press, [data-slot="button"], .glass-round, .chat-icon { transition-property: transform, color, background-color, opacity, box-shadow; transition-duration: var(--dur-press); transition-timing-function: var(--ease-out); }
-:is(.press, [data-slot="button"], button.glass-round, .chat-icon, .why-chip, .seg button, .shelf-arrow, .window-archive, .article-tools button, .article-tools a, .undo-bar button):active:not(:disabled, [aria-disabled="true"]) { transform: scale(calc(1 - .03 * var(--move))); }
+:is(.press, [data-slot="button"], button.glass-round, .chat-icon, .seg button, .shelf-arrow, .window-archive, .article-tools button, .article-tools a, .undo-bar button):active:not(:disabled, [aria-disabled="true"]) { transform: scale(calc(1 - .03 * var(--move))); }
 
 /* chat: a message arrives, cards settle in, words fade up out of a slight blur as they stream */
 .chat-in { animation: chat-in var(--dur-move) var(--ease-out) backwards; transform-origin: bottom right; }
@@ -344,10 +344,6 @@
 @media (max-width: 639px) { .fade-x { mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); } }
 /* services: two tight columns even on a phone */
 /* "why?": a small question that opens a line of explanation at the foot of the card */
-.why-chip { flex: none; border-radius: calc(var(--radius) * .4); padding: 1px 8px; font-size: 11px; line-height: 16px; color: var(--muted-foreground); background: rgb(255 255 255 / .08); transition: color var(--dur-press) var(--ease-out), background-color var(--dur-press) var(--ease-out), transform var(--dur-press) var(--ease-out); }
-@media (hover: hover) and (pointer: fine) { .why-chip:hover { color: var(--foreground); background: rgb(255 255 255 / .14); } }
-.why-note { animation: why-note var(--dur-move) var(--ease-out) backwards; }
-@keyframes why-note { from { opacity: 0; transform: translateY(-4px); } }
 /* the brief under the greeting arrives when it's ready, without moving anything */
 .brief-in { animation: fade-in-soft var(--dur-move) var(--ease-out) backwards; }
 /* a pin on chat cards: visible when asked for, always there for fingers */

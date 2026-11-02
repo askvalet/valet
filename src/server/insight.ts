@@ -75,11 +75,6 @@ export class Watcher {
 }
 
 // ── "why?"
-export const whyPrompt = (name: string, about: string | undefined, state: WidgetState | undefined, series: number[][], all: WidgetState[]) => ({
-  system: `You explain what's on a homelab dashboard. In one or two short plain sentences, say the likely reason and, if it helps, the one thing to do. Use only what the data shows; if it doesn't show why, say what it does show. No preamble.\n${SEP}`,
-  prompt: `Asked about: ${clip(about ?? name, 200)} (in the "${name}" widget)\n\n${state?.error ? `Its error: ${clip(state.error, 300)}\n` : ''}Its data: ${clip(JSON.stringify(state?.card ?? null), 3000)}\n${series.length ? `Recent headline numbers, oldest first: ${JSON.stringify(series)}\n` : ''}\nThe rest of the page:\n${digest(all)}`,
-});
-
 // ── what to ask next
 /** Questions worth asking right now, from what's on the page. A tapped suggestion goes out as the person's own words, so
  *  these must never carry a stranger's text: feeds stay out of the prompt, and anything with a link in it is dropped. */

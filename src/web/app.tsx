@@ -13,7 +13,7 @@ import { clock, day, favorites, label, oneLine, sayHow, setFormat, stillTrue, ta
 import { applyLook, applyTheme, type Look } from './look.ts';
 import type { Labels } from '../shared/labels.ts';
 import { ChatBeam } from './beam.tsx';
-import { ClockMonth, type Explain, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, shapeOf, TileSkeleton, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
+import { ClockMonth, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, shapeOf, TileSkeleton, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
 
 // The assistant (and the AI SDK client) loads only when someone asks something.
 const Assistant = lazy(() => import('./assistant.tsx'));
@@ -375,19 +375,6 @@ function Home({ account }: { account: boolean }) {
     if (!f) runners.current.set(key, f = (action, args) => runAction(key, action, args));
     return f;
   };
-  // "why?" for a widget: stable per widget, like the action runners
-  const explainers = useRef(new Map<string, Explain>());
-  const explainFor = (key: string) => {
-    if (!page?.assistant) return undefined;
-    let f = explainers.current.get(key);
-    if (!f) explainers.current.set(key, f = async about => {
-      const r = await fetch('/api/why', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, about }) });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error ?? 'No answer just now.');
-      return j.text;
-    });
-    return f;
-  };
   const cause = liveInsight === undefined ? page?.insight : liveInsight;
   const chatMode = page?.chat.suggestions;
   const questions = !page?.assistant || chatMode === 'off' ? [] : chatMode === 'fixed' ? page.assistant.suggestions : stillTrue(suggest(state, page.assistant.suggestions, undefined, tailored?.list), tailored?.wrong ?? [], Object.values(state));
@@ -512,7 +499,7 @@ function Home({ account }: { account: boolean }) {
                   {sec.widgets.flatMap(key => {
                     const o = sec.looks?.[key], c = dress(state[key]?.card, o);
                     if (!c) return [<TileSkeleton key={key} />];
-                    return (c.summaries ?? (c.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} className={cn(arrival(key), 'min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} href={c.href} explain={explainFor(key)} /></div>);
+                    return (c.summaries ?? (c.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} className={cn(arrival(key), 'min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} href={c.href} /></div>);
                   })}
                 </div>
               )
@@ -521,7 +508,7 @@ function Home({ account }: { account: boolean }) {
                   const keys = sec.widgets.filter(key => state[key] ? !isEmpty(state[key].card) : !shapeOf(key)?.empty);
                   const widget = (key: string, large = false, fill = false, dense = false) => {
                     const s = state[key], o = sec.looks?.[key], card = dress(asView(view === 'all' ? favorites(s?.card, sec.favorites) : s?.card, o?.view), o);
-                    const body = <Shaped key={key} id={key} card={s?.card}><Widget large={large} fill={fill} card={card} kind={shapeOf(key)?.t} explain={explainFor(key)} failed={s?.error} title={o?.title ?? page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={dense || sec.variant === 'minimal' || (phone && view === 'all')} headless={o?.header === false || (o?.header !== true && sec.header === false && view === 'all')}
+                    const body = <Shaped key={key} id={key} card={s?.card}><Widget large={large} fill={fill} card={card} kind={shapeOf(key)?.t} failed={s?.error} title={o?.title ?? page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={dense || sec.variant === 'minimal' || (phone && view === 'all')} headless={o?.header === false || (o?.header !== true && sec.header === false && view === 'all')}
                       status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
                       run={page?.canAct === false ? undefined : runFor(key)} /></Shaped>;
                     return o?.style ? <div key={key} className="card-look contents" style={o.style as React.CSSProperties}>{body}</div> : body;
@@ -538,7 +525,7 @@ function Home({ account }: { account: boolean }) {
                         // a size the config redefines, or a grid of its own, spans by number, never past the last column
                         const [cols, rows] = SPANS[size ?? 'medium'], own = sized[size ?? 'medium'];
                         const spans = (own || sec.grid) && { gridColumn: `span min(${own?.cols ?? cols}, var(--tracks))`, gridRow: `span ${own?.rows ?? rows}` };
-                        if ((size === 'small' || size === 'wide') && c?.summary) return <div key={key} className={cn('min-w-0', !spans && span, o?.style && 'card-look')} style={{ ...spans, ...o?.style }}><SummaryTile s={c.summary} href={c.href} explain={explainFor(key)} /></div>;
+                        if ((size === 'small' || size === 'wide') && c?.summary) return <div key={key} className={cn('min-w-0', !spans && span, o?.style && 'card-look')} style={{ ...spans, ...o?.style }}><SummaryTile s={c.summary} href={c.href} /></div>;
                         return <div key={key} style={spans || undefined} className={cn('min-w-0', !spans && (size === 'small' ? 'col-span-2' : span))}>{widget(key, size === 'large', true)}</div>;
                       })}
                     </div>
@@ -624,7 +611,7 @@ function Home({ account }: { account: boolean }) {
         {!wall && topbar?.theme !== false && (page?.look.theme ?? 'auto') === 'auto' && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={() => { flipped.current = true; theme.toggle(); }}>{theme.dark ? <Sun key="sun" className={cn(flipped.current && 'spin-in')} /> : <Moon key="moon" className={cn(flipped.current && 'spin-in')} />}</RoundButton>}
       </div>
 
-      <main style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-20', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
+      <main style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-28', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
         {(view !== 'all' || !hello) && <h1 className="sr-only">{view === 'all' ? page?.title : view}</h1>}
         {!hasSide && hero}
         {page?.welcome && view === 'all' && <Welcome path={page.welcome.path} saved={page.welcome.saved} />}

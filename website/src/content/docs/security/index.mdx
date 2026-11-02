@@ -39,7 +39,7 @@ The rule: **secure by default, and honest about what's left.** Where a protectio
 ## The assistant
 
 - **It reads freely and changes nothing without asking.** See [access levels](/assistant/access/) and [approvals](/assistant/approvals/).
-- **What it does unasked can only talk.** The morning brief, the shared-cause line and "Why?" call the model with no tools at all. They have a daily budget.
+- **What it does unasked can only talk.** The morning brief and the shared-cause line call the model with no tools at all. They have a daily budget.
 - **It can't give itself more power.** Editing the config needs `assistant.access.config`, and each save needs your approval. Sign-in, plugins, MCP, allowed hosts and its own access are off limits, and secrets can't be written.
 - **Another agent is its own thing.** If `assistant.agent` hands the chat to another agent, it gets the conversation and nothing else from Valet. But it runs its own tools, so access levels and approvals don't cover it. The chat says so.
 - **Reminders can only tell you things.** A reminder sends a message. It can't run a tool.

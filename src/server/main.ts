@@ -11,7 +11,7 @@ import { sameOrigin, setupAuth, userCommand } from './auth.ts';
 import { loadConfig, startConfig, validZone, type Config } from './config.ts';
 import { cleanCss, headers, hostGuard, served } from './security.ts';
 import { UPLOAD_DIR } from './core.ts';
-import { parseSuggestions, scopeOf, statusLine, suggestPrompt, troubles, whyPrompt } from './insight.ts';
+import { parseSuggestions, scopeOf, statusLine, suggestPrompt, troubles } from './insight.ts';
 import { loadPins, newPin, pinnedCard, savePins } from './pins.ts';
 import { loadPlugins } from './plugins.ts';
 import { chatAgent } from './model.ts';
@@ -281,7 +281,6 @@ app.get('/api/image/:inst', async c => {
 });
 
 // Things the page asks the model by itself. No tools here: see brain.ts.
-const whyCache = new Map<string, { at: number; text: string }>();
 // The approval card's words: what this action is about to do. It only reads, and nothing runs until the person says so.
 app.post('/api/confirm', async c => {
   const { tool, input } = await c.req.json().catch(() => ({} as any));
@@ -291,22 +290,6 @@ app.post('/api/confirm', async c => {
   try { return c.json(JSON.parse(site.redact(JSON.stringify({ logo, ...await t.confirm(input ?? {}) })))); } catch { return c.json({ logo }); }
 });
 
-app.post('/api/why', async c => {
-  const { key, about } = await c.req.json().catch(() => ({} as any));
-  if (!site.ask) return c.json({ error: 'no assistant configured' }, 404);
-  const widget = typeof key === 'string' ? site.hub.widget(key) : undefined;
-  if (!widget) return c.json({ error: 'no such widget' }, 404);
-  const id = `${key}|${String(about ?? '').slice(0, 200)}`, hit = whyCache.get(id);
-  if (hit && Date.now() - hit.at < 60_000) return c.json({ text: hit.text });
-  if (!site.hub.snapshot().some(s => s.key === key)) await site.hub.refresh(key);   // nobody's been watching it
-  const all = site.hub.snapshot(), p = whyPrompt(widget.title, about == null ? undefined : String(about), all.find(s => s.key === key), site.history?.recent(key) ?? [], all);
-  const text = await site.ask(p.system, p.prompt, 'asked');
-  if (!text) return c.json({ error: "The assistant couldn't answer just now." }, 503);
-  const clean = site.redact(text);
-  whyCache.set(id, { at: Date.now(), text: clean });
-  if (whyCache.size > 60) whyCache.delete(whyCache.keys().next().value!);
-  return c.json({ text: clean });
-});
 // the page has just opened, so give its widgets a moment to report in
 const settled = async () => { for (let i = 0; i < 12 && site.hub.snapshot().length < site.placed.size * .6; i++) await new Promise(r => setTimeout(r, 500)); };
 // Suggestions are rewritten every half hour while the page is in use, sooner (every ten minutes at most) when what's

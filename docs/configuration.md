@@ -316,7 +316,7 @@ and saves only when you approve; hot reload does the rest. It changes only the l
 `assistant`, `appearance` (which names files on disk), `mcp`, `plugins` or `allowedHosts`, and it refuses to write a secret: it asks you to put `${NAME}` in `.env`.
 Mount the config folder read-only and it hands you the diff to paste instead.
 
-**On the page, not in chat:** "Why?" on anything in trouble, a summary when you hover the status sentence, ⌘K answers and approvals in
+**On the page, not in chat:** A summary when you hover the status sentence, ⌘K answers and approvals in
 place, and pin on a chat card to keep it on the page. A pin re-runs the same tool, so no model is involved after that;
 pins live in `data/pins.json`.
 

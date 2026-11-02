@@ -232,7 +232,6 @@ function Rows({ card, dense }: { card: ListCard; dense: boolean }) {
               <div className={cn('min-w-0 flex-1 font-medium', dense ? 'text-[13px]' : 'text-sm', it.href && !dense ? 'line-clamp-2 leading-snug' : 'truncate')}>{it.title}</div>
               {it.meta && <div className="shrink-0 text-xs tabular text-muted-foreground">{it.meta}</div>}
               {it.dot && <span className={cn('dot size-1.5', it.dot === 'good' ? 'dot-good' : 'dot-bad')} style={it.dot === 'warn' ? { background: 'var(--warn)' } : undefined} title={it.dot === 'good' ? 'Healthy' : undefined} />}
-              {it.tone === 'bad' && <WhyChip about={`${it.title}: ${it.subtitle ?? ''} ${it.meta ?? ''}`} />}
               {it.href && <ArrowUpRight className="row-arrow size-3.5 shrink-0 text-muted-foreground" />}
             </div>
             {it.subtitle && <div className={cn('truncate text-xs', it.tone && it.tone !== 'neutral' ? toneText[it.tone] : 'text-muted-foreground')}>{it.subtitle}</div>}
@@ -242,29 +241,6 @@ function Rows({ card, dense }: { card: ListCard; dense: boolean }) {
         </Row></RowSlot>
       </Fragment>)}
     </ul>
-  );
-}
-
-// "Why?": any widget in trouble can be asked about. The answer shows at the foot of its card.
-export type Explain = (about?: string) => Promise<string>;
-const WhyAsk = createContext<((about?: string) => void) | null>(null);
-function useWhy(explain?: Explain) {
-  const [note, setNote] = useState<{ busy: boolean; text?: string } | null>(null);
-  const ask = (about?: string) => { setNote({ busy: true }); explain?.(about).then(text => setNote({ busy: false, text })).catch(e => setNote({ busy: false, text: e.message })); };
-  return { ask: explain ? ask : null, note, close: () => setNote(null) };
-}
-function WhyChip({ about }: { about?: string }) {
-  const ask = useContext(WhyAsk);
-  if (!ask) return null;
-  return <button type="button" className="why-chip" onClick={e => { e.preventDefault(); e.stopPropagation(); ask(about); }}>Why?</button>;
-}
-function WhyNote({ note, close }: { note: { busy: boolean; text?: string } | null; close: () => void }) {
-  if (!note) return null;
-  return (
-    <div className="why-note mt-3 flex items-start gap-2 rounded-xl bg-white/[.06] px-3 py-2 text-[13px] leading-relaxed">
-      <span className={cn('min-w-0 flex-1', note.busy && 'chat-shimmer')}>{note.busy ? 'Looking into it' : note.text}</span>
-      {!note.busy && <button type="button" aria-label="Dismiss" onClick={close} className="press shrink-0 text-muted-foreground hover:text-foreground"><X className="size-3.5" /></button>}
-    </div>
   );
 }
 
@@ -283,7 +259,6 @@ const STATE: Record<ServiceState, string> = { up: 'Up', degraded: 'Unhealthy', d
 const stateLine = (s: StatusItem, st = stateOf(s)) => st === 'up' ? s.ms != null ? `${s.ms} ms` : s.detail ?? 'Up' : st === 'off' ? STATE.off : s.detail ?? STATE[st];
 const stateTip = (s: StatusItem, st = stateOf(s)) => [s.name, st === 'up' ? s.detail ?? (s.ms != null ? 'reachable' : 'running') : stateLine(s), st === 'up' && s.ms != null ? `${s.ms} ms` : undefined].filter(Boolean).join(' · ');
 
-/** The dots, explained: one quiet line, and only once one of them isn't green. */
 function ServiceRow({ s, minimal }: { s: StatusCard['items'][number]; minimal?: boolean }) {
   const st = stateOf(s), dot = DOT[st];
   // minimal: one tight line, icon, name and the dot; hover says what's wrong
@@ -541,7 +516,6 @@ function StallLine({ m, stall, card, run }: { m: MediaItem; stall: Stall; card: 
       <span className="truncate text-warn">{says}</span>
       {next?.action && run ? <button type="button" className="title-link text-foreground/85" onClick={() => void run(next.action!, next.args)}>{next.label}</button>
         : next?.href ? <a href={next.href} target="_blank" rel="noreferrer" className="title-link text-foreground/85">{next.label}</a> : null}
-      <WhyChip about={`${m.title}: ${says}`} />
     </div>
   );
 }
@@ -1351,8 +1325,8 @@ export const TileSkeleton = () => (
   <Card className="relative h-[136px] gap-0 py-0 shadow-card"><div className="flex h-full flex-col justify-between p-4"><Skeleton className="h-3.5 w-2/3" /><Skeleton className="h-7 w-1/2" /></div></Card>
 );
 
-function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, fill, kind, explain, failed }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; fill?: boolean; kind?: string; explain?: Explain; failed?: string }) {
-  const why = useWhy(explain), fade = useRef(card ? '' : 'fade-in-soft').current;   // up from its skeleton; a tab you come back to is already there
+function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, fill, kind, failed }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; fill?: boolean; kind?: string; failed?: string }) {
+  const fade = useRef(card ? '' : 'fade-in-soft').current;   // up from its skeleton; a tab you come back to is already there
   // artwork-led cards sit directly on the page, without a card frame
   const actions = card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null;
   if (card?.type === 'shelf') return <div className={cn(fade, 'min-w-0')}><Shelf card={card} small={compact} run={run} header={<BareHeader card={card} title={title} status={status} />} />{actions}</div>;
@@ -1365,7 +1339,7 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
     <div className={cn(fade, 'min-w-0 space-y-3')}><BareHeader card={card} title={title} status={status} /><Photos card={card} large={large} />{actions}</div>
   );
   if (card?.type === 'media') return (
-    <WhyAsk.Provider value={why.ask}><div className={cn(fade, 'flex min-w-0 flex-col gap-3', fill && 'h-full')}><BareHeader card={card} title={title} status={status} /><Media card={card} compact={compact} run={run} />{actions}<WhyNote note={why.note} close={why.close} /></div></WhyAsk.Provider>
+    <div className={cn(fade, 'flex min-w-0 flex-col gap-3', fill && 'h-full')}><BareHeader card={card} title={title} status={status} /><Media card={card} compact={compact} run={run} />{actions}</div>
   );
   // the house's cards are glass edge to edge, with no header; in chat they're ordinary cards, below
   if (!compact && (card?.type === 'forecast' || card?.type === 'calendar' || card?.type === 'thermostat')) return (
@@ -1378,14 +1352,13 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
   const bare = card?.type === 'group';
   const scene = !compact && card ? card.type === 'schedule' ? <SkyWash card={card} /> : card.type === 'verse' && card.arabic ? <Lattice /> : null : null;
   return (
-    <Dense.Provider value={!!compact}><WhyAsk.Provider value={why.ask}>
+    <Dense.Provider value={!!compact}>
     <Card className={cn('@container/card min-w-0 shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'gap-4 py-5', !compact && card?.type === 'verse' && card.href && 'lift', bare && 'border-0 bg-transparent py-0 shadow-none', fill && 'h-full', scene && 'relative isolate overflow-hidden')}>
       {scene}
       {t && !bare && !headless && (
         <CardHeader className={cn('flex items-center gap-2', compact ? 'px-3.5' : 'px-5')}>
           <CardTitle className={cn('truncate', compact ? 'text-[13px]' : 'text-[15px]')}>{card?.href ? <a href={card.href} target="_blank" rel="noreferrer" className="title-link">{t}</a> : t}</CardTitle>
           {status}
-          {failed && <WhyChip about={`It can't be reached: ${failed}`} />}
           <CardAction className="flex items-center gap-2 self-center">
             {card?.note && <span className="truncate text-xs tabular text-muted-foreground">{card.note}</span>}
           </CardAction>
@@ -1395,10 +1368,9 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
         {card?.banner && <BannerLine b={card.banner} run={run} />}
         {card ? <div className={cn(fade, fill && 'flex flex-1 flex-col')}><CardBody card={card} run={run} large={large} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /></div> : <CardSkeleton kind={kind} />}
         {card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null}
-        <WhyNote note={why.note} close={why.close} />
       </CardContent>
     </Card>
-    </WhyAsk.Provider></Dense.Provider>
+    </Dense.Provider>
   );
 }
 
@@ -1435,9 +1407,7 @@ function TileGraph({ points, gauge }: { points: number[]; gauge?: boolean }) {
 
 /** Headline tile for the overview's top row: label and context up top, the value at the bottom. What's behind them
  *  depends on what the tile knows: artwork, a live graph, or a bar for each thing it counts. */
-function SummaryTileView({ s, href, explain }: { s: Summary; href?: string; explain?: Explain }) {
-  const why = useWhy(explain);
-  const trouble = why.ask && (s.tone === 'bad' || s.tone === 'warn');
+function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
   const art = !!s.image;
   const body = (
     <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift', art && 'border-transparent text-white')} style={{ '--tint': 'color-mix(in oklab, var(--foreground) 55%, transparent)' } as React.CSSProperties}>
@@ -1456,15 +1426,8 @@ function SummaryTileView({ s, href, explain }: { s: Summary; href?: string; expl
           <div className={cn('metric min-w-0 truncate text-[20px] leading-none @[200px]/tile:text-[22px]', !art && toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}><Counter value={s.value} /></div>
           {s.marks?.length ? <TileMarks marks={s.marks} /> : s.waffle && s.pct != null ? <Waffle pct={s.pct} label={s.sub} /> : null}
           {s.detail && <div className="hidden min-w-0 truncate text-xs tabular text-muted-foreground @[200px]/tile:block">{s.detail}</div>}
-          {trouble && !why.note && <button type="button" className="why-chip" onClick={e => { e.preventDefault(); e.stopPropagation(); why.ask!(`${s.label}: ${s.value} ${s.sub ?? ''}`); }}>Why?</button>}
         </div>
       </div>
-      {why.note && (
-        <div className="why-note absolute inset-0 flex items-start gap-2 overflow-y-auto bg-card/95 p-3.5 text-[13px] leading-snug" onClick={e => e.preventDefault()}>
-          <span className={cn('min-w-0 flex-1', why.note.busy && 'chat-shimmer')}>{why.note.busy ? 'Looking into it' : why.note.text}</span>
-          {!why.note.busy && <button type="button" aria-label="Dismiss" onClick={e => { e.preventDefault(); why.close(); }} className="shrink-0 text-muted-foreground"><X className="size-3.5" /></button>}
-        </div>
-      )}
     </Card>
   );
   return href ? <a href={href} target="_blank" rel="noreferrer" className="group/tile block h-full min-w-0">{body}</a> : <div className="group/tile h-full min-w-0">{body}</div>;
