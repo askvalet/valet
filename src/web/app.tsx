@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { Card as CardData, ForecastCard, StatusCard, WidgetState } from '../shared/cards.ts';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
-import Island, { type Live, type Notice } from './island.tsx';
+import Island, { LiveRings, type Live, type Notice } from './island.tsx';
 import { SignIn, useMe } from './signin.tsx';
 import { suggest } from './suggest.ts';
 import { asView, type View } from '../shared/views.ts';
@@ -39,7 +39,7 @@ interface Page {
   welcome?: { path: string; saved: boolean };
   menubar?: { widgets: string[]; position: 'left' | 'center' | 'right'; labels: boolean; clock: boolean; date: boolean; theme: boolean };
   nav?: { side: 'left' | 'right' | 'top' | 'bottom'; style: 'icons' | 'labels' | 'both'; hide: string[]; order?: string[] };
-  island?: { activities: string[]; idle: 'notch' | 'hide'; position: 'top' | 'top-left' | 'top-right' | 'bottom'; label: boolean };
+  island?: { activities: string[]; idle: 'notch' | 'hide'; position: 'top' | 'top-left' | 'top-right' | 'bottom'; label: boolean; style: 'notch' | 'rings' };
   weather?: string;
   calendar?: string;
   recap?: boolean;
@@ -494,6 +494,7 @@ function Home({ account }: { account: boolean }) {
 
   const place = phone ? 'center' : ui?.open ?? 'center', docked = place === 'left' || place === 'right';
   const topbar = page?.menubar;
+  const asRings = page?.island?.style === 'rings', liveInBar = asRings && wide && live.length > 0 && page?.island?.position !== 'top-left', liveOnLeft = asRings && wide && live.length > 0 && page?.island?.position === 'top-left';
   const weatherCard = page?.weather && state[page.weather]?.card?.type === 'forecast' ? state[page.weather]!.card as ForecastCard : undefined;
   const chatWide = wide && !phone && !!chatTab && view === chatTab && !!page?.assistant;
   // a section title on the page, as it always was; one that's only a tab's name is still a heading to a screen reader
@@ -617,11 +618,13 @@ function Home({ account }: { account: boolean }) {
 
       {/* top-right: the menubar rings, weather and time (and the theme switch when there's no wallpaper).
           Below lg it sits at the top of the page instead, centred and wrapping, so phones see it too. */}
-      {page?.island && <Island live={live} idle={page.island.idle} docked={wide && page.island.position !== 'bottom'} position={wide ? page.island.position : 'top'} label={page.island.label} notice={notice} />}
+      {page?.island && <Island live={asRings && wide ? [] : live} idle={page.island.idle} docked={wide && page.island.position !== 'bottom'} position={wide ? page.island.position : 'top'} label={page.island.label} notice={notice} />}
       {/* phones: one row, condensed; wide screens: top right, level with the island */}
+      {liveOnLeft && <div className="glass-bar glass-plate wall-text absolute top-5 left-5 z-20 flex items-center gap-3 border px-4 py-1.5"><LiveRings live={live} /></div>}
       <div ref={bar} data-labels={topbar?.labels !== false || undefined} className={cn(!settled && 'invisible', 'menubar wall-text z-20 flex items-stretch justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:gap-4 xl:p-0', { left: 'xl:left-5', center: 'xl:left-1/2 xl:-translate-x-1/2', right: 'xl:right-5' }[topbar?.position ?? 'right'])}>
         {!!topbar?.widgets.length && (
           <div className="glass-bar glass-plate relative flex shrink items-center gap-1 border px-2 py-1 sm:gap-3 sm:px-4 sm:py-1.5">
+            {liveInBar && <><LiveRings live={live} /><i className="live-rule" aria-hidden /></>}
             {topbar.widgets.flatMap(key => {
               const c = state[key]?.card;
               return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} role="group" aria-label={`${t.label} ${t.value}`} className="fade-in-soft"><MiniRing s={t} /></div>);

@@ -396,6 +396,7 @@ The black notch at the top that shows what's happening.
 | `idle` | `hide` | `notch` keeps a small empty notch when nothing is live |
 | `position` | `top` | `top-left`, `top-right`, or `bottom` (floating, and no notch), on wide screens. Phones float it at the top |
 | `label` | `true` | `false`: artwork and progress only, until it's opened |
+| `style` | `notch` | `rings`: on wide screens, activities join the top bar's rings, or sit in their own plate with `position: top-left`. Notices still pop up |
 | `size` | `1` | 0.6–2 |
 | `notify` | `[]` | short notices: `{ widget, on: start\|end\|down\|up, text, push }`; `{title}` and `{name}` fill in; `push: true` also sends it to your channels |
 

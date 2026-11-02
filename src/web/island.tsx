@@ -57,6 +57,28 @@ function Badge({ a, size }: { a: Live; size: number }) {
   );
 }
 
+/** Live activities as rings beside the system ones: artwork inside, how far along around it, and the whole story on hover. */
+export function LiveRings({ live }: { live: Live[] }) {
+  return live.map(a => {
+    const r = 15, c = 2 * Math.PI * r, arc = c * .75, p = Math.max(0, Math.min(1, a.pct ?? 0));
+    const tag = <>
+      <span className="relative block size-[32px] transition-transform duration-(--dur-pop) ease-out group-hover/live:scale-110 sm:size-[38px]">
+        <svg viewBox="0 0 38 38" className="size-full rotate-[135deg]" aria-hidden>
+          <circle cx="19" cy="19" r={r} fill="none" stroke="currentColor" strokeOpacity=".16" strokeWidth="3.2" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} />
+          {a.pct != null && <circle cx="19" cy="19" r={r} fill="none" stroke={tint(a)} strokeWidth="3.2" strokeLinecap="round" strokeDasharray={`${Math.max(.001, p) * arc} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move) ease-out" />}
+        </svg>
+        <span className="absolute inset-[7px] grid place-items-center overflow-hidden rounded-full sm:inset-[8px]">
+          {a.image ? <img src={a.image} alt="" className="size-full object-cover" /> : <Icon name={a.icon} className="size-3.5" />}
+        </span>
+      </span>
+      <span className="-mt-1 hidden max-w-[64px] truncate text-[10px] font-medium text-muted-foreground sm:block">{a.title}</span>
+      <span className="live-tip" role="tooltip"><b>{a.title}</b>{a.subtitle && <i>{a.subtitle}</i>}{a.trailing && <i>{a.trailing}</i>}</span>
+    </>;
+    const cls = 'group/live relative flex flex-col items-center outline-none';
+    return a.href ? <a key={a.key} href={a.href} target="_blank" rel="noreferrer" aria-label={a.title} className={cls}>{tag}</a> : <div key={a.key} tabIndex={0} aria-label={a.title} className={cls}>{tag}</div>;
+  });
+}
+
 export default function Island({ live, idle, docked, notice, position = 'top', label = true }: { live: Live[]; idle: 'notch' | 'hide'; docked: boolean; notice?: Notice | null; position?: 'top' | 'top-left' | 'top-right' | 'bottom'; label?: boolean }) {
   // a notice springs the island open for a few seconds, then it settles back to whatever's live
   const [shout, setShout] = useState<Notice | null>(null);

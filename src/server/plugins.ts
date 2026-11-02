@@ -51,7 +51,7 @@ export function guardCards(inst: Instance) {
 
 export async function loadPlugins(registry: Record<string, Integration>, packages: string[], replace: string[]) {
   const dir = resolve(process.env.VALET_DATA ?? 'data', 'integrations');
-  const files = (await readdir(dir).catch(() => [] as string[])).filter(f => /\.(m?js)$/.test(f)).sort().map(f => pathToFileURL(resolve(dir, f)).href);
+  const files = (await readdir(dir).catch(() => [] as string[])).filter(f => /\.(m?js)$/.test(f) && !f.endsWith('.web.js')).sort().map(f => pathToFileURL(resolve(dir, f)).href);
   const loaded: string[] = [];
   for (const spec of [...files, ...packages]) {
     try {

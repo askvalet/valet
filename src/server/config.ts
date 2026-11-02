@@ -270,6 +270,7 @@ export const Config = z.object({
     activities: z.array(z.string()).default([]), idle: z.enum(['hide', 'notch']).default('hide'),
     position: z.enum(['top', 'top-left', 'top-right', 'bottom']).default('top'),   // wide screens; a notch only hangs from the top
     label: z.boolean().default(true),       // false: artwork and progress only, until it's opened
+    style: z.enum(['notch', 'rings']).default('notch'),   // rings: on wide screens, activities join the top bar's rings (top-left: their own plate there)
     size: Scale.default(1),
     // short notices when things change, e.g. { widget: downloads.active, on: end, text: "{title} finished" }:
     // start/end of a widget's live activity, a service going down/up (status cards). {title}, {name} fill in.
