@@ -71,8 +71,9 @@ layout:
     header: false
     overview: false
     widgets:
-      - { widget: lab.cameras, size: large }
+      - { widget: lab.cameras, size: large, rows: 2 }
       - { widget: lab.thermostat, size: medium }
+      - { widget: lab.weather, size: medium }
   - tab: Home
     heading: false
     columns: 2

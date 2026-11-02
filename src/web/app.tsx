@@ -24,7 +24,7 @@ const RecapStory = lazy(() => import('./recap.tsx'));
 type Size = 'small' | 'wide' | 'medium' | 'tall' | 'large';
 type Paper = { image?: string; paint?: string };
 type Grid = { phone?: number; tablet?: number; desktop?: number };
-type CardOverride = { title?: string; icon?: string; header?: boolean; view?: View; style?: Record<string, string> };
+type CardOverride = { title?: string; icon?: string; header?: boolean; view?: View; rows?: number; style?: Record<string, string> };
 
 interface Page {
   title: string; greeting?: string; notice?: string; location?: string; canAct?: boolean;
@@ -524,9 +524,9 @@ function Home({ account }: { account: boolean }) {
                         const span = cn(size !== 'small' && 'col-span-2', size === 'tall' && 'row-span-2', size === 'large' && 'col-span-full @5xl/main:col-span-4');
                         // a size the config redefines, or a grid of its own, spans by number, never past the last column
                         const [cols, rows] = SPANS[size ?? 'medium'], own = sized[size ?? 'medium'];
-                        const spans = (own || sec.grid) && { gridColumn: `span min(${own?.cols ?? cols}, var(--tracks))`, gridRow: `span ${own?.rows ?? rows}` };
-                        if ((size === 'small' || size === 'wide') && c?.summary) return <div key={key} className={cn('min-w-0', !spans && span, o?.style && 'card-look')} style={{ ...spans, ...o?.style }}><SummaryTile s={c.summary} href={c.href} /></div>;
-                        return <div key={key} style={spans || undefined} className={cn('min-w-0', !spans && (size === 'small' ? 'col-span-2' : span))}>{widget(key, size === 'large', true)}</div>;
+                        const spans = (own || sec.grid) ? { gridColumn: `span min(${own?.cols ?? cols}, var(--tracks))`, gridRow: `span ${o?.rows ?? own?.rows ?? rows}` } : o?.rows ? { gridRow: `span ${o.rows}` } : undefined;
+                        if ((size === 'small' || size === 'wide') && c?.summary) return <div key={key} className={cn('min-w-0', !spans?.gridColumn && span, o?.style && 'card-look')} style={{ ...spans, ...o?.style }}><SummaryTile s={c.summary} href={c.href} /></div>;
+                        return <div key={key} style={spans} className={cn('min-w-0', !spans?.gridColumn && (size === 'small' ? 'col-span-2' : span))}>{widget(key, size === 'large', true)}</div>;
                       })}
                     </div>
                   );

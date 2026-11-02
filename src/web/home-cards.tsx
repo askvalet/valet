@@ -420,7 +420,7 @@ export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: R
   const [mx, my] = room != null ? at(pctOf(room)) : [0, 0], rise = value != null && room != null && card.mode !== 'off';
   const pressMode = (m: ThermostatMode) => { setFlip(m.id); hold(); run?.(m.action, m.args).catch(fail); };
   return (
-    <div className={cn('th flex h-full min-w-0 flex-1 flex-col items-center', 'gap-3')} data-mode={card.mode ?? 'heat'}>
+    <div className={cn('th flex h-full min-w-0 flex-1 flex-col items-center gap-3', !dense && 'p-5')} data-mode={card.mode ?? 'heat'}>
       <div className="flex w-full min-h-0 flex-1 items-center justify-center">
         <div ref={box} className={cn('relative aspect-square w-full', live != null && 'is-drag', dense ? 'max-w-[180px]' : 'max-w-[216px]')}>
           <svg viewBox="0 0 320 320" className="absolute inset-0 size-full overflow-visible" aria-hidden={!canSet}>
