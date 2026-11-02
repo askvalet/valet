@@ -19,7 +19,7 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
   if (!existsSync(resolve(repo, 'dist/server.js'))) throw new Error('Valet is not built: npm run shots builds it first');
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(resolve(data, 'integrations'), { recursive: true });
-  // pausing the downloads asks with a press and hold here, so the docs can show one: the demo has nothing dangerous to do
+  // pausing the downloads is marked dangerous here, so the docs can show the red button: the demo has nothing dangerous to do
   writeFileSync(resolve(data, 'integrations/homelab.mjs'), invented(readFileSync(resolve(repo, 'demo/integrations/homelab.mjs'), 'utf8')).replace("title: 'Pause all downloads?',", "title: 'Pause all downloads?', danger: true,")
     // the same films under their new names, with no poster, so the demo draws one
     .replace(/^const ART = .*$/m, m => `${m}\nART.films = Object.fromEntries(Object.entries(ART.films).map(([k, v]) => [(${JSON.stringify(TITLES)})[k] ?? k, { year: v.year }]));`));
@@ -115,13 +115,6 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
     await sleep(4000);
     const risky = await page.locator('.chat-card').last().boundingBox({ timeout: 4000 }).catch(() => null);
     if (risky) await shot(page, cdp, 'scene/approval-danger', risky, 16); else problems.push('scene/approval-danger: no card');
-    // a mouse holds; a touch screen presses twice. Whichever this browser counts as.
-    const button = page.getByText(/^(Hold|Press twice) to pause$/).first(), press = await button.boundingBox({ timeout: 3000 }).catch(() => null);
-    if (press) {
-      await page.mouse.move(press.x + press.width / 2, press.y + press.height / 2); await page.mouse.down(); await sleep(420);
-      await shot(page, cdp, 'scene/approval-holding', risky, 16);
-      await page.mouse.move(10, 10); await page.mouse.up();
-    } else problems.push('scene/approval-holding: no hold button');
   } finally { await desktop.context.close(); }
 
   const phone = await make(390, 844, true);

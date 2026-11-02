@@ -3,8 +3,8 @@
 // An integration turns one block of config.yaml into:
 //   widgets  cards for the homepage, refreshed on an interval while someone is looking
 //   actions  things the homepage controls can do (toggle a light, pause a download)
-//   tools    what the assistant may call; each is 'read', 'write' (adds something, e.g. saves a bookmark: runs without
-//            asking) or 'control' (changes or removes something: asks the person first). Config decides which it gets.
+//   tools    what the assistant may call; each is 'read', 'write' (adds something, e.g. saves a bookmark) or 'control' (changes or removes
+//            something). Anything but 'read' asks the person first. Config decides which it gets.
 // Everything runs on the server, so API keys and internal URLs never reach the browser.
 import type { Format } from './config.ts';
 import { readFile } from 'node:fs/promises';
@@ -43,9 +43,6 @@ export interface Tool<A = any> {
   confirm?(input: A): Confirm | Promise<Confirm>;
   /** The tool that reverses this one, given the same input: it adds Undo in the activity log. */
   undo?: string;
-  /** For 'write' tools: input fields that must come word for word from the person's own latest message for the tool to
-   *  run without asking (e.g. the link they pasted). Otherwise, say when a document or web page suggested it, it asks. */
-  fromPerson?: string[];
   input: z.ZodType<A>;
   /** `data` goes to the model (keep it compact); `card` is what the person sees in chat. */
   run(args: A): Promise<{ data: unknown; card?: Card }>;

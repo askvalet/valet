@@ -140,7 +140,7 @@ async function widgetsFrom(type: string, def: any, cfg: any, make: () => any, st
 }
 
 const describe = (t: any) => { try { return z.toJSONSchema(t, { unrepresentable: 'any', io: 'input' }); } catch { return {}; } };
-const toolsOf = (inst: any) => Object.entries<any>(inst.tools ?? {}).map(([name, t]) => ({ name, label: t.label, access: t.access, about: t.description, confirms: !!t.confirm, fromPerson: t.fromPerson, undo: t.undo, followUps: t.followUps, input: Object.keys((describe(t.input) as any).properties ?? {}) }));
+const toolsOf = (inst: any) => Object.entries<any>(inst.tools ?? {}).map(([name, t]) => ({ name, label: t.label, access: t.access, about: t.description, confirms: !!t.confirm, undo: t.undo, followUps: t.followUps, input: Object.keys((describe(t.input) as any).properties ?? {}) }));
 const actionsOf = (inst: any) => Object.entries<any>(inst.actions ?? {}).map(([name, a]) => ({ name, about: a.description, input: Object.keys((describe(a.input) as any).properties ?? {}) }));
 const recapOf = async (inst: any, problems: string[]) => {
   if (!inst.recap) return [];

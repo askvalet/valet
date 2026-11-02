@@ -19,7 +19,7 @@ That's the model here. The assistant reads freely, and changes nothing without y
 
 - **It never holds your keys.** It calls tools, and Valet's server makes the requests. Tool results go through the [redactor](/security/secrets/) before the model sees them.
 - **Every tool has an access level.** `read` looks. `write` adds something. `control` changes or removes something. You set what each integration allows in [`assistant.access`](/assistant/access/).
-- **Control tools ask you first.** Nothing runs until you press the button on the [approval card](/assistant/approvals/). The model can't press it.
+- **Anything but `read` asks you first.** Nothing runs until you press the button on the [approval card](/assistant/approvals/). The model can't press it.
 - **Without sign-in, it can only look.** If Valet has no sign-in and you haven't said the network is trusted, the assistant gets read tools and nothing else, whatever `assistant.access` says.
 - **Changes are written down.** Anything that isn't a read goes in the [activity log](/assistant/approvals/#the-activity-log), with who asked and whether it worked.
 

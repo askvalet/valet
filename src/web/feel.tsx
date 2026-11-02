@@ -1,4 +1,4 @@
-// How things feel under the hand: a row you can throw, a pile you can flick, a button you hold, a slider that gives at its
+// How things feel under the hand: a row you can throw, a pile you can flick, a slider that gives at its
 // ends, a number where only what changed moves, and one place at the bottom of the page for what just happened. Plain React
 // and CSS: a gesture writes transform and opacity straight to the element, and everything else is a CSS transition, so it
 // can be caught mid-flight and the reduced-motion rule in styles.css needs nothing more. Licence at the end of this file.
@@ -105,7 +105,7 @@ export function Arrows({ row, className }: { row: ReturnType<typeof useRow<any>>
  *  Depth is a dim laid over the card, not its opacity: a see-through card would show the next one's words. */
 export const pose = (p: number): CSSProperties => p <= 0
   ? { transform: `translateX(${(p * 112).toFixed(2)}%) rotate(${(p * 5).toFixed(2)}deg)`, opacity: +Math.max(0, Math.min(1, 1.5 + p * 1.5)).toFixed(3), '--dim': 0 } as CSSProperties
-  : { transform: `translateY(${(-9 * Math.min(p, 2)).toFixed(2)}px) scale(${(1 - .045 * Math.min(p, 2)).toFixed(4)})`, opacity: +Math.max(0, Math.min(1, 3 - p)).toFixed(3), '--dim': +(Math.min(p, 2) * .2).toFixed(3) } as CSSProperties;
+  : { transform: `translateY(${(-14 * Math.min(p, 3)).toFixed(2)}px) scale(${(1 - .05 * Math.min(p, 3)).toFixed(4)})`, opacity: +Math.max(0, Math.min(1, 4 - p)).toFixed(3), '--dim': +(Math.min(p, 3) * .16).toFixed(3) } as CSSProperties;
 
 /** A pile you flick through: the card on top, the next ones showing above it. Left is on, right is back; it follows the
  *  finger, and letting go decides by how far and how fast. Up and down still scroll the page. `over` sits above the cards
@@ -125,7 +125,7 @@ export function Pile({ count, at, go, id, card, label, status, over }: { count: 
     const v = speed(g.trail), dir = g.dx < 0 ? 1 : -1, next = now.current + dir;
     if ((Math.abs(g.dx) > g.width * .28 || (Math.abs(v) > 450 && v * g.dx > 0)) && next >= 0 && next < count) { place(dir, false); go(next); } else place(0, false);
   };
-  const shown = []; for (let i = Math.max(0, at - 1); i <= Math.min(count - 1, at + 3); i++) shown.push(i);
+  const shown = []; for (let i = Math.max(0, at - 1); i <= Math.min(count - 1, at + 4); i++) shown.push(i);
   return (
     <div ref={box} role="group" aria-roledescription="pile" aria-label={label} className={cn('pile', count === 1 && 'is-single')} data-still={keyed || undefined}
       onPointerDown={e => {
@@ -151,36 +151,6 @@ export function Pile({ count, at, go, id, card, label, status, over }: { count: 
       {over && <div className="pile-over">{over}</div>}
       {status && <span role="status" className="sr-only">{status}</span>}
     </div>
-  );
-}
-
-/** A button that asks for a little more: hold it while the fill crosses, and letting go early takes it back. A quick press
- *  (and any press from a keyboard or a screen reader that doesn't hold) asks for a second one, with no clock on it. Held
- *  Enter or Space count as holding. With motion off there's no fill to read, so it's always the two presses. */
-export function Hold({ verb, onConfirm, ms = 800, className }: { verb: string; onConfirm: () => void; ms?: number; className?: string }) {
-  const btn = useRef<HTMLButtonElement>(null), timer = useRef<ReturnType<typeof setTimeout>>(undefined), since = useRef(0), fired = useRef(false), handled = useRef(false);
-  const [held, setHeld] = useState(false), [armed, setArmed] = useState(false), [twice, setTwice] = useState(false);
-  useLayoutEffect(() => setTwice(still(btn.current)), []);
-  useEffect(() => () => clearTimeout(timer.current), []);
-  const fire = () => { if (fired.current) return; fired.current = true; setHeld(false); onConfirm(); };
-  const start = () => { since.current = Date.now(); if (still(btn.current)) return; setHeld(true); timer.current = setTimeout(fire, ms); };
-  const stop = () => { clearTimeout(timer.current); setHeld(false); since.current = 0; };
-  const press = () => { if (armed) fire(); else setArmed(true); };
-  const release = () => { const quick = since.current && (twice || Date.now() - since.current < 280); stop(); if (quick) press(); };
-  const key = (e: KeyboardEvent) => e.key === 'Enter' || e.key === ' ';
-  return (
-    <button ref={btn} type="button" data-held={held || undefined} aria-label={armed ? `Press again: ${verb}` : `${verb}. Asks for a second press`} className={cn('hold press relative overflow-hidden', className)} style={{ '--hold': `${ms}ms` } as CSSProperties}
-      onPointerDown={e => { if (!e.button) { e.currentTarget.setPointerCapture(e.pointerId); start(); } }}
-      onPointerUp={() => { if (since.current) { handled.current = true; release(); } }} onPointerCancel={stop} onContextMenu={e => e.preventDefault()}
-      onKeyDown={e => { if (key(e)) { e.preventDefault(); if (!e.repeat) start(); } }} onKeyUp={e => { if (key(e)) { e.preventDefault(); release(); } }}
-      onClick={() => { if (handled.current) handled.current = false; else press(); }}   // a screen reader's press arrives as a bare click
-      onBlur={() => { stop(); setArmed(false); }}>
-      <i className="hold-fill" aria-hidden />
-      <span className="slots relative" aria-hidden>
-        <span data-off={armed || undefined}>{`${twice ? 'Press twice' : 'Hold'} to ${verb.toLowerCase()}`}</span>
-        <span data-off={!armed || undefined}>Press again</span>
-      </span>
-    </button>
   );
 }
 
@@ -307,7 +277,7 @@ function Toasts() {
 }
 
 /* Rewritten for Valet from the free items in Arc UI (https://uiarc.dev, github.com/kuratlielia/arc-library): `rubber` is its
-   formula, and the carousel, card stack, hold to confirm, elastic slider, animated counter and toast stack are the ideas.
+   formula, and the carousel, card stack, elastic slider, animated counter and toast stack are the ideas.
 
    MIT License. Copyright (c) 2026 Elia Kuratli
 

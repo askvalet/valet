@@ -11,12 +11,12 @@ import type { Recap, RecapSlide } from '../shared/cards.ts';
 
 type Stat = Recap['stats'][number];
 
-const STEP = 7000, RACE = 10_000, OPENING = 3200, PAYOFF = 10_000, CARD_MAX = 6, EXPLORE = 'explore', HINT = 'valet-recap-hint', TINTS = ['#64d2ff', '#ff9f6b', '#5ee0c5', '#ffc266', '#ff8ac4', '#7d9cff'];
+const STEP = 7000, RACE = 10_000, OPENING = 3200, PAYOFF = 10_000, CARD_MAX = 6, HINT = 'valet-recap-hint', TINTS = ['#64d2ff', '#ff9f6b', '#5ee0c5', '#ffc266', '#ff8ac4', '#7d9cff'];
 const OUTWARD = new Set(['network', 'reach', 'security']);   // how your network is built and what it shares: nobody's business on a public card
 
 const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches || /motion-(reduced|none)/.test(document.documentElement.className);
-/** Is this honestly a story about the year? Only if most of the short version is. */
-export const aboutTheYear = (r: Recap) => { const cut = r.slides.findIndex(s => s.id === EXPLORE), told = cut < 0 ? r.slides : r.slides.slice(0, cut); return told.filter(s => s.scope === 'year').length * 2 > told.length; };
+/** Is this honestly a story about the year? Only if most of it is. */
+export const aboutTheYear = (r: Recap) => r.slides.filter(s => s.scope === 'year').length * 2 > r.slides.length;
 /** Names someone: stays off the card unless you put it there. */
 export const naming = (r: Recap, st: Stat) => r.slides.some(s => s.stat === st.label && s.private);
 /** What the private version leaves out: names, the shape of your network, and anything that's a word rather than a number. */
@@ -171,7 +171,7 @@ function Transcript({ r, heading, closing, list }: { r: Recap; heading: string; 
   return (
     <div className="rc-text">
       <h2>{heading}</h2>
-      <ol>{r.slides.filter(s => s.id !== EXPLORE).map(s => <li key={s.id}>
+      <ol>{r.slides.map(s => <li key={s.id}>
         <h3>{s.kicker} <b>{s.value}{s.unit ? ` ${s.unit}` : ''}</b></h3><p>{s.line}</p>
         {detail(s).length > 0 && <ul>{detail(s).map(d => <li key={d}>{d}</li>)}</ul>}
         {s.scope && <small>{scopeLabel(s, r.year)}</small>}
@@ -183,12 +183,12 @@ function Transcript({ r, heading, closing, list }: { r: Recap; heading: string; 
 }
 
 export default function RecapStory({ onClose, year, wallpaper }: { onClose: () => void; year?: number; wallpaper?: string }) {
-  const [r, setR] = useState<Recap | null>(null), [failed, setFailed] = useState(false), [i, setI] = useState(0), [held, setHeld] = useState(false), [paused, setPaused] = useState(calm), [all, setAll] = useState(false);
+  const [r, setR] = useState<Recap | null>(null), [failed, setFailed] = useState(false), [i, setI] = useState(0), [held, setHeld] = useState(false), [paused, setPaused] = useState(calm);
   const [text, setText] = useState(false), [hint, setHint] = useState(false), [bare, setBare] = useState(false), [picked, setPicked] = useState<string[] | null>(null);
   useEffect(() => { fetch(`/api/recap${year ? `?year=${year}` : ''}`).then(x => x.ok ? x.json() : Promise.reject()).then(setR, () => setFailed(true)); }, [year]);
-  const cut = r ? r.slides.findIndex(s => s.id === EXPLORE) : -1, shown = !r ? [] : all || cut < 0 ? r.slides : r.slides.slice(0, cut + 1);
+  const shown = r?.slides ?? [];
   // the opening, the slides, who you were, the card
-  const last = r ? shown.length + 2 : 0, done = i >= last, who = !!r && i === shown.length + 1, s = i > 0 && i <= shown.length ? shown[i - 1] : undefined, choice = s?.id === EXPLORE;
+  const last = r ? shown.length + 2 : 0, done = i >= last, who = !!r && i === shown.length + 1, s = i > 0 && i <= shown.length ? shown[i - 1] : undefined;
   const yearly = !!r && aboutTheYear(r), heading = !r || yearly ? `Your ${r?.year ?? ''} in review` : 'Your homelab in review', closing = yearly ? 'This year, you were' : 'All told, you are';
   const title = yearly ? `My ${r?.year} homelab${r?.soFar ? ', so far' : ''}` : 'My homelab';
   const list = useMemo(() => { if (!r) return []; const on = picked ?? startingStats(r); return r.stats.filter(st => on.includes(st.label) && !(bare && revealing(r, st))).slice(0, CARD_MAX); }, [r, picked, bare]);
@@ -209,7 +209,7 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
     addEventListener('keydown', key); return () => removeEventListener('keydown', key);
   }, [go, onClose, text]);
   // the timer keeps what's left, so a hold or a pause carries on from where the bar stopped
-  const ms = i === 0 ? OPENING : who ? PAYOFF : s?.race ? RACE : STEP, left = useRef(ms), running = !!r?.slides.length && !held && !paused && !done && !choice && !text;
+  const ms = i === 0 ? OPENING : who ? PAYOFF : s?.race ? RACE : STEP, left = useRef(ms), running = !!r?.slides.length && !held && !paused && !done && !text;
   useEffect(() => { left.current = ms; }, [i, ms]);
   useEffect(() => { if (!running) return; const t0 = performance.now(), t = setTimeout(() => go(1), left.current); return () => { clearTimeout(t); left.current = Math.max(0, left.current - (performance.now() - t0)); }; }, [running, i, go]);
   useEffect(() => { for (const s of r?.slides ?? []) if (s.backdrop) new Image().src = s.backdrop; }, [r]);
@@ -252,17 +252,14 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
               <button onClick={save} className="press rc-btn rc-primary"><Download className="size-4" />Save picture</button>
             </div>
           </div>
-        : s && <Slide s={s} year={r.year}>{choice && <div className="rc-choice">
-            <button className="press rc-btn rc-primary" onClick={() => { setAll(true); setI(cut + 2); }}>Explore everything</button>
-            <button className="press rc-btn" onClick={() => setI(shown.length + 1)}>Finish</button>
-          </div>}</Slide>}
+        : s && <Slide s={s} year={r.year} />}
       {text && r && <Transcript r={r} heading={heading} closing={closing} list={list} />}
       <div className="sr-only" aria-live="polite">{text ? '' : say}</div>
-      {!!r?.slides.length && <div className="rc-seg" aria-hidden>{Array.from({ length: last + 1 }, (_, n) => <span key={n}><i className={n === i && !done ? 'on' : ''} style={n < i || done || (n === i && choice) ? { animation: 'none' } : n === i ? { animationDuration: `${ms}ms`, animationPlayState: running ? 'running' : 'paused' } : { transform: 'scaleX(0)' }} /></span>)}</div>}
+      {!!r?.slides.length && <div className="rc-seg" aria-hidden>{Array.from({ length: last + 1 }, (_, n) => <span key={n}><i className={n === i && !done ? 'on' : ''} style={n < i || done ? { animation: 'none' } : n === i ? { animationDuration: `${ms}ms`, animationPlayState: running ? 'running' : 'paused' } : { transform: 'scaleX(0)' }} /></span>)}</div>}
       {hint && i < 2 && !text && <div className="rc-hint">Tap the right to go on, the left to go back. Hold to pause. Arrow keys work too.</div>}
       {!!r?.slides.length && !text && <div className="rc-ctl">
         <button aria-label="Previous" disabled={i === 0} onClick={() => go(-1)} className="press"><ChevronLeft className="size-5" /></button>
-        <button aria-label={paused ? 'Play' : 'Pause'} disabled={done || choice} onClick={() => setPaused(p => !p)} className="press">{paused ? <Play className="size-[18px]" /> : <Pause className="size-[18px]" />}</button>
+        <button aria-label={paused ? 'Play' : 'Pause'} disabled={done} onClick={() => setPaused(p => !p)} className="press">{paused ? <Play className="size-[18px]" /> : <Pause className="size-[18px]" />}</button>
         <button aria-label="Next" disabled={done} onClick={() => go(1)} className="press"><ChevronRight className="size-5" /></button>
         <span>{i + 1} of {last + 1}</span>
       </div>}

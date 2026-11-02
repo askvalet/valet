@@ -104,14 +104,13 @@ An action may return `{ done: 'Archived a saved link' }`. That's what the activi
 | `live` | | Its card stays current in chat. Only for cheap, look-only tools whose answer changes by itself. |
 | `confirm(input)` | | What the approval card says. See [confirm words](/build/confirm/). |
 | `undo` | | The tool that reverses this one, given the same input. |
-| `fromPerson` | | For `write` tools: fields that must come word for word from the person's message. |
 
 Keep `data` small, because the model's context is limited. Summarise, and don't return the raw API response.
 
 Choosing the level:
 
 - `read` only looks.
-- `write` adds something the person asked for. Use `fromPerson` for anything that could come from what the assistant read.
+- `write` adds something the person asked for. Every call asks first.
 - `control` changes or removes something. Every call asks first.
 
 ## Context

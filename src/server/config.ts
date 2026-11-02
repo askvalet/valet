@@ -8,13 +8,14 @@ import { LABELS } from '../shared/labels.ts';
 import { isPaint } from '../shared/look.ts';
 import { Channel } from './notify.ts';
 import { STARTER } from './starter.ts';
+import { VIEWS } from '../shared/views.ts';
 
 /** an IANA name Node knows, e.g. America/Toronto */
 export function validZone(tz: string) { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch { return false; } }
 
 const validLocale = (l: string) => { try { new Intl.Locale(l); return true; } catch { return false; } };
 
-const Access = z.enum(['none', 'read', 'write', 'control']);   // write: may add things (save a link, file a doc) without asking
+const Access = z.enum(['none', 'read', 'write', 'control']);   // write: may add things (save a link, file a doc) · control: may change or remove them. Both ask first
 
 export const AssistantConfig = z.object({
   // any OpenAI-compatible server (Ollama, llama.cpp, vLLM, OpenRouter, OpenAI…) or Anthropic
@@ -68,6 +69,7 @@ const Section = z.object({
   tabColumns: z.number().int().min(1).max(6).optional(),   // columns on its own tab, when that should differ from the overview
   widgets: z.array(z.union([z.string(), z.object({
     widget: z.string(), size: z.enum(CARD_SIZES).default('medium'), every: Every.optional(),
+    view: z.enum(VIEWS).optional(),   // how to draw it: any chart for numbers, any gallery for pictures (src/shared/views.ts)
     title: z.string().optional(), icon: z.string().optional(), header: z.boolean().optional(),
     tint: Color.optional(), opacity: z.number().min(0).max(1).optional(), blur: z.number().min(0).max(80).optional(),
     background: z.string().regex(/^(https:\/\/|\/api\/)[^\s"'()<>\\]+$/, 'an image URL: https://… or /api/icon/name').optional(),

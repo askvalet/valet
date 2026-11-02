@@ -10,7 +10,7 @@ import { inUnits } from '../src/server/units.ts';
 import { registry } from '../src/integrations/index.ts';
 import { cardLook, lookOf } from '../src/shared/look.ts';
 import { LABELS } from '../src/shared/labels.ts';
-import { clock, day, favorites, firstDay, label, num, sayHow, setFormat, stillTrue, tabHash } from '../src/web/format.ts';
+import { clock, day, favorites, firstDay, label, num, oneLine, sayHow, setFormat, stillTrue, tabHash } from '../src/web/format.ts';
 import { scopeOf, suggestPrompt } from '../src/server/insight.ts';
 import { rank } from '../src/web/palette.tsx';
 
@@ -181,22 +181,20 @@ test('tabs have addresses, and the page\'s own stay its own', () => {
   assert.equal(tabHash('Recap'), 'tab-recap'); assert.equal(tabHash('Overview'), 'tab-overview');
 });
 
-test('the status splits what needs someone from what\'s going on, and says each thing once', () => {
+test('the status is one sentence, and says each thing once', () => {
+  const line = (...a: Parameters<typeof sayHow>) => { const h = sayHow(...a); return oneLine(h.problems, h.parts); };
   const ok = [{ name: 'Plex', ok: true }, { name: 'Sonarr', ok: true }, { name: 'Off', ok: false, quiet: true }];
-  assert.deepEqual(sayHow([status('s.a', ok)]), { problems: [], quiet: '2 of 3 running, 1 off by choice.' });
-  assert.equal(sayHow([status('s.a', ok.slice(0, 2))]).quiet, 'All 2 services are running.');
+  assert.equal(line([status('s.a', ok)]), '2 of 3 running, 1 off by choice.');
+  assert.equal(line([status('s.a', ok.slice(0, 2))]), 'All 2 services are running.');
   const sick = sayHow([status('s.a', [...ok.slice(0, 2), { name: 'bazarr', ok: false, state: 'degraded' }]), status('s.b', [{ name: 'Bazarr', ok: true }])]);
-  assert.equal(sick.problems[0].text, 'Bazarr is unhealthy'); assert.equal(sick.problems[0].why, 'Why is Bazarr unhealthy?'); assert.equal(sick.quiet, '2 of 3 running.');
-  const down = sayHow([status('s.b', [...ok, { name: 'mealie', ok: false }, { name: 'x', ok: true }]), status('s.a', [{ name: 'Mealie', ok: false }])]);
-  assert.equal(down.problems[0].text, 'Mealie is down'); assert.equal(down.problems[0].why, 'Why is Mealie down?'); assert.equal(down.quiet, '');
-  const many = sayHow([status('s.a', 'abcd'.split('').map(name => ({ name, ok: false })))]);
-  assert.equal(many.problems[0].text, '4 of 4 services are down');
-  const stuck = sayHow([dl('2 downloads · ↓ 0 B/s', [{ label: 'Pause all', action: 'pause' }])]);
-  assert.equal(stuck.problems[0].text, '2 downloads are stalled'); assert.equal(stuck.problems[0].fix?.action, 'pause'); assert.equal(stuck.problems[0].fix?.key, 'dl.active');
+  assert.equal(oneLine(sick.problems, sick.parts), 'Bazarr is unhealthy and 2 of 3 running.');
+  assert.equal(line([status('s.b', [...ok, { name: 'mealie', ok: false }, { name: 'x', ok: true }]), status('s.a', [{ name: 'Mealie', ok: false }])]), 'Everything\'s running except Mealie.');
+  assert.equal(line([status('s.a', 'abcd'.split('').map(name => ({ name, ok: false })))]), '4 of 4 services are down.');
+  assert.equal(line([dl('2 downloads · ↓ 0 B/s', [{ label: 'Pause all', action: 'pause' }])]), '2 downloads are stalled.');
   assert.deepEqual(sayHow([dl('↓ 0 B/s', [{ label: 'Resume all', action: 'resume' }])]).problems, []);   // paused on purpose
-  assert.equal(sayHow([dl('↓ 9 MB/s')]).quiet, '2 downloads are on the way.');
-  assert.equal(sayHow([dl('↓ 9 MB/s')], new Set(['dl.active'])).quiet, '');                // the card below already says it
-  assert.equal(sayHow([{ key: 'a.b', at: 0, error: 'x' }]).problems[0].text, '1 widget can\'t reach its service');
+  assert.equal(line([dl('↓ 9 MB/s')]), '2 downloads are on the way.');
+  assert.equal(line([status('s.a', ok.slice(0, 2)), dl('↓ 9 MB/s')]), 'All 2 services are running and 2 downloads are on the way.');
+  assert.equal(line([{ key: 'a.b', at: 0, error: 'x' }]), '1 widget can\'t reach its service.');
 });
 
 test('a chip goes when what it\'s about has come back, and only then', () => {

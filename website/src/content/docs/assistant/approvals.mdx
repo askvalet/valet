@@ -6,7 +6,7 @@ sidebar: { order: 4 }
 import Shot from '~/components/Shot.astro';
 import Row from '~/components/Row.astro';
 
-A `control` tool doesn't run when the model calls it. The call stops, and you get an approval card. The tool runs only after you press the button.
+A `write` or `control` tool doesn't run when the model calls it. The call stops, and you get an approval card. The tool runs only after you press the button.
 
 This happens in Valet's server, not in the prompt. The model has no way to approve its own call.
 
@@ -22,18 +22,13 @@ The card says what's about to happen, in plain words. The words come from the to
 
 **Not now** refuses, and the assistant is told so. The other button names the action: Restart, Pause, Request. If a tool has no words of its own, the card says "Allow this:" and shows its input.
 
-A slow light moves around the card's edge until you answer, so it's hard to miss. It's blue for ordinary actions and warm for dangerous ones.
+A slow light moves around the card's edge until you answer, so it's hard to miss. It's gold for ordinary actions and redder for dangerous ones.
 
-## Hold to confirm
+## Dangerous actions
 
-Some actions are hard to take back, like stopping someone's stream. Those tools set `danger`. The button turns red and asks for more than a click.
+Some actions are hard to take back, like stopping someone's stream. Those tools set `danger`, and the button turns red. It's still one click, so read the card.
 
-<Row>
-  <Shot id="scene/approval-danger" label="At rest" alt="A red approval button reading hold to pause" />
-  <Shot id="scene/approval-holding" label="While held" alt="The same button filling as it is held" />
-</Row>
-
-Hold it for 0.8 seconds, or press it quickly and then press again. Leaving the button cancels the first press. With reduced motion on, the button says "Press twice" and that's the only way. A screen reader's press counts as the first of two.
+<Shot id="scene/approval-danger" alt="An approval card asking to pause all downloads, with a red Pause button" />
 
 ## Several changes, one approval
 

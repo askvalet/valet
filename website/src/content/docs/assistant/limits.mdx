@@ -12,8 +12,8 @@ The rules on this page are enforced by Valet's code. They hold whatever the mode
 - Show live cards and draw charts from numbers it already has.
 - Search documents, bookmarks and photos, if those integrations are there.
 - Read logs from Docker and from systemd through the [Host](/integrations/host/) agent, and say what they show.
-- File something you attach or paste, and save a link you send.
-- Set a reminder. A plain rule checks it every half minute, with no model involved, and it goes to your [notification channels](/reference/configuration/#notify).
+- File something you attach or paste, and save a link you send, once you approve.
+- Set a reminder, once you approve. A plain rule checks it every half minute, with no model involved, and it goes to your [notification channels](/reference/configuration/#notify).
 - Make changes you approve.
 - Pin a card to the page. Only `read` tools can be pinned, and no model runs after that.
 
@@ -21,7 +21,7 @@ The rules on this page are enforced by Valet's code. They hold whatever the mode
 
 - **See your keys.** They stay on the server. See [secrets](/security/secrets/).
 - **Reach anything without a tool.** It has no shell, no file access and no general web access. It can only do what a tool offers.
-- **Approve itself.** A control tool needs a press from you.
+- **Approve itself.** A `write` or `control` tool needs a press from you.
 - **Give itself more power.** See below.
 - **Restart a container.** The Docker integration is read-only on purpose. See [the threat model](/security/).
 - **Act on a read-only page.** Without sign-in or `auth.trustNetwork`, it gets read tools only.
@@ -41,8 +41,7 @@ The cards are real. The sentence beside a card is the model's reading of it. Whe
 
 The assistant reads text written by strangers: feed titles, web pages saved to Karakeep, documents, logs. Any of that can say "ignore your instructions". A model might listen. Valet assumes it might, and works on what happens next.
 
-- **Anything with consequences needs your press.** A poisoned document can make the model *ask*. You still see the card.
-- **Links and files from a document ask first.** Saving a link or filing a document runs alone only if the value is in your own latest message. See [`fromPerson`](/assistant/access/#write-and-fromperson).
+- **Anything that isn't a read needs your press.** A poisoned document can make the model *ask*. You still see the card.
 - **Background calls have no tools.** The brief, the shared-cause line and "Why?" call the model with no tools at all. A poisoned feed title can make it say something odd, and nothing more.
 - **Suggestions can't carry a stranger's words.** A tapped suggestion goes out as your own message. So the model writes suggestions without seeing feeds, and any suggestion with a link in it is thrown away.
 - **A shared cause must be real.** The model's verdict is believed only if it names at least two of the actual problems.
@@ -50,7 +49,6 @@ The assistant reads text written by strangers: feed titles, web pages saved to K
 That leaves real gaps, and you should know them:
 
 - A poisoned page can still mislead the *answer*. It could tell the model to report that all is well.
-- `write` tools without `fromPerson`, such as `todo_add` and `watch_add`, run on their own. A poisoned document could add a to-do or set a reminder. `watch_remove` can cancel one.
 - An approval card written by a tool is reliable. A model's sentence asking you to approve it is not.
 - Read tools can move data into the model. With a hosted model, that data leaves your network. There's no way out from the model to anywhere else unless a tool offers one.
 
@@ -63,7 +61,7 @@ With `assistant.access.config`, the assistant can help set Valet up by talking t
 | `config_read` | `read` | Reads the file. Secrets appear as `${NAME}`. |
 | `config_options` | `read` | Looks up what an integration accepts. |
 | `config_preview` | `read` | Tries an edit without saving. Shows the diff, any problems, and the new card. |
-| `api_sample` | `write` | Fetches a JSON URL you gave it, to write a `type: api` block. |
+| `api_sample` | `write` | Fetches a JSON URL you gave it, to write a `type: api` block. Asks first. |
 | `config_apply` | `control` | Saves. Always asks. |
 
 So `config: read` lets it read and preview, and `config: control` lets it save with your approval.

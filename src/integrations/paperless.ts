@@ -89,7 +89,7 @@ export default defineIntegration({
         docs_add: {
           label: 'Filed a document',
           description: 'File something in Paperless: a file the person attached in chat (pass its file id from the message), or text they pasted (pass `text`; it\'s saved as a text document). Optionally a title and tags. Paperless OCRs and indexes it within a minute or two.',
-          access: 'write', fromPerson: ['file_id', 'text'],   // only what the person attached or pasted files itself
+          access: 'write',
           input: z.object({ file_id: z.string().optional(), text: z.string().optional(), title: z.string().optional(), tags: z.array(z.string()).optional() }),
           async run({ file_id, text, title, tags }) {
             if (!file_id && !text) return { data: { error: 'nothing to file: attach a file or paste the text' } };

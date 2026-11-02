@@ -1,7 +1,6 @@
 # The public demo: real Valet, made-up homelab. Everything on the page comes from integrations/homelab.mjs and the
 # assistant is the scripted stand-in in mock-model.mjs. No secrets, no real services, nothing worth stealing.
 title: Valet
-notice: "Interactive demo · simulated home · guided AI responses"
 greeting: Daniel
 timezone: America/Toronto
 location: Example, Canada
@@ -29,7 +28,7 @@ integrations:
   lab:
     type: demo-homelab
 
-chat: { beam: thinking, beamColor: colorful }
+chat: { beam: focus, beamColor: colorful }
 hero: { scope: [downloads, lights, what to watch] }
 
 menubar: [lab.system]
@@ -43,16 +42,15 @@ island:
 nav: { order: [Services, AI, Home, Media, Library] }
 
 layout:
+  - title: Services
+    variant: minimal
+    header: false
+    widgets: [lab.services]
   - title: Now
     heading: false
     tab: Media
     columns: 2
     widgets: [lab.streams, lab.downloads]
-  - title: Services
-    variant: minimal
-    header: false
-    favorites: [Plex, Home Assistant, Immich, Paperless, Mealie]
-    widgets: [lab.services]
   - tab: Services
     heading: false
     overview: false
@@ -77,15 +75,10 @@ layout:
       - { widget: lab.thermostat, size: medium }
   - tab: Home
     heading: false
-    columns: 1
+    columns: 2
+    tabColumns: 1
     header: false
-    widgets: [lab.home]
-  - tab: Home
-    heading: false
-    overview: false
-    columns: 1
-    header: false
-    widgets: [lab.pc]
+    widgets: [lab.home, lab.pc]
   - tab: Home
     heading: false
     header: false
@@ -111,14 +104,10 @@ layout:
     columns: 3
     widgets:
       - { widget: lab.race, size: large }
-      - { widget: lab.people, size: medium }
-  - tab: Media
-    overview: false
-    heading: false
-    columns: 3
-    widgets:
+      - { widget: lab.mostwatched, size: medium }
       - { widget: lab.plays, size: medium }
-      - { widget: lab.viewing, size: large }
+      - { widget: lab.people, size: medium }
+      - { widget: lab.viewing, size: medium }
   - tab: Media
     overview: false
     heading: false

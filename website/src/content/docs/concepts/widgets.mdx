@@ -28,18 +28,41 @@ layout:
       - { widget: plex.recent, size: tall, title: New on Plex, icon: film, header: false }
       - { widget: dns.stats, size: small, tint: "#0a7d4f", opacity: 0.8, blur: 12 }
       - { widget: drives.drives, size: wide, every: 5m }
+      - { widget: plex.top, view: coverflow }
 ```
 
 | Option | What it does |
 |---|---|
 | `size` | `small`, `wide`, `medium`, `tall` or `large`. See [sizes](/concepts/sizes/). |
 | `every` | How often it refreshes while someone's looking: seconds, or `30s`, `5m`, `1h`. |
+| `view` | How it's drawn, whatever the data. See [views](#views). |
 | `title`, `icon` | Its name and icon. On a tile, its label and icon. |
 | `header` | `false` drops its title bar. `true` keeps it in a section that drops them. |
 | `tint`, `opacity`, `blur` | Its surface: a colour, how much of it shows, and the blur behind it. |
 | `background` | An image behind it: an `https://` URL, or a Valet path such as `/api/icon/rack`. |
 
 A file at `data/icons/rack.png` is served as `/api/icon/rack`.
+
+## Views
+
+A widget's data and the way it's drawn are separate choices. `view` picks the drawing.
+
+```yaml
+layout:
+  - title: Watching
+    widgets:
+      - { widget: plex.top, view: coverflow }
+      - { widget: plex.plays, view: bars }
+```
+
+| Views | Work on |
+|---|---|
+| Charts: `line`, `bars`, `stream`, `race`, `heatmap`, `ranked`, `pie` | Anything with numbers: a chart, race, heatmap or ranked card, or a stats card with a pie. |
+| Galleries: `row`, `spotlight`, `coverflow`, `desk`, `windows`, `tickets`, `mosaic`, `flashback` | Anything with pictures: a shelf, photos, ranked, race or media card. |
+
+`heatmap` needs dates, because its squares are days. A view that doesn't fit leaves the card as it was. A name that isn't on this list is a config problem.
+
+A view changes the card, so it doesn't reach a small or wide tile, which shows the headline.
 
 ## States
 

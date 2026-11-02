@@ -8,7 +8,8 @@ import { Card } from '@/components/ui/card';
 import Island, { type Live, type Notice } from './island.tsx';
 import { SignIn, useMe } from './signin.tsx';
 import { suggest } from './suggest.ts';
-import { clock, day, favorites, label, sayHow, setFormat, stillTrue, tabHash, type Format } from './format.ts';
+import { asView, type View } from '../shared/views.ts';
+import { clock, day, favorites, label, oneLine, sayHow, setFormat, stillTrue, tabHash, type Format } from './format.ts';
 import { applyLook, applyTheme, type Look } from './look.ts';
 import type { Labels } from '../shared/labels.ts';
 import { ChatBeam } from './beam.tsx';
@@ -23,7 +24,7 @@ const RecapStory = lazy(() => import('./recap.tsx'));
 type Size = 'small' | 'wide' | 'medium' | 'tall' | 'large';
 type Paper = { image?: string; paint?: string };
 type Grid = { phone?: number; tablet?: number; desktop?: number };
-type CardOverride = { title?: string; icon?: string; header?: boolean; style?: Record<string, string> };
+type CardOverride = { title?: string; icon?: string; header?: boolean; view?: View; style?: Record<string, string> };
 
 interface Page {
   title: string; greeting?: string; notice?: string; location?: string; canAct?: boolean;
@@ -324,8 +325,7 @@ function Home({ account }: { account: boolean }) {
   useEffect(() => { fetch(`/api/page?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`).then(r => r.json()).then((p: Page) => { setFormat(p.format, p.labels); applyLook(p.look); setPage(p); }); }, [generation]);
   useEffect(() => { if (page) document.title = page.title; }, [page]);
   // what's wrong and what's merely going on; a stall has to last, because a torrent between peers reads 0 B/s for a moment
-  const onPage = useMemo(() => new Set(page?.sections.filter(s => s.overview !== false).flatMap(s => s.widgets)), [page]);
-  const how = sayHow(Object.values(state), onPage), stalled = useHeld(how.problems.some(p => p.id === 'downloads'), 20_000);
+  const how = sayHow(Object.values(state)), stalled = useHeld(how.problems.some(p => p.id === 'downloads'), 20_000);
   const trouble = how.problems.filter(p => p.id !== 'downloads' || stalled), mood = trouble.map(p => p.why).join('|');
   // questions the model wrote for what's going on now; refreshed while the page stays open, and soon after what's wrong changes
   const tailoring = !!page?.assistant && page.chat.suggestions === 'ai';
@@ -435,23 +435,15 @@ function Home({ account }: { account: boolean }) {
   const dismissReview = () => { setReviewed(true); try { sessionStorage.setItem('valet-review', '1'); } catch { /* private mode */ } };
   const side = h?.align === 'left' ? 'mr-auto text-left' : h?.align === 'right' ? 'ml-auto text-right' : 'mx-auto text-center';
   // the hero: ask anything
-  const lines = cause ? [{ ...trouble[0], id: 'cause', text: cause }] : trouble;
+  const line = cause || oneLine(trouble, how.parts), wrong = !!cause || trouble.length > 0;
   const hero = view === 'all' && (hello || h?.status !== false || boxed || pill || page?.notice) && (
           <header className={cn('wall-text w-full max-w-[720px] pt-8 xl:pt-10', side)}>
             {page?.notice && <p className="mb-2 text-[12px] text-muted-foreground">{page.notice}</p>}
             {hello && <h1 className="hero-title text-[28px] leading-tight font-medium">{hello}</h1>}
-            {h?.status !== false && <>
-              {/* what needs someone gets its own line and what to do about it; what's merely going on stays quiet */}
-              <Fold open={lines.length > 0}><div role="status" className="mt-1 text-[14px] text-pretty text-foreground/85">
-                {lines.map(p => (
-                  <div key={p.id}><span className="dot dot-warn mr-2 inline-block align-middle" /><span key={p.text} className="brief-in">{p.text}</span>
-                    {page?.canAct !== false && p.fix && <> · <button onClick={() => { runAction(p.fix!.key, p.fix!.action, p.fix!.args).catch(() => {}); }} className="py-1 text-muted-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none">{p.fix.label}</button></>}
-                    {page?.assistant && p.why && <>{p.fix && page.canAct !== false ? ' / ' : ' · '}<button onClick={() => ask(p.why!)} className="py-1 text-muted-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none">{label('askWhy')}</button></>}
-                  </div>
-                ))}
-              </div></Fold>
-              <Fold open={!!how.quiet}><div key={how.quiet} title={brief ?? undefined} className="brief-in mx-auto mt-1 max-w-full text-[14px] text-pretty text-muted-foreground">{how.quiet}</div></Fold>
-            </>}
+            {/* one sentence, always the same place; only its weight changes when something needs someone */}
+            {h?.status !== false && <Fold open={!!line}><div key={line} role="status" title={brief ?? undefined} className={cn('brief-in mx-auto mt-1 max-w-full text-[14px] text-pretty', wrong ? 'font-medium text-foreground' : 'text-muted-foreground')}>
+              {wrong && <span className="dot dot-warn mr-2 inline-block align-middle" />}{line}
+            </div></Fold>}
             {askHere && boxed && (
               <ChatBeam ui={ui} className="mt-5"><form className="glass-round flex items-center gap-2.5 py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
@@ -469,20 +461,20 @@ function Home({ account }: { account: boolean }) {
                 <kbd className="hidden rounded-[6px] border border-white/15 px-1.5 py-0.5 font-sans text-[12px] sm:block">⌘K</kbd>
               </button>
             )}
-            {chips && (
+            {(chips || pill) && (
               <div className="fade-x no-scrollbar mt-2.5 overflow-x-auto">
                 {/* centred when it fits, scrolls from the start when it doesn't */}
                 <div className={cn('flex max-w-full flex-wrap justify-center gap-1.5', h?.align === 'left' ? 'mr-auto' : h?.align === 'right' ? 'ml-auto' : 'mx-auto')}>
                   {shownChips.map(({ s, out }) => (
                     <button key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={cn('press shrink-0 rounded-sm px-2.5 py-1 text-[13px] text-muted-foreground hover:bg-white/10 hover:text-foreground', out ? 'chip-out' : arrival(`chip:${s}`))} style={out ? { maxWidth: 320 } : undefined}>{s}</button>
                   ))}
+                  {pill && <span className="flex shrink-0 items-center rounded-sm text-[13px] text-muted-foreground">
+                    <a href="#recap" className="press rounded-sm py-1 pr-1 pl-2.5 hover:text-foreground">{label('review', { year: now.getFullYear() })}</a>
+                    <button onClick={dismissReview} aria-label={label('dismiss')} className="press grid size-6 flex-none place-items-center rounded-sm hover:text-foreground"><X className="size-3" /></button>
+                  </span>}
                 </div>
               </div>
             )}
-            <Fold open={pill}><div className={cn('mt-1.5 flex items-center gap-0.5 text-[12px] text-muted-foreground', h?.align === 'left' ? 'justify-start' : h?.align === 'right' ? 'justify-end' : 'justify-center')}>
-              <a href="#recap" className="underline-offset-2 transition-colors hover:text-foreground hover:underline">{label('review', { year: now.getFullYear() })}</a>
-              <button onClick={dismissReview} aria-label={label('dismiss')} className="press grid size-6 flex-none place-items-center rounded-full hover:text-foreground"><X className="size-3" /></button>
-            </div></Fold>
           </header>
         );
 
@@ -528,7 +520,7 @@ function Home({ account }: { account: boolean }) {
                 (() => {
                   const keys = sec.widgets.filter(key => state[key] ? !isEmpty(state[key].card) : !shapeOf(key)?.empty);
                   const widget = (key: string, large = false, fill = false, dense = false) => {
-                    const s = state[key], o = sec.looks?.[key], card = dress(view === 'all' ? favorites(s?.card, sec.favorites) : s?.card, o);
+                    const s = state[key], o = sec.looks?.[key], card = dress(asView(view === 'all' ? favorites(s?.card, sec.favorites) : s?.card, o?.view), o);
                     const body = <Shaped key={key} id={key} card={s?.card}><Widget large={large} fill={fill} card={card} kind={shapeOf(key)?.t} explain={explainFor(key)} failed={s?.error} title={o?.title ?? page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={dense || sec.variant === 'minimal' || (phone && view === 'all')} headless={o?.header === false || (o?.header !== true && sec.header === false && view === 'all')}
                       status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
                       run={page?.canAct === false ? undefined : runFor(key)} /></Shaped>;

@@ -24,9 +24,9 @@ the damage if something goes wrong, and how to give it as little power as possib
   (`auth.mode: local`, `oidc` or `proxy`), or you set `auth.trustNetwork: true` because the network is the lock (a VPN or
   tailnet, or a sign-in proxy in front).
 - **The assistant asks before it changes anything.** Each integration's access is set in `assistant.access`: `none`,
-  `read`, `write` (may add things, like saving a link, without asking) or `control` (may change or remove things, and
-  you approve each one). A document or web page the assistant reads can't talk it into acting: anything with
-  consequences needs your click.
+  `read`, `write` (may add things, like saving a link) or `control` (may change or remove things). Anything that isn't
+  `read` waits for you to approve it. A document or web page the assistant reads can't talk it into acting: it can make
+  the assistant ask, and the click is yours.
 - **What the assistant does unasked can only talk.** The morning brief, the shared-cause line and "Why?" call the model
   with no tools at all, so a poisoned feed title can at worst make it say something odd. They have a daily budget, and
   the model is only consulted when rules say it's worth it (one problem never is).
@@ -51,6 +51,10 @@ the damage if something goes wrong, and how to give it as little power as possib
 - **Pins only look.** Only `read` tools can be pinned, and no model runs after that.
 - **Browser hardening.** A strict content-security policy (only Valet's own scripts run), no framing, same-origin
   referrers, microphone only for Valet, and every request that changes something must come from Valet's own origin.
+- **Icons are open.** `/api/icon/:slug` and `/api/favicon/:host` answer without sign-in, because the sign-in screen uses
+  them, and they fetch from outside services: `cdn.jsdelivr.net` for app icons, and `icons.duckduckgo.com` for favicons,
+  which tells it the hostname. Each takes only a checked slug or hostname and keeps what it gets in `data/icons`. If you
+  don't want that, keep Valet behind your own network or proxy.
 - **The container is locked down** in the example compose file: not root, read-only filesystem, no Linux capabilities,
   no privilege escalation. Production dependencies are pinned (`package-lock.json`) and `npm audit` is clean.
 
@@ -69,7 +73,7 @@ Each service decides what its keys can do. Prefer the narrowest kind it offers:
 | qBittorrent | Its web login can do everything; keep `assistant.access` at `read` unless you want pause/resume from chat |
 | Seerr | Its API key acts as the admin; requests from chat ask you first |
 | Tautulli | Its API key; stopping a stream from chat asks you first |
-| Karakeep | An API key (it can add bookmarks; saving from chat is `write`) |
+| Karakeep | An API key (it can add bookmarks; saving from chat asks you first) |
 
 And the general rules:
 

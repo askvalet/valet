@@ -1,7 +1,7 @@
 // The year in review: slides come from whichever services can answer, in order, and one that can't is simply left out.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildRecap, clearRecap, EXPLORE, recapYear } from '../src/server/recap.ts';
+import { buildRecap, clearRecap, recapYear } from '../src/server/recap.ts';
 import { aboutTheYear, naming, revealing, startingStats } from '../src/web/recap.tsx';
 import type { Instance } from '../src/server/core.ts';
 
@@ -35,12 +35,10 @@ test('recap: no service runs the show, and neighbours differ', async () => {
   const r = await buildRecap(new Map([['a', inst(async () => many('media', 90))], ['b', inst(async () => many('home', 50))], ['c', inst(async () => many('ai', 40))]]), 2023, at);
   assert.equal(r.slides.filter(s => s.theme === 'media').length, 3);                         // capped, however much it has to say
   assert.ok(r.slides.every((s, i) => i === 0 || s.theme !== r.slides[i - 1].theme));
-  const gap = r.slides.findIndex(s => s.id === EXPLORE);
-  assert.equal(gap, 6);                                                                        // two per theme makes the short story, the rest wait behind the explore screen
-  assert.equal(r.slides[gap].value, '3');
+  assert.equal(r.slides.length, 9);                                                            // two per theme lead, the rest follow
 });
 
-test('recap: the short story takes the slides with something to show, a theme pays for its second, and it skips the screen when little is left', async () => {
+test('recap: the short story takes the slides with something to show, a theme pays for its second, and nothing is held back', async () => {
   clearRecap();
   const bare = (theme: string, score: number) => ({ id: `${theme}.count`, theme, kicker: 'k', value: '1', line: 'l', score });
   const r = await buildRecap(new Map([['a', inst(async () => [
@@ -49,24 +47,23 @@ test('recap: the short story takes the slides with something to show, a theme pa
     bare('files', 60), bare('ops', 58), bare('reach', 56), bare('code', 55), bare('food', 54), bare('games', 53), bare('music', 52), bare('ai', 51),
   ])]]), 2023, at);
   const ids = r.slides.map(s => s.id);
-  assert.equal(ids.indexOf(EXPLORE), 8);                                                                       // eight is the most the short version runs to
   assert.ok(ids.slice(0, 8).includes('media.chart') && !ids.slice(0, 8).includes('media.count'));   // the chart beat the bare count of the same theme
   assert.ok(ids.slice(0, 8).includes('home.trait') && !ids.slice(0, 8).includes('home.count'));
-  assert.equal(ids.length, 13);                                                               // nothing lost: twelve slides and the screen between
+  assert.equal(ids.length, 12);                                                               // nothing lost
   assert.equal(r.persona.name, 'T');
   clearRecap();
   const few = await buildRecap(new Map([['a', inst(async () => [bare('media', 80), bare('home', 60), bare('ai', 50)])]]), 2022, at);
-  assert.deepEqual(few.slides.map(s => s.id), ['media.count', 'home.count', 'ai.count']);    // no explore screen for a slide or two
+  assert.deepEqual(few.slides.map(s => s.id), ['media.count', 'home.count', 'ai.count']);
 });
 
 test('recap: two themes still make a short story, and slides without one count on their own', async () => {
   clearRecap();
   const slide = (id: string, theme?: string) => ({ id, theme, kicker: 'k', value: '1', line: 'l' });
   const two = await buildRecap(new Map(['a', 'b'].map(n => [n, inst(async () => [0, 1, 2].flatMap(i => [slide(`${n}m${i}`, 'media'), slide(`${n}h${i}`, 'home')]))])), 2021, at);
-  assert.equal(two.slides.findIndex(s => s.id === EXPLORE), 6);
+  assert.equal(new Set(two.slides.slice(0, 6).map(s => s.theme)).size, 2);
   clearRecap();
   const none = await buildRecap(new Map(['a', 'b', 'c', 'd'].map(n => [n, inst(async () => [0, 1, 2].map(i => slide(`${n}${i}`)))])), 2020, at);
-  assert.equal(none.slides.findIndex(s => s.id === EXPLORE), 8);
+  assert.equal(none.slides.length, 12);
 });
 
 test('recap: the framing follows what the short story actually covers', async () => {
@@ -80,7 +77,6 @@ test('recap: the framing follows what the short story actually covers', async ()
   assert.equal(r.slides[0].scope, 'Right now');                                                // unsaid doesn't get to claim the year
   assert.equal(aboutTheYear(r), false);
   clearRecap();
-  assert.equal(aboutTheYear(await of(['year', 'year', 'year', 'year', 'year', 'year', 'year', 'year'], true)), true);   // what's behind the explore screen doesn't count
 });
 
 test('recap: the card offers more than it starts with, and names stay off it until asked', async () => {

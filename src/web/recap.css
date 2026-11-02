@@ -98,7 +98,6 @@
 .rc :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .rc-btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 18px; border-radius: 99px; font-size: 14px; font-weight: 500; background: rgb(255 255 255 / .15); }
 .rc-primary { background: #fff; color: #000; font-weight: 500; }
-.rc-choice { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
 
 /* the card, and what goes on it */
 .rc-share { position: absolute; inset: 24px 0 72px; display: flex; align-items: center; justify-content: center; gap: 32px; padding: 0 72px; animation: rc-fade var(--dur-move) var(--ease-out) both; }

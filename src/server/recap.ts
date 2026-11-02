@@ -12,11 +12,9 @@ const cache = new Map<number, { at: number; recap: Recap }>();
 const inTime = <T>(p: Promise<T>) => { let t: NodeJS.Timeout; return Promise.race([p, new Promise<never>((_, no) => { t = setTimeout(() => no(new Error('took too long')), WAIT); })]).finally(() => clearTimeout(t)); };
 
 const PER_SERVICE = 3, PER_THEME = 4, STORY = 8, STORY_MIN = 6, OFFERED = 10, SAME_THEME = 12;
-/** The screen between the short story and the rest. The client knows it by its id. */
-export const EXPLORE = 'explore';
 /** How much a slide has to show for itself: an outcome from this year, with a chart, artwork, a comparison or a trait, beats a bare count. */
 const richness = (s: RecapSlide) => (s.score ?? 50) + (s.scope === 'year' ? 10 : 0) + (s.trait ? 15 : 0) + (s.chart || s.race ? 12 : 0) + (s.bars ? 10 : 0) + (s.backdrop || s.wall || s.items?.some(i => i.image) || s.show || s.visual ? 10 : 0) + (s.icons ? 4 : 0);
-/** The short version, up to eight: the richest slide each time, each one more from a theme costing it, and no theme past two while there's enough to reach six. */
+/** What leads the story, up to eight: the richest slide each time, each one more from a theme costing it, and no theme past two while there's enough to reach six. */
 function story(all: RecapSlide[]) {
   const chosen: RecapSlide[] = [], key = (s: RecapSlide) => s.theme ?? s.id, had = (s: RecapSlide) => chosen.filter(c => key(c) === key(s)).length, worth = (s: RecapSlide) => richness(s) - had(s) * SAME_THEME;
   for (let most = 2; most <= PER_THEME && chosen.length < STORY_MIN; most++)
@@ -78,9 +76,9 @@ export async function buildRecap(instances: Map<string, Instance>, year: number,
   const seen = new Map<string, number>();
   const kept = [...valid.flatMap(l => [...new Set(l.map(s => s.theme))].flatMap(t => l.filter(s => s.theme === t).sort(bestFirst).slice(0, PER_SERVICE))), ...across].sort(bestFirst)
     .filter(s => { const n = (seen.get(s.theme ?? s.id) ?? 0) + 1; seen.set(s.theme ?? s.id, n); return n <= PER_THEME; });
-  // the short story first, then a screen that offers the rest; with only a slide or two left over, they simply follow
+  // the strongest stretch first, so leaving early still means seeing the best of it, then everything else
   const told = story(kept), rest = kept.filter(s => !told.has(s)), short = spread(kept.filter(s => told.has(s)));
-  const slides = rest.length < 2 ? [...short, ...rest] : [...short, { id: EXPLORE, wall: true, kicker: 'That was the short version', value: String(rest.length), unit: 'more', line: 'The rest of what your services had to say, if you have a minute.' }, ...spread(rest)];
+  const slides = [...short, ...spread(rest)];
   // who you are: the strongest trait any slide claims. Plugins can bring their own.
   const persona = kept.flatMap(s => s.trait ? [s.trait] : []).sort((a, b) => b.strength - a.strength)[0] ?? FALLBACK;
   // the card shows the range: one number per theme first, then the best of the rest, more than fit so there's a choice.

@@ -28,7 +28,7 @@ assistant:
   provider: openai-compatible
   baseURL: http://localhost:11434/v1   # Ollama
   model: qwen3:8b
-  # what it may use, per integration: none | read | write (adds things, like saving a link) | control (asks you first)
+  # what it may use, per integration: none | read | write (adds things, like saving a link) | control (changes or removes them). Both ask you first
   access: { default: read, downloads: control, docs: write, bookmarks: write }
 
 integrations:
@@ -171,6 +171,9 @@ nav: { side: left }               # where the tab buttons sit: left, right, top 
 # A widget is "instance.widget", or { widget: instance.widget, size: small | wide | medium | tall | large }:
 #   small = its headline as a tile, wide = that tile at twice the width, medium = the card,
 #   tall = the card over two rows (a photo card as the centrepiece), large = wider, with room for more
+# It can also say how it's drawn, whatever the data, as in { widget: plex.top, view: coverflow }. What doesn't fit stays as it was:
+#   numbers: line, bars, stream, race, heatmap (needs dates), ranked, pie
+#   pictures: row, spotlight, coverflow, desk, windows, tickets, mosaic, flashback
 layout:
   - title: Now
     widgets: [system.overview, downloads.active]

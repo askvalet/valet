@@ -24,9 +24,9 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   (`src/server/security.ts`) on the way out; without sign-in Valet is read-only unless `auth.trustNetwork`; strict CSP,
   so no inline scripts; image proxies validate every ref; new tools pick the narrowest access (`read` < `write` <
   `control`) and anything with consequences is `control`. Before committing: `npm audit --omit=dev` and the tests.
-- **The assistant reads freely and changes nothing without asking.** Tools are `read`, `write` or `control`. Control
-  tools need the user's approval; write tools run alone only with inputs the person typed (`fromPerson`). Access is set
-  per integration in YAML. Every tool has a `label` (its chip in chat) and may offer `followUps`.
+- **The assistant reads freely and changes nothing without asking.** Tools are `read`, `write` or `control`. Anything
+  that isn't `read` needs the user's approval; `write` and `control` differ only in what's granted (adds, or changes and
+  removes). Access is set per integration in YAML. Every tool has a `label` (its chip in chat) and may offer `followUps`.
 
 ### Architecture
 - **The card catalog is the contract** (`src/shared/cards.ts`). Integrations return plain data in these shapes; the web
@@ -81,20 +81,21 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   straight to the DOM, stops when the rows settle, runs once a visit, and reads `calm()` itself because the central motion rule can't
   reach JavaScript. Line charts stay in `Chart`, columns in `Columns`.
 
+- **What a card holds and how it's drawn are separate** (`src/shared/views.ts`). A widget's `view` turns numbers into any chart
+  and pictures into any gallery, and what can't honestly become that view stays as it was. `asView` gives the same object for the
+  same card, so memoised renderers stay still.
 - **The house's cards measure themselves** (`src/web/home-cards.tsx`: `forecast`, `calendar`, `thermostat`). They're glass
   edge to edge with no header, pick their layout from their own box rather than a size name, and must never set a row's
   height by how much they have to show: anything that can grow scrolls inside or spreads out, so a bento row ends flush.
 
 ### Design
-- **Quiet chrome, rich content.** System tokens (`styles.css`): graphite neutrals, one accent (brass, from the valet key tag), green/orange/red only for
+- **Quiet chrome, rich content.** System tokens (`styles.css`): graphite neutrals, one accent (brass), green/orange/red only for
   status, monochrome icons. Geist for text; tabular numerals for numbers.
 - **Glass over a wallpaper.** With a wallpaper, every surface is frosted glass (`has-wallpaper`): translucent graphite,
   heavy blur, saturation near 1 so surfaces stay neutral, a hairline light edge. Floating chrome (top bars,
   popovers) is frostier than cards so it stays legible over content while scrolling.
 - **The accent is rare.** In a chart one thing leads in the accent and the rest are neutral steps; a colour that isn't a
   status or the leader doesn't belong in the chrome. Posters, the house and photos carry the colour.
-- **The valet key is the signature.** `.key-tag`, a punched brass tag, sits on what waits for your say (the approval card) and
-  `.key-note` on the promise beside the chat. Nothing else gets a key, and nothing else is rendered like an object.
 - **The title says whose homelab it is, not hello.** `hero.greeting: "{greeting}, {name}"` brings the time of day back.
 - **One weight of emphasis.** `font-semibold` is mapped to 500 in `@theme` and `tracking-tight` to 0, so hierarchy comes from size
   and colour. Corners follow `--radius` (controls `* .6`, tags `* .4`); only things that hold no words stay round.
@@ -110,7 +111,7 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
   media rule because they ship with the exported model.
 - **Feel lives in `feel.tsx`** (rewritten from Arc UI's free MIT items; nothing is imported, and the Pro items are unlicensed
   here). `useRow` + `Arrows`: rows scroll natively, so touch keeps the phone's momentum and vertical scroll, and a mouse can
-  throw them; `Pile`: the reading card; `Hold`: anything `danger`, where a quick press asks for a second one, with no clock;
+  throw them; `Pile`: the reading card;
   `ElasticSlider`: Radix's slider with give at the ends; `Counter`: every number that changes, still on first paint and
   faster than 1.5 s (`flap` makes it a departures board, for a countdown); `useRows` + `RowSlot`: a list whose rows come and go, never
   on first paint or when the whole list is another list; `Tick`: draws itself only for what was seen unfinished; `toast(key, note)`: the page's stack, only for what piles up or a note whose place is out of view, with

@@ -10,10 +10,10 @@ Every tool has an access level. `assistant.access` says the highest level the as
 |---|---|---|
 | `none` | Nothing from this integration. Its tools aren't offered. | |
 | `read` | Tools that look. | No |
-| `write` | Also tools that add something, like saving a link. | Usually not. See [below](#write-and-fromperson). |
+| `write` | Also tools that add something, like saving a link. | Always |
 | `control` | Also tools that change or remove something. | Always |
 
-Each level includes the ones before it.
+Each level includes the ones before it. `write` and `control` differ only in what you grant: both ask. See [below](#write-and-control).
 
 ## Setting it
 
@@ -34,27 +34,19 @@ The keys are your **instance names**, the ones under `integrations:`, not the ty
 Two other keys are special:
 
 - `config` turns on [editing the config](/assistant/limits/#editing-the-config). Without it, those tools don't exist.
-- `valet` is Valet's own tools: reminders, the timeline, the activity log. It defaults to `write`, so reminders work with no setup.
+- `valet` is Valet's own tools: reminders, the timeline, the activity log. It defaults to `write`, so reminders work with no setup. Each one still asks.
 
 ## Read-only pages win
 
 Sign-in decides whether Valet may act at all. With `auth.mode: none` and no `auth.trustNetwork`, the assistant is capped at `read`, whatever `assistant.access` says. The same goes for MCP servers. See [sign-in and network safety](/start/sign-in/).
 
-## Write, and fromPerson
+## Write and control
 
-A `write` tool adds something and runs without asking. That's fine when you pasted a link and said "save this". It's less fine when a web page the assistant read said "save this".
+Any tool that isn't `read` stops at an [approval card](/assistant/approvals/) and runs only after you press the button. That covers saving a link, filing a document, adding a to-do, and setting or cancelling a reminder.
 
-So a write tool can list input fields that must come from you. This is `fromPerson`. The tool runs alone only if each of those values appears word for word in your latest message. If not, it asks first, like a control tool.
+So the two levels don't change how it asks. They change what you're granting: `write` lets the assistant add things, and `control` also lets it change or remove them.
 
-Three tools use it today:
-
-| Tool | Fields that must be yours |
-|---|---|
-| Paperless, `docs_add` | `file_id`, `text` |
-| Karakeep, `bookmark_save` | `url`, `text` |
-| Setup, `api_sample` | `url` |
-
-The check is on the input, not on intent. Other write tools don't have it. Karakeep's `bookmark_summarize`, the to-do list's `todo_add`, and Valet's `watch_add` and `watch_remove` run on their own. So a poisoned document could, in theory, add a to-do or set a reminder. They're `write` because that's the worst they can do.
+A web page that says "save this" can make the model ask, and nothing more.
 
 ## What goes where
 

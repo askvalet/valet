@@ -41,9 +41,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   // Valet's own tools (what happened, reminders) work without being granted; read-only pages still cap them
   const accessOf = (id: string) => rank[a.access[id] ?? (id === 'valet' ? 'write' : a.access.default ?? 'read')];
 
-  // what the person wrote in their latest message (set per request; write tools check their inputs against it)
-  let said = '', who = 'you';
-  const personSaid = (v: string) => v.trim().length > 0 && said.includes(v.trim());
+  let who = 'you';
 
   // Tool names are "<instance>__<tool>" so two instances of one integration (two Plex servers) don't collide.
   const tools: ToolSet = {};
@@ -79,10 +77,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
         execute: args => runTool(id, name, t, args, 'chat'),
         toModelOutput: ({ output }) => ({ type: 'json', value: (output as { data: any }).data ?? null }),
       });
-      if (t.access === 'control') approval[key] = 'user-approval';
-      // a write tool runs on its own only with what the person themselves wrote, never what something it read suggested
-      else if (t.access === 'write' && t.fromPerson?.length) approval[key] = ((input: Record<string, unknown>) =>
-        t.fromPerson!.every(f => input[f] == null || personSaid(String(input[f]))) ? 'not-applicable' : 'user-approval') as any;
+      if (t.access !== 'read') approval[key] = 'user-approval';   // reading is free; anything that changes something asks
     }
   }
 
@@ -206,8 +201,6 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream }) });
     }
     who = (c.get as (k: string) => string | undefined)('user') ?? 'you';
-    const lastUser = [...all_].reverse().find(m => m.role === 'user');
-    said = (lastUser?.parts ?? []).map((p: any) => p.type === 'text' ? p.text : '').join('\n');
     // the model gets the last 24 messages: enough context for a conversation, bounded cost for a long one
     // and without any reasoning that leaked into earlier replies
     const messages = trimHistory(all_.slice(-24));

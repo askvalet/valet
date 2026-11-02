@@ -77,10 +77,10 @@ Rules of the road:
 - **Return cards from the catalog.** Valet checks a plugin's cards against it; a mismatch shows as the widget's error
   (naming the field), not a broken page. Run `checkCard(card)` in your own tests.
 - **Give every card a `summary`**, so it works at size small, in the menubar and as a tile.
-- **Tools say what they need.** `access: 'read'` to look, `'write'` to add something (it runs without asking), `'control'`
-  to change or remove something (the person approves first). Write descriptions for the model: what it returns and
+- **Tools say what they need.** `access: 'read'` to look, `'write'` to add something, `'control'` to change or
+  remove something. Anything but `read` waits for the person to approve it. Write descriptions for the model: what it returns and
   when to use it.
-- **Say what you're about to do.** A `control` tool can have `confirm(input)`, returning `{ title, detail, image, icon, verb, danger }`
+- **Say what you're about to do.** A tool that asks can have `confirm(input)`, returning `{ title, detail, image, icon, verb, danger }`
   for its approval card: `Request The Mob?`, with a button that says Request. It may look things up but never change them, and
   it should show what the service says rather than what the model typed.
 - **Images go through `ctx.image(ref)`** and your `image(ref)` handler, so the browser never needs your service's key.

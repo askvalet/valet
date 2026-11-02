@@ -36,7 +36,7 @@ const ran: string[] = [];
 const tool = (name: string, access: 'read' | 'write' | 'control', extra: object = {}, out: unknown = { ok: true }) => ({ description: name, label: name, access, input: z.object({ url: z.string().optional(), n: z.number().optional() }), run: async () => { ran.push(name); return { data: out }; }, ...extra });
 const home = () => new Map<string, any>([
   ['dl', { widgets: {}, tools: { status: tool('status', 'read', {}, { key: 'sekret-value-123' }), pause: tool('pause', 'control', { undo: 'resume' }), resume: tool('resume', 'control'), boom: { ...tool('boom', 'control'), run: async () => { ran.push('boom'); throw new Error('failed with sekret-value-123'); } } } }],
-  ['links', { widgets: {}, tools: { save: tool('save', 'write', { fromPerson: ['url'] }) } }],
+  ['links', { widgets: {}, tools: { save: tool('save', 'write') } }],
   ['secret', { widgets: {}, tools: { peek: tool('peek', 'read') } }],
   ['config', { widgets: {}, tools: { config_apply: tool('config_apply', 'control') } }],
 ]);
@@ -85,10 +85,8 @@ test('a control tool asks first and doesn\'t run until approved; a denial stays 
   assert.deepEqual(ran, ['pause']);
 });
 
-test('write tools: run alone with what the person typed, ask when the input came from anywhere else', async () => {
-  await talk(scripted([['links__save', { url: 'https://example.com/a' }]], 'saved'), say('save https://example.com/a'));
-  assert.deepEqual(ran, ['save']);
-  const r = await talk(scripted([['links__save', { url: 'https://evil.example/x' }]]), say('summarise that page'));
+test('write tools: always ask, even with exactly what the person typed', async () => {
+  const r = await talk(scripted([['links__save', { url: 'https://example.com/a' }]]), say('save https://example.com/a'));
   assert.deepEqual(ran, []);
   assert.ok(r.events.some(e => e.type === 'tool-approval-request'));
 });
@@ -119,8 +117,8 @@ test('plan: one approval for all of it, but every step is checked before anythin
 
 test('activity: changes are logged, redacted, with their undo; looking isn\'t logged', async () => {
   const activity = new Activity(redact);
-  await talk(scripted([['dl__status', {}], ['links__save', { url: 'https://a.example' }]], 'done'), say('save https://a.example'), { activity });
-  assert.deepEqual(activity.recent().map(e => e.what), ['save']);
+  await talk(scripted([['dl__status', {}]], 'done'), say('how are the downloads'), { activity });
+  assert.deepEqual(activity.recent(), []);
   const q = (await talk(scripted([['dl__pause', {}]]), say('pause'))).events.find(e => e.type === 'tool-approval-request');
   await talk(scripted('ok'), [...say('pause'), { id: 'a1', role: 'assistant', parts: [{ type: 'step-start' }, { type: 'tool-dl__pause', toolCallId: q.toolCallId, state: 'approval-responded', input: {}, approval: { id: q.approvalId, approved: true } }] }], { activity });
   assert.deepEqual(activity.recent()[0].undo, { tool: 'dl__resume', input: {} });

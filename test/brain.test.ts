@@ -92,7 +92,7 @@ test('setup: edits keep comments; it can\'t touch sign-in or its own access, or 
   const tools = setupTools(file, registry), ops = [{ op: 'set', path: ['title'], value: 'Den' }];
   assert.equal(tools.config_apply.access, 'control');
   assert.equal(tools.config_preview.access, 'read');
-  assert.equal(tools.api_sample.fromPerson?.[0], 'url');
+  assert.equal(tools.api_sample.access, 'write');
   assert.match((await tools.config_preview.run({ ops, summary: 's' }) as any).data.diff, /\+ title: Den/);
   assert.match(await readFile(file, 'utf8'), /title: Home/);                                // a preview saves nothing
   assert.equal((await tools.config_apply.run({ ops, summary: 's' }) as any).data.saved, true);

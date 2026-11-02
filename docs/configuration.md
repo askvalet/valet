@@ -48,7 +48,7 @@ In Docker, prefix these with `docker exec -it valet`.
 | `links` | `{}` | bookmarks by group, each group a widget `links.<group-slug>`: `Media: [{ name, url, icon?, note? }]`. Without `icon`, the site's favicon (fetched by Valet) |
 | `notify` | `{ channels: [] }` | where reminders go when you're not looking: see below. `insights: true` also pushes the shared-cause line |
 | `reload` | `true` | watch the file and apply edits live |
-| `recap` | `true` | your year in review, at `#recap` and on the overview: six to eight screens, the rest behind Explore everything, and a share card where you choose what shows |
+| `recap` | `true` | your year in review, at `#recap` and on the overview: the strongest slides first, then all the rest without a break, and a share card where you choose what shows |
 | `welcome` | `false` | the getting-started card; a fresh starter config turns it on |
 
 ## Look and feel
@@ -149,9 +149,9 @@ The top of the overview.
 | Option | Default | |
 |---|---|---|
 | `greeting` | `true` | `false` hides it; text replaces "Sam's homelab": `{name}` fills in the top-level `greeting`, `{greeting}` the time of day |
-| `status` | `true` | the lines under it: what needs you (with what to do about it, and the assistant's shared-cause line), then what's merely going on |
+| `status` | `true` | one sentence under it: "All 30 services are running, Sam is watching Dune and 2 downloads are on the way." or "Everything's running except Mealie." When something needs attention, it gets a dot and heavier text in the same sentence. If the assistant finds what several problems share, that's the sentence |
 | `search` | `true` | the ask box, or the search box without an assistant |
-| `review` | `true` | the year in review link under the suggestions, which can be dismissed for the visit. `recap: false` turns off the review itself |
+| `review` | `true` | the year in review link, in the same row as the suggested questions, which can be dismissed for the visit. `recap: false` turns off the review itself |
 | `align` | `center` | `left`, `right` |
 | `scope` | none | what the ask box names instead of "anything": `true` works it out from your integrations ("Ask about downloads, lights, what to watch…"), a list of up to 6 says it yourself. `chat.placeholder` wins over it |
 
@@ -208,7 +208,6 @@ services and the assistant write is theirs, and the status sentence is built fro
 | `ask` | Ask {name} |
 | `askAnything` | Ask {name} anything |
 | `askAbout` | Ask about {scope} |
-| `askWhy` | Ask why |
 | `allOf` | All {n} |
 | `dismiss` | Dismiss |
 | `message` | Message {name} |
@@ -303,11 +302,11 @@ layout:
 | `model` | required | |
 | `name` | `Assistant` | what it's called on the page |
 | `instructions` | none | added to the system prompt |
-| `access` | `{ default: read }` | per integration (by its id): `none`, `read`, `write` (adds things, like saving a link) or `control` (changes or removes things; asks you every time). `config: control` lets it edit this file: see below |
+| `access` | `{ default: read }` | per integration (by its id): `none`, `read`, `write` (adds things, like saving a link) or `control` (changes or removes things). Both ask you every time. `config: control` lets it edit this file: see below |
 | `maxSteps` | `6` | tool calls per answer, 1–20 |
 | `agent` | none | hand the chat to another agent: `{ name, baseURL, apiKey, model }`, anything OpenAI-compatible (Hermes Agent's API server, say). Remove it to go back. It runs its own tools, so access levels and approvals don't apply; it gets only the conversation, answers are plain text, and a read-only page stays on Valet's assistant. "Why?", the brief and shared causes stay on `model` |
 | `suggestions` | four examples | questions offered until the model has written its own, or if `background.suggest` is off |
-| `background` | `{ watch: true, brief: true, suggest: true, perDay: 100 }` | what it does unasked. `watch`: when two or more things break, say what they share, if the data shows it. `brief`: a line under the greeting, rewritten every half hour while the page is in use. `suggest`: write the suggested questions from what's on the page, every half hour or when something changes (`suggestions` is the fallback). `perDay` caps the first two. None of them get tools |
+| `background` | `{ watch: true, brief: true, suggest: true, perDay: 100 }` | what it does unasked. `watch`: when two or more things break, say what they share, if the data shows it. `brief`: a short summary, shown when you hover the status sentence and rewritten every half hour while the page is in use. `suggest`: write the suggested questions from what's on the page, every half hour or when something changes (`suggestions` is the fallback). `perDay` caps the first two. None of them get tools |
 
 What `assistant` sets is what it knows and may do. How it looks on the page is `chat`, below, apart from its name.
 
@@ -317,7 +316,7 @@ and saves only when you approve; hot reload does the rest. It changes only the l
 `assistant`, `appearance` (which names files on disk), `mcp`, `plugins` or `allowedHosts`, and it refuses to write a secret: it asks you to put `${NAME}` in `.env`.
 Mount the config folder read-only and it hands you the diff to paste instead.
 
-**On the page, not in chat:** "Why?" on anything in trouble, a line under the greeting, ⌘K answers and approvals in
+**On the page, not in chat:** "Why?" on anything in trouble, a summary when you hover the status sentence, ⌘K answers and approvals in
 place, and pin on a chat card to keep it on the page. A pin re-runs the same tool, so no model is involved after that;
 pins live in `data/pins.json`.
 
@@ -391,7 +390,8 @@ The black notch at the top that shows what's happening.
 
 ## `layout`
 
-A list of sections; each is a tab in the rail.
+A list of sections; each is a tab in the rail. Sections appear in this order, top to bottom, and tabs follow it unless
+`nav.order` sets their own.
 
 | Option | Default | |
 |---|---|---|
@@ -417,12 +417,29 @@ A widget entry takes these, all optional but `widget`:
 | `widget` | required | `instance.widget` |
 | `size` | `medium` | `small`, `wide`, `medium`, `tall`, `large`: see [sizes](#appearance) |
 | `every` | the widget's own | how often it refreshes: seconds, or `30s`, `5m`, `1h` |
+| `view` | the widget's own | how it's drawn, whatever the data: below |
 | `title`, `icon` | the card's | its name and icon; on a tile, its label and icon |
 | `header` | the section's | `false` drops its title bar, `true` keeps it in a section that drops them |
 | `tint` | `colors.card` | a colour for its surface |
 | `opacity` | `glass.opacity` | how much of the tint shows, 0–1; `0.45` over a `background` |
 | `blur` | `glass.blur` | px behind it |
 | `background` | none | an image behind it, under the tint: an `https://` URL or a Valet path. A file at `data/icons/rack.png` is `/api/icon/rack` |
+
+`view` picks how a widget is drawn, separately from its data:
+
+```yaml
+widgets:
+  - { widget: plex.top, view: coverflow }
+  - { widget: plex.plays, view: bars }
+```
+
+| Views | Work on |
+|---|---|
+| Charts: `line`, `bars`, `stream`, `race`, `heatmap`, `ranked`, `pie` | anything with numbers: a chart, race, heatmap or ranked card, or a stats card with a pie |
+| Galleries: `row`, `spotlight`, `coverflow`, `desk`, `windows`, `tickets`, `mosaic`, `flashback` | anything with pictures: a shelf, photos, ranked, race or media card |
+
+`heatmap` needs dates. A view that doesn't fit leaves the card as it was. It changes the card, so a small or wide tile keeps
+showing the headline.
 
 ## Integrations
 

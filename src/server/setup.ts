@@ -131,7 +131,7 @@ export function setupTools(path: string, registry: Record<string, Integration>):
       },
     },
     api_sample: {
-      label: 'Looked at the API', access: 'write', fromPerson: ['url'],
+      label: 'Looked at the API', access: 'write',
       description: 'Fetch a JSON URL the person gave you and return the start of the response, to write a `type: api` block from: which paths hold the numbers. Headers may use ${NAME}.',
       input: z.object({ url: z.string().url(), headers: z.record(z.string(), z.string()).optional() }),
       async run({ url, headers }) {

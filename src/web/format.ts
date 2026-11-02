@@ -38,7 +38,7 @@ export function tabHash(key: string) {
   return /^(recap|gallery|overview)$/.test(s) ? `tab-${s}` : s;
 }
 
-export interface Problem { id: 'services' | 'health' | 'downloads' | 'widgets'; text: string; why: string; fix?: { key: string; label: string; action: string; args?: Record<string, unknown> } }
+export interface Problem { id: 'services' | 'health' | 'downloads' | 'widgets'; text: string; why: string }
 const and = (l: string[]) => l.length < 2 ? l.join('') : `${l.slice(0, -1).join(', ')} and ${l.at(-1)}`;
 
 /** One service can show on several cards, spelled differently ("mealie", "Mealie"): lowercased name → its nicest spelling. */
@@ -49,9 +49,8 @@ export function spellings(states: WidgetState[]) {
 }
 
 /** How the place is, from what the services report right now, so it can't be wrong and never needs a model. What needs
- *  someone comes apart from what's merely going on, worst first; `onPage` are the widgets already on the overview, whose
- *  news the quiet line leaves to them. */
-export function sayHow(states: WidgetState[], onPage: Set<string> = new Set()) {
+ *  someone comes apart from what's merely going on, worst first. */
+export function sayHow(states: WidgetState[]) {
   const boards = states.flatMap(s => s.card?.type === 'status' ? [s.card.items] : []).sort((a, b) => b.length - a.length);
   // one service on several cards is still one problem; running but failing its health check isn't "down"
   const spelled = spellings(states), wrong = boards.flat().filter(i => !i.ok && !i.quiet);
@@ -59,27 +58,33 @@ export function sayHow(states: WidgetState[], onPage: Set<string> = new Set()) {
   const down = named(wrong.filter(i => stateOf(i) !== 'degraded')), sick = named(wrong.filter(i => stateOf(i) === 'degraded'));
   const count = (st: ReturnType<typeof stateOf>) => (boards[0] ?? []).filter(i => stateOf(i) === st).length;
   const total = boards[0]?.length ?? 0, up = count('up'), off = count('off'), problems: Problem[] = [];
-  if (down.length) problems.push({ id: 'services', text: down.length === 1 ? `${down[0]} is down` : down.length <= 3 ? `${and(down)} are down` : total >= down.length ? `${down.length} of ${total} services are down` : `${down.length} services are down`,
+  if (down.length) problems.push({ id: 'services', text: down.length === 1 ? `Everything's running except ${down[0]}` : down.length <= 3 ? `${and(down)} are down` : total >= down.length ? `${down.length} of ${total} services are down` : `${down.length} services are down`,
     why: down.length === 1 ? `Why is ${down[0]} down?` : down.length <= 3 ? `Why are ${and(down)} down?` : 'Why are so many services down?' });
   if (sick.length) problems.push({ id: 'health', text: sick.length === 1 ? `${sick[0]} is unhealthy` : sick.length <= 3 ? `${and(sick)} are unhealthy` : `${sick.length} services are unhealthy`,
     why: sick.length === 1 ? `Why is ${sick[0]} unhealthy?` : 'Why are these services unhealthy?' });
   const getting = states.flatMap(s => s.card?.type === 'media' ? [{ key: s.key, card: s.card, items: s.card.items.filter(m => m.icon === 'download' && m.state !== 'paused') }] : []).filter(g => g.items.length);
   // nothing's moving, and not because someone paused it
   const stuck = getting.filter(g => /(^|\s)0 B\/s/.test(g.card.note ?? '') && !g.card.buttons?.some(b => /^resume/i.test(b.label)));
-  const nStuck = stuck.reduce((n, g) => n + g.items.length, 0), pause = stuck.flatMap(g => (g.card.buttons ?? []).filter(b => /^pause/i.test(b.label)).map(b => ({ ...b, key: g.key })))[0];
-  if (nStuck) problems.push({ id: 'downloads', text: nStuck === 1 ? 'A download is stalled' : `${nStuck} downloads are stalled`, why: nStuck === 1 ? 'Why is my download stalled?' : 'Why are my downloads stalled?', ...(pause && { fix: pause }) });
+  const nStuck = stuck.reduce((n, g) => n + g.items.length, 0);
+  if (nStuck) problems.push({ id: 'downloads', text: nStuck === 1 ? 'A download is stalled' : `${nStuck} downloads are stalled`, why: nStuck === 1 ? 'Why is my download stalled?' : 'Why are my downloads stalled?' });
   const broken = states.filter(s => s.error);
   if (broken.length) problems.push({ id: 'widgets', text: `${broken.length} widget${broken.length > 1 ? 's' : ''} can't reach ${broken.length > 1 ? 'their services' : 'its service'}`,
     why: broken.length === 1 ? `What's wrong with ${broken[0].card?.title ?? broken[0].key.split('.')[0]}?` : 'Why can\'t these widgets reach their services?' });
 
-  const media = states.filter(s => !onPage.has(s.key)).flatMap(s => s.card?.type === 'media' ? s.card.items : []);
-  const watching = media.filter(m => m.user && m.state !== 'paused'), coming = getting.filter(g => !onPage.has(g.key) && !stuck.includes(g)).reduce((n, g) => n + g.items.length, 0);
+  const media = states.flatMap(s => s.card?.type === 'media' ? s.card.items : []);
+  const watching = media.filter(m => m.user && m.state !== 'paused'), coming = getting.filter(g => !stuck.includes(g)).reduce((n, g) => n + g.items.length, 0);
   const parts = [
     !total || down.length ? '' : up === total ? `All ${total} services are running` : `${up} of ${total} running${off ? `, ${off} off by choice` : ''}`,
     watching.length === 1 ? `${watching[0].user} is watching ${watching[0].title}` : watching.length ? `${watching.length} people are watching` : '',
     coming ? `${coming === 1 ? 'a download is' : `${coming} downloads are`} on the way` : '',
   ].filter(Boolean);
-  return { problems, quiet: parts.length ? `${and(parts)}.` : '' };
+  return { problems, parts };
+}
+
+/** The whole place in one sentence: what needs someone first, then what's merely going on. */
+export function oneLine(problems: Problem[], parts: string[]) {
+  const all = [...problems.map(p => p.text), ...parts].map((t, i) => i ? t.replace(/^(A|All) /, m => m.toLowerCase()) : t);
+  return all.length ? `${and(all)}.` : '';
 }
 
 const TROUBLE = /\b(down|offline|failing|failed|broken|crash\w*|restart\w*|fix|wrong|stopped|unreachable|errors?|back up)\b/i;

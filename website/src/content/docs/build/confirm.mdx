@@ -5,7 +5,7 @@ sidebar: { order: 7 }
 ---
 import Shot from '~/components/Shot.astro';
 
-A `control` tool can have `confirm(input)`. It returns what's about to happen, in words a person would use, for the [approval card](/assistant/approvals/).
+A tool that asks can have `confirm(input)`. It returns what's about to happen, in words a person would use, for the [approval card](/assistant/approvals/).
 
 ```js
 media_request: {
@@ -30,7 +30,7 @@ media_request: {
 | `title` | The question: `Stop Sam's stream?` |
 | `detail` | One more line: `The downloaded files are kept`. |
 | `verb` | The button's word: `Stop`, `Pause`, `Request`. **Allow** by default. |
-| `danger` | Asks for a [hold or two presses](/assistant/approvals/#hold-to-confirm), on a red button. |
+| `danger` | A red button. |
 | `image` | Artwork, such as a poster. |
 | `icon` | An icon by name. |
 | `logo` | The app's icon. Valet fills this in from the integration's type. |

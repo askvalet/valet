@@ -33,14 +33,14 @@
 /* A pile of cards: the next ones show their real pages above the top one. Where each sits comes from `pose`; dragging writes
    it directly and a card lets go of it by transition, from wherever it is. */
 .pile { position: relative; isolation: isolate; height: 100%; min-height: 256px; touch-action: pan-y; }
-.pile-card { position: absolute; inset: 16px 0 0; transform-origin: 50% 0; transition: transform var(--dur-move) var(--ease-out), opacity var(--dur-pop) var(--ease-out); }
+.pile-card { position: absolute; inset: 42px 0 0; transform-origin: 50% 0; transition: transform var(--dur-move) var(--ease-out), opacity var(--dur-pop) var(--ease-out); }
 .pile-card::after { content: ""; position: absolute; inset: 0; border-radius: 1rem; background: #000; opacity: var(--dim, 0); pointer-events: none; transition: opacity var(--dur-move) var(--ease-out); }
 .pile-card[data-held], .pile[data-still] .pile-card, .pile-card[data-held]::after, .pile[data-still] .pile-card::after { transition: none; }
 .pile-card[data-held] { will-change: transform; }
 .pile-card[inert] { pointer-events: none; }
 .pile.is-single { min-height: 240px; }
 .pile.is-single .pile-card { inset: 0; }
-.pile-over { position: absolute; inset: 16px 0 0; z-index: 20; pointer-events: none; }
+.pile-over { position: absolute; inset: 42px 0 0; z-index: 20; pointer-events: none; }
 .pile.is-single .pile-over { inset: 0; }
 .pile-over > * { pointer-events: auto; }
 .pile .article-open { -webkit-touch-callout: none; }
@@ -48,10 +48,6 @@
 .article.is-leaving { opacity: 0; scale: .96; translate: 0 10px; transition: opacity var(--dur-pop) var(--ease-out), scale var(--dur-pop) var(--ease-out), translate var(--dur-pop) var(--ease-out); }
 .article.is-back { animation: desk-rise var(--dur-pop) var(--ease-out) backwards; }
 
-/* Hold to confirm: the fill crosses at the speed of the hold, in a straight line, and goes back quickly when let go. */
-.hold { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.hold-fill { position: absolute; inset: 0; transform: scaleX(0); transform-origin: left; background: rgb(255 255 255 / .28); transition: transform var(--dur-move) var(--ease-out); }
-.hold[data-held] .hold-fill { transform: none; transition: transform var(--hold) linear; }
 
 /* A slider that gives at its ends: pulled by the pointer, let go on the spring. */
 .elastic { display: flex; align-items: center; min-width: 0; }

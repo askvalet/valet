@@ -105,10 +105,9 @@ assistant:
   access: { default: read, home: control, downloads: none }
 ```
 
-`read` tools fetch information. `write` tools add something (save a link, file a document) without asking, but only
-with what you typed yourself: if a page or document it read suggested it, it asks. `control` tools change or remove
-something, and each call waits for you to approve it in the chat. Valet never hands the model your API keys; tools run
-on the server.
+`read` tools fetch information. `write` tools add something (save a link, file a document), and `control` tools change
+or remove something. Both wait for you to approve each call in the chat. Valet never hands the model your API keys;
+tools run on the server.
 
 ## Contributing
 

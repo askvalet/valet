@@ -9,7 +9,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { stateOf } from '../src/shared/cards.ts';
 import { checkCard } from '../src/shared/cards.schema.ts';
 import { MiniRing, SummaryTile, Widget } from '../src/web/cards.tsx';
-import { Counter, ElasticSlider, Flap, Hold, landing, pose, RowSlot, rubber, Tick, useRows } from '../src/web/feel.tsx';
+import { Counter, ElasticSlider, Flap, landing, pose, RowSlot, rubber, Tick, useRows } from '../src/web/feel.tsx';
 import { byDay, CalendarView, headsUp, span, splitToday, Thermostat, WeatherCard } from '../src/web/home-cards.tsx';
 import HomeCase from '../src/web/visuals/home-case.tsx';
 import { batteryNote, heard, near, restoreGroups, restoreOf, unsettled, wearNote, type PlanData, type PlanLight } from '../src/web/visuals/home-model.ts';
@@ -314,7 +314,7 @@ test('feel: a pile: on top nothing is moved or dimmed, behind is smaller, thrown
   assert.equal(at(-1).opacity, 0);
   assert.equal(at(1).opacity, 1, 'depth is a dim, not see-through: the next card must not show through');
   assert.ok(Number(at(2)['--dim']) > Number(at(1)['--dim']));
-  assert.equal(at(3).opacity, 0, 'the one waiting behind is mounted but not seen');
+  assert.equal(at(4).opacity, 0, 'the one waiting behind is mounted but not seen');
   const card = { type: 'article', title: 'Reading', more: [{ id: 'a', headline: 'One', link: 'http://x/1' }, { id: 'b', headline: 'Two', link: 'http://x/2' }, { id: 'c', headline: 'Three', link: 'http://x/3' }] };
   const out = html(card, { run: true });
   assert.match(out, /class="pile"/); assert.match(out, /One/); assert.match(out, /Two/);
@@ -330,13 +330,6 @@ test('feel: a row: shelves throw, and the desk stays a desk', () => {
   assert.match(html({ type: 'shelf', title: 'Shelf', items }), /carousel-face/);
   assert.match(html({ type: 'shelf', layout: 'desk', title: 'Docs', items }), /desk carousel/);
   assert.match(html({ type: 'shelf', layout: 'desk', title: 'Docs', items }), /desk-page/);
-});
-
-test('feel: hold says what it does, keeps a way that needs no holding, and nothing fires on render', () => {
-  let fired = 0;
-  const out = renderToString(<Hold verb="Stop" onConfirm={() => fired++} />);
-  assert.match(out, /Hold to stop/); assert.match(out, /Press again/); assert.match(out, /aria-label="Stop\. Asks for a second press"/);
-  assert.match(out, /hold-fill/); assert.equal(fired, 0);
 });
 
 test('feel: a flap Counter starts as plain digits, and a flip ends on the plain digit', () => {

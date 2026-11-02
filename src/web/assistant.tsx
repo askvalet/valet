@@ -4,7 +4,7 @@ import { Chat, useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
 import {
   Activity, ArrowDown, ArrowUp, Bookmark, Check, ChevronDown, ChevronRight, Copy, CornerDownRight, FileText, Lightbulb, Loader2, Paperclip, RotateCcw,
-  KeyRound, Pin, Search, Square, X, Zap,
+  Pin, Search, Square, X, Zap,
 } from 'lucide-react';
 import { createContext, Fragment, memo, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { BorderBeam } from 'border-beam';
@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import type { Card, Confirm } from '../shared/cards.ts';
 import { splitThink } from '../shared/think.ts';
 import { Icon, Widget } from './cards.tsx';
-import { Hold, Tick } from './feel.tsx';
+import { Tick } from './feel.tsx';
 import { label } from './format.ts';
 
 /** What `chat:` says about the window. */
@@ -190,9 +190,7 @@ function Confirmation({ p, name, approve, tools }: { p: any; name: string; appro
   return (
     // a slow beam around the edge: nothing goes further until this has an answer
     <BorderBeam size="md" colorVariant={said?.danger ? 'sunset' : 'gold'} strength={.6} duration={3.2} className="chat-card rounded-2xl" style={{ display: 'block', width: 'min(560px, calc(100vw - 48px))' }}>
-    <div className="flex overflow-hidden rounded-2xl border bg-card shadow-card">
-      <span className="key-tag" role="img" aria-label="Needs your approval"><KeyRound className="size-4" /></span>
-      <div className="min-w-0 flex-1">
+    <div className="overflow-hidden rounded-2xl border bg-card shadow-card">
       <div className="flex items-center gap-3.5 p-3.5">
         {said?.image ? <img src={said.image} alt="" className="h-[84px] w-14 shrink-0 rounded-lg object-cover shadow-md" />
           : said?.logo ? <img src={said.logo} alt="" className="size-11 shrink-0 rounded-xl object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />
@@ -225,16 +223,14 @@ function Confirmation({ p, name, approve, tools }: { p: any; name: string; appro
       ) : null}
       </div>}
       <div className="flex gap-2 px-3.5 pb-3.5 sm:hidden">{buttons()}</div>
-      </div>
     </div>
     </BorderBeam>
   );
   function buttons() {
     return <>
       <button onClick={() => approve(p.approval.id, false)} className="press h-9 flex-1 rounded-sm px-4 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:flex-none">{label('notNow')}</button>
-      {said?.danger ? <Hold verb={said.verb ?? label('allow')} onConfirm={() => approve(p.approval.id, true)} className="h-9 flex-1 rounded-sm bg-bad px-5 text-[14px] font-semibold text-white sm:flex-none" />
-        // waits for the words: until they arrive nobody knows yet whether this one needs holding
-        : <button disabled={!listed && !said} onClick={() => approve(p.approval.id, true)} className="press h-9 flex-1 rounded-sm bg-primary px-5 text-[14px] font-semibold text-primary-foreground transition-opacity disabled:opacity-40 sm:flex-none">{said?.verb ?? label('allow')}</button>}
+      {/* waits for the words: nobody should say yes to something it hasn't named yet */}
+      <button disabled={!listed && !said} onClick={() => approve(p.approval.id, true)} className={cn('press h-9 flex-1 rounded-sm px-5 text-[14px] font-semibold transition-opacity disabled:opacity-40 sm:flex-none', said?.danger ? 'bg-bad text-white' : 'bg-primary text-primary-foreground')}>{said?.verb ?? label('allow')}</button>
     </>;
   }
 }
@@ -464,7 +460,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
           // on a phone the suggestions sit low, where the thumb is
           <div className={cn('text-center', !sheet && 'pt-10')}>
             <div className="text-lg font-semibold tracking-tight">{label('chatTitle')}</div>
-            <p className="key-note mt-1 text-sm text-muted-foreground"><KeyRound className="size-3.5" />{label('chatHint')}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{label('chatHint')}</p>
             <div className="mx-auto mt-6 grid max-w-[560px] gap-1.5 sm:grid-cols-2">
               {suggestions.map(s => (
                 <button key={s} onClick={() => onAsk(s)}

@@ -78,14 +78,18 @@ It shows those names, and whatever's down, with a link to the whole list on the 
 
 ## The hero
 
-The top of the overview: the greeting, a status line, the ask box. `hero:` controls each part.
+The top of the overview: the title, a status line, the ask box. `hero:` controls each part.
 
 ```yaml
 greeting: Sam
 hero: { greeting: "Welcome back, {name}", align: left, review: false }
 ```
 
-`status` is the lines under the greeting: what needs you, then what's merely going on. `search` is the ask box, or a search box when there's no assistant.
+The title is "Sam's homelab" until you say otherwise. `hero.greeting` replaces it: `{name}` is your `greeting`, and `{greeting}` is the time of day, as in `"{greeting}, {name}"`.
+
+`status` is one sentence under the title: "All 30 services are running, Sam is watching Dune and 2 downloads are on the way." or "Everything's running except Mealie." When something needs attention, the same sentence gets a dot and heavier text.
+
+`search` is the ask box, or a search box when there's no assistant. `review` is the year in review link, in the same row as the suggested questions. You can dismiss it for the visit.
 
 ## The menubar
 

@@ -30,11 +30,11 @@ Leave out the `assistant:` block and the page loses nothing. [Running with no AI
 
 If you add a model, local or hosted, it answers with the same cards the page uses.
 
-The security story is the valet key: the key that drives the car but can't open the boot. The assistant reads freely and changes nothing without your approval. Each tool is `read`, `write` or `control`, you set the [access level](/assistant/access/) per integration, and every `control` call stops and waits for you.
+The security story is the valet key: the key that drives the car but can't open the boot. The assistant reads freely and changes nothing without your approval. Each tool is `read`, `write` or `control`, you set the [access level](/assistant/access/) per integration, and every `write` or `control` call stops and waits for you.
 
 <Row>
 <Shot id="scene/approval-card" label="A control tool waits for you" alt="An approval card asking whether to restart Mealie, with Not now and Restart buttons." />
-<Shot id="scene/approval-danger" label="Anything dangerous takes a press and hold" alt="An approval card asking to pause all downloads, with a hold button." />
+<Shot id="scene/approval-danger" label="Anything dangerous gets a red button" alt="An approval card asking to pause all downloads, with a red button." />
 </Row>
 
 ## Cards fit the space they get
