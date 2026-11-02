@@ -6,7 +6,7 @@
 
 **Talk to your homelab.**
 
-A fast, beautiful, self-hosted homepage with an optional assistant that only gets the keys you hand it.
+A self-hosted, open-source, AI-native homepage.
 
 [![CI](https://github.com/askvalet/valet/actions/workflows/ci.yml/badge.svg)](https://github.com/askvalet/valet/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)

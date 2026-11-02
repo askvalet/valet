@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "A fast, beautiful, AI-native homepage for your homelab.",
+  "description": "Talk to your homelab. A self-hosted, open-source, AI-native homepage.",
   "repository": "github:askvalet/valet",
   "license": "MIT",
   "engines": {
