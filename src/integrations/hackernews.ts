@@ -1,6 +1,6 @@
 // Hacker News front page (or newest / best), through the Algolia API: one request, no key.
 import { z } from 'zod';
-import { defineIntegration } from '../server/core.ts';
+import { defineIntegration, iconFor } from '../server/core.ts';
 import type { ListItem } from '../shared/cards.ts';
 
 const ago = (iso: string) => { const m = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60_000)); return m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
@@ -29,7 +29,7 @@ export default defineIntegration({
           title: 'Hacker News', interval: 600_000,
           async fetch() {
             const list = await stories(cfg.limit);
-            return { type: 'list', layout: 'headlines', title: 'Hacker News', icon: 'news', href: 'https://hn.algolia.com', items: list.map(row), empty: 'Nothing on the front page',
+            return { type: 'list', layout: 'headlines', title: 'Hacker News', icon: 'news', source: { name: 'Hacker News', icon: iconFor('hacker-news') }, href: 'https://hn.algolia.com', items: list.map(row), empty: 'Nothing on the front page',
               summary: list[0] ? { label: 'Hacker News', icon: 'news', value: list[0].title, sub: `${list[0].points} points` } : undefined };
           },
         },

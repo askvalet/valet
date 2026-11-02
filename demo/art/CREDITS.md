@@ -15,3 +15,7 @@ Screenshots of the pages linked in art.json, shown small as link previews. Wikip
 
 `docs/` holds the made-up letters from `PAPERS` in `integrations/homelab.mjs`, drawn in code and rendered to JPEG. Nothing
 in them is real.
+
+# Game covers
+
+The Games card links box art from https://github.com/libretro-thumbnails. The art belongs to the games' publishers.

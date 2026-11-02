@@ -186,8 +186,8 @@ test('demo: every figure agrees with every other, whenever you look', async () =
       assert.equal(plays.labels.length, 30);
       assert.equal(add(top.items.map((i: any) => num(i.value.split(' · ')[1]))), tv + movies);
       assert.equal(add(top.items.map((i: any) => num(i.value.split(' · ')[0]))), add(who.items.filter((i: any) => i.meta).map((i: any) => num(i.meta))));
-      assert.equal(plays.span, 'last 30 days'); assert.equal(top.note, 'Everyone · last 30 days'); assert.equal(who.items.at(-1).section, 'Last 30 days');
-      assert.equal(who.items[0].subtitle, (await inst.widgets.streams.fetch()).items[0].title);
+      assert.equal(plays.span, 'last 30 days'); assert.equal(top.note, 'Everyone · last 30 days');
+      assert.equal(who.items[0].subtitle, `Watching ${(await inst.widgets.streams.fetch()).items[0].title}`);
       const [blocked, allowed] = dns.series.map((s: any) => s.points);
       assert.ok([...blocked, ...allowed].every(n => Number.isInteger(n) && n >= 0));
       const total = add(blocked) + add(allowed), shown = dns.span.match(/of ([\d,]+) queries/)![1];

@@ -158,11 +158,11 @@ export default defineIntegration({
         title: 'Who\'s watching', interval: 60_000,
         async fetch() {
           const [rows, now] = await Promise.all([totals(), activity().then(a => a.sessions, () => [] as any[])]), top = Math.max(1, ...rows.map(r => r.total_duration ?? 0));
-          // two different questions: a heading each, and only when both have an answer
-          const both = now.length > 0 && rows.length > 0;
-          return { type: 'list', title: 'Who\'s watching', icon: 'play', source, empty: 'Nobody yet', note: both ? 'Everyone' : scope,
-            items: [...now.map(s => ({ title: s.friendly_name, subtitle: title(s), meta: s.state === 'paused' ? 'Paused' : undefined, section: 'Watching now' })),
-              ...[...rows].sort((a, b) => (b.total_duration ?? 0) - (a.total_duration ?? 0)).map(r => ({ title: r.friendly_name, meta: fmt.duration(r.total_duration ?? 0), pct: (r.total_duration ?? 0) / top, section: both ? 'Last 30 days' : undefined }))] };
+          // one list, most watched first; whoever's on right now says what, on their own row
+          const on = new Map(now.map(s => [s.friendly_name, s])), seen = new Set(rows.map(r => r.friendly_name));
+          return { type: 'list', title: 'Who\'s watching', icon: 'play', source, empty: 'Nobody yet', note: scope,
+            items: [...now.filter(s => !seen.has(s.friendly_name)).map(s => ({ title: s.friendly_name, subtitle: `${s.state === 'paused' ? 'Paused on' : 'Watching'} ${title(s)}` })),
+              ...[...rows].sort((a, b) => (b.total_duration ?? 0) - (a.total_duration ?? 0)).map(r => { const s = on.get(r.friendly_name); return { title: r.friendly_name, subtitle: s ? `${s.state === 'paused' ? 'Paused on' : 'Watching'} ${title(s)}` : undefined, meta: fmt.duration(r.total_duration ?? 0), pct: (r.total_duration ?? 0) / top }; })] };
         },
       },
       plays: {

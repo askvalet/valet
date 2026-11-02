@@ -6,6 +6,8 @@ import { defineIntegration, fmt } from '../server/core.ts';
 import { child, elements, text } from '../server/xml.ts';
 import type { ListItem, ShelfItem } from '../shared/cards.ts';
 
+const RSS_MARK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23f26522'/%3E%3Ccircle cx='7' cy='17' r='2' fill='%23fff'/%3E%3Cpath d='M5 11a8 8 0 0 1 8 8M5 6a13 13 0 0 1 13 13' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E";
+
 export interface Entry { title: string; href?: string; source: string; at?: number; image?: string; summary?: string }
 
 /** Entries of one feed, RSS or Atom. */
@@ -65,7 +67,7 @@ export default defineIntegration({
             const summary = first ? { label: cfg.title, icon: 'rss', value: first.title, sub: `${first.source} · ${ago(first.at)}` } : undefined;
             return cfg.style === 'shelf'
               ? { type: 'shelf', title: cfg.title, icon: 'rss', aspect: 'wide', items: list.map(tile), empty: 'Nothing new', summary }
-              : { type: 'list', layout: 'headlines', title: cfg.title, icon: 'rss', items: list.map(row), empty: 'Nothing new', summary };
+              : { type: 'list', layout: 'headlines', title: cfg.title, icon: 'rss', source: { name: 'RSS', icon: RSS_MARK }, items: list.map(row), empty: 'Nothing new', summary };
           },
         },
       },

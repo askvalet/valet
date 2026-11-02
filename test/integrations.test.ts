@@ -265,15 +265,15 @@ test('tautulli: the year of days comes from one call, and a year-in-review slide
   assert.match(top.line, /In front from Apr\./);
 });
 
-test('tautulli: whose viewing and which period are said, and now stays apart from totals', async () => {
+test('tautulli: one list of who watched most, and whoever is on now says what', async () => {
   let streams: any[] = [{ friendly_name: 'Theo', title: 'Dune', media_type: 'movie', state: 'playing' }];
   const t = make(tautulli, { url: 'http://t', apiKey: 'x' }, fake(url => ({ response: { result: 'success', data: url.includes('get_activity') ? { stream_count: streams.length, total_bandwidth: 0, sessions: streams }
     : [{ stat_id: 'top_users', rows: [{ friendly_name: 'Theo', total_duration: 3600 }] }, { stat_id: 'top_movies', rows: [] }, { stat_id: 'top_tv', rows: [] }] } })));
   const both: any = await t.widgets.people.fetch(); valid(both);
-  assert.deepEqual(both.items.map((i: any) => i.section), ['Watching now', 'Last 30 days']); assert.equal(both.note, 'Everyone');
+  assert.equal(both.items.length, 1); assert.equal(both.items[0].subtitle, 'Watching Dune'); assert.equal(both.note, 'Everyone · last 30 days');
   streams = [];
   const quiet: any = await t.widgets.people.fetch();
-  assert.deepEqual(quiet.items.map((i: any) => i.section), [undefined]); assert.equal(quiet.note, 'Everyone · last 30 days');
+  assert.equal(quiet.items[0].subtitle, undefined); assert.equal(quiet.note, 'Everyone · last 30 days');
   assert.equal(((await t.widgets.top.fetch()) as any).note, 'Everyone · last 30 days');
 });
 

@@ -683,7 +683,7 @@ function Windows({ card, header, run }: { card: ShelfCard; header?: ReactNode; r
   const site = (s?: string) => s && /^[\w-]+(\.[\w-]+)+$/.test(s) ? s : undefined;
   return (
     <div>
-      <div className="flex items-center justify-between gap-3"><div className="min-w-0">{header}</div>{run && <SeeArchived href={card.archived} className="shrink-0" />}</div>
+      <div className="mb-3 flex items-center justify-between gap-3"><div className="min-w-0">{header}</div>{run && <SeeArchived href={card.archived} className="shrink-0" />}</div>
       <div className="windows">
         {card.items.filter(w => !w.id || !arch.gone.includes(w.id)).slice(0, 9).map((w, i) => (
           <a key={w.id ?? i} href={w.href} target="_blank" rel="noreferrer" className={cn('window relative', w.id && arch.leaving.includes(w.id) && 'gone')}>
@@ -1348,7 +1348,7 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
       {scene}
       {t && !bare && !headless && (
         <CardHeader className={cn('flex items-center gap-2', compact ? 'px-3.5' : 'px-5')}>
-          <CardTitle className={cn('truncate', compact ? 'text-[13px]' : 'text-[15px]')}>{card?.href ? <a href={card.href} target="_blank" rel="noreferrer" className="title-link">{t}</a> : t}</CardTitle>
+          <CardTitle className={cn('flex min-w-0 items-center gap-2 truncate', compact ? 'text-[13px]' : 'text-[15px]')}>{card?.source?.icon && <img src={card.source.icon} alt="" className="size-[18px] flex-none rounded-[5px] object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />}{card?.href ? <a href={card.href} target="_blank" rel="noreferrer" className="title-link">{t}</a> : t}</CardTitle>
           {status}
           <CardAction className="flex items-center gap-2 self-center">
             {card?.note && <span className="truncate text-xs tabular text-muted-foreground">{card.note}</span>}
