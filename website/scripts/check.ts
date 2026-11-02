@@ -23,10 +23,10 @@ for (const it of catalog.integrations) {
 for (const g of catalog.gallery) { const b = `card/${g.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`; if (!Object.values<any>(manifest).some(e => e.file && e.id.startsWith(`${b}-`))) fail.push(`card sample ${g.name}: no screenshot`); }
 
 // 2. nothing of the owner's: words anywhere in the output. The one exception is the project's own public address.
-const WORDS = /chotte|ibrahim|192\.168/i, PUBLIC = /ghcr\.io\/ibrahimirfan\/valet|github\.com\/IbrahimIrfan\/valet/g;
+const WORDS = /chotte|ibrahim|192\.168/i;
 const text = (f: string) => /\.(html|js|mjs|css|json|txt|xml|svg|md|mdx)$/.test(f);
 const scan = [...walk(dist).filter(text), ...walk(join(root, 'src/content/docs')), join(root, '.cache/catalog.json')];
-for (const f of scan) { const m = WORDS.exec(readFileSync(f, 'utf8').replace(PUBLIC, '')); if (m) fail.push(`${f.replace(root, '')}: has "${m[0]}"`); }
+for (const f of scan) { const m = WORDS.exec(readFileSync(f, 'utf8')); if (m) fail.push(`${f.replace(root, '')}: has "${m[0]}"`); }
 
 // 3. works offline: no script, style, font or image from anywhere else
 for (const f of walk(dist).filter(f => extname(f) === '.html')) {
