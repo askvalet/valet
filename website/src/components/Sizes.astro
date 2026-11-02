@@ -1,0 +1,21 @@
+---
+// A card at every size that draws differently, and a line saying which sizes it left out and why.
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import Shot from './Shot.astro';
+const manifest = JSON.parse(readFileSync(resolve(process.cwd(), 'public/shots/manifest.json'), 'utf8'));
+const { base, name = '', chat = true, light = false, ring = false } = Astro.props;
+const order = ['small', 'wide', 'medium', 'tall', 'large'];
+const words = { small: 'Small', wide: 'Wide', medium: 'Medium', tall: 'Tall', large: 'Large' };
+const shown = order.filter(s => manifest[`${base}-${s}`]?.file), same = order.filter(s => manifest[`${base}-${s}`]?.sameAs);
+const notes = same.map(s => `${words[s]} draws the same as ${manifest[`${base}-${s}`].sameAs.split('-').pop()}`);
+const skipped = order.filter(s => !manifest[`${base}-${s}`]);
+if (!shown.length) throw new Error(`no screenshots for ${base}`);
+const extra = [chat && manifest[`${base}-chat`] && ['chat', 'In chat'], light && manifest[`${base}-light`] && ['light', 'Light theme'], ring && manifest[`${base}-ring`] && ['ring', 'Ring']].filter(Boolean);
+---
+<div class="shot-row">
+  {shown.map(s => <Shot id={`${base}-${s}`} label={words[s]} alt={`${name}, ${s} size`} />)}
+  {extra.map(([k, l]) => <Shot id={`${base}-${k}`} label={l} alt={`${name}, ${l.toLowerCase()}`} />)}
+</div>
+{notes.length > 0 && <p class="shot-note">{notes.join('. ')}, so {same.length === 1 ? "it isn't" : "they aren't"} shown. Only the empty space changes.</p>}
+{skipped.length > 0 && <p class="shot-note">Not captured: {skipped.join(', ')}.</p>}

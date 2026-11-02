@@ -1,0 +1,11 @@
+---
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+const manifest = JSON.parse(readFileSync(resolve(process.cwd(), 'public/shots/manifest.json'), 'utf8'));
+const { items } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const pick = id => ['medium', 'large', 'small', 'wide'].map(s => manifest[`${id}-${s}`]).find(e => e?.file);
+---
+<ul class="card-grid">
+  {items.map(c => { const e = pick(c.id); return <li><a href={`${base}/cards/${c.type}/`}>{e && <img src={`${base}/shots/${e.file}`} alt="" loading="lazy" width={e.w} height={e.h} />}<span>{c.title}</span></a></li>; })}
+</ul>

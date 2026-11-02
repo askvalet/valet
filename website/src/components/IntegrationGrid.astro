@@ -1,0 +1,7 @@
+---
+const { items } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+<ul class="int-grid">
+  {items.map(i => <li><a href={`${base}/integrations/${i.type}/`}>{i.logo ? <img src={`${base}/shots/icons/${i.type}.webp`} alt="" width="24" height="24" loading="lazy" /> : <span class="no-logo" aria-hidden="true">{i.name[0]}</span>}<span>{i.name}</span></a></li>)}
+</ul>

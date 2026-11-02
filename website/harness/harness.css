@@ -1,0 +1,14 @@
+/* Valet's own stylesheet, with Tailwind told where the classes are: the harness sits outside src/web. */
+@import "../../src/web/styles.css";
+@source "../../src/web";
+
+html, body { margin: 0; }
+.has-wallpaper body { background: transparent; }
+/* the demo's wallpaper, with its horizon behind the card: that's where the glass has something to show */
+#wall { position: fixed; inset: 0; z-index: -2; background: #0f0c1e url(/wallpaper.jpg) center -760px / 2600px auto no-repeat; }
+#wall::after { content: ""; position: absolute; inset: 0; background: rgb(0 0 0 / .3); }
+html:not(.dark) #wall::after { background: rgb(255 255 255 / .18); }
+html.no-wall #wall { display: none; }
+#stage { padding: 32px; width: 1320px; box-sizing: content-box; container: main / inline-size; }
+/* everything settled: a screenshot should never catch something halfway */
+*, *::before, *::after { animation-duration: 0s !important; animation-delay: 0s !important; transition-duration: 0s !important; transition-delay: 0s !important; caret-color: transparent; }

@@ -3,3 +3,4 @@ dist
 config.yaml
 .env
 .git
+website

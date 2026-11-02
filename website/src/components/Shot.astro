@@ -1,0 +1,16 @@
+---
+// A picture by id. A missing one fails the build, so a page can't quietly lose its screenshot.
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+const manifest = JSON.parse(readFileSync(resolve(process.cwd(), 'public/shots/manifest.json'), 'utf8'));
+const { id, alt = '', label, caption, scale = 0.72, full = false } = Astro.props;
+const e = manifest[id];
+if (!e) throw new Error(`no screenshot called ${id}: run npm run shots`);
+const twin = e.sameAs ? manifest[e.sameAs] : undefined, shot = twin ?? e;
+if (!shot.file) throw new Error(`screenshot ${id} points at nothing`);
+const src = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/shots/${shot.file}`, width = full ? undefined : Math.round(shot.w * scale);
+---
+<figure class:list={['shot', { full }]} style={width ? `--w:${width}px` : undefined}>
+  <a href={src}><img src={src} alt={alt || label || id} width={shot.w} height={shot.h} loading="lazy" decoding="async" /></a>
+  {(label || caption) && <figcaption>{label && <span>{label}</span>}{caption && <span class="muted">{caption}</span>}</figcaption>}
+</figure>
