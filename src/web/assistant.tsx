@@ -518,7 +518,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
             className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-[16px] leading-[22px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-[15px]" autoFocus={!sheet} />
           {busy
             ? <Button type="button" size="icon" variant="secondary" className="mb-0.5 size-8 rounded-sm" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" /></Button>
-            : <Button type="submit" size="icon" className="mb-0.5 size-8 rounded-sm bg-foreground text-background hover:bg-foreground/90" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
+            : <Button type="submit" size="icon" className="mb-0.5 size-8 rounded-sm bg-foreground text-background hover:bg-foreground/90 disabled:bg-foreground/20 disabled:text-foreground disabled:opacity-100" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
         </div>
         </ChatBeam>
       </form>
