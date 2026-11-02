@@ -27,7 +27,7 @@ try {
 } finally { server.kill(); }
 
 const parsed = execFileSync('node', ['--input-type=module', '-e', `import { loadConfig } from './src/server/config.ts'; console.log(JSON.stringify(loadConfig(${JSON.stringify(resolve(tmp, 'config.yaml'))})));`], { cwd: repo, encoding: 'utf8' });
-writeFileSync(resolve(out, 'snapshot/config.json'), parsed);
+writeFileSync(resolve(out, 'snapshot/config.json'), parsed.replaceAll(repo, ''));
 
 execFileSync('npx', ['vite', 'build', '--config', 'demo/static/vite.config.mjs'], { cwd: repo, stdio: 'inherit' });
 cpSync(resolve(repo, 'demo/art'), resolve(out, 'art'), { recursive: true });
