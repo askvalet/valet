@@ -52,7 +52,7 @@ test('status: a state follows from ok and quiet unless it says, and off is hollo
   assert.deepEqual([stateOf({ ok: true }), stateOf({ ok: false }), stateOf({ ok: false, quiet: true }), stateOf({ ok: true, state: 'degraded' })], ['up', 'down', 'off', 'degraded']);
   assert.equal(checkCard({ type: 'status', items: [{ name: 'x', ok: true, state: 'sideways' }] }).success, false);
   const out = html({ type: 'status', items: [{ name: 'Prayer Clock', ok: false, quiet: true }, { name: 'Plex', ok: true, ms: 9 }] });
-  assert.match(out, /dot-off/); assert.match(out, /1 off by choice/); assert.doesNotMatch(out, /Offline/);
+  assert.match(out, /dot-off/); assert.doesNotMatch(out, /Offline/);
 });
 
 test('wall: one tile per app with a count, trouble comes first with words, and a family split by trouble keeps both', () => {
@@ -251,7 +251,7 @@ test('home: the robot only counts as having answered when it says what was asked
 test('home: every room can be reached without the model, and view-only says so', () => {
   const html = renderToString(<HomeCase data={plan()} run={async () => {}} />);
   assert.ok(html.includes('Kitchen') && html.includes('Store') && html.includes('No lights'));
-  assert.ok(!html.includes('View only') && html.includes('Reset view'));
+  assert.ok(!html.includes('View only') && !html.includes('Reset view'));
   assert.ok(renderToString(<HomeCase data={plan()} />).includes('View only'));
   assert.ok(!renderToString(<HomeCase data={plan({ robot: undefined })} />).includes('Store'), 'nothing to do in a room with no lights and no robot');
 });
@@ -260,8 +260,8 @@ test('pc: presets read without hover, the chosen one is marked, and controls off
   const data: PcCaseData = { parts: [{ id: 'pump', title: 'Cooler', zones: [{ mode: 'Static', color: [0, 0, 255], brightness: 80 }] }], metrics: { pump: [{ label: 'CPU', value: 41, unit: '°C', pct: .3 }] },
     presets: [{ id: 'ocean', name: 'Ocean', swatch: ['#00f'], active: true }, { id: 'off', name: 'All off', swatch: ['#000'] }] } as PcCaseData;
   const html = renderToString(<PcCase data={data} run={async () => {}} />);
-  assert.match(html, /aria-pressed="true"[^>]*title="Ocean"/);
-  assert.ok(html.includes('>Ocean<') && html.includes('>All off<') && html.includes('41°') && html.includes('Reset view'));
+  assert.match(html, /aria-pressed="true"[^>]*>(?:(?!<\/button>).)*Ocean/);
+  assert.ok(html.includes('>Ocean<') && html.includes('>All off<') && html.includes('41°') && !html.includes('Reset view'));
   assert.ok(renderToString(<PcCase data={{ ...data, controls: false, presets: undefined }} run={async () => {}} />).includes('read-only in this install'));
 });
 

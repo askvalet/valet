@@ -52,7 +52,7 @@ export default defineIntegration({
     // running only says the process is alive; "healthy" is a check that passed, so it's said when it's known
     // Valet's own mark; a helper's image usually has no icon of its own, so it wears its app's
     const iconOf = (c: C) => /^valet/.test(c.name) ? VALET_MARK : iconFor(c.name === 'open-terminal' ? 'open-webui' : c.name);
-    const item = (c: C): StatusItem => ({ name: c.name, group: c.project, icon: iconOf(c), ok: healthy(c), detail: healthy(c) ? (/\(healthy\)/.test(c.status ?? '') ? 'healthy' : undefined) : c.unhealthy ? 'unhealthy' : c.exit != null ? `exited (${c.exit})` : c.state === 'created' ? 'never started' : c.state, group: c.project,
+    const item = (c: C): StatusItem => ({ name: c.name, icon: iconOf(c), ok: healthy(c), detail: healthy(c) ? (/\(healthy\)/.test(c.status ?? '') ? 'healthy' : undefined) : c.unhealthy ? 'unhealthy' : c.exit != null ? `exited (${c.exit})` : c.state === 'created' ? 'never started' : c.state, group: c.project,
       quiet: idle(c), state: healthy(c) ? 'up' : c.state === 'running' ? 'degraded' : idle(c) ? 'off' : 'down' });
     const find = async (name: string) => {
       const all = await containers(), n = name.toLowerCase();
