@@ -23,7 +23,7 @@ function Progress({ a, size = 20 }: { a: Live; size?: number }) {
     </svg>
   );
 }
-/** a little equaliser, at rest, while something plays; a pause glyph when it's paused */
+/** a little equaliser, moving while something plays; a pause glyph when it's paused */
 function Bars({ a }: { a: Live }) {
   if (a.paused) return <Pause className="size-3.5 shrink-0" style={{ color: tint(a), fill: tint(a) }} aria-label="Paused" />;
   return (

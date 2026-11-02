@@ -207,7 +207,7 @@ test('demo: every figure agrees with every other, whenever you look', async () =
   assert.equal((slide('seed.ratio').facts.uploadedBytes / slide('seed.ratio').facts.downloadedBytes).toFixed(2), slide('seed.ratio').value);
   assert.match(slide('dns.blocked').line, /14%/);
   const sys = await inst.widgets.system.fetch(), mem = sys.summaries.find((s: any) => s.label === 'Memory'), disk = sys.summaries.find((s: any) => s.label === 'Storage');
-  assert.equal(num(mem.value), Math.round(21 / 64 * 100));
+  assert.equal(num(mem.value), Math.round(num(mem.detail.split(' of ')[0]) / num(mem.detail.split(' of ')[1]) * 100));   // it drifts, but always agrees with itself
   assert.equal(num(disk.value), Math.round(num(disk.detail.split(' of ')[0]) / num(disk.detail.split(' of ')[1]) * 100));
 });
 

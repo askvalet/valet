@@ -83,7 +83,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
   const dotOf = (id: string) => { const z = shown.parts.find(p => p.id === lightId(id))?.zones[0]; return z && z.mode !== 'Off' ? hex(z.color) : undefined; };
   const canAct = !!run && data.controls !== false, steady = useSteady(!!pick);
   return (
-    <div className="case"><div ref={steady.body} className="case-body" style={{ height: steady.height }}>
+    <div className="case"><div ref={steady.body} className="case-body" style={steady.style}>
       <div className="relative">
         <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-xl" aria-label="3D model of the PC. Select a part to see it and change its lighting; every part is also in the list below." role="img" />
       </div>

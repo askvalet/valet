@@ -57,14 +57,29 @@ export function Swatch({ name, color, on, press, disabled }: { name: string; col
   return <button type="button" className="swatch press" aria-label={name} title={name} aria-pressed={on} disabled={disabled} onClick={press}><i style={{ background: color }} /></button>;
 }
 
-/** Opening a part's controls mustn't move the page: the card keeps the height it had, and the model gives up the room.
- *  Only where the controls sit under the model and there's room to spare. */
+/** Opening a part's controls mustn't move the page: the card keeps the height it had, and the model shrinks to make
+ *  room. Only where the controls sit under the model and the model can spare it. */
 export function useSteady(open: boolean) {
   const body = useRef<HTMLDivElement>(null), rest = useRef(0), [height, setHeight] = useState<number>();
-  useLayoutEffect(() => {
-    const el = body.current; if (!el) return;
-    if (!open) { setHeight(undefined); rest.current = el.offsetHeight; return; }
-    if (el.offsetWidth >= 480 && el.offsetWidth < 880) setHeight(rest.current);
+  useEffect(() => {
+    const el = body.current; if (!el || open) return;
+    const take = () => { rest.current = el.offsetHeight; };
+    take();
+    const seen = new ResizeObserver(take); seen.observe(el);
+    return () => seen.disconnect();
   }, [open]);
-  return { body, height };
+  useLayoutEffect(() => {
+    const width = body.current?.offsetWidth ?? 0;
+    setHeight(open && width >= 480 && width < 880 ? rest.current : undefined);
+  }, [open]);
+  useLayoutEffect(() => {
+    const row = body.current?.firstElementChild as HTMLElement | null, model = row?.firstElementChild as HTMLElement | null;
+    if (!row || !model) return;
+    const fit = () => { const by = height ? Math.min(1, row.clientHeight / (model.offsetHeight || 1)) : 1; model.style.scale = by < 1 ? String(by) : ''; };
+    fit();
+    if (!height) return;
+    const seen = new ResizeObserver(fit); seen.observe(row);
+    return () => { seen.disconnect(); model.style.scale = ''; };
+  }, [height]);
+  return { body, style: height ? { flex: 'none', height } : undefined };
 }

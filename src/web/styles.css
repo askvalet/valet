@@ -263,7 +263,10 @@
 .island:not(.island-docked).island-open { border-radius: 30px; }
 .island-bubble { box-shadow: 0 10px 30px -10px rgb(0 0 0 / .7), inset 0 0 0 1px rgb(255 255 255 / .06); animation: island-in var(--dur-spring) var(--ease-spring); }
 @keyframes island-in { from { transform: scale(.6); opacity: 0; } }
-.island-bar { height: 7px; } .island-bar:nth-child(2) { height: 13px; } .island-bar:nth-child(3) { height: 5px; } .island-bar:nth-child(4) { height: 10px; }
+.island-bar { height: 14px; transform-origin: bottom; animation: island-bar 900ms ease-in-out infinite alternate; }
+.island-bar:nth-child(2) { animation-duration: 620ms; animation-delay: -300ms; } .island-bar:nth-child(3) { animation-duration: 1040ms; animation-delay: -500ms; } .island-bar:nth-child(4) { animation-duration: 760ms; animation-delay: -120ms; }
+@keyframes island-bar { from { transform: scaleY(.28); } to { transform: scaleY(1); } }
+:is(.motion-none, .motion-reduced) .island-bar { animation: none; transform: scaleY(.6); }
 
 /* ── Motion. One set of curves and durations for the whole app (Emil Kowalski's): ease-out for things arriving or
    leaving, ease-in-out for things moving on screen, never ease-in. UI motion stays under ~300ms; only transform, opacity

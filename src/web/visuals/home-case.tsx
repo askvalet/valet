@@ -133,7 +133,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
   const steady = useSteady(!!sel);
   const back = <button onClick={() => choose(null)} className="press flex h-8 flex-none items-center gap-1 rounded-sm pr-3 pl-1.5 text-[13px] text-muted-foreground ring-1 ring-foreground/15 hover:bg-foreground/10 hover:text-foreground"><ChevronLeft className="size-4" />All rooms</button>;
   return (
-    <div className="case"><div ref={steady.body} className="case-body" style={{ height: steady.height }}>
+    <div className="case"><div ref={steady.body} className="case-body" style={steady.style}>
       <div className="relative">
         <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-xl" role="img" aria-label="3D floor plan. Drag to look around; select a room or the robot. Every room is also in the list below." />
       </div>
