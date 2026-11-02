@@ -94,7 +94,7 @@ const scopeLabel = (s: RecapSlide, year: number) => s.scope === 'year' ? `In ${y
 const said = (s: RecapSlide, year: number) => `${s.kicker} ${s.value}${s.unit ? ` ${s.unit}` : ''}. ${s.line}${s.scope ? ` ${scopeLabel(s, year)}.` : ''}`;
 
 function Slide({ s, year, children }: { s: RecapSlide; year: number; children?: React.ReactNode }) {
-  const size = s.race ? 'clamp(44px, 7vw, 88px)' : s.value.length > 18 ? 'clamp(38px, 7vw, 68px)' : s.value.length > 9 ? 'clamp(52px, 10vw, 96px)' : 'clamp(64px, 17vw, 168px)';
+  const size = s.race ? (s.value.length > 10 ? 'clamp(36px, 4.6vw, 60px)' : 'clamp(44px, 7vw, 88px)') : s.value.length > 18 ? 'clamp(38px, 7vw, 68px)' : s.value.length > 9 ? 'clamp(52px, 10vw, 96px)' : 'clamp(64px, 17vw, 168px)';
   return (
     <div className={`rc-body ${s.visual || s.icons || s.logo || s.race ? 'rc-beside' : ''}`} key={s.id}>
       {s.icon && <div className="rc-tile"><Icon name={s.icon} className="size-[22px]" /></div>}
