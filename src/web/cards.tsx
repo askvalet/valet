@@ -99,8 +99,11 @@ function Stats({ card }: { card: StatsCard }) {
   const [hero, ...rest] = card.items;
   if (!hero) return null;
   const facts = rest.slice(0, 3);
+  // one number on its own: its history fills the card behind it
+  const trend = hero.trend ?? card.summaries?.find(t => t.label === hero.label)?.trend, behind = !dense && !facts.length && (trend?.length ?? 0) > 1;
   return (
     <div className={cn('flex flex-col', dense ? 'gap-2.5' : 'gap-4')}>
+      {behind && <div style={{ color: 'var(--primary)' }}><TileGraph points={trend!} gauge /></div>}
       <div className={cn('flex items-end', dense ? 'gap-4' : 'gap-5')}>
         <div className="min-w-0 shrink-0">
           <div className={cn('metric leading-[0.95]', dense ? 'text-[26px]' : 'text-[44px]', toneText[hero.tone ?? 'neutral'])}>
@@ -108,9 +111,9 @@ function Stats({ card }: { card: StatsCard }) {
           </div>
           <div className={cn('truncate text-muted-foreground', dense ? 'mt-1 text-[12px]' : 'mt-1.5 text-[13px]')}>{[hero.label, hero.sub].filter(Boolean).join(' · ')}</div>
         </div>
-        <div className={cn('min-w-0 flex-1 pb-1', dense && 'max-h-9 overflow-hidden')}>
-          {hero.trend ? <Spark points={hero.trend} tone={hero.tone} /> : hero.pct != null ? <Bar pct={hero.pct} tone={hero.tone} /> : null}
-        </div>
+        {!behind && <div className={cn('min-w-0 flex-1 pb-1', dense && 'max-h-9 overflow-hidden')}>
+          {trend ? <Spark points={trend} tone={hero.tone} /> : hero.pct != null ? <Bar pct={hero.pct} tone={hero.tone} /> : null}
+        </div>}
       </div>
       {facts.length > 0 && (
         <div className={cn('grid divide-x border-t', dense ? 'pt-2.5' : 'pt-3.5')} style={{ gridTemplateColumns: `repeat(${facts.length}, minmax(0, 1fr))` }}>
@@ -1344,7 +1347,7 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
   const scene = !compact && card ? card.type === 'schedule' ? <SkyWash card={card} /> : card.type === 'verse' && card.arabic ? <Lattice /> : null : null;
   return (
     <Dense.Provider value={!!compact}>
-    <Card className={cn('@container/card min-w-0 shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'gap-4 py-5', !compact && card?.type === 'verse' && card.href && 'lift', bare && 'border-0 bg-transparent py-0 shadow-none', fill && 'h-full', scene && 'relative isolate overflow-hidden')}>
+    <Card className={cn('@container/card relative min-w-0 overflow-hidden shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'gap-4 py-5', !compact && card?.type === 'verse' && card.href && 'lift', bare && 'border-0 bg-transparent py-0 shadow-none', fill && 'h-full', scene && 'relative isolate overflow-hidden')}>
       {scene}
       {t && !bare && !headless && (
         <CardHeader className={cn('flex items-center gap-2', compact ? 'px-3.5' : 'px-5')}>
