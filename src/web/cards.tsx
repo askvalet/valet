@@ -1248,6 +1248,7 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
 function BareHeader({ card, title, status }: { card?: CardT; title?: string; status?: ReactNode }) {
   return (
     <div className="flex min-w-0 items-center gap-2">
+      {card?.source?.icon && <img src={card.source.icon} alt="" className="size-[18px] flex-none rounded-[5px] object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />}
       <h3 className="truncate text-[15px] font-semibold tracking-tight">{card?.href ? <a href={card.href} target="_blank" rel="noreferrer" className="title-link">{card?.title ?? title}</a> : card?.title ?? title}</h3>
       {status}
       {card?.note && <span className="truncate text-xs tabular text-muted-foreground">{card.note}</span>}
