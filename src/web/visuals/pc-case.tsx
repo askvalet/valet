@@ -73,7 +73,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
   };
   const applyPreset = (p: { id: string; name: string }) => {
     const was = preset; setPreset(p.id);
-    run?.('preset', { id: p.id }).then(() => say(`Preset: ${p.name}`), (e: Error) => { setPreset(was); say(`Couldn't apply ${p.name}: ${e.message}`, { tone: 'bad' }); });
+    run?.('preset', { id: p.id }).catch((e: Error) => { setPreset(was); say(`Couldn't apply ${p.name}: ${e.message}`, { tone: 'bad' }); });
   };
 
   const zone = lp?.zones[0], off = zone?.mode === 'Off', effect = /rainbow|cycle/i.test(zone?.mode ?? '');
