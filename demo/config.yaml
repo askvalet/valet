@@ -73,7 +73,7 @@ layout:
     widgets:
       - { widget: lab.cameras, size: large, rows: 2 }
       - { widget: lab.thermostat, size: medium }
-      - { widget: lab.weather, size: medium }
+      - { widget: lab.sky, size: medium }
   - tab: Home
     heading: false
     columns: 2
@@ -88,12 +88,15 @@ layout:
       - { widget: lab.weather, size: medium }
       - { widget: lab.calendar, size: large }
   - widgets:
-      - { widget: lab.sky, size: medium }
+      - { widget: lab.recent, view: coverflow }
+  - widgets:
+      - { widget: lab.calendar, size: medium }
       - { widget: lab.photos, size: tall }
-      - { widget: lab.reading, size: medium }
+      - { widget: lab.reading, size: tall, rows: 3 }
       - { widget: lab.dns, size: small }
       - { widget: lab.drives, size: small }
       - { widget: lab.upcoming, size: wide }
+      - { widget: lab.sky, size: medium }
   - title: Media
     overview: false
     heading: false
