@@ -15,6 +15,9 @@ The first public version, 0.1.0, is being prepared.
 - `rows`, so a widget can span rows.
 - A year in review, written from your services' own numbers.
 - `sandbox: true`, which saves nothing and gives each visitor a private copy.
+- A demo that runs entirely in the browser, built with `npm run demo:static`.
+- Live activities as rings in the top bar, configured under `live`.
+- Plain-English approval cards for every action that changes something.
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 

@@ -43,7 +43,7 @@ function vacuumSay(d) { return d.denied ? 'Okay, the vacuum stays where it is.' 
 
 // What it can't do, said plainly, rather than the nearest thing it can. TOPICS win over any answer; OTHERS only speak up
 // when no answer fits, so "how much memory is free" still gets one.
-const standIn = "I'm a scripted stand-in in this demo", noFiles = "so I can't read files. On a real Valet, the assistant would read what you attached and answer from it.";
+const standIn = "This demo only knows a few things", noFiles = "so I can't read files. On a real Valet, the assistant would read what you attached and answer from it.";
 const TOPICS = [
   [/\b(?:files?|attach\w*|upload\w*|pdfs?|documents?|photos?|pictures?|images?|screenshots?|spreadsheets?)\b/i, noFiles],
   [/^(?:turn|switch|set|start|stop|pause|resume|cancel|delete|remove|open|close|lock|unlock|kill|shut|reboot|restart|play|add|install|update|upgrade|change|run|send|clean|dock)\b/i, 'so I can only do a few things, asked plainly: restart Mealie, turn a room\'s lights on or off, set the thermostat, send the vacuum or pause downloads. On a real Valet, the assistant could do whatever you allow, after asking you first.'],
@@ -55,7 +55,7 @@ const OTHERS = [
   [/\b(?:weather|forecast|rain|calendar|schedule|appointments?)\b/i, "so I can't look that up. On a real Valet, the assistant would ask the weather or calendar you've connected."],
 ];
 export const can = 'Here I can explain why Mealie is down and restart it, turn the lights on or off, suggest what to watch, sum up last night or check the downloads.';
-export const FALLBACK = `${standIn}, so I only know a few things. ${can} On a real Valet this is a real model, local or hosted, or none at all.`;
+export const FALLBACK = `${standIn}. ${can} On a real Valet this is your own model, local or hosted, or none at all.`;
 const noAnswer = `${standIn}, so I can't answer that one. On a real Valet, a real model would work it out from your own services.`;
 // The page lists "Why is Mealie down?" itself, live from the status cards, while the server keeps this list for up to ten
 // minutes. So nothing here may depend on Mealie still being down, or it would outlive the restart.

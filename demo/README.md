@@ -27,3 +27,10 @@ change `PAPERS`, render the card's images again with `rsvg-convert` and keep the
 
 It is **not public**: the port is on the Docker bridge address only, for a reverse proxy on the same machine. To open it
 later, add the public name to `allowedHosts` in `config.yaml` and point a proxy or tunnel at that port.
+
+## Static version
+
+The public demo needs no server. `npm run demo:static` builds it into `demo/static/dist`, ready for any static host. Valet's page
+runs unchanged, and `static/backend.ts` answers its `/api` calls in the browser: the same made-up homelab and scripted model, and
+Valet's real chat, tools and approvals. Each visitor's changes live in their tab and are gone on reload. The layout and the year
+in review are saved from a real server at build time.

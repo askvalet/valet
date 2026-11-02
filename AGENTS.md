@@ -3,6 +3,8 @@
 How Valet is designed and built. Read this before changing anything; keep it current when a principle changes or a
 new gotcha is learned. `CLAUDE.md`-style tools should treat this file as their instructions for this repo.
 
+**Every change updates its docs.** A change isn't finished until the README, `docs/` and `website/src/content/docs/` match it, and anything the change makes out of date (screenshots, counts, examples, `CHANGELOG.md`) is updated in the same commit. Check before pushing; a change with nothing to update says so.
+
 ## What Valet is
 
 A homepage for a homelab: live cards for the services you run, controls for the things you can change, and an

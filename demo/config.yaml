@@ -11,7 +11,7 @@ sandbox: true   # nothing is saved, and each visitor gets a private copy that's 
 
 appearance:
   wallpaper: /demo/wallpaper.jpg
-  dim: 0.3
+  dim: 0.12
   blur: 4
   rim: 0.7
 

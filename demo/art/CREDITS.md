@@ -22,7 +22,7 @@ The covers in `covers/` are resized copies, so the demo fetches nothing from out
 
 # Wallpaper
 
-`../wallpaper.jpg`: photo from Unsplash, https://images.unsplash.com/photo-1506905925346-21bda4d32df4 (Unsplash License).
+`../wallpaper.jpg`: photo from Unsplash, https://images.unsplash.com/photo-1464822759023-fed622ff2c3b (Unsplash License).
 
 # Book covers
 
