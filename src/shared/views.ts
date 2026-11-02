@@ -3,7 +3,7 @@
 import type { Card, ChartCard, HeatmapCard, RaceCard, RankedCard, ShelfCard, ShelfItem } from './cards.ts';
 
 export const CHART_VIEWS = ['line', 'bars', 'stream', 'race', 'heatmap', 'ranked', 'pie'] as const;
-export const GALLERY_VIEWS = ['row', 'spotlight', 'coverflow', 'desk', 'windows', 'tickets', 'mosaic', 'flashback'] as const;
+export const GALLERY_VIEWS = ['row', 'spotlight', 'coverflow', 'desk', 'windows', 'tickets', 'mosaic', 'flashback', 'album'] as const;
 export const VIEWS = [...CHART_VIEWS, ...GALLERY_VIEWS] as const;
 export type View = (typeof VIEWS)[number];
 
@@ -73,7 +73,7 @@ function pictures(card: Card): ShelfItem[] | undefined {
 function gallery(card: Card, view: View): Card | undefined {
   const items = pictures(card); if (!items?.length) return undefined;
   const base = shared(card);
-  if (view === 'mosaic' || view === 'flashback') {
+  if (view === 'mosaic' || view === 'flashback' || view === 'album') {
     const seen = items.flatMap(i => i.image ? [{ image: i.image, title: i.title || undefined, subtitle: i.subtitle, badge: i.badge, href: i.href }] : []);
     return seen.length ? { ...base, type: 'photos', style: view, items: seen } : undefined;
   }

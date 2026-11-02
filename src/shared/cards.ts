@@ -202,7 +202,7 @@ export interface ForecastCard extends Base {
 export interface PhotosCard extends Base {
   type: 'photos';
   items: { image: string; title?: string; subtitle?: string; badge?: string; href?: string }[];
-  style?: 'flashback' | 'mosaic';
+  style?: 'flashback' | 'mosaic' | 'album';
   empty?: string;
 }
 

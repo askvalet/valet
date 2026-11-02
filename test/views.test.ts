@@ -36,7 +36,7 @@ test('a heatmap needs dates: without them the card stays as it was', () => {
 });
 
 test('anything with pictures can be any gallery', () => {
-  for (const card of [shelf, photos, ranked, race]) for (const view of ['row', 'spotlight', 'coverflow', 'desk', 'windows', 'tickets', 'mosaic', 'flashback'] as const) CardSchema.parse(asView(card, view));
+  for (const card of [shelf, photos, ranked, race]) for (const view of ['row', 'spotlight', 'coverflow', 'desk', 'windows', 'tickets', 'mosaic', 'flashback', 'album'] as const) CardSchema.parse(asView(card, view));
   assert.equal((asView(photos, 'coverflow') as any).layout, 'coverflow');
   assert.equal((asView(shelf, 'mosaic') as any).items.length, 2);                     // only what has a picture
   assert.equal((asView(shelf, 'row') as any).layout, undefined);

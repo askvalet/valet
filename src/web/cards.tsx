@@ -6,6 +6,7 @@ import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calend
 } from 'lucide-react';
 import { createContext, Fragment, lazy, memo, Suspense, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Cameras } from './cameras.tsx';
+import { Album } from './album.tsx';
 import { CoverFlow } from './coverflow.tsx';
 import { chartless, flow, Heatmap, Race, smooth, Stream, Waffle } from './charts.tsx';
 import { Button } from '@/components/ui/button';
@@ -1160,11 +1161,12 @@ function letterbox(img: HTMLImageElement): [number, number] | undefined {
 function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?: boolean; fill?: boolean; label?: string; status?: ReactNode }) {
   const items = card.items, [i, setI] = useState(0), [paused, setPaused] = useState(false), [bars, setBars] = useState<Record<number, [number, number]>>({}), [box, seen] = useOnScreen<HTMLAnchorElement>();
   useEffect(() => {
-    if (items.length < 2 || paused || !seen || (large && card.style !== 'flashback')) return;
+    if (items.length < 2 || paused || !seen || card.style === 'album' || (large && card.style !== 'flashback')) return;
     const t = setInterval(() => { if (!document.hidden) setI(n => (n + 1) % items.length); }, 7000);
     return () => clearInterval(t);
   }, [items.length, paused, seen, large, card.style]);
   if (!items.length) return <Empty text={card.empty ?? 'No photos'} />;
+  if (card.style === 'album') return <Album card={card} />;
   if (large || card.style === 'mosaic') {
     const [first, ...rest] = items;
     return (
@@ -1326,7 +1328,7 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
   if (card?.type === 'shelf') return <div className={cn(fade, 'min-w-0')}><Shelf card={card} small={compact} run={run} header={<BareHeader card={card} title={title} status={status} />} />{actions}</div>;
   // a flashback is all picture: its heading sits on the photo, so the card's edges line up with its neighbours
   if (card?.type === 'article') return <Article card={card} run={run} />;
-  if (card?.type === 'photos' && card.items.length && !large && card.style !== 'mosaic') return (
+  if (card?.type === 'photos' && card.items.length && !large && card.style !== 'mosaic' && card.style !== 'album') return (
     <div className={cn(fade, 'h-full min-w-0')}><Photos card={card} fill={fill} label={card.title ?? title} status={status} />{actions}</div>
   );
   if (card?.type === 'photos') return (

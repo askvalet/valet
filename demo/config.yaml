@@ -129,7 +129,7 @@ layout:
   - title: Library
     columns: 1
     overview: false
-    widgets: [lab.books, lab.docs]
+    widgets: [lab.album, lab.books, lab.docs]
   - title: Reading
     tab: Library
     overview: false

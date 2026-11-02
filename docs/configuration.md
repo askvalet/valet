@@ -438,7 +438,7 @@ widgets:
 | Views | Work on |
 |---|---|
 | Charts: `line`, `bars`, `stream`, `race`, `heatmap`, `ranked`, `pie` | anything with numbers: a chart, race, heatmap or ranked card, or a stats card with a pie |
-| Galleries: `row`, `spotlight`, `coverflow`, `desk`, `windows`, `tickets`, `mosaic`, `flashback` | anything with pictures: a shelf, photos, ranked, race or media card |
+| Galleries: `row`, `spotlight`, `coverflow`, `desk`, `windows`, `tickets`, `mosaic`, `flashback`, `album` | anything with pictures: a shelf, photos, ranked, race or media card |
 
 `heatmap` needs dates. A view that doesn't fit leaves the card as it was. It changes the card, so a small or wide tile keeps
 showing the headline.

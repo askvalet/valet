@@ -72,7 +72,7 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
     now: z.object({ temp: z.number(), feels: z.number(), words: z.string(), icon: z.string(), hi: z.number(), lo: z.number(), precip: z.number().optional() }).strict(),
     hours: z.array(z.object({ time: z.string(), temp: z.number(), icon: z.string(), pop: z.number().min(0).max(100), mm: z.number().optional() }).strict()),
     days: z.array(z.object({ name: z.string(), icon: z.string(), hi: z.number(), lo: z.number(), pop: z.number().min(0).max(100).optional() }).strict()).optional() }).strict(),
-  z.object({ ...base, type: z.literal('photos'), style: z.enum(['flashback', 'mosaic']).optional(), empty: z.string().optional(),
+  z.object({ ...base, type: z.literal('photos'), style: z.enum(['flashback', 'mosaic', 'album']).optional(), empty: z.string().optional(),
     items: z.array(z.object({ image: z.string(), title: z.string().optional(), subtitle: z.string().optional(), badge: z.string().optional(), href: z.string().optional() }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('schedule'), muted: z.array(z.string()).optional(),
     items: z.array(z.object({ name: z.string(), at: z.string().refine(s => !Number.isNaN(Date.parse(s)), 'not a date') }).strict()) }).strict(),

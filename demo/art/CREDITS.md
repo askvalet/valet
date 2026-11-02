@@ -27,3 +27,7 @@ The covers in `covers/` are resized copies, so the demo fetches nothing from out
 # Book covers
 
 Book covers come from Open Library (https://openlibrary.org), film art from TMDB (https://www.themoviedb.org), album art from Apple Music. The art belongs to the publishers.
+
+# Album
+
+`album/` holds resized photos from Unsplash (Unsplash License). The captions are made up for the demo.
