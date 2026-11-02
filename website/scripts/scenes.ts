@@ -107,7 +107,7 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
     await page.fill('textarea[aria-label="Message"]', 'restart mealie'); await page.keyboard.press('Enter');
     await sleep(5000);
     await shot(page, cdp, 'scene/approval');
-    const hold = await box(page, '.chat-card');
+    const hold = await page.locator('.chat-card').last().boundingBox({ timeout: 4000 }).catch(() => null);
     if (hold) await shot(page, cdp, 'scene/approval-card', hold, 16);
     await page.getByRole('button', { name: /restart/i }).last().click(); await sleep(4000);
     await shot(page, cdp, 'scene/after-approval');

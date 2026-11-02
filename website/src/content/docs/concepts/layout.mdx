@@ -1,0 +1,127 @@
+---
+title: Sections and layout
+description: How sections, display modes, columns, sidebars, the menubar and the island arrange the page.
+sidebar:
+  order: 4
+---
+import Shot from '~/components/Shot.astro';
+
+`layout:` is a list of sections, top to bottom. Each section holds widgets and says how to draw them. The full list of options is in the [reference](/reference/configuration/#layout).
+
+```yaml
+layout:
+  - title: Now
+    columns: 2
+    widgets: [plex.streams, downloads.active]
+  - title: Services
+    variant: minimal
+    header: false
+    favorites: [Plex, Home Assistant]
+    widgets: [services.status]
+```
+
+## Display
+
+`display` picks how a section draws its widgets.
+
+| Value | What you get |
+|---|---|
+| `cards` | Full cards. The default. |
+| `tiles` | Headline tiles with live graphs. |
+| `rings` | The same headlines as ring gauges, coloured by health. |
+| `media` | Every item of the section's media cards as artwork tiles in one grid. |
+
+Tiles and rings need a card with a `summary` or `summaries`.
+
+## How cards are arranged
+
+With no other instructions, Valet picks an arrangement from what's in the section:
+
+- **Any widget has a size other than medium.** A [bento grid](/concepts/sizes/) of 2, 4 or 6 columns. Rows end flush.
+- **`columns` is set.** That many cards per row, from tablet width up. A number is 1 to 4. For per-screen control, use an object, up to 6: `{ phone: 1, tablet: 2, desktop: 3 }`.
+- **A card marks itself wide.** It takes two thirds, and the rest stack beside it, unless `columns` is set.
+- **More than three cards.** They pack into columns, with compact rows.
+- **Otherwise.** They share a row and a height.
+
+`gap` sets the pixels between a section's cards. `tabColumns` sets different columns on the section's own tab.
+
+## Density and titles
+
+| Option | What it does |
+|---|---|
+| `variant: minimal` | Tighter rows with the essentials. For a status card: icon, name, dot. |
+| `header: false` | Cards in the section drop their title bar on the overview. |
+| `heading: false` | No title above the section. It still names its tab. |
+
+## Favourites
+
+A long status card can show only what matters on the overview:
+
+```yaml
+- title: Services
+  favorites: [Plex, Home Assistant, Immich]
+  widgets: [services.status]
+```
+
+It shows those names, and whatever's down, with a link to the whole list on the section's tab.
+
+## Sidebars
+
+`place: left` or `place: right` makes a section a sidebar on wide screens. `columns` then sets how many columns its list uses. Sizes don't apply in a sidebar.
+
+```yaml
+- title: Services
+  place: right
+  variant: minimal
+  widgets: [services.status]
+```
+
+## The hero
+
+The top of the overview: the greeting, a status line, the ask box. `hero:` controls each part.
+
+```yaml
+greeting: Sam
+hero: { greeting: "Welcome back, {name}", align: left, review: false }
+```
+
+`status` is the lines under the greeting: what needs you, then what's merely going on. `search` is the ask box, or a search box when there's no assistant.
+
+## The menubar
+
+Small rings in the top bar, one for each headline number. Hover one for its live graph.
+
+```yaml
+menubar: [system.tiles, dns.stats]
+weather: weather.now      # a ring beside the clock
+calendar: family.agenda   # events when you hover the clock
+```
+
+Use the object form for more: `position`, `labels`, `clock`, `date`, `theme` and `size`.
+
+## The island
+
+A black notch at the top that shows what's happening, and disappears when nothing is.
+
+<Shot id="scene/island-open" label="Opened" alt="The island opened, showing a stream and a download with progress bars." />
+
+```yaml
+island:
+  activities: [plex.streams, downloads.active, home.house]
+  idle: hide
+  notify:
+    - { widget: downloads.active, on: end, text: "{title} finished downloading" }
+    - { widget: services.status, on: down, push: true }
+```
+
+List widgets in order of importance. `notify` shows a short notice on `start`, `end`, `down` or `up`, and the widget must be placed on the page. `push: true` also sends it to your [notification channels](/recipes/#notifications).
+
+## The palette
+
+Ctrl+K (⌘K on a Mac) opens search and actions from anywhere. Set `search:` to add web search.
+
+<Shot id="scene/palette" full alt="The command palette over a blurred page, with actions and suggested questions." />
+
+```yaml
+search: duckduckgo   # also google, kagi, brave, startpage, searxng, or a URL with {q}
+```

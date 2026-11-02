@@ -146,6 +146,10 @@ assistant that answers with the same cards. One Node process, one YAML file, abo
 - Verify UI changes by looking at them: build, run, and screenshot the page (a headless Chrome over CDP works; set
   `Emulation.setEmulatedMedia` `hover: hover` to test hover states). Check desktop and phone widths.
 - Keep comments sparse and about *why*. Match the surrounding code's density and idiom.
+- The docs site is `website/`, its own package (Astro with Starlight), so nothing there touches Valet's dependencies. `npm run all` in
+  it re-shoots and rebuilds; pages under `integrations/`, `cards/` and `reference/` are generated from the code, so edit `website/samples/`
+  and `website/scripts/` rather than those. A new `service()` needs nothing; a new full integration needs a fixture in `website/samples/`,
+  or `npm run check` there fails. Screenshots use invented data only, and the check greps the output for anything of the owner's.
 - Commits: one logical change each, a short summary line, a few bullets for anything non-obvious. No AI co-author trailers.
 
 ## Gotchas

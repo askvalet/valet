@@ -1,0 +1,72 @@
+---
+title: Sizes
+description: The five card sizes, the grid behind them, and how to redefine what they mean.
+sidebar:
+  order: 6
+---
+import Sizes from '~/components/Sizes.astro';
+import Shot from '~/components/Shot.astro';
+import Row from '~/components/Row.astro';
+
+Every card works at every size. Integrations supply a good headline, and the layout chooses how much of it to show.
+
+```yaml
+layout:
+  - title: Lately
+    widgets:
+      - { widget: system.overview, size: large }
+      - { widget: photos.memories, size: tall }
+      - { widget: dns.stats, size: small }
+      - { widget: drives.drives, size: small }
+      - { widget: coming.upcoming, size: wide }
+      - plex.recent                     # medium: the default
+```
+
+| Size | Columns | Rows | What it shows |
+|---|---|---|---|
+| `small` | 1 | 1 | Its headline, as a tile. |
+| `wide` | 2 | 1 | That tile at twice the width. |
+| `medium` | 2 | 1 | The card. |
+| `tall` | 2 | 2 | The card over two rows. |
+| `large` | 4, or all of them below 6 | 1 | The card with room for more. |
+
+Here's one card at each size. Sizes that would only add empty space are left out, and the page says so.
+
+<Sizes base="card/stats" name="Stats card" />
+
+## The grid
+
+A section with any size other than medium becomes a bento: 2 columns on a phone, 4 on a tablet, 6 on a wide screen. Rows end flush. A row is as tall as its tallest card, unless you set `appearance.rowHeight`.
+
+Sizes apply only in that grid. A section with `place: left` or `right` ignores them.
+
+## What small does without a headline
+
+Small and wide need the card's `summary`. A card with none is drawn as the card, at two columns. The [integration pages](/integrations/) show what each widget does.
+
+A calendar needs room for its month, so `wide` means `large` for it.
+
+## Changing what a size means
+
+```yaml
+appearance:
+  sizes:
+    tall: { rows: 3 }
+    large: { cols: 6 }
+  rowHeight: 180     # px, the least a row takes
+```
+
+A size can't overrun the last column. A section can also set its own grid with `columns: { phone: 2, tablet: 4, desktop: 6 }`.
+
+## Density
+
+`appearance.density` scales all the spacing at once: `compact`, `comfortable` or `spacious`.
+
+## In chat
+
+The assistant's cards aren't given a size. They use the dense form, with smaller numbers and tighter rows.
+
+<Row>
+<Shot id="card/stats-medium" label="On the page" alt="A stats card at medium size." />
+<Shot id="card/stats-chat" label="In chat" alt="The same card, denser, as it appears in chat." />
+</Row>

@@ -1,0 +1,48 @@
+---
+title: Writing an integration
+description: Three ways to add a service to Valet, from no code at all to a full integration.
+sidebar: { order: 1 }
+---
+
+Adding a service takes one of three forms. Pick the smallest that does the job.
+
+| | What it is | Use it when |
+|---|---|---|
+| [`type: api`](/integrations/api/) | YAML only, no code. | The service has a JSON API and you want some numbers or rows on the page. |
+| [`service()`](/build/service/) | About ten lines. | One or two endpoints, some numbers. You get the config, sign-in, a card with a tile, and an assistant tool for free. |
+| [`defineIntegration`](/build/full/) | One file with everything. | You want controls, several widgets, or tools that change things. |
+
+The last two run the same way built in or as a plugin. A plugin is one file in `data/integrations/`, with no build step. A built-in is one file in `src/integrations/`, registered in `src/integrations/index.ts`.
+
+## How it fits
+
+An integration turns one block of `config.yaml` into up to four things:
+
+- **Widgets**: what the page shows. Each returns a [card](/concepts/cards/).
+- **Actions**: what the page's buttons do.
+- **Tools**: what the assistant can use.
+- **Images**: pictures served through [the proxy](/security/image-proxy/).
+
+Everything runs on the server, so keys and internal URLs never reach the browser. An integration never ships HTML, CSS or components. It returns plain data in the shapes of the [card catalog](/cards/), and the page draws it. That's why any integration works at every size and in chat.
+
+## The quickest start
+
+```sh
+docker exec valet node dist/server.js new-integration my-service
+```
+
+That writes a commented, working `data/integrations/my-service.mjs`. Edit it, then:
+
+```sh
+docker exec valet node dist/server.js check-integration data/integrations/my-service.mjs
+```
+
+The check runs your code against the sample it carries, with no service running. See [check and scaffold](/build/check/).
+
+## Then
+
+- [Plugins and the toolkit](/build/plugins/): how plugins load, and what they're handed.
+- [Recap slides](/build/recap/): join the year in review.
+- [Confirm words](/build/confirm/): what the approval card says.
+
+To ship one for everyone, move it into a family file in `src/integrations/services/` and open a pull request. `npm test` picks it up by itself.

@@ -1,0 +1,111 @@
+---
+title: Threat model
+description: What Valet does with your keys, what it can reach, and how to give it as little as possible.
+sidebar: { order: 1 }
+---
+
+Valet talks to many of your services, so it holds keys to them. This page says what it does with them, how it limits the damage if something goes wrong, and how to give it as little power as possible.
+
+The rule: **secure by default, and honest about what's left.** Where a protection has an edge, this page says where.
+
+## What it protects
+
+- The keys to your services.
+- Your services themselves, from a page, a model, or a stranger on your network.
+- What's in them: documents, photos, logs.
+
+## What it assumes
+
+- You control the machine, `config.yaml`, `.env` and the data folder.
+- You run plugins you trust. They aren't sandboxed.
+- Anyone who can reach an unauthenticated Valet can see the page. That's why you shouldn't put one on the internet.
+
+## Your keys
+
+- **They stay on the server.** Keys live in `.env` or in secret files, and `config.yaml` refers to them as `${NAME}`. Only Valet's server talks to your services. The page gets finished cards. See [secrets](/security/secrets/).
+- **They're scrubbed from what leaves.** Every value a `${NAME}` stood for is redacted from widget errors, live updates, action errors and assistant tool results, in case a service echoes one back.
+- **The assistant never sees them.** It calls tools, and the server makes the requests.
+- **Nothing is stored that you didn't put there.** Chat attachments are kept for a day, and never served back out. Sign-in accounts are scrypt hashes.
+
+## What the page may do
+
+- **Read-only unless you say otherwise.** With sign-in off, the default, Valet only shows things. Card buttons and controls are off, and the assistant gets tools that look. It can change things only when `auth.mode` is `local`, `oidc` or `proxy`, or when you set `auth.trustNetwork: true` because the network is the lock. See [sign-in and network safety](/start/sign-in/).
+- **Anything that changes something must come from Valet's own origin.** A POST whose `Origin` doesn't match the host is refused.
+- **Pictures come through a checked proxy.** See [the image proxy](/security/image-proxy/).
+- **The page runs only Valet's scripts.** See [CSP](/security/csp/).
+- **It answers only to names it knows.** See [allowed hosts](/security/hosts/).
+
+## The assistant
+
+- **It reads freely and changes nothing without asking.** See [access levels](/assistant/access/) and [approvals](/assistant/approvals/).
+- **What it does unasked can only talk.** The morning brief, the shared-cause line and "Why?" call the model with no tools at all. They have a daily budget.
+- **It can't give itself more power.** Editing the config needs `assistant.access.config`, and each save needs your approval. Sign-in, plugins, MCP, allowed hosts and its own access are off limits, and secrets can't be written.
+- **Another agent is its own thing.** If `assistant.agent` hands the chat to another agent, it gets the conversation and nothing else from Valet. But it runs its own tools, so access levels and approvals don't cover it. The chat says so.
+- **Reminders can only tell you things.** A reminder sends a message. It can't run a tool.
+- **Pins only look.** Only `read` tools can be pinned, and no model runs after that.
+- **Everything it changes is written down**, in `data/activity.json`, with secrets redacted.
+
+[What it can and can't do](/assistant/limits/) covers prompt injection in full.
+
+## Valet stays in its box
+
+The container never gets the host. Anything from outside comes through a narrow read-only door.
+
+- **Docker is read-only, and it has to be.** Point the integration at a socket proxy with `POST=0`, on a network only Valet shares. Never mount the socket itself. Know what that still reads: the proxy allows GET on `/containers`, which includes each container's environment, so a compromised Valet could read secrets kept there. Logs go to the model, so a hosted model sees them. Restarts aren't offered, because this proxy can't allow them without allowing container creation, which is root on the host.
+- **The agent can only look.** `agent/valet-agent.py` is one short file of Python's standard library. It runs on your machines so the container doesn't need access to them. It needs a token, answers only about the services you list, has no way to start or stop anything, and passes nothing unchecked to `journalctl`. Bind it to a private address. A test in the repo enforces that it can't change anything.
+- **The container is locked down** in the example compose file: not root, a read-only filesystem, no Linux capabilities, no privilege escalation.
+
+```yaml title="docker-compose.yml"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+```
+
+- **Dependencies are pinned** in `package-lock.json`. The server is bundled, so the image ships no `node_modules`.
+
+## Plugins
+
+Community integrations run inside Valet with the same access as the built-in ones, including the keys you give them. Their cards are checked against the catalog. Their code isn't sandboxed.
+
+Anyone who can write to `data/integrations/` can run code as Valet. Keep that folder, and the data volume, writable only by you. Plugins are single files, so read them before you install them.
+
+## Requests Valet makes on its own
+
+Self-hosters like to know what leaves the box.
+
+- Your services, as configured.
+- The model, if you configured one.
+- App icons: `/api/icon/` fetches from `cdn.jsdelivr.net` once and keeps them in `data/icons`. Files you put there win.
+- Favicons for links: `/api/favicon/` fetches from `icons.duckduckgo.com`, which tells it the link's hostname, and keeps the result.
+- Your notification channels, if any.
+- Integrations that use public APIs, when you add them: feeds, weather, GitHub, markets, and so on.
+
+The Docker integration also asks image registries what's newest, to spot updates.
+
+## Give it as little as possible
+
+Each service decides what its keys can do. Use the narrowest kind it offers.
+
+| Service | Least-privilege option |
+|---|---|
+| Immich | An API key with only read permissions (asset, album, person, memory, timeline) |
+| Home Assistant | A separate non-admin user for Valet, and its long-lived token. Expose only the entities you want to Assist for MCP |
+| Paperless-ngx | A separate user with view permissions (add "add document" only if you want filing from chat) |
+| Pi-hole | An app password (Settings, Web interface/API), not your admin password |
+| Uptime Kuma | An API key (Settings, API Keys). It only reads metrics |
+| Sonarr, Radarr, Prowlarr, Bazarr | These apps only have full API keys. Keep `assistant.access` at `read` unless you want "search for missing" |
+| qBittorrent | Its web login can do everything. Keep `assistant.access` at `read` unless you want pause and resume from chat |
+| Seerr | Its API key acts as the admin. Requests from chat ask you first |
+| Tautulli | Its API key. Stopping a stream from chat asks you first |
+| Karakeep | An API key. It can add bookmarks, and saving from chat is `write` |
+
+And the general rules:
+
+- **Don't expose Valet to the internet.** Reach it over a VPN or tailnet, or put a sign-in proxy in front, or turn on `auth.mode: local`. It's a control panel for your home.
+- Keep `.env` readable only by you: `chmod 600 .env`. Never commit it. `config.yaml` is safe to share.
+- Turn on only the integrations you use, and give the assistant only the access you want it to have.
+
+## Reporting a problem
+
+Please don't open a public issue for a security problem. Use GitHub's private vulnerability reporting on the repository: Security, then Report a vulnerability. You'll get a reply within a few days.

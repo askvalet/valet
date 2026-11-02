@@ -1,0 +1,82 @@
+---
+title: FAQ
+description: Short answers to what people ask before they install it.
+---
+
+## Do I have to use the AI?
+
+No. Without an `assistant:` block the page loses nothing, and no model is called. See [running with no AI](/assistant/no-ai/).
+
+## Does anything leave my network?
+
+With no assistant, or a local one, these are what Valet itself fetches from outside, and only if you use them:
+
+| What | From |
+|---|---|
+| App icons | jsDelivr, once, then cached in `data/icons`. Put your own file at `data/icons/<name>.png` or `.svg` to skip it. |
+| Site icons on links | DuckDuckGo's icon service, once each, unless you set `icon` on the link. |
+| Weather | Open-Meteo, if you use `weather`. |
+| Feeds and news | The sites you configure: `rss`, `hackernews`, `reddit`, `markets` and so on. |
+| A custom font | Only if `appearance.font.url` is remote. A local file works offline. |
+
+There's no telemetry or analytics in the code. A hosted model sees your questions, and whatever its tools return.
+
+## Can the model see my API keys?
+
+No. Tools run on the server, and the model gets their results. Every value a `${NAME}` stood for is redacted from anything Valet sends out. See [secrets](/security/secrets/).
+
+## What stops it from doing something stupid?
+
+`control` tools wait for your approval each time, and show what's about to happen in the service's own words. A `write` tool runs alone only with what you typed yourself, so a web page or document it read can't trigger one. You can also set any integration to `read` or `none`. See [approvals](/assistant/approvals/).
+
+## Why are there no buttons on my page?
+
+With no sign-in, Valet is read-only. Turn on sign-in, or set `auth.trustNetwork: true` if only your VPN or a proxy reaches it. See [sign-in](/start/sign-in/).
+
+## Why did a card disappear?
+
+Media, photo and chart cards with nothing to show give up their slot. It comes back when there's something to show. Your "Now playing" card is empty when nobody's watching.
+
+## How much does it use?
+
+About 100 MB of RAM. It's one Node process, with no database. Heavy things, such as the assistant and the 3D models, load on first use.
+
+## How often does it call my services?
+
+Each widget polls on its own interval, once for all open tabs, while a page is open. With nobody looking, `history.background` still takes one request per widget every 5 minutes, so graphs have no gaps. Turn that off with `history: { background: false }`.
+
+## Can several people use it?
+
+Yes, with `local`, `proxy` or `oidc`. Everyone signed in sees the same page and has the same rights: there are no roles. For a read-only kitchen tablet, read-only share links are on the [roadmap](https://github.com/IbrahimIrfan/valet/blob/master/ROADMAP.md).
+
+## Do you support my camera's MJPEG stream?
+
+No. See [what's not supported](/integrations/#not-supported). A snapshot URL works.
+
+## My service isn't listed.
+
+[`api`](/integrations/api/) maps a JSON API to a card from YAML, [`http`](/integrations/http/) checks up or down, and [`service()`](/build/service/) is about ten lines. Before asking for a new one, try those.
+
+## An integration shows wrong numbers.
+
+Every built-in passes its tests against a sample of its API, but a sample can't prove your version still answers that way. Open an issue with the response it sent, and take your private data out of it first.
+
+## Can I change the words, or the language?
+
+Yes: [`labels`](/reference/configuration/#labels) covers what Valet writes itself, and [`format`](/reference/configuration/#format) covers dates and numbers. What services and the assistant write stays theirs. The status sentence is built from English, so set `hero.status: false` on a page in another language.
+
+## Can I change how it looks?
+
+Yes: see [`appearance`](/reference/configuration/#appearance). Colours, fonts, corners, glass, density, wallpaper, and your own CSS come last.
+
+## Can the assistant edit my config?
+
+Only with `access: { config: control }`, and it shows you a diff and saves after you approve. It can't touch `auth`, `assistant`, `appearance`, `mcp`, `plugins` or `allowedHosts`, and it won't write a secret. Mount the config folder read-only and it hands you the diff instead.
+
+## Is there a demo?
+
+The screenshots on this site are from the demo in the repo's `demo/` folder: real Valet, a made-up homelab, and a scripted model. You can run it yourself with Docker. See `demo/README.md`.
+
+## Licence?
+
+MIT. See [credits](/credits/).

@@ -1,0 +1,103 @@
+---
+title: Add a service
+description: Connect one service, put its card on the page, and find out why it isn't working.
+sidebar:
+  order: 3
+---
+import Shot from '~/components/Shot.astro';
+import Row from '~/components/Row.astro';
+
+Here's Pi-hole from start to finish. Every integration works the same way.
+
+## 1. Find its page
+
+Each [integration page](/integrations/) lists its options and widgets. [Pi-hole's](/integrations/pihole/) says it takes `url` and `password`, and has one widget, `stats`.
+
+## 2. Put the secret in `.env`
+
+```sh title=".env"
+PIHOLE_PASSWORD=an-app-password
+```
+
+The container reads `.env` when it's created, so a new variable needs one more step:
+
+```sh
+docker compose up -d
+```
+
+Compose recreates the container if the environment changed.
+
+## 3. Add the integration
+
+```yaml title="config/config.yaml"
+integrations:
+  dns:                              # any name you like
+    type: pihole
+    url: http://pihole              # as Valet reaches it, not as your browser does
+    password: ${PIHOLE_PASSWORD}
+```
+
+`url` is an address from inside the Valet container. Use the Docker service name if they share a network. Most integrations also take `href`, which is where the card links to in your browser, when the two differ.
+
+Names are letters, numbers, `-` and `_`. `valet`, `pins` and `config` are taken.
+
+A self-signed certificate? Add `insecure: true` to that service. It applies to that service only.
+
+## 4. Put its widget on the page
+
+```yaml
+layout:
+  - title: Network
+    widgets:
+      - dns.stats
+```
+
+Save. The card appears.
+
+<Shot id="int/pihole/stats-medium" label="dns.stats" alt="The Pi-hole card: share of queries blocked, with a chart of the day." />
+
+## 5. Choose how it's shown
+
+Give a widget a size, or use its headline as a ring in the top bar.
+
+```yaml
+menubar: [dns.stats]
+
+layout:
+  - title: Network
+    widgets:
+      - { widget: dns.stats, size: large }
+```
+
+See [sizes](/concepts/sizes/) and [sections and layout](/concepts/layout/).
+
+## When it doesn't work
+
+A widget that can't reach its service says so, in the card.
+
+<Row>
+<Shot id="int/pihole/stats-down" label="Can't reach it" alt="A Pi-hole card showing a skeleton and an error next to its title." />
+</Row>
+
+- Run `config check` for mistakes in the file.
+- Read the log: `docker logs valet`. It lists problems at startup.
+- `npm run test:live`, from a source checkout, tests every widget in your config against your real services.
+- `sign-in refused` usually means the wrong key, or a key with too little access.
+- `didn't send JSON: is the url right?` usually means the URL is a login page or the wrong port.
+
+## If there's no integration for it
+
+- [`http`](/integrations/http/) gives you up or down for anything with a web page.
+- [`api`](/integrations/api/) turns a JSON API into a card from YAML.
+- [`iframe`](/integrations/iframe/) puts a page inside a card.
+- [`service()`](/build/service/) is about ten lines of TypeScript. [Plugins](/build/plugins/) load from one file in `data/integrations/`.
+
+## Let the assistant use it
+
+If you have an assistant, a new integration gets the `default` level from `assistant.access`, which is `read` unless you change it. See [access levels](/assistant/access/).
+
+```yaml
+assistant:
+  model: qwen3:8b
+  access: { default: read, dns: control }   # by the name you chose, not the type
+```

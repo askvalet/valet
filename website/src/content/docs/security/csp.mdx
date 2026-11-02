@@ -1,0 +1,62 @@
+---
+title: Content security policy
+description: The headers on every response, and what each one is for.
+sidebar: { order: 4 }
+---
+
+Every response carries a strict content security policy. Only Valet's own scripts run. There are no inline scripts anywhere, which is why the theme code that runs before first paint is a file.
+
+```text
+default-src 'self';
+script-src 'self';
+style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob: https:;
+font-src 'self' data:;
+connect-src 'self';
+media-src 'self' blob:;
+frame-src 'none';
+frame-ancestors 'none';
+base-uri 'none';
+form-action 'self';
+object-src 'none'
+```
+
+## What each part does
+
+- `script-src 'self'` means injected script doesn't run, even if a service's text gets into the page some way. React escapes text anyway. This is the second lock.
+- `connect-src 'self'` means page code can only talk to Valet. A script couldn't send data elsewhere.
+- `frame-ancestors 'none'` means no other site can frame Valet. `X-Frame-Options: DENY` says the same to older browsers.
+- `base-uri 'none'` and `form-action 'self'` stop two ways of sending things elsewhere.
+
+## Where it relaxes
+
+Three parts of the policy are looser than the rest, and you should know why.
+
+- `style-src 'unsafe-inline'`: React sets inline style attributes. So injected CSS isn't blocked by the policy. Valet's own [`appearance.css`](/reference/configuration/#appearance) passes through a cleaner so it can't close its tag.
+- `img-src https:`: cards can show remote images, such as feed thumbnails. A remote image loads from your browser.
+- `frame-src`: `'none'`, unless you add an [iframe integration](/integrations/iframe/). Then its origin is added, and only that one.
+
+`appearance.font.url` adds that font's origin to `style-src` and `font-src`. A Google Fonts stylesheet adds `fonts.gstatic.com` too. Nothing else adds to the list.
+
+## The other headers
+
+| Header | Value | Why |
+|---|---|---|
+| `X-Content-Type-Options` | `nosniff` | The browser believes the declared type. |
+| `Referrer-Policy` | `same-origin` | Addresses don't leak to other sites through links. |
+| `X-Frame-Options` | `DENY` | No framing. |
+| `Permissions-Policy` | `microphone=(self), camera=(), geolocation=(), payment=(), usb=()` | Microphone for Valet only. The rest are off. |
+| `Cross-Origin-Opener-Policy` | `same-origin` | Other windows can't get a handle on the page. |
+| `Cache-Control` | `no-store` on `/api/` by default | Live data and anything behind sign-in is never kept by a browser or proxy cache. |
+
+Pictures through the [image proxy](/security/image-proxy/) carry a tighter policy of their own.
+
+## Plugin visuals
+
+A plugin's browser module, `data/integrations/<kind>.web.js`, is served from Valet's origin, so `script-src 'self'` allows it. That's why plugins need your trust. See [plugins](/build/plugins/).
+
+## Requests that change something
+
+The CSP stops scripts on the page. A check on the server stops other sites. Any request to `/api/` that isn't a GET or HEAD is refused if its `Origin` doesn't match the host. Sign-in routes are covered too.
+
+Request bodies are capped before anything reads them: 256 KB, or 8 MB for a chat. Uploads are limited to 50 MB a file.

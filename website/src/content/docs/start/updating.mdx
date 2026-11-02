@@ -1,0 +1,57 @@
+---
+title: Updating
+description: Update Valet, and what to check afterwards.
+sidebar:
+  order: 5
+---
+
+Your config and data live outside the container, so updating replaces only the image.
+
+## Docker Compose
+
+```sh
+docker compose pull
+docker compose up -d
+docker image prune -f     # optional: removes the old image
+```
+
+If you built the image yourself:
+
+```sh
+git pull
+docker build -t local/valet:dev .
+docker compose up -d
+```
+
+## From source
+
+```sh
+git pull
+npm install
+npm run build
+npm start
+```
+
+## Afterwards
+
+```sh
+docker exec valet node dist/server.js config check
+```
+
+New options come with a default, so a config that doesn't mention them keeps working.
+
+Three things can need a look after an update:
+
+- **Your own CSS.** The selectors `appearance.css` and `cssFile` hook into aren't a stable API.
+- **Plugins.** Their cards are checked against the card catalog at runtime, so one that no longer fits is caught there.
+- **A service that changed its API.** Integrations are tested against a sample of each API, which can't prove the service still answers that way. If one breaks on your version, open an issue with the response it sent.
+
+## Back up
+
+Back up two folders: `config` and `data`. There's no database.
+
+`data` holds accounts, the signing secret, history, pins, watches, the activity log, your to-do lists and any plugins. Treat it as private. The icon cache and uploads in there are safe to lose.
+
+## Going back
+
+Pin a digest in your Compose file instead of `latest`, and put the old one back if an update misbehaves. There's no database to migrate: `data` is plain files.

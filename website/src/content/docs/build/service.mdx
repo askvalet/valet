@@ -1,0 +1,194 @@
+---
+title: The short form, service()
+description: A whole integration in about ten lines, with every field explained.
+sidebar: { order: 2 }
+---
+
+Most integrations are the same thing: call an endpoint or two, show some numbers. Say that, and `service()` does the rest.
+
+```js title="data/integrations/speedbox.mjs"
+export default ({ service, fmt }) => service({
+  type: 'speedbox',
+  name: 'Speedbox',
+  icon: 'wifi',
+  auth: { header: 'X-Api-Key' },
+  get: { latest: '/api/results/latest' },
+  stats: d => [
+    { label: 'Down', value: d.latest.down, unit: ' Mbps' },
+    { label: 'Up', value: d.latest.up, unit: ' Mbps' },
+    { label: 'Ping', value: d.latest.ping, unit: ' ms' },
+    { label: 'Last run', value: fmt.day(d.latest.at) },
+  ],
+  sample: { latest: { down: 940, up: 41, ping: 11, at: '2026-10-29T08:00:00Z' } },
+  expect: { Down: 940, Up: 41, Ping: 11 },
+});
+```
+
+That file is a whole integration. From it you get:
+
+- The config: `url`, `href`, `every`, `insecure`, and the credentials `auth` asks for. All checked, with unknown keys refused.
+- Sign-in, including sessions and retries.
+- A widget called `status`, with a tile for the small sizes.
+- A read tool for the assistant, called `speedbox_status`.
+- A failure message that never includes the key.
+
+```yaml title="config.yaml"
+integrations:
+  speed:
+    type: speedbox
+    url: http://speedbox:8080
+    key: ${SPEEDBOX_KEY}
+layout:
+  - widgets: [speed.status]
+```
+
+## Fields
+
+| Field | Required | What it does |
+|---|---|---|
+| `type` | yes | The `type:` in `config.yaml`. |
+| `name` | yes | The card's title. |
+| `icon` | | The card's icon, by name. `pulse` by default. |
+| `logo` | | The app's own icon, by dashboard-icons name. The `type` by default. |
+| `auth` | | How it signs in. See [below](#auth). `none` by default. |
+| `authOptional` | | Many installs run without a login: send credentials only if they're set. |
+| `options` | | Settings of its own, as zod fields, beyond the URL and credentials. |
+| `every` | | How often: seconds, or `5m`. A minute by default. Use it for heavy calls. |
+| `get` | yes | Each call to make, by name. A map, or a function of the options. |
+| `then` | | A second step that uses the first's answers. |
+| `stats` | | Numbers: `{ label, value, unit, sub, tone, pct, trend }`. |
+| `list` | | Rows. Used when there's no `stats`. |
+| `status` | | Up or down items. The tile counts them. |
+| `card` | | Anything the three above can't say. Return any [card](/cards/). |
+| `headline` | | The tile. The first stat otherwise. |
+| `about` | | What the assistant is told it's for, in a sentence. |
+| `recap` | | [Slides](/build/recap/) for the year in review. |
+| `sample` | yes | An answer per `get`, as the real service sends it. |
+| `sampleOptions` | | Options to use with the sample. |
+| `loginSample` | | What signing in answers, for a `login` that reads it. |
+| `expect` | | Label to expected value. The check asks for it. |
+
+`stats` wins if you give both it and `list`. With `status`, the card is a status card, and it says "2 down" or "9 up" by itself. A list says "Nothing here" when it's empty.
+
+Numbers in `stats` are formatted for you: `1200` shows as `1,200`. A value that's undefined shows as `–`, and the check flags it.
+
+## get
+
+The keys you pick here become the keys of `d` in `stats`, and of `sample`.
+
+```js
+get: {
+  stats: '/api/stats',                                      // a plain path
+  jobs: { path: '/api/jobs', method: 'POST', body: { all: true } },
+  version: { path: '/version', as: 'text', optional: true },
+},
+```
+
+An entry can be a path, or an object with:
+
+| Field | What it does |
+|---|---|
+| `path` | Added to the configured `url`. |
+| `method` | `POST`. GET otherwise. |
+| `body` | An object goes as JSON. A string or `URLSearchParams` goes as it is. |
+| `headers` | Extra headers. |
+| `as` | `text` for a plain answer, `headers` for the response's headers. |
+| `optional` | If it fails, that key is undefined and the card still draws. |
+
+Everything else must succeed, or the widget shows the error.
+
+`get` can be a function of the options, and it also receives `session`, the sign-in token, for services that want it in a body.
+
+```js
+options: { org: z.string() },
+get: o => ({ sites: `/v1/org/${o.org}/sites` }),
+```
+
+`then` runs after the first calls, and gets their answers:
+
+```js
+get: { nodes: '/api/nodes' },
+then: d => ({ first: `/api/nodes/${d.nodes[0].id}` }),
+```
+
+## auth
+
+| `auth` | What the config needs | What's sent |
+|---|---|---|
+| `'none'` | | Nothing. |
+| `'bearer'` | `key` | `Authorization: Bearer <key>` |
+| `'token'` | `key` | `Authorization: Token <key>` |
+| `'basic'` | `username`, `password` | Basic auth. |
+| `{ header: 'X-Api-Key', prefix: '' }` | `key` | That header. `prefix` is optional. |
+| `{ query: 'apikey' }` | `key` | In the URL. The check makes sure errors don't show it. |
+| `{ login: '/api/login', ... }` | `username`, `password` | Trades them for a session. |
+| `{ handshake: { status: 409, header: 'X-Session-Id' } }` | optional `username`, `password` | A refused first request hands out a session id, sent back on the next. Transmission does this. |
+
+A `login` can take more:
+
+| Field | What it does |
+|---|---|
+| `login` | The path to post to. |
+| `body` | `c => ({ ... })`: what to send. JSON, unless it's `URLSearchParams`. Username and password by default. |
+| `token` | `r => r.jwt`: reads the token from the answer. Without it, Valet uses the session cookie. |
+| `use` | `t => ({ 'X-Auth': t })`: how it's sent back. `Authorization: Bearer` by default. |
+| `text` | The answer is plain text, not JSON. |
+| `expired` | `a => a.error === 'auth'`: for services that say "signed out" with a 200. |
+| `needs` | What it asks for: `username`, `password`, `key`. |
+| `redirects` | The cookie comes on a redirect, so don't follow it. |
+| `ttl` | Seconds a token lasts, for services that don't say. |
+
+A `401` or `403` resets the session and tries once more.
+
+## A status card
+
+```js title="data/integrations/racks.mjs"
+export default ({ service }) => service({
+  type: 'racks',
+  name: 'Racks',
+  icon: 'cpu',
+  auth: 'bearer',
+  get: { nodes: '/api/nodes' },
+  status: d => d.nodes.map(n => ({ name: n.name, ok: n.online, detail: n.online ? undefined : 'offline' })),
+  sample: { nodes: [{ name: 'nas', online: true }, { name: 'pi', online: false }] },
+  expect: { nas: true, pi: false },
+});
+```
+
+## A login and a list
+
+```js title="data/integrations/shelfy.mjs"
+export default ({ service, z }) => service({
+  type: 'shelfy',
+  name: 'Shelfy',
+  icon: 'book',
+  auth: { login: '/api/login', token: r => r.jwt },
+  options: { limit: z.number().int().default(5) },
+  every: '5m',
+  get: { books: '/api/books?sort=recent' },
+  list: (d, o) => d.books.slice(0, o.limit).map(b => ({ title: b.title, subtitle: b.author })),
+  sample: { books: [{ title: 'A Slow Winter', author: 'Sam Okafor' }, { title: 'Salt Road', author: 'Alex Lind' }] },
+  loginSample: { jwt: 'tok' },
+  expect: { 'A Slow Winter': 'Sam Okafor', 'Salt Road': 'Alex Lind' },
+});
+```
+
+`expect` finds each row by its label, name or title, and compares its `value`, `meta`, `subtitle` or `ok`, in that order.
+
+## Self-signed certificates
+
+`insecure: true` in the config accepts a self-signed certificate, for that service only. Every `service()` takes it.
+
+## Writing the sample
+
+Paste a real answer, then remove anything personal. `sample` is what the tests use forever. `npm test` runs every built-in against its own, and `check-integration` does the same for yours.
+
+A sample can't prove the service still answers that way. It proves your code reads that answer. If you have the real service, `npm run test:services` checks against it.
+
+## When it isn't enough
+
+For several widgets, buttons, or tools that change things, use the [full form](/build/full/). You can start from a template:
+
+```sh
+docker exec valet node dist/server.js new-integration my-service --full
+```

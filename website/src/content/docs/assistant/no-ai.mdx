@@ -1,0 +1,58 @@
+---
+title: Running with no AI
+description: Leave out the assistant block and the page loses nothing.
+sidebar: { order: 7 }
+---
+
+Valet is a homepage first. The assistant is optional, and leaving it out takes nothing from the page.
+
+```yaml title="config.yaml"
+# no assistant: block
+title: Home
+integrations:
+  downloads:
+    type: qbittorrent
+    url: http://qbittorrent:8080
+    username: ${QBIT_USER}
+    password: ${QBIT_PASS}
+layout:
+  - widgets: [downloads.active]
+```
+
+That's the whole setup. There's no switch to turn off.
+
+## What stays
+
+- Every card, widget and integration.
+- Every button and control, when [sign-in](/start/sign-in/) allows them.
+- The palette, for finding services and running actions.
+- The island, notices, and [notifications](/reference/configuration/#notify) from `island.notify`.
+- The year in review. No model writes it.
+- History graphs on tiles.
+
+The AI SDK and the MCP client load on the first question. With no assistant, they never load, so they cost no memory.
+
+## What goes
+
+- The chat, and its button on the page. The ask box becomes a search box.
+- "Why?" on a card, and the line under the greeting.
+- Tools, plans, reminders and pins, which all live in the chat.
+- [MCP](/assistant/mcp/), which only exists for the assistant.
+
+`hero.search: false` removes the box as well.
+
+## In between
+
+You can keep the chat and turn off everything it does on its own:
+
+```yaml title="config.yaml"
+assistant:
+  baseURL: http://ollama:11434/v1
+  model: qwen3:8b
+  background: { watch: false, brief: false, suggest: false }
+chat:
+  suggestions: fixed    # your list, with no model calls
+  overview: false       # no ask box on the overview
+```
+
+Now the model runs only when you ask it something. With `read` access, the default, it still can't change anything.

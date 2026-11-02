@@ -1,0 +1,298 @@
+---
+title: Recipes
+description: Common setups as YAML you can copy and change.
+---
+
+Each block is a complete `config.yaml` and passes `config check`. Secrets go in `.env`. Hosts are examples: use your own.
+
+## A media stack
+
+Plex through Tautulli, downloads, what's coming and requests. The island shows what's playing and what's downloading.
+
+```yaml
+greeting: Sam
+
+integrations:
+  plex:
+    type: tautulli
+    url: http://tautulli:8181
+    apiKey: ${TAUTULLI_KEY}
+  downloads:
+    type: qbittorrent
+    url: http://qbittorrent:8080
+    username: ${QBIT_USER}
+    password: ${QBIT_PASS}
+    arr:                             # titles and posters instead of release names
+      - { type: sonarr, url: "http://sonarr:8989", apiKey: "${SONARR_KEY}" }
+      - { type: radarr, url: "http://radarr:7878", apiKey: "${RADARR_KEY}" }
+  coming:
+    type: arr
+    sonarr: { url: "http://sonarr:8989", apiKey: "${SONARR_KEY}" }
+    radarr: { url: "http://radarr:7878", apiKey: "${RADARR_KEY}" }
+  requests:
+    type: seerr
+    url: http://seerr:5055
+    apiKey: ${SEERR_KEY}
+
+island:
+  activities: [plex.streams, downloads.active]
+  notify:
+    - { widget: downloads.active, on: end, text: "{title} finished downloading" }
+
+layout:
+  - title: Now
+    columns: 2
+    widgets: [plex.streams, downloads.active]
+  - title: Media
+    columns: 1
+    widgets: [plex.recent, coming.upcoming, requests.requests]
+  - tab: Media
+    overview: false
+    heading: false
+    widgets:
+      - { widget: plex.race, size: large }
+      - { widget: plex.people, size: medium }
+      - { widget: plex.plays, size: medium }
+      - { widget: plex.viewing, size: large }
+```
+
+## Pi-hole and system rings in the top bar
+
+The rings stay in view on every tab. Hover one for its graph.
+
+```yaml
+integrations:
+  dns:
+    type: pihole
+    url: http://pihole
+    password: ${PIHOLE_PASSWORD}     # an app password is best
+  system:
+    type: glances
+    url: http://glances:61208
+    disks: [{ mount: /, name: System }, { mount: /srv, name: Storage }]
+  weather:
+    type: weather
+    latitude: 43.65
+    longitude: -79.38
+
+menubar:
+  widgets: [system.tiles, dns.stats]
+  labels: true
+weather: weather.now
+
+layout:
+  - title: Network
+    widgets:
+      - { widget: dns.stats, size: large }
+      - { widget: system.disks, size: medium }
+```
+
+With sign-in or `trustNetwork`, the Pi-hole card gets its pause buttons.
+
+## A tablet on the wall
+
+Kiosk mode is on the roadmap and isn't built yet. This gets close: no hero, no tabs, big tiles, and nothing to press. With no sign-in, the page is read-only, which suits a wall.
+
+```yaml
+auth: { mode: none }
+
+hero: { greeting: false, status: false, search: false, review: false }
+chat: { overview: false }
+nav: { hide: [Overview, Home] }
+menubar: { widgets: [], clock: true, date: true, theme: false, size: 1.4 }
+
+appearance:
+  theme: dark
+  wallpaper: "#0b0d12"
+  density: spacious
+  font: { scale: 1.2 }
+  motion: reduced
+
+integrations:
+  system:
+    type: glances
+    url: http://glances:61208
+  weather:
+    type: weather
+    latitude: 43.65
+    longitude: -79.38
+  clocks:
+    type: clock
+    clocks:
+      - { name: Toronto, zone: America/Toronto }
+      - { name: Lisbon, zone: Europe/Lisbon }
+
+layout:
+  - title: Home
+    display: tiles
+    widgets: [weather.now, clocks.times, system.tiles]
+```
+
+Open it in the tablet's own kiosk mode or browser. A phone's reduce-motion setting always counts, on top of `motion`.
+
+## Cameras with Frigate
+
+Stats on `nvr.status`, and a live view with what it noticed on `nvr.cameras`.
+
+```yaml
+integrations:
+  nvr:
+    type: frigate
+    url: http://frigate:5000          # this port needs no sign-in
+    cameras: [front, drive]           # in this order; all of them otherwise
+    go2rtc: http://frigate:1984       # smooth video, if your cameras send H.264
+
+layout:
+  - title: Cameras
+    widgets:
+      - { widget: nvr.cameras, size: large }
+      - { widget: nvr.status, size: medium }
+```
+
+## Cameras with snapshots
+
+For anything that hands over a JPEG: Scrypted, ZoneMinder, Shinobi, an RTSP-to-JPEG bridge, or the camera's own snapshot address. Valet fetches the pictures, so the browser never sees the address or password. MJPEG and RTSP streams [aren't supported](/integrations/#not-supported).
+
+```yaml
+integrations:
+  yard:
+    type: camera
+    username: ${CAM_USER}
+    password: ${CAM_PASS}
+    refresh: 2                        # seconds between pictures
+    cameras:
+      - { name: Shed, url: http://10.0.0.20/snapshot.jpg }
+      - { name: Gate, url: http://10.0.0.21/snapshot.jpg, video: http://10.0.0.21/stream.mp4 }
+
+layout:
+  - title: Cameras
+    widgets:
+      - { widget: yard.cameras, size: large }
+```
+
+## A local assistant with Ollama
+
+Nothing leaves your network. Pick a model that handles tool calls well. `llama.cpp`, vLLM and LM Studio work the same way, with their own `baseURL`.
+
+```yaml
+assistant:
+  name: Valet
+  baseURL: http://ollama:11434/v1
+  model: qwen3:8b
+  access:
+    default: read
+    downloads: control      # may pause, resume and remove, and asks first
+    bookmarks: write        # may save a link you typed, without asking
+    docs: none              # never touches your documents
+  background: { watch: true, brief: true, suggest: false, perDay: 50 }
+
+chat: { suggestions: fixed, open: right }
+
+integrations:
+  downloads:
+    type: qbittorrent
+    url: http://qbittorrent:8080
+    username: ${QBIT_USER}
+    password: ${QBIT_PASS}
+  bookmarks:
+    type: karakeep
+    url: http://karakeep:3000
+    apiKey: ${KARAKEEP_KEY}
+  docs:
+    type: paperless
+    url: http://paperless:8000
+    token: ${PAPERLESS_TOKEN}
+  models:
+    type: ollama
+    url: http://ollama:11434
+
+layout:
+  - title: Now
+    widgets: [downloads.active, bookmarks.recent, docs.recent, models.models]
+```
+
+Control tools need [a signed-in person or a trusted network](/start/sign-in/). `chat.suggestions: fixed` and `suggest: false` keep the model quiet until you ask. See [models](/assistant/models/).
+
+## Sign-in with Authelia
+
+Authelia signs the person in, and Caddy passes their name to Valet. Valet believes that header only from the proxy's address.
+
+```yaml
+auth:
+  mode: proxy
+  proxy:
+    header: Remote-User
+    trusted: [10.0.0.5]           # Caddy's address on the Docker network Valet is on
+allowedHosts: [valet.example.com]
+```
+
+```text title="Caddyfile"
+valet.example.com {
+  forward_auth authelia:9091 {
+    uri /api/authz/forward-auth
+    copy_headers Remote-User
+  }
+  reverse_proxy valet:7575
+}
+```
+
+Give Caddy a fixed address, because `trusted` takes exact addresses and no ranges. Restart Valet after changing `auth`. To sign in with OIDC instead, see [OpenID Connect](/start/sign-in/#openid-connect).
+
+Authelia is also an [integration](/integrations/authelia/), if you want its numbers on the page.
+
+## Notifications
+
+Reminders go here when you're not looking: ask the assistant "tell me when this finishes", or set `push: true` on a notice in the island.
+
+```yaml
+notify:
+  channels:
+    - { type: ntfy, url: https://ntfy.example.com/homelab, token: "${NTFY_TOKEN}" }
+    - { type: gotify, url: http://gotify:8080, token: "${GOTIFY_TOKEN}" }
+    - { type: telegram, token: "${TELEGRAM_TOKEN}", chat: "${TELEGRAM_CHAT}" }
+    - { type: discord, url: "${DISCORD_WEBHOOK}" }
+    - { type: slack, url: "${SLACK_WEBHOOK}" }
+    - { type: pushover, token: "${PUSHOVER_TOKEN}", user: "${PUSHOVER_USER}" }
+    - { type: apprise, url: http://apprise:8000/notify/mykey }
+    - { type: webhook, url: http://hooks.example.com/valet, headers: { X-Key: "${HOOK_KEY}" } }
+  insights: false       # true also pushes the assistant's shared-cause line
+
+integrations:
+  services:
+    type: http
+    targets:
+      - { name: Plex, url: "http://plex:32400/identity", href: "https://plex.example.com" }
+      - { name: Home Assistant, url: "http://homeassistant:8123" }
+
+island:
+  notify:
+    - { widget: services.status, on: down, text: "{name} is down", push: true }
+    - { widget: services.status, on: up, text: "{name} is back" }
+
+layout:
+  - title: Services
+    widgets: [services.status]
+```
+
+Keep the ones you use and delete the rest. An island notice needs its widget placed on the page, and `apprise` reaches dozens more services.
+
+## A service with no integration
+
+Any JSON API, from YAML. `value` is a path into the response, and `|round` is a filter. See [`api`](/integrations/api/).
+
+```yaml
+integrations:
+  speedtest:
+    type: api
+    url: http://speedtest:8080/api/speedtest/latest
+    headers: { Authorization: "Bearer ${SPEEDTEST_TOKEN}" }
+    title: Speedtest
+    icon: wifi
+    stats:
+      - { label: Down, value: data.download|round, unit: " Mbps" }
+      - { label: Up, value: data.upload|round, unit: " Mbps" }
+
+layout:
+  - title: Network
+    widgets: [speedtest.data]
+```

@@ -1,0 +1,66 @@
+---
+title: Integrations
+description: How one block of config.yaml becomes widgets, actions and assistant tools.
+sidebar:
+  order: 1
+---
+
+An integration is the code that talks to one kind of service. An instance is one block under `integrations:` in your config. You can have several instances of a type.
+
+```yaml
+integrations:
+  nas:
+    type: glances
+    url: http://nas:61208
+  office-pc:
+    type: glances
+    url: http://10.0.0.20:61208
+```
+
+The name you give it (`nas`) is how the rest of the config refers to it: in widget keys such as `nas.tiles`, and in [`assistant.access`](/assistant/access/).
+
+## What an integration gives you
+
+| Part | What it is | Used by |
+|---|---|---|
+| Widgets | Live cards. | The page. |
+| Actions | Things the page's buttons can do, such as pause a download. | The page, when [Valet can act](/start/sign-in/). |
+| Tools | Things the assistant can read or do, each marked `read`, `write` or `control`. | The assistant. |
+| Pictures | Posters and snapshots, served through Valet so the browser never needs the service's key. | Cards. See [the image proxy](/security/image-proxy/). |
+| Recap slides | What it can honestly say about your year. | The [year in review](/concepts/recap/). |
+
+## Two kinds
+
+Most integrations are short definitions: call an endpoint or two, show some numbers. These are written with [`service()`](/build/service/). Each gets a config, sign-in, a card with a headline tile, and one read-only tool for the assistant.
+
+The rest are [full integrations](/build/full/), which have their own widgets, controls and tools. Tautulli, qBittorrent and Home Assistant are examples.
+
+Each integration's page shows what it offers, so the difference matters only if you're [writing one](/build/).
+
+## Everything runs on the server
+
+The browser talks only to Valet. Valet talks to your services. That's why `url` is an address from inside the container, and why keys never reach the browser.
+
+## How often it asks
+
+One poller runs per widget, shared by every open tab. Only widgets you've placed on the page refresh on their timers, and only while a page is open.
+
+One thing runs with no page open. `history.background` takes a sample of each widget every 5 minutes, so tiles have a graph with no gaps. It's on by default. Turn it off with `history: { background: false }`, or set `history: false`.
+
+To change a widget's own pace, give it `every`:
+
+```yaml
+layout:
+  - widgets:
+      - { widget: downloads.active, every: 5s }
+```
+
+Services with a `service()` definition also take `every:` in their integration block, and a minute is the default.
+
+## Self-signed certificates
+
+`insecure: true` on a service accepts its self-signed certificate. It applies to that service alone.
+
+## Community integrations
+
+A plugin has the same shape as a built-in. Drop one file in `data/integrations/`, or list an npm package under `plugins:`. Its cards are checked against the catalog at runtime. See [the plugin toolkit](/build/plugins/).

@@ -1,0 +1,77 @@
+---
+title: Confirm words
+description: What an approval card says, and how to write it.
+sidebar: { order: 7 }
+---
+import Shot from '~/components/Shot.astro';
+
+A `control` tool can have `confirm(input)`. It returns what's about to happen, in words a person would use, for the [approval card](/assistant/approvals/).
+
+```js
+media_request: {
+  access: 'control',
+  label: 'Requested a title',
+  input: z.object({ id: z.number() }),
+  description: 'Ask for a film or show to be added.',
+  confirm: async ({ id }) => {
+    const t = await lookup(id);
+    return { title: `Request ${t.title}?`, detail: t.year, image: ctx.image(t.poster), verb: 'Request' };
+  },
+  async run({ id }) { /* ... */ },
+},
+```
+
+<Shot id="scene/approval-card" alt="An approval card with a title, a detail line, Not now and a button named for the action" caption="The title, a line of detail, and a button that says what it does." />
+
+## Fields
+
+| Field | What it does |
+|---|---|
+| `title` | The question: `Stop Sam's stream?` |
+| `detail` | One more line: `The downloaded files are kept`. |
+| `verb` | The button's word: `Stop`, `Pause`, `Request`. **Allow** by default. |
+| `danger` | Asks for a [hold or two presses](/assistant/approvals/#hold-to-confirm), on a red button. |
+| `image` | Artwork, such as a poster. |
+| `icon` | An icon by name. |
+| `logo` | The app's icon. Valet fills this in from the integration's type. |
+
+With no `confirm`, the card says "Allow this:" and the tool's label, and lists the input.
+
+## Rules
+
+- **It may look things up, and must never change them.** It runs before you've agreed to anything, and it can run more than once.
+- **Show what the service says, not what the model typed.** If the model passes an id, look the title up. Then the card shows what will really happen. This is the point of `confirm`: a model can get an id wrong, and a card that repeats its words wouldn't show that.
+- **Write a question.** Say the thing and the outcome in plain words.
+- **Name the button after the action.** `Pause` is better than `OK`.
+- **Say what it leaves alone.** qBittorrent's remove says `The downloaded files are kept`.
+- **Use `danger` sparingly.** Only for what's hard to take back. If everything's red, nothing is.
+
+If `confirm` throws, the card falls back to the plain form, and the tool still asks. The card's text goes through the [redactor](/security/secrets/).
+
+## Examples from Valet
+
+| Tool | `title` | `verb` | `danger` |
+|---|---|---|---|
+| Pi-hole, `adblock_pause` | `Pause ad blocking for 5 minutes?` | Pause | no |
+| qBittorrent, `pause_downloads` | `Pause all downloads?` | Pause | no |
+| Sonarr / Radarr, `library_search` | `Search for The Long Tide?` | Search | no |
+| Ollama, `ollama_unload` | `Unload llama3.2:8b?` | Unload | no |
+| Plex (Tautulli), `plex_stop_stream` | `Stop Sam's stream?` | Stop | yes |
+
+## Words in the rest of the card
+
+**Not now** and **Allow** come from [`labels`](/reference/configuration/#labels), as `notNow` and `allow`, so they can be translated.
+
+## Undo
+
+Where a tool can be reversed, name the tool that does it. It's called with the same input, and adds **Undo** to the activity log.
+
+```js
+pause_downloads: {
+  access: 'control',
+  undo: 'resume_downloads',
+  // ...
+},
+```
+
+See [undo](/assistant/approvals/#undo).

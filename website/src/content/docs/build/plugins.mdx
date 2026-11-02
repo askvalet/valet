@@ -1,0 +1,112 @@
+---
+title: Plugins and the toolkit
+description: A plugin is one file with no imports and no build step. How they load and what they get.
+sidebar: { order: 4 }
+---
+
+A plugin is an integration, the same shape as the built-in ones, packaged as a single file.
+
+:::caution[Plugins run as Valet]
+A plugin has the same access as a built-in, including the keys you give it. Its cards are checked, and its code isn't sandboxed. Install only what you trust, and read it first: it's one file.
+:::
+
+## Install one
+
+1. Put the file in `data/integrations/`. With Docker, that's the `./data` folder you mounted.
+2. Add its block under `integrations:`, with the `type:` the plugin declares. Place its widgets in the layout as usual. Secrets go in `.env`.
+3. Restart Valet. Editing the file doesn't reload it. The log lists what loaded, and why anything was skipped.
+
+Every `.js` and `.mjs` file in that folder loads, in name order.
+
+From source, you can also install from npm and list the package:
+
+```yaml title="config.yaml"
+plugins: [valet-integration-something]
+```
+
+A built-in type can't be replaced unless the config says so:
+
+```yaml title="config.yaml"
+plugins:
+  packages: [valet-integration-something]
+  replace: [tautulli]
+```
+
+## The toolkit
+
+A plugin's default export is an integration, or a function that receives Valet's toolkit and returns one. The function form needs no imports.
+
+```js title="data/integrations/hello.mjs"
+export default ({ z, defineIntegration }) => defineIntegration({
+  type: 'hello',
+  name: 'Hello',
+  config: z.object({ who: z.string().default('world') }),
+  create: cfg => ({
+    widgets: {
+      greeting: {
+        title: 'Hello',
+        fetch: async () => ({ type: 'text', text: `Hello, ${cfg.who}!`, summary: { label: 'Hello', value: cfg.who } }),
+      },
+    },
+  }),
+});
+```
+
+| In the toolkit | What it is |
+|---|---|
+| `z` | Zod, the schema library. |
+| `fmt` | The [formatters](/build/full/#formatting). |
+| `defineIntegration` | The [full form](/build/full/). |
+| `service` | The [short form](/build/service/). |
+| `checkCard` | Checks a card against the catalog, for your own tests. |
+
+The export can also be a list, for several integrations in one file.
+
+`tally`, the recap helper, isn't in the toolkit. In a plugin, [write the slide out](/build/recap/#tally).
+
+## What's checked
+
+- A plugin must have `type`, `config` and `create`, or it's skipped with a message.
+- A widget card that doesn't match the catalog becomes that widget's error, naming the field. The page doesn't break.
+- A tool's bad card is dropped, the reason is logged, and the model still gets its `data`.
+
+`checkCard` is strict: unknown fields are errors.
+
+## Rules of the road
+
+- Return cards from the [catalog](/cards/).
+- Give every card a `summary`.
+- Tools say what they need. Pick the narrowest `access`.
+- Say what you're about to do, with [`confirm`](/build/confirm/).
+- Pictures go through `ctx.image(ref)` and your [`image()`](/build/full/#images).
+
+## Visuals of your own
+
+The catalog covers most things, but a plugin can draw anything. Return a `showcase` card whose `visual.kind` is your plugin's name, and put a browser module beside it as `data/integrations/<kind>.web.js`.
+
+```js title="data/integrations/my-thing.web.js"
+export default function mount(box, data, { run }) {
+  // draw into box: plain DOM, canvas, SVG
+  // run(action, args) calls one of your actions
+  return {
+    update(data) { /* new data arrived */ },
+    destroy() { /* the card went away */ },
+  };
+}
+```
+
+It's the same contract as Valet's own 3D models. Use the page's CSS variables, such as `var(--foreground)`, `var(--good)`, `var(--primary)` and `var(--muted-foreground)`, so it fits light and dark.
+
+In chat, the assistant shows your visual whenever one of your tools returns that card.
+
+`new-integration my-thing --full` writes a working one to start from.
+
+## Cards for the house
+
+Three cards draw their own glass and fill whatever row they land in. See [forecast](/cards/forecast/), [calendar](/cards/calendar/) and [thermostat](/cards/thermostat/).
+
+A thermostat's buttons are your own actions, run like any other, so the same permissions apply. `set` names the action for a new target, and it's called with `{ temperature }`. The dial moves at once and sends one request when you let go, then waits for your next card to agree. So return the new `target` on the next fetch.
+
+## Sharing one
+
+Publish the file anywhere. If it's a good fit for everyone, move a `service()` into a family file in `src/integrations/services/` and open a pull request.

@@ -19,16 +19,17 @@ for (const d of ['integrations', 'cards', 'reference']) mkdirSync(join(docs, d),
 mkdirSync(gen, { recursive: true });
 
 /** Text for MDX: code spans stay as they are, everything else can't open a tag or an expression. */
-const md = (s: unknown) => String(s ?? '').split(/(`[^`]*`)/).map((p, i) => i % 2 ? p : p.replace(/\\/g, '\\\\').replace(/[{}]/g, c => `&#${c.charCodeAt(0)};`).replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('');
-const cell = (s: unknown) => md(s).replace(/\|/g, '\\|').replace(/\n/g, ' ');
+const md = (s: unknown) => String(s ?? '').replace(/\s*\n\s*/g, ' ').replace(/^(import|export)\b/, w => `&#${w.charCodeAt(0)};${w.slice(1)}`).split(/(`[^`]*`)/).map((p, i) => i % 2 ? p : p.replace(/\\/g, '\\\\').replace(/[{}]/g, c => `&#${c.charCodeAt(0)};`).replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('');
+const cell = (s: unknown) => md(s).replace(/\|/g, '\\|');
 const q = (s: string) => JSON.stringify(s);
 const code = (v: unknown) => typeof v === 'string' ? `\`${v.replace(/`/g, "'")}\`` : `\`${JSON.stringify(v)}\``;
-const firstSentence = (s = '') => { const m = /^.*?[.!?](?=\s|$)/s.exec(s); return (m?.[0] ?? s).trim(); };
-const table = (head: string[], rows: string[][]) => [`| ${head.join(' | ')} |`, `|${head.map(() => '---').join('|')}|`, ...rows.map(r => `| ${r.join(' | ')} |`)].join('\n');
+const firstSentence = (s = '') => { const m = /^.*?(?<!\be\.g|\bi\.e|\bvs)[.!?](?=\s|$)/s.exec(s); return (m?.[0] ?? s).trim(); };
+// the wrapper lets a phone stack these rows: they're long, and a sideways scroll hides the words that matter
+const table = (head: string[], rows: string[][]) => `<div class="opts">\n\n${[`| ${head.join(' | ')} |`, `|${head.map(() => '---').join('|')}|`, ...rows.map(r => `| ${r.join(' | ')} |`)].join('\n')}\n\n</div>`;
 const page = (front: Record<string, unknown>, imports: string, body: string) => `---\n${Object.entries(front).map(([k, v]) => `${k}: ${typeof v === 'string' ? q(v) : JSON.stringify(v)}`).join('\n')}\n---\n${imports}\n\n${body.trim()}\n`;
 const COMP = "import Sizes from '~/components/Sizes.astro';\nimport Shot from '~/components/Shot.astro';\nimport Row from '~/components/Row.astro';";
 const hasShots = (base: string) => Object.values<any>(manifest).some(e => e.file && (e.id.startsWith(`${base}-`) || e.id === base));
-const every = (ms?: number) => !ms ? '10 seconds' : ms < 60_000 ? `${Math.round(ms / 1000)} seconds` : ms < 3_600_000 ? `${Math.round(ms / 60_000)} minute${ms === 60_000 ? '' : 's'}` : `${Math.round(ms / 3_600_000)} hour${ms === 3_600_000 ? '' : 's'}`;
+const every = (ms?: number) => !ms ? '10 seconds' : ms < 60_000 ? `${Math.round(ms / 1000)} seconds` : ms === 60_000 ? 'minute' : ms === 3_600_000 ? 'hour' : ms < 3_600_000 ? `${Math.round(ms / 60_000)} minutes` : `${Math.round(ms / 3_600_000)} hours`;
 const ACCESS: Record<string, string> = { read: 'read', write: 'write', control: 'control' };
 const AUTH: Record<string, string> = { none: 'None.', bearer: 'An API key, sent as a bearer token.', token: 'An API key, sent as `Authorization: Token`.', basic: 'A username and password.', header: 'An API key, sent in a header.', query: 'An API key, sent in the URL.', login: 'Signs in with the credentials below and keeps the session.', handshake: 'A session id the service hands out; a username and password if you set one.' };
 
@@ -87,7 +88,7 @@ const counts = { integrations: catalog.integrations.length, widgets: catalog.int
 writeFileSync(join(docs, 'integrations/index.mdx'), page({ title: 'Integrations', description: `All ${counts.integrations} integrations: what each shows, how to set it up, and what the assistant can do with it.` }, "import Grid from '~/components/IntegrationGrid.astro';", `
 Valet has ${counts.integrations} integrations, with ${counts.widgets} widgets and ${counts.tools} assistant tools between them. Every page here is generated from the code. Every screenshot is the real card, drawn from made-up data.
 
-Use the search box to find one. If yours isn't here, [\`api\`](/integrations/api/) turns any JSON API into a card from YAML, and [writing an integration](/build/integrations/) is usually about ten lines.
+Use the search box to find one. If yours isn't here, [\`api\`](/integrations/api/) turns any JSON API into a card from YAML, and [writing an integration](/build/) is usually about ten lines.
 
 ${byCategory.map(([c, l]: any) => `## ${c}\n\n<Grid items={${JSON.stringify(l.map((i: any) => ({ type: i.type, name: i.name, logo: !!logos[i.type] })))}} />`).join('\n\n')}
 
@@ -111,10 +112,10 @@ function fieldsOf(body: string) {
   return out;
 }
 const interfaces: Record<string, { extend: string[]; fields: ReturnType<typeof fieldsOf>; note?: string; doc?: string }> = {};
-for (const m of src.matchAll(/(?:\/\*\*([^]*?)\*\/\n)?(?:export )?interface (\w+)(?: extends ([\w, ]+))? \{(.*)$/gm)) {
+for (const m of src.matchAll(/(?:\/\*\*((?:(?!\*\/)[^])*)\*\/\n)?(?:export )?interface (\w+)(?: extends ([\w, ]+))? \{(.*)$/gm)) {
   const [, doc, name, ext, rest] = m;
   let body = rest, note: string | undefined;
-  if (/^\s*$/.test(rest)) { const at = m.index! + m[0].length, end = src.indexOf('\n}', at); body = src.slice(at, end); note = /^\}[^\n]*\/\/(.*)$/m.exec(src.slice(end + 1))?.[1]?.trim(); }
+  if (/^\s*$/.test(rest)) { const at = m.index! + m[0].length, end = src.indexOf('\n}', at); body = src.slice(at, end); note = /^\}[^\n]*?\/\/(.*)$/.exec(src.slice(end + 1).split('\n')[0])?.[1]?.trim(); }
   else { let depth = 1, i = 0; for (; i < rest.length && depth; i++) { if (rest[i] === '{') depth++; if (rest[i] === '}') depth--; } body = rest.slice(0, i - 1); note = /\/\/(.*)$/.exec(rest.slice(i))?.[1]?.trim(); }
   interfaces[name] = { extend: (ext ?? '').split(',').map(s => s.trim()).filter(Boolean), fields: fieldsOf(body), note, doc: doc?.trim().replace(/^\s*\*\s?/gm, '') };
 }
@@ -123,7 +124,9 @@ const cardTypes = Object.entries(interfaces).flatMap(([name, i]) => { const t = 
 const referenced = (fields: ReturnType<typeof fieldsOf>, seen = new Set<string>()) => { for (const f of fields) for (const m of f.type.matchAll(/\b([A-Z]\w+)\b/g)) if (interfaces[m[1]] && !['Card', 'Summary', 'Activity', 'Banner', 'Mark', 'RecapSlide'].includes(m[1]) && !seen.has(m[1])) { seen.add(m[1]); referenced(interfaces[m[1]].fields, seen); } return seen; };
 const slugOf = (n: string) => `card/${n.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
 const shotsOf = (g: any) => { const b = slugOf(g.name); return `<Sizes base=${q(b)} name=${q(g.name)} chat light ring />`; };
-const TITLE = (t: string) => t[0].toUpperCase() + t.slice(1);
+const TITLE = (t: string) => t === 'kv' ? 'Key-value' : t[0].toUpperCase() + t.slice(1);
+const FACE: Record<string, string> = { shelf: 'shelf · poster' };
+const faceOf = (type: string) => { const all = catalog.gallery.filter((g: any) => g.card.type === type && !g.name.startsWith('tile')); return (all.find((g: any) => g.name === (FACE[type] ?? type)) ?? all[0] ?? { name: type }).name; };
 const tiles = catalog.gallery.filter((g: any) => g.name.startsWith('tile'));
 const usedBy = (type: string) => catalog.integrations.filter((i: any) => i.widgets.some((w: any) => w.type === type));
 for (const c of cardTypes) {
@@ -160,7 +163,7 @@ Integrations return plain data in these shapes and the page draws them. A new ki
 
 Everything here is the real renderer, drawn from \`src/web/samples.ts\`, the same samples the tests check.
 
-<Grid items={${JSON.stringify([...cardTypes.map(c => ({ type: c.type, title: TITLE(c.type), id: `${slugOf((catalog.gallery.find((g: any) => g.card.type === c.type && !g.name.startsWith('tile')) ?? { name: c.type }).name)}` })), { type: 'tile', title: 'Tiles and rings', id: slugOf(tiles[0]?.name ?? '') }])}} />
+<Grid items={${JSON.stringify([...cardTypes.map(c => ({ type: c.type, title: TITLE(c.type), id: slugOf(faceOf(c.type)) })), { type: 'tile', title: 'Tiles and rings', id: slugOf(tiles[0]?.name ?? '') }])}} />
 
 ## Fields all cards share
 

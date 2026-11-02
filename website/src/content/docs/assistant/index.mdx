@@ -1,0 +1,56 @@
+---
+title: The assistant
+description: An optional chat that reads your homelab through tools and changes nothing without your approval.
+sidebar: { order: 1 }
+---
+import Shot from '~/components/Shot.astro';
+
+Valet can have an assistant. It's optional, and the page works without one: see [running with no AI](/assistant/no-ai/).
+
+You ask a question in the ask box. The assistant calls tools that read your services, and answers with the same cards the page uses. You pick the model. It can be a local one, so nothing has to leave your network.
+
+<Shot id="scene/chat" alt="The chat answering 'Is anything down?' with a services card and one sentence" caption="The answer is a live card and a sentence. The numbers come from a tool, not from the model." full />
+
+## The valet key
+
+Some cars come with a valet key. It starts the engine, but it won't open the trunk or the glovebox.
+
+That's the model here. The assistant reads freely, and changes nothing without your approval.
+
+- **It never holds your keys.** It calls tools, and Valet's server makes the requests. Tool results go through the [redactor](/security/secrets/) before the model sees them.
+- **Every tool has an access level.** `read` looks. `write` adds something. `control` changes or removes something. You set what each integration allows in [`assistant.access`](/assistant/access/).
+- **Control tools ask you first.** Nothing runs until you press the button on the [approval card](/assistant/approvals/). The model can't press it.
+- **Without sign-in, it can only look.** If Valet has no sign-in and you haven't said the network is trusted, the assistant gets read tools and nothing else, whatever `assistant.access` says.
+- **Changes are written down.** Anything that isn't a read goes in the [activity log](/assistant/approvals/#the-activity-log), with who asked and whether it worked.
+
+This is a guard, not a guarantee of good judgement. The model can still be wrong, and it can read you a wrong answer. The guard is about what it can *do*. [What it can and can't do](/assistant/limits/) says where the edges are.
+
+## A smallest config
+
+```yaml title="config.yaml"
+assistant:
+  baseURL: http://ollama:11434/v1
+  model: qwen3:8b
+```
+
+That's enough. `access` defaults to `{ default: read }`, so this assistant can look at everything and change nothing. See [models](/assistant/models/) for other providers.
+
+## What it has to work with
+
+Besides each integration's tools, the assistant has a few of its own:
+
+| Tool | What it does |
+|---|---|
+| `show` | Puts live widgets in the chat, side by side or stacked. |
+| `present` | Draws a chart or table from numbers it already has. It makes a card and nothing else. |
+| `search_everything` | One search across everything searchable it may read. Offered when there are at least two such tools. |
+| `plan` | Several changes in order, with one approval. Offered when Valet [may act](/start/sign-in/). |
+| `timeline` | What happened over a period: services going down, things finishing, changes made. |
+| `metric_chart` | A graph of any headline number Valet tracks. |
+| `activity_log` | What Valet itself changed recently. |
+| `watch_add`, `watch_list`, `watch_remove` | "Tell me when" reminders. A plain rule checks them, with no model. |
+| `year_in_review` | The numbers from the [year in review](/concepts/recap/). |
+
+With `assistant.access.config` set, it can also [help edit your config](/assistant/limits/#editing-the-config).
+
+The system prompt tells it to call a tool rather than guess, and to name a cause only if a tool result shows one. That's an instruction to a model, so treat it as a strong hint, not a rule. The rules that hold whatever the model does are the ones on this page.

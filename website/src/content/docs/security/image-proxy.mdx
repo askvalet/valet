@@ -1,0 +1,44 @@
+---
+title: The image proxy
+description: How posters, photos and camera pictures reach the browser without your keys.
+sidebar: { order: 3 }
+---
+
+Posters, document pages, photos and camera pictures usually need a key to fetch. The browser never gets that key. Cards point at Valet instead, and Valet fetches the picture.
+
+A card's image looks like this:
+
+```text
+/api/image/<instance>?ref=<something>
+```
+
+## What keeps it narrow
+
+**The integration checks every ref.** A ref isn't an address. Each integration's `image()` handler decides what it means, and must refuse anything else. The Camera integration's refs are positions in the config's list, such as `picture:0`, so it can only fetch what the config names. Frigate's are cameras and events that Frigate itself named. A ref that doesn't match throws.
+
+**Only pictures and video get through.** The response must be an image, or MP4 or WebM video. SVG isn't allowed, because an SVG can carry script. HTML and PDFs are refused too. So a service can't get its own content served from Valet's origin, even if it's compromised.
+
+Anything else gets a `415`. A failure from the service gets a `502`, with no details.
+
+**The answer is locked down.** Each picture goes out with these headers:
+
+```text
+X-Content-Type-Options: nosniff
+Content-Security-Policy: sandbox; default-src 'none'
+Content-Disposition: inline
+Cache-Control: private, max-age=86400
+```
+
+A handler can send `Cache-Control: no-store` for a picture that changes, like a camera's. Video keeps its `Range` headers, because phones won't play video without them.
+
+**It sits behind sign-in.** `/api/image/` needs a session like the rest of `/api`, when sign-in is on.
+
+## What it doesn't cover
+
+- Cards from integrations can also use plain `https:` images. The CSP allows them, for things like feed thumbnails. Those are fetched by your browser from wherever they live, which tells that server your address.
+- With sign-in off, anyone who can reach Valet can load these pictures. That's true of the whole page.
+- `/api/icon/` and `/api/favicon/` are open with no sign-in, because the sign-in screen uses them. They fetch from a public CDN and a public favicon service once, then keep the file. They take a checked slug or hostname, and that's all. Icons you put in `data/icons/` win.
+
+## For plugin authors
+
+Use `ctx.image(ref)` in a card, and validate `ref` in your handler. See [writing a full integration](/build/full/#images).
