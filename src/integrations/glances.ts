@@ -67,7 +67,7 @@ export default defineIntegration({
             if (net) {
               push(hist.rx, net.bytes_recv_rate_per_sec ?? 0);
               const peak = Math.max(...hist.rx, 1);
-              tiles.push({ label: 'Network', icon: 'wifi', sub: net.interface_name, value: fmt.speed(net.bytes_recv_rate_per_sec ?? 0), detail: `↑ ${fmt.speed(net.bytes_sent_rate_per_sec ?? 0)}`, trend: [...hist.rx],
+              tiles.push({ label: 'Network', icon: 'wifi', color: '#64d2ff', sub: net.interface_name, value: fmt.speed(net.bytes_recv_rate_per_sec ?? 0), detail: `↑ ${fmt.speed(net.bytes_sent_rate_per_sec ?? 0)}`, trend: [...hist.rx],
                 pct: (net.bytes_recv_rate_per_sec ?? 0) / peak, tone: 'accent', ring: fmt.speed(net.bytes_recv_rate_per_sec ?? 0).replace('/s', '') });
             }
             if (o.gpu) tiles.push({ label: 'GPU', icon: 'gpu', sub: String(o.gpu.name).replace(/^NVIDIA GeForce /, ''), value: `${Math.round(o.gpu.proc ?? 0)}%`,

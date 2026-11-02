@@ -1432,7 +1432,7 @@ function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
 /** A ring gauge: a ¾ circle (gap at the bottom), the number in the middle, coloured by health. */
 export function Ring({ s }: { s: Summary }) {
   const r = 40, c = 2 * Math.PI * r, arc = c * 0.75, pct = Math.max(0, Math.min(1, s.pct ?? 0));
-  const color = s.tone === 'bad' ? 'var(--bad)' : s.tone === 'warn' ? 'var(--warn)' : s.tone === 'accent' ? 'var(--primary)' : 'var(--good)';
+  const color = s.tone === 'bad' ? 'var(--bad)' : s.tone === 'warn' ? 'var(--warn)' : s.color ?? (s.tone === 'accent' ? 'var(--primary)' : 'var(--good)');
   return (
     <div className="flex min-w-0 flex-col items-center text-center">
       <div className="relative size-[104px]">
@@ -1490,7 +1490,7 @@ const trendOf = (s: Summary): ChartCard => {
 /** The menubar version: a small ring with the number inside, label beneath; details on hover. */
 function MiniRingView({ s }: { s: Summary }) {
   const r = 15, c = 2 * Math.PI * r, arc = c * 0.75, pct = Math.max(0, Math.min(1, s.pct ?? 0));
-  const color = s.tone === 'bad' ? 'var(--bad)' : s.tone === 'warn' ? 'var(--warn)' : s.tone === 'accent' ? 'var(--primary)' : 'var(--good)';
+  const color = s.tone === 'bad' ? 'var(--bad)' : s.tone === 'warn' ? 'var(--warn)' : s.color ?? (s.tone === 'accent' ? 'var(--primary)' : 'var(--good)');
   const n = String(s.ring ?? s.value).replace(/%$/, '');
   return (
     <div className="group/ring relative flex flex-col items-center outline-none" tabIndex={0} aria-label={[s.label, s.value, s.detail].filter(Boolean).join(', ')}>
