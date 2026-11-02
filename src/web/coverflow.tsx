@@ -63,9 +63,11 @@ export function CoverFlow({ card, header }: { card: ShelfCard; header?: ReactNod
           );
         })}
       </div>
-      <div key={at} className="tick mt-1 text-center" aria-live="polite">
-        <div className="truncate text-sm font-medium">{front?.title}</div>
-        {front?.subtitle && <div className="truncate text-xs text-muted-foreground">{front.subtitle}</div>}
+      <div className="flex justify-center" aria-live="polite">
+        <div key={at} className="tick max-w-full min-w-0 text-center">
+          <div className="truncate text-sm font-medium">{front?.title}</div>
+          {front?.subtitle && <div className="truncate text-xs text-muted-foreground">{front.subtitle}</div>}
+        </div>
       </div>
     </div>
   );
