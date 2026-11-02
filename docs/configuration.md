@@ -418,6 +418,7 @@ A widget entry takes these, all optional but `widget`:
 | `size` | `medium` | `small`, `wide`, `medium`, `tall`, `large`: see [sizes](#appearance) |
 | `every` | the widget's own | how often it refreshes: seconds, or `30s`, `5m`, `1h` |
 | `view` | the widget's own | how it's drawn, whatever the data: below |
+| `rows` | the size's own | how many rows it spans, so smaller cards can stack beside it |
 | `title`, `icon` | the card's | its name and icon; on a tile, its label and icon |
 | `header` | the section's | `false` drops its title bar, `true` keeps it in a section that drops them |
 | `tint` | `colors.card` | a colour for its surface |

@@ -90,13 +90,13 @@ layout:
   - widgets:
       - { widget: lab.recent, view: coverflow }
   - widgets:
-      - { widget: lab.calendar, size: medium }
+      - { widget: lab.sky, size: medium }
       - { widget: lab.photos, size: tall }
       - { widget: lab.reading, size: tall, rows: 3 }
       - { widget: lab.dns, size: small }
       - { widget: lab.drives, size: small }
       - { widget: lab.upcoming, size: wide }
-      - { widget: lab.sky, size: medium }
+      - { widget: lab.weather, size: medium }
   - title: Media
     overview: false
     heading: false
