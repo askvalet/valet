@@ -3,7 +3,9 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule: { interval: weekly }
+    cooldown: { default-days: 7 }   # new releases wait a week, as they do on the machine that builds this
     open-pull-requests-limit: 5
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: monthly }
+    cooldown: { default-days: 7 }
