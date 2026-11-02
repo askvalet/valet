@@ -74,7 +74,7 @@ export default defineIntegration({
         { id: 'watch.hours', theme: 'media', icon: 'play', kicker: 'You watched', value: hours.toLocaleString('en'), unit: 'hours', stat: 'Hours watched', score: 95, scope: 'year', facts: { watchedHours: total / 3600 }, art: recent, wall: true,
           line: `${rows.length} plays, all from your own server.`,
           trait: { name: 'The Projectionist', line: 'The lights go down, the server spins up, and the house gets exactly what it wanted to watch.', strength: Math.min(.9, hours / 500) } },
-        { id: 'watch.top', theme: 'media', icon: 'film', kicker: 'Your most watched', value: titles[0][0], backdrop: art, line: `${titles[0][1].n} ${titles[0][1].n === 1 ? 'play' : 'plays'} and ${hrs(titles[0][1].s)}, more time than anything else this year.${led ? ` In front from ${race!.steps[led]}.` : ''}`, score: 90, scope: 'year', race,
+        { id: 'watch.top', theme: 'media', icon: 'film', kicker: 'Your most watched', value: titles[0][0], backdrop: art, line: `${titles[0][1].n} ${titles[0][1].n === 1 ? 'play' : 'plays'} and ${hrs(titles[0][1].s)}, more time than anything else this year.${led ? ` In front from ${race!.steps[led]}.` : ''}`, score: race ? 99 : 90, scope: 'year', race,
           items: titles.slice(0, 5).map(([name, e]) => ({ name, value: hrs(e.s), image: poster(e.h) })) },
         { id: 'watch.day', theme: 'media', icon: 'calendar', kicker: 'Your night in', value: `${day}s`, line: `${dayN} of your ${rows.length} plays started on a ${day}.`, score: 60, scope: 'year', bars: byDay },
       ];
