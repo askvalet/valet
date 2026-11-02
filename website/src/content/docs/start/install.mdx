@@ -55,7 +55,7 @@ This leaves out the hardening flags. Prefer Compose, or add `--read-only --tmpfs
 
 ## Getting the image
 
-The README and the Compose file name `ghcr.io/askvalet/valet:latest`. The repo doesn't yet have a workflow that publishes it: that's still on the roadmap. If the pull fails, build the image yourself. The Dockerfile needs nothing but the repo.
+Each release publishes `ghcr.io/askvalet/valet` for amd64 and arm64, tagged with its version and `latest`. To build the image yourself instead, the Dockerfile needs nothing but the repo.
 
 ```sh
 git clone https://github.com/askvalet/valet
