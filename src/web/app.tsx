@@ -27,7 +27,7 @@ type Grid = { phone?: number; tablet?: number; desktop?: number };
 type CardOverride = { title?: string; icon?: string; header?: boolean; view?: View; rows?: number; style?: Record<string, string> };
 
 interface Page {
-  title: string; greeting?: string; notice?: string; location?: string; canAct?: boolean;
+  title: string; greeting?: string; notice?: string; location?: string; canAct?: boolean; sandbox?: boolean;
   appearance: { walls: Paper[]; tabWalls: Record<string, Paper[]>; rotate?: number; sizes: Partial<Record<Size, { cols?: number; rows?: number }>> };
   look: Look;
   hero: { greeting: boolean | string; status: boolean; search: boolean; review: boolean; align: 'center' | 'left' | 'right'; scope?: string[] };
@@ -624,7 +624,7 @@ function Home({ account }: { account: boolean }) {
           <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_200px]">
           <div data-slot="card" className="h-[calc(100dvh-7.5rem)] min-h-[520px] overflow-hidden rounded-[calc(var(--radius)*1.4)] border bg-card shadow-card">
             <Suspense fallback={null}>
-              <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} onAsk={ask} ui={ui} attach={page.canAct !== false} />
+              <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} onAsk={ask} ui={ui} attach={page.canAct !== false && !page.sandbox} />
             </Suspense>
           </div>
           {/* the tab's numbers sit small beside the chat, which gets the room */}
@@ -672,7 +672,7 @@ function Home({ account }: { account: boolean }) {
             <DialogDescription className="sr-only">Ask about your homelab</DialogDescription>
             {chatOpen && (
               <Suspense fallback={null}>
-                <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} onAsk={ask} ui={ui} attach={page.canAct !== false} onClose={phone ? () => setChatOpen(false) : undefined} onDismiss={!phone && place !== 'center' ? () => setChatOpen(false) : undefined} />
+                <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} onAsk={ask} ui={ui} attach={page.canAct !== false && !page.sandbox} onClose={phone ? () => setChatOpen(false) : undefined} onDismiss={!phone && place !== 'center' ? () => setChatOpen(false) : undefined} />
               </Suspense>
             )}
           </DialogContent>

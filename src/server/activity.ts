@@ -2,6 +2,7 @@
 // vacuum?". Kept in data/activity.json, newest last, with secrets redacted before they're stored.
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { sandbox } from './sandbox.ts';
 
 export interface Entry { id: number; at: number; who: string; via: 'chat' | 'plan' | 'page' | 'watch' | 'pin'; what: string; input?: unknown; ok: boolean; error?: string; undo?: { tool: string; input: unknown }; undone?: boolean; action?: string; target?: string }   // action: what was done, in past-tense words; target: what to
 // the input fields that name the thing acted on, in the order they're worth reading; ids and numbers say nothing to a person
@@ -36,6 +37,7 @@ export class Activity {
     const clean: Entry = { ...JSON.parse(this.redact(JSON.stringify({ ...e, action: e.action ?? e.what, target: e.target ?? targetOf(e.input) }))), id: (this.entries.at(-1)?.id ?? 0) + 1, at: Date.now() };
     this.entries.push(clean);
     if (this.entries.length > 2000) this.entries.splice(0, this.entries.length - 2000);
+    if (sandbox.on) return clean;
     // one write at a time: two at once would race over the temp file
     this.saving = this.saving.then(async () => {
       await mkdir(dirname(FILE()), { recursive: true });

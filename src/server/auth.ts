@@ -16,6 +16,7 @@ import type { Context, Hono, MiddlewareHandler } from 'hono';
 import { getConnInfo } from '@hono/node-server/conninfo';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { Config } from './config.ts';
+import { sandbox } from './sandbox.ts';
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number, opts: object) => Promise<Buffer>;
 const SCRYPT = { N: 2 ** 15, r: 8, p: 1, maxmem: 64 * 2 ** 20 };
@@ -43,6 +44,7 @@ async function secret() {
   const s = await readFile(SECRET).catch(() => null);
   if (s?.length) return s;
   const fresh = randomBytes(32);
+  if (sandbox.on) return fresh;
   await mkdir(DATA, { recursive: true });
   await writeFile(SECRET, fresh, { mode: 0o600 });
   return fresh;

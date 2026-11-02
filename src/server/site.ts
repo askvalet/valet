@@ -23,6 +23,7 @@ import { Timeline } from './timeline.ts';
 import { loadWatches, Watches } from './watches.ts';
 import { loadPins, pinsInstance, savePins, type Pin } from './pins.ts';
 import { setupTools } from './setup.ts';
+import { sandbox } from './sandbox.ts';
 
 export interface Site {
   config: Config;
@@ -97,7 +98,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   const pins = await loadPins();
   instances.set('pins', pinsInstance(pins, instances, async id => { await savePins((await loadPins()).filter(p => p.id !== id)); await opts.rebuild(); }));
   for (const p of pins) placed.add(`pins.${p.id}`);
-  if (config.assistant?.access.config && config.assistant.access.config !== 'none') {
+  if (!sandbox.on && config.assistant?.access.config && config.assistant.access.config !== 'none') {
     instances.set('config', { widgets: {}, tools: setupTools(opts.path, registry) });
     meta.set('config', { type: 'config', name: 'Setup', integration: { type: 'config', name: 'Setup' } as Integration });
   }

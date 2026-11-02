@@ -5,6 +5,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { stateOf, type Card, type WidgetState } from '../shared/cards.ts';
 import type { Ask } from './brain.ts';
+import { sandbox } from './sandbox.ts';
 
 const clip = (s: unknown, n = 120) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n)}…` : t; };
 
@@ -121,6 +122,7 @@ export async function statusLine(ask: Ask, recent: string[], states: WidgetState
         `It's ${now.toLocaleString('en', { weekday: 'long', hour: 'numeric', minute: '2-digit' })}.\n\nWrong right now:\n${troubles(states).map(t => `- ${t.text}`).join('\n') || '(nothing)'}\n\nLately:\n${recent.join('\n') || '(nothing recorded)'}\n\nThe page:\n${digest(states)}`);
       if (!text) return saved;
       const brief = { text: clip(text, 90).replace(/\.$/, ''), at: now.getTime(), wrong };
+      if (sandbox.on) return brief;
       await mkdir(dirname(FILE()), { recursive: true });
       await writeFile(`${FILE()}.tmp`, JSON.stringify(brief)); await rename(`${FILE()}.tmp`, FILE());
       return brief;

@@ -4,6 +4,7 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import type { Card, Summary } from '../shared/cards.ts';
+import { sandbox } from './sandbox.ts';
 
 const FILE = resolve(process.env.VALET_DATA ?? 'data', 'history.json');
 
@@ -30,9 +31,10 @@ export class History {
     for (const [k, v] of Object.entries(saved)) if (Array.isArray(v)) this.series.set(k, v);
     for (const [k, v] of Object.entries((saved as any).$labels ?? {})) this.labels.set(k, String(v));
     for (const [k, v] of Object.entries((saved as any).$units ?? {})) this.units.set(k, String(v));
-    setInterval(() => this.save().catch(e => console.error('history: save failed:', e.message)), 5 * 60_000).unref();
+    if (!sandbox.on) setInterval(() => this.save().catch(e => console.error('history: save failed:', e.message)), 5 * 60_000).unref();
   }
   async save() {
+    if (sandbox.on) return;
     if (!this.dirty) return;
     await mkdir(dirname(FILE), { recursive: true });
     await writeFile(`${FILE}.tmp`, JSON.stringify({ ...Object.fromEntries(this.series), $labels: Object.fromEntries(this.labels), $units: Object.fromEntries(this.units) }));

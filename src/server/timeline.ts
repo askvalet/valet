@@ -3,6 +3,7 @@
 // happened last night" rather than only "what's happening now".
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { sandbox } from './sandbox.ts';
 
 export interface Event { at: number; kind: string; widget?: string; text: string }
 const FILE = () => resolve(process.env.VALET_DATA ?? 'data', 'timeline.json');
@@ -22,6 +23,7 @@ export class Timeline {
     this.timer.unref?.();
   }
   async save() {
+    if (sandbox.on) return;
     await mkdir(dirname(FILE()), { recursive: true });
     await writeFile(`${FILE()}.tmp`, JSON.stringify(this.events)); await rename(`${FILE()}.tmp`, FILE());
   }

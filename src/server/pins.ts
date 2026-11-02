@@ -6,11 +6,13 @@ import { dirname, resolve } from 'node:path';
 import { z } from 'zod';
 import type { Card } from '../shared/cards.ts';
 import type { Instance } from './core.ts';
+import { sandbox } from './sandbox.ts';
 
 export interface Pin { id: string; tool: string; input: Record<string, unknown>; title: string }
 const FILE = () => resolve(process.env.VALET_DATA ?? 'data', 'pins.json');
 export const loadPins = (): Promise<Pin[]> => readFile(FILE(), 'utf8').then(JSON.parse).catch(() => []);
 export async function savePins(pins: Pin[]) {
+  if (sandbox.on) return;
   await mkdir(dirname(FILE()), { recursive: true });
   await writeFile(`${FILE()}.tmp`, JSON.stringify(pins, null, 2), { mode: 0o600 }); await rename(`${FILE()}.tmp`, FILE());
 }

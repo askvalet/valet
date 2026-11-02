@@ -153,176 +153,176 @@ const sightings = () => CAMERAS.flatMap(([camera, name, loop, seen]) => seen.fla
 })).sort((a, b) => b.at - a.at).slice(0, 10);
 
 export default ({ z, defineIntegration }) => {
-  // what visitors change, and when each change lapses. Shared by everyone looking, so nobody can leave it broken.
-  const changes = new Map();
-  const put = (k, v) => changes.set(k, { v, until: now() + 600_000 });
-  const got = (k, fallback) => { const c = changes.get(k); return c && c.until > now() ? c.v : fallback; };
-
-  const weather = () => {
-    const d = new Date(now()), today = skyOn(), h = d.getHours() + d.getMinutes() / 60, night = h < 6.5 || h > 19;
-    const tempAt = hour => Math.round(today.lo + (today.hi - today.lo) * (.5 + .5 * Math.sin((hour - 9) / 24 * 2 * Math.PI)));
-    const dark = (icon, hour) => hour % 24 < 6.5 || hour % 24 > 19 ? { sun: 'moon', 'cloud-sun': 'cloud-moon' }[icon] ?? icon : icon, temp = tempAt(h), icon = dark(today.icon, h);
-    const words = night && today.words === 'Sunny' ? 'Clear' : today.words;
-    return { type: 'forecast', title: 'Weather', icon, now: { temp, feels: temp - 2, words, icon, hi: today.hi, lo: today.lo },
-      hours: Array.from({ length: 12 }, (_, i) => { const at = new Date(now() + (i + 1) * 36e5), hour = at.getHours(); return { time: at.toLocaleTimeString('en', { hour: 'numeric' }).replace(' ', '').toLowerCase(), temp: tempAt(hour), icon: dark(today.icon, hour), pop: today.pop }; }),
-      days: [1, 2, 3, 4, 5].map(n => { const s = skyOn(n); return { name: new Date(now() + n * 864e5).toLocaleDateString('en', { weekday: 'short' }), icon: s.icon, hi: s.hi, lo: s.lo, pop: s.pop }; }),
-      summary: { label: words, icon, value: `${temp}°`, pct: today.hi > today.lo ? (temp - today.lo) / (today.hi - today.lo) : .5, tone: 'good', detail: `H ${today.hi}° · L ${today.lo}°` } };
-  };
-  const calendar = () => {
-    const d = new Date(now()), first = new Date(d.getFullYear(), d.getMonth() - 1, 1), last = new Date(d.getFullYear(), d.getMonth() + 7, 0), events = [];
-    const timed = (day, [title, h, m, mins, [calendar, color]]) => { const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m); events.push({ title, start: start.toISOString(), end: new Date(+start + mins * 6e4).toISOString(), calendar, color }); };
-    for (let day = new Date(first), n = 0; day <= last; day = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1), n++) {
-      for (const e of WEEK[day.getDay()]) timed(day, e);
-      const r = rng(`cal${dateOf(day)}`);
-      if (r() < .1) timed(day, NOW_AND_THEN[Math.floor(r() * NOW_AND_THEN.length)]);
-      if (day.getDay() === 5 && r() < .13) { const back = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 3); events.push({ title: r() < .5 ? 'Grandparents visiting' : 'Cottage weekend', start: dateOf(day), end: dateOf(back), calendar: FAMILY[0], color: FAMILY[1] }); }
-    }
-    events.sort((a, b) => a.start < b.start ? -1 : 1);
-    const today = events.filter(e => e.start.length > 10 && new Date(e.start).toDateString() === d.toDateString()), next = events.find(e => e.start.length > 10 && new Date(e.end) > d);
-    const clock = iso => new Date(iso).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' });
-    return { type: 'calendar', title: 'Calendar', icon: 'calendar', events, from: dateOf(first), to: dateOf(last),
-      summary: { label: 'Calendar', icon: 'calendar', value: next?.title ?? 'Free', sub: next ? `${new Date(next.start).toDateString() === d.toDateString() ? 'Today' : new Date(next.start).toLocaleDateString('en', { weekday: 'long' })} · ${clock(next.start)}` : undefined, detail: today.length ? `${today.length} today` : undefined } };
-  };
-  // the house at rest, or as a visitor left it; a changed target pulls the room towards it over a few minutes
-  const roomAt = target => target + Math.round(2 * Math.sin(now() / 54e5)) / 10;
-  const climate = () => {
-    const was = got('thermostat', null), preset = was?.preset ?? (new Date(now()).getHours() < 7 || new Date(now()).getHours() >= 22 ? 'sleep' : 'home'), power = was?.power ?? true, target = was?.target ?? SETBACKS[preset];
-    const room = was ? Math.round((target + (was.from - target) * Math.exp(-(now() - was.at) / 2e5)) * 10) / 10 : roomAt(target);
-    return { preset, power, target, room };
-  };
-  const thermostat = () => {
-    const { preset, power, target, room } = climate(), state = !power ? 'Off' : room < target - .1 ? 'Heating' : 'Idle';
-    return { type: 'thermostat', title: 'Hallway', icon: 'home', unit: 'C', state, mode: power ? 'heat' : 'off', current: room, target: power ? target : undefined, min: 10, max: 30, step: .5, set: power ? { action: 'thermostat' } : undefined,
-      modes: [{ id: 'off', label: power ? 'Turn off' : 'Turn on', on: !power, action: 'thermostat', args: { power: !power } }, ...[['home', 'Home'], ['sleep', 'Sleep', `${SETBACKS.sleep}°, a little cooler for going to bed`], ['night', 'Night', `${SETBACKS.night}°, the lowest setting through to morning`]].map(([id, label, hint]) => ({ id, label, hint, on: power && preset === id, action: 'thermostat', args: { preset: id } }))],
-      note: got('thermostat', null) ? 'Temporary: back to the schedule in ten minutes' : 'Following its schedule',
-      summary: { label: 'Hallway', icon: 'thermometer', value: `${(power ? target : room).toFixed(1)}°`, sub: state, detail: power ? `${room.toFixed(1)}° now` : undefined, pct: (target - 10) / 20 } };
-  };
-  const setClimate = ({ temperature, preset, power }) => { const c = climate(); put('thermostat', { preset: preset ?? c.preset, power: preset ? true : power ?? c.power, target: temperature ?? (preset ? SETBACKS[preset] : c.target), from: c.room, at: now() }); };
-  const mealieUp = () => got('mealie', false);
-  const paused = () => got('paused', false);
-  const services = () => SERVICES.map(([name, group, icon]) => {
-    const ok = name !== 'Mealie' || mealieUp();
-    if (name === SWITCHED_OFF[0]) return { name, group, icon: `/api/icon/${icon}`, ok: false, quiet: true, detail: 'stopped' };
-    return { name, group, icon: `/api/icon/${icon}`, ok, ms: ok ? 4 + hash(name + Math.floor(now() / 30_000)) % 30 : undefined, detail: ok ? undefined : 'timed out' };
-  });
-
-  const CYCLE = 42 * 60_000;
-  const downloads = () => {
-    if (paused()) return [];
-    return [['Andor', 'S02E05', 1.4], ['Oppenheimer', '2023', 6.8]].map(([title, sub, gb], i) => {
-      const pct = (.08 + ((now() + i * 1.3e7) % CYCLE) / CYCLE * .9), left = gb * (1 - pct);
-      return { title, sub, pct, left, speed: gb * 1000 / (CYCLE / 1000 * .9) * (1 + .15 * Math.sin(now() / 40_000 + i)) };
-    }).concat({ title: 'Shōgun', sub: 'S01E08', pct: .37, left: 1.3, speed: 0, stalled: true });   // no peers, so it just sits there, as one always does
-  };
-  const STREAM = 118 * 60_000;
-  const stream = () => { const at = now() % STREAM; return { title: FILMS[0], year: ART.films[FILMS[0]].year, pct: at / STREAM, left: Math.round((STREAM - at) / 60_000) }; };
-
-  const rooms = [[1, 'Living Room', 'wood', -280, -200, 290, 220], [2, 'Kitchen', 'tile', 10, -200, 150, 130], [3, 'Dining Room', 'wood', 160, -200, 120, 130], [4, 'Hallway', 'wood', 10, -70, 270, 90],
-    [5, 'Office', 'wood', -280, 20, 170, 170], [6, 'Bedroom', 'wood', -110, 20, 210, 170], [7, 'Bathroom', 'tile', 100, 20, 100, 100], [8, 'Laundry', 'tile', 200, 20, 80, 100], [9, 'Guest Room', 'wood', 100, 120, 180, 70]];
-  // [room, name, kind, x, z]: each light where it really is, so it lands on what it's meant to
-  const LIGHTS = [['Living Room', 'Ceiling', 'pendant', -135, -85], ['Living Room', 'Floor lamp', 'lamp', -262, -38], ['Living Room', 'TV backlight', 'strip', -140, -180],
-    ['Kitchen', 'Pendant left', 'pendant', 62, -122], ['Kitchen', 'Pendant right', 'pendant', 108, -122], ['Dining Room', 'Over the table', 'pendant', 220, -140],
-    ['Hallway', 'Hall light', 'ceiling', 100, -28], ['Office', 'Desk lamp', 'lamp', -268, 42], ['Office', 'Ceiling', 'ceiling', -195, 110],
-    ['Bedroom', 'Bedside left', 'lamp', -92, 36], ['Bedroom', 'Bedside right', 'lamp', 72, 36], ['Bathroom', 'Mirror', 'ceiling', 150, 60], ['Guest Room', 'Ceiling', 'ceiling', 190, 150]];
-  const OFF = new Set(['Hallway', 'Bathroom', 'Guest Room', 'Bedroom']);
-  const COLOUR = { 'TV backlight': '#7f7bff', 'Desk lamp': '#ffe8d1' };
-  const KELVIN = { 2200: '#ffb46b', 2700: '#ffc98f', 4000: '#ffe8d1', 6500: '#e6efff' };
-  const lightId = (room, name) => `light.${room}_${name}`.toLowerCase().replace(/ /g, '_');
-  const light = ([room, name, kind, x, z]) => { const id = lightId(room, name), s = got(id, { on: !OFF.has(room), level: 75, color: COLOUR[name] ?? '#ffc58f' });
-    return { id, name, kind, at: { x, z }, available: true, canColor: true, canTemp: true, dims: true, ...s }; };
-  const FURNITURE = [
-    ['Rug', 1, -220, -130, 170, 110], ['Sofa', 1, -215, -68, 160, 48, 180], ['Coffee table', 1, -172, -112, 76, 34], ['TV stand', 1, -215, -196, 150, 16], ['Armchair', 1, -272, -128, 36, 36, 90], ['Plant', 1, -268, -192, 26, 26], ['Bookshelf', 1, -20, -192, 26, 80, 90],
-    ['Counter', 2, 16, -196, 100, 22], ['Fridge', 2, 122, -196, 32, 26], ['Kitchen island', 2, 44, -138, 84, 26], ['Stool', 2, 54, -106, 15, 15], ['Stool', 2, 78, -106, 15, 15], ['Stool', 2, 102, -106, 15, 15],
-    ['Dining table', 3, 188, -166, 66, 50], ['Chair', 3, 196, -184, 18, 16], ['Chair', 3, 228, -184, 18, 16], ['Chair', 3, 196, -114, 18, 16, 180], ['Chair', 3, 228, -114, 18, 16, 180],
-    ['Shelf', 4, 24, -66, 90, 12], ['Rug', 4, 110, -56, 120, 28], ['Plant', 4, 16, -30, 22, 22],
-    ['Desk', 5, -272, 28, 110, 40], ['Chair', 5, -232, 72, 30, 28, 180], ['Shelf', 5, -272, 176, 90, 12, 180], ['Plant', 5, -140, 160, 24, 24], ['Rug', 5, -240, 108, 90, 60],
-    ['Bed', 6, -60, 28, 110, 118], ['Bedside table', 6, -92, 28, 26, 26], ['Bedside table', 6, 56, 28, 26, 26], ['Rug', 6, -78, 120, 146, 50], ['Wardrobe', 6, -102, 164, 150, 24, 180],
-    ['Toilet', 7, 106, 26, 24, 34], ['Sink', 7, 146, 24, 44, 20], ['Bathtub', 7, 106, 78, 88, 36],
-    ['Washer', 8, 206, 26, 32, 30], ['Dryer', 8, 242, 26, 32, 30], ['Shelf', 8, 206, 106, 68, 10, 180],
-    ['Bed', 9, 208, 124, 64, 60], ['Bedside table', 9, 180, 124, 22, 22], ['Plant', 9, 106, 164, 20, 20],
-  ];
-  // The robot drives a route at a steady pace, so where it is, what it's doing and its battery all follow from the clock.
-  // Each point is [x, z], and in a room [x, z, room]; it leaves the hallway by these doors.
-  const HOME = [240, -40], HALL = [240, -25], FANS = ['Quiet', 'Standard', 'Turbo'], PACE = 30, FIND_MS = 10_000, BUSY_DRAIN = .1, CHARGE = .4;
-  const DOORS = { 1: [[40, -25], [-20, -25]], 2: [[85, -25], [85, -85]], 3: [[220, -25], [220, -85]], 4: [], 5: [[40, -25], [-195, -10], [-195, 40]], 6: [[55, -25], [55, 40]], 7: [[150, -25], [150, 40]], 8: [[240, -25], [240, 40]], 9: [[240, -25], [240, 100], [240, 140]] };
-  const sweep = ([id, , , x, z, w, d]) => [[x + 22, z + 22], [x + w - 22, z + 22], [x + w - 22, z + d / 2], [x + 22, z + d / 2], [x + 22, z + d - 22], [x + w - 22, z + d - 22]].map(p => [...p, id]);
-  const leaving = at => at ? [[at.x, at.z], ...(DOORS[at.room] ?? []).toReversed()] : [HOME];
-  const trip = (ids, from = [HOME]) => [...from, HALL, ...rooms.filter(r => ids.includes(r[0])).flatMap(r => [...DOORS[r[0]], ...sweep(r), ...DOORS[r[0]].toReversed()]), HALL, HOME];
-  /** Where a route has got to after `dist`, or null once it's over. */
-  const along = (route, dist) => {
-    for (let i = 1; i < route.length; i++) {
-      const [ax, az] = route[i - 1], [bx, bz, room] = route[i], dx = bx - ax, dz = bz - az, len = Math.hypot(dx, dz);
-      if (dist <= len) return { x: Math.round(ax + dx * (len ? dist / len : 0)), z: Math.round(az + dz * (len ? dist / len : 0)), a: Math.round(Math.atan2(-dx, -dz) * 180 / Math.PI), room, i };
-      dist -= len;
-    }
-    return null;
-  };
-  const span = route => route.slice(1).reduce((n, p, i) => n + Math.hypot(p[0] - route[i][0], p[1] - route[i][1]), 0);
-  const vacuumNow = () => {
-    const v = got('vacuum', null), ran = v ? v.held ?? now() - v.at : 0, at = v && along(v.route, ran / 1000 * PACE), length = v ? span(v.route) : 0;
-    return { v, ran, at, length, tired: (v?.spent ?? 0) + Math.round(Math.min(ran, length / PACE * 1000) / 1000 * BUSY_DRAIN) };
-  };
-  const robot = () => {
-    const { v, ran, at, length, tired } = vacuumNow(), rest = { id: 'vacuum.robot', fanSpeed: got('fan', 'Standard'), fanSpeeds: FANS, wear: [['Main brush', 82], ['Filter', 64]] };
-    const said = got('vacuumNote', null), note = said?.until > now() ? said.text : null, found = got('found', 0) > now(), docked = { x: HOME[0], z: HOME[1], a: 180, state: 'docked' };
-    // the plan's ring only pulses for a busy robot, so that's what Find borrows while it beeps
-    const beep = found ? { state: 'returning', status: 'Beeping: here I am' } : {};
-    if (!at) { const battery = Math.min(100, 100 - tired + Math.round((ran - length / PACE * 1000) / 1000 * CHARGE)); return { ...rest, ...docked, battery, status: note ?? (battery < 100 ? 'Charging' : 'Docked'), ...beep }; }
-    const out = v.route.slice(at.i).some(p => p[2] != null), place = rooms.find(r => r[0] === at.room)?.[1], paused = v.held != null;
-    return { ...rest, x: at.x, z: at.z, a: at.a, battery: 100 - tired, state: paused ? 'paused' : out ? 'cleaning' : 'returning', status: note ?? (paused ? 'Paused' : out ? (place ? `Cleaning the ${place.toLowerCase()}` : 'Cleaning') : 'Returning to the dock'), ...beep };
-  };
-  /** What the buttons and the assistant ask of the robot. Asking for something it can't do says so on its status line. */
-  const vacuum = ({ command, rooms: ids, fan_speed }) => {
-    const { v, ran, at, tired } = vacuumNow(), tell = text => put('vacuumNote', { text, until: now() + 6_000 });
-    if (command === 'fan_speed') { if (FANS.includes(fan_speed)) put('fan', fan_speed); else tell("It can't do that"); }
-    else if (command === 'locate') put('found', now() + FIND_MS);
-    else if (command === 'clean_rooms') { const known = (ids ?? []).filter(id => DOORS[id]); if (known.length) put('vacuum', { route: trip(known, leaving(at)), at: now(), spent: tired }); else tell("That room isn't on the map"); }
-    else if (command === 'start') { if (v?.held != null) put('vacuum', { ...v, held: undefined, at: now() - ran }); else if (!at) put('vacuum', { route: trip(rooms.map(r => r[0])), at: now() }); else tell('Already cleaning'); }
-    else if (command === 'pause') { changes.delete('found'); if (at) put('vacuum', { ...v, held: ran }); else tell('Nothing to pause'); }
-    else if (command === 'dock') { if (at) put('vacuum', { route: [...leaving(at), HALL, HOME], at: now(), spent: tired }); else tell('Already docked'); }
-    else tell("It can't do that");
-  };
-  const homeCard = () => { const r = robot(), { at, ran, length } = vacuumNow(); return { type: 'showcase', title: 'Home', icon: 'home', wide: true, items: [],
-    ...(at ? { activity: { title: 'Vacuum', subtitle: r.status, icon: 'home', pct: Math.min(1, ran / 1000 * PACE / length), trailing: `${r.battery}%`, paused: r.state === 'paused' } } : {}),
-    visual: { kind: 'home', data: { view: { turn: -30, tilt: -46 },
-      rooms: rooms.map(([id, name, floor, x, z, w, d]) => ({ id, name, floor, x, z, w, d, lights: LIGHTS.filter(l => l[0] === name).map(light) })),
-      furniture: FURNITURE.map(([type, room, x, z, w, d, angle = 0]) => ({ type, room, angle, x, z, w, d })),
-      dock: { x: 262, z: -55, a: 180 },
-      robot: r } } }; };
-
-  const PRESETS = [['white', 'All white', ['#ffffff']], ['ocean', 'Ocean', ['#00c2ff', '#0a5cff']], ['sunset', 'Sunset', ['#ff6b35', '#ff2d78']], ['forest', 'Forest', ['#2fd27a', '#0f7b4f']], ['off', 'All off', ['#000000']]];
-  const PRESET_RGB = { white: [255, 255, 255], ocean: [0, 150, 255], sunset: [255, 90, 60], forest: [47, 210, 122], off: [0, 0, 0] };
-  const pcCard = () => {
-    const preset = got('preset', 'ocean'), part = id => got(`part.${id}`, null);
-    const zone = (id, n = 1) => Array.from({ length: n }, () => part(id) ?? { mode: preset === 'off' ? 'Off' : 'Static', color: PRESET_RGB[preset], brightness: 100 });
-    const mk = (id, title, n) => ({ id, title, modes: ['Static', 'Breathing', 'Rainbow', 'Off'], zones: zone(id, n) });
-    const temp = cpuTemp(), gpu = gpuTemp();
-    return { type: 'showcase', title: 'Desktop', icon: 'cpu', wide: true, items: [],
-      visual: { kind: 'pc-case', data: { parts: [mk('fans0', 'Top fans', 3), mk('fans1', 'Floor fans', 3), mk('pump', 'Cooler', 1), mk('ram', 'Memory', 4), mk('gpu', 'GPU', 1)],
-        layout: { fans0: 'top', fans1: 'hidden' }, fans: { fans0: 900, fans1: 760 }, view: { turn: -27, tilt: -18, draggable: true }, controls: true,
-        presets: PRESETS.map(([id, name, swatch]) => ({ id, name, swatch, active: preset === id && !['fans0', 'fans1', 'pump', 'ram', 'gpu'].some(part) })),
-        metrics: { pump: [{ label: 'CPU', value: Math.round(temp), unit: '°C', pct: (temp - 25) / 70 }], gpu: [{ label: 'Temp', value: Math.round(gpu), unit: '°C', pct: (gpu - 25) / 65 }, { label: 'Power', value: gpuWatts, unit: 'W', pct: .1 }], ram: [{ label: 'In use', value: MEMORY[0], unit: 'GB', pct: MEMORY[0] / MEMORY[1] }] },
-        build: { ramLabel: 'VALET', board: { label: 'MAPLE', plate: 'STREET', accent: '#7d9cff' }, gpu: { label: 'DEMO', badge: 'VALET' } } } } };
-  };
-
-  const day = (h, m = 0) => { const d = new Date(); d.setHours(h, m, 0, 0); return d.toISOString(); };
-  const ymd = n => { const d = new Date(now() + n * 864e5); return [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(x => String(x).padStart(2, '0')).join('-'); };
-  const inDays = n => new Date(now() + n * 864e5).toLocaleDateString('en', { month: 'short', day: 'numeric' });
-  const drives = [['Backup 12 TB', 38, '3.1 years'], ['Media 8 TB', 41, '1.8 years'], ['System NVMe', 58, '244 days']], hottest = drives.reduce((a, b) => b[1] > a[1] ? b : a), HOT = 55;
-  const lastMonth = () => ({ tv: share(playsOf('tv'), past(30, .2, 4, 864e5)), movies: share(playsOf('movie'), past(30, .1, 2, 7e7)) });
-  const statusCard = (title, icon, items) => ({ type: 'status', title, icon, items });
-  const containers = () => ['bazarr', 'caddy', 'home-assistant', 'immich', 'immich-postgres', 'immich-redis', 'karakeep', 'mealie', 'paperless', 'pi-hole', 'plex', 'prowlarr', 'qbittorrent', 'radarr', 'sonarr', 'tautulli', 'uptime-kuma']
-    .map(n => {
-      const state = n === 'mealie' && !mealieUp() ? 'down' : n === SICK && !mealieUp() ? 'degraded' : n === SWITCHED_OFF[1] ? 'off' : 'up';
-      return { name: n, icon: `/api/icon/${n}`, ok: state === 'up', state, quiet: state === 'off' || undefined, detail: { down: 'exited (137)', degraded: 'unhealthy', off: 'exited (0)' }[state] ?? (n === 'plex' ? 'healthy' : undefined) };
-    });
-  const LOGS = ['03:11:58 INFO  importing recipe batch (412 items)', '03:12:04 WARN  worker memory at 251 MiB of 256 MiB', '03:12:06 ERROR Out of memory: killed process 41 (gunicorn)', '03:12:06 INFO  container exited with code 137'];
-
   return defineIntegration({
     type: 'demo-homelab',
     name: 'Made-up homelab',
     config: z.object({ art: z.string().default('/demo/art/cameras') }),
     create(cfg, ctx) {
+      // everything below is this instance's own: in a sandbox every visitor gets one, so nobody sees anyone else's changes
+      // what this visitor changed, and when each change lapses.
+      const changes = new Map();
+      const put = (k, v) => changes.set(k, { v, until: now() + 600_000 });
+      const got = (k, fallback) => { const c = changes.get(k); return c && c.until > now() ? c.v : fallback; };
+
+      const weather = () => {
+        const d = new Date(now()), today = skyOn(), h = d.getHours() + d.getMinutes() / 60, night = h < 6.5 || h > 19;
+        const tempAt = hour => Math.round(today.lo + (today.hi - today.lo) * (.5 + .5 * Math.sin((hour - 9) / 24 * 2 * Math.PI)));
+        const dark = (icon, hour) => hour % 24 < 6.5 || hour % 24 > 19 ? { sun: 'moon', 'cloud-sun': 'cloud-moon' }[icon] ?? icon : icon, temp = tempAt(h), icon = dark(today.icon, h);
+        const words = night && today.words === 'Sunny' ? 'Clear' : today.words;
+        return { type: 'forecast', title: 'Weather', icon, now: { temp, feels: temp - 2, words, icon, hi: today.hi, lo: today.lo },
+          hours: Array.from({ length: 12 }, (_, i) => { const at = new Date(now() + (i + 1) * 36e5), hour = at.getHours(); return { time: at.toLocaleTimeString('en', { hour: 'numeric' }).replace(' ', '').toLowerCase(), temp: tempAt(hour), icon: dark(today.icon, hour), pop: today.pop }; }),
+          days: [1, 2, 3, 4, 5].map(n => { const s = skyOn(n); return { name: new Date(now() + n * 864e5).toLocaleDateString('en', { weekday: 'short' }), icon: s.icon, hi: s.hi, lo: s.lo, pop: s.pop }; }),
+          summary: { label: words, icon, value: `${temp}°`, pct: today.hi > today.lo ? (temp - today.lo) / (today.hi - today.lo) : .5, tone: 'good', detail: `H ${today.hi}° · L ${today.lo}°` } };
+      };
+      const calendar = () => {
+        const d = new Date(now()), first = new Date(d.getFullYear(), d.getMonth() - 1, 1), last = new Date(d.getFullYear(), d.getMonth() + 7, 0), events = [];
+        const timed = (day, [title, h, m, mins, [calendar, color]]) => { const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m); events.push({ title, start: start.toISOString(), end: new Date(+start + mins * 6e4).toISOString(), calendar, color }); };
+        for (let day = new Date(first), n = 0; day <= last; day = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1), n++) {
+          for (const e of WEEK[day.getDay()]) timed(day, e);
+          const r = rng(`cal${dateOf(day)}`);
+          if (r() < .1) timed(day, NOW_AND_THEN[Math.floor(r() * NOW_AND_THEN.length)]);
+          if (day.getDay() === 5 && r() < .13) { const back = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 3); events.push({ title: r() < .5 ? 'Grandparents visiting' : 'Cottage weekend', start: dateOf(day), end: dateOf(back), calendar: FAMILY[0], color: FAMILY[1] }); }
+        }
+        events.sort((a, b) => a.start < b.start ? -1 : 1);
+        const today = events.filter(e => e.start.length > 10 && new Date(e.start).toDateString() === d.toDateString()), next = events.find(e => e.start.length > 10 && new Date(e.end) > d);
+        const clock = iso => new Date(iso).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' });
+        return { type: 'calendar', title: 'Calendar', icon: 'calendar', events, from: dateOf(first), to: dateOf(last),
+          summary: { label: 'Calendar', icon: 'calendar', value: next?.title ?? 'Free', sub: next ? `${new Date(next.start).toDateString() === d.toDateString() ? 'Today' : new Date(next.start).toLocaleDateString('en', { weekday: 'long' })} · ${clock(next.start)}` : undefined, detail: today.length ? `${today.length} today` : undefined } };
+      };
+      // the house at rest, or as a visitor left it; a changed target pulls the room towards it over a few minutes
+      const roomAt = target => target + Math.round(2 * Math.sin(now() / 54e5)) / 10;
+      const climate = () => {
+        const was = got('thermostat', null), preset = was?.preset ?? (new Date(now()).getHours() < 7 || new Date(now()).getHours() >= 22 ? 'sleep' : 'home'), power = was?.power ?? true, target = was?.target ?? SETBACKS[preset];
+        const room = was ? Math.round((target + (was.from - target) * Math.exp(-(now() - was.at) / 2e5)) * 10) / 10 : roomAt(target);
+        return { preset, power, target, room };
+      };
+      const thermostat = () => {
+        const { preset, power, target, room } = climate(), state = !power ? 'Off' : room < target - .1 ? 'Heating' : 'Idle';
+        return { type: 'thermostat', title: 'Hallway', icon: 'home', unit: 'C', state, mode: power ? 'heat' : 'off', current: room, target: power ? target : undefined, min: 10, max: 30, step: .5, set: power ? { action: 'thermostat' } : undefined,
+          modes: [{ id: 'off', label: power ? 'Turn off' : 'Turn on', on: !power, action: 'thermostat', args: { power: !power } }, ...[['home', 'Home'], ['sleep', 'Sleep', `${SETBACKS.sleep}°, a little cooler for going to bed`], ['night', 'Night', `${SETBACKS.night}°, the lowest setting through to morning`]].map(([id, label, hint]) => ({ id, label, hint, on: power && preset === id, action: 'thermostat', args: { preset: id } }))],
+          note: got('thermostat', null) ? 'Temporary: back to the schedule in ten minutes' : 'Following its schedule',
+          summary: { label: 'Hallway', icon: 'thermometer', value: `${(power ? target : room).toFixed(1)}°`, sub: state, detail: power ? `${room.toFixed(1)}° now` : undefined, pct: (target - 10) / 20 } };
+      };
+      const setClimate = ({ temperature, preset, power }) => { const c = climate(); put('thermostat', { preset: preset ?? c.preset, power: preset ? true : power ?? c.power, target: temperature ?? (preset ? SETBACKS[preset] : c.target), from: c.room, at: now() }); };
+      const mealieUp = () => got('mealie', false);
+      const paused = () => got('paused', false);
+      const services = () => SERVICES.map(([name, group, icon]) => {
+        const ok = name !== 'Mealie' || mealieUp();
+        if (name === SWITCHED_OFF[0]) return { name, group, icon: `/api/icon/${icon}`, ok: false, quiet: true, detail: 'stopped' };
+        return { name, group, icon: `/api/icon/${icon}`, ok, ms: ok ? 4 + hash(name + Math.floor(now() / 30_000)) % 30 : undefined, detail: ok ? undefined : 'timed out' };
+      });
+
+      const CYCLE = 42 * 60_000;
+      const downloads = () => {
+        if (paused()) return [];
+        return [['Andor', 'S02E05', 1.4], ['Oppenheimer', '2023', 6.8]].map(([title, sub, gb], i) => {
+          const pct = (.08 + ((now() + i * 1.3e7) % CYCLE) / CYCLE * .9), left = gb * (1 - pct);
+          return { title, sub, pct, left, speed: gb * 1000 / (CYCLE / 1000 * .9) * (1 + .15 * Math.sin(now() / 40_000 + i)) };
+        }).concat({ title: 'Shōgun', sub: 'S01E08', pct: .37, left: 1.3, speed: 0, stalled: true });   // no peers, so it just sits there, as one always does
+      };
+      const STREAM = 118 * 60_000;
+      const stream = () => { const at = now() % STREAM; return { title: FILMS[0], year: ART.films[FILMS[0]].year, pct: at / STREAM, left: Math.round((STREAM - at) / 60_000) }; };
+
+      const rooms = [[1, 'Living Room', 'wood', -280, -200, 290, 220], [2, 'Kitchen', 'tile', 10, -200, 150, 130], [3, 'Dining Room', 'wood', 160, -200, 120, 130], [4, 'Hallway', 'wood', 10, -70, 270, 90],
+        [5, 'Office', 'wood', -280, 20, 170, 170], [6, 'Bedroom', 'wood', -110, 20, 210, 170], [7, 'Bathroom', 'tile', 100, 20, 100, 100], [8, 'Laundry', 'tile', 200, 20, 80, 100], [9, 'Guest Room', 'wood', 100, 120, 180, 70]];
+      // [room, name, kind, x, z]: each light where it really is, so it lands on what it's meant to
+      const LIGHTS = [['Living Room', 'Ceiling', 'pendant', -135, -85], ['Living Room', 'Floor lamp', 'lamp', -262, -38], ['Living Room', 'TV backlight', 'strip', -140, -180],
+        ['Kitchen', 'Pendant left', 'pendant', 62, -122], ['Kitchen', 'Pendant right', 'pendant', 108, -122], ['Dining Room', 'Over the table', 'pendant', 220, -140],
+        ['Hallway', 'Hall light', 'ceiling', 100, -28], ['Office', 'Desk lamp', 'lamp', -268, 42], ['Office', 'Ceiling', 'ceiling', -195, 110],
+        ['Bedroom', 'Bedside left', 'lamp', -92, 36], ['Bedroom', 'Bedside right', 'lamp', 72, 36], ['Bathroom', 'Mirror', 'ceiling', 150, 60], ['Guest Room', 'Ceiling', 'ceiling', 190, 150]];
+      const OFF = new Set(['Hallway', 'Bathroom', 'Guest Room', 'Bedroom']);
+      const COLOUR = { 'TV backlight': '#7f7bff', 'Desk lamp': '#ffe8d1' };
+      const KELVIN = { 2200: '#ffb46b', 2700: '#ffc98f', 4000: '#ffe8d1', 6500: '#e6efff' };
+      const lightId = (room, name) => `light.${room}_${name}`.toLowerCase().replace(/ /g, '_');
+      const light = ([room, name, kind, x, z]) => { const id = lightId(room, name), s = got(id, { on: !OFF.has(room), level: 75, color: COLOUR[name] ?? '#ffc58f' });
+        return { id, name, kind, at: { x, z }, available: true, canColor: true, canTemp: true, dims: true, ...s }; };
+      const FURNITURE = [
+        ['Rug', 1, -220, -130, 170, 110], ['Sofa', 1, -215, -68, 160, 48, 180], ['Coffee table', 1, -172, -112, 76, 34], ['TV stand', 1, -215, -196, 150, 16], ['Armchair', 1, -272, -128, 36, 36, 90], ['Plant', 1, -268, -192, 26, 26], ['Bookshelf', 1, -20, -192, 26, 80, 90],
+        ['Counter', 2, 16, -196, 100, 22], ['Fridge', 2, 122, -196, 32, 26], ['Kitchen island', 2, 44, -138, 84, 26], ['Stool', 2, 54, -106, 15, 15], ['Stool', 2, 78, -106, 15, 15], ['Stool', 2, 102, -106, 15, 15],
+        ['Dining table', 3, 188, -166, 66, 50], ['Chair', 3, 196, -184, 18, 16], ['Chair', 3, 228, -184, 18, 16], ['Chair', 3, 196, -114, 18, 16, 180], ['Chair', 3, 228, -114, 18, 16, 180],
+        ['Shelf', 4, 24, -66, 90, 12], ['Rug', 4, 110, -56, 120, 28], ['Plant', 4, 16, -30, 22, 22],
+        ['Desk', 5, -272, 28, 110, 40], ['Chair', 5, -232, 72, 30, 28, 180], ['Shelf', 5, -272, 176, 90, 12, 180], ['Plant', 5, -140, 160, 24, 24], ['Rug', 5, -240, 108, 90, 60],
+        ['Bed', 6, -60, 28, 110, 118], ['Bedside table', 6, -92, 28, 26, 26], ['Bedside table', 6, 56, 28, 26, 26], ['Rug', 6, -78, 120, 146, 50], ['Wardrobe', 6, -102, 164, 150, 24, 180],
+        ['Toilet', 7, 106, 26, 24, 34], ['Sink', 7, 146, 24, 44, 20], ['Bathtub', 7, 106, 78, 88, 36],
+        ['Washer', 8, 206, 26, 32, 30], ['Dryer', 8, 242, 26, 32, 30], ['Shelf', 8, 206, 106, 68, 10, 180],
+        ['Bed', 9, 208, 124, 64, 60], ['Bedside table', 9, 180, 124, 22, 22], ['Plant', 9, 106, 164, 20, 20],
+      ];
+      // The robot drives a route at a steady pace, so where it is, what it's doing and its battery all follow from the clock.
+      // Each point is [x, z], and in a room [x, z, room]; it leaves the hallway by these doors.
+      const HOME = [240, -40], HALL = [240, -25], FANS = ['Quiet', 'Standard', 'Turbo'], PACE = 30, FIND_MS = 10_000, BUSY_DRAIN = .1, CHARGE = .4;
+      const DOORS = { 1: [[40, -25], [-20, -25]], 2: [[85, -25], [85, -85]], 3: [[220, -25], [220, -85]], 4: [], 5: [[40, -25], [-195, -10], [-195, 40]], 6: [[55, -25], [55, 40]], 7: [[150, -25], [150, 40]], 8: [[240, -25], [240, 40]], 9: [[240, -25], [240, 100], [240, 140]] };
+      const sweep = ([id, , , x, z, w, d]) => [[x + 22, z + 22], [x + w - 22, z + 22], [x + w - 22, z + d / 2], [x + 22, z + d / 2], [x + 22, z + d - 22], [x + w - 22, z + d - 22]].map(p => [...p, id]);
+      const leaving = at => at ? [[at.x, at.z], ...(DOORS[at.room] ?? []).toReversed()] : [HOME];
+      const trip = (ids, from = [HOME]) => [...from, HALL, ...rooms.filter(r => ids.includes(r[0])).flatMap(r => [...DOORS[r[0]], ...sweep(r), ...DOORS[r[0]].toReversed()]), HALL, HOME];
+      /** Where a route has got to after `dist`, or null once it's over. */
+      const along = (route, dist) => {
+        for (let i = 1; i < route.length; i++) {
+          const [ax, az] = route[i - 1], [bx, bz, room] = route[i], dx = bx - ax, dz = bz - az, len = Math.hypot(dx, dz);
+          if (dist <= len) return { x: Math.round(ax + dx * (len ? dist / len : 0)), z: Math.round(az + dz * (len ? dist / len : 0)), a: Math.round(Math.atan2(-dx, -dz) * 180 / Math.PI), room, i };
+          dist -= len;
+        }
+        return null;
+      };
+      const span = route => route.slice(1).reduce((n, p, i) => n + Math.hypot(p[0] - route[i][0], p[1] - route[i][1]), 0);
+      const vacuumNow = () => {
+        const v = got('vacuum', null), ran = v ? v.held ?? now() - v.at : 0, at = v && along(v.route, ran / 1000 * PACE), length = v ? span(v.route) : 0;
+        return { v, ran, at, length, tired: (v?.spent ?? 0) + Math.round(Math.min(ran, length / PACE * 1000) / 1000 * BUSY_DRAIN) };
+      };
+      const robot = () => {
+        const { v, ran, at, length, tired } = vacuumNow(), rest = { id: 'vacuum.robot', fanSpeed: got('fan', 'Standard'), fanSpeeds: FANS, wear: [['Main brush', 82], ['Filter', 64]] };
+        const said = got('vacuumNote', null), note = said?.until > now() ? said.text : null, found = got('found', 0) > now(), docked = { x: HOME[0], z: HOME[1], a: 180, state: 'docked' };
+        // the plan's ring only pulses for a busy robot, so that's what Find borrows while it beeps
+        const beep = found ? { state: 'returning', status: 'Beeping: here I am' } : {};
+        if (!at) { const battery = Math.min(100, 100 - tired + Math.round((ran - length / PACE * 1000) / 1000 * CHARGE)); return { ...rest, ...docked, battery, status: note ?? (battery < 100 ? 'Charging' : 'Docked'), ...beep }; }
+        const out = v.route.slice(at.i).some(p => p[2] != null), place = rooms.find(r => r[0] === at.room)?.[1], paused = v.held != null;
+        return { ...rest, x: at.x, z: at.z, a: at.a, battery: 100 - tired, state: paused ? 'paused' : out ? 'cleaning' : 'returning', status: note ?? (paused ? 'Paused' : out ? (place ? `Cleaning the ${place.toLowerCase()}` : 'Cleaning') : 'Returning to the dock'), ...beep };
+      };
+      /** What the buttons and the assistant ask of the robot. Asking for something it can't do says so on its status line. */
+      const vacuum = ({ command, rooms: ids, fan_speed }) => {
+        const { v, ran, at, tired } = vacuumNow(), tell = text => put('vacuumNote', { text, until: now() + 6_000 });
+        if (command === 'fan_speed') { if (FANS.includes(fan_speed)) put('fan', fan_speed); else tell("It can't do that"); }
+        else if (command === 'locate') put('found', now() + FIND_MS);
+        else if (command === 'clean_rooms') { const known = (ids ?? []).filter(id => DOORS[id]); if (known.length) put('vacuum', { route: trip(known, leaving(at)), at: now(), spent: tired }); else tell("That room isn't on the map"); }
+        else if (command === 'start') { if (v?.held != null) put('vacuum', { ...v, held: undefined, at: now() - ran }); else if (!at) put('vacuum', { route: trip(rooms.map(r => r[0])), at: now() }); else tell('Already cleaning'); }
+        else if (command === 'pause') { changes.delete('found'); if (at) put('vacuum', { ...v, held: ran }); else tell('Nothing to pause'); }
+        else if (command === 'dock') { if (at) put('vacuum', { route: [...leaving(at), HALL, HOME], at: now(), spent: tired }); else tell('Already docked'); }
+        else tell("It can't do that");
+      };
+      const homeCard = () => { const r = robot(), { at, ran, length } = vacuumNow(); return { type: 'showcase', title: 'Home', icon: 'home', wide: true, items: [],
+        ...(at ? { activity: { title: 'Vacuum', subtitle: r.status, icon: 'home', pct: Math.min(1, ran / 1000 * PACE / length), trailing: `${r.battery}%`, paused: r.state === 'paused' } } : {}),
+        visual: { kind: 'home', data: { view: { turn: -30, tilt: -46 },
+          rooms: rooms.map(([id, name, floor, x, z, w, d]) => ({ id, name, floor, x, z, w, d, lights: LIGHTS.filter(l => l[0] === name).map(light) })),
+          furniture: FURNITURE.map(([type, room, x, z, w, d, angle = 0]) => ({ type, room, angle, x, z, w, d })),
+          dock: { x: 262, z: -55, a: 180 },
+          robot: r } } }; };
+
+      const PRESETS = [['white', 'All white', ['#ffffff']], ['ocean', 'Ocean', ['#00c2ff', '#0a5cff']], ['sunset', 'Sunset', ['#ff6b35', '#ff2d78']], ['forest', 'Forest', ['#2fd27a', '#0f7b4f']], ['off', 'All off', ['#000000']]];
+      const PRESET_RGB = { white: [255, 255, 255], ocean: [0, 150, 255], sunset: [255, 90, 60], forest: [47, 210, 122], off: [0, 0, 0] };
+      const pcCard = () => {
+        const preset = got('preset', 'ocean'), part = id => got(`part.${id}`, null);
+        const zone = (id, n = 1) => Array.from({ length: n }, () => part(id) ?? { mode: preset === 'off' ? 'Off' : 'Static', color: PRESET_RGB[preset], brightness: 100 });
+        const mk = (id, title, n) => ({ id, title, modes: ['Static', 'Breathing', 'Rainbow', 'Off'], zones: zone(id, n) });
+        const temp = cpuTemp(), gpu = gpuTemp();
+        return { type: 'showcase', title: 'Desktop', icon: 'cpu', wide: true, items: [],
+          visual: { kind: 'pc-case', data: { parts: [mk('fans0', 'Top fans', 3), mk('fans1', 'Floor fans', 3), mk('pump', 'Cooler', 1), mk('ram', 'Memory', 4), mk('gpu', 'GPU', 1)],
+            layout: { fans0: 'top', fans1: 'hidden' }, fans: { fans0: 900, fans1: 760 }, view: { turn: -27, tilt: -18, draggable: true }, controls: true,
+            presets: PRESETS.map(([id, name, swatch]) => ({ id, name, swatch, active: preset === id && !['fans0', 'fans1', 'pump', 'ram', 'gpu'].some(part) })),
+            metrics: { pump: [{ label: 'CPU', value: Math.round(temp), unit: '°C', pct: (temp - 25) / 70 }], gpu: [{ label: 'Temp', value: Math.round(gpu), unit: '°C', pct: (gpu - 25) / 65 }, { label: 'Power', value: gpuWatts, unit: 'W', pct: .1 }], ram: [{ label: 'In use', value: MEMORY[0], unit: 'GB', pct: MEMORY[0] / MEMORY[1] }] },
+            build: { ramLabel: 'VALET', board: { label: 'MAPLE', plate: 'STREET', accent: '#7d9cff' }, gpu: { label: 'DEMO', badge: 'VALET' } } } } };
+      };
+
+      const day = (h, m = 0) => { const d = new Date(); d.setHours(h, m, 0, 0); return d.toISOString(); };
+      const ymd = n => { const d = new Date(now() + n * 864e5); return [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(x => String(x).padStart(2, '0')).join('-'); };
+      const inDays = n => new Date(now() + n * 864e5).toLocaleDateString('en', { month: 'short', day: 'numeric' });
+      const drives = [['Backup 12 TB', 38, '3.1 years'], ['Media 8 TB', 41, '1.8 years'], ['System NVMe', 58, '244 days']], hottest = drives.reduce((a, b) => b[1] > a[1] ? b : a), HOT = 55;
+      const lastMonth = () => ({ tv: share(playsOf('tv'), past(30, .2, 4, 864e5)), movies: share(playsOf('movie'), past(30, .1, 2, 7e7)) });
+      const statusCard = (title, icon, items) => ({ type: 'status', title, icon, items });
+      const containers = () => ['bazarr', 'caddy', 'home-assistant', 'immich', 'immich-postgres', 'immich-redis', 'karakeep', 'mealie', 'paperless', 'pi-hole', 'plex', 'prowlarr', 'qbittorrent', 'radarr', 'sonarr', 'tautulli', 'uptime-kuma']
+        .map(n => {
+          const state = n === 'mealie' && !mealieUp() ? 'down' : n === SICK && !mealieUp() ? 'degraded' : n === SWITCHED_OFF[1] ? 'off' : 'up';
+          return { name: n, icon: `/api/icon/${n}`, ok: state === 'up', state, quiet: state === 'off' || undefined, detail: { down: 'exited (137)', degraded: 'unhealthy', off: 'exited (0)' }[state] ?? (n === 'plex' ? 'healthy' : undefined) };
+        });
+      const LOGS = ['03:11:58 INFO  importing recipe batch (412 items)', '03:12:04 WARN  worker memory at 251 MiB of 256 MiB', '03:12:06 ERROR Out of memory: killed process 41 (gunicorn)', '03:12:06 INFO  container exited with code 137'];
       const w = (title, interval, fetch) => ({ title, interval, fetch: async () => fetch() });
       const art = name => ctx.image?.(name) ?? name;
       const widgets = {

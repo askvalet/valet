@@ -5,11 +5,13 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import type { Card, WidgetState } from '../shared/cards.ts';
 import { numberOf } from './history.ts';
+import { sandbox } from './sandbox.ts';
 
 export interface Watch { id: string; widget: string; on: 'ends' | 'starts' | 'down' | 'up' | 'above' | 'below'; name?: string; value?: number; minutes: number; say: string; until: number }
 const FILE = () => resolve(process.env.VALET_DATA ?? 'data', 'watches.json');
 export const loadWatches = (): Promise<Watch[]> => readFile(FILE(), 'utf8').then(JSON.parse).catch(() => []);
 async function save(list: Watch[]) {
+  if (sandbox.on) return;
   await mkdir(dirname(FILE()), { recursive: true });
   await writeFile(`${FILE()}.tmp`, JSON.stringify(list, null, 2), { mode: 0o600 }); await rename(`${FILE()}.tmp`, FILE());
 }

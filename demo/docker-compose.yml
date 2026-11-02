@@ -21,7 +21,6 @@ services:
       - ./:/demo:ro
       - ./integrations:/app/data/integrations:ro
       - ./icons:/app/data/icons:ro
-    tmpfs: ["/app/data:uid=1000,gid=1000,size=32m", "/tmp:size=16m"]
     networks: [sealed]
     depends_on: [valet-demo-model]
 

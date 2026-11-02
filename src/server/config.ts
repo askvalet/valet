@@ -235,6 +235,7 @@ export const Config = z.object({
   })]).default({ hours: 72, every: 5, background: true }),
   title: z.string().default('Home'),
   greeting: z.string().optional(),         // whose homelab it is, e.g. "Sam"
+  sandbox: z.boolean().default(false),     // for trying Valet out: nothing is saved, each visitor gets a private copy in memory
   notice: z.string().max(120).optional(),  // a quiet pill above the greeting, e.g. "Demo · simulated home"
   location: z.string().optional(),
   timezone: z.string().refine(validZone, 'an IANA time zone, like America/Toronto').optional(),   // default: TZ, or else the first browser's

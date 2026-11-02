@@ -10,6 +10,13 @@ import { inUnits } from '../src/server/units.ts';
 import { registry } from '../src/integrations/index.ts';
 import { cardLook, lookOf } from '../src/shared/look.ts';
 import { LABELS } from '../src/shared/labels.ts';
+import { mkdtemp, readdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
+import { Activity } from '../src/server/activity.ts';
+import { savePins } from '../src/server/pins.ts';
+import { sandbox } from '../src/server/sandbox.ts';
+import { Timeline } from '../src/server/timeline.ts';
 import { clock, day, favorites, firstDay, label, num, oneLine, sayHow, setFormat, stillTrue, tabHash } from '../src/web/format.ts';
 import { scopeOf, suggestPrompt } from '../src/server/insight.ts';
 import { rank } from '../src/web/palette.tsx';
@@ -184,7 +191,7 @@ test('tabs have addresses, and the page\'s own stay its own', () => {
 test('the status is one sentence, and says each thing once', () => {
   const line = (...a: Parameters<typeof sayHow>) => { const h = sayHow(...a); return oneLine(h.problems, h.parts); };
   const ok = [{ name: 'Plex', ok: true }, { name: 'Sonarr', ok: true }, { name: 'Off', ok: false, quiet: true }];
-  assert.equal(line([status('s.a', ok)]), '2 of 3 running, 1 off by choice.');
+  assert.equal(line([status('s.a', ok)]), 'All 2 services are running.');
   assert.equal(line([status('s.a', ok.slice(0, 2))]), 'All 2 services are running.');
   const sick = sayHow([status('s.a', [...ok.slice(0, 2), { name: 'bazarr', ok: false, state: 'degraded' }]), status('s.b', [{ name: 'Bazarr', ok: true }])]);
   assert.equal(oneLine(sick.problems, sick.parts), 'Everything\'s running except Bazarr.');
@@ -219,4 +226,14 @@ test('favourites narrow a status card and never hide trouble', () => {
 test('suggestions lead with what matters most, and needn\'t fill the slots', () => {
   const { system } = suggestPrompt([], [], []);
   assert.match(system, /most consequential/); assert.match(system, /Fewer good ones beat four/); assert.match(system, /at most 4/);
+});
+
+test('a sandbox saves nothing', async () => {
+  const dir = await mkdtemp(resolve(tmpdir(), 'valet-')), was = process.env.VALET_DATA;
+  process.env.VALET_DATA = dir; sandbox.on = true;
+  try {
+    await new Timeline().save(); new Activity().add({ who: 'x', via: 'chat', what: 'y', ok: true } as any); await savePins([]);
+    await new Promise(r => setTimeout(r, 30));
+    assert.deepEqual(await readdir(dir), []);
+  } finally { sandbox.on = false; process.env.VALET_DATA = was; if (was === undefined) delete process.env.VALET_DATA; }
 });

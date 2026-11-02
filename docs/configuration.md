@@ -48,6 +48,7 @@ In Docker, prefix these with `docker exec -it valet`.
 | `links` | `{}` | bookmarks by group, each group a widget `links.<group-slug>`: `Media: [{ name, url, icon?, note? }]`. Without `icon`, the site's favicon (fetched by Valet) |
 | `notify` | `{ channels: [] }` | where reminders go when you're not looking: see below. `insights: true` also pushes the shared-cause line |
 | `reload` | `true` | watch the file and apply edits live |
+| `sandbox` | `false` | for trying Valet out: nothing is saved anywhere, and each visitor gets a private copy in memory, gone when they leave. The public demo runs this way |
 | `recap` | `true` | your year in review, at `#recap` and on the overview: the strongest slides first, then all the rest without a break, and a share card where you choose what shows |
 | `welcome` | `false` | the getting-started card; a fresh starter config turns it on |
 

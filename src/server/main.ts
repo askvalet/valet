@@ -20,6 +20,9 @@ import { buildSite, type Site } from './site.ts';
 import { registry } from '../integrations/index.ts';
 import { LABELS } from '../shared/labels.ts';
 import { cardLook, isPaint, listOf, lookOf } from '../shared/look.ts';
+import { sandbox } from './sandbox.ts';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { getCookie, setCookie } from 'hono/cookie';
 
 const CONFIG = process.env.VALET_CONFIG ?? 'config.yaml';
 const DATA = resolve(process.env.VALET_DATA ?? 'data');
@@ -44,12 +47,17 @@ let zoneKnown = !!(config.timezone || process.env.TZ);
 if (config.timezone) process.env.TZ = config.timezone;
 const fromPlugins = await loadPlugins(registry, config.plugins.packages, config.plugins.replace);
 const opts = { path: CONFIG, rebuild: () => swap(site.config) };
-let site: Site = await buildSite(config, registry, fromPlugins, opts);
+sandbox.on = config.sandbox;
+let base: Site = await buildSite(config, registry, fromPlugins, opts);
+// In a sandbox each request runs against that visitor's own copy of the site; otherwise there's just the one.
+const own = new AsyncLocalStorage<Site>();
+const site = new Proxy({} as Site, { get: (_, k) => Reflect.get(own.getStore() ?? base, k), set: (_, k, v) => Reflect.set(own.getStore() ?? base, k, v) });
+const stopSite = (s: Site) => { s.hub.dispose(); s.watcher?.stop(); s.watches.stop(); };
 // A new site takes over from the old one, and every open page refetches and reconnects.
 async function swap(next: Config) {
-  const old = site;
-  site = await buildSite(next, registry, fromPlugins, opts, old); chat = undefined;
-  old.hub.dispose(); old.watcher?.stop(); old.watches.stop();
+  const old = base;
+  base = await buildSite(next, registry, fromPlugins, opts, old); chats = new WeakMap();
+  stopSite(old);
   for (const tell of sseClients) tell();
 }
 for (const sig of ['SIGTERM', 'SIGINT'] as const) process.once(sig, async () => { try { await site.history?.save(); } finally { process.exit(0); } });
@@ -74,6 +82,23 @@ if (config.reload) {
 const app = new Hono();
 app.use('*', hostGuard(() => site.config.allowedHosts));
 app.use('*', headers);
+// One site per visitor, kept for as long as they stay: a cookie says who's who, and nothing about them outlives it.
+const VISITORS = 40, IDLE = 15 * 60_000, visitors = new Map<string, { site: Promise<Site>; at: number }>();
+const leave = (id: string) => { const v = visitors.get(id); visitors.delete(id); void v?.site.then(stopSite, () => {}); };
+if (sandbox.on) {
+  setInterval(() => { for (const [id, v] of visitors) if (Date.now() - v.at > IDLE) leave(id); }, 60_000).unref();
+  app.use('*', async (c, next) => {
+    let id = getCookie(c, 'valet_visitor');
+    if (!id || !/^[0-9a-f]{32}$/.test(id)) { id = randomBytes(16).toString('hex'); setCookie(c, 'valet_visitor', id, { httpOnly: true, sameSite: 'Lax', path: '/' }); }
+    let v = visitors.get(id);
+    if (!v) {
+      if (visitors.size >= VISITORS) leave([...visitors].sort((a, b) => a[1].at - b[1].at)[0][0]);
+      v = { site: buildSite(base.config, registry, fromPlugins, opts), at: 0 }; visitors.set(id, v);
+    }
+    v.at = Date.now();
+    return own.run(await v.site, next);
+  });
+}
 // for Docker's healthcheck and uptime monitors: up, and how many widgets have a fresh card
 app.get('/healthz', c => c.json({ ok: true, widgets: site.hub.snapshot().filter(s => s.card && !s.error).length }));
 
@@ -168,7 +193,7 @@ app.get('/api/page', c => {
   const tz = c.req.query('tz');
   if (!zoneKnown && tz && validZone(tz)) { process.env.TZ = tz; zoneKnown = true; console.log(`time zone: ${tz} (from the browser; set timezone in config.yaml to fix it)`); }
   return c.json({
-    title: config.title, greeting: config.greeting, notice: config.notice, location: config.location, canAct: site.acting, search: config.search,
+    title: config.title, greeting: config.greeting, notice: config.notice, location: config.location, canAct: site.acting, sandbox: sandbox.on, search: config.search,
     welcome: config.welcome ? { path: CONFIG, saved } : undefined,
     recap: config.recap, hero: { ...config.hero, scope: config.hero.scope === true ? scopeOf([...site.meta.values()].map(m => m.type)) : config.hero.scope || undefined }, labels: { ...LABELS, ...config.labels }, format: config.format,
     appearance: { walls: wallsOf(config.appearance.wallpaper), tabWalls: Object.fromEntries(Object.entries(config.appearance.wallpapers).map(([t, w]) => [t, wallsOf(w)])), rotate: config.appearance.rotate, sizes: config.appearance.sizes },
@@ -221,7 +246,7 @@ app.get('/api/events', c => streamSSE(c, async stream => {
 // Files attached in chat (pasted, dropped or picked): stored for a day so a tool can file them (to Paperless, say).
 // The browser gets back an id it puts in the message; nothing is served back out.
 app.post('/api/files', bodyLimit({ maxSize: 50 * 2 ** 20, onError: c => c.json({ error: 'files are limited to 50 MB' }, 413) }), async c => {
-  if (!site.acting) return c.json({ error: 'Valet is read-only: attaching files is off' }, 403);
+  if (!site.acting || sandbox.on) return c.json({ error: site.acting ? 'This demo keeps nothing, so it takes no files' : 'Valet is read-only: attaching files is off' }, 403);
   // at most 500 MB waiting to be filed at once
   let held = 0;
   for (const f of await readdir(UPLOAD_DIR).catch(() => [] as string[])) held += (await stat(resolve(UPLOAD_DIR, f)).catch(() => ({ size: 0 }))).size;
@@ -368,10 +393,12 @@ app.post('/api/live', async c => {
 });
 
 // The AI SDK, providers and MCP client load on the first question, so an unused assistant costs no memory.
-let chat: ((c: any) => Promise<Response>) | undefined;
+let chats = new WeakMap<Site, (c: any) => Promise<Response>>();
 app.post('/api/chat', async c => {
   if (!site.config.assistant) return c.json({ error: 'no assistant configured' }, 404);
-  chat ??= (await import('./chat.ts')).chatRoute(site.config, site.instances, site.meta, { acting: site.acting, redact: site.redact, activity: site.activity });
+  const key = own.getStore() ?? base;
+  let chat = chats.get(key);
+  if (!chat) chats.set(key, chat = (await import('./chat.ts')).chatRoute(site.config, site.instances, site.meta, { acting: site.acting, redact: site.redact, activity: site.activity }));
   return chat(c);
 });
 
