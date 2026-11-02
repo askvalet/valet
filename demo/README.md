@@ -34,3 +34,5 @@ The public demo needs no server. `npm run demo:static` builds it into `demo/stat
 runs unchanged, and `static/backend.ts` answers its `/api` calls in the browser: the same made-up homelab and scripted model, and
 Valet's real chat, tools and approvals. Each visitor's changes live in their tab and are gone on reload. The layout and the year
 in review are saved from a real server at build time.
+
+One change to the page works from chat, to show what the real assistant does: "Add an internet speed card" asks first, then the card appears, and "undo" takes it away. It's scripted and lives in the tab, like everything else.

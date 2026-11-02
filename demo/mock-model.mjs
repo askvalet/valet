@@ -16,6 +16,8 @@ const logsSay = d => d.up ? 'Mealie is running again. It ran out of memory at 3:
 // [what's said, the tool (by its name), its input, or how to get it from what's said, how to word the answer]. An order has
 // to match the whole sentence, so a question or a passing mention can never touch the house.
 export const ORDERS = [
+  [/^(?:add|put|show)\b.*\b(?:internet|speed\w*)\b.*$/i, 'add_speed_card', {}, d => d.denied ? 'Okay, the page stays as it is.' : "Done. Internet speed is on your page, under Services. Say undo and it's gone."],
+  [/^(?:undo(?: that| it)?|take (?:it|that) (?:back|off)|remove (?:it|that|the (?:internet |speed )*card))$/i, 'undo_config', {}, d => d.denied ? 'Okay, it stays.' : d.undone ? 'Undone. The page is back as it was.' : "There's nothing to undo yet."],
   [/^(?:pause|stop|hold) (?:all |the |my )*(?:downloads?|torrents?)$/i, 'pause_downloads', {}, d => d.denied ? 'Okay, downloads keep going.' : "Paused. They'll pick up again by themselves in ten minutes, since this is a demo."],
   [/^(?:restart|reboot|revive|fix) (?:the )?mealie(?: container| service)?$|^bring (?:the )?mealie back(?: up)?$/i, 'restart_service', { name: 'Mealie' }, d => d.denied ? 'Left it as it is.' : d.wasUp ? "Restarted Mealie. It was already up, and it's answering." : 'Restarted Mealie and it answered straight away. It had run out of memory, so it may need a higher limit than 256 MB.'],
   [new RegExp(String.raw`^(?:turn|switch) (?:on|off) (?:all )?(?:of )?(?:the |my )?(?:${lit} )?lights?$|^(?:turn|switch) (?:all )?(?:of )?(?:the |my )?(?:${lit} )?lights? (?:on|off)$`, 'i'), 'set_lights', lights, d => d.denied ? 'Okay, I left the lights alone.' : `${d.room === 'All' ? 'All the lights are' : `The ${d.room?.toLowerCase()} lights are`} ${d.on ? 'on' : 'off'}. You can see it on the floor plan on the Home tab.`],
@@ -28,6 +30,7 @@ export const ORDERS = [
   [new RegExp(String.raw`^find ${robot}$`, 'i'), 'run_vacuum', { command: 'locate' }, vacuumSay],
 ];
 export const ANSWERS = [
+  [/\bhow (?:do|can|would) i\b.*\b(?:add|connect|support|build|make|write)\b|\b(?:valet|you) (?:doesn'?t|don'?t) (?:support|have)\b|\bnot supported\b/i, 'docs_search', {}, () => 'Two ways. If it has a JSON API, the `api` integration turns it into a card from YAML, with no code. Otherwise, one file in `data/integrations` adds a full integration in about ten lines. The Build an integration page in the docs has both.'],
   [/^(?=.*\bmealie\b).*\b(?:why|how'?s|how is|logs?|down|up|wrong|happened|crash\w*|stopped|broken|diagnose|check|status|ok|okay|working|running|memory)\b|\bwhy\b.*\b(?:it|that)\b.*\b(?:down|crash\w*|stopp?\w*|fail\w*)\b/i, 'container_logs', { name: 'mealie' }, logsSay],
   [/\bbazarr\b/i, 'service_status', {}, () => BAZARR],
   [/\b(?:anything|everything|something|services?|homelab|lab)\b.*\b(?:down|wrong|broken|ok|okay|fine|healthy|working|up|problems?|issues?|status)\b|\bhealth check\b/i, 'service_status', {}, d => { const all = d.services ?? [], bad = all.filter(s => !s.ok && !s.quiet), up = all.filter(s => s.ok).length, off = all.length - bad.length - up, rest = off ? `, and ${off} ${off > 1 ? 'are' : 'is'} off by choice` : ''; return bad.length ? `${bad.map(s => s.name).join(', ')} ${bad.length > 1 ? 'are' : 'is'} down; the other ${up} are fine${rest}.` : `${off ? `${up} of ${all.length}` : `All ${all.length}`} services are up${rest}.`; }],
@@ -54,12 +57,12 @@ const OTHERS = [
   [/\bmemory\b/i, TOPICS[3][1]],
   [/\b(?:weather|forecast|rain|calendar|schedule|appointments?)\b/i, "so I can't look that up. On a real Valet, the assistant would ask the weather or calendar you've connected."],
 ];
-export const can = 'Here I can explain why Mealie is down and restart it, turn the lights on or off, suggest what to watch, sum up last night or check the downloads.';
+export const can = 'Here I can explain why Mealie is down and restart it, add an internet speed card to this page, turn the lights on or off, suggest what to watch, sum up last night or check the downloads.';
 export const FALLBACK = `${standIn}. ${can} On a real Valet this is your own model, local or hosted, or none at all.`;
 const noAnswer = `${standIn}, so I can't answer that one. On a real Valet, a real model would work it out from your own services.`;
 // The page lists "Why is Mealie down?" itself, live from the status cards, while the server keeps this list for up to ten
 // minutes. So nothing here may depend on Mealie still being down, or it would outlive the restart.
-export const SUGGESTIONS = ['What should we watch tonight?', 'Turn off the living room lights', 'Anything happen overnight?', 'How are the downloads doing?'];
+export const SUGGESTIONS = ['Add an internet speed card', 'What should we watch tonight?', 'Turn off the living room lights', 'Anything happen overnight?'];
 export const suggestions = down => down ? SUGGESTIONS : ['What took Mealie down?', ...SUGGESTIONS.slice(0, 3)];
 
 const textOf = c => typeof c === 'string' ? c : Array.isArray(c) ? c.map(p => p.text ?? '').join(' ') : '';

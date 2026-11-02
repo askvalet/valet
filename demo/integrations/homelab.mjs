@@ -154,6 +154,9 @@ const sightings = () => CAMERAS.flatMap(([camera, name, loop, seen]) => seen.fla
   return [0, 1].map(n => ({ camera, name, label, score, image, at: (last - n * period) * 1000 }));
 })).sort((a, b) => b.at - a.at).slice(0, 10);
 
+// the one change to the page the demo can make from chat: the static demo watches this, as a server watches config.yaml
+export const page = { speed: false, onChange() {} };
+
 export default ({ z, defineIntegration }) => {
   return defineIntegration({
     type: 'demo-homelab',
@@ -341,6 +344,9 @@ export default ({ z, defineIntegration }) => {
         containers: w('Containers', 30_000, () => ({ ...statusCard('Containers', 'disk', containers()), layout: 'wall', source: { name: 'Docker', icon: '/api/icon/docker' } })),
         drives: w('Drives', 300_000, () => ({ type: 'list', layout: 'temps', title: 'Drives', icon: 'disk', items: drives.map(([title, t, age]) => ({ title, subtitle: `Powered on ${age}`, meta: `${t}°C`, pct: (t - 20) / 40, tone: t >= HOT ? 'warn' : undefined })),
           summary: { label: 'Drives', icon: 'disk', value: `${hottest[1]}°C`, sub: hottest[1] >= HOT ? `${hottest[0]} is running warm` : `All ${drives.length} healthy`, tone: hottest[1] >= HOT ? 'warn' : 'good', marks: drives.map(([title, t]) => ({ pct: (t - 20) / 40, label: `${title} · ${t}°C` })) } })),
+        speed: w('Internet speed', 60_000, () => { const r = rng('speed'), down = Array.from({ length: 24 }, () => Math.round(880 + r() * 70)), up = down.map(() => Math.round(860 + r() * 60));
+          return { type: 'chart', style: 'line', title: 'Internet speed', icon: 'gauge', headline: `${down.at(-1)} Mb/s`, span: `↑ ${up.at(-1)} Mb/s · ${Math.round(4 + r() * 3)} ms`, window: 'last 24 h', from: now() - 864e5, to: now(),
+            series: [{ name: 'Download', tone: 'accent', points: down }, { name: 'Upload', points: up }] }; }),
         dns: w('Pi-hole', 60_000, () => { const { asked, blocks, total, blocked } = dnsDay(), pct = `${Math.round(blocked / total * 100)}%`, until = got('dnsPause', 0), off = until > now();
           return { type: 'chart', style: 'bars', title: 'Pi-hole', icon: 'shield', headline: pct, span: `of ${total.toLocaleString('en')} queries · 23 devices`, window: 'last 24 h', factsNote: 'Most blocked · last 24 h', from: now() - 864e5, to: now(),
             banner: off ? { text: 'Blocking paused', until, tone: 'warn', button: { label: 'Resume', action: 'pause', args: { minutes: 0 } } } : undefined,
@@ -475,6 +481,9 @@ export default ({ z, defineIntegration }) => {
             run: async () => ({ data: { services: services().map(({ name, ok, quiet, detail }) => ({ name, ok, quiet, detail })) }, card: await widgets.services.fetch() }) },
           container_logs: { label: 'Read the logs', access: 'read', input: z.object({ name: z.string().default('mealie') }), description: 'Recent logs of a container.',
             run: async () => ({ data: { lines: LOGS, up: mealieUp() }, card: { type: 'code', title: 'mealie logs', lines: LOGS } }) },
+          add_speed_card: { label: 'Changed the config', confirm: () => ({ title: 'Add an Internet speed card?', detail: 'It goes under Services, and you can undo it', logo: '/api/icon/demo-homelab', verb: 'Add' }), access: 'control', input: z.object({}), description: 'Add an internet speed card to the page.', run: async () => { page.speed = true; page.onChange(); return { data: { added: true } }; } },
+          undo_config: { label: 'Undid the last config change', confirm: () => ({ title: 'Undo the last config change?', logo: '/api/icon/demo-homelab', verb: 'Undo' }), access: 'control', input: z.object({}), description: 'Put the page back as it was.', run: async () => { const had = page.speed; page.speed = false; page.onChange(); return { data: { undone: had } }; } },
+          docs_search: { label: 'Searched the docs', access: 'read', input: z.object({}), description: "Valet's own docs.", run: async () => ({ data: { page: 'Build an integration' } }) },
           restart_service: { label: 'Restarted a service', confirm: ({ name = 'Mealie' }) => ({ title: `Restart ${name}?`, detail: mealieUp() ? 'It\'s running at the moment' : 'It stopped at 3:12 AM', logo: '/api/icon/mealie', verb: 'Restart' }), access: 'control', input: z.object({ name: z.string().default('Mealie') }), description: 'Restart a service.', undo: undefined,
             run: async () => { const wasUp = mealieUp(); put('mealie', true); return { data: { done: true, wasUp }, card: textCard(wasUp ? 'Mealie restarted.' : 'Mealie is back up.') }; } },
           downloads_status: { label: 'Checked downloads', live: true, access: 'read', input: z.object({}), description: 'Unfinished downloads.',
