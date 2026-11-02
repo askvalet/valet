@@ -1,0 +1,57 @@
+---
+title: Allowed hosts
+description: Why Valet refuses names it doesn't know, and how to add yours.
+sidebar: { order: 5 }
+---
+
+Valet answers only to names it's meant to have. If you reach it through a name, that name must be in `allowedHosts`.
+
+```yaml title="config.yaml"
+allowedHosts: [valet.example.com, "*.home.example.com"]
+```
+
+Without this, you'd see:
+
+```text
+Valet doesn't answer to "valet.example.com". If that's your address for it, add it to allowedHosts in config.yaml.
+```
+
+That's a `421` response. Add the name and save: it's read per request, so a config reload is enough.
+
+## What's always allowed
+
+No list needed:
+
+- `localhost`, and anything under `.localhost`.
+- IPv4 addresses, such as `10.0.0.20`.
+- IPv6 addresses.
+
+An attacker's page can't use those names, so they're safe.
+
+## Why it's there
+
+This stops DNS rebinding. Here's the attack.
+
+1. You visit a malicious site, `evil.example`, from a machine on your network.
+2. Its DNS answer changes to the private address of your Valet.
+3. Now `evil.example` points at Valet, and your browser sees it as the same site. Its scripts can read what Valet returns.
+
+Same-origin rules don't help, because to the browser this *is* the same origin. Sign-in may not either, on a page with sign-in off.
+
+Refusing unknown `Host` headers closes it: Valet sees `Host: evil.example`, and says no.
+
+## Behind a reverse proxy
+
+Both headers must pass. `Host` is checked, and `X-Forwarded-Host` if there is one. A page in the browser can set `X-Forwarded-Host` on its own requests, so that header may only narrow what `Host` allows. It can never vouch for it.
+
+So add the public name, whichever header your proxy passes it in.
+
+The [origin check](/security/csp/#requests-that-change-something) uses the forwarded host when there is one. If buttons fail with "cross-site request refused", your proxy is probably changing `Host` without setting `X-Forwarded-Host`.
+
+## Wildcards
+
+`*.home.example.com` matches anything under that name. It doesn't match `home.example.com` itself, so list both if you need both.
+
+## The rest of network safety
+
+Allowed hosts stops one attack. It's no substitute for keeping Valet off the internet. See [sign-in and network safety](/start/sign-in/).

@@ -1,0 +1,130 @@
+/* Valet's look on Starlight: its tokens, its type, one accent. Dark is near black with frosted bars, as the app is;
+   light is Apple's off-white. Everything here is a token or a small rule, so Starlight updates stay easy. */
+:root {
+  --sl-font: 'Geist Variable', -apple-system, BlinkMacSystemFont, ui-sans-serif, system-ui, sans-serif;
+  --sl-font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sl-content-width: 54rem;
+  --sl-sidebar-width: 17.5rem;
+  --sl-line-height: 1.65;
+  --sl-text-h1: 2.25rem; --sl-text-h2: 1.5rem; --sl-text-h3: 1.1875rem; --sl-text-h4: 1rem;
+  --radius: 0.875rem;
+
+  /* dark: the app's neutrals and its system blue */
+  --sl-color-accent-low: #0f2a47;
+  --sl-color-accent: #0a84ff;
+  --sl-color-accent-high: #8cc4ff;
+  --sl-color-white: #f5f5f7;
+  --sl-color-gray-1: #e5e5ea;
+  --sl-color-gray-2: #c7c7cc;
+  --sl-color-gray-3: #a6a6ac;
+  --sl-color-gray-4: #6e6e73;
+  --sl-color-gray-5: #3a3a3c;
+  --sl-color-gray-6: #1c1c1e;
+  --sl-color-gray-7: #141416;
+  --sl-color-black: #0a0a0c;
+  --sl-color-bg: #0a0a0c;
+  --sl-color-bg-nav: rgb(16 16 19 / .72);
+  --sl-color-bg-sidebar: #0a0a0c;
+  --sl-color-hairline: rgb(255 255 255 / .08);
+  --sl-color-hairline-light: rgb(255 255 255 / .06);
+  --sl-color-hairline-shade: rgb(0 0 0 / .4);
+  --sl-color-text-accent: #6db3ff;
+}
+:root[data-theme='light'] {
+  --sl-color-accent-low: #d9ebff;
+  --sl-color-accent: #0071e3;
+  --sl-color-accent-high: #00408a;
+  --sl-color-white: #1d1d1f;
+  --sl-color-gray-1: #2c2c2e;
+  --sl-color-gray-2: #48484a;
+  --sl-color-gray-3: #626267;
+  --sl-color-gray-4: #8e8e93;
+  --sl-color-gray-5: #d1d1d6;
+  --sl-color-gray-6: #ececf0;
+  --sl-color-gray-7: #f5f5f7;
+  --sl-color-black: #ffffff;
+  --sl-color-bg: #fbfbfd;
+  --sl-color-bg-nav: rgb(251 251 253 / .75);
+  --sl-color-bg-sidebar: #fbfbfd;
+  --sl-color-hairline: rgb(0 0 0 / .08);
+  --sl-color-hairline-light: rgb(0 0 0 / .06);
+  --sl-color-hairline-shade: rgb(0 0 0 / .08);
+  --sl-color-text-accent: #0060c4;
+}
+
+/* frosted bar, as the app's floating chrome */
+header.header { background: var(--sl-color-bg-nav); backdrop-filter: blur(24px) saturate(1.8); border-bottom: 1px solid var(--sl-color-hairline); }
+.sidebar-pane { border-inline-end: 1px solid var(--sl-color-hairline); }
+@media (min-width: 50rem) { .right-sidebar { border-inline-start: 1px solid var(--sl-color-hairline); } }
+.site-title { font-weight: 550; font-size: 1rem; letter-spacing: 0; color: var(--sl-color-white); }
+.site-title img { height: 1.5rem; width: 1.5rem; border-radius: .375rem; }
+
+/* type: quiet weights, sentence case, nothing tracked out */
+.sl-markdown-content h1, h1#_top { font-weight: 550; letter-spacing: -.015em; }
+.sl-markdown-content :is(h2, h3, h4) { font-weight: 500; letter-spacing: -.005em; }
+.sl-markdown-content h2 { margin-top: 2.5rem; }
+.sl-markdown-content h3 { margin-top: 2rem; }
+.sl-markdown-content :is(strong, b) { font-weight: 550; }
+.sl-markdown-content code:not(pre code) { background: var(--sl-color-gray-6); border: 1px solid var(--sl-color-hairline); border-radius: .375rem; padding: .0625rem .3125rem; font-size: .875em; overflow-wrap: anywhere; }
+.sl-markdown-content a code { color: inherit; }
+.sidebar-content { font-size: .9375rem; }
+.sidebar-content a[aria-current='page'] { background: var(--sl-color-accent-low); color: var(--sl-color-text-accent) !important; font-weight: 500; }
+:root[data-theme='light'] .sidebar-content a[aria-current='page'] { color: var(--sl-color-accent-high) !important; }
+.sidebar-content .large { font-weight: 550; font-size: .9375rem; color: var(--sl-color-white); }
+
+/* tables: full width, hairlines, and they scroll on their own on a phone */
+.sl-markdown-content table { display: block; overflow-x: auto; font-size: .875rem; border-collapse: collapse; width: 100%; }
+.sl-markdown-content :is(th, td) { padding: .5rem .75rem .5rem 0; border-bottom: 1px solid var(--sl-color-hairline); vertical-align: top; text-align: start; }
+.sl-markdown-content th { font-weight: 500; color: var(--sl-color-gray-3); background: none; }
+.sl-markdown-content td:first-child { white-space: nowrap; }
+.sl-markdown-content td:last-child { min-width: 16rem; }
+
+/* screenshots: on their own wallpaper, a soft edge, never wider than they were drawn */
+.shot { margin: 0; max-width: min(100%, var(--w, 100%)); min-width: 0; }
+.shot a { display: block; line-height: 0; }
+.shot img { display: block; width: 100%; height: auto; border-radius: var(--radius); border: 1px solid var(--sl-color-hairline); background: var(--sl-color-gray-6); }
+.shot figcaption { display: flex; justify-content: space-between; gap: .75rem; margin-top: .375rem; font-size: .8125rem; line-height: 1.4; color: var(--sl-color-gray-3); }
+.shot figcaption .muted { color: var(--sl-color-gray-4); }
+.shot.full { max-width: 100%; margin-block: 1.5rem; }
+.shot-row { display: flex; flex-wrap: wrap; gap: 1.25rem 1rem; align-items: flex-start; margin-block: 1.25rem .75rem; }
+.shot-row.wide .shot { flex: 1 1 18rem; max-width: 26rem; }
+.sl-markdown-content .shot-row + * { margin-top: .75rem; }
+.shot-note { font-size: .8125rem; color: var(--sl-color-gray-3); margin-top: .25rem; }
+
+/* the index of integrations */
+.int-grid { list-style: none; padding: 0; margin: 1rem 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: .25rem .75rem; }
+.int-grid li { margin: 0; }
+.int-grid a { display: flex; align-items: center; gap: .625rem; padding: .375rem .5rem; margin-inline: -.5rem; border-radius: .5rem; text-decoration: none; color: var(--sl-color-gray-1); font-size: .9375rem; }
+.int-grid a:hover { background: var(--sl-color-gray-6); color: var(--sl-color-white); }
+.int-grid img { width: 1.5rem; height: 1.5rem; object-fit: contain; flex: none; }
+.int-grid .no-logo { width: 1.5rem; height: 1.5rem; flex: none; display: grid; place-items: center; border-radius: .375rem; background: var(--sl-color-gray-5); color: var(--sl-color-white); font-size: .75rem; }
+
+/* the card gallery's index */
+.card-grid { list-style: none; padding: 0; margin: 1.5rem 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 1rem; }
+.card-grid li { margin: 0; }
+.card-grid a { display: block; text-decoration: none; color: var(--sl-color-gray-1); font-size: .9375rem; }
+.card-grid a:hover { color: var(--sl-color-white); }
+.card-grid img { display: block; width: 100%; height: 9rem; object-fit: cover; object-position: top; border-radius: var(--radius); border: 1px solid var(--sl-color-hairline); margin-bottom: .375rem; background: var(--sl-color-gray-6); }
+
+/* the landing page: text at the left over the product, one action that leads */
+[data-has-hero] .hero { grid-template-columns: 1fr; padding-block: 2.5rem 1.5rem; gap: 1rem; text-align: start; }
+[data-has-hero] .hero .stack { align-items: flex-start; text-align: start; }
+[data-has-hero] .hero h1 { font-size: clamp(2.5rem, 6vw, 3.75rem); font-weight: 550; letter-spacing: -.02em; line-height: 1.05; }
+[data-has-hero] .hero .tagline { font-size: 1.125rem; color: var(--sl-color-gray-2); max-width: 40rem; }
+[data-has-hero] .hero .copy { max-width: none; }
+[data-has-hero] .hero .actions { justify-content: flex-start; }
+.sl-link-button.primary { background: var(--sl-color-accent); border-color: var(--sl-color-accent); color: #fff; }
+.sl-link-button { border-radius: .625rem; font-weight: 500; }
+
+@media (max-width: 40rem) {
+  .sl-markdown-content td:last-child { min-width: 13rem; }
+  .opts table { display: block; overflow: visible; }
+  .opts :is(tbody, tr, td) { display: block; }
+  .opts thead { display: none; }
+  .opts tr { padding-block: .625rem; border-bottom: 1px solid var(--sl-color-hairline); }
+  .sl-markdown-content .opts td { border: 0; padding: .0625rem 0; white-space: normal; min-width: 0; overflow-wrap: anywhere; }
+  .opts td:not(:first-child, :last-child) { display: inline; font-size: .8125rem; color: var(--sl-color-gray-3); }
+  .opts td:not(:first-child, :last-child)::after { content: "  "; white-space: pre; }
+  .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+  .card-grid img { height: 6.5rem; }
+}

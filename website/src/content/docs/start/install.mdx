@@ -1,0 +1,114 @@
+---
+title: Install
+description: Run Valet with Docker Compose, docker run, or from source.
+sidebar:
+  order: 1
+---
+
+Valet runs as one container. It needs two folders of yours: `config` for `config.yaml`, and `data` for everything it keeps.
+
+## Docker Compose
+
+Make a folder with this `docker-compose.yml`, which is `docker-compose.example.yml` from the repo without its comments.
+
+```yaml title="docker-compose.yml"
+services:
+  valet:
+    image: ghcr.io/ibrahimirfan/valet:latest
+    container_name: valet
+    restart: unless-stopped
+    environment: { TZ: America/Toronto }
+    env_file: .env
+    volumes:
+      - ./config:/config
+      - ./data:/app/data
+    ports:
+      - 127.0.0.1:7575:7575
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+```
+
+Then create the folders and an empty `.env`, and start it:
+
+```sh
+mkdir config data
+touch .env
+sudo chown -R 1000:1000 config data   # the container runs as the node user, uid 1000
+docker compose up -d
+```
+
+Open `http://localhost:7575`.
+
+On first start Valet writes a starter `config/config.yaml` and shows a getting-started card. If it can't write to that folder, it runs the starter from memory and the card says so.
+
+## docker run
+
+```sh
+docker run -d --name valet -p 127.0.0.1:7575:7575 \
+  -v ./config:/config -v ./data:/app/data --env-file .env \
+  ghcr.io/ibrahimirfan/valet:latest
+```
+
+This leaves out the hardening flags. Prefer Compose, or add `--read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true`.
+
+## Getting the image
+
+The README and the Compose file name `ghcr.io/ibrahimirfan/valet:latest`. The repo doesn't yet have a workflow that publishes it: that's still on the roadmap. If the pull fails, build the image yourself. The Dockerfile needs nothing but the repo.
+
+```sh
+git clone https://github.com/IbrahimIrfan/valet
+cd valet
+docker build -t local/valet:dev .
+```
+
+Then use `image: local/valet:dev` in your Compose file.
+
+## What the Compose file does
+
+| Line | Why |
+|---|---|
+| `127.0.0.1:7575:7575` | This machine only. Use `7575:7575` for your whole network, after reading [sign-in and network safety](/start/sign-in/). |
+| `./config:/config` | A folder, not the file, so edits show up live. Add `:ro` if the assistant should never save config changes. |
+| `./data:/app/data` | Wallpaper, icon cache, uploads, history, accounts and plugins. |
+| `env_file: .env` | Secrets that `config.yaml` refers to as `${NAME}`. The file has to exist, even if it's empty. |
+| `read_only`, `tmpfs` | The container's own filesystem can't be written. Only the two mounts and `/tmp` can. |
+| `cap_drop`, `no-new-privileges` | No Linux capabilities, and no way to gain any. |
+| `TZ` | The time zone for times the server writes. You can also set `timezone:` in `config.yaml`. |
+
+The image has no `node_modules`: the server is bundled into one folder of JavaScript. It has a health check on `/healthz`.
+
+## Environment variables
+
+| Variable | Default | What it does |
+|---|---|---|
+| `VALET_CONFIG` | `config.yaml`, or `/config/config.yaml` in Docker | The config file. |
+| `VALET_DATA` | `data`, or `/app/data` in Docker | Where Valet keeps its files. |
+| `PORT` | `7575` | The port it listens on. |
+| `HOST` | `0.0.0.0` | The address it listens on. |
+
+## Docker access
+
+Valet stays in its box. To show containers, the [`docker`](/integrations/docker/) integration reads through a read-only socket proxy. Never mount the Docker socket into Valet. The commented-out `valet-dockerproxy` service in `docker-compose.example.yml` is ready to use.
+
+For systemd services, the [`host`](/integrations/host/) integration talks to a small read-only agent, `agent/valet-agent.py`, which you run on the machine.
+
+## From source
+
+You need Node 22.18 or newer.
+
+```sh
+git clone https://github.com/IbrahimIrfan/valet
+cd valet
+npm install
+npm run build
+cp config.example.yaml config.yaml   # then edit it
+npm start
+```
+
+`npm start` reads `.env` if there is one.
+
+## Next
+
+[Write your first config](/start/first-config/).

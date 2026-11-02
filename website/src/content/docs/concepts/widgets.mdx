@@ -1,0 +1,66 @@
+---
+title: Widgets
+description: The key, the refresh, the states, and how to override a widget's title and look.
+sidebar:
+  order: 2
+---
+import Shot from '~/components/Shot.astro';
+import Row from '~/components/Row.astro';
+
+A widget is one live card from one integration. You place it by its key, `<instance>.<widget>`.
+
+```yaml
+layout:
+  - title: Watching
+    widgets: [plex.streams, plex.recent]
+```
+
+The key is `plex.streams` because this config calls its Tautulli instance `plex`, and Tautulli has a widget called `streams`. A widget you don't place isn't drawn and doesn't refresh on a timer.
+
+## Overriding one
+
+A widget can be a plain key, or an entry with its own settings. Only `widget` is needed.
+
+```yaml
+layout:
+  - title: Lately
+    widgets:
+      - { widget: plex.recent, size: tall, title: New on Plex, icon: film, header: false }
+      - { widget: dns.stats, size: small, tint: "#0a7d4f", opacity: 0.8, blur: 12 }
+      - { widget: drives.drives, size: wide, every: 5m }
+```
+
+| Option | What it does |
+|---|---|
+| `size` | `small`, `wide`, `medium`, `tall` or `large`. See [sizes](/concepts/sizes/). |
+| `every` | How often it refreshes while someone's looking: seconds, or `30s`, `5m`, `1h`. |
+| `title`, `icon` | Its name and icon. On a tile, its label and icon. |
+| `header` | `false` drops its title bar. `true` keeps it in a section that drops them. |
+| `tint`, `opacity`, `blur` | Its surface: a colour, how much of it shows, and the blur behind it. |
+| `background` | An image behind it: an `https://` URL, or a Valet path such as `/api/icon/rack`. |
+
+A file at `data/icons/rack.png` is served as `/api/icon/rack`.
+
+## States
+
+A card reports what's going on. These come from the integration, so not every card has every state.
+
+<Row>
+<Shot id="card/stats-warning-medium" label="Warning" alt="A stats card with a temperature in orange." />
+<Shot id="card/chart-paused-medium" label="A state you chose" alt="A Pi-hole chart with a banner saying blocking is paused, and a Resume button." />
+<Shot id="card/media-stalled-downloads-medium" label="Stalled" alt="A list of downloads, one marked stalled with a reason and a next step." />
+<Shot id="card/list-empty-medium" label="Nothing to show" alt="A list card saying nothing is downloading." />
+<Shot id="int/pihole/stats-down" label="Can't reach it" alt="A card with an error next to its title." />
+</Row>
+
+- **Can't reach it.** The card names the error. If it had data before, it keeps showing that and says `stale`.
+- **Empty.** Media, photo and chart cards with nothing in them give up their slot, so the page closes the gap. Other cards say so in a line.
+- **A banner** is a state you chose and shouldn't forget, such as paused blocking. It sits at the top of the card with the way out beside it.
+
+## Live things
+
+A card can announce something happening right now: a stream, a download, a robot cleaning. List those widgets in `island.activities` and the [island](/concepts/layout/#the-island) shows the live ones, most important first.
+
+## Valet's own widget
+
+`valet.activity` is built in and needs no integration. It's the log of what the assistant and the page did.

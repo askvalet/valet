@@ -1,0 +1,65 @@
+---
+title: Valet
+description: An open-source homepage for your homelab. One YAML file, self-hosted, with an optional assistant that reads freely and changes nothing without your approval.
+template: splash
+hero:
+  title: Talk to your homelab.
+  tagline: A homepage for the services you run. One YAML file, on your own hardware, under the MIT licence. The assistant is optional.
+  actions:
+    - text: Get started
+      link: /start/install/
+      icon: right-arrow
+    - text: All integrations
+      link: /integrations/
+      variant: minimal
+---
+import Shot from '~/components/Shot.astro';
+import Row from '~/components/Row.astro';
+
+<Shot id="scene/overview" full alt="The Valet demo overview: greeting, ask box, now playing, downloads and services over a dusk wallpaper." caption="The demo: real Valet, with a made-up homelab behind it." />
+
+## What it is
+
+Valet is one Node process that talks to your services and draws them as live cards: what's playing, what's downloading, what's down, which lights are on. You describe the page in `config.yaml`. Secrets stay in your environment, and the browser never sees them. It uses about 100 MB of RAM and has no database.
+
+It works with [186 integrations](/integrations/). If yours isn't one of them, [`api`](/integrations/api/) turns any JSON API into a card from YAML, with no code.
+
+## The assistant is optional
+
+Leave out the `assistant:` block and the page loses nothing. [Running with no AI](/assistant/no-ai/) is a supported way to use Valet, not a reduced one.
+
+If you add a model, local or hosted, it answers with the same cards the page uses.
+
+The security story is the valet key: the key that drives the car but can't open the boot. The assistant reads freely and changes nothing without your approval. Each tool is `read`, `write` or `control`, you set the [access level](/assistant/access/) per integration, and every `control` call stops and waits for you.
+
+<Row>
+<Shot id="scene/approval-card" label="A control tool waits for you" alt="An approval card asking whether to restart Mealie, with Not now and Restart buttons." />
+<Shot id="scene/approval-danger" label="Anything dangerous takes a press and hold" alt="An approval card asking to pause all downloads, with a hold button." />
+</Row>
+
+## Cards fit the space they get
+
+Every widget is one card, and every card works at five sizes. Small and wide show its headline. Medium, tall and large show the card. You pick the size in YAML. In chat the same card comes out denser. See [sizes](/concepts/sizes/) and the [card gallery](/cards/).
+
+<Shot id="scene/tab-media" full alt="The media tab: now playing, downloads, a shelf of recently added titles and a chart of the year." />
+
+## Your house, in three dimensions
+
+With [Home Assistant](/integrations/homeassistant/) and a robot vacuum's map, Valet draws a floor plan with each room's lights. The same stage draws your PC from [`rgb-control`](/integrations/rgb-control/). These load only on pages that use them.
+
+<Shot id="scene/house" full alt="A 3D floor plan of a house with lit rooms, and a list of rooms with their lights." />
+
+## It works on a phone
+
+The tabs move to the bottom and the cards stack.
+
+<Row>
+<Shot id="scene/phone" label="Overview" alt="The Valet overview on a phone." scale={0.5} />
+<Shot id="scene/phone-home" label="Home tab" alt="The home tab on a phone." scale={0.5} />
+</Row>
+
+## Next
+
+- [Install it with Docker](/start/install/).
+- Read the [threat model](/security/) first, if that's how you start.
+- See [every integration](/integrations/), each with its options and real screenshots.

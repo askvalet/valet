@@ -1,0 +1,101 @@
+---
+title: First config
+description: What the starter config does, how edits apply, and how to check the file.
+sidebar:
+  order: 2
+---
+import Shot from '~/components/Shot.astro';
+
+Everything lives in one file: `config/config.yaml` in Docker. A fresh install writes this one, which needs no keys.
+
+```yaml title="config/config.yaml"
+title: Home
+# greeting: Sam                   # "Good evening, Sam"
+welcome: true                     # the getting-started card. Delete this line when you're done with it.
+
+integrations:
+  news:
+    type: hackernews
+    limit: 6
+
+links:
+  Start:
+    - { name: Valet docs, url: https://example.com/docs }
+
+layout:
+  - title: Start
+    widgets: [links.start, news.stories]
+```
+
+There are three parts to read.
+
+- `integrations` lists what you run. Each block has a name you choose (`news`) and a `type`.
+- `links` is bookmarks. Each group becomes a widget, here `links.start`.
+- `layout` says what's on the page. Each entry is a section. A widget is `<name>.<widget>`, so `news.stories` is the `stories` widget of the integration you called `news`.
+
+## Edits apply live
+
+Save the file and open pages update. A broken edit is reported in the log and the last good config keeps running, so a typo won't take the page down.
+
+Two things are read once, and need a restart: `auth` and `plugins`. Set `reload: false` to stop watching the file.
+
+## Check the file
+
+```sh
+docker exec valet node dist/server.js config check    # every problem, or a tick
+docker exec valet node dist/server.js config print    # what Valet made of it, secrets redacted
+```
+
+`config check` lists unknown types, unknown options and widget keys that don't exist. For a widget key it also lists what that integration does have:
+
+```text
+✗ layout: no widget "dns.status" (dns has: stats)
+```
+
+An unknown key anywhere in the core config is an error, and Valet names the closest match. The [integration pages](/integrations/) list every widget key.
+
+## Autocomplete in your editor
+
+```sh
+docker exec valet node dist/server.js config schema > config/valet.schema.json
+```
+
+This prints a JSON schema of the whole file, every integration included. Editors with the YAML language server pick it up from a comment on the first line:
+
+```yaml
+# yaml-language-server: $schema=valet.schema.json
+```
+
+## Secrets
+
+Secrets don't go in `config.yaml`. Write `${NAME}` and put the value in `.env`.
+
+```yaml
+integrations:
+  dns:
+    type: pihole
+    url: http://pihole
+    password: ${PIHOLE_PASSWORD}
+```
+
+```sh title=".env"
+PIHOLE_PASSWORD=an-app-password
+```
+
+If a variable isn't set, Valet stops at startup and says which one. `.env.example` in the repo says where to find each app's key. [Secrets](/security/secrets/) covers Docker secrets and files.
+
+## The look
+
+Everything about the look is optional. A config that says nothing gets the default look.
+
+```yaml
+appearance:
+  wallpaper: /app/data/wallpaper.jpg   # a file, an image URL, a colour or a gradient
+  dim: 0.3
+```
+
+Any wallpaper turns the cards to frosted glass. The [configuration reference](/reference/configuration/#appearance) has the rest: colours, fonts, corners, density, your own CSS.
+
+## Next
+
+[Add a service](/start/add-a-service/).

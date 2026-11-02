@@ -1,0 +1,115 @@
+---
+title: Sign-in and network safety
+description: Auth modes, why Valet starts read-only, allowed hosts, and reverse proxies.
+sidebar:
+  order: 4
+---
+
+Valet holds keys to your services. By default there's no sign-in, and so it's read-only: a page anyone can reach must not be able to change anything.
+
+## The default: no sign-in, read-only
+
+With `auth.mode: none`, and that's the default, the page shows everything but can't act. There are no buttons, and the assistant gets no tools that add or change things. Requests to run an action get a 403 that says why.
+
+There is no sign-in on the data, so anyone who can reach the page can read it. Keep it on a private network, or use one of the modes below.
+
+The Compose file publishes on `127.0.0.1` for this reason.
+
+To use the controls, either turn on sign-in, or say the network itself is the lock:
+
+```yaml
+auth: { mode: none, trustNetwork: true }
+```
+
+Use `trustNetwork` only when nothing but your VPN, your tailnet or a sign-in proxy can reach Valet. Anyone who can reach the page can use its controls.
+
+## The modes
+
+| Mode | Who it's for |
+|---|---|
+| `none` | A private page. Read-only unless `trustNetwork` is true. |
+| `local` | Built-in accounts, kept in `data/users.json`. |
+| `proxy` | You already have Authelia, Authentik or Tailscale Serve in front. |
+| `oidc` | Sign in with an OpenID Connect provider. |
+
+All of these are read once. Restart Valet after changing `auth`.
+
+## Local accounts
+
+```yaml
+auth: { mode: local }
+```
+
+On a fresh install, Valet prints a one-time setup code to its log. The first account has to present it, so whoever reaches the page first can't claim it.
+
+```sh
+docker logs valet                                  # find the setup code
+docker exec -it valet node dist/server.js user add sam   # or skip the code, and do it here
+```
+
+The same command takes `passwd`, `remove` and `signout`. `signout` ends that person's sessions everywhere.
+
+Passwords are hashed with scrypt. After five failed sign-ins from one address, each further try waits longer, up to 15 minutes.
+
+"Keep me signed in" lasts `auth.sessionDays`, 30 by default. Without it, a session lasts a day.
+
+:::caution[Plain http]
+Session cookies are `Secure` by default, and a browser won't send those over plain http to anything but localhost. If you serve Valet over http on your network, set `auth.secureCookie: false`, or sign-in will appear to do nothing.
+:::
+
+## Behind a sign-in proxy
+
+```yaml
+auth:
+  mode: proxy
+  proxy:
+    header: Remote-User      # the header your proxy puts the user in
+    trusted: [10.0.0.5]      # the proxy's address, as Valet sees it
+```
+
+Valet believes the header only from the addresses in `trusted`, matched exactly. There are no ranges, so give the proxy a fixed address. In Docker, that's its address on the network it shares with Valet.
+
+The [Authelia recipe](/recipes/#sign-in-with-authelia) has a working Caddy block.
+
+## OpenID Connect
+
+```yaml
+auth:
+  mode: oidc
+  oidc:
+    issuer: https://auth.example.com
+    clientId: valet
+    clientSecret: ${OIDC_SECRET}
+    name: Example SSO         # on the sign-in button
+    allow: [sam, alex]        # empty: anyone the provider lets through
+```
+
+Register `https://<your-valet>/api/auth/oidc/callback` as the redirect URL at your provider. The issuer must serve `/.well-known/openid-configuration`.
+
+`claim` picks which claim is the person's name, `preferred_username` by default. `allow` takes names or emails. Set `redirectUrl` if Valet can't work out its own address behind an unusual proxy.
+
+## Allowed hosts
+
+Valet answers only to the names it's meant to have. `localhost` and IP addresses always work. Any other name needs listing, or it gets a 421 with a message that says what to add.
+
+```yaml
+allowedHosts: [valet.example.com, "*.home.example.com"]
+```
+
+This stops DNS rebinding: a web page elsewhere pointing its own domain at your Valet, and scripting your browser against it. [Hosts](/security/hosts/) has the detail. `allowedHosts` reloads live.
+
+## A reverse proxy
+
+Any reverse proxy works. Keep the port on `127.0.0.1` if the proxy is on the same machine, add the public name to `allowedHosts`, and put `X-Forwarded-For` on the request. It's only believed from the addresses in `auth.proxy.trusted`, where it's used to throttle sign-in by the real client.
+
+Valet streams live updates over server-sent events, so don't buffer `/api/events`.
+
+```text title="Caddyfile"
+valet.example.com {
+  reverse_proxy valet:7575
+}
+```
+
+## Next
+
+[The threat model](/security/) says what all this does and doesn't protect against.

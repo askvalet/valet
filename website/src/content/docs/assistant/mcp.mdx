@@ -1,0 +1,62 @@
+---
+title: MCP
+description: Point Valet at an MCP server and the assistant can use its tools, under the same rules.
+sidebar: { order: 5 }
+---
+
+The assistant can use tools from any MCP server. Add it under `mcp:`.
+
+```yaml title="config.yaml"
+mcp:
+  homeassistant:
+    url: http://homeassistant:8123/api/mcp
+    headers: { Authorization: "Bearer ${HA_TOKEN}" }
+    access: read
+    name: Home Assistant
+```
+
+The key, here `homeassistant`, names the server. Its tools show up to the model as `mcp_<server>__<tool>`. Valet connects on first use and lists the tools again every 10 minutes, so a server that's down at start-up blocks nothing. A failed connection is retried a minute later.
+
+Every result goes through the [redactor](/security/secrets/), since headers can hold keys.
+
+## Access
+
+MCP access is simpler than integration access, because an MCP tool doesn't declare `read`, `write` or `control`. All it can do is mark itself read-only.
+
+| `access` | What's offered |
+|---|---|
+| `none` | Nothing. |
+| `read` | Only tools marked read-only. |
+| `write` | The same as `read`. There's no write level for MCP tools. |
+| `control` | Every tool. Anything not read-only asks first. |
+
+`read` is the default.
+
+A tool counts as read-only if the server sets `readOnlyHint`, or if you list it under `readOnly`:
+
+```yaml
+mcp:
+  wiki:
+    url: https://wiki.example.com/mcp
+    readOnly: [search, get_page]
+```
+
+## What to watch
+
+- **`readOnlyHint` is the server's word.** Valet can't check it. A server that wrongly marks a tool read-only gets it run with no approval. With a server you don't trust, leave it at `read` and don't rely on the hint: list nothing, and check what its tools really do.
+- **Read tools can return anything.** An MCP result is untrusted text, like a document or a feed.
+- **The approval card shows the input.** Valet doesn't know what an MCP tool will do, so the card can't say it in plain words.
+- **A [read-only page](/start/sign-in/) offers only read-only tools**, even with `access: control`.
+- **`assistant.access` doesn't apply.** MCP servers have their own `access` key.
+- **Only tools that asked for approval are logged.** Read-only MCP calls aren't in the activity log.
+
+## Options
+
+| Option | Default | What it does |
+|---|---|---|
+| `url` | required | The server's address. |
+| `transport` | `http` | `http` or `sse`. |
+| `headers` | none | Sent with each request. Use `${NAME}` for secrets. |
+| `access` | `read` | `none`, `read`, `write` or `control`. |
+| `readOnly` | `[]` | Tool names to treat as read-only. |
+| `name` | none | A friendly name, shown to the model. |

@@ -1,0 +1,89 @@
+---
+title: Recap slides
+description: How an integration joins the year in review.
+sidebar: { order: 6 }
+---
+
+The [year in review](/concepts/recap/) is built from what each integration offers. Return `recap` beside `widgets`. It gets the period, and answers with slides.
+
+```js
+async recap({ year, from, to }) {
+  const n = await countThings(from, to);
+  if (!n) return [];                     // nothing to say? say nothing
+  return [{
+    id: 'things',
+    kicker: 'You made',
+    value: n.toLocaleString('en'),
+    unit: 'things',
+    scope: 'year',
+    line: 'One sentence on why that matters.',
+    stat: 'Things made',
+    score: 60,
+    trait: { name: 'The Maker', line: 'Who this makes them.', strength: 0.6 },
+  }];
+}
+```
+
+`from` and `to` are milliseconds. `to` stops at now, so a year in progress is covered up to today. A recap that takes longer than 25 seconds or throws is left out, and the rest go on.
+
+No model writes any of this. A paper full of real numbers can't have one inventing a few.
+
+## Rules
+
+- **Only real numbers.** If your service can't really know something, leave it out.
+- **Say what it covers.** `scope` is `'year'`, or what the number covers: `'All time'`, `'Last 30 days'`. Left out, it's `'Right now'`. A slide that doesn't say doesn't get to claim the year.
+- **An empty value is dropped.**
+- **Mark `private: true` if it names people.** It stays off the shareable card unless chosen.
+
+## tally
+
+Most services can only say a count. In a built-in `service()`, `tally(count, slide)` makes the usual slide from one number, and nothing at all when it's zero.
+
+```ts
+import { service, tally } from '../../server/service.ts';
+
+recap: d => tally(d.stats.total, { id: 'code', theme: 'code', icon: 'file', kicker: 'Your own forge holds', unit: 'repositories', stat: 'Repositories', line: 'On hardware you run.' }),
+```
+
+It sets `value` from the number, `score: 55` and `scope: 'Right now'`. You can override the scope.
+
+`tally` isn't in the plugin toolkit. In a plugin, write the slide yourself:
+
+```js
+recap: d => d.stats.total > 0 ? [{ id: 'code', theme: 'code', value: d.stats.total.toLocaleString('en'), score: 55, scope: 'Right now', kicker: 'Your own forge holds', unit: 'repositories', stat: 'Repositories', line: 'On hardware you run.' }] : [],
+```
+
+A `service()` gets its app icon on the slide without asking, unless the slide brings its own art.
+
+## How slides are chosen
+
+Valet keeps up to 3 slides per theme from each service and 4 per theme overall, sorted by `score`. The short story is up to eight slides, the richest first. A slide with a chart, artwork or a trait beats a bare count, and neighbours never share a theme. The rest wait behind "Explore everything".
+
+## Slide fields
+
+| Field | What it does |
+|---|---|
+| `id` | Required. |
+| `kicker` | Required. The small line above: "You watched". |
+| `value` | Required. The big one. A plain number counts up. |
+| `line` | Required. A sentence on why it's interesting. |
+| `unit` | Beside the value. |
+| `scope` | `'year'`, or what it covers. |
+| `score` | Higher comes earlier. 50 by default. |
+| `theme` | One of `media`, `music`, `reading`, `food`, `home`, `network`, `reach`, `security`, `files`, `ops`, `code`, `ai`, `hardware`, `games`. |
+| `stat` | Its label on the shareable card, if it belongs there. |
+| `private` | It names people. |
+| `trait` | `{ name, line, strength }`. Who this makes you, 0 to 1. The strongest across all services wins. |
+| `icon` | A small icon. |
+| `logo` | The app's icon, large, tinting the slide with its colours. |
+| `items` | A top five: `{ name, value, image }`. |
+| `bars` | A small chart of what the number is made of: `{ label, value, show }`. |
+| `chart` | Progress: `{ pct, from, to, mark }`. |
+| `race` | The top titles overtaking each other. |
+| `backdrop` | Wide artwork, full bleed. |
+| `wall` | The drifting wall of posters behind it. |
+| `art` | Posters to add to that wall. |
+| `show` | A wall of this slide's own pictures: `{ images, shape, soft }`. |
+| `icons` | A wall of app icons. |
+| `visual` | A live 3D model: `{ kind, data }`, where `kind` is `home` or `pc-case`. |
+| `facts` | Raw numbers, so slides can be written across services. |

@@ -1,0 +1,91 @@
+---
+title: Check and scaffold
+description: new-integration writes a starting point. check-integration proves it works, with no service running.
+sidebar: { order: 5 }
+---
+
+Valet has a few commands for this. In Docker, run them through `docker exec valet`. From source, run them from the repo after `npm run build`.
+
+```sh
+node dist/server.js new-integration <name>
+node dist/server.js new-integration <name> --full
+node dist/server.js check-integration <file>
+node dist/server.js config check
+node dist/server.js config print
+node dist/server.js config schema
+```
+
+## new-integration
+
+```sh
+docker exec valet node dist/server.js new-integration my-service
+```
+
+This writes `data/integrations/my-service.mjs`, a short `service()` that passes its own check. The name takes lowercase letters, digits and dashes, and an existing file is never overwritten.
+
+`--full` writes the long form instead: a widget with a tile and a button, an action, a read tool and a control tool, in `my-service.mjs`, plus its own visual in `my-service.web.js`. It's commented line by line.
+
+The file's first lines show the config block. Add that, put `my-service.status` in the layout, and restart.
+
+## check-integration
+
+```sh
+docker exec valet node dist/server.js check-integration data/integrations/my-service.mjs
+```
+
+```text
+✓ Speedbox: card, tile, assistant tool and failure handling all good
+```
+
+This runs your `service()` against the `sample` it carries, the same way Valet's own tests run every built-in. Nothing touches the real service.
+
+It checks that:
+
+- The config accepts the sample.
+- The widget can read the sample.
+- The card is valid.
+- The card has a headline for small tiles.
+- Each `expect` value lands where you said.
+- No stat comes up empty.
+- `expect` exists, so a test proves the numbers are in the right place.
+- The recap says something, with no `undefined` or `NaN`, if there is one.
+- The tool only reads.
+- An answer of 500 fails, rather than reporting success.
+- That failure doesn't show the key.
+
+It exits non-zero if anything's wrong, so it works in a script.
+
+Integrations written with `defineIntegration` have no sample, so it says so and skips them. Test those with `checkCard`.
+
+## Testing against the real thing
+
+A sample proves your code reads that answer. It can't prove the service still answers that way.
+
+```sh
+npm run test:live       # every widget in your config.yaml, against your services
+npm run test:services   # service() types against your real services
+```
+
+Those are from a source checkout. They use your `.env`.
+
+## In the repo
+
+`npm test` validates every card sample, renders each in every size, and runs every `service()` through the same check. `npm run check` is the type check. Integration tests use made-up data only. Never commit a recorded response from a real service: they carry personal data.
+
+## Checking a config
+
+```sh
+docker exec valet node dist/server.js config check
+```
+
+```text
+✓ /config/config.yaml: 12 integrations, 18 widgets placed, assistant on
+```
+
+`config check` names every problem, and exits non-zero if there are any. An unknown key names the closest match. `config print` shows what Valet made of the file, with secrets redacted.
+
+`config schema` prints the whole config as JSON schema, including every integration's options. Editors can use it. Save it as `valet.schema.json`, and put this at the top of your config:
+
+```yaml
+# yaml-language-server: $schema=./valet.schema.json
+```

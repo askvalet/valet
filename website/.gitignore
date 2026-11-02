@@ -1,0 +1,9 @@
+# everything generated: `npm run all` makes it again
+.cache
+.astro
+dist
+public/shots
+src/content/docs/integrations/
+src/content/docs/cards/
+src/content/docs/reference/configuration.mdx
+src/generated

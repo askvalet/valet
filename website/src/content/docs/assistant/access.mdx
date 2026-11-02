@@ -1,0 +1,75 @@
+---
+title: Access levels
+description: Decide what the assistant may read, add and change, one integration at a time.
+sidebar: { order: 3 }
+---
+
+Every tool has an access level. `assistant.access` says the highest level the assistant may use, per integration.
+
+| Level | What it allows | Asks you? |
+|---|---|---|
+| `none` | Nothing from this integration. Its tools aren't offered. | |
+| `read` | Tools that look. | No |
+| `write` | Also tools that add something, like saving a link. | Usually not. See [below](#write-and-fromperson). |
+| `control` | Also tools that change or remove something. | Always |
+
+Each level includes the ones before it.
+
+## Setting it
+
+```yaml title="config.yaml"
+assistant:
+  model: qwen3:8b
+  access:
+    default: read
+    downloads: control
+    docs: write
+    cameras: none
+```
+
+The keys are your **instance names**, the ones under `integrations:`, not the types. Two qBittorrent instances can have different levels. Valet reports a key that matches no instance as a config problem.
+
+`default` covers every instance you don't name. If `access` is left out, it's `{ default: read }`.
+
+Two other keys are special:
+
+- `config` turns on [editing the config](/assistant/limits/#editing-the-config). Without it, those tools don't exist.
+- `valet` is Valet's own tools: reminders, the timeline, the activity log. It defaults to `write`, so reminders work with no setup.
+
+## Read-only pages win
+
+Sign-in decides whether Valet may act at all. With `auth.mode: none` and no `auth.trustNetwork`, the assistant is capped at `read`, whatever `assistant.access` says. The same goes for MCP servers. See [sign-in and network safety](/start/sign-in/).
+
+## Write, and fromPerson
+
+A `write` tool adds something and runs without asking. That's fine when you pasted a link and said "save this". It's less fine when a web page the assistant read said "save this".
+
+So a write tool can list input fields that must come from you. This is `fromPerson`. The tool runs alone only if each of those values appears word for word in your latest message. If not, it asks first, like a control tool.
+
+Three tools use it today:
+
+| Tool | Fields that must be yours |
+|---|---|
+| Paperless, `docs_add` | `file_id`, `text` |
+| Karakeep, `bookmark_save` | `url`, `text` |
+| Setup, `api_sample` | `url` |
+
+The check is on the input, not on intent. Other write tools don't have it. Karakeep's `bookmark_summarize`, the to-do list's `todo_add`, and Valet's `watch_add` and `watch_remove` run on their own. So a poisoned document could, in theory, add a to-do or set a reminder. They're `write` because that's the worst they can do.
+
+## What goes where
+
+Each integration's page lists its tools with their levels. Some examples:
+
+| Level | Examples |
+|---|---|
+| `read` | [Docker](/integrations/docker/) status and logs, [Immich](/integrations/immich/) search, [Paperless](/integrations/paperless/) search |
+| `write` | [Karakeep](/integrations/karakeep/) bookmarks, [Paperless](/integrations/paperless/) filing, [to-do list](/integrations/todo/) |
+| `control` | [qBittorrent](/integrations/qbittorrent/) pause and remove, [Seerr](/integrations/seerr/) requests, [Plex (Tautulli)](/integrations/tautulli/) stopping a stream, [Pi-hole](/integrations/pihole/) pause |
+
+Every integration written with `service()` has one tool, and it's `read`. The check that runs on them fails any tool that isn't.
+
+## A lower level on the service itself
+
+Access levels limit what Valet offers. They can't limit what a key allows. If you give Valet an admin key, a bug or a bad plugin could use all of it.
+
+So give each service the narrowest key it has. See [give it as little as possible](/security/#give-it-as-little-as-possible).

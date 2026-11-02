@@ -1,0 +1,155 @@
+---
+title: The full form, defineIntegration
+description: Widgets, actions, tools and images in one file.
+sidebar: { order: 3 }
+---
+
+Use this when `service()` isn't enough: several widgets, buttons, or tools that change things.
+
+An integration is one object. `create` gets the checked config and a context, and returns what the integration offers.
+
+```js title="data/integrations/shelf-light.mjs"
+export default ({ z, defineIntegration }) => defineIntegration({
+  type: 'shelf-light',
+  name: 'Shelf light',
+  config: z.object({ url: z.string().url(), token: z.string() }).strict(),
+  create(cfg, ctx) {
+    const headers = { Authorization: `Bearer ${cfg.token}` };
+    const state = () => ctx.http(`${cfg.url}/state`, { headers });
+    const set = on => ctx.http(`${cfg.url}/state`, { method: 'POST', headers, body: JSON.stringify({ on }), as: 'text' });
+    return {
+      widgets: {
+        light: {
+          title: 'Shelf light', interval: 30_000,
+          async fetch() {
+            const s = await state();
+            return { type: 'controls', title: 'Shelf light', icon: 'bulb',
+              items: [{ id: 'power', label: 'Power', kind: 'toggle', value: s.on, action: 'power' }],
+              summary: { label: 'Shelf light', icon: 'bulb', value: s.on ? 'On' : 'Off' } };
+          },
+        },
+      },
+      actions: {
+        power: { description: 'Turn the shelf light on or off', input: z.object({ value: z.boolean() }),
+          run: ({ value }) => set(value).then(() => ({ done: value ? 'Turned the shelf light on' : 'Turned the shelf light off' })) },
+      },
+      tools: {
+        light_status: {
+          label: 'Checked the shelf light', access: 'read', input: z.object({}),
+          description: 'Whether the shelf light is on.',
+          async run() { const s = await state(); return { data: s }; },
+        },
+        light_set: {
+          label: 'Changed the shelf light', access: 'control', input: z.object({ on: z.boolean() }),
+          description: 'Turn the shelf light on or off.',
+          confirm: ({ on }) => ({ title: `Turn the shelf light ${on ? 'on' : 'off'}?`, icon: 'bulb', verb: on ? 'Turn on' : 'Turn off' }),
+          async run({ on }) { await set(on); return { data: { on } }; },
+        },
+      },
+    };
+  },
+});
+```
+
+As a built-in, it's the same with `import { z } from 'zod'` and `import { defineIntegration } from '../server/core.ts'`, and a line in `src/integrations/index.ts`.
+
+## The parts
+
+| Field | What it does |
+|---|---|
+| `type` | The `type:` in `config.yaml`. |
+| `name` | Its name, shown to the assistant and in logs. |
+| `config` | A zod schema. Valet checks the block against it and reports errors with the path. |
+| `create(cfg, ctx)` | Returns the instance below. |
+
+The instance:
+
+| Field | What it does |
+|---|---|
+| `widgets` | Named cards for the page. Required, even if it's `{}`. |
+| `actions` | What the page's controls and buttons can do. |
+| `tools` | What the assistant can use. |
+| `image(ref, range)` | Serves pictures. See [below](#images). |
+| `recap(range)` | [Slides](/build/recap/) for the year in review. |
+
+## Widgets
+
+A widget has a `title`, an optional `interval` in milliseconds, and `fetch()`, which returns a [card](/cards/).
+
+- `interval` is how often it refreshes while someone's looking. 10 seconds by default.
+- A widget not in the layout is never polled.
+- Throw with a clear message when it fails: `throw new Error('qBittorrent login failed')`. It shows on the card.
+- Give every card a `summary`, so it works at the small size, in the menubar and as a tile. The layout chooses the size, not the integration.
+- Set `activity` on a card only while something's live, and the [island](/concepts/cards/) shows it.
+
+## Actions
+
+An action has a `description`, an `input` schema and `run(args)`. A card names it from a `controls` item, or from `buttons`.
+
+Valet checks the input, runs the action, and refreshes that integration's widgets. If the page is [read-only](/start/sign-in/), the action is refused.
+
+An action may return `{ done: 'Archived a saved link' }`. That's what the activity log says it did, in place of the integration and action name.
+
+## Tools
+
+| Field | Required | What it does |
+|---|---|---|
+| `description` | yes | Written for the model: what it returns, when to use it. |
+| `access` | yes | `read`, `write` or `control`. See [access levels](/assistant/access/). Pick the narrowest. |
+| `input` | yes | A zod schema. |
+| `run(args)` | yes | Returns `{ data, card }`. `data` goes to the model. `card` is what the person sees. |
+| `label` | | What it did, past tense, for its chip in chat: "Searched documents". |
+| `followUps` | | A couple of next questions to offer. |
+| `find` | | The input field that takes search words. The tool then joins `search_everything`. |
+| `live` | | Its card stays current in chat. Only for cheap, look-only tools whose answer changes by itself. |
+| `confirm(input)` | | What the approval card says. See [confirm words](/build/confirm/). |
+| `undo` | | The tool that reverses this one, given the same input. |
+| `fromPerson` | | For `write` tools: fields that must come word for word from the person's message. |
+
+Keep `data` small, because the model's context is limited. Summarise, and don't return the raw API response.
+
+Choosing the level:
+
+- `read` only looks.
+- `write` adds something the person asked for. Use `fromPerson` for anything that could come from what the assistant read.
+- `control` changes or removes something. Every call asks first.
+
+## Context
+
+`create` gets `ctx`:
+
+| Field | What it does |
+|---|---|
+| `ctx.id` | The instance's key in `config.yaml`. |
+| `ctx.format` | The config's `format:`, for a service that can answer in the right units. |
+| `ctx.http(url, init)` | Fetch with a timeout (8 seconds by default) and a readable error. Parses JSON. Takes `as: 'text'` or `as: 'response'`, `timeout`, and `insecure` for a self-signed certificate. |
+| `ctx.log(...)` | Logs with the instance's name. |
+| `ctx.image(ref)` | The URL for a picture from your `image()`. |
+| `ctx.upload(id)` | A file the person attached in chat. |
+| `ctx.session(login)` | One sign-in shared by parallel calls. `.get()` for the token, `.reset()` after a 401. |
+
+## Images
+
+Put `ctx.image(ref)` in a card, and fetch it in `image()`. The browser never gets the key.
+
+```js
+image(ref) {
+  if (!/^\d+$/.test(ref)) throw new Error('bad image ref');
+  return ctx.http(`${cfg.url}/covers/${ref}.jpg`, { as: 'response', headers });
+},
+```
+
+- **Validate `ref` first.** It comes from the browser. Accept only the shape you expect, and never treat it as an address.
+- Return a `Response`. Only pictures and MP4 or WebM video get through. See [the image proxy](/security/image-proxy/).
+- A picture that changes needs `Cache-Control: no-store` on the response, or the browser keeps it for a day.
+- For video, `image(ref, range)` gets the browser's `Range` header. Phones won't play a video from a server that ignores it.
+
+## Formatting
+
+`fmt` keeps numbers the same everywhere: `fmt.bytes`, `fmt.rate`, `fmt.speed`, `fmt.duration`, `fmt.pct`, `fmt.day`, `fmt.time` and `fmt.relativeDay`.
+
+## Rules of thumb
+
+- One request per refresh if you can. If several widgets share data, fetch once and cache briefly.
+- Don't invent card types. If the catalog lacks something, open an issue, because a new type works for everyone.
+- Icons in cards are names, such as `cpu`, `disk`, `film`, or an image URL.

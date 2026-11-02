@@ -1,0 +1,102 @@
+---
+title: Models
+description: Use any OpenAI-compatible server, Anthropic, or a local model through Ollama.
+sidebar: { order: 2 }
+---
+
+The `assistant` block picks the model. Leave the block out and there's no assistant.
+
+Two providers are built in: `openai-compatible`, the default, and `anthropic`. The first covers anything that speaks the OpenAI chat API: Ollama, llama.cpp, vLLM, LM Studio, OpenRouter, OpenAI.
+
+The model needs to support tool calling. Without it, the assistant can't read anything.
+
+## Local, through Ollama
+
+```yaml title="config.yaml"
+assistant:
+  name: Valet
+  baseURL: http://ollama:11434/v1
+  model: qwen3:8b
+```
+
+If you leave out `baseURL`, it defaults to `http://localhost:11434/v1`. Inside the container, `localhost` is the container itself. So set `baseURL` to wherever Ollama really is, such as the Compose service name.
+
+Nothing leaves your network with this setup. The model runs on your hardware, and Valet talks to it directly.
+
+## Other OpenAI-compatible servers
+
+```yaml title="config.yaml"
+assistant:
+  baseURL: http://llama:8080/v1
+  apiKey: ${LLAMA_KEY}        # only if the server wants one
+  model: local-model
+```
+
+A hosted one looks the same, with its own `baseURL`, `apiKey` and `model`.
+
+## Anthropic
+
+```yaml title="config.yaml"
+assistant:
+  provider: anthropic
+  apiKey: ${ANTHROPIC_API_KEY}
+  model: your-model-name
+```
+
+`baseURL` is optional here.
+
+## What a hosted model sees
+
+A hosted model sees what the tools return: card data, document text if you let it read documents, and logs if you let it read logs. Keys don't go to it. Valet [redacts](/security/secrets/) them first, but it can only redact values that came from a `${NAME}` in your config. Everything else in a log or a document goes as it is.
+
+If that matters to you, use a local model, or set sensitive integrations to `none`.
+
+## Options
+
+| Option | Default | What it does |
+|---|---|---|
+| `provider` | `openai-compatible` | `openai-compatible` or `anthropic`. |
+| `baseURL` | `http://localhost:11434/v1` for `openai-compatible` | Where the server is. |
+| `apiKey` | none | Use `${NAME}`. |
+| `model` | required | The model's name on that server. |
+| `name` | `Assistant` | What it's called on the page. |
+| `instructions` | none | Extra text for the system prompt. |
+| `access` | `{ default: read }` | What it may use. See [access levels](/assistant/access/). |
+| `maxSteps` | `6` | Tool rounds per answer, 1 to 20. The last step is kept for answering. |
+| `background` | see below | What it does on its own. |
+| `suggestions` | four questions | Offered on an empty chat and in the palette. |
+
+The chat window has its own options under [`chat`](/reference/configuration/#chat). Only the last 24 messages go to the model, and tool results from older turns shrink to a preview, so a long chat doesn't get slower with every turn.
+
+## Background use
+
+Some features call the model without being asked. They get no tools, so they can only say something.
+
+| Option | Default | What it does |
+|---|---|---|
+| `background.watch` | `true` | When two or more things are wrong at once, asks whether one cause explains them. |
+| `background.brief` | `true` | The one line under the greeting, rewritten at most every half hour. |
+| `background.suggest` | `true` | Questions worth asking right now. |
+| `background.perDay` | `100` | The most background calls a day, from 1 to 500. |
+
+Calls go one at a time, so a single GPU isn't asked to do two things at once. Rules decide when a call is worth making: one problem on its own never reaches the model. To stop them all, set the first three to `false`.
+
+## Handing the chat to another agent
+
+`assistant.agent` sends the chat to another agent with an OpenAI-compatible API, such as Hermes.
+
+```yaml title="config.yaml"
+assistant:
+  model: qwen3:8b
+  agent:
+    name: Hermes
+    baseURL: http://hermes:8000/v1
+    apiKey: ${HERMES_KEY}
+    model: hermes
+```
+
+:::caution[Access rules don't apply]
+The agent gets the conversation and nothing else from Valet: no tools, no keys, no data. But it runs its own tools, and Valet can't see or stop them. Access levels and approvals protect Valet's assistant, not this one.
+:::
+
+The chat says so at the top. Answers are plain text, with no cards. A [read-only page](/start/sign-in/) stays on Valet's own assistant, because the agent can act and that page may only look.

@@ -1,0 +1,76 @@
+---
+title: Approvals and the valet key
+description: How the assistant asks before it acts, what the approval card shows, and what gets written down.
+sidebar: { order: 4 }
+---
+import Shot from '~/components/Shot.astro';
+import Row from '~/components/Row.astro';
+
+A `control` tool doesn't run when the model calls it. The call stops, and you get an approval card. The tool runs only after you press the button.
+
+This happens in Valet's server, not in the prompt. The model has no way to approve its own call.
+
+<Shot id="scene/approval" alt="The chat with a card asking to restart Mealie, with Not now and Restart buttons" caption="Asked to restart Mealie, the assistant stops and waits." full />
+
+## The approval card
+
+The card says what's about to happen, in plain words. The words come from the tool, not from the model. A tool's `confirm` function can look things up, so the card can show what the service says rather than what the model typed.
+
+<Row>
+  <Shot id="scene/approval-card" label="An ordinary approval" alt="Approval card: restart Mealie, it stopped at 3:12 AM" />
+</Row>
+
+**Not now** refuses, and the assistant is told so. The other button names the action: Restart, Pause, Request. If a tool has no words of its own, the card says "Allow this:" and shows its input.
+
+A slow light moves around the card's edge until you answer, so it's hard to miss. It's blue for ordinary actions and warm for dangerous ones.
+
+## Hold to confirm
+
+Some actions are hard to take back, like stopping someone's stream. Those tools set `danger`. The button turns red and asks for more than a click.
+
+<Row>
+  <Shot id="scene/approval-danger" label="At rest" alt="A red approval button reading hold to pause" />
+  <Shot id="scene/approval-holding" label="While held" alt="The same button filling as it is held" />
+</Row>
+
+Hold it for 0.8 seconds, or press it quickly and then press again. Leaving the button cancels the first press. With reduced motion on, the button says "Press twice" and that's the only way. A screen reader's press counts as the first of two.
+
+## Several changes, one approval
+
+"Clear some space" might take three steps. The built-in `plan` tool lists them, and you approve the list once.
+
+- You see every step and why, in order, before any of them runs.
+- Each step must be a tool at a level this instance's access allows, with input that passes its own check. If one doesn't, nothing runs.
+- It stops at the first failure and tells you what didn't run.
+- Plans can't include the tools that edit the config.
+
+An approved plan runs all its steps, including control tools, with that one approval. Read the list.
+
+## After you approve
+
+<Shot id="scene/after-approval" alt="The chat after approval, showing Restarted a service and a short answer" caption="The step shows in the chat, and the answer says what happened." full />
+
+If the tool fails, the chat says so, and the failure goes in the log.
+
+## The activity log
+
+Everything that isn't a read goes in `data/activity.json`: who asked, how, what it did, and whether it worked. Secrets are redacted before it's stored. It keeps the last 2,000 entries.
+
+That covers changes from chat, plans, the page's own buttons, and pins. For MCP, only tools that needed approval are logged.
+
+Put `valet.activity` in your layout to see it on the page, or ask "what did you change?". The `activity_log` tool answers that, so you can check what it did by asking.
+
+## Undo
+
+A tool can name the tool that reverses it. qBittorrent's `pause_downloads` and `resume_downloads` name each other. When one has run, the activity card offers an **Undo** button for the latest entry that can be undone.
+
+Most tools have no undo. Restarting a service or stopping a stream can't be taken back, so check the card before you approve.
+
+## What approval doesn't do
+
+An approval means you saw a sentence and pressed a button. It doesn't check the sentence is wise.
+
+- The card shows the tool's input. If the model picked the wrong film or the wrong service, the card shows the wrong one, and you need to catch it.
+- A tool without `confirm` shows its raw input, which is harder to read.
+- If you approve everything without reading, you've given the assistant control. Use `read` for anything you wouldn't check.
+- MCP tools' cards can only show their input, since Valet doesn't know what they do. See [MCP](/assistant/mcp/).
