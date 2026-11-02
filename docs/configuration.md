@@ -152,7 +152,7 @@ The top of the overview.
 | `greeting` | `true` | `false` hides it; text replaces "Sam's homelab": `{name}` fills in the top-level `greeting`, `{greeting}` the time of day |
 | `status` | `true` | one sentence under it: "All 30 services are running, Sam is watching Dune and 2 downloads are on the way." or "Everything's running except Mealie." When something needs attention, it gets a dot and heavier text in the same sentence. If the assistant finds what several problems share, that's the sentence |
 | `search` | `true` | the ask box, or the search box without an assistant |
-| `review` | `true` | the year in review link, in the same row as the suggested questions, which can be dismissed for the visit. `end` makes it a card closing the overview instead. `recap: false` turns off the review itself |
+| `review` | `true` | the year in review link, under the suggested questions, which can be dismissed for the visit. It's also offered in the chat. `end` adds a card closing the overview. `recap: false` turns off the review itself |
 | `align` | `center` | `left`, `right` |
 | `scope` | none | what the ask box names instead of "anything": `true` works it out from your integrations ("Ask about downloads, lights, what to watch…"), a list of up to 6 says it yourself. `chat.placeholder` wins over it |
 

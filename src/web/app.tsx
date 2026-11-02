@@ -438,14 +438,16 @@ function Home({ account }: { account: boolean }) {
   const h = page?.hero, chatUi = page?.chat;
   // follow-ups outlive what they were about too: none about a service that's fine again
   const fresh = chatUi?.followUps && stillTrue(chatUi.followUps, [], Object.values(state)).join('\n');
-  const ui = useMemo(() => chatUi && (fresh == null ? chatUi : { ...chatUi, followUps: fresh ? fresh.split('\n') : [] }), [chatUi, fresh]);
+  // the year in review is on offer in the chat too, whatever was dismissed on the page
+  const review = page?.recap !== false && h?.review !== false ? label('review', { year: new Date().getFullYear() }) : undefined;
+  const ui = useMemo(() => chatUi && { ...chatUi, review, ...(fresh != null && { followUps: fresh ? fresh.split('\n') : [] }) }, [chatUi, fresh, review]);
   const named = { name: page?.assistant?.name ?? '' };
   const placeholder = (ui?.placeholder ?? (h?.scope?.length ? label('askAbout', { scope: h.scope.slice(0, phone ? 2 : 6).join(', ') }) : label('askAnything'))).replace('{name}', page?.assistant?.name ?? '');
   const askHere = !!page?.assistant && ui?.overview !== false, chips = askHere && chatMode !== 'off';
   const hello = !h || h.greeting === false ? '' : typeof h.greeting === 'string' ? h.greeting.replace('{greeting}', greet(now.getHours())).replace('{name}', page?.greeting ?? '').trim() : page?.greeting ? label('homelab', { name: page.greeting }) : label('yourHomelab');
   const boxed = h?.search !== false, shownChips = useLeaving(chips ? questions.slice(0, 3) : []);
   const [reviewed, setReviewed] = useState(() => { try { return !!sessionStorage.getItem('valet-review'); } catch { return false; } });   // dismissed, for this visit
-  const offered = page?.recap !== false && h?.review !== false && !reviewed, pill = offered && h?.review !== 'end', closing = offered && h?.review === 'end' && view === 'all';
+  const offered = page?.recap !== false && h?.review !== false && !reviewed, pill = offered, closing = offered && h?.review === 'end' && view === 'all';
   const dismissReview = () => { setReviewed(true); try { sessionStorage.setItem('valet-review', '1'); } catch { /* private mode */ } };
   const side = h?.align === 'left' ? 'mr-auto text-left' : h?.align === 'right' ? 'ml-auto text-right' : 'mx-auto text-center';
   // the hero: ask anything
@@ -473,20 +475,20 @@ function Home({ account }: { account: boolean }) {
                 <kbd className="hidden rounded-[6px] border border-white/15 px-1.5 py-0.5 font-sans text-[12px] sm:block">⌘K</kbd>
               </button>
             )}
-            {(chips || pill) && (
+            {chips && (
               <div className="fade-x no-scrollbar mt-2.5 overflow-x-auto">
                 {/* centred when it fits, scrolls from the start when it doesn't */}
                 <div className={cn('flex min-h-7 w-max min-w-full justify-center gap-1.5', h?.align === 'left' ? 'mr-auto' : h?.align === 'right' ? 'ml-auto' : 'mx-auto')}>
                   {shownChips.map(({ s, out }) => (
                     <button key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={cn('press shrink-0 rounded-sm px-2.5 py-1 text-[13px] text-muted-foreground hover:bg-white/10 hover:text-foreground', out ? 'chip-out' : arrival(`chip:${s}`))} style={out ? { maxWidth: 320 } : undefined}>{s}</button>
                   ))}
-                  {pill && <span className="flex shrink-0 items-center rounded-sm text-[13px] text-muted-foreground">
-                    <a href="#recap" className="press rounded-sm py-1 pr-1 pl-2.5 hover:text-foreground">{label('review', { year: now.getFullYear() })}</a>
-                    <button onClick={dismissReview} aria-label={label('dismiss')} className="press grid size-6 flex-none place-items-center rounded-sm hover:text-foreground"><X className="size-3" /></button>
-                  </span>}
                 </div>
               </div>
             )}
+            {pill && <div className={cn('mt-1 flex items-center text-[13px] text-muted-foreground', h?.align === 'left' ? 'justify-start' : h?.align === 'right' ? 'justify-end' : 'justify-center')}>
+              <a href="#recap" className="press rounded-sm py-1 pr-1 pl-2.5 hover:text-foreground">{label('review', { year: now.getFullYear() })}</a>
+              <button onClick={dismissReview} aria-label={label('dismiss')} className="press grid size-6 flex-none place-items-center rounded-sm hover:text-foreground"><X className="size-3" /></button>
+            </div>}
           </header>
         );
 

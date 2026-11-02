@@ -19,7 +19,9 @@ import { Tick } from './feel.tsx';
 import { label } from './format.ts';
 
 /** What `chat:` says about the window. */
-export interface ChatUi { followUps?: string[]; steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string; beam?: 'off' | 'always' | 'focus' | 'thinking' | 'once'; beamColor?: 'colorful' | 'mono' | 'ocean' | 'sunset'; beamStrength?: number }
+export interface ChatUi { followUps?: string[]; review?: string; steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string; beam?: 'off' | 'always' | 'focus' | 'thinking' | 'once'; beamColor?: 'colorful' | 'mono' | 'ocean' | 'sunset'; beamStrength?: number }
+const NEXT = 'press flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left max-sm:py-2.5 text-[14px] text-muted-foreground hover:bg-white/[.05] hover:text-foreground';
+const STARTER = 'press flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-left text-sm text-foreground/85 hover:bg-white/[.07] hover:text-foreground';
 const Ui = createContext<ChatUi>({ steps: true, thinking: 'collapsed', send: 'enter' });
 
 // One conversation for the whole page session, so closing and reopening the panel keeps it.
@@ -335,14 +337,12 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
           {tookMs != null && tookMs >= 1000 && <span className="ml-1 text-[12px] tabular">{label('worked', { n: (tookMs / 1000).toFixed(tookMs < 10_000 ? 1 : 0) })}</span>}
         </div>
       )}
-      {follow.length > 0 && (
+      {(follow.length > 0 || (ui.review && isLast && !busy && !waiting)) && (
         <div className="space-y-0.5 pt-1">
-          {follow.map((f: string) => (
-            <button key={f} onClick={() => act.ask(f)}
-              className="press flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left max-sm:py-2.5 text-[14px] text-muted-foreground hover:bg-white/[.05] hover:text-foreground">
-              <CornerDownRight className="size-3.5 shrink-0 opacity-60" />{f}
-            </button>
+          {follow.slice(0, ui.review ? 2 : 3).map((f: string) => (
+            <button key={f} onClick={() => act.ask(f)} className={NEXT}><CornerDownRight className="size-3.5 shrink-0 opacity-60" />{f}</button>
           ))}
+          {ui.review && <a href="#recap" className={NEXT}><CornerDownRight className="size-3.5 shrink-0 opacity-60" />{ui.review}</a>}
         </div>
       )}
     </div>
@@ -466,12 +466,8 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
             <div className="text-lg font-semibold tracking-tight">{label('chatTitle')}</div>
             <p className="mt-1 text-sm text-muted-foreground">{label('chatHint')}</p>
             <div className="mx-auto mt-6 grid max-w-[560px] gap-1.5 sm:grid-cols-2">
-              {suggestions.map(s => (
-                <button key={s} onClick={() => onAsk(s)}
-                  className="press flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-left text-sm text-foreground/85 hover:bg-white/[.07] hover:text-foreground">
-                  {s}
-                </button>
-              ))}
+              {suggestions.slice(0, ui.review ? 3 : 4).map(s => <button key={s} onClick={() => onAsk(s)} className={STARTER}>{s}</button>)}
+              {ui.review && <a href="#recap" className={STARTER}>{ui.review}</a>}
             </div>
           </div>
         )}

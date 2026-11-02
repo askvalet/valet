@@ -85,6 +85,7 @@ export function reply(body) {
   if (hasFile(user)) return cant(noFiles);
   if (offered && NO.test(said)) return { text: 'Okay, I\'ll leave it for now.' };
   if (HELLO.test(said)) return { text: `Hi! ${can}` };
+  if (/\b(?:year in review|wrapped|recap)\b/i.test(said)) return { text: 'It\'s ready: pick "in review" just below and it plays from the start.' };
   if (THANKS.test(said)) return { text: 'Anytime.' };
   const rule = ORDERS.find(([re]) => re.test(said)), before = !rule && TOPICS.find(([re]) => re.test(said));
   if (before) return cant(before[1]);
