@@ -110,7 +110,7 @@ const server = createServer((req, res) => {
   req.on('data', c => { size += c.length; if (size > 9e6) req.destroy(); else raw += c; });
   req.on('end', async () => {
     let body; try { body = JSON.parse(raw); } catch { res.writeHead(400).end(); return; }
-    const r = reply(body), base = { id: 'demo', object: 'chat.completion', created: Math.floor(Date.now() / 1000), model: 'scripted demo' };
+    const r = reply(body), base = { id: 'demo', object: 'chat.completion', created: Math.floor(Date.now() / 1000), model: 'qwen3.8-27b' };
     const usage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
     const toolCall = r.call && { id: `call_${Date.now()}`, type: 'function', function: { name: r.call.name, arguments: r.call.args } };
     if (!body.stream) {

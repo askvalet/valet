@@ -214,7 +214,6 @@ services and the assistant write is theirs, and the status sentence is built fro
 | `message` | Message {name} |
 | `messageHint` | Message {name}, paste a link or drop a file |
 | `chatTitle` | Talk to your homelab |
-| `chatHint` | Reads freely, changes nothing without asking |
 | `thinking` | Thinking |
 | `writing` | Writing |
 | `thought` | Thought |

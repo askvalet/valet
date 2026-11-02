@@ -464,7 +464,6 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
           // on a phone the suggestions sit low, where the thumb is
           <div className={cn('text-center', !sheet && 'pt-10')}>
             <div className="text-lg font-semibold tracking-tight">{label('chatTitle')}</div>
-            <p className="mt-1 text-sm text-muted-foreground">{label('chatHint')}</p>
             <div className="mx-auto mt-6 grid max-w-[560px] gap-1.5 sm:grid-cols-2">
               {suggestions.slice(0, ui.review ? 3 : 4).map(s => <button key={s} onClick={() => onAsk(s)} className={STARTER}>{s}</button>)}
               {ui.review && <a href="#recap" className={STARTER}>{ui.review}</a>}
