@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Counter, ElasticSlider } from '../feel.tsx';
-import { Cant, Said, StageTools, Swatch, useNote } from './note.tsx';
+import { Cant, Said, Swatch, useNote } from './note.tsx';
 import { createViewer, hex, PICKS, topFans, type Light, type Metric, type ModelData } from './pc-model.ts';
 
 
@@ -45,7 +45,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
   const viewer = useRef<ReturnType<typeof createViewer> | null>(null);
   const [sel, setSel] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, Light>>({});   // optimistic lighting while a change is on its way
-  const [moved, setMoved] = useState(false), [preset, setPreset] = useState<string | null>(null), [note, say] = useNote();
+  const [preset, setPreset] = useState<string | null>(null), [note, say] = useNote();
   const view = data.view ?? { turn: -27, tilt: -18, draggable: true };
   const fanId = topFans(data);
   const lightId = (pick: string) => pick === 'fans' ? fanId : PICKS.find(p => p.id === pick)?.light;
@@ -54,7 +54,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
   useEffect(() => setDraft({}), [data]);
 
   useEffect(() => {
-    const v = createViewer(box.current!, { ...view, onPick: setSel, onMove: setMoved });
+    const v = createViewer(box.current!, { ...view, onPick: setSel });
     viewer.current = v;
     return () => v.destroy();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,14 +86,13 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
     <div className="case"><div className="case-body">
       <div className="relative">
         <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-xl" aria-label="3D model of the PC. Select a part to see it and change its lighting; every part is also in the list below." role="img" />
-        <StageTools moved={moved} reset={() => viewer.current?.reset()} hint={view.draggable ? 'Drag to look around' : undefined} />
       </div>
       {!pick ? (
         <div key="all" className="space-y-2 animate-in fade-in duration-(--dur-pop)">
           {!!data.presets?.length && (
             <div role="group" aria-label="Lighting presets" className="flex flex-wrap gap-1">
               {data.presets.map(p => (
-                <button key={p.id} disabled={!run} onClick={() => applyPreset(p)} aria-pressed={p.id === active} title={p.name} className="press flex h-14 w-[60px] flex-none flex-col items-center gap-1 rounded-xl pt-1 hover:bg-foreground/[.06] aria-pressed:bg-foreground/10">
+                <button key={p.id} disabled={!run} onClick={() => applyPreset(p)} aria-pressed={p.id === active} className="press flex h-14 w-[60px] flex-none flex-col items-center gap-1 rounded-xl pt-1 hover:bg-foreground/[.06] aria-pressed:bg-foreground/10">
                   <i className="size-7 flex-none rounded-full outline-offset-1" style={{ background: p.swatch.length > 1 ? `conic-gradient(${[...p.swatch, p.swatch[0]].join(', ')})` : p.swatch[0], boxShadow: 'inset 0 0 0 1px rgb(255 255 255 / .22)', outline: p.id === active ? '2px solid var(--foreground)' : '2px solid transparent' }} />
                   <span className={cn('max-w-full truncate text-[11px] leading-[1.3]', p.id === active ? 'font-medium' : 'text-muted-foreground')}>{p.name}</span>
                 </button>

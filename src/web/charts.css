@@ -47,7 +47,9 @@
 .heat-at { fill: none; stroke: var(--foreground); stroke-width: 1; }
 .heat-months { position: relative; height: 16px; font-size: 11px; line-height: 14px; color: var(--muted-foreground); }
 .heat-months span { position: absolute; top: 0; }
-.heatmap { container-type: inline-size; }
+.heatmap { container-type: inline-size; display: flex; flex: 1; flex-direction: column; }
+.heatmap .heat-months { margin-top: auto; }
+.heatmap .heat { margin-bottom: auto; }
 @container (max-width: 440px) { .heat-months span:nth-child(even) { display: none; } }
 .heat-key { display: flex; align-items: center; gap: 4px; }
 .heat-key svg { width: 10px; height: 10px; }

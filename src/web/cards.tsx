@@ -2,7 +2,7 @@
 // so a generated card looks exactly like the widget it came from.
 import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
   Activity, Archive, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Thermometer, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Play, Shield, Wifi,
-  Video, type LucideIcon,
+  Box, Video, type LucideIcon,
 } from 'lucide-react';
 import { createContext, Fragment, lazy, memo, Suspense, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Cameras } from './cameras.tsx';
@@ -284,12 +284,6 @@ const stateLine = (s: StatusItem, st = stateOf(s)) => st === 'up' ? s.ms != null
 const stateTip = (s: StatusItem, st = stateOf(s)) => [s.name, st === 'up' ? s.detail ?? (s.ms != null ? 'reachable' : 'running') : stateLine(s), st === 'up' && s.ms != null ? `${s.ms} ms` : undefined].filter(Boolean).join(' · ');
 
 /** The dots, explained: one quiet line, and only once one of them isn't green. */
-function Legend({ items }: { items: StatusItem[] }) {
-  const count = (st: ServiceState) => items.filter(i => stateOf(i) === st).length, odd = (['degraded', 'down', 'off'] as const).filter(count);
-  if (!odd.length) return null;
-  return <div className="state-legend">{(['up', ...odd] as const).map(st => count(st) > 0 && <span key={st}><i className={cn('dot size-1.5', DOT[st])} />{count(st)} {STATE[st].toLowerCase()}</span>)}</div>;
-}
-
 function ServiceRow({ s, minimal }: { s: StatusCard['items'][number]; minimal?: boolean }) {
   const st = stateOf(s), dot = DOT[st];
   // minimal: one tight line, icon, name and the dot; hover says what's wrong
@@ -312,36 +306,35 @@ function ServiceRow({ s, minimal }: { s: StatusCard['items'][number]; minimal?: 
   );
 }
 
-/** An app's icon, or its initials when it has none, so a wall never has a blank tile. */
-function Glyph({ src, name }: { src?: string; name: string }) {
+/** An app's icon, or a plain box when it has none, so a wall never has a blank tile. */
+function Glyph({ src }: { src?: string }) {
   const [failed, setFailed] = useState(false);
-  if (!src || failed) return <span className="wall-initials">{name.replace(/[-_]/g, ' ').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]!.toUpperCase()).join('')}</span>;
+  if (!src || failed) return <span className="wall-box"><Box className="size-4" /></span>;
   return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className="object-contain" />;
 }
 
-/** Every container as its icon: the eye finds the one that's wrong, and only that one gets words. Containers that share
- *  a first word (immich, immich-postgres, immich-redis) sit joined under the first, one tile each. */
+/** Every app as one icon, however many containers it runs: the eye finds the one that's wrong, and only that gets words. */
 function Wall({ items }: { items: StatusItem[] }) {
   const trouble = (s: StatusItem) => { const st = stateOf(s); return st === 'down' || st === 'degraded'; };
-  const family = new Map<string, StatusItem[]>();
-  for (const i of items) { const k = i.name.split(/[-_]/)[0].toLowerCase(); family.set(k, [...family.get(k) ?? [], i]); }
-  // what's wrong comes first: a wide tile anywhere else leaves a hole in the rows
-  const groups = [...family.values()].sort((a, b) => Number(b.some(trouble)) - Number(a.some(trouble)));
+  const apps = new Map<string, StatusItem[]>();
+  for (const i of items) { const k = (i.group ?? i.name).split(/[-_]/)[0].toLowerCase(); apps.set(k, [...apps.get(k) ?? [], i]); }
+  const wrong = items.filter(trouble);
+  const fine = [...apps].flatMap(([k, all]) => { const g = all.filter(i => !trouble(i)); return g.length ? [{ k, g, lead: g.find(i => i.name.toLowerCase() === k) ?? g[0] }] : []; });
   return (
-    <div>
-      <div className="wall">
-        {groups.flatMap(g => g.map((s, k) => {
-          const st = stateOf(s), wrong = trouble(s);
-          return (
-            <Tile key={s.name} href={s.href} title={stateTip(s)} className={cn('wall-tile', `is-${st}`, wrong && 'is-worded', k > 0 && 'is-joined')}>
-              <Glyph src={s.icon} name={s.name} />
-              {wrong && <div className="min-w-0"><div className="truncate text-[13px] leading-tight font-medium">{s.name}</div><div className={cn('truncate text-[12px] leading-tight', st === 'down' ? 'text-bad' : 'text-warn')}>{stateLine(s)}</div></div>}
-              {k === 0 && g.length > 1 && <i className="wall-count" aria-label={`${g.length} together`}>{g.length}</i>}
-            </Tile>
-          );
-        }))}
-      </div>
-      <Legend items={items} />
+    <div className="wall">
+      {/* what's wrong comes first: a wide tile anywhere else leaves a hole in the rows */}
+      {wrong.map(s => { const st = stateOf(s); return (
+        <Tile key={s.name} href={s.href} title={stateTip(s)} className={cn('wall-tile is-worded', `is-${st}`)}>
+          <Glyph src={s.icon} />
+          <div className="min-w-0"><div className="truncate text-[13px] leading-tight font-medium">{s.name}</div><div className={cn('truncate text-[12px] leading-tight', st === 'down' ? 'text-bad' : 'text-warn')}>{stateLine(s)}</div></div>
+        </Tile>
+      ); })}
+      {fine.map(({ k, g, lead }) => (
+        <Tile key={k} href={lead.href} title={g.map(i => i.name).join(', ')} className={cn('wall-tile', g.every(i => stateOf(i) === 'off') && 'is-off')}>
+          <Glyph src={lead.icon} />
+          {g.length > 1 && <i className="wall-count" aria-label={`${g.length} containers`}>{g.length}</i>}
+        </Tile>
+      ))}
     </div>
   );
 }
@@ -358,10 +351,9 @@ function Status({ card, columns, minimal }: { card: StatusCard; columns?: number
       <div className="-mx-2 grid gap-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
         {card.items.map(s => <ServiceRow key={s.name} s={s} minimal={minimal} />)}
       </div>
-      <Legend items={card.items} />
     </>
   );
-  if (!columns) return <><Balanced groups={groups.map(g => ({ g, items: card.items.filter(i => (i.group ?? '') === g) }))} minimal={minimal} /><Legend items={card.items} /></>;
+  if (!columns) return <><Balanced groups={groups.map(g => ({ g, items: card.items.filter(i => (i.group ?? '') === g) }))} minimal={minimal} /></>;
   return (
     <>
     <div className="-mx-2 gap-x-4" style={{ columnCount: columns }}>
@@ -373,7 +365,6 @@ function Status({ card, columns, minimal }: { card: StatusCard; columns?: number
         </div>
       ))}
     </div>
-    <Legend items={card.items} />
     </>
   );
 }
@@ -829,7 +820,7 @@ function Columns({ card }: { card: ChartCard }) {
   const paint = (s: ChartCard['series'][number]) => card.style === 'stream' ? flow(card.series.indexOf(s)) : s.tone ? toneVar(s.tone) : 'color-mix(in oklab, var(--foreground) 24%, transparent)';
   const sum = (s: ChartCard['series'][number]) => s.total ?? s.points.reduce((a, b) => a + b, 0), whole = tops.reduce((a, b) => a + b, 0), spot = at != null ? (at + .5) / n : 0;
   return (
-    <div>
+    <div className="chart-body">
       <div className="mb-3 flex items-baseline gap-2">
         <span className="metric text-[28px] leading-none">{card.headline ?? written(whole)}</span>
         <span className="min-w-0 truncate text-xs text-muted-foreground">{card.span}</span>

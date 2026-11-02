@@ -1,6 +1,5 @@
 // The small honest parts the house's controls share: what a control can't do here, what it just did, a word in a slot,
 // a named swatch and the corner of a 3D model.
-import { RotateCcw } from 'lucide-react';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { mountToasts, toast } from '../feel.tsx';
@@ -56,14 +55,4 @@ export function Slots({ at, words }: { at: string; words: Record<string, ReactNo
 /** A colour with a name, a hit area of 32px and a ring, inside that area, when it's the one in use. */
 export function Swatch({ name, color, on, press, disabled }: { name: string; color: string; on: boolean; press: () => void; disabled?: boolean }) {
   return <button type="button" className="swatch press" aria-label={name} title={name} aria-pressed={on} disabled={disabled} onClick={press}><i style={{ background: color }} /></button>;
-}
-
-/** Sits over a 3D model: how to move it, and the way back to where it started. */
-export function StageTools({ moved, reset, hint }: { moved: boolean; reset: () => void; hint?: string }) {
-  return (
-    <div className="stage-tools">
-      {hint && <span className="hint">{hint}</span>}
-      <button type="button" disabled={!moved} onClick={reset} title="Reset view"><RotateCcw className="size-4" aria-hidden />Reset view</button>
-    </div>
-  );
 }

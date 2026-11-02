@@ -55,18 +55,12 @@ test('status: a state follows from ok and quiet unless it says, and off is hollo
   assert.match(out, /dot-off/); assert.match(out, /1 off by choice/); assert.doesNotMatch(out, /Offline/);
 });
 
-test('status: the legend only shows once something is not plainly up', () => {
-  assert.doesNotMatch(html({ type: 'status', items: [{ name: 'a', ok: true }, { name: 'b', ok: true }] }), /state-legend/);
-  assert.match(html({ type: 'status', layout: 'wall', items: [{ name: 'a', ok: true }, { name: 'b', ok: false, detail: 'exited (1)' }] }), /state-legend/);
-});
-
-test('wall: trouble gets a label on its tile and comes first; families join under one count, a tile each', () => {
-  const out = html({ type: 'status', layout: 'wall', items: [{ name: 'a', ok: true }, { name: 'immich', ok: true }, { name: 'immich-postgres', ok: true }, { name: 'immich_redis', ok: true }, { name: 'zed', ok: false, state: 'degraded', detail: 'unhealthy' }] });
-  assert.equal(out.match(/wall-tile/g)!.length, 5);
-  assert.equal(out.match(/is-joined/g)!.length, 2);
+test('wall: one tile per app with a count, trouble comes first with words, and a family split by trouble keeps both', () => {
+  const out = html({ type: 'status', layout: 'wall', items: [{ name: 'a', ok: true }, { name: 'immich_server', group: 'immich', ok: true }, { name: 'immich_postgres', group: 'immich', ok: true }, { name: 'immich_redis', group: 'immich', ok: true }, { name: 'paperless', ok: true }, { name: 'paperless-tika', ok: false, detail: 'exited (1)' }] });
+  assert.equal(out.match(/class="[^"]*wall-tile/g)!.length, 4);
+  assert.ok(out.indexOf('paperless-tika') < out.indexOf('wall-count'));
   assert.match(out, /wall-count[^>]*>3</);
-  assert.ok(out.indexOf('is-worded') < out.indexOf('immich'), 'trouble first');
-  assert.match(out, />zed</); assert.match(out, />unhealthy</);
+  assert.match(out, /exited \(1\)/);
 });
 
 test('chips: past the limit they fold behind a count, and a mark shows', () => {

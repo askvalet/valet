@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { batteryNote, createHome, heard, near, restoreGroups, unsettled, wearNote, type LightChange, type PlanData, type PlanLight, type PlanRobot } from './home-model.ts';
 import { Counter, ElasticSlider } from '../feel.tsx';
-import { Cant, Said, Slots, StageTools, Swatch, useNote } from './note.tsx';
+import { Cant, Said, Slots, Swatch, useNote } from './note.tsx';
 
 type Run = (action: string, args?: Record<string, unknown>) => Promise<void>;
 const WARMTH: [string, number, string][] = [['Candle', 2200, '#ffb46b'], ['Warm', 2700, '#ffc98f'], ['Neutral', 4000, '#ffe8d1'], ['Daylight', 6500, '#e6efff']];
@@ -58,7 +58,7 @@ const Pill = ({ icon: I, children, ...p }: { icon?: LucideIcon } & React.Compone
 export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
   const box = useRef<HTMLDivElement>(null);
   const stage = useRef<ReturnType<typeof createHome> | null>(null);
-  const [sel, setSel] = useState<string | null>(null), [moved, setMoved] = useState(false);
+  const [sel, setSel] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, Partial<PlanLight>>>({});   // optimistic changes while HA catches up
   const [note, say] = useNote();
   const [sent, setSent] = useState<Sent | null>(null), [queue, setQueue] = useState<{ rooms: number[]; running: boolean } | null>(null);
@@ -71,7 +71,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
   const view = data.view ?? { turn: -40, tilt: -35 };
 
   useEffect(() => {
-    const s = createHome(box.current!, { ...view, remember: 'home', onPick: setSel, onMove: setMoved });
+    const s = createHome(box.current!, { ...view, remember: 'home', onPick: setSel });
     stage.current = s; return () => s.destroy();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view.turn, view.tilt]);
@@ -135,7 +135,6 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
     <div className="case"><div className="case-body">
       <div className="relative">
         <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-xl" role="img" aria-label="3D floor plan. Drag to look around; select a room or the robot. Every room is also in the list below." />
-        <StageTools moved={moved} reset={() => stage.current?.reset()} hint="Drag to look around" />
       </div>
       {!sel && (
         <div key="all" className="space-y-2 animate-in fade-in duration-(--dur-pop)">

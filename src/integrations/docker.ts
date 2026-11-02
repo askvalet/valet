@@ -3,6 +3,8 @@
 // allowing container creation, which is root on the host.
 import { z } from 'zod';
 import { defineIntegration, iconFor } from '../server/core.ts';
+
+const VALET_MARK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23101114'/%3E%3Cpath d='M9 22V13l7-5 7 5v9' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linejoin='round'/%3E%3C/svg%3E";
 import { listTags, newest, parseImage, parseVersion, warnings } from '../server/registry.ts';
 import type { ListItem, StatusItem } from '../shared/cards.ts';
 
@@ -48,7 +50,9 @@ export default defineIntegration({
     // finished cleanly, or made and never run: a one-off job, not a problem
     const idle = (c: C) => c.exit === 0 || c.state === 'created';
     // running only says the process is alive; "healthy" is a check that passed, so it's said when it's known
-    const item = (c: C): StatusItem => ({ name: c.name, icon: iconFor(c.name), ok: healthy(c), detail: healthy(c) ? (/\(healthy\)/.test(c.status ?? '') ? 'healthy' : undefined) : c.unhealthy ? 'unhealthy' : c.exit != null ? `exited (${c.exit})` : c.state === 'created' ? 'never started' : c.state, group: c.project,
+    // Valet's own mark; a helper's image usually has no icon of its own, so it wears its app's
+    const iconOf = (c: C) => /^valet/.test(c.name) ? VALET_MARK : iconFor(c.name === 'open-terminal' ? 'open-webui' : c.name);
+    const item = (c: C): StatusItem => ({ name: c.name, group: c.project, icon: iconOf(c), ok: healthy(c), detail: healthy(c) ? (/\(healthy\)/.test(c.status ?? '') ? 'healthy' : undefined) : c.unhealthy ? 'unhealthy' : c.exit != null ? `exited (${c.exit})` : c.state === 'created' ? 'never started' : c.state, group: c.project,
       quiet: idle(c), state: healthy(c) ? 'up' : c.state === 'running' ? 'degraded' : idle(c) ? 'off' : 'down' });
     const find = async (name: string) => {
       const all = await containers(), n = name.toLowerCase();
