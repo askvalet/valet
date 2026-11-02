@@ -496,8 +496,8 @@ function Home({ account }: { account: boolean }) {
 
   const place = phone ? 'center' : ui?.open ?? 'center', docked = place === 'left' || place === 'right';
   const topbar = page?.menubar;
-  const liveInBar = !phone && live.length > 0;
   const weatherCard = page?.weather && state[page.weather]?.card?.type === 'forecast' ? state[page.weather]!.card as ForecastCard : undefined;
+  const noClock = phone && live.length > 0 && !!weatherCard;
   const chatWide = wide && !phone && !!chatTab && view === chatTab && !!page?.assistant;
   // a section title on the page, as it always was; one that's only a tab's name is still a heading to a screen reader
   const titled = (sec: Page['sections'][number]) => view === 'all' && sec.heading !== false && (sec.display === 'cards' || sec.display === 'media') && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title);
@@ -620,12 +620,11 @@ function Home({ account }: { account: boolean }) {
 
       {/* top-right: the menubar rings, weather and time (and the theme switch when there's no wallpaper).
           Below lg it sits at the top of the page instead, centred and wrapping, so phones see it too. */}
-      {/* phones: one row, condensed, with what's live in its own row above; wide screens: top right */}
-      {phone && live.length > 0 && <div className="wall-text z-20 flex justify-center px-3 pt-3"><div className="glass-bar glass-plate relative flex items-center gap-3 border px-3 py-1"><LiveRings live={live} /></div></div>}
-      <div ref={bar} data-labels={topbar?.labels !== false || undefined} className={cn(!settled && 'invisible', 'menubar wall-text z-20 flex items-stretch justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:gap-4 xl:p-0', { left: 'xl:left-5', center: 'xl:left-1/2 xl:-translate-x-1/2', right: 'xl:right-5' }[topbar?.position ?? 'right'])}>
-        {(!!topbar?.widgets.length || liveInBar) && (
+      {/* phones: one row, condensed, and when something's live the weather gives up the clock to make room; wide screens: top right */}
+      <div ref={bar} data-labels={topbar?.labels !== false || undefined} className={cn(!settled && 'invisible', 'menubar wall-text relative z-20 flex items-stretch justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:gap-4 xl:p-0', { left: 'xl:left-5', center: 'xl:left-1/2 xl:-translate-x-1/2', right: 'xl:right-5' }[topbar?.position ?? 'right'])}>
+        {(!!topbar?.widgets.length || live.length > 0) && (
           <div className="glass-bar glass-plate relative flex shrink items-center gap-1 border px-2 py-1 sm:gap-3 sm:px-4 sm:py-1.5">
-            {liveInBar && <><LiveRings live={live} />{!!topbar?.widgets.length && <i className="live-rule" aria-hidden />}</>}
+            {live.length > 0 && <><LiveRings live={phone ? live.slice(0, 2) : live} />{!!topbar?.widgets.length && <i className="live-rule" aria-hidden />}</>}
             {topbar?.widgets.flatMap(key => {
               const c = state[key]?.card;
               return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} role="group" aria-label={`${t.label} ${t.value}`} className="fade-in-soft"><MiniRing s={t} /></div>);
@@ -634,7 +633,7 @@ function Home({ account }: { account: boolean }) {
         )}
         {(topbar?.clock !== false || topbar?.date !== false || weatherCard) && <div className="glass-bar glass-plate relative flex shrink-0 items-center gap-2.5 rounded-full border py-1 pr-3.5 pl-1.5 sm:gap-4 sm:py-1.5 sm:pr-5 sm:pl-2">
           {weatherCard && <WeatherRing card={weatherCard} />}
-          {(topbar?.clock !== false || topbar?.date !== false) && <ClockMonth card={page?.calendar ? state[page.calendar]?.card : undefined}>
+          {!noClock && (topbar?.clock !== false || topbar?.date !== false) && <ClockMonth card={page?.calendar ? state[page.calendar]?.card : undefined}>
           {topbar?.clock !== false && <div className="text-sm font-semibold tabular">{clock(now)}</div>}
           {topbar?.date !== false && <div className={cn('text-xs text-muted-foreground sm:block', topbar?.clock !== false && 'hidden')}>{day(now)}</div>}
           </ClockMonth>}

@@ -33,7 +33,7 @@ export function LiveRings({ live }: { live: Live[] }) {
     const r = 15, c = 2 * Math.PI * r, arc = c * .75, p = Math.max(0, Math.min(1, a.pct ?? 0));
     return (
       <div key={a.key} className="group/ring relative flex flex-col items-center outline-none" tabIndex={0} aria-label={[a.title, a.subtitle, a.trailing].filter(Boolean).join(', ')}>
-        <div className="relative size-[32px] transition-transform duration-(--dur-pop) ease-out group-hover/ring:scale-110 sm:size-[38px]">
+        <div className="relative size-[clamp(26px,7.7vw,32px)] transition-transform duration-(--dur-pop) ease-out group-hover/ring:scale-110 sm:size-[38px]">
           <svg viewBox="0 0 38 38" className="size-full rotate-[135deg]" aria-hidden>
             <circle cx="19" cy="19" r={r} fill="none" stroke="currentColor" strokeOpacity=".16" strokeWidth="3.2" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} />
             {a.pct != null && <circle cx="19" cy="19" r={r} fill="none" stroke={tint(a)} strokeWidth="3.2" strokeLinecap="round" strokeDasharray={`${Math.max(.001, p) * arc} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move) ease-out" />}
@@ -43,7 +43,7 @@ export function LiveRings({ live }: { live: Live[] }) {
             {a.paused && <Pause className="absolute size-3 fill-white text-white" aria-hidden />}
           </div>
         </div>
-        <div className="-mt-1 hidden max-w-[56px] truncate text-[10px] font-medium text-muted-foreground sm:block">{a.title}</div>
+        <div className="-mt-1 max-w-[56px] truncate max-sm:hidden! text-[10px] font-medium text-muted-foreground sm:block">{a.title}</div>
         <Popover group="ring" className="right-1/2 w-[300px] translate-x-1/2"><Story a={a} /></Popover>
       </div>
     );

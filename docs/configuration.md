@@ -390,7 +390,7 @@ Each entry is an MCP server whose tools the assistant may use, under the same ru
 
 What's happening right now, as rings in the top bar: what's playing, what's downloading, the vacuum, an event in progress.
 They share the plate with the `menubar` rings, to their left with a thin divider. Artwork inside, progress around. Hover
-or tap one for the story, like every other ring. On phones they sit in their own small plate above the top row. When
+or tap one for the story, like every other ring. On phones they share the top row, up to two of them, and the clock steps aside to make room. When
 nothing is live, they're not there.
 
 | Option | Default | |
