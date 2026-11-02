@@ -68,12 +68,11 @@ export const NOTES: Record<string, string> = {
   'menubar.size': 'Scale, where 1 is as designed.',
   nav: 'The tab buttons.',
   'nav.size': 'Scale, where 1 is as designed.',
-  island: 'Left out, there\'s no island.',
-  'island.activities': 'Widget keys to show, most important first.',
-  'island.size': 'Scale, where 1 is as designed.',
-  'island.notify[].widget': 'The widget to watch.',
-  'island.notify[].on': '`start` and `end` of its live activity, or a service going `down` or `up`.',
-  'island.notify[].text': 'The notice. `{title}` and `{name}` fill in.',
+  live: 'Left out, nothing shows as live.',
+  'live.activities': 'Widget keys to show, most important first.',
+  'live.notify[].widget': 'The widget to watch.',
+  'live.notify[].on': '`start` and `end` of its live activity, or a service going `down` or `up`.',
+  'live.notify[].text': 'The notice. `{title}` and `{name}` fill in.',
   links: 'Bookmarks by group. Each group is a widget: `links.<group>`.',
 
   // options of integrations

@@ -1434,7 +1434,7 @@ export function Ring({ s }: { s: Summary }) {
 
 /** A hover/focus popover under a menubar item. The frost sits on the element that fades: a parent fading its
  *  opacity would stop Chrome blurring anything inside it until the fade ends (the flicker). */
-function Popover({ group, className, children }: { group: 'ring' | 'wx'; className?: string; children: ReactNode }) {
+export function Popover({ group, className, children }: { group: 'ring' | 'wx'; className?: string; children: ReactNode }) {
   const show = group === 'ring'
     ? 'group-hover/ring:visible group-focus/ring:visible'
     : 'group-hover/wx:visible group-focus/wx:visible';

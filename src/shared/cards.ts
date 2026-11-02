@@ -57,8 +57,8 @@ export interface Recap { year: number; soFar: boolean; slides: RecapSlide[]; per
 /** What an action is about to do, in words a person would use, for the approval card. */
 export interface Confirm { title: string; detail?: string; image?: string; icon?: string; verb?: string; danger?: boolean; logo?: string }
 
-/** Something happening right now, for the island at the top of the page: a stream, a download, a robot cleaning.
- *  A card carries one only while it's live; the island shows the live ones in the order the config lists them. */
+/** Something happening right now, for the rings at the top of the page: a stream, a download, a robot cleaning.
+ *  A card carries one only while it's live; the rings show the live ones in the order the config lists them. */
 export interface Activity {
   title: string;
   subtitle?: string;

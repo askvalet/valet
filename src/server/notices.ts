@@ -1,5 +1,5 @@
-// Island notices: short messages when something changes, worked out by comparing a widget's previous card with the
-// new one. Which changes are worth a notice is up to the config (island.notify); nothing is announced by default.
+// Notices: short messages when something changes, worked out by comparing a widget's previous card with the
+// new one. Which changes are worth a notice is up to the config (live.notify); nothing is announced by default.
 import type { Card } from '../shared/cards.ts';
 
 export interface NoticeRule { widget: string; on: 'start' | 'end' | 'down' | 'up'; text?: string }

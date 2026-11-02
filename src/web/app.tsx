@@ -3,9 +3,10 @@ import { Fragment, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useM
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Card as CardData, ForecastCard, StatusCard, WidgetState } from '../shared/cards.ts';
+import { toast } from './feel.tsx';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
-import Island, { LiveRings, type Live, type Notice } from './island.tsx';
+import { LiveRings, type Live, type Notice } from './live.tsx';
 import { SignIn, useMe } from './signin.tsx';
 import { suggest } from './suggest.ts';
 import { asView, type View } from '../shared/views.ts';
@@ -39,7 +40,7 @@ interface Page {
   welcome?: { path: string; saved: boolean };
   menubar?: { widgets: string[]; position: 'left' | 'center' | 'right'; labels: boolean; clock: boolean; date: boolean; theme: boolean };
   nav?: { side: 'left' | 'right' | 'top' | 'bottom'; style: 'icons' | 'labels' | 'both'; hide: string[]; order?: string[] };
-  island?: { activities: string[]; idle: 'notch' | 'hide'; position: 'top' | 'top-left' | 'top-right' | 'bottom'; label: boolean; style: 'notch' | 'rings' };
+  live?: { activities: string[] };
   weather?: string;
   calendar?: string;
   recap?: boolean;
@@ -269,6 +270,7 @@ const SPANS: Record<Size, [number, number]> = { small: [1, 1], wide: [2, 1], med
 function Home({ account }: { account: boolean }) {
   const [page, setPage] = useState<Page | null>(null);
   const { state, notice, generation, insight: liveInsight } = useLive();
+  useEffect(() => { if (notice) toast(`notice:${notice.n}`, { text: notice.sub ? `${notice.text} · ${notice.sub}` : notice.text, tone: notice.tone === 'accent' ? undefined : notice.tone }, { ms: 6000 }); }, [notice]);
   const [brief, setBrief] = useState<string | null>(null);
   const [tailored, setTailored] = useState<{ list: string[]; wrong: string[] } | null>(null);
   const now = useClock();
@@ -404,7 +406,7 @@ function Home({ account }: { account: boolean }) {
     return c?.type === 'media' ? c.items.map((m, i) => ({ m, href: c.href, k: `${key}:${i}` })) : [];
   });
   // what's live right now, most important first (the config's order)
-  const live: Live[] = (page?.island?.activities ?? []).flatMap(key => {
+  const live: Live[] = (page?.live?.activities ?? []).flatMap(key => {
     const c = state[key]?.card;
     return c?.activity ? [{ ...c.activity, key, href: c.href, source: c.source }] : [];
   });
@@ -494,7 +496,7 @@ function Home({ account }: { account: boolean }) {
 
   const place = phone ? 'center' : ui?.open ?? 'center', docked = place === 'left' || place === 'right';
   const topbar = page?.menubar;
-  const asRings = page?.island?.style === 'rings', liveInBar = asRings && wide && live.length > 0 && page?.island?.position !== 'top-left', liveOnLeft = asRings && wide && live.length > 0 && page?.island?.position === 'top-left';
+  const liveInBar = !phone && live.length > 0;
   const weatherCard = page?.weather && state[page.weather]?.card?.type === 'forecast' ? state[page.weather]!.card as ForecastCard : undefined;
   const chatWide = wide && !phone && !!chatTab && view === chatTab && !!page?.assistant;
   // a section title on the page, as it always was; one that's only a tab's name is still a heading to a screen reader
@@ -618,9 +620,8 @@ function Home({ account }: { account: boolean }) {
 
       {/* top-right: the menubar rings, weather and time (and the theme switch when there's no wallpaper).
           Below lg it sits at the top of the page instead, centred and wrapping, so phones see it too. */}
-      {page?.island && <Island live={asRings && wide ? [] : live} idle={page.island.idle} docked={wide && page.island.position !== 'bottom'} position={wide ? page.island.position : 'top'} label={page.island.label} notice={notice} />}
-      {/* phones: one row, condensed; wide screens: top right, level with the island */}
-      {liveOnLeft && <div className="glass-bar glass-plate wall-text absolute top-5 left-5 z-20 flex items-center gap-3 border px-4 py-1.5"><LiveRings live={live} /></div>}
+      {/* phones: one row, condensed, with what's live in its own row above; wide screens: top right */}
+      {phone && live.length > 0 && <div className="wall-text z-20 flex justify-center px-3 pt-3"><div className="glass-bar glass-plate relative flex items-center gap-3 border px-3 py-1"><LiveRings live={live} /></div></div>}
       <div ref={bar} data-labels={topbar?.labels !== false || undefined} className={cn(!settled && 'invisible', 'menubar wall-text z-20 flex items-stretch justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:gap-4 xl:p-0', { left: 'xl:left-5', center: 'xl:left-1/2 xl:-translate-x-1/2', right: 'xl:right-5' }[topbar?.position ?? 'right'])}>
         {!!topbar?.widgets.length && (
           <div className="glass-bar glass-plate relative flex shrink items-center gap-1 border px-2 py-1 sm:gap-3 sm:px-4 sm:py-1.5">

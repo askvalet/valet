@@ -188,7 +188,7 @@ const SECTIONS: [string, string[], string][] = [
   ['Page', ['title', 'greeting', 'notice', 'location', 'timezone', 'weather', 'calendar', 'search', 'recap', 'welcome', 'reload', 'sandbox', 'links'], 'The top level of `config.yaml`.'],
   ['Appearance', ['appearance'], 'Look and feel. Every option becomes a CSS variable or a class, so a change shows without a rebuild. Left out, it sets nothing and the stylesheet\'s own value stands.'],
   ['Hero', ['hero'], 'The top of the overview.'], ['Chat', ['chat'], 'The assistant\'s window on the page. What it knows and may do is under `assistant`.'],
-  ['Nav', ['nav'], 'The tab buttons.'], ['Menubar', ['menubar'], 'The rings in the top bar. A plain list of widget keys works too.'], ['Island', ['island'], 'The notch at the top that shows what\'s happening.'],
+  ['Nav', ['nav'], 'The tab buttons.'], ['Menubar', ['menubar'], 'The rings in the top bar. A plain list of widget keys works too.'], ['Live', ['live'], 'Rings in the top bar for what\'s happening.'],
   ['Format', ['format'], 'How things are written. `auto` follows the browser.'], ['Labels', ['labels'], 'The words on the page. `{name}`, `{year}`, `{n}` and `{scope}` fill in.'],
   ['Notify', ['notify'], 'Where "tell me when" reminders go when you\'re not looking.'], ['Auth', ['auth', 'allowedHosts'], 'Sign-in, and the names Valet answers to. See [sign-in and network safety](/start/sign-in/).'],
   ['History', ['history'], 'Each widget\'s headline numbers over time, so tiles can show a graph. Set to `false` to turn it off.'], ['Plugins', ['plugins'], 'Community integrations. A plain list of npm packages works too. See [the plugin toolkit](/build/plugins/).'],

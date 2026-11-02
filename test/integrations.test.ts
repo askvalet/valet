@@ -119,7 +119,7 @@ test('timeline: a problem never cleared stays unresolved until it is', async () 
   assert.deepEqual(t.lines(36e5, 40, true).map(l => l.split(' ').at(-1)), ['down']);       // only the "cleared" line
 });
 
-test('qbittorrent: stuck torrents are reported, and stay out of the island', async () => {
+test('qbittorrent: stuck torrents are reported, and stay out of the live rings', async () => {
   const q = make(qbittorrent, { url: 'http://q', username: 'u', password: 'p' }, fake(url => {
     if (url.includes('auth/login')) return new Response('Ok.', { headers: { 'set-cookie': 'SID=x; path=/' } });
     if (url.includes('transfer/info')) return new Response(JSON.stringify({ dl_info_speed: 0, up_info_speed: 0 }));
@@ -319,7 +319,7 @@ test('arr: episodes and movies come out in date order with friendly days', async
   assert.equal(card.items[1].backdrop, 'https://artworks.thetvdb.com/banners/fanart/original/1.jpg');   // only TMDB has sized copies
 });
 
-test('home assistant schedule: next time rolls to tomorrow, and shows in the island when close', async () => {
+test('home assistant schedule: next time rolls to tomorrow, and shows as a live ring when close', async () => {
   const t = (mins: number) => new Date(Date.now() + mins * 60_000).toISOString();
   const states = [
     { entity_id: 'sensor.a', state: t(-300), attributes: {} },   // already passed today

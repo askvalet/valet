@@ -264,14 +264,9 @@ export const Config = z.object({
     order: z.array(z.string()).default([]),  // tabs in this order, by name; the rest follow in layout order
     size: Scale.default(1),
   }).strict().prefault({}),
-  // the island: a black notch at the top that comes alive with whatever's happening (plays, downloads, a robot
-  // cleaning), in this order of importance. idle: keep a small empty notch, or hide it when nothing's live.
-  island: z.object({
-    activities: z.array(z.string()).default([]), idle: z.enum(['hide', 'notch']).default('hide'),
-    position: z.enum(['top', 'top-left', 'top-right', 'bottom']).default('top'),   // wide screens; a notch only hangs from the top
-    label: z.boolean().default(true),       // false: artwork and progress only, until it's opened
-    style: z.enum(['notch', 'rings']).default('notch'),   // rings: on wide screens, activities join the top bar's rings (top-left: their own plate there)
-    size: Scale.default(1),
+  // what's happening right now (plays, downloads, a robot cleaning), as rings in the top bar, in this order of importance
+  live: z.object({
+    activities: z.array(z.string()).default([]),
     // short notices when things change, e.g. { widget: downloads.active, on: end, text: "{title} finished" }:
     // start/end of a widget's live activity, a service going down/up (status cards). {title}, {name} fill in.
     // push: true sends it to your notification channels as well

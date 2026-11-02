@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { MiniRing, NowPlaying, Ring, SummaryTile, Widget } from '@/cards.tsx';
 import { Card } from '@/components/ui/card';
-import Island from '@/island.tsx';
+import { LiveRings } from '@/live.tsx';
 import RecapStory from '@/recap.tsx';
 import '@/styles.css';
 import './harness.css';
@@ -41,7 +41,7 @@ function Shot({ s }: { s: Spec }) {
   if (s.mode === 'tiles') return <div data-shot className="grid gap-(--tile-gap)" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 165px), 1fr))' }}>{(s.cards ?? []).flatMap((c, i) => (c.summaries ?? (c.summary ? [c.summary] : [])).map((t: any, j: number) => <div className="min-w-0" key={`${i}${j}`}><SummaryTile s={t} href={c.href} /></div>))}</div>;
   if (s.mode === 'media') return <div data-shot className="grid gap-(--card-gap)" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 420px), 1fr))' }}>{(s.cards ?? []).flatMap(c => c.items ?? []).map((m: any, i: number) => <NowPlaying key={i} m={m} compact />)}</div>;
   if (s.mode === 'group') return <div data-shot className="grid gap-(--card-gap)" style={{ gridTemplateColumns: `repeat(${Math.min((s.cards ?? []).length, 3)}, minmax(0, 1fr))` }}>{(s.cards ?? []).map((c, i) => <Widget key={i} card={c} fill run={run} />)}</div>;
-  if (s.mode === 'island') return <div data-shot style={{ width: 560, minHeight: 90, position: 'relative' }}><Island live={s.live ?? []} idle="notch" docked={false} notice={s.notice} /></div>;
+  if (s.mode === 'island') return <div data-shot className="glass-bar glass-plate relative inline-flex items-center gap-3 border px-4 py-1.5" style={{ marginBottom: 150 }}><LiveRings live={s.live ?? []} /></div>;
   return null;
 }
 

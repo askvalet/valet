@@ -22,7 +22,7 @@ export default defineIntegration({
       entities: z.array(z.union([z.string(), z.object({ id: z.string(), name: z.string() })])) })).default({}),
     controllable: z.array(z.string()).default([]),   // extra entities the assistant may control (cards' entities always may)
     // each entry becomes a schedule widget `<instance>.<key>`: timestamp sensors (bin days, a timetable) as a day's
-    // timeline with the next one counting down; within `soon` minutes it also shows in the island
+    // timeline with the next one counting down; within `soon` minutes it also shows as a live ring
     schedules: z.record(z.string(), z.object({
       title: z.string(),
       icon: z.string().optional(),

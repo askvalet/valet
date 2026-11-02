@@ -124,7 +124,7 @@ export default defineIntegration({
     const headline = (list: Event[], now: number) => {
       const next = list[0], today = list.filter(e => dayOf(e.start) === dayOf(now));
       return { summary: { label: cfg.title, icon: 'calendar', value: next ? next.title : 'Free', sub: next ? whenText(next) : `next ${cfg.days} days`, detail: today.length ? `${today.length} today` : undefined },
-        // the island shows an event while it's on
+        // a ring shows an event while it's on
         activity: next && !next.allDay && next.start <= now ? { title: next.title, subtitle: `until ${fmt.time(next.end ?? next.start + 36e5)}`, icon: 'calendar' } : undefined };
     };
     return {

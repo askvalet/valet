@@ -113,7 +113,7 @@ export default defineIntegration({
             note: dl.length ? `${dl.length > 1 ? `${dl.length} downloads · ` : ''}↓ ${fmt.rate(info.dl_info_speed)}` : undefined,
             empty: 'Nothing downloading',
             buttons: dl.length && dl.every(t => /paused|stopped/i.test(t.state)) ? [{ label: 'Resume all', action: 'resume' }] : undefined,
-            // the island is for what's moving: a dead torrent shouldn't sit there for days
+            // the rings are for what's moving: a dead torrent shouldn't sit there for days
             activity: first && { title: moving.length > 1 ? `${first.title} +${moving.length - 1}` : first.title, subtitle: `↓ ${fmt.rate(info.dl_info_speed)}`,
               image: first.image, icon: 'download', pct: moving.reduce((s, t) => s + t.progress, 0) / moving.length, trailing: moving[0].eta < 8640000 ? `${fmt.duration(moving[0].eta)} left` : undefined, count: moving.length },
             items,

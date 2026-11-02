@@ -37,10 +37,7 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
     const page = await context.newPage(), cdp = await context.newCDPSession(page);
     return { context, page, cdp };
   };
-  // the island shows what's playing: in the shots about it, not in every picture
-  const ISLAND = new Set(['scene/overview', 'scene/overview-full', 'scene/island', 'scene/island-open', 'scene/phone']);
   const shot = async (page: any, cdp: any, id: string, box?: any, pad = 16) => {
-    await page.evaluate((show: boolean) => { document.querySelector<HTMLElement>('.island-wrap')?.style.setProperty('display', show ? '' : 'none'); }, ISLAND.has(id));
     if (!wanted(id)) return;
     const text = await page.evaluate(() => document.body.innerText);
     if (forbidden.test(text)) problems.push(`${id}: the page text has a forbidden word`);
@@ -86,11 +83,11 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
     await shot(page, cdp, 'scene/palette-search');
     await page.keyboard.press('Escape'); await sleep(400);
 
-    // the island, closed then open
-    const band = (height: number) => ({ x: 400, y: 0, width: 640, height });
-    await shot(page, cdp, 'scene/island', band(84), 0);
-    await page.locator('[class*="island"]').first().click({ timeout: 2000 }).catch(() => {}); await sleep(1400);
-    await shot(page, cdp, 'scene/island-open', band(220), 0);
+    // the live rings, and one opened
+    const ringAt = await page.locator('.menubar .group\\/ring').first().boundingBox().catch(() => null);
+    if (ringAt) { await page.mouse.move(ringAt.x + 19, ringAt.y + 19); await sleep(700); }
+    await shot(page, cdp, 'scene/island-open', { x: 0, y: 0, width: 1440, height: 240 }, 0);
+    await page.mouse.move(10, 500);
     await page.keyboard.press('Escape'); await page.mouse.click(700, 760); await sleep(500);
 
     // the assistant: an answer with a card, then an approval

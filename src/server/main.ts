@@ -205,7 +205,7 @@ app.get('/api/page', c => {
         .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access, live: t.live }]))) } : null,
     menubar: { ...config.menubar, widgets: config.menubar.widgets.filter(k => hub.widget(k)) },
     nav: config.nav,
-    island: config.island && { ...config.island, activities: config.island.activities.filter(k => hub.widget(k)) },
+    live: config.live && { activities: config.live.activities.filter(k => hub.widget(k)) },
     weather: config.weather && hub.widget(config.weather) ? config.weather : undefined,
     calendar: config.calendar && hub.widget(config.calendar) ? config.calendar : undefined,
     insight: site.watcher?.insight?.text,

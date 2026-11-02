@@ -15,7 +15,7 @@ import HomeCase from '../src/web/visuals/home-case.tsx';
 import { batteryNote, heard, near, restoreGroups, restoreOf, unsettled, wearNote, type PlanData, type PlanLight } from '../src/web/visuals/home-model.ts';
 import PcCase, { type PcCaseData } from '../src/web/visuals/pc-case.tsx';
 import type { ForecastCard, ThermostatCard } from '../src/shared/cards.ts';
-import Island from '../src/web/island.tsx';
+import { LiveRings } from '../src/web/live.tsx';
 import { SAMPLES } from '../src/web/samples.ts';
 import { chartless, Heatmap, Race, standing, Waffle } from '../src/web/charts.tsx';
 
@@ -171,11 +171,11 @@ test('schema: new cards reject what would break them', () => {
   assert.equal(checkCard({ type: 'calendar', events: [{ title: 'x', start: '2026-01-01', color: 'url(x)' }] }).success, false);
 });
 
-test('the island renders with one and with several activities, and not at all when idle', () => {
+test('live rings: each activity gets a ring with its story, and none when nothing is live', () => {
   const a = { key: 'a', title: 'Joker', icon: 'play', pct: .3, trailing: '1h left' };
-  assert.ok(renderToString(<Island live={[a]} idle="hide" docked />).includes('Joker'));
-  assert.ok(renderToString(<Island live={[a, { ...a, key: 'b', title: 'Download', icon: 'download' }]} idle="hide" docked={false} />).includes('Download'));
-  assert.equal(renderToString(<Island live={[]} idle="hide" docked />), '');
+  const out = renderToString(<>{LiveRings({ live: [a, { ...a, key: 'b', title: 'Download', icon: 'download' }] })}</>);
+  assert.ok(out.includes('Joker') && out.includes('Download') && out.includes('1h left'));
+  assert.equal(renderToString(<>{LiveRings({ live: [] })}</>), '');
 });
 
 const weather = (over: Partial<ForecastCard['now']> = {}, hours: ForecastCard['hours'] = [], days?: ForecastCard['days']): ForecastCard => ({ type: 'forecast', now: { temp: 12, feels: 11, words: 'Cloudy', icon: 'cloud', hi: 14, lo: 8, ...over }, hours, days });

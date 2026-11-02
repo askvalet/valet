@@ -76,14 +76,14 @@ export function check(config: Config, registry: Record<string, Integration>, fro
     } catch (e) { problems.push(`integrations.${id}: ${(e as Error).message}`); }
   }
   // only widgets placed somewhere are polled; a key that points nowhere is a typo
-  const placed = new Set([...config.layout.flatMap(s => s.widgets.map(w => w.widget)), ...config.menubar.widgets, ...(config.weather ? [config.weather] : []), ...(config.island?.activities ?? [])]);
+  const placed = new Set([...config.layout.flatMap(s => s.widgets.map(w => w.widget)), ...config.menubar.widgets, ...(config.weather ? [config.weather] : []), ...(config.live?.activities ?? [])]);
   for (const key of placed) {
     const [inst, w] = key.split('.');
     if (inst === 'valet') continue;      // Valet's own widgets exist once the site is built
     if (!instances.get(inst)?.widgets[w]) problems.push(`layout: no widget "${key}"${instances.has(inst) ? ` (${inst} has: ${Object.keys(instances.get(inst)!.widgets).join(', ')})` : ''}`);
   }
   for (const [id] of Object.entries(config.assistant?.access ?? {})) if (!['default', 'config', 'valet'].includes(id) && !instances.has(id)) problems.push(`assistant.access.${id}: no such integration`);
-  for (const n of config.island?.notify ?? []) if (!placed.has(n.widget)) problems.push(`island.notify: "${n.widget}" isn't placed on the page`);
+  for (const n of config.live?.notify ?? []) if (!placed.has(n.widget)) problems.push(`live.notify: "${n.widget}" isn't placed on the page`);
   const tabs = new Set(config.layout.flatMap(s => s.tab ?? s.title ?? []));
   for (const t of Object.keys(config.appearance.wallpapers)) if (!tabs.has(t)) problems.push(`appearance.wallpapers: no tab "${t}" (the tabs are: ${[...tabs].join(', ')})`);
   if (Array.isArray(config.appearance.wallpaper) && config.appearance.wallpaper.length > 1 && !config.appearance.rotate) problems.push('appearance.rotate: a list of wallpapers needs a time to take turns, like 10m (only the first shows)');
@@ -140,7 +140,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     ...i, widgets: Object.fromEntries(Object.entries(i.widgets).filter(([w]) => placed.has(`${id}.${w}`))
       .map(([w, def]) => [w, every.has(`${id}.${w}`) ? { ...def, interval: every.get(`${id}.${w}`) } : def])),
   }])), (key, prev, next) => {
-    for (const n of noticesFor(key, prev?.card, next.card, config.island?.notify ?? [])) {
+    for (const n of noticesFor(key, prev?.card, next.card, config.live?.notify ?? [])) {
       recent.push(n); if (recent.length > 5) recent.shift();
       for (const l of noticeListeners) l(n);
     }
@@ -148,7 +148,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     // (not the AI's own comings and goings: they'd drown out everything else, and every summary would cause more)
     if (meta.get(key.split('.')[0])?.type !== 'aimonitor') for (const on of EVERYTHING) for (const n of noticesFor(key, prev?.card, next.card, [{ widget: key, on }])) timeline.add(on, `${n.text}${n.sub ? ` (${n.sub})` : ''}`, key);
     // and rules that asked for it reach your phone
-    for (const r of config.island?.notify ?? []) if (r.push && r.widget === key) for (const n of noticesFor(key, prev?.card, next.card, [r])) sendPush({ title: n.text, text: n.sub, urgent: n.tone === 'bad' });
+    for (const r of config.live?.notify ?? []) if (r.push && r.widget === key) for (const n of noticesFor(key, prev?.card, next.card, [r])) sendPush({ title: n.text, text: n.sub, urgent: n.tone === 'bad' });
   }, history);
 
   const sendPush = (m: Message) => { void push(config.notify.channels, m, fetch, redactNow); };

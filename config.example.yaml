@@ -151,8 +151,8 @@ mcp:
 menubar: [system.tiles]
 # A ring beside the clock: where the temperature sits between today's low and high.
 weather: weather.now
-# The island: a black notch at the top that shows what's happening, in this order, and hides when nothing is.
-island:
+# What's happening right now, as rings in the top bar, in this order.
+live:
   activities: [plex.streams, downloads.active]
   notify:                          # short notices when things change (none unless listed)
     - { widget: downloads.active, on: end, text: "{title} finished downloading" }

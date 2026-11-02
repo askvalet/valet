@@ -27,10 +27,10 @@ const look = (raw: object) => lookOf(Config.parse(raw));
 test('defaults: an old config keeps the old look, to the letter', () => {
   assert.deepEqual(look({}), { vars: {}, classes: [] });
   assert.deepEqual(look({ appearance: { wallpaper: 'w.jpg' } }), { vars: {}, classes: [] });
-  const c = Config.parse({ menubar: ['a.b'], nav: { side: 'top' }, island: { activities: ['a.b'] } });
+  const c = Config.parse({ menubar: ['a.b'], nav: { side: 'top' }, live: { activities: ['a.b'] } });
   assert.deepEqual(c.menubar, { widgets: ['a.b'], position: 'right', labels: true, clock: true, date: true, theme: true, size: 1 });
   assert.deepEqual(c.nav, { side: 'top', style: 'icons', hide: [], order: [], size: 1 });
-  assert.equal(c.island?.position, 'top');
+  assert.deepEqual(c.live?.activities, ['a.b']);
   assert.deepEqual(c.hero, { greeting: true, status: true, search: true, review: true, align: 'center' });
   assert.deepEqual(c.chat, { open: 'center', overview: true, suggestions: 'ai', steps: true, thinking: 'collapsed', send: 'enter', beam: 'off', beamColor: 'mono', beamStrength: .45 });
   assert.deepEqual(c.format, { clock: 'auto', date: 'short', weekStart: 'auto', temperature: 'auto', distance: 'auto', locale: 'auto' });
@@ -56,7 +56,7 @@ test('every appearance option reaches the page as a variable or a class', () => 
       colors: { accent: '#ffd400', good: 'green', warn: 'rgb(1 2 3)', bad: 'hsl(0 80% 50%)', card: 'tomato' }, dim: .1, blur: 12, density: 'compact', gap: 20, sectionGap: 50, maxWidth: '90vw', rowHeight: 200, motion: 'none',
       font: { family: 'Inter', mono: 'Fira Code', scale: 1.2, headingWeight: 800 }, shape: { radius: 0, border: 2, borderColor: '#000', shadow: 'none' }, glass: { opacity: .4, blur: 72 },
     },
-    chat: { width: 500, height: '80vh', bubble: '#111111' }, nav: { size: 1.5 }, menubar: { size: 1.2 }, island: { size: .8 },
+    chat: { width: 500, height: '80vh', bubble: '#111111' }, nav: { size: 1.5 }, menubar: { size: 1.2 },
   });
   assert.deepEqual(classes, ['no-shadow', 'motion-none']);
   assert.equal(v['--primary'], '#ffd400'); assert.equal(v['--primary-foreground'], '#000000');
@@ -68,7 +68,7 @@ test('every appearance option reaches the page as a variable or a class', () => 
   assert.equal(v['--frost'], '2'); assert.equal(v['--wall-dim'], '0.1'); assert.equal(v['--wall-filter'], 'blur(12px)');
   assert.equal(v['--spacing'], '.2rem'); assert.equal(v['--card-gap'], '20px'); assert.equal(v['--section-gap'], '50px'); assert.equal(v['--page-max'], '90vw'); assert.equal(v['--row-h'], '200px');
   assert.equal(v['--chat-w'], '500px'); assert.equal(v['--chat-h'], '80vh'); assert.equal(v['--chat-bubble'], '#111111'); assert.equal(v['--chat-ink'], '#ffffff');
-  assert.equal(v['--nav-size'], '66px'); assert.equal(v['--bar-zoom'], '1.2'); assert.equal(v['--island-zoom'], '0.8');
+  assert.equal(v['--nav-size'], '66px'); assert.equal(v['--bar-zoom'], '1.2');
   assert.deepEqual(look({ appearance: { glass: { blur: 0 } } }).classes, ['no-blur']);
   assert.deepEqual(look({ appearance: { motion: 'reduced' } }).classes, ['motion-reduced']);
 });
@@ -102,7 +102,7 @@ test('bad values are refused', () => {
   ]) refused({ appearance });
   for (const widget of [{ tint: 'red;' }, { background: 'javascript:alert(1)' }, { background: 'https://x/a.jpg") ; x' }, { opacity: 3 }, { size: 'huge' }, { nope: 1 }]) refused({ layout: [{ widgets: [{ widget: 'a.b', ...widget }] }] });
   refused({ layout: [{ widgets: [], columns: { phone: 9 } }] }); refused({ layout: [{ widgets: [], columns: { watch: 1 } }] });
-  for (const c of [{ hero: { align: 'up' } }, { chat: { open: 'top' } }, { chat: { suggestions: 'maybe' } }, { chat: { width: 'wide' } }, { nav: { style: 'emoji' } }, { menubar: { position: 'up' } }, { island: { position: 'side' } }, { format: { clock: '13h' } }, { format: { locale: 'not a locale!' } }, { labels: { nonsense: 'x' } }, { hero: { scope: 'lights' } }, { hero: { scope: [] } }, { notice: 'x'.repeat(121) }, { layout: [{ widgets: [], favorites: [] }] }]) refused(c);
+  for (const c of [{ hero: { align: 'up' } }, { chat: { open: 'top' } }, { chat: { suggestions: 'maybe' } }, { chat: { width: 'wide' } }, { nav: { style: 'emoji' } }, { menubar: { position: 'up' } }, { live: { activities: 'x' } }, { format: { clock: '13h' } }, { format: { locale: 'not a locale!' } }, { labels: { nonsense: 'x' } }, { hero: { scope: 'lights' } }, { hero: { scope: [] } }, { notice: 'x'.repeat(121) }, { layout: [{ widgets: [], favorites: [] }] }]) refused(c);
 });
 
 test('unknown keys say what was probably meant, wherever they are', () => {

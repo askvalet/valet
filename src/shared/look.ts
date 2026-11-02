@@ -17,7 +17,6 @@ interface Look {
   chat: { width?: string; height?: string; bubble?: string };
   nav: { size: number };
   menubar: { size: number };
-  island?: { size: number };
 }
 
 /** black or white, whichever reads on this colour; only a hex can be judged here */
@@ -36,7 +35,7 @@ const SHADOWS = {
 };
 const tinted = (tint?: string, alpha?: number) => `color-mix(in srgb, ${tint ?? 'var(--card-tint)'} calc(${alpha ?? 'var(--card-alpha)'} * 100%), transparent)`;
 
-export function lookOf({ appearance: a, chat, nav, menubar, island }: Look) {
+export function lookOf({ appearance: a, chat, nav, menubar }: Look) {
   const vars: Record<string, string> = {}, classes: string[] = [];
   const set = (value: unknown, ...names: string[]) => { if (value != null) for (const n of names) vars[n] = String(value); };
   const { colors: c, font: f, shape: s, glass: g } = a;
@@ -77,7 +76,6 @@ export function lookOf({ appearance: a, chat, nav, menubar, island }: Look) {
   set(chat.bubble, '--chat-bubble'); set(inkOn(chat.bubble), '--chat-ink');
   if (nav.size !== 1) set(`${44 * nav.size}px`, '--nav-size');
   if (menubar.size !== 1) set(menubar.size, '--bar-zoom');
-  if (island && island.size !== 1) set(island.size, '--island-zoom');
   return { vars, classes };
 }
 
