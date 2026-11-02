@@ -364,12 +364,9 @@ const Zzz = ({ className }: { className?: string }) => (
 );
 const MODE_ICONS: Record<string, LucideIcon | typeof Zzz> = { off: Power, heat: Flame, cool: Snowflake, heat_cool: ArrowUpDown, auto: Sparkles, dry: Droplets, fan_only: Fan, home: House, sleep: Zzz, night: Moon, away: Plane, eco: Leaf, boost: Zap, comfort: Armchair, activity: BedDouble };
 
-// what a preset means, unless the device has said; only the pair people mix up needs saying
-const HINTS: Record<string, string> = { sleep: 'A little cooler, for going to bed', night: 'The lowest setting, right through to morning' };
-
 function ModeButton({ m, on, press, disabled }: { m: ThermostatMode; on: boolean; press: () => void; disabled: boolean }) {
   const I = MODE_ICONS[m.id];
-  return <button onClick={press} disabled={disabled} aria-pressed={on} title={m.label} className={cn('th-mode press flex h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-1', on && 'is-on')}>{I && <I className="size-[18px] flex-none" />}<span className="max-w-full truncate text-[11px] leading-[1.3] font-medium">{m.label}</span></button>;
+  return <button onClick={press} disabled={disabled} aria-pressed={on} title={m.label} className={cn('th-mode press flex h-11 min-w-0 flex-1 flex-col items-center justify-center rounded-sm px-1', on && 'is-on')}>{I && <I className="size-[18px] flex-none" />}<span className="max-w-full truncate text-[11px] leading-[1.3] font-medium">{m.label}</span></button>;
 }
 
 export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: Run; dense?: boolean }) {
@@ -421,43 +418,39 @@ export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: R
   const pct = live ?? (value != null ? pctOf(value) : 0), seg = card.range ? [pctOf(card.range[0]), pctOf(card.range[1])] : null;
   const ticks = useMemo(() => Array.from({ length: 49 }, (_, i) => { const [a, b] = [at(i / 48, R - 22), at(i / 48, R - (i % 4 ? 26 : 29))]; return `M${a[0].toFixed(1)} ${a[1].toFixed(1)}L${b[0].toFixed(1)} ${b[1].toFixed(1)}`; }).join(''), []);
   const [mx, my] = room != null ? at(pctOf(room)) : [0, 0], rise = value != null && room != null && card.mode !== 'off';
-  const hints = (card.modes ?? []).filter(m => (m.hint ?? HINTS[m.id]) && (!dense || m.on));
   const pressMode = (m: ThermostatMode) => { setFlip(m.id); hold(); run?.(m.action, m.args).catch(fail); };
   return (
-    <div className={cn('th flex h-full min-w-0 flex-1 flex-col items-center', dense ? 'gap-2' : 'gap-3 p-4')} data-mode={card.mode ?? 'heat'}>
+    <div className={cn('th flex h-full min-w-0 flex-1 flex-col items-center', 'gap-3')} data-mode={card.mode ?? 'heat'}>
       <div className="flex w-full min-h-0 flex-1 items-center justify-center">
-        <div ref={box} className={cn('relative aspect-square w-full', live != null && 'is-drag', dense ? 'max-w-[220px]' : 'max-w-[320px]')}>
+        <div ref={box} className={cn('relative aspect-square w-full', live != null && 'is-drag', dense ? 'max-w-[180px]' : 'max-w-[216px]')}>
           <svg viewBox="0 0 320 320" className="absolute inset-0 size-full overflow-visible" aria-hidden={!canSet}>
             <defs><linearGradient id={grad} x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="var(--th-a)" /><stop offset="1" stopColor="var(--th-b)" /></linearGradient></defs>
             <path d={ticks} className="th-ticks" fill="none" strokeWidth="2" strokeLinecap="round" />
-            <path d={TRACK} className="th-track" fill="none" strokeWidth="20" strokeLinecap="round" />
-            {seg ? <path d={TRACK} pathLength={100} fill="none" stroke={`url(#${grad})`} strokeWidth="20" strokeLinecap="round" strokeDasharray={`${(seg[1] - seg[0]) * 100} 200`} strokeDashoffset={-seg[0] * 100} />
-              : value != null && <path d={TRACK} pathLength={100} className="th-fill" fill="none" stroke={`url(#${grad})`} strokeWidth="20" strokeLinecap="round" strokeDasharray={`${pct * 100} 200`} />}
+            <path d={TRACK} className="th-track" fill="none" strokeWidth="9" strokeLinecap="round" />
+            {seg ? <path d={TRACK} pathLength={100} fill="none" stroke={`url(#${grad})`} strokeWidth="9" strokeLinecap="round" strokeDasharray={`${(seg[1] - seg[0]) * 100} 200`} strokeDashoffset={-seg[0] * 100} />
+              : value != null && <path d={TRACK} pathLength={100} className="th-fill" fill="none" stroke={`url(#${grad})`} strokeWidth="9" strokeLinecap="round" strokeDasharray={`${pct * 100} 200`} />}
             {room != null && <circle cx={mx} cy={my} r="4.5" className={cn('th-room', rise && 'on-fill')} />}
             {value != null && <g className="th-handle" style={{ transform: `rotate(${START + ARC * pct}deg)` }}>
-              <circle cx={C + R} cy={C} r="19" className="th-knob" /><circle cx={C + R} cy={C} r="6.5" className="th-pip" />
+              <circle cx={C + R} cy={C} r="13" className="th-knob" />
             </g>}
             {canSet && <path ref={hit} d={TRACK} role="slider" tabIndex={0} aria-label={`${card.title ?? 'Thermostat'} target`} aria-valuemin={min} aria-valuemax={max} aria-valuenow={value} aria-valuetext={`${value} degrees`}
               className="th-hit" fill="none" strokeWidth="58" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onKeyDown={key} />}
           </svg>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pb-[8%] text-center">
             <div className={cn('font-medium', dense ? 'text-[12px]' : 'text-[14px]', oops ? 'text-bad' : 'text-muted-foreground')}>{oops ? "Couldn't set it" : card.state}</div>
-            <div className={cn('mt-1 leading-[1.3] text-muted-foreground', dense ? 'text-[11px]' : 'text-[13px]')}>{value != null ? 'Set to' : 'Room'}</div>
-            <div className={cn('wx-temp', dense ? 'text-[36px]' : 'text-[58px]')}>{big != null ? <Counter value={big.toFixed(value != null ? dp : 1)} /> : '–'}<span className={cn('ml-1 font-medium tracking-normal text-foreground/75', dense ? 'text-[15px]' : 'text-[22px]')}>°{unit}</span></div>
-            {value != null && room != null ? <div className={cn('mt-1 text-muted-foreground tabular', dense ? 'text-[12px]' : 'text-[14px]')}>Room {room.toFixed(Number.isInteger(room) ? 0 : 1)} °{unit}</div>
+            <div className={cn('wx-temp', dense ? 'text-[32px]' : 'text-[40px]')}>{big != null ? <Counter value={big.toFixed(value != null ? dp : 1)} /> : '–'}<span className={cn('ml-1 font-medium tracking-normal text-foreground/75', dense ? 'text-[13px]' : 'text-[15px]')}>°{unit}</span></div>
+            {value != null && room != null ? <div className={cn('mt-1 text-muted-foreground tabular', 'text-[12px]')}>Room {room.toFixed(Number.isInteger(room) ? 0 : 1)} °{unit}</div>
               : card.range ? <div className="mt-1 text-[14px] text-muted-foreground tabular">Set to {card.range[0]}–{card.range[1]} °{unit}</div> : null}
           </div>
           {canSet && (
-            <div className="absolute bottom-[2.5%] left-1/2 flex -translate-x-1/2 gap-3">
-              <button aria-label="Cooler" disabled={(value ?? min) <= min} onClick={() => nudge(-1)} className="th-step press grid size-[46px] place-items-center rounded-full"><Minus className="size-5" /></button>
-              <button aria-label="Warmer" disabled={(value ?? max) >= max} onClick={() => nudge(1)} className="th-step press grid size-[46px] place-items-center rounded-full"><Plus className="size-5" /></button>
+            <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 gap-2">
+              <button aria-label="Cooler" disabled={(value ?? min) <= min} onClick={() => nudge(-1)} className="th-step press grid size-8 place-items-center rounded-full"><Minus className="size-4" /></button>
+              <button aria-label="Warmer" disabled={(value ?? max) >= max} onClick={() => nudge(1)} className="th-step press grid size-8 place-items-center rounded-full"><Plus className="size-4" /></button>
             </div>
           )}
         </div>
       </div>
       {!!card.modes?.length && <div className="flex w-full gap-1.5">{card.modes.map(m => <ModeButton key={m.id} m={m} on={flip === m.id ? !m.on : !!m.on} disabled={!run} press={() => pressMode(m)} />)}</div>}
-      {card.note && <p className="w-full text-center text-[13px] leading-[1.35] text-muted-foreground">{card.note}</p>}
-      {hints.length > 0 && <ul className="w-full space-y-0.5 text-[13px] leading-[1.35] text-muted-foreground">{hints.map(m => <li key={m.id}><b className={cn('font-medium', m.on ? 'text-foreground' : 'text-foreground/80')}>{m.label}</b> {m.hint ?? HINTS[m.id]}</li>)}</ul>}
       {!run ? <Cant className="w-full justify-center">View only: sign in to change this.</Cant> : !card.set && card.range ? <Cant className="w-full justify-center">Its range can't be set from here.</Cant> : null}
     </div>
   );

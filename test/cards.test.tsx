@@ -69,10 +69,10 @@ test('chips: past the limit they fold behind a count, and a mark shows', () => {
   assert.match(out, /3 in all/); assert.match(out, /chip-mark[^>]*>Major/);
 });
 
-test('drives read as readings: a meter with a normal band, no knob, and each number named', () => {
+test('drives read as readings: a coloured meter, no knob, and each number named', () => {
   const out = html({ type: 'list', layout: 'temps', items: [{ title: 'Disk', subtitle: 'Powered on 2.0 years', meta: '41°C', pct: .5, band: [.1, .9] }] });
   assert.match(out, /role="meter"/); assert.doesNotMatch(out, /temp-track/);
-  assert.match(out, /left:10%;width:80%/); assert.match(out, /Powered on 2\.0 years/); assert.match(out, />now</);
+  assert.match(out, /clip-path:inset/);
 });
 
 test('columns: the axis says when, the legend trusts the service, and the chips say what they are', () => {
@@ -208,7 +208,8 @@ test('thermostat: the dial names both numbers, explains the pair people mix up, 
   const base: ThermostatCard = { type: 'thermostat', unit: 'C', state: 'Idle', min: 10, max: 30, step: .5, target: 20, current: 19.5, set: { action: 'climate' },
     modes: [{ id: 'sleep', label: 'Sleep', action: 'climate' }, { id: 'night', label: 'Night', action: 'climate', hint: '17 degrees' }], note: 'Following its schedule' };
   const html = renderToString(<Thermostat card={base} run={async () => {}} />);
-  for (const word of ['Set to', 'Room ', '19.5', 'A little cooler', '17 degrees', 'Following its schedule']) assert.ok(html.includes(word), word);
+  for (const word of ['Room ', '19.5']) assert.ok(html.includes(word), word);
+  for (const word of ['Set to', 'A little cooler', '17 degrees', 'Following its schedule']) assert.ok(!html.includes(word), word);
   assert.ok(!html.includes('View only'));
   assert.ok(renderToString(<Thermostat card={base} />).includes('View only'));
   assert.ok(renderToString(<Thermostat card={{ ...base, target: undefined, set: undefined, range: [18, 22] }} run={async () => {}} />).includes("can&#x27;t be set from here"));

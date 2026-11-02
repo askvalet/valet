@@ -4,7 +4,7 @@ title: Valet
 greeting: Daniel
 timezone: America/Toronto
 location: Example, Canada
-allowedHosts: [demo.chotte.dev, demo2.chotte.dev]   # add the public name here when the demo goes live
+allowedHosts: [demo.chotte.dev]   # add the public name here when the demo goes live
 auth: { mode: none, trustNetwork: true }   # every control is make-believe and undoes itself within ten minutes
 reload: false
 

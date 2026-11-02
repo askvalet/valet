@@ -573,11 +573,9 @@
 /* an app that runs several containers says how many */
 .wall-count { position: absolute; top: -5px; right: -5px; display: grid; place-items: center; min-width: 18px; height: 18px; padding-inline: 4px; border-radius: 9px; font-size: 11px; font-style: normal; font-weight: 500; color: var(--foreground); background: var(--secondary); box-shadow: 0 0 0 2px var(--card); font-variant-numeric: tabular-nums; }
 @media (hover: hover) and (pointer: fine) { a.wall-tile:hover { background: rgb(255 255 255 / .14); } }
-/* a thermometer: cool at the left, hot at the right */
-/* a reading, not a control: a thin filled track with no knob, the normal range a faint band behind it */
-.reading { position: relative; height: 4px; overflow: hidden; border-radius: 2px; background: rgb(127 127 127 / .14); }
-.reading b { position: absolute; inset-block: 0; background: rgb(127 127 127 / .24); box-shadow: inset 1px 0 rgb(127 127 127 / .55), inset -1px 0 rgb(127 127 127 / .55); }
-.reading i { position: absolute; inset: 0; border-radius: 2px; transition: transform var(--dur-move) var(--ease-out); }
+/* a reading, not a control: a filled track with no knob, cool at the left, hot at the right */
+.reading { position: relative; height: 6px; overflow: hidden; border-radius: 3px; background: rgb(127 127 127 / .16); }
+.reading i { position: absolute; inset: 0; background: linear-gradient(90deg, #64d2ff, #ffd60a 55%, #ff453a); transition: clip-path var(--dur-move) var(--ease-out); }
 .chip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; white-space: nowrap; padding: 6px 12px 6px 8px; border-radius: calc(var(--radius) * .6); font-size: 13px; background: rgb(255 255 255 / .07); transition: background-color var(--dur-press) var(--ease-out); }
 .chip-mark { font-size: 12px; font-weight: 500; }
 .chip-more { padding-left: 12px; color: var(--muted-foreground); }

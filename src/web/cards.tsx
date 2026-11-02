@@ -161,12 +161,12 @@ function Headlines({ card }: { card: ListCard }) {
   );
 }
 
-/** A reading per drive: how far along it sits, against a faint band of what's normal. Nothing here moves by hand. */
+/** A reading per drive: how far along it sits between cool and hot, and the colour says so before the number does. */
 function Temps({ card }: { card: ListCard }) {
   return (
     <div className="space-y-3.5">
       {card.items.map((it, i) => {
-        const at = Math.max(0, Math.min(1, it.pct ?? 0)), [lo, hi] = it.band ?? [.125, .875];
+        const at = Math.max(0, Math.min(1, it.pct ?? 0));
         return (
           <div key={i} className="min-w-0">
             <div className="flex items-baseline justify-between gap-3 text-sm">
@@ -174,14 +174,12 @@ function Temps({ card }: { card: ListCard }) {
               <span className="shrink-0 tabular"><span key={it.meta} className={cn('tick inline-block font-medium', toneText[it.tone ?? 'neutral'])}>{it.meta}</span> <span className="text-xs text-muted-foreground">now</span></span>
             </div>
             <div className="reading mt-1.5" role="meter" aria-label={`${it.title} temperature`} aria-valuenow={Math.round(at * 100)} aria-valuemin={0} aria-valuemax={100} aria-valuetext={it.meta}>
-              <b style={{ left: `${lo * 100}%`, width: `${(hi - lo) * 100}%` }} />
-              <i className={cn(it.tone === 'bad' ? 'bg-bad' : it.tone === 'warn' ? 'bg-warn' : 'bg-foreground/55')} style={{ transform: `translateX(${at * 100 - 100}%)` }} />
+              <i style={{ clipPath: `inset(0 ${(1 - at) * 100}% 0 0 round 3px)` }} />
             </div>
             {it.subtitle && <div className={cn('mt-1 truncate text-xs', it.tone === 'bad' ? 'text-bad' : 'text-muted-foreground')}>{it.subtitle}</div>}
           </div>
         );
       })}
-      <div className="text-[12px] text-muted-foreground">Shaded: the normal range</div>
     </div>
   );
 }

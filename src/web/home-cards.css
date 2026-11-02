@@ -23,7 +23,7 @@
 @media (hover: hover) { .cal-day:hover .cal-num:not(.bg-primary):not(.is-picked) { background: color-mix(in srgb, var(--foreground) 9%, transparent); } }
 
 /* thermostat: one colour per mood, the same dial for all of them */
-.th { --th-a: #ffc9a3; --th-b: #ff9a6c; --th-soft: rgb(255 170 125 / .2); user-select: none; -webkit-user-select: none; }
+.th { --th-a: var(--primary); --th-b: var(--primary); --th-soft: color-mix(in srgb, var(--primary) 18%, transparent); user-select: none; -webkit-user-select: none; }
 .th[data-mode="cool"] { --th-a: #a4dcff; --th-b: #4ba7ff; --th-soft: rgb(90 170 255 / .2); }
 .th[data-mode="auto"] { --th-a: #b5efd7; --th-b: #5cd6a7; --th-soft: rgb(100 220 170 / .18); }
 .th[data-mode="off"] { --th-a: #9b9ba3; --th-b: #77777f; --th-soft: rgb(255 255 255 / .1); }
@@ -34,10 +34,8 @@
 .is-drag .th-fill, .is-drag .th-handle { transition: none; }
 .th-handle { transform-origin: 160px 160px; transform-box: view-box; transition: transform var(--dur-move) var(--ease-out); }
 .th-knob { fill: #fff; filter: drop-shadow(0 2px 7px rgb(0 0 0 / .4)); transition: r var(--dur-pop) var(--ease-out); }
-.is-drag .th-knob { r: 23px; }
-.th-pip { fill: var(--th-b); transition: r var(--dur-pop) var(--ease-out); }
-.is-drag .th-pip { r: 8px; }
-.th-room { fill: color-mix(in srgb, var(--foreground) 62%, transparent); }
+.is-drag .th-knob { r: 16px; }
+.is-drag .th-room { fill: color-mix(in srgb, var(--foreground) 62%, transparent); }
 .th-room.on-fill { fill: #fff; stroke: rgb(0 0 0 / .18); stroke-width: 1; }
 .th-hit { stroke: transparent; pointer-events: stroke; cursor: grab; touch-action: none; outline: none; }
 .is-drag .th-hit { cursor: grabbing; }
