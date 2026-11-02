@@ -155,7 +155,7 @@ The top of the overview.
 | `greeting` | `true` | `false` hides it; text replaces "Sam's homelab": `{name}` fills in the top-level `greeting`, `{greeting}` the time of day |
 | `status` | `true` | one sentence under it, two things at most: "All 30 services are running and Sam is watching Dune." or "Everything's running except Mealie." What needs someone comes first, and services off by choice aren't counted. If the assistant finds what several problems share, that's the sentence. Hover it for the assistant's brief |
 | `search` | `true` | the ask box, or the search box without an assistant |
-| `review` | `true` | the year in review link, on its own line under the suggested questions. It can be dismissed for the visit, and the chat offers it as well. `end` adds a card closing the overview as well as the link; `false` is neither. `recap: false` turns off the review itself |
+| `review` | `true` | the year in review link, on its own line under the suggested questions. It can be dismissed for the visit. `end` adds a card closing the overview as well as the link; `false` is neither. `recap: false` turns off the review itself |
 | `align` | `center` | `left`, `right` |
 | `scope` | none | what the ask box names instead of "anything": `true` works it out from your integrations ("Ask about downloads, lights, what to watch…"), a list of up to 6 says it yourself. `chat.placeholder` wins over it |
 

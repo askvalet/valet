@@ -440,8 +440,8 @@ function Home({ account }: { account: boolean }) {
   const h = page?.hero, chatUi = page?.chat;
   // follow-ups outlive what they were about too: none about a service that's fine again
   const fresh = chatUi?.followUps && stillTrue(chatUi.followUps, [], Object.values(state)).join('\n');
-  // the year in review is on offer in the chat too, whatever was dismissed on the page
-  const review = page?.recap !== false && h?.review !== false ? label('review', { year: new Date().getFullYear() }) : undefined;
+  // the demo's chat also offers the year in review, so visitors find it; on a real Valet the page's link is enough
+  const review = page?.sandbox && page.recap !== false && h?.review !== false ? label('review', { year: new Date().getFullYear() }) : undefined;
   const ui = useMemo(() => chatUi && { ...chatUi, review, ...(fresh != null && { followUps: fresh ? fresh.split('\n') : [] }) }, [chatUi, fresh, review]);
   const named = { name: page?.assistant?.name ?? '' };
   const placeholder = (ui?.placeholder ?? (h?.scope?.length ? label('askAbout', { scope: h.scope.slice(0, phone ? 2 : 6).join(', ') }) : label('askAnything'))).replace('{name}', page?.assistant?.name ?? '');
