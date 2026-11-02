@@ -1,6 +1,6 @@
 // The light that travels around the chat box, if the config asks for it (`chat.beam`). Loaded only then. `thinking` is
 // a band of our own, there only while the answer comes, so nothing about it runs or loads the rest of the time.
-import { lazy, Suspense, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { cn, useOnScreen } from '@/lib/utils';
 import type { ChatUi } from './assistant.tsx';
 
@@ -14,8 +14,12 @@ function Edge({ ui }: { ui?: ChatUi }) {
 export function ChatBeam({ ui, busy, className, children }: { ui?: ChatUi; busy?: boolean; className?: string; children: ReactNode }) {
   const [typing, setTyping] = useState(false), [box, seen] = useOnScreen<HTMLDivElement>(), mode = ui?.beam ?? 'off';
   // `once`: a lap to say hello as the page opens, then only while you're typing
-  const [hello, setHello] = useState(mode === 'once');
-  useEffect(() => { if (!hello) return; const t = setTimeout(() => setHello(false), 5000); return () => clearTimeout(t); }, []);
+  const [hello, setHello] = useState(false), greeted = useRef(false);
+  useEffect(() => {
+    if (mode !== 'once' || greeted.current) return;   // the setting arrives with the page, after this first draws
+    greeted.current = true; setHello(true);
+    setTimeout(() => setHello(false), 5000);
+  }, [mode]);
   if (mode === 'off') return <div className={className}>{children}</div>;
   if (mode === 'thinking') return <div ref={box} className={cn('relative', className)}>{children}{busy && seen && <Edge ui={ui} />}</div>;
   const on = seen && (mode === 'always' || hello || ((mode === 'focus' || mode === 'once') && typing));
