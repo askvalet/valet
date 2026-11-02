@@ -32,7 +32,7 @@
 
 /* A pile of cards: the next ones show their real pages above the top one. Where each sits comes from `pose`; dragging writes
    it directly and a card lets go of it by transition, from wherever it is. */
-.pile { position: relative; isolation: isolate; height: 100%; min-height: 256px; touch-action: pan-y; }
+.pile { position: relative; isolation: isolate; height: 100%; min-height: 282px; touch-action: pan-y; }   /* the cards' 240, and the 42 the stack shows above them */
 .pile-card { position: absolute; inset: 42px 0 0; transform-origin: 50% 0; transition: transform var(--dur-move) var(--ease-out), opacity var(--dur-pop) var(--ease-out); }
 .pile-card::after { content: ""; position: absolute; inset: 0; border-radius: 1rem; background: #000; opacity: var(--dim, 0); pointer-events: none; transition: opacity var(--dur-move) var(--ease-out); }
 .pile-card[data-held], .pile[data-still] .pile-card, .pile-card[data-held]::after, .pile[data-still] .pile-card::after { transition: none; }
