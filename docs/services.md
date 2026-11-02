@@ -18,6 +18,7 @@ Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to 
 | APC UPS | `apcups` |
 | Calendar | `calendar` |
 | Camera | `camera` |
+| changedetection.io | `changedetection` |
 | Custom API | `api` |
 | Docker | `docker` |
 | Embedded page | `iframe` |
@@ -77,7 +78,6 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | BookStack | `bookstack` | key |
 | Caddy | `caddy` | none |
 | Calibre-Web | `calibre-web` | username, password |
-| changedetection.io | `changedetection` | key |
 | Channels DVR | `channels-dvr` | none |
 | Checkmk | `checkmk` | none |
 | Cloudflare Tunnel | `cloudflared` | key |

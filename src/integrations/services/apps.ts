@@ -47,22 +47,6 @@ export default [
     expect: { Links: '1,142', Collections: 2, Tags: 3 },
   }),
   service({
-    type: 'changedetection', name: 'changedetection.io', icon: 'pulse', auth: { header: 'x-api-key' },
-    get: { watches: '/api/v1/watch' },
-    stats: d => {
-      const all = Object.values<any>(d.watches ?? {});
-      return [
-        { label: 'Changed', value: all.filter(w => w.last_changed > 0 && !w.viewed).length }, { label: 'Watching', value: all.length },
-        { label: 'Failing', value: all.filter(w => w.last_error).length }];
-    },
-    recap: d => tally(Object.keys(d.watches ?? {}).length, { id: 'watching', theme: 'ops', icon: 'pulse', kicker: 'You are keeping an eye on', unit: 'pages', stat: 'Pages watched', line: 'If any of them change, you hear about it first.' }),
-    sample: { watches: {
-      '6a4b7d5c-fee4-4616-9f43-4ac97046b595': { last_changed: 1793000000, last_checked: 1793400000, last_error: false, title: 'Docs', url: 'https://example.com/docs', viewed: false },
-      'e6f5fd5c-dbfe-468b-b8f3-f9d6ff5ad69b': { last_changed: 1793000000, last_checked: 1793400000, last_error: false, title: 'Prices', url: 'https://example.com/prices', viewed: true },
-      '9d1b2c3e-71a2-4b55-8f0e-1d7a6f3c2b10': { last_changed: 0, last_checked: 1793400000, last_error: 'Timed out', title: 'Shop', url: 'https://example.com/shop', viewed: true } } },
-    expect: { Changed: 1, Watching: 3, Failing: 1 },
-  }),
-  service({
     type: 'mastodon', name: 'Mastodon', icon: 'news',
     get: { instance: '/api/v1/instance' },
     stats: d => [

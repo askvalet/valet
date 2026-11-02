@@ -27,6 +27,7 @@ import pihole from '../src/integrations/pihole.ts';
 import qbittorrent from '../src/integrations/qbittorrent.ts';
 import releases from '../src/integrations/releases.ts';
 import scrutiny from '../src/integrations/scrutiny.ts';
+import changedetection from '../src/integrations/changedetection.ts';
 import karakeep from '../src/integrations/karakeep.ts';
 import seerr from '../src/integrations/seerr.ts';
 import tautulli, { raceOf } from '../src/integrations/tautulli.ts';
@@ -193,6 +194,52 @@ test('pihole: paused says until when with one way out; totals match the headline
   assert.deepEqual(await p.actions!.pause.run({ minutes: 0 }), { done: 'Resumed ad blocking' });
   const on: any = await p.widgets.stats.fetch();
   assert.equal(on.banner, undefined); assert.equal(on.buttons.length, 2);
+});
+
+test('changedetection: trouble first, the change itself, and a snapshot is read once', async () => {
+  const now = Math.floor(Date.now() / 1000), reads: string[] = [];
+  const list = {
+    '00000000-0000-4000-8000-000000000001': { title: 'Quiet', url: 'http://q', last_changed: 0, last_checked: now, last_error: false, viewed: false },
+    '00000000-0000-4000-8000-000000000002': { title: 'Desk', url: 'http://d', last_changed: now - 600, last_checked: now, last_error: false, viewed: false },
+    '00000000-0000-4000-8000-000000000003': { title: 'Shop', url: 'http://s', last_changed: 0, last_checked: now, last_error: 'Timed out', viewed: true },
+  };
+  const k = make(changedetection, { url: 'http://c', key: 'x', href: 'http://watch' }, fake(url => {
+    if (url.endsWith('/watch')) return list;
+    reads.push(url);
+    return url.includes('/difference/') ? new Response('(removed) Sold out\n(added) In stock') : new Response('In stock');
+  }));
+  const c: any = await k.widgets.watches.fetch(); valid(c);
+  assert.deepEqual(c.items.map((i: any) => [i.title, i.dot]), [['Shop', 'bad'], ['Desk', 'good'], ['Quiet', undefined]]);
+  assert.equal(c.items[0].subtitle, 'Timed out');
+  assert.equal(c.items[1].detail, 'In stock');
+  assert.equal(c.summary.value, '1 failing'); assert.equal(c.summary.tone, 'bad');
+  const once = reads.length; await k.widgets.watches.fetch();
+  assert.equal(reads.length, once);
+});
+
+test('changedetection: a short snapshot of facts becomes rows, prose stays a preview', async () => {
+  const id = '00000000-0000-4000-8000-000000000001', list = { [id]: { title: 'Shop', url: 'http://s', last_changed: 0, last_checked: 1, last_error: false, viewed: true } };
+  const facts = make(changedetection, { url: 'http://c', key: 'x' }, fake(url => url.endsWith('/watch') ? list : new Response('North: In stock\nSouth: Sold out')));
+  const c: any = await facts.widgets.watches.fetch(); valid(c);
+  assert.deepEqual(c.items.slice(1).map((i: any) => [i.title, i.meta]), [['North', 'In stock'], ['South', 'Sold out']]);
+  const prose = make(changedetection, { url: 'http://c', key: 'x' }, fake(url => url.endsWith('/watch') ? list : new Response('A long page of words')));
+  const d: any = await prose.widgets.watches.fetch();
+  assert.equal(d.items.length, 1); assert.equal(d.items[0].detail, 'A long page of words');
+});
+
+test('changedetection: a long snapshot keeps the rows that differ and folds the rest', async () => {
+  const list = { '00000000-0000-4000-8000-000000000001': { title: 'Shop', url: 'http://s', last_changed: 0, last_checked: 1, last_error: false, viewed: true } };
+  const page = (open: boolean) => Array.from({ length: 12 }, (_, i) => `Store ${i}: ${open && i === 3 ? 'In stock' : 'Sold out'}`).join('\n');
+  const rows = async (open: boolean) => ((await make(changedetection, { url: 'http://c', key: 'x' }, fake(url => url.endsWith('/watch') ? list : new Response(page(open)))).widgets.watches.fetch()) as any).items.slice(1).map((i: any) => [i.title, i.meta]);
+  assert.deepEqual(await rows(false), [['All 12', 'Sold out']]);
+  assert.deepEqual(await rows(true), [['Store 3', 'In stock'], ['11 others', 'Sold out']]);
+});
+
+test('changedetection: what reaches the model leaves out the notification URLs', async () => {
+  const id = '00000000-0000-4000-8000-000000000001';
+  const k = make(changedetection, { url: 'http://c', key: 'x' }, fake(url => url.includes('/history/') ? new Response('Hello') : { title: 'Page', url: 'http://p', notification_urls: ['tgram://secret/1'] }));
+  const r: any = await k.tools!.watch_read.run({ id }); valid(r.card);
+  assert.ok(!JSON.stringify(r).includes('secret'));
 });
 
 test('karakeep: archiving can be taken back, and the title goes to its search', async () => {

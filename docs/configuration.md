@@ -471,6 +471,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `iframe` | `url`, `title`, `height` (360), `scripts` (`true`) | `page` |
 | `immich` | `url`, `apiKey` | `memories` |
 | `indexers` | `prowlarr`, `bazarr` (each `{ url, apiKey }`) | `health` |
+| `changedetection` | `url`, `key`, `limit` (8) | `watches`, `status` |
 | `karakeep` | `url`, `apiKey` | `recent`, `digest`, `reading` |
 | `lobsters` | `tags`, `sort` (`hottest`, `newest`), `limit` (8) | `stories` |
 | `minecraft` | `host`, `port` (25565), `title` | `status` |

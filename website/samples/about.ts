@@ -23,7 +23,7 @@ export const ABOUT: Record<string, string> = {
   calendar: 'Reads iCal calendars by URL. This shows the next events as a list, and an agenda beside a month you can browse.',
   'calibre-web': 'Calibre-Web serves a Calibre library. This shows books, authors, series and categories.',
   camera: 'Any camera that can hand over a JPEG, or an MP4 stream. This shows them in one live view, and Valet fetches the pictures so the browser never sees the address or password. MJPEG and RTSP streams aren\'t supported.',
-  changedetection: 'changedetection.io watches web pages for changes. This shows what changed, how many are watched, and how many are failing.',
+  changedetection: 'changedetection.io watches web pages for changes. This shows each watch with what it last saw and when it changed, puts failures first, and lets the assistant read, add, check and remove watches.',
   'channels-dvr': 'Channels DVR records live TV. This shows shows, recordings, what\'s scheduled and passes.',
   checkmk: 'Checkmk monitors hosts and services. This shows how many of each have a problem.',
   clock: 'A row of clocks for the time zones you name. It reads no service.',

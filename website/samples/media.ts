@@ -108,6 +108,18 @@ const games = [['Star Courier', 'Game Boy', 'gb'], ['Moonlit Keep', 'Super Ninte
   .map(([name, platform_display_name, platform_fs_slug], i) => ({ id: i + 1, name, platform_display_name, platform_fs_slug, path_cover_large: `/covers/${i}.png`, last_played: i % 3 ? null : ago(i * DAY) }));
 const rommHttp = route([['/api/stats', { ROMS: 312, PLATFORMS: 9, TOTAL_FILESIZE_BYTES: 186e9, SAVES: 47 }], ['/api/roms', { items: games }]]);
 
+// ── changedetection.io
+const watches = {
+  'a1b2c3d4-0000-4000-8000-000000000001': { title: 'Standing desk, oak', url: 'https://shop.example.com/desk', last_changed: secondsAgo(20 * MIN), last_checked: secondsAgo(MIN), last_error: false, viewed: false },
+  'a1b2c3d4-0000-4000-8000-000000000002': { title: 'Router firmware', url: 'https://example.com/firmware', last_changed: secondsAgo(3 * DAY), last_checked: secondsAgo(2 * MIN), last_error: false, viewed: true },
+  'a1b2c3d4-0000-4000-8000-000000000003': { title: 'Concert tickets', url: 'https://tickets.example.com/tour', last_changed: 0, last_checked: secondsAgo(4 * MIN), last_error: false, viewed: false },
+};
+const watchHttp = route([
+  [/0001\/difference/, '(removed) Sold out\n(added) In stock, ships in 3 days'],
+  [/0002\/difference/, '(added) Version 4.2.1, security fixes'], [/0001\/history/, 'In stock, ships in 3 days'],
+  [/0002\/history/, 'Version 4.2.1, security fixes'], [/0003\/history/, 'Montreal: Sold out\nToronto: On sale Friday\nVancouver: Sold out'], ['/api/v1/watch', watches],
+]);
+
 // ── Karakeep
 const saved = [
   ['Why I moved my photos off the cloud', 'https://notes.example.com/photos', 'A year on, what self-hosting a photo library cost in time and disks, and what it gave back.', ['self-hosting', 'photos'], 1],
@@ -180,6 +192,14 @@ export const media: Record<string, Fixture> = {
     ],
   },
   romm: { config: { url: 'http://romm:8080', username: 'admin', password: 'x', href: 'https://games.example.com' }, http: rommHttp },
+  changedetection: {
+    config: { url: 'http://changedetection:5000', key: 'x', href: 'https://watch.example.com' },
+    http: watchHttp,
+    states: [
+      { widget: 'watches', state: 'failing', label: 'A watch failing', http: over([[/\/api\/v1\/watch$/, { ...watches, 'a1b2c3d4-0000-4000-8000-000000000003': { ...watches['a1b2c3d4-0000-4000-8000-000000000003'], last_error: 'Received 403 from the site' } }]], watchHttp) },
+      { widget: 'watches', state: 'empty', label: 'Nothing watched yet', http: () => ({}) },
+    ],
+  },
   karakeep: {
     config: { url: 'http://karakeep:3000', apiKey: 'x', href: 'https://saved.example.com' },
     http: karakeepHttp, image: webPage,

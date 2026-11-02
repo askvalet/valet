@@ -151,6 +151,8 @@ export const NOTES: Record<string, string> = {
   'indexers.prowlarr.url': url, 'indexers.prowlarr.apiKey': key, 'indexers.prowlarr.href': href,
   'indexers.bazarr': 'Bazarr, if you use it.',
   'indexers.bazarr.url': url, 'indexers.bazarr.apiKey': key, 'indexers.bazarr.href': href,
+  'changedetection.key': key,
+  'changedetection.limit': 'Rows on the card. Each reads its latest snapshot once.',
   'karakeep.apiKey': key,
   'komodo.secret': 'The API secret, sent beside the key. Use `${VAR}`.',
   'links.groups': 'Set by the top-level `links:` block.',

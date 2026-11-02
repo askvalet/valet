@@ -18,6 +18,7 @@ The first public version, 0.1.0, is being prepared.
 - A demo that runs entirely in the browser, built with `npm run demo:static`.
 - Docker images for amd64 and arm64, published on each release.
 - Live activities as rings in the top bar, configured under `live`.
+- changedetection.io as a full integration: each watch with what it last saw and what changed, failures first, and assistant tools to read, add, check and remove watches.
 - Plain-English approval cards for every action that changes something.
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
