@@ -100,7 +100,7 @@ test('demo: only a plain instruction touches the house', () => {
 });
 
 test('demo: a question it has no answer for says so, and never gets the nearest match', () => {
-  const stand = /I'm a scripted stand-in in this demo/;
+  const stand = /This demo only knows a few things/;
   const file = ask('What colour is the lamp?\n[attached: living-room.jpg (file id abc123)]');
   assert.match(file.text!, /can't read files\. On a real Valet, the assistant would/);
   assert.match(ask('restart mealie\n[attached: notes.txt (file id abc123)]').text!, /can't read files/);
@@ -163,7 +163,7 @@ test('demo: the suggestions name what works, and go when they stop being true', 
   assert.match(reply({ messages: [{ role: 'system', content: 'Write one short line' }, { role: 'user', content: 'Wrong right now:\n(nothing)\n\nLately:\nMealie restarted' }] }).text!, /All quiet/);
   const why = (about: string, data: string) => reply({ messages: [{ role: 'system', content: "You explain what's on a homelab dashboard." }, { role: 'user', content: `Asked about: ${about}\nIts data: ${data}` }] }).text!;
   assert.match(why('Services: 14/15', '{"ok":false}'), /Mealie ran out of memory/);
-  assert.match(why('Ads blocked: 9,000', '{"ok":false}'), /stand-in/);
+  assert.match(why('Ads blocked: 9,000', '{"ok":false}'), /only knows a few things/);
   assert.equal(reply({ tools, messages: [{ role: 'user', content: 'suggest what the owner should ask' }] }).call, undefined);
 
   // the whole chain: the list the server kept from before the restart, read through what the page does with it
