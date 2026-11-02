@@ -6,11 +6,11 @@ import { cn } from '@/lib/utils';
 import type { ShelfCard } from '../shared/cards.ts';
 import './coverflow.css';
 
-const reach = 8;                     // how many covers either side stay in the page
+const reach = 12;                    // how many covers either side stay in the page
 const clamp = (v: number, n: number) => Math.max(0, Math.min(n - 1, v));
-export const place = (d: number) => {
+export const place = (d: number, step = .26) => {
   const a = Math.min(1, Math.abs(d)), s = Math.sign(d);
-  return { x: s * (a * .78 + Math.max(0, Math.abs(d) - 1) * .26), turn: -s * a * 58, sink: a, z: 100 - Math.round(Math.abs(d) * 10) };
+  return { x: s * (a * .78 + Math.max(0, Math.abs(d) - 1) * step), turn: -s * a * 58, sink: a, z: 100 - Math.round(Math.abs(d) * 10) };
 };
 
 export function CoverFlow({ card, header }: { card: ShelfCard; header?: ReactNode }) {
@@ -21,6 +21,18 @@ export function CoverFlow({ card, header }: { card: ShelfCard; header?: ReactNod
   }), [pull, setPull] = useState<number | null>(null);
   const drag = useRef<{ x: number; from: number; moved: boolean; t: number; v: number; last: number } | null>(null), box = useRef<HTMLDivElement>(null), wheel = useRef(0);
   useEffect(() => setAt(a => clamp(a, n)), [n]);
+  // the covers spread out to fill the row, however many there are and however wide it is
+  const [step, setStep] = useState(.26);
+  useEffect(() => {
+    const el = box.current; if (!el) return;
+    const fit = () => {
+      const size = el.clientHeight / 1.3, sides = Math.min(reach, Math.ceil((n - 1) / 2));
+      if (size > 0 && sides > 1) setStep(Math.max(.2, Math.min(.7, (el.clientWidth / 2 / size - 1.08) / (sides - 1))));
+    };
+    fit();
+    const seen = new ResizeObserver(fit); seen.observe(el);
+    return () => seen.disconnect();
+  }, [n]);
   const go = (i: number) => setAt(clamp(i, n)), pos = pull ?? at, front = items[at];
   const unit = () => (box.current?.clientWidth ?? 600) * .16;
   const move = (e: React.PointerEvent) => {
@@ -53,7 +65,7 @@ export function CoverFlow({ card, header }: { card: ShelfCard; header?: ReactNod
         onWheel={e => { if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; wheel.current += e.deltaX; if (Math.abs(wheel.current) > 50) { go(at + Math.sign(wheel.current)); wheel.current = 0; } }}>
         {items.map((it, i) => {
           if (Math.abs(i - at) > reach) return null;
-          const p = place(i - pos), style = { '--x': p.x, '--turn': `${p.turn}deg`, '--sink': p.sink, zIndex: p.z } as React.CSSProperties;
+          const p = place(i - pos, step), style = { '--x': p.x, '--turn': `${p.turn}deg`, '--sink': p.sink, zIndex: p.z } as React.CSSProperties;
           return (
             <a key={i} href={it.href} target="_blank" rel="noreferrer" draggable={false} aria-label={`${it.title}${it.subtitle ? `, ${it.subtitle}` : ''}`} aria-current={i === at || undefined} tabIndex={i === at ? 0 : -1} style={style} className={cn('cover', !it.image && 'is-blank')}
               onClick={e => { if (i !== at || drag.current?.moved) { e.preventDefault(); if (i !== at) go(i); } }}>
