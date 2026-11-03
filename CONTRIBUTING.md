@@ -11,7 +11,8 @@ cp config.example.yaml config.yaml   # keep what you use; secrets go in .env as 
 npm run dev                          # server with --watch, plus Vite on :5173
 ```
 
-`npm run check` type-checks the server and the web app. `npm test` runs every test (no network, no real services).
+`npm run check` type-checks the server and the web app. `npm test` runs the test suite (no network, no real services);
+`npm run test:exposure` and `npm run test:hostile` attack a build (`npm run build` first) and run in CI too.
 `npm run test:live` checks your config's widgets against your real services, and `npm run test:services` does the same for catalog entries. `/#gallery` shows every card type in
 every size. `docs/services.md` is generated: run `npm run docs:services` after adding a service, or a test fails.
 
