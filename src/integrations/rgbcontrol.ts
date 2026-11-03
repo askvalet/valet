@@ -1,11 +1,23 @@
-// rgb-control: a PC's case lighting and cooler, drawn as a live 3D model with its
-// temperatures, pump and fan speeds beside it.
+// A PC's lighting and cooling, drawn as a live 3D model with its temperatures, pump and fan speeds beside it. It reads
+// any endpoint that answers in the shape below, so it works with whatever controls your lights (OpenRGB, a vendor tool,
+// your own script) once something serves this: askvalet.dev/integrations/rgb-control/ has the whole contract.
 import { z } from 'zod';
 import { defineIntegration, type Instance } from '../server/core.ts';
 
+const num = z.number().nullish();
+const Zone = z.object({ id: z.string(), name: z.string().optional(), state: z.object({ mode: z.string().optional(), color: z.array(z.number()).length(3).optional(), brightness: z.number().optional() }).loose() }).loose();
+export const PcState = z.object({
+  // the parts: fans0 to fans9 (fan groups), coolerfans, pump, ram, gpu, strip; each with the lighting zones in it
+  cards: z.array(z.object({ id: z.string(), title: z.string(), sub: z.string().optional(), modes: z.array(z.string()).optional(), zones: z.array(Zone).optional(), error: z.unknown().optional() }).loose()),
+  presets: z.array(z.object({ id: z.string(), name: z.string(), swatch: z.array(z.string()).optional() }).loose()).default([]),
+  layout: z.record(z.string(), z.string()).default({}),          // which fan group sits on top: { fans0: 'top' }
+  telemetry: z.object({ cpu_temp: num, gpu_temp: num, gpu_power: num, ram_used: num, ram_total: num, liquid_temp: num, pump_rpm: num, hub_rpm: z.array(z.number()).optional() }).loose().default({}),
+  lcd: z.unknown().optional(),                                   // present when /api/lcd/preview serves a picture of a screen
+}).loose();
+
 export default defineIntegration({
   type: 'rgb-control',
-  name: 'PC lighting',
+  name: 'PC',
   config: z.object({
     url: z.string().url(),                     // where Valet reaches it, e.g. http://host:8098
     href: z.string().optional(),               // where the card links to
@@ -30,7 +42,12 @@ export default defineIntegration({
     }).default({ turn: -27, tilt: -18, draggable: true }),
   }),
   create(cfg, ctx) {
-    const get = () => ctx.http<any>(`${cfg.url}/api/state`, { timeout: 5000 });
+    const get = async () => {
+      const r = PcState.safeParse(await ctx.http(`${cfg.url}/api/state`, { timeout: 5000 }));
+      if (r.success) return r.data as any;
+      const i = r.error.issues[0], what = /received undefined/.test(i.message) ? 'is missing' : i.message.toLowerCase();
+      throw new Error(`/api/state isn't in Valet's PC format: ${i.path.join('.') || 'the answer'} ${what}. See askvalet.dev/integrations/rgb-control/`);
+    };
     const deg = (v?: number | null) => v == null ? undefined : Math.round(v);
     const heat = (v?: number | null) => v == null ? undefined : v >= 90 ? 'bad' as const : v >= 80 ? 'warn' as const : undefined;
     return {
@@ -68,7 +85,7 @@ export default defineIntegration({
               type: 'showcase', title: 'Desktop', icon: 'cpu', href: cfg.href ?? cfg.url, wide: true,
               // the screen preview changes every minute; the minute in the ref busts the browser cache
               visual: { kind: 'pc-case', data: { parts, layout: s.layout, fans, metrics, view: cfg.view, controls: cfg.controls, build: cfg.build,
-                presets: cfg.presets && cfg.controls ? s.presets : undefined, screen: ctx.image(`lcd:${Math.floor(Date.now() / 60_000)}`) } },
+                presets: cfg.presets && cfg.controls ? s.presets : undefined, screen: s.lcd ? ctx.image(`lcd:${Math.floor(Date.now() / 60_000)}`) : undefined } },
               items: [],
             };
           },

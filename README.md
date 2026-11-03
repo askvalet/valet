@@ -14,7 +14,7 @@ A self-hosted, open-source, AI-native homepage.
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
 [![185 integrations](https://img.shields.io/badge/integrations-185-d9b56c)](docs/services.md)
 
-[**Live demo**](https://demo.askvalet.dev) · [**Docs**](https://askvalet.dev) · [Quick start](#quick-start) · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+[**Live demo**](https://demo.askvalet.dev) · [**Docs**](https://askvalet.dev) · [Quick start](#quick-start) · [Changelog](CHANGELOG.md)
 
 <br>
 

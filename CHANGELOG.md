@@ -12,6 +12,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- Local AI and PC read a published JSON format, so they work with your own endpoint: only `/api/live` is needed for Local AI, the PC's screen preview is optional, and a field that doesn't fit is named in the error. `examples/local-ai/` serves Local AI's format from nvidia-smi and Ollama.
+- ROADMAP.md is gone; the changelog says what shipped.
 - The year-in-review link waits until there's a story: a near-empty install doesn't offer it.
 - The quick start creates `.env` before `docker run` needs it.
 - The demo's model shows "(demo)" beside its name, since it's scripted.

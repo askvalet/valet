@@ -12,6 +12,7 @@ const load = async (f: string, name: string, fallback: any) => { try { return (a
 const ABOUT: Record<string, string> = await load('../samples/about.ts', 'ABOUT', {});
 const NOTES: Record<string, string> = await load('../samples/notes.ts', 'NOTES', {});
 const CARD_ABOUT: Record<string, string> = await load('../samples/about.ts', 'CARD_ABOUT', {});
+const FORMAT: Record<string, string> = await load('../samples/formats.ts', 'FORMAT', {});
 
 const docs = resolve(root, 'src/content/docs'), gen = resolve(root, 'src/generated');
 for (const d of ['integrations', 'cards']) rmSync(join(docs, d), { recursive: true, force: true });
@@ -46,6 +47,7 @@ function integrationPage(it: any) {
   parts.push(`\`\`\`yaml title="config.yaml"\n${yaml}${first ? `\nlayout:\n  - title: ${it.category.replace(/ .*/, '')}\n    widgets:\n      - ${it.type}.${first}\n` : ''}\`\`\``);
   if (it.options.length) parts.push(table(['Option', 'Type', 'Default', 'What it does'], it.options.map((o: any) => [`\`${o.name}\``, cell(o.type), o.required ? 'required' : o.default !== undefined ? code(o.default) : 'optional', cell([NOTES[`${it.type}.${o.name}`] ?? o.about, o.range && `Range ${o.range}.`].filter(Boolean).join(' '))])));
   if (it.note) parts.push(`:::note\n${md(it.note)}\n:::`);
+  if (FORMAT[it.type]) parts.push(FORMAT[it.type]);
   // widgets
   if (it.widgets.length) {
     parts.push(`## Widgets`);
@@ -229,7 +231,7 @@ const SECTIONS: [string, string[], string][] = [
   ['Format', ['format'], 'How things are written. `auto` follows the browser.'], ['Labels', ['labels'], 'The words on the page. `{name}`, `{year}`, `{n}` and `{scope}` fill in.'],
   ['Notify', ['notify'], 'Where "tell me when" reminders go when you\'re not looking.'], ['Auth', ['auth', 'allowedHosts'], 'Sign-in, and the names Valet answers to. See [sign-in and network safety](/start/sign-in/).'],
   ['History', ['history'], 'Each widget\'s headline numbers over time, so tiles can show a graph. Set to `false` to turn it off.'], ['Plugins', ['plugins'], 'Community integrations. A plain list of npm packages works too. See [the plugin toolkit](/build/plugins/).'],
-  ['Assistant', ['assistant'], 'Left out, there is no assistant and the page loses nothing. See [models](/assistant/models/).'], ['MCP', ['mcp'], 'MCP servers the assistant may use. See [MCP](/assistant/mcp/).'],
+  ['Assistant', ['assistant'], 'Left out, there is no assistant and the page loses nothing. See [models](/assistant/models/).'], ['MCP', ['mcp'], 'MCP servers the assistant may use. See [MCP](/assistant/mcp/).'], ['MCP server', ['mcpServer'], 'Valet as a read-only MCP server for an AI client you use. See [MCP](/assistant/mcp/#valet-as-an-mcp-server).'],
   ['Layout', ['layout'], 'The sections of the page, in order. See [sections and layout](/concepts/layout/).'], ['Integrations', ['integrations'], 'One block per instance. The options depend on `type`: see [integrations](/integrations/).'],
 ];
 const placed = new Set(SECTIONS.flatMap(s => s[1]));

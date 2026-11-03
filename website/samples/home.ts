@@ -53,10 +53,10 @@ const HOME_CAL = ics([whole('Bins out', 1), timed('Furnace service', 5, 13, 0, 1
 const calendarHttp = route([['family', FAMILY], ['work', WORK], ['home', HOME_CAL]]);
 
 // ── rgb-control
-const zone = (color: number[], n = 1) => Array.from({ length: n }, () => ({ state: { mode: 'Static', color, brightness: 80 } }));
+const zone = (part: string, color: number[], n = 1) => Array.from({ length: n }, (_, i) => ({ id: `${part}-${i + 1}`, state: { mode: 'Static', color, brightness: 80 } }));
 const parts = [['fans0', 'Top fans', 3, [90, 150, 255]], ['fans1', 'Floor fans', 3, [90, 150, 255]], ['pump', 'Cooler', 1, [255, 255, 255]], ['ram', 'Memory', 4, [120, 90, 255]], ['gpu', 'GPU', 1, [60, 220, 200]]] as const;
 const rgbState = (o: Record<string, number> = {}) => ({
-  cards: parts.map(([id, title, n, color]) => ({ id, title, modes: ['Static', 'Breathing', 'Rainbow', 'Off'], zones: zone([...color], n) })), layout: { fans0: 'top', fans1: 'hidden' },
+  cards: parts.map(([id, title, n, color]) => ({ id, title, modes: ['Static', 'Breathing', 'Rainbow', 'Off'], zones: zone(String(id), [...color], n) })), layout: { fans0: 'top', fans1: 'hidden' },
   presets: [{ id: 'ocean', name: 'Ocean', swatch: ['#2f8fff', '#35d0c0'] }, { id: 'white', name: 'All white', swatch: ['#ffffff'] }, { id: 'off', name: 'All off', swatch: ['#222222'] }],
   telemetry: { hub_rpm: [920, 760], cpu_temp: 48, gpu_temp: 41, gpu_power: 38, liquid_temp: 31.4, pump_rpm: 2400, ram_used: 21, ram_total: 64, ...o },
 });

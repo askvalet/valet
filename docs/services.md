@@ -37,7 +37,7 @@ Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to 
 | Minecraft | `minecraft` |
 | Ollama | `ollama` |
 | Paperless | `paperless` |
-| PC lighting | `rgb-control` |
+| PC | `rgb-control` |
 | Pi-hole | `pihole` |
 | Plex (Tautulli) | `tautulli` |
 | Prowlarr / Bazarr | `indexers` |

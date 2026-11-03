@@ -1,7 +1,7 @@
 // What each integration does, in a sentence or two, for its page and the search index. Checked by hand against its code.
 export const ABOUT: Record<string, string> = {
   adguard: 'AdGuard Home blocks ads at the DNS level. This shows queries, blocked requests, filtered results and latency.',
-  aimonitor: 'Reads a monitor that sits in front of your local models. This shows the GPU\'s load, power and VRAM, which model is loaded, and today\'s requests, tokens and electricity cost.',
+  aimonitor: 'Shows your local AI: the GPU\'s load, power and VRAM, which model is loaded, and today\'s requests, tokens and electricity cost. It reads a small JSON endpoint you run, described below, and there\'s a ready-made one for nvidia-smi and Ollama.',
   apcups: 'apcupsd looks after an APC UPS. This shows its status, charge, time left and load, over apcupsd\'s network port.',
   api: 'Turns any JSON API into a card, from YAML alone, with no code. Name a URL and say where the numbers are. It can draw stats, a list, a table or status rows.',
   arcane: 'Arcane is a Docker manager. This shows running and stopped containers, images and updates for one environment.',
@@ -138,7 +138,7 @@ export const ABOUT: Record<string, string> = {
   reddit: 'Posts from the subreddits you name, as a list or as image tiles.',
   releases: 'The newest GitHub releases of the repositories you name.',
   repository: 'Stats for the GitHub repositories you name.',
-  'rgb-control': 'Controls PC lighting through a small companion service. This shows a 3D model of your PC with its parts, temperatures and lighting, and lets you or the assistant change it.',
+  'rgb-control': 'Shows your PC as a 3D model with its parts, temperatures and lighting, and lets you or the assistant change the lights. It reads a small JSON endpoint you run in front of whatever controls them, described below.',
   romm: 'RomM is a game library. This shows recent games as a Cover Flow, and lets the assistant search them.',
   rss: 'Reads the RSS and Atom feeds you name, as a list or as thumbnails. The assistant can read them too.',
   rutorrent: 'ruTorrent is a web interface for rTorrent. This shows speeds, what\'s active and the number of torrents.',
