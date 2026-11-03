@@ -34,7 +34,7 @@ The keys are your **instance names**, the ones under `integrations:`, not the ty
 Two other keys are special:
 
 - `config` turns on [editing the config](/assistant/limits/#editing-the-config). Without it, those tools don't exist.
-- `valet` is Valet's own tools: reminders, the timeline, the activity log. It defaults to `write`, so reminders work with no setup. Each one still asks.
+- `valet` is Valet's own tools: reminders, rules, the timeline, the activity log. It defaults to `control`, so reminders and [rules](/assistant/rules/) work with no setup. Each one still asks. `valet: write` keeps reminders and turns rules off, including ones already set up.
 
 ## Read-only pages win
 
@@ -42,7 +42,7 @@ Sign-in decides whether Valet may act at all. With `auth.mode: none` and no `aut
 
 ## Write and control
 
-Any tool that isn't `read` stops at an [approval card](/assistant/approvals/) and runs only after you press the button. That covers saving a link, filing a document, adding a to-do, and setting or cancelling a reminder.
+Any tool that isn't `read` stops at an [approval card](/assistant/approvals/) and runs only after you press the button. That covers saving a link, filing a document, adding a to-do, setting or cancelling a reminder, and setting up a rule.
 
 So the two levels don't change how it asks. They change what you're granting: `write` lets the assistant add things, and `control` also lets it change or remove them.
 

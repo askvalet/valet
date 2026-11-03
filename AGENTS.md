@@ -30,6 +30,11 @@ https://askvalet.dev.
 - **The assistant reads freely and changes nothing without asking.** Tools are `read`, `write` or `control`. Anything
   that isn't `read` needs the user's approval; `write` and `control` differ only in what's granted (adds, or changes and
   removes). Access is set per integration in YAML. Every tool has a `label` (its chip in chat) and may offer `followUps`.
+- **A rule is the only standing approval** (`src/server/rules.ts`). Approved once, it runs one integration tool with no
+  model, so what it may do lives in code, not in the card: never `config`, `valet` or `pins` tools, plans or MCP; its
+  card is built from the widget's title and the action tool's own `confirm`, never the model's words; and before every
+  run its access, its input and `site.acting` are checked again, and a refusal pauses it. Every call, chat, plan or
+  rule, goes through `runTool` in `run.ts`. Anything new that acts unattended follows the same shape.
 
 ### Architecture
 - **The card catalog is the contract** (`src/shared/cards.ts`). Integrations return plain data in these shapes; the web
@@ -63,7 +68,7 @@ https://askvalet.dev.
 - **AI is everywhere and required nowhere.** Without an `assistant:` block the page loses nothing. Rules decide when a
   model is worth asking; if a rule can do the job, no model runs. The status sentence is one of those rules (`sayHow` and
   `oneLine` in `format.ts`): two things at most, what needs someone first, and services off by choice don't count. What it does unasked (`src/server/insight.ts`, through
-  `brain.ts`) gets no tools. What it builds (pins, config edits in `setup.ts`) runs without it afterwards.
+  `brain.ts`) gets no tools. What it builds (pins, config edits in `setup.ts`, rules) runs without it afterwards.
 - **Valet stays in its box; agents go on the machines.** The container never gets the host. Anything from outside it
   comes through a narrow read-only door: a socket proxy for Docker, `agent/valet-agent.py` for systemd. Keep the agent one
   file of Python's standard library, and keep it unable to change anything: `test/agent.test.ts` enforces that.
@@ -157,7 +162,8 @@ https://askvalet.dev.
 - `npm run test:exposure` runs the real build (`npm run build` first) in every sign-in mode and attacks it from outside: every route in `main.ts` without a session, forged cookies, spoofed identity headers, raw path tricks. A new route needs nothing: it's found and it's locked. A route that must be open goes in `PUBLIC` in that file with its reason, and nothing with data qualifies.
 - `npm run test:hostile` (after a build) gives Valet a model that is entirely the attacker's, in a made-up homelab with a
   fake secret and a stand-in for the attacker's server (`test/lab/`). Nothing may change without approval, and no secret
-  may leave or power grow even with every approval clicked. A new tool that changes something gets a case there.
+  may leave or power grow even with every approval clicked. A new tool that changes something gets a case there, and a
+  rule that could use it is covered by `test/rules.test.ts`'s forbidden list.
 - `npm run eval:inject` runs poisoned pages, feeds and bookmarks past your real model (from your config), blatant and
   hidden in what you ask for. It fails only on a guardrail, never on what the model chose; `EVAL_APPROVE=1` clicks every
   approval too.

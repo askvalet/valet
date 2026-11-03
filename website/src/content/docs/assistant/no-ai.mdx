@@ -1,7 +1,7 @@
 ---
 title: Running with no AI
 description: Leave out the assistant block and the page loses nothing.
-sidebar: { order: 7 }
+sidebar: { order: 8 }
 ---
 
 Valet is a homepage first. The assistant is optional, and leaving it out takes nothing from the page.
@@ -37,6 +37,7 @@ The AI SDK and the MCP client load on the first question. With no assistant, the
 - The chat, and its button on the page. The ask box becomes a search box.
 - The summary when you hover the status sentence.
 - Tools, plans, reminders and pins, which all live in the chat.
+- [Rules](/assistant/rules/). No model runs them, but what they may do comes from `assistant.access`, so without it they pause.
 - [MCP servers](/assistant/mcp/) under `mcp:`, which only the assistant uses. Valet's own MCP server, `mcpServer`, works without one.
 
 `hero.search: false` removes the box as well.

@@ -39,6 +39,16 @@ Some actions are hard to take back, like stopping someone's stream. Those tools 
 
 An approved plan runs all its steps, including control tools, with that one approval. Read the list.
 
+## Approved once, run later
+
+A [rule](/assistant/rules/) is the one thing that acts without a fresh press. You approve it once, and it then runs its one action every time its trigger goes off.
+
+- Its card names the trigger from the card's real title and the action in the action tool's own words, the same words that tool's own approval would show. The model's message is shown in quotes.
+- A rule can only run one integration tool. Never the config, Valet's own tools, plans, pins or MCP.
+- Every run is checked again against `assistant.access` as it is then, against the tool's own input check, and against whether Valet may act. Lower the access and the rule stops.
+
+So approving a rule is approving that action for as long as the rule stands. Remove it from the `valet.rules` card or by asking.
+
 ## After you approve
 
 <Shot id="scene/after-approval" alt="The chat after approval, showing Paused ad blocking and a short answer" caption="The step shows in the chat, and the answer says what happened." full />
@@ -49,7 +59,7 @@ If the tool fails, the chat says so, and the failure goes in the log.
 
 Everything that isn't a read goes in `data/activity.json`: who asked, how, what it did, and whether it worked. Secrets are redacted before it's stored. It keeps the last 2,000 entries.
 
-That covers changes from chat, plans, the page's own buttons, and pins. From MCP servers the assistant uses, only tools that needed approval are logged. Every call an outside client makes to [Valet's own MCP server](/assistant/mcp/#valet-as-an-mcp-server) is logged, reads included.
+That covers changes from chat, plans, rules, the page's own buttons, and pins. A rule's entry says it was a rule. From MCP servers the assistant uses, only tools that needed approval are logged. Every call an outside client makes to [Valet's own MCP server](/assistant/mcp/#valet-as-an-mcp-server) is logged, reads included.
 
 Put `valet.activity` in your layout to see it on the page, or ask "what did you change?". The `activity_log` tool answers that, so you can check what it did by asking.
 

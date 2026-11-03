@@ -134,13 +134,13 @@ function Stats({ card }: { card: StatsCard }) {
 
 const Empty = ({ text }: { text: string }) => <p className="py-6 text-center text-sm text-muted-foreground">{text}</p>;
 
-function List({ card }: { card: ListCard }) {
+function List({ card, run }: { card: ListCard; run?: RunAction }) {
   const dense = useContext(Dense);
   if (!card.items.length) return <Empty text={card.empty ?? 'Nothing here'} />;
   if (card.layout === 'temps' && !dense) return <Temps card={card} />;
   if (card.layout === 'chips' && !dense) return <Chips card={card} />;
   if (card.layout === 'headlines' && !dense) return <Headlines card={card} />;
-  return <Rows card={card} dense={dense} />;
+  return <Rows card={card} dense={dense} run={run} />;
 }
 
 /** Stories as a grid of small cards, each anchored by where it's from, so the eye sorts by source before it reads. */
@@ -220,7 +220,7 @@ function Clamp({ text, className }: { text: string; className?: string }) {
   );
 }
 
-function Rows({ card, dense }: { card: ListCard; dense: boolean }) {
+function Rows({ card, dense, run }: { card: ListCard; dense: boolean; run?: RunAction }) {
   const rows = useRows(card.items, it => it.id ?? it.title, !!card.log), Row = card.log ? 'div' : 'li';
   return (
     <ul className="-my-1 divide-y">
@@ -239,10 +239,24 @@ function Rows({ card, dense }: { card: ListCard; dense: boolean }) {
             {it.subtitle && <div className={cn('truncate text-xs', it.tone && it.tone !== 'neutral' ? toneText[it.tone] : 'text-muted-foreground')}>{it.subtitle}</div>}
             {it.detail && <Clamp text={it.detail} className="mt-1 text-[13px] leading-snug text-foreground/70" />}
             {it.pct != null && <div className={dense ? 'mt-1' : 'mt-2'}><Bar pct={it.pct} tone={it.tone} /></div>}
+            {it.buttons?.length && run ? <RowButtons buttons={it.buttons} run={run} /> : null}
           </div>
         </Row></RowSlot>
       </Fragment>)}
     </ul>
+  );
+}
+
+/** A row's own actions: quiet words under it, the one pressed showing it's working. */
+function RowButtons({ buttons, run }: { buttons: NonNullable<ListCard['items'][number]['buttons']>; run: RunAction }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  return (
+    <div className="mt-1 flex gap-3 text-xs">
+      {buttons.map(b => (
+        <button key={b.label} type="button" disabled={!!busy} onClick={e => { e.stopPropagation(); setBusy(b.label); void run(b.action, b.args).finally(() => setBusy(null)); }}
+          className={cn('title-link text-foreground/75 transition-opacity disabled:opacity-50', busy === b.label && 'chat-shimmer')}>{b.label}</button>
+      ))}
+    </div>
   );
 }
 
@@ -1200,7 +1214,7 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
     case 'calendar': return <CalendarView card={card} dense />;
     case 'thermostat': return <Thermostat card={card} run={run} dense />;
     case 'stats': return <Stats card={card} />;
-    case 'list': return <List card={card} />;
+    case 'list': return <List card={card} run={run} />;
     case 'status': return <Status card={card} columns={columns} minimal={minimal} />;
     case 'links': return <Links card={card} />;
     case 'media': return <Media card={card} run={run} />;

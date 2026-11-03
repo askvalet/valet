@@ -1,0 +1,95 @@
+---
+title: Rules
+description: Standing instructions. "When this happens, do that", approved once, then run by Valet with no model involved.
+sidebar: { order: 5 }
+---
+
+A rule is a standing instruction: when something happens, do one thing and tell you. You set it up in chat and approve it once. From then on Valet runs it by itself, every half minute, with no model involved, even with the page closed.
+
+Some things you could say:
+
+- "When a download finishes, tell me and pause the rest."
+- "If the GPU stays over 85 °C for 10 minutes, unload the model in Ollama."
+- "Every morning at 7, if anything is down, tell me."
+- "Whenever Plex goes down, pause the downloads."
+
+A [reminder](/assistant/#what-it-has-to-work-with) is the one-off version: it tells you once and it's gone, and it can't do anything but tell you. A rule can act, and it keeps going until you remove it.
+
+## What a rule is
+
+| Part | What it is |
+|---|---|
+| Trigger | Something on one of your cards, or a time of day. |
+| Only if | Optional: another condition that must be true at that moment. |
+| Action | Optional: exactly one tool of one integration, with its input. Leave it out and the rule only sends its message. |
+| Message | What you're told each time it runs. |
+| Repeat | On by default. Off, it runs once and is gone. |
+| Cooldown | How long before it may run again: 30 minutes unless you say otherwise. |
+
+The triggers are the ones reminders use, on a card that's on your page:
+
+| Trigger | Goes off when |
+|---|---|
+| `ends` | Something on the card finishes: a download or a stream leaves it. With a name, only that one. |
+| `starts` | Something new appears on the card. With a name, only that one. |
+| `down`, `up` | A service on a status card goes down or comes back. Without a name, any service counts. |
+| `above`, `below` | A number on the card crosses a limit, optionally for some minutes in a row. |
+| `at` | Every day at a time, like `07:00`, in your [time zone](/reference/configuration/). |
+
+A condition that holds, like "Plex is down", sets the rule off once. It goes off again only after the condition has stopped being true and become true again, and not within the cooldown. So a service that keeps flapping can't set a rule off every half minute.
+
+A timed rule that was due while Valet wasn't running isn't made up hours later: more than 15 minutes late, it waits for the next day.
+
+## Setting one up
+
+Ask in chat. The assistant calls `rule_add`, and you get an approval card. The card says what will happen in Valet's own words, not the model's:
+
+- The trigger is written from the card's real title and the rule's settings, like *When something on Downloads finishes*.
+- The action is the action tool's own approval wording, the same words you'd see if you asked for it once, like *pause all downloads*. A tool's card can look things up, so it names what it will act on.
+- The message is shown in quotes. It's what the model wrote, and it's only what you'll be told.
+- The card says it will run every time without asking again. If the action is a dangerous one, the button is red.
+
+That one approval is the standing permission. The rule runs without asking you again, so read the card.
+
+## Seeing and switching them off
+
+Put `valet.rules` in your layout for a card of every rule in plain words, when it last ran, when a timed one runs next, and a dot for one that's failing or paused. Each row has **Pause** (or **Resume**) and **Remove**. Pausing or removing needs no approval, since it only takes power away.
+
+```yaml title="config.yaml"
+layout:
+  - title: Valet
+    widgets: [valet.rules, valet.activity]
+```
+
+You can also ask: "what rules are there?" (`rule_list`), or "stop pausing the downloads" (`rule_remove`, which asks first).
+
+Rules are kept in `data/rules.json`. With `sandbox: true` nothing is saved.
+
+## When a run happens
+
+Each run goes through the same door as a tool you approve in chat:
+
+- The result is redacted, so a secret in an error never reaches you or the log.
+- It goes in the [activity log](/assistant/approvals/#the-activity-log) as done by a rule, with Undo if the tool has one.
+- It goes on the timeline, so "what happened last night?" includes it.
+- Its message reaches the page and your [notification channels](/reference/configuration/#notify).
+
+A failed run is reported the same way. A rule that fails three times in a row pauses itself and tells you. Resume it from its card once whatever was wrong is fixed.
+
+## What a rule can't do
+
+These hold in Valet's code, whatever the model asked for and whatever you approved:
+
+- **Only one integration tool.** A rule can't edit the config, set up or change rules or reminders, file a bug report, run a plan, pin a card, or call an MCP tool. A tool that only looks has nothing to do in a rule.
+- **Only what access allows, now.** Every time it's about to run, the action is checked against `assistant.access` as it is then. Lower an integration's access and its rules stop: the next time one would run, it pauses instead and says why. Set `assistant.access.valet` to `write` and every rule stops, while reminders keep working.
+- **Only on a page that may act.** If Valet becomes read-only (no sign-in and no `auth.trustNetwork`), rules don't run.
+- **Only checked input.** The action's input is checked against the tool's own rules when you set it up and again at every run. If a tool changes so that the input no longer fits, the rule pauses rather than guess.
+- **Only so many.** At most 20 rules, and none more often than its cooldown.
+
+## Why it's built this way
+
+A rule is the one thing in Valet that changes something without a fresh press from you, so it's kept narrow. The approval covers one trigger and one action you've seen in the tool's own words. Anything that could grow Valet's power, like its config, its access or more rules, can't be a rule's action. Everything else is checked again when it runs, so taking access away takes the rule's power away.
+
+A poisoned web page could get the model to *propose* a rule. You'd still see the card, and the card isn't written by the model. Nothing runs until you press the button. See [prompt injection](/assistant/limits/#prompt-injection).
+
+No model runs when a rule does. A rule set up with a hosted model keeps working if the model is unreachable, and a rule's checks don't depend on what a model says.

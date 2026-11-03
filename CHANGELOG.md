@@ -12,9 +12,12 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 - Komga and Kavita: continue reading with covers and how far along, what's next in a series (Komga) and what was added lately. The assistant searches the library and says what you're reading.
 - Miniflux: the unread articles as a pile to step through (archiving one marks it read), unread per feed, and starred. The assistant searches and reads entries, and marks them read or stars them, asking first.
 - Jellyfin, Emby, Navidrome and Audiobookshelf are full integrations: what's playing (with its ring in the top bar), what you're partway through and what's new, with posters and covers. Navidrome adds recently and most played and albums to rediscover; Audiobookshelf, books in progress and your listening this week. The assistant can search each library, and stop a Jellyfin or Emby stream after asking. Existing configs keep working, `status` widget included.
+- Rules: standing instructions like "when a download finishes, tell me and pause the rest" or "every morning at 7, if anything is down, tell me". Set up in chat with one approval, whose card names the trigger by the card's title and the action in its tool's own words, then run every half minute with no model. A rule runs one integration tool (never the config, Valet's own tools, plans, pins or MCP), is checked again against `assistant.access` before every run, waits out a cooldown, and pauses itself after three failures. Every run goes in the activity log, the timeline and your notifications. `valet.rules` lists them with Pause and Remove.
+- List rows can carry their own buttons.
 
 ### Changed
 
+- `assistant.access.valet` defaults to `control`, which setting up a rule needs. `valet: write` keeps reminders and turns rules off.
 - Turning a light on or off, or sending the vacuum, from chat answers with the floor plan as it is now. Pausing or resuming downloads answers with the downloads card.
 - The docs say what the code does: which `${NAME}` values are redacted, which keys the config tools leave alone, that a sandbox has no MCP server, which integrations take `insecure`, and Frigate's options.
 

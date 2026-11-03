@@ -35,6 +35,8 @@ export const SAMPLES: { name: string; card: Card }[] = [
   { name: 'list', card: { type: 'list', title: 'Downloads', icon: 'download', items: [
     { title: 'A very long release name that keeps going 2160p HDR x265 10bit-GROUP', subtitle: '12 MB/s · 3.2 GB left', meta: '4m', pct: .62 },
     { title: 'Stalled thing', subtitle: 'stalled', meta: '–', pct: .05, tone: 'warn' }, { title: 'With art', image: img('a', 80, 120), meta: 'done' }] } },
+  { name: 'list · row actions', card: { type: 'list', title: 'Rules', icon: 'pulse', items: [{ id: 'a', title: 'Done; paused the rest', detail: 'When something on Downloads finishes: pause all downloads', subtitle: 'Last ran 9:12 PM', buttons: [{ label: 'Pause', action: 'rule_pause', args: { id: 'a', on: true } }, { label: 'Remove', action: 'rule_remove', args: { id: 'a' } }] },
+    { id: 'b', title: 'Something is down', detail: 'Every day at 07:00, if anything on Services is down: tell you', subtitle: 'Paused: failed 3 times in a row', meta: 'Next Tue 7:00 AM', dot: 'warn', buttons: [{ label: 'Resume', action: 'rule_pause', args: { id: 'b', on: false } }] }] } },
   { name: 'list · empty', card: { type: 'list', title: 'Downloads', items: [], empty: 'Nothing downloading' } },
   { name: 'media', card: { type: 'media', title: 'Now playing', icon: 'play', items: [
     { title: 'A Film With a Rather Long Title', subtitle: '2019', image: img('p', 300, 450), backdrop: img('b', 1280, 720), pct: .42, state: 'playing',
