@@ -76,7 +76,7 @@ for (const it of catalog.integrations) writeFileSync(join(docs, 'integrations', 
 
 // the home page's pictures are the README's: copied in, so they live in the repo once
 const why = resolve(root, 'public/why'); mkdirSync(why, { recursive: true });
-for (const f of ['front-door.webp', 'ask-whats-down.gif', 'ask-for-a-card.gif', 'home-3d.gif', 'config-live.gif']) copyFileSync(join(repo, 'docs/images', f), join(why, f));
+for (const f of ['front-door.webp', 'ask-whats-down.gif', 'ask-for-a-card.gif', 'home-3d.gif', 'config-live.gif', 'live.gif']) copyFileSync(join(repo, 'docs/images', f), join(why, f));
 
 // the icons on the index, small: the same dashboard-icons Valet shows
 const iconDir = resolve(root, 'public/shots/icons'); mkdirSync(iconDir, { recursive: true });
