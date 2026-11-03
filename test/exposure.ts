@@ -69,6 +69,7 @@ function everyRoute(name: string, auth: Record<string, unknown>) {
     test('every route outside the public list refuses without a session', async () => {
       const list = await routes();
       assert.ok(list.length > 15, 'found the routes');
+      for (const r of ['GET /api/commands', 'POST /api/command']) assert.ok(list.some(x => `${x.method} ${x.path}` === r), `${r} is among them`);   // ⌘K's commands
       for (const r of list) {
         const key = `${r.method} ${r.path}`;
         if (PUBLIC.has(key) || IN_AUTH.test(r.path)) continue;

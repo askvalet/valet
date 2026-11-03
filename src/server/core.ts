@@ -50,10 +50,28 @@ export interface Tool<A = any> {
   run(args: A): Promise<{ data: unknown; card?: Card }>;
 }
 
+/** A plain command for ⌘K ("pause downloads", "pause ads {minutes} min"): it runs one of this instance's actions or tools
+ *  by rule, with no model. Words are matched exactly once normalised (case, punctuation, word order, a few synonyms), so
+ *  write every phrasing you'd accept. `{name}` is the instance's own name in config.yaml, or the integration's name. A slot
+ *  such as `{minutes}` takes a whole number and goes into the input under that key. */
+export interface Command {
+  say: string[];
+  /** `action:<name>` runs a page action as its button would; `tool:<name>` runs a tool: a `read` one shows its card, any
+   *  other asks with its own `confirm` words first. */
+  run: `action:${string}` | `tool:${string}`;
+  /** The input, before the slots are added. A function gets the slots and may look things up (never change them), and
+   *  may throw to say why it can't run now ("two streams are playing"). The target's own schema checks the result. */
+  input?: Record<string, unknown> | ((slots: Record<string, number>) => unknown | Promise<unknown>);
+  /** In the palette: "Pause all downloads". The first phrase if left out. */
+  label?: string;
+}
+
 export interface Instance {
   /** Someone just asked the assistant something; returns the widgets to refresh now. */
   onChat?(): string[] | void;
   widgets: Record<string, Widget>;
+  /** Plain commands for ⌘K. A function is asked each time the palette opens (Home Assistant names its own lights). */
+  commands?: Command[] | (() => Command[] | Promise<Command[]>);
   /** An address its cards embed. The page's content security policy names it once this config is the live one. */
   frame?: string;
   actions?: Record<string, Action>;

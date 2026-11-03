@@ -18,6 +18,7 @@ import { chatAgent } from './model.ts';
 import { buildRecap, recapYear } from './recap.ts';
 import { discover } from './discover.ts';
 import { mcpServer } from './mcpserver.ts';
+import { listCommands, runCommand } from './commands.ts';
 import { buildSite, type Site } from './site.ts';
 import { registry } from '../integrations/index.ts';
 import { LABELS } from '../shared/labels.ts';
@@ -312,6 +313,10 @@ app.post('/api/action/:inst/:action', async c => {
     return c.json({ error: redact((e as Error).message) }, 502);
   }
 });
+
+// ⌘K's plain commands ("pause downloads"): run by rule, never by a model, through the same doors as the chat (commands.ts)
+app.get('/api/commands', c => listCommands(c, site));
+app.post('/api/command', c => runCommand(c, site));
 
 app.get('/api/image/:inst', async c => {
   const inst = site.instances.get(c.req.param('inst'));
