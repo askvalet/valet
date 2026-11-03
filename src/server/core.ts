@@ -183,7 +183,13 @@ export async function readUpload(fileId: string) {
 
 /** A service's icon from its name: "Uptime Kuma" → uptime-kuma. The server tries shorter forms when that's not an icon
  *  ("immich_postgres" finds immich), and a name with none shows no icon at all. */
-export const iconFor = (name: string) => `/api/icon/${name.toLowerCase().replace(/^homeassistant$/, 'home-assistant').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 64)}`;
+/** Integration types whose logo goes by another name in dashboard-icons, or is its parent project's. */
+export const LOGO: Record<string, string> = {
+  homeassistant: 'home-assistant', pihole: 'pi-hole', uptimekuma: 'uptime-kuma', hackernews: 'hacker-news', apcups: 'apc',
+  moonraker: 'klipper', sparkyfitness: 'sparky-fitness', swag: 'linuxserver-io', tandoor: 'tandoor-recipes',
+  arr: 'sonarr', indexers: 'prowlarr', repository: 'github', releases: 'github',
+};
+export const iconFor = (name: string) => { const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 64); return `/api/icon/${LOGO[slug.replace(/-/g, '')] ?? slug}`; };
 
 // Small formatting helpers integrations share, so numbers read the same everywhere.
 export const fmt = {

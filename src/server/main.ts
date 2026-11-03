@@ -10,7 +10,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { sameOrigin, setupAuth, userCommand } from './auth.ts';
 import { loadConfig, startConfig, validZone, type Config } from './config.ts';
 import { cleanCss, headers, hostGuard, served } from './security.ts';
-import { UPLOAD_DIR } from './core.ts';
+import { UPLOAD_DIR, LOGO } from './core.ts';
 import { parseSuggestions, scopeOf, statusLine, suggestPrompt, troubles } from './insight.ts';
 import { loadPins, newPin, pinnedCard, savePins } from './pins.ts';
 import { loadPlugins } from './plugins.ts';
@@ -160,8 +160,9 @@ const cached = async (file: string, url: string, type: string, c: Context) => {
   return c.body(body, 200, { 'Content-Type': type, 'Cache-Control': 'public, max-age=604800' });
 };
 app.get('/api/icon/:slug', async c => {
-  const slug = c.req.param('slug');
-  if (!/^[a-z0-9-]{1,64}$/.test(slug)) return c.notFound();
+  const asked = c.req.param('slug');
+  if (!/^[a-z0-9-]{1,64}$/.test(asked)) return c.notFound();
+  const slug = LOGO[asked] ?? asked;   // homeassistant is home-assistant to the icon set
   // your own icon: drop data/icons/<slug>.svg (or .png) and it wins over the CDN
   const svg = await readFile(resolve(ICON_DIR, `${slug}.svg`)).catch(() => null);
   if (svg) return c.body(svg, 200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' });

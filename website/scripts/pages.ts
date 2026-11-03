@@ -75,10 +75,47 @@ for (const it of catalog.integrations) writeFileSync(join(docs, 'integrations', 
 // the icons on the index, small: the same dashboard-icons Valet shows
 const iconDir = resolve(root, 'public/shots/icons'); mkdirSync(iconDir, { recursive: true });
 let sharp: any; try { sharp = (await import('sharp')).default; } catch { /* the page does without */ }
+const { LOGO } = await import('../../src/server/core.ts');
+// Valet's own building blocks have no brand, so they get a drawn tile: the same glyph the app uses for them
+const GLYPH: Record<string, string> = {
+  aimonitor: 'Cpu', api: 'Braces', atsumeru: 'BookOpen', calendar: 'CalendarDays', camera: 'Cctv', clock: 'Clock', coinmarketcap: 'Bitcoin',
+  host: 'Server', http: 'Activity', iframe: 'AppWindow', links: 'Link', lobsters: 'Newspaper', markets: 'ChartLine', opendtu: 'SunMedium',
+  'rgb-control': 'Lightbulb', rss: 'Rss', todo: 'ListChecks', weather: 'CloudSun',
+};
+const glyph = async (name: string) => {
+  const [{ createElement }, { renderToStaticMarkup }, lucide] = await Promise.all([import('react'), import('react-dom/server'), import('lucide-react')]);
+  const Icon = (lucide as any)[name]; if (!Icon) return null;
+  const inner = renderToStaticMarkup(createElement(Icon, { size: 40, color: '#f5f5f7', strokeWidth: 1.9, x: 16, y: 16 }));
+  return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><rect width="72" height="72" rx="16" fill="#3a3f4b"/>${inner}</svg>`);
+};
+mkdirSync(resolve(root, '.cache/icons'), { recursive: true });
+/** How bright a logo is where it's drawn: the average of the pixels that aren't see-through, or null for a full square. */
+const ink = async (file: string) => {
+  const { data, info } = await sharp(file).resize(48, 48, { fit: 'inside' }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  let sum = 0, n = 0;
+  for (let i = 0; i < data.length; i += info.channels) { const a = data[i + 3] / 255; if (a < .5) continue; sum += .2126 * data[i] + .7152 * data[i + 1] + .0722 * data[i + 2]; n++; }
+  return n > 40 && n < 48 * 48 * .97 ? sum / n : null;
+};
 const logos: Record<string, boolean> = {};
 for (const it of catalog.integrations) {
-  const slug = it.icon.replace('/api/icon/', ''), src = [join(repo, 'demo/icons', `${slug}.png`), join(root, '.cache/icons', `${slug}.png`)].find(existsSync);
-  if (src && sharp) { await sharp(src).resize(72, 72, { fit: 'inside' }).webp({ quality: 80 }).toFile(join(iconDir, `${it.type}.webp`)); logos[it.type] = true; }
+  const slug = LOGO[it.type] ?? it.icon.replace('/api/icon/', ''), cached = join(root, '.cache/icons', `${slug}.png`);
+  let src = [join(repo, 'demo/icons', `${slug}.png`), cached].find(existsSync);
+  if (!src && !GLYPH[it.type]) {   // the same icon set Valet uses, fetched once
+    const r = await fetch(`https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/${slug}.png`).catch(() => null);
+    if (r?.ok) { writeFileSync(cached, Buffer.from(await r.arrayBuffer())); src = cached; }
+  }
+  if (!sharp) continue;
+  const drawn = !src && GLYPH[it.type] ? await glyph(GLYPH[it.type]) : null;
+  if (src || drawn) {
+    let img = sharp(src ?? drawn).resize(72, 72, { fit: 'inside' });
+    // a black logo (GitHub, Ollama) disappears on the dark theme, so it sits on a light tile, which reads in both;
+    // and a white one on the light theme, so that one gets a dark tile
+    const lum = src ? await ink(src) : null, tile = lum == null ? null : lum < 55 ? '#f4f4f5' : lum > 215 ? '#3a3f4b' : null;
+    if (src && tile) img = sharp({ create: { width: 72, height: 72, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+      .composite([{ input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><rect width="72" height="72" rx="16" fill="${tile}"/></svg>`) }, { input: await sharp(src).resize(50, 50, { fit: 'inside' }).png().toBuffer() }]);
+    await img.webp({ quality: 80 }).toFile(join(iconDir, `${it.type}.webp`)); logos[it.type] = true;
+  }
+  else console.log(`no icon for ${it.type}`);
 }
 
 const byCategory = catalog.categories.map((c: string) => [c, catalog.integrations.filter((i: any) => i.category === c)]).filter(([, l]: any) => l.length);
