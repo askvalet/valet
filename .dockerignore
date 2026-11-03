@@ -14,3 +14,13 @@ data
 !.env.example
 # the README's pictures: the assistant searches the docs' words, not their images
 docs/images
+# the demo and the docs site are built and hosted on their own; the image needs neither, except the docs' words
+demo
+website/*
+!website/src
+website/src/*
+!website/src/content
+website/src/content/*
+!website/src/content/docs
+examples
+test
