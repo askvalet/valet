@@ -116,7 +116,7 @@ export const homeRich: Record<string, Fixture> = {
   },
   miniflux: {
     config: { url: 'http://miniflux:8080', key: 'x', href: 'https://rss.example.com' },
-    http: minifluxHttp, image: ref => ref.startsWith('icon-') ? `/img/${ref}` : webPage(ref),
+    http: minifluxHttp, image: ref => `/img/${ref}`,   // drawn: a real site's screenshot behind a made-up headline would mislead
     states: [
       { widget: 'unread', state: 'empty', label: 'All caught up', http: over([['status=unread', { total: 0, entries: [] }]], minifluxHttp) },
       { widget: 'starred', state: 'empty', label: 'Nothing starred', http: over([['starred=true', { total: 0, entries: [] }]], minifluxHttp) },
