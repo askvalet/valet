@@ -37,7 +37,7 @@ interface Page {
   assistant: { name: string; model: string; suggestions: string[]; tools: Record<string, ToolInfo>; external?: boolean } | null;
   search?: string;
   insight?: string;
-  welcome?: { path: string; saved: boolean };
+  welcome?: { path: string; saved: boolean; setup?: boolean };
   menubar?: { widgets: string[]; position: 'left' | 'center' | 'right'; labels: boolean; clock: boolean; date: boolean; theme: boolean };
   nav?: { side: 'left' | 'right' | 'top' | 'bottom'; style: 'icons' | 'labels' | 'both'; hide: string[]; order?: string[] };
   live?: { activities: string[] };
@@ -209,21 +209,51 @@ function useHeld(on: boolean, ms: number) {
 }
 
 /** On a fresh install: what to do next, in three lines. It goes away when the config says so. */
-function Welcome({ path, saved }: { path: string; saved: boolean }) {
+type Found = { type: string; name: string; icon: string; container: string; url: string; yaml: string };
+/** What's already running here, and a way to say what else you run: set up by chat when the assistant may edit the
+ *  config, and otherwise the lines to paste. */
+function Starting({ setup, ask }: { setup: boolean; ask: (q: string) => void }) {
+  const [found, setFound] = useState<Found[] | null>(null), [open, setOpen] = useState<string | null>(null), [said, setSaid] = useState('');
+  useEffect(() => { fetch('/api/discover').then(r => r.json()).then(d => setFound(d.found ?? [])).catch(() => setFound([])); }, []);
+  const shown = found?.find(f => f.type === open);
+  return (
+    <div className="grid gap-3 border-t border-white/10 pt-4">
+      {!!found?.length && <div>
+        <div className="text-sm font-medium">Running on this machine</div>
+        <div className="mt-2 flex flex-wrap gap-2">{found.map(f => (
+          <button key={f.type} onClick={() => setup ? ask(`Add ${f.name} to my page. It runs at ${f.url}.`) : setOpen(o => o === f.type ? null : f.type)} aria-pressed={!setup ? open === f.type : undefined}
+            className="press flex items-center gap-2 rounded-full border border-white/10 bg-white/[.06] py-1.5 pr-3.5 pl-2 text-[13px] hover:bg-white/10 aria-pressed:bg-white/15">
+            <img src={f.icon} alt="" className="size-5 object-contain" />{f.name}
+          </button>))}</div>
+        <p className="mt-2 text-[13px] text-muted-foreground">{setup ? 'Pick one and Valet sets it up in chat. It asks before it saves anything.' : 'Pick one for the lines to add under integrations: in your config. Secrets go in .env.'}</p>
+        {shown && <pre className="mt-2 overflow-x-auto rounded-lg bg-black/30 p-3 font-mono text-[12px] leading-relaxed text-foreground/85">{shown.yaml}</pre>}
+      </div>}
+      {setup ? <form onSubmit={e => { e.preventDefault(); if (said.trim()) ask(`I run ${said.trim()}. Add them to my page.`); }} className="flex flex-wrap items-center gap-2">
+          <label htmlFor="what-you-run" className="text-sm font-medium">What do you run?</label>
+          <input id="what-you-run" value={said} onChange={e => setSaid(e.target.value)} placeholder="Plex, Sonarr, Home Assistant…" className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/[.06] px-3.5 py-1.5 text-[13px] outline-none placeholder:text-muted-foreground focus:border-white/25" />
+          <button disabled={!said.trim()} className="press rounded-full bg-white px-3.5 py-1.5 text-[13px] font-medium text-black disabled:opacity-40">Set it up</button>
+        </form>
+        : <p className="text-[13px] text-muted-foreground">Or tell Valet what you run and let it write the config: give the assistant <code className="rounded-md bg-white/[.08] px-1.5 py-0.5 font-mono text-[12px]">access: {'{ config: control }'}</code>, and it asks before every change.</p>}
+    </div>
+  );
+}
+
+function Welcome({ path, saved, setup, ask }: { path: string; saved: boolean; setup?: boolean; ask?: (q: string) => void }) {
   const step = (n: number, title: string, body: React.ReactNode) => (
     <div className="flex gap-3"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-white/10 text-xs font-semibold tabular">{n}</span>
       <div className="min-w-0"><div className="text-sm font-medium">{title}</div><div className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">{body}</div></div></div>
   );
-  const code = 'rounded-md bg-white/[.08] px-1.5 py-0.5 font-mono text-[12px] break-all text-foreground/85';
+  const code = 'rounded-md bg-white/[.08] px-1.5 py-0.5 font-mono text-[12px] break-all text-foreground/85', word = code.replace('break-all', 'whitespace-nowrap');
   return (
     <Card className="settle gap-4 px-6 py-5 shadow-card">
       <div><div className="text-[17px] font-semibold tracking-tight">Welcome to your homepage</div>
         <p className="mt-0.5 text-[14px] text-muted-foreground">This page is built from one file. Edit it and watch here: changes appear as you save.</p></div>
       <div className="grid gap-4 md:grid-cols-3">
         {step(1, saved ? 'Open your config' : 'Create your config', <>{saved ? 'A starter is at' : 'Save a config at'} <code className={code}>{path}</code>{!saved && ' (that folder is read-only to Valet, so this page is a sample until then)'}</>)}
-        {step(2, 'Add your services', <>Each one is a few lines. Secrets go in <code className={code}>.env</code> as <code className={code}>{'${NAME}'}</code>. Anything with a JSON API works with <code className={code}>type: api</code>.</>)}
-        {step(3, 'Check it, then hide this', <>Run <code className={code}>config check</code> to find mistakes, and delete the <code className={code}>welcome</code> line when you're done.</>)}
+        {step(2, 'Add your services', <>Each one is a few lines. Secrets go in <code className={word}>.env</code> as <code className={word}>{'${NAME}'}</code>. Anything with a JSON API works with <code className={word}>type: api</code>.</>)}
+        {step(3, 'Check it, then hide this', <>Run <code className={word}>config check</code> to find mistakes, and delete the <code className={word}>welcome</code> line when you're done.</>)}
       </div>
+      <Starting setup={!!setup && !!ask} ask={ask ?? (() => {})} />
     </Card>
   );
 }
@@ -449,7 +479,14 @@ function Home({ account }: { account: boolean }) {
   const hello = !h || h.greeting === false ? '' : typeof h.greeting === 'string' ? h.greeting.replace('{greeting}', greet(now.getHours())).replace('{name}', page?.greeting ?? '').trim() : page?.greeting ? label('homelab', { name: page.greeting }) : label('yourHomelab');
   const boxed = h?.search !== false, shownChips = useLeaving(chips ? questions.slice(0, 3) : []);
   const [reviewed, setReviewed] = useState(() => { try { return !!sessionStorage.getItem('valet-review'); } catch { return false; } });   // dismissed, for this visit
-  const offered = page?.recap !== false && h?.review !== false && !reviewed, pill = offered, closing = offered && h?.review === 'end' && view === 'all';
+  // the link waits until there's a story to tell: a near-empty install has nothing to look back on
+  const [story, setStory] = useState(false);
+  useEffect(() => {
+    if (!page || page.recap === false || h?.review === false) return;
+    const t = setTimeout(() => fetch('/api/recap').then(r => r.ok ? r.json() : null).then(r => setStory((r?.slides?.length ?? 0) >= 3)).catch(() => {}), 1200);
+    return () => clearTimeout(t);
+  }, [page?.recap, h?.review, !!page]);
+  const offered = story && page?.recap !== false && h?.review !== false && !reviewed, pill = offered, closing = offered && h?.review === 'end' && view === 'all';
   const dismissReview = () => { setReviewed(true); try { sessionStorage.setItem('valet-review', '1'); } catch { /* private mode */ } };
   const side = h?.align === 'left' ? 'mr-auto text-left' : h?.align === 'right' ? 'ml-auto text-right' : 'mx-auto text-center';
   // the hero: ask anything
@@ -644,7 +681,7 @@ function Home({ account }: { account: boolean }) {
       <main ref={pageEl} data-settling={settled ? undefined : ''} style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-28', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide && navSide === 'left' && (topbar?.position ?? 'right') === 'right' ? 'max-w-none md:pr-5!' : chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
         {(view !== 'all' || !hello) && <h1 className="sr-only">{view === 'all' ? page?.title : view}</h1>}
         {!hasSide && hero}
-        {page?.welcome && view === 'all' && <Welcome path={page.welcome.path} saved={page.welcome.saved} />}
+        {page?.welcome && view === 'all' && <Welcome path={page.welcome.path} saved={page.welcome.saved} setup={page.welcome.setup && !!page.assistant} ask={ask} />}
 
         {/* phones: the assistant's tab is its stats plus a way into the chat sheet */}
         {phone && chatTab && view === chatTab && page?.assistant && (

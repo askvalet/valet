@@ -16,6 +16,7 @@ import { loadPins, newPin, pinnedCard, savePins } from './pins.ts';
 import { loadPlugins } from './plugins.ts';
 import { chatAgent } from './model.ts';
 import { buildRecap, recapYear } from './recap.ts';
+import { discover } from './discover.ts';
 import { buildSite, type Site } from './site.ts';
 import { registry } from '../integrations/index.ts';
 import { LABELS } from '../shared/labels.ts';
@@ -195,12 +196,13 @@ app.get('/api/page', c => {
   if (!zoneKnown && tz && validZone(tz)) { process.env.TZ = tz; zoneKnown = true; console.log(`time zone: ${tz} (from the browser; set timezone in config.yaml to fix it)`); }
   return c.json(JSON.parse(site.redact(JSON.stringify({
     title: config.title, greeting: config.greeting, notice: config.notice, location: config.location, canAct: site.acting, sandbox: sandbox.on, search: config.search,
-    welcome: config.welcome ? { path: CONFIG, saved } : undefined,
+    welcome: config.welcome ? { path: CONFIG, saved, setup: site.acting && instances.has('config') } : undefined,
     recap: config.recap, hero: { ...config.hero, scope: config.hero.scope === true ? scopeOf([...site.meta.values()].map(m => m.type)) : config.hero.scope || undefined }, labels: { ...LABELS, ...config.labels }, format: config.format,
     appearance: { walls: wallsOf(config.appearance.wallpaper), tabWalls: Object.fromEntries(Object.entries(config.appearance.wallpapers).map(([t, w]) => [t, wallsOf(w)])), rotate: config.appearance.rotate, sizes: config.appearance.sizes },
     look: { ...lookOf(config), theme: config.appearance.theme, css: site.cssVersion && `/api/custom.css?v=${site.cssVersion}`, font: fontOf(config) },
     chat: config.chat,
-    assistant: config.assistant ? { ...(agent ? { name: agent.name, model: agent.model, external: true } : { name: config.assistant.name, model: config.assistant.model }), suggestions: config.assistant.suggestions,
+    // the demo's model is scripted, and says so beside its name
+    assistant: config.assistant ? { ...(agent ? { name: agent.name, model: agent.model, external: true } : { name: config.assistant.name, model: sandbox.on ? `${config.assistant.model} (demo)` : config.assistant.model }), suggestions: config.assistant.suggestions,
       // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>")
       tools: Object.fromEntries([...instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {})
         .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access, live: t.live }]))) } : null,
@@ -342,6 +344,12 @@ const settled = async () => { for (let i = 0; i < 12 && site.hub.snapshot().leng
 // Each rewrite takes the GPU for a while, so they're on the daily budget. The assistant's own work must not count as news: its activity would set off the next rewrite.
 const OUTSIDE = new Set(['rss', 'hackernews', 'reddit', 'lobsters', 'changedetection', 'karakeep', 'paperless', 'calendar', 'releases', 'repository', 'twitch', 'iframe', 'http', 'api']);   // written by strangers: see suggestPrompt
 let tailored: { at: number; mood: string; wrong: string; names: string[]; list: string[] | null } | undefined, tailoring: Promise<void> | undefined;
+// A fresh install's welcome card: what's running here that Valet could show. Only while that card is on.
+app.get('/api/discover', async c => {
+  if (!site.config.welcome) return c.json({ via: null, found: [] });
+  return c.json(await discover(registry, Object.values(site.config.integrations).map((b: any) => ({ type: b.type, url: b.url }))));
+});
+
 app.get('/api/suggest', async c => {
   if (!site.ask || !site.config.assistant?.background.suggest || site.config.chat.suggestions !== 'ai') return c.json({ list: null });
   await settled();

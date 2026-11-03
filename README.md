@@ -72,7 +72,7 @@ It works like a valet key, which drives the car but can't open the boot. You cho
 ## Quick start
 
 ```sh
-mkdir valet && cd valet
+mkdir valet && cd valet && touch .env   # secrets go in .env, as ${NAME} in the config
 docker run -d --name valet -p 127.0.0.1:7575:7575 \
   -v ./config:/config -v ./data:/app/data --env-file .env \
   ghcr.io/askvalet/valet:latest

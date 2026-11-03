@@ -5,6 +5,16 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- The welcome card lists the services it recognises running on the machine, through a read-only Docker socket proxy, each with the lines it takes. With an assistant that may edit the config, one click or "What do you run?" sets them up in chat.
+
+### Changed
+
+- The year-in-review link waits until there's a story: a near-empty install doesn't offer it.
+- The quick start creates `.env` before `docker run` needs it.
+- The demo's model shows "(demo)" beside its name, since it's scripted.
+
 ## [0.1.0] - 2026-11-03
 
 The first public version.

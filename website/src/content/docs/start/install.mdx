@@ -41,11 +41,12 @@ docker compose up -d
 
 Open `http://localhost:7575`.
 
-On first start Valet writes a starter `config/config.yaml` and shows a getting-started card. If it can't write to that folder, it runs the starter from memory and the card says so.
+On first start Valet writes a starter `config/config.yaml` and shows a getting-started card. If Valet can reach a read-only Docker socket proxy, like the optional one in the Compose file, the card lists the services it recognises running on the machine, each with the lines it takes. If the assistant may edit the config, you can also tell it what you run, and it sets the page up, asking before each change. If it can't write to that folder, it runs the starter from memory and the card says so.
 
 ## docker run
 
 ```sh
+mkdir config data && touch .env
 docker run -d --name valet -p 127.0.0.1:7575:7575 \
   -v ./config:/config -v ./data:/app/data --env-file .env \
   ghcr.io/askvalet/valet:latest
