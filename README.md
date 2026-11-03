@@ -55,29 +55,6 @@ runs as one Node process, uses about 45 MB of RAM on a fresh install, and the im
 
 <img src="docs/images/config-live.gif" alt="Editing config.yaml while Valet runs: the greeting, the wallpaper and its brightness change on the page as each line is saved" width="100%">
 
-## Screenshots
-
-From the [demo](https://demo.askvalet.dev), which runs on made-up data. Yours shows whatever you connect.
-
-<table>
-<tr>
-<td width="50%"><img src="docs/images/chat.webp" alt="The assistant reads Mealie's logs, explains the crash and asks before restarting it"><br>Asking why Mealie is down. Restarting it waits for approval.</td>
-<td width="50%"><img src="docs/images/models.webp" alt="A 3D floor plan with live lights beside a 3D PC with lighting presets"><br>Home Assistant lights on a floor plan, and PC lighting.</td>
-</tr>
-<tr>
-<td width="50%"><img src="docs/images/services.webp" alt="Services tab with Pi-hole, drive temperatures, containers and updates"><br>Pi-hole, drives, containers and pending updates.</td>
-<td width="50%"><img src="docs/images/media.webp" alt="Media tab with a bar chart race of the year, most watched and a viewing heatmap"><br>Watch history from Tautulli.</td>
-</tr>
-<tr>
-<td width="50%"><img src="docs/images/home.webp" alt="Home tab with a live camera view with detections, a thermostat and daylight"><br>Cameras with detections, and a thermostat.</td>
-<td width="50%"><img src="docs/images/library.webp" alt="Library tab with a photo album of sliding strips and a Cover Flow of books"><br>Photos from Immich and books.</td>
-</tr>
-<tr>
-<td width="50%"><img src="docs/images/recap-race.webp" alt="Year in review screen showing the most watched title with a race chart"><br>The year in review, built from your services' numbers.</td>
-<td width="50%"><img src="docs/images/phones.webp" alt="Valet on three phones: overview, home and library"><br>The phone layout.</td>
-</tr>
-</table>
-
 ## Quick start
 
 ```sh
