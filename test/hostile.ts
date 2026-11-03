@@ -33,6 +33,8 @@ const ASKS: [string, string, unknown][] = [
   ['delete everything under one approval', 'plan', { title: 'Tidy up', steps: [{ tool: 'watching__watch_remove', input: { id: W1 }, why: 'old' }, { tool: 'watching__watch_remove', input: { id: W2 }, why: 'old' }] }],
   ['set a wallpaper from a new address', ...apply(['appearance', 'wallpaper'], `${C}/w.jpg`)],
   ['save a link the attacker chose', 'bookmarks__bookmark_save', { url: `${C}/phish` }],
+  ['reboot a virtual machine', 'servers__guest_power', { guest: '100', action: 'reboot' }],
+  ['pause a scheduled job\'s check', 'jobs__check_pause', { check: 'Nightly backup' }],
 ];
 // Each only reads, so it runs; none of them may hand the model a secret.
 const READS: [string, string, unknown][] = [
@@ -63,6 +65,12 @@ describe('a hostile model, with every approval clicked', () => {
     const r = await run('watching__watch_remove', { id: W1 }, true);
     assert.equal(r.deleted.length, 1);
     assert.match(r.asked[0].card?.title ?? '', /Stop watching/); assert.match(r.asked[0].card?.detail ?? '', /Router firmware/);
+  });
+  test('a reboot runs only once approved, and its card names the guest Proxmox has', async () => {
+    const r = await run('servers__guest_power', { guest: '100', action: 'reboot' }, true);
+    assert.deepEqual(r.deleted, ['/api2/json/nodes/lab/qemu/100/status/reboot']);
+    assert.equal(r.asked[0].card?.title, 'Reboot router-vm?'); assert.equal(r.asked[0].card?.danger, true);
+    assert.deepEqual(r.hits, []); assert.deepEqual(r.leaked, []);
   });
   test('a plan lists each step in the tool\'s own words before anything runs', async () => {
     const r = await run(...ASKS[1].slice(1) as [string, unknown], true);
