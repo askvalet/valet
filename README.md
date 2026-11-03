@@ -51,24 +51,26 @@ hardware, no account, no telemetry.
 **It's new.** The first release was in November 2026, so expect rough edges, and please open an issue when you hit one.
 The demo shows a fully set-up homelab. A fresh install starts nearly empty and fills in as you connect your services.
 
-## A look around
+## Screenshots
+
+From the [demo](https://demo.askvalet.dev), which runs on made-up data. Yours shows whatever you connect.
 
 <table>
 <tr>
-<td width="50%"><img src="docs/images/chat.webp" alt="The assistant reads Mealie's logs, explains the crash and asks before restarting it"><br><b>Talk to it.</b> It reads freely and asks before it changes anything.</td>
-<td width="50%"><img src="docs/images/models.webp" alt="A 3D floor plan with live lights beside a 3D PC with lighting presets"><br><b>Run the house.</b> Lights, rooms, vacuum and PC lighting, in 3D.</td>
+<td width="50%"><img src="docs/images/chat.webp" alt="The assistant reads Mealie's logs, explains the crash and asks before restarting it"><br>Asking why Mealie is down. Restarting it waits for approval.</td>
+<td width="50%"><img src="docs/images/models.webp" alt="A 3D floor plan with live lights beside a 3D PC with lighting presets"><br>Home Assistant lights on a floor plan, and PC lighting.</td>
 </tr>
 <tr>
-<td><img src="docs/images/services.webp" alt="Services tab with Pi-hole, drive temperatures, containers and updates"><br><b>Keep an eye on things.</b> Traffic, drives, containers and which updates need reading first.</td>
-<td><img src="docs/images/media.webp" alt="Media tab with a bar chart race of the year, most watched and a viewing heatmap"><br><b>See what you watched.</b> A race through the year, who's watching and a year of days.</td>
+<td width="50%"><img src="docs/images/services.webp" alt="Services tab with Pi-hole, drive temperatures, containers and updates"><br>Pi-hole, drives, containers and pending updates.</td>
+<td width="50%"><img src="docs/images/media.webp" alt="Media tab with a bar chart race of the year, most watched and a viewing heatmap"><br>Watch history from Tautulli.</td>
 </tr>
 <tr>
-<td><img src="docs/images/home.webp" alt="Home tab with a live camera view with detections, a thermostat and daylight"><br><b>Check the cameras.</b> Live views and what they noticed, with the thermostat beside them.</td>
-<td><img src="docs/images/library.webp" alt="Library tab with a photo album of sliding strips and a Cover Flow of books"><br><b>Enjoy your library.</b> Albums that slide open and Cover Flow for anything with a cover.</td>
+<td width="50%"><img src="docs/images/home.webp" alt="Home tab with a live camera view with detections, a thermostat and daylight"><br>Cameras with detections, and a thermostat.</td>
+<td width="50%"><img src="docs/images/library.webp" alt="Library tab with a photo album of sliding strips and a Cover Flow of books"><br>Photos from Immich and books.</td>
 </tr>
 <tr>
-<td><img src="docs/images/recap-race.webp" alt="Year in review screen showing the most watched title with a race chart"><br><b>Relive the year.</b> A story of your homelab, written from real numbers with no model.</td>
-<td><img src="docs/images/phones.webp" alt="Valet on three phones: overview, home and library"><br><b>Take it with you.</b> Built for phones, not squeezed onto them.</td>
+<td width="50%"><img src="docs/images/recap-race.webp" alt="Year in review screen showing the most watched title with a race chart"><br>The year in review, built from your services' numbers.</td>
+<td width="50%"><img src="docs/images/phones.webp" alt="Valet on three phones: overview, home and library"><br>The phone layout.</td>
 </tr>
 </table>
 
