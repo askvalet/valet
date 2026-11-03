@@ -101,6 +101,10 @@ export default defineIntegration({
           },
         },
       },
+      commands: [
+        { say: ['search missing', 'search for missing', 'find missing episodes', 'search missing episodes', 'search missing movies'], run: 'action:search_missing', label: 'Search for everything missing' },
+        { say: ['coming up', "what's coming up", 'upcoming', 'upcoming episodes', "what's airing", 'upcoming movies'], run: 'tool:upcoming_media', label: "Show what's coming up" },
+      ],
       actions: {
         search_missing: { description: 'Search for every missing episode and movie', input: z.object({}),
           async run() {

@@ -1,7 +1,7 @@
 // Prowlarr and Bazarr: the plumbing behind downloads. Which indexers are failing (and until when they're paused), and
 // how many episodes and movies are still missing subtitles.
 import { z } from 'zod';
-import { defineIntegration } from '../server/core.ts';
+import { defineIntegration, type Instance } from '../server/core.ts';
 
 export default defineIntegration({
   type: 'indexers',
@@ -27,7 +27,7 @@ export default defineIntegration({
       return out;
     }
     const until = (iso?: string) => iso ? `paused till ${new Date(iso).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })}` : 'failing';
-    return {
+    const inst: Instance = {
       widgets: {
         health: {
           title: 'Indexers', interval: 900_000,
@@ -44,6 +44,10 @@ export default defineIntegration({
           },
         },
       },
+      commands: [
+        { say: ['retest indexers', 'test indexers', 'test indexers again', 'recheck indexers'], run: 'action:retest', label: 'Test every indexer again' },
+        { say: ['indexers', 'indexer health', 'how are indexers', 'indexers status'], run: 'tool:indexer_health', label: 'Show indexers' },
+      ],
       actions: {
         retest: { description: 'Test every indexer again', input: z.object({}),
           run: async () => { await ctx.http(`${cfg.prowlarr!.url.replace(/\/$/, '')}/api/v1/indexer/testall`, { method: 'POST', headers: { 'X-Api-Key': cfg.prowlarr!.apiKey }, as: 'response' }); return { done: 'Tested every indexer again' }; } },
@@ -65,9 +69,10 @@ export default defineIntegration({
           label: 'Checked indexers',
           description: 'Which torrent indexers (Prowlarr) are working or failing, and how many episodes/movies still lack subtitles (Bazarr). Use when downloads aren\'t being found.',
           access: 'read', input: z.object({}),
-          async run() { return { data: await state() }; },
+          async run() { const [data, card] = await Promise.all([state(), inst.widgets.health.fetch()]); return { data, card }; },
         },
       },
     };
+    return inst;
   },
 });

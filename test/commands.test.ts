@@ -16,6 +16,12 @@ const { sameOrigin } = await import('../src/server/auth.ts');
 const { Config } = await import('../src/server/config.ts');
 const { Activity } = await import('../src/server/activity.ts');
 const { redactor } = await import('../src/server/security.ts');
+const { session } = await import('../src/server/core.ts');
+const { default: qbittorrent } = await import('../src/integrations/qbittorrent.ts');
+const { default: pihole } = await import('../src/integrations/pihole.ts');
+const { default: homeassistant } = await import('../src/integrations/homeassistant.ts');
+const { default: tautulli } = await import('../src/integrations/tautulli.ts');
+const { registry } = await import('../src/integrations/index.ts');
 type Instance = import('../src/server/core.ts').Instance;
 
 const SECRET = 'made-up-secret-9c1e';
@@ -273,4 +279,60 @@ test('no model is asked anything: commands run with the model\'s server set to f
     const src = await readFile(f, 'utf8');
     assert.doesNotMatch(src, /from '(\.\/(model|chat|brain|mcp|insight)\.ts|ai|@ai-sdk\/[^']+)'/, f);
   }
+});
+
+// ── the integrations' own commands ──────────────────────────────────────────────────────────────────────────────────
+function fake(handler: (url: string, init: any) => unknown) {
+  return { id: 't', log() {}, image: (r: string) => `/img/${r}`, upload: async () => ({ name: 'f', type: 'text/plain', data: Buffer.from('') }), session,
+    async http(url: string, init: any = {}) { const out = await handler(url, init); return init.as === 'response' ? new Response(JSON.stringify(out ?? {})) : out; } } as any;
+}
+const siteOf = (instances: Record<string, Instance>, types: Record<string, string>) => ({
+  config: Config.parse({}), instances: new Map(Object.entries(instances)), meta: new Map(Object.entries(types).map(([id, t]) => [id, { type: t, name: registry[t].name }])),
+  acting: true, redact: (x: string) => x, activity: new Activity(),
+});
+
+test('integrations: every command points at an action or tool that exists', async () => {
+  const q = qbittorrent.create(qbittorrent.config.parse({ url: 'http://q', username: 'u', password: 'p' }), fake(() => ({})));
+  const p = pihole.create(pihole.config.parse({ url: 'http://p', password: 'p' }), fake(() => ({})));
+  const t = tautulli.create(tautulli.config.parse({ url: 'http://t', apiKey: 'k' }), fake(() => ({})));
+  const s = siteOf({ downloads: q, adblock: p, plex: t }, { downloads: 'qbittorrent', adblock: 'pihole', plex: 'tautulli' });
+  const all = await commandsOf(s as any);
+  for (const i of [q, p, t]) assert.equal(all.filter(e => s.instances.get(e.inst) === i).length, (i.commands as any[]).length, 'none dropped');
+  const one = (text: string) => { const m = clear(match(all, text)); return m && all.find(e => e.id === m.id); };
+  assert.equal(one('pause downloads')?.name, 'pause');
+  assert.equal(one('stop all downloads')?.name, 'pause');
+  assert.equal(one("what's playing")?.name, 'plex_streams');
+  assert.equal(one('stop plex')?.name, 'plex_stop_stream');
+  assert.equal(one('pause ads 5 min')?.name, 'pause');
+  assert.equal(one('pause adblock 5 min')?.name, 'pause', 'by the instance\'s own name');
+  assert.equal(one('resume ads')?.name, 'pause');
+});
+
+test('integrations: Home Assistant names its own lights, and only those it may control', async () => {
+  const states = [
+    { entity_id: 'light.desk', state: 'on', attributes: { friendly_name: 'Desk Lamp' } },
+    { entity_id: 'light.hall', state: 'off', attributes: { friendly_name: 'Hall' } },
+    { entity_id: 'switch.kettle', state: 'off', attributes: { friendly_name: 'Kettle' } },
+    { entity_id: 'lock.front', state: 'locked', attributes: { friendly_name: 'Front Door' } },
+    { entity_id: 'light.garage', state: 'off', attributes: { friendly_name: 'Garage' } },
+    { entity_id: 'scene.movie', state: 'off', attributes: { friendly_name: 'Movie Night' } },
+  ];
+  const ha = homeassistant.create(homeassistant.config.parse({ url: 'http://ha', token: 'x', cards: { home: { title: 'Home', entities: ['light.desk', 'light.hall', 'switch.kettle', 'lock.front', 'scene.movie'] } } }), fake(() => states));
+  const all = await commandsOf(siteOf({ home: ha }, { home: 'homeassistant' }) as any);
+  const one = (text: string) => { const m = clear(match(all, text)); return m && all.find(e => e.id === m.id)!.cmd; };
+  assert.deepEqual(one('desk lamp off')?.input, { entity_id: 'light.desk', value: false });
+  assert.deepEqual(one('turn on the kettle')?.input, { entity_id: 'switch.kettle', value: true });
+  assert.deepEqual(one('lights off')?.input, { entity_id: ['light.desk', 'light.hall'], on: false });
+  assert.deepEqual(one('run movie night')?.input, { entity_id: 'scene.movie' });
+  assert.equal(one('garage on'), undefined, 'not on the page, not in controllable');
+  assert.equal(one('front door off'), undefined, 'a lock is never a command');
+});
+
+test('integrations: "stop plex" stops the one stream, and says so when there are several', async () => {
+  let sessions: object[] = [{ friendly_name: 'Robin', full_title: 'Made-up Film' }];
+  const t = tautulli.create(tautulli.config.parse({ url: 'http://t', apiKey: 'k' }), fake(() => ({ response: { result: 'success', data: { stream_count: sessions.length, total_bandwidth: 0, sessions } } })));
+  const stop = (t.commands as any[]).find(c => c.run === 'tool:plex_stop_stream');
+  assert.deepEqual(await stop.input({}), { who: 'Robin' });
+  sessions = [...sessions, { friendly_name: 'Alex', full_title: 'Other Film' }];
+  await assert.rejects(stop.input({}), /2 streams are playing/);
 });

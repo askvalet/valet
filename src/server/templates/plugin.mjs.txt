@@ -50,6 +50,12 @@ export default ({ z, defineIntegration, fmt }) => defineIntegration({
         refresh: { description: 'Ask the service to refresh', input: z.object({}), run: async () => { /* await api('/api/refresh') */ } },
       },
 
+      // plain words for ⌘K that run an action or a tool with no model; {name} is this instance's name in config.yaml
+      commands: [
+        { say: ['refresh __NAME__', 'refresh {name}'], run: 'action:refresh', label: 'Refresh __TITLE__' },
+        { say: ['__NAME__ status', '{name} status'], run: 'tool:__SLUG___status', label: 'Show __TITLE__' },
+      ],
+
       // what the assistant can use. access: 'read' looks, 'write' adds without asking, 'control' asks the person first
       tools: {
         __SLUG___status: {

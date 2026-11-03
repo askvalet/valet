@@ -139,6 +139,11 @@ export default defineIntegration({
           line: `For every byte you took, ${ratio.toFixed(2)} went back.`, bars: [{ label: 'Taken', value: s.alltime_dl, show: fmt.bytes(s.alltime_dl) }, { label: 'Given back', value: s.alltime_ul, show: fmt.bytes(s.alltime_ul) }] }];
       },
       widgets,
+      commands: [
+        { say: ['pause downloads', 'pause {name}', 'pause qbittorrent'], run: 'action:pause', label: 'Pause all downloads' },
+        { say: ['resume downloads', 'resume {name}', 'unpause downloads', 'resume qbittorrent'], run: 'action:resume', label: 'Resume all downloads' },
+        { say: ['downloads', "what's downloading", 'how are downloads', 'downloads status', '{name} status', 'show {name}', 'check downloads'], run: 'tool:downloads_status', label: 'Show downloads' },
+      ],
       actions: {
         pause: { description: 'Pause all or one torrent', input: z.object({ hash: z.string().default('all') }),
           run: ({ hash }) => api('torrents/stop', { method: 'POST', body: new URLSearchParams({ hashes: hash }) }) },

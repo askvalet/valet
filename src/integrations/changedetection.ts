@@ -69,6 +69,9 @@ export default defineIntegration({
       async recap() {
         return tally((await watches()).length, { id: 'watching', theme: 'ops', icon: 'pulse', kicker: 'You are keeping an eye on', unit: 'pages', stat: 'Pages watched', line: 'If any of them change, you hear about it first.', scope: 'Right now' });
       },
+      commands: [
+        { say: ['recheck watches', 'check watches', 'recheck pages', 'check for changes', 'recheck {name}'], run: 'action:recheck', label: 'Check every watch now' },
+      ],
       actions: {
         recheck: { description: 'Check every watch now', input: z.object({}), run: async () => { await api('watch?recheck_all=1', { as: 'text' }); } },
       },

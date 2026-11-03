@@ -136,6 +136,9 @@ export default defineIntegration({
           },
         },
       },
+      commands: [
+        { say: ['containers', 'docker', 'docker status', 'containers status', 'show containers', "what's running", '{name} status'], run: 'tool:containers_status', label: 'Show the containers' },
+      ],
       tools: {
         containers_status: {
           live: true,
