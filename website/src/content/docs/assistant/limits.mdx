@@ -71,7 +71,7 @@ So `config: read` lets it read and preview, and `config: control` lets it save w
 The limits are in the code, and they apply to saves and previews alike:
 
 - It can change `integrations`, `layout`, `links`, `menubar`, `weather`, `live`, `nav`, `hero`, `chat`, `format`, `labels`, `title`, `greeting`, `location`, `timezone`, `search`, `history`, `welcome`, `appearance`, `calendar`, `recap`, `notice`, and `name` and `suggestions` under `assistant`.
-- It can't touch `auth`, `allowedHosts`, `plugins`, `mcp`, `notify`, `sandbox` or the rest of `assistant`, which holds its access, model and instructions. It can't raise its own access.
+- It can't touch `auth`, `allowedHosts`, `plugins`, `mcp`, `mcpServer`, `notify`, `sandbox` or the rest of `assistant`, which holds its access, model and instructions. It can't raise its own access.
 - In `appearance` it can't name a file on disk (no `cssFile`, and a wallpaper has to be a URL, a colour or a gradient), and it can't write `css`, which the sign-in screen loads too.
 - **A secret only goes where it already goes.** It can't point an integration that holds a key at a new host, copy a `${NAME}` into a block for another host, add a `${file:…}`, or put a `${NAME}` anywhere outside `integrations`. That's judged on the file as it would end up, however the edit was phrased.
 - `config_undo` won't run if the owner has since changed something only the owner may change.
