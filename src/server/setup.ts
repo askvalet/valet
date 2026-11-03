@@ -67,8 +67,10 @@ export function bindings(text: string) {
     const names = new Set<string>(), at = new Set<string>();
     walkStrings(block, id, (s, key) => {
       for (const r of refsIn(s)) names.add(r);
+      // keys called …url are what an integration fetches; href, links and pictures are only shown, so they vouch for nothing
+      if (!/url$/i.test(key)) return;
       if (/^https?:\/\//.test(s)) { try { at.add(new URL(s.replace(REF, 'x')).host); } catch { at.add(s); } }
-      else if (/url$/i.test(key)) at.add(s);
+      else at.add(s);
     });
     for (const n of names) { const set = hosts.get(n) ?? new Set<string>(); for (const h of at) set.add(h); hosts.set(n, set); }
   }

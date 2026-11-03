@@ -149,6 +149,8 @@ export async function keptHome(url: string, init: RequestInit, hops = 5): Promis
   if (!hops) throw new Error('too many redirects');
   await res.body?.cancel();
   const from = new URL(url), next = new URL(to, url), home = next.origin === from.origin || (next.hostname === from.hostname && next.protocol === 'https:' && next.port === '');
+  // 307 and 308 resend the body as it was: a login form or a token must not follow a redirect to someone else
+  if (!home && (res.status === 307 || res.status === 308) && init.body != null) throw new Error(`${from.host} redirected a request with a body to ${next.host}; not followed`);
   const get = res.status === 303 || ((res.status === 301 || res.status === 302) && init.method && init.method !== 'GET' && init.method !== 'HEAD');
   return keptHome(next.href, { ...init, ...(get ? { method: 'GET', body: undefined } : {}), headers: home ? init.headers : { Accept: new Headers(init.headers).get('accept') ?? '*/*' } }, hops - 1);
 }

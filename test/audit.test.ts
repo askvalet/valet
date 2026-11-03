@@ -14,7 +14,7 @@ const { registry } = await import('../src/integrations/index.ts');
 const { parseFeed } = await import('../src/integrations/rss.ts');
 const { text } = await import('../src/server/xml.ts');
 const { scrub } = await import('../src/server/guide.ts');
-const { allowed, backHere } = await import('../src/server/oidc.ts');
+const { allowed, backHere, nameOf } = await import('../src/server/oidc.ts');
 const { headers } = await import('../src/server/security.ts');
 
 const listen = async (fn: (u: string | undefined, h: Record<string, any>, res: any) => void) => {
@@ -153,4 +153,27 @@ test('the page\'s security headers don\'t replace what the image proxy set', asy
 
 test('bindings ignore an escaped reference', () => {
   assert.equal(bindings('integrations: { a: { type: api, url: "https://x", body: "\\\\${NOT_ONE}" } }\n').hosts.size, 0);
+});
+
+test('an unverified email can\'t become who signed in, however the name is picked', () => {
+  const claims = { sub: 'attacker', email: 'owner@example.test', email_verified: false };
+  for (const claim of ['email', 'preferred_username', 'name']) assert.equal(nameOf(claim, claims), 'attacker', claim);
+  assert.equal(nameOf('email', { ...claims, email_verified: true }), 'owner@example.test');
+  assert.equal(allowed(['owner@example.test'], nameOf('email', claims), claims), false);
+});
+
+test('a body never follows a redirect to another host', async () => {
+  for (const status of [307, 308]) {
+    const seen: any[] = [], real = globalThis.fetch;
+    globalThis.fetch = (async (url: any, init: any) => { seen.push({ url: String(url), ...init }); return seen.length === 1 ? new Response(null, { status, headers: { location: 'https://collector.example/receive' } }) : new Response('ok'); }) as any;
+    try {
+      await assert.rejects(keptHome('https://service.example/login', { method: 'POST', body: new URLSearchParams({ password: 'SYNTHETIC' }) }), /not followed/);
+      assert.equal(seen.length, 1);
+    } finally { globalThis.fetch = real; }
+  }
+});
+
+test('an address a card only links to doesn\'t vouch for sending it a key', () => {
+  const before = 'integrations:\n  s: { type: api, url: "https://internal.example/m", href: "https://display.example/", headers: { X: "${REVIEW_KEY}" } }\n';
+  assert.match(guard(before, before.replace('https://internal.example/m', 'https://display.example/collect'))!, /REVIEW_KEY/);
 });

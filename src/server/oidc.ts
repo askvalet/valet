@@ -17,6 +17,13 @@ export const backHere = (to: unknown) => {
   if (typeof to !== 'string' || !to.startsWith('/') || /[\\\t\r\n]/.test(to)) return '/';
   try { return new URL(to, 'http://valet.invalid').origin === 'http://valet.invalid' ? to : '/'; } catch { return '/'; }
 };
+/** Who signed in. An email names someone only once the provider says it checked it, whichever way it was picked: as the
+ *  configured claim or as the fallback. Otherwise anyone at the provider could type the owner's address and be them. */
+export function nameOf(claim: string, claims: Record<string, unknown>) {
+  const verified = claims.email_verified === true;
+  const pick = (k: string) => (k === 'email' && !verified ? undefined : claims[k]) as string | undefined;
+  return String(pick(claim) ?? pick('preferred_username') ?? pick('email') ?? claims.sub ?? '');
+}
 /** An address only counts once the provider says it checked it; otherwise anyone there could just type yours. */
 export const allowed = (list: string[], name: string, claims: Record<string, unknown>) => !list.length || list.some(a => a.toLowerCase() === name.toLowerCase()
   || (claims.email_verified === true && a.toLowerCase() === String(claims.email ?? '').toLowerCase()));
@@ -57,7 +64,7 @@ export function setupOidc(app: Hono, config: Config, sign: (body: string) => str
   });
 
   app.get('/api/auth/oidc/callback', async c => {
-    const fail = (why: string, status = 400) => { deleteCookie(c, 'valet_oidc', { path: '/api/auth/oidc' }); return c.text(`Sign-in failed: ${why}`, status as 400); };
+    const fail = (why: string, status = 400) => { console.warn(`auth: OpenID sign-in refused: ${why}`); deleteCookie(c, 'valet_oidc', { path: '/api/auth/oidc' }); return c.text(`Sign-in failed: ${why}`, status as 400); };
     const raw = getCookie(c, 'valet_oidc') ?? '';
     const [body, mac] = raw.split('.');
     if (!body || !mac || mac.length !== 43 || !timingSafeEqual(Buffer.from(mac), Buffer.from(sign(body)))) return fail('no sign-in in progress (start again)');
@@ -78,7 +85,7 @@ export function setupOidc(app: Hono, config: Config, sign: (body: string) => str
     try { claims = await verifyIdToken(t.id_token, d.issuer, o.clientId, keys); }
     catch (e) { return fail(`bad ID token: ${(e as Error).message}`, 401); }
     if (claims.nonce !== flow.nonce) return fail('nonce mismatch', 401);
-    const name = String(claims[o.claim] ?? claims.preferred_username ?? claims.email ?? claims.sub ?? '');
+    const name = nameOf(o.claim, claims);
     if (!name) return fail(`the token has no "${o.claim}" claim`, 401);
     if (!allowed(o.allow, name, claims)) return fail(`${name} isn't on the allow list`, 403);
     deleteCookie(c, 'valet_oidc', { path: '/api/auth/oidc' });

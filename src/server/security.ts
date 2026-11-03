@@ -62,6 +62,7 @@ export const headers: MiddlewareHandler = async (c, next) => {
     `frame-src ${[...frames].join(' ') || "'none'"}`, "frame-ancestors 'none'", "base-uri 'none'", "form-action 'self'", "object-src 'none'",
   ].join('; '));
   c.header('X-Content-Type-Options', 'nosniff');
+  c.header('Strict-Transport-Security', 'max-age=31536000');
   c.header('Referrer-Policy', 'same-origin');
   c.header('X-Frame-Options', 'DENY');
   c.header('Permissions-Policy', 'microphone=(self), camera=(), geolocation=(), payment=(), usb=()');

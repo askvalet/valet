@@ -44,3 +44,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: mode=max   # how and from what it was built, attached to the image
+          sbom: true

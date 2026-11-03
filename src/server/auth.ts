@@ -19,18 +19,20 @@ import type { Config } from './config.ts';
 import { sandbox } from './sandbox.ts';
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number, opts: object) => Promise<Buffer>;
-const SCRYPT = { N: 2 ** 15, r: 8, p: 1, maxmem: 64 * 2 ** 20 };
+// OWASP's floor for scrypt is N=2^17,r=8,p=1 or the same work as N=2^15,r=8,p=3, which needs a quarter of the memory
+// (a sign-in shouldn't take 128 MB from a small container). Hashes made before keep their `p` and are redone at sign-in.
+const SCRYPT = { N: 2 ** 15, r: 8, p: 3, maxmem: 64 * 2 ** 20 };
 const COOKIE = 'valet_session';
 const DATA = resolve(process.env.VALET_DATA ?? 'data');
 const USERS = resolve(DATA, 'users.json'), SECRET = resolve(DATA, 'secret');
 
-interface User { name: string; hash: string; salt: string; version: number; created: string }
+interface User { name: string; hash: string; salt: string; version: number; created: string; p?: number }
 
 async function hash(password: string, salt = randomBytes(16)) {
-  return { salt: salt.toString('base64'), hash: (await scrypt(password, salt, 32, SCRYPT)).toString('base64') };
+  return { salt: salt.toString('base64'), hash: (await scrypt(password, salt, 32, SCRYPT)).toString('base64'), p: SCRYPT.p };
 }
 async function verify(u: User, password: string) {
-  const h = await scrypt(password, Buffer.from(u.salt, 'base64'), 32, SCRYPT);
+  const h = await scrypt(password, Buffer.from(u.salt, 'base64'), 32, { ...SCRYPT, p: u.p ?? 1 });
   return timingSafeEqual(h, Buffer.from(u.hash, 'base64'));
 }
 async function load(): Promise<User[]> { return JSON.parse(await readFile(USERS, 'utf8').catch(() => '[]')); }
@@ -167,8 +169,10 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
     // check a hash even for unknown names, so timing doesn't reveal which names exist
     hold(ip, 1); hold(who, 1);
     const ok = await (u ? verify(u, String(password ?? '')) : hash(String(password ?? '')).then(() => false)).finally(() => { hold(ip, -1); hold(who, -1); });
-    if (!ok) { failed(ip); failed(who); return c.json({ error: 'That name and password don\'t match.' }, 401); }
+    if (!ok) { failed(ip); failed(who); console.warn(`auth: failed sign-in for ${JSON.stringify(String(name ?? '').slice(0, 32))} from ${ip}`); return c.json({ error: 'That name and password don\'t match.' }, 401); }
     fails.delete(ip); fails.delete(who);
+    console.log(`auth: ${u!.name} signed in from ${ip}`);
+    if ((u!.p ?? 1) < SCRYPT.p) { Object.assign(u!, await hash(String(password))); await save(users); }   // a stronger hash, now that the password is at hand
     start(c, u!.name, u!.version, remember !== false);
     return c.json({ user: { name: u!.name } });
   });
@@ -177,7 +181,7 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
     if (wait) return c.json({ error: `Too many tries. Wait ${wait}s.` }, 429);
     if (!setupCode) return c.json({ error: 'Already set up.' }, 409);
     const { code, name, password } = await c.req.json().catch(() => ({}));
-    if (!same(String(code ?? '').trim().toLowerCase(), setupCode)) { failed(ip); return c.json({ error: 'That setup code isn\'t right. It\'s in the server log.' }, 401); }
+    if (!same(String(code ?? '').trim().toLowerCase(), setupCode)) { failed(ip); console.warn(`auth: wrong setup code from ${ip}`); return c.json({ error: 'That setup code isn\'t right. It\'s in the server log.' }, 401); }
     if (!validName(String(name ?? ''))) return c.json({ error: 'Pick a name: letters, numbers, . _ -' }, 400);
     if (String(password ?? '').length < 8) return c.json({ error: 'Use at least 8 characters.' }, 400);
     const u: User = { name, ...(await hash(password)), version: 1, created: new Date().toISOString() };

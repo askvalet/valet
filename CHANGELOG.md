@@ -17,6 +17,8 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - Approvals are signed by the server. Plan cards use each tool's own words, and a vague name is refused rather than matched to the first thing it fits.
 - `/api/confirm` checks input and the read-only rule. The image proxy passes an exact list of types and keeps its own policy.
 - Hostile feeds, oversized replies and redirects to another host can no longer stall Valet, fill its memory or carry a key away.
+- An unverified email can't be who signs in through OpenID Connect, however the name is picked. A redirect to another host never carries a body. A card's link doesn't count as somewhere its key may go.
+- Sign-ins and failures are logged. Passwords are hashed to OWASP's floor for scrypt, and older ones are rehashed at the next sign-in. HSTS is sent. Release images carry provenance and an SBOM.
 
 ### Added
 
