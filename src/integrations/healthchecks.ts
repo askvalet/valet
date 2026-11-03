@@ -10,7 +10,7 @@ interface Check { key: string; uuid?: string; name: string; slug?: string; tags:
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const when = (t: unknown) => { if (t == null || t === '') return undefined; const v = new Date(String(t)).getTime(); return Number.isFinite(v) ? v : undefined; };
-const ago = (t: number) => { const s = (Date.now() - t) / 1000; return s < 60 ? 'just now' : s < 8640000 ? `${fmt.duration(s)} ago` : fmt.day(t)!; };
+const ago = (t: number) => { const m = Math.floor((Date.now() - t) / 6e4); return m < 1 ? 'just now' : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.floor(m / 60)}h ago` : m < 144000 ? `${Math.floor(m / 1440)}d ago` : fmt.day(t)!; };
 const toneOf = (c: Check): Tone | undefined => c.status === 'down' ? 'bad' : c.status === 'grace' ? 'warn' : c.status === 'up' ? 'good' : undefined;
 const RANK: Record<string, number> = { down: 0, grace: 1, up: 2, new: 3, paused: 4 };
 const WORD: Record<string, string> = { down: 'Down', grace: 'Late', up: 'Up', new: 'Never pinged', paused: 'Paused' };

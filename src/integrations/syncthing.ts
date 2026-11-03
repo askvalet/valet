@@ -11,7 +11,7 @@ interface Folder { id: string; label: string; path?: string; paused: boolean; st
 interface Device { id: string; name: string; connected: boolean; paused: boolean; completion?: number; need?: number; lastSeen?: number; address?: string }
 
 const n = (v: unknown) => Number(v) || 0;
-const ago = (t?: number) => { if (!t) return undefined; const s = (Date.now() - t) / 1000; return s < 60 ? 'just now' : s < 8640000 ? `${fmt.duration(s)} ago` : fmt.day(t); };
+const ago = (t: number) => { const m = Math.floor((Date.now() - t) / 6e4); return m < 1 ? 'just now' : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.floor(m / 60)}h ago` : m < 144000 ? `${Math.floor(m / 1440)}d ago` : fmt.day(t)!; };
 const BUSY = new Set(['syncing', 'sync-preparing', 'scanning', 'scan-waiting', 'sync-waiting', 'cleaning', 'clean-waiting']);
 // Syncthing says "never" with the zero time
 const seen = (t: unknown) => { const v = new Date(String(t ?? '')).getTime(); return Number.isFinite(v) && v > 0 && new Date(v).getUTCFullYear() > 1970 ? v : undefined; };

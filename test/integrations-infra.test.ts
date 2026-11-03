@@ -178,7 +178,7 @@ test('syncthing: folders and devices, failing first; the old status card still c
   assert.equal(folders[1].meta, '75%'); assert.equal(folders[3].subtitle, 'Paused');
   const devices = w.sync.items.filter((i: any) => i.section === 'Devices');
   assert.deepEqual(devices.map((d: any) => d.title), ['nas', 'phone', 'laptop']);           // behind and away before up to date; never us
-  assert.match(devices[1].subtitle, /last seen 2d 2h ago/); assert.match(devices[0].subtitle, /behind/);
+  assert.match(devices[1].subtitle, /last seen 2d ago/); assert.match(devices[0].subtitle, /behind/);
   assert.equal(w.sync.summary.value, '1 failing'); assert.equal(w.sync.summary.tone, 'bad');
   assert.ok(!s.calls.some(c => c.includes('folder=pics-old')), 'a paused folder isn\'t asked');
 });
@@ -214,9 +214,9 @@ test('backrest: each plan\'s last backup, failures first; the old status card st
   const stat = Object.fromEntries(w.status.items.map((i: any) => [i.label, i.value]));
   assert.deepEqual(stat, { Plans: 4, 'Latest fine': 1, 'Latest failed': 1, 'Failed, 30 days': 3, 'Added, 30 days': '1.0 GB' });
   assert.deepEqual(w.plans.items.map((i: any) => i.title), ['photos', 'photos-offsite', 'daily-home', 'fresh']);
-  assert.match(w.plans.items[0].subtitle, /^Failed 3h 0m ago/); assert.equal(w.plans.items[0].dot, 'bad');
+  assert.match(w.plans.items[0].subtitle, /^Failed 3h ago/); assert.equal(w.plans.items[0].dot, 'bad');
   assert.match(w.plans.items[1].subtitle, /warnings.*overdue/);
-  assert.match(w.plans.items[2].subtitle, /Backed up 10h 0m ago · \+64\.0 MB/); assert.match(w.plans.items[2].detail, /Protects 50\.0 GB · 40 snapshots/); assert.match(w.plans.items[2].meta, /^next/);
+  assert.match(w.plans.items[2].subtitle, /Backed up 10h ago · \+64\.0 MB/); assert.match(w.plans.items[2].detail, /Protects 50\.0 GB · 40 snapshots/); assert.match(w.plans.items[2].meta, /^next/);
   assert.equal(w.plans.items[3].subtitle, 'No backups yet');
   assert.equal(w.plans.summary.value, '1 failed');
 });
