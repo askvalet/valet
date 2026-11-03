@@ -3,3 +3,4 @@ ed8926dd08817fa5b3e52f009fee0300f94e8beb:test/server.test.ts:generic-api-key:100
 65e2090d308bd275249c4f11599fa4b65d21a27a:test/server.test.ts:generic-api-key:92
 65e2090d308bd275249c4f11599fa4b65d21a27a:test/server.test.ts:generic-api-key:96
 5c748160bcc4d4470ce040d0680c4c426ab98bb9:test/exposure.ts:generic-api-key:11
+b87d438f4aebebd0be0a749fc710e43562bd7289:test/lab/hostile-lab.ts:generic-api-key:11
