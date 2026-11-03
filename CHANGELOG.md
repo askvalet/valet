@@ -32,6 +32,7 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - A demo that runs entirely in the browser, built with `npm run demo:static`.
 - Docker images for amd64 and arm64, published on each release.
 - The year in review ends on your card: no more "The Generous Seeder" style personalities.
+- A config edit from chat that has to reprint only rewrites the entry it changes, in the file's own brace style; it used to reformat the whole file.
 - Live activities as rings in the top bar, configured under `live`.
 - `npm run test:hostile`, in CI: a model that is entirely the attacker's, against every guardrail. `npm run eval:inject` runs poisoned content past your own model.
 - `npm run test:exposure`, in CI with `npm audit`, a secret scan of all of history, and CodeQL once the repo is public.

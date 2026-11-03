@@ -3,7 +3,7 @@
 // `assistant.access.config`. It can't touch sign-in, plugins, MCP or its own access, point at files on disk, or write a
 // secret into the file: those stay in .env. The save before this one is kept, so a change can be undone. Saved edits go through the same hot reload as a person's.
 import { readFile, writeFile } from 'node:fs/promises';
-import { isMap, isSeq, parse as parseYaml, parseDocument, stringify } from 'yaml';
+import { Document, isMap, isSeq, parse as parseYaml, parseDocument, stringify, YAMLMap, YAMLSeq } from 'yaml';
 import { z } from 'zod';
 import { Config, parseConfig } from './config.ts';
 import { makeContext, type Instance, type Integration, type Tool } from './core.ts';
@@ -110,8 +110,11 @@ export function guard(beforeText: string, afterText: string): string | null {
   return null;
 }
 
-const YAML = { lineWidth: 0, flowCollectionPadding: false } as const;
-const flow = (v: unknown) => stringify(v, { ...YAML, collectionStyle: 'flow' }).trim();
+const YAML = { lineWidth: 0, flowCollectionPadding: false };
+// `{ a: 1 }` or `{a: 1}`: whichever the file already uses
+const style = (text: string) => ({ ...YAML, flowCollectionPadding: (text.match(/[{[] \S/g)?.length ?? 0) > (text.match(/[{[][^\s}\]]/g)?.length ?? 0) });
+let house = YAML;
+const flow = (v: unknown) => stringify(v, { ...house, collectionStyle: 'flow' }).trim();
 const indented = (yaml: string, pad: string) => yaml.trimEnd().split('\n').map(l => l ? pad + l : l).join('\n') + '\n';
 const lineStart = (text: string, at: number) => text.lastIndexOf('\n', at - 1) + 1;
 /** Where a new line goes after a block collection: past the end of its last line, trailing comment included. */
@@ -129,24 +132,62 @@ function splice(text: string, o: Op): string | null {
   // a whole block replaced: its lines and nothing else, so the file around it and the diff stay readable
   if (o.op === 'set' && target?.range && target.items?.length && !target.flow) {
     const start = lineStart(text, target.range[0]), pad = text.slice(start).match(/^\s*/)![0];
-    return text.slice(0, start) + indented(stringify(o.value, YAML), pad) + text.slice(after(text, target.range[1]));
+    return text.slice(0, start) + indented(stringify(o.value, house), pad) + text.slice(after(text, target.range[1]));
   }
   if (o.op === 'set' && target == null && isMap(parent) && !parent.flow && parent.items.length) {
     const first = (parent.items[0].key as any).range[0], pad = text.slice(lineStart(text, first), first);
-    return put(after(text, parent.range![1]), indented(stringify({ [o.path.at(-1)!]: o.value }, YAML), pad));
+    return put(after(text, parent.range![1]), indented(stringify({ [o.path.at(-1)!]: o.value }, house), pad));
   }
   if (o.op === 'append' && isSeq(target)) {
     if (target.flow) return put(target.range![1] - 1, `${target.items.length ? ', ' : ''}${flow(o.value)}`);
     if (!target.items.length) return null;
     const pad = text.slice(lineStart(text, target.range![0])).match(/^\s*/)![0];
-    return put(after(text, target.range![1]), indented(`- ${stringify(o.value, YAML).trimEnd().replace(/\n/g, '\n  ')}`, pad));
+    return put(after(text, target.range![1]), indented(`- ${stringify(o.value, house).trimEnd().replace(/\n/g, '\n  ')}`, pad));
   }
   return null;
 }
 
-/** The edits applied to the file's text. Comments and order survive. */
+/** When an edit isn't one `splice` knows, the edited document is printed again, but only the one entry it touched:
+ *  the deepest key or list item, under a block parent, that holds the change. The rest of the file keeps its bytes. */
+function reprint(text: string, edited: Document, path: (string | number)[]): string | null {
+  const old = parseDocument(text);
+  const render = (node: any, seq: boolean) => {
+    if (!seq && node.key && typeof node.key === 'object') node.key.commentBefore = undefined;   // the lines above stay where they are, so it would print twice
+    const d = new Document(); d.contents = seq ? new YAMLSeq() : new YAMLMap(); (d.contents as any).items.push(node);
+    return d.toString(house);
+  };
+  for (let i = path.length; i >= 1; i--) {
+    const up = path.slice(0, i - 1), key = path[i - 1];
+    const was: any = i === 1 ? old.contents : old.getIn(up, true), now: any = i === 1 ? edited.contents : edited.getIn(up, true);
+    if (!was || !now || was.flow || now.flow) continue;
+    if (isMap(was) && isMap(now)) {
+      const find = (m: any) => m.items.find((p: any) => String(p.key?.value ?? p.key) === String(key));
+      const a = find(was), b = find(now);
+      if (!a && !b) continue;
+      if (!a) {
+        if (!was.items.length) continue;
+        const first = (was.items[0].key as any).range[0], pad = text.slice(lineStart(text, first), first), at = after(text, was.range![1]);
+        return text.slice(0, at) + indented(render(b, false), pad) + text.slice(at);
+      }
+      const start = lineStart(text, a.key.range[0]), pad = text.slice(start, a.key.range[0]), end = after(text, (a.value?.range ?? a.key.range)[1]);
+      return text.slice(0, start) + (b ? indented(render(b, false), pad) : '') + text.slice(end);
+    }
+    if (isSeq(was) && isSeq(now) && typeof key === 'number' && was.items[key] && i === path.length && now.items.length === was.items.length - 1) {
+      const item: any = was.items[key];   // one entry out of a list: its lines go, and only those
+      return text.slice(0, lineStart(text, item.range[0])) + text.slice(after(text, item.range[1]));
+    }
+    if (isSeq(was) && isSeq(now) && typeof key === 'number' && was.items[key] && now.items[key] && was.items.length === now.items.length) {
+      const item: any = was.items[key], start = lineStart(text, item.range[0]), pad = text.slice(start).match(/^\s*/)![0];
+      return text.slice(0, start) + indented(render(now.items[key], true), pad) + text.slice(after(text, item.range[1]));
+    }
+  }
+  return null;
+}
+
+/** The edits applied to the file's text. Comments and order survive, and so does every line the edit doesn't touch. */
 export function applyOps(text: string, ops: Op[]): string {
   let out = text;
+  house = style(text);
   for (const o of ops) {
     const done = splice(out, o);
     if (done != null) { out = done; continue; }
@@ -162,7 +203,7 @@ export function applyOps(text: string, ops: Op[]): string {
       else if (isSeq(at)) at.add(doc.createNode(o.value));
       else throw new Error(`${o.path.join('.')} isn't a list`);
     }
-    out = doc.toString(YAML);
+    out = reprint(out, doc, o.path) ?? doc.toString(house);
   }
   return out;
 }

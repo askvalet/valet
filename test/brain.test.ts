@@ -70,6 +70,33 @@ test('status line: rewritten soon after what\'s wrong changes, and a failed acti
   assert.deepEqual(troubles([log] as any), []);
 });
 
+test('setup: an edit it has to reprint touches only its own entry, never the rest of the file', () => {
+  const text = [
+    'auth: { mode: none, trustNetwork: true }   # odd spacing, kept',
+    'integrations:',
+    '  plex: { url: "http://plex:32400", href: "https://plex.example.com" }',
+    '  dns:',
+    '    type: pihole',
+    '    url: http://pihole       # wide comment',
+    '    href: https://pihole.example.com',
+    'layout:',
+    '  - title: Media',
+    '    widgets: [plex.status]',
+    '',
+  ].join('\n');
+  const gone = applyOps(text, [{ op: 'remove', path: ['integrations', 'dns', 'href'] }]);
+  assert.equal(gone, text.replace('    href: https://pihole.example.com\n', ''));
+  const added = applyOps(text, [{ op: 'set', path: ['hero', 'review'], value: false }]);
+  assert.ok(added.startsWith(text), 'everything before stays byte for byte');
+  assert.match(added.slice(text.length), /^hero:\n {2}review: false\n$/);
+  const moved = applyOps(text, [{ op: 'remove', path: ['layout', 0, 'title'] }]);
+  assert.equal(moved.split('\n').slice(0, 8).join('\n'), text.split('\n').slice(0, 8).join('\n'));
+  assert.doesNotMatch(moved, /title: Media/);
+  const two = text.replace('layout:\n', 'layout:\n  - title: Home   # first\n    widgets: [dns.stats]\n');
+  assert.equal(applyOps(two, [{ op: 'remove', path: ['layout', 0] }]), text);   // a whole list entry goes, and nothing else
+  assert.match(applyOps(text, [{ op: 'set', path: ['auth', 'trustNetwork'], value: false }]), /^auth: \{ mode: none, trustNetwork: false \}/);
+});
+
 test('setup: edits keep comments; it can\'t touch sign-in or its own access, or write a secret into the file', async () => {
   const text = '# my page\ntitle: Home   # keep me\nintegrations:\n  w: { type: weather, latitude: 1, longitude: 2 }\nlayout:\n  - title: A\n    widgets: [w.now]\n';
   const after = applyOps(text, [{ op: 'set', path: ['integrations', 'hn'], value: { type: 'hackernews' } }, { op: 'append', path: ['layout', 0, 'widgets'], value: 'hn.stories' }]);
