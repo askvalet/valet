@@ -3,7 +3,7 @@ export const FAMILY_NAMES: Record<string, string> = { media: 'Media', downloads:
 const group = (name: string, types: string) => Object.fromEntries(types.split(' ').map(t => [t, name]));
 export const CATEGORIES = ['Media', 'Downloads', 'Network', 'Infrastructure', 'Home and daily life', 'Feeds and web', 'Apps', 'Build your own'];
 export const CATEGORY: Record<string, string> = {
-  ...group('Media', 'arr tautulli seerr immich romm'),
+  ...group('Media', 'arr tautulli jellyfin emby navidrome audiobookshelf seerr immich romm'),
   ...group('Downloads', 'qbittorrent indexers'),
   ...group('Network', 'pihole'),
   ...group('Infrastructure', 'docker glances host uptimekuma scrutiny apcups minecraft ollama aimonitor'),

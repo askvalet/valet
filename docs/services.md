@@ -16,12 +16,14 @@ Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to 
 | Service | `type:` |
 |---|---|
 | APC UPS | `apcups` |
+| Audiobookshelf | `audiobookshelf` |
 | Calendar | `calendar` |
 | Camera | `camera` |
 | changedetection.io | `changedetection` |
 | Custom API | `api` |
 | Docker | `docker` |
 | Embedded page | `iframe` |
+| Emby | `emby` |
 | Feeds | `rss` |
 | GitHub repositories | `repository` |
 | Glances | `glances` |
@@ -29,12 +31,14 @@ Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to 
 | Home Assistant | `homeassistant` |
 | Host | `host` |
 | Immich | `immich` |
+| Jellyfin | `jellyfin` |
 | Karakeep | `karakeep` |
 | Links | `links` |
 | Lobsters | `lobsters` |
 | Local AI | `aimonitor` |
 | Markets | `markets` |
 | Minecraft | `minecraft` |
+| Navidrome | `navidrome` |
 | Ollama | `ollama` |
 | Paperless | `paperless` |
 | PC | `rgb-control` |
@@ -65,7 +69,6 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | Arcane | `arcane` | key |
 | Argo CD | `argocd` | key |
 | Atsumeru | `atsumeru` | username, password |
-| Audiobookshelf | `audiobookshelf` | key |
 | Authelia | `authelia` | none |
 | authentik | `authentik` | key |
 | autobrr | `autobrr` | key |
@@ -90,7 +93,6 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | Dockhand | `dockhand` | none |
 | Download Station | `download-station` | username, password |
 | Duplicati | `duplicati` | password |
-| Emby | `emby` | key |
 | ESPHome | `esphome` | none |
 | evcc | `evcc` | none |
 | File Browser | `filebrowser` | username, password |
@@ -113,7 +115,6 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | Homebox | `homebox` | username, password |
 | Homebridge | `homebridge` | username, password |
 | Jackett | `jackett` | none |
-| Jellyfin | `jellyfin` | key |
 | Jellystat | `jellystat` | key |
 | Kavita | `kavita` | username, password |
 | Komga | `komga` | username, password |
@@ -135,7 +136,6 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | Mylar3 | `mylar` | key |
 | MySpeed | `myspeed` | none |
 | n8n | `n8n` | key |
-| Navidrome | `navidrome` | none |
 | NetAlertX | `netalertx` | key |
 | NetBird | `netbird` | key |
 | Netdata | `netdata` | none |
