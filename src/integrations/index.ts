@@ -9,7 +9,12 @@ import homeassistant from './homeassistant.ts';
 import immich from './immich.ts';
 import indexers from './indexers.ts';
 import karakeep from './karakeep.ts';
+import kavita from './kavita.ts';
+import komga from './komga.ts';
+import mealie from './mealie.ts';
+import miniflux from './miniflux.ts';
 import paperless from './paperless.ts';
+import tandoor from './tandoor.ts';
 import http from './http.ts';
 import ollama from './ollama.ts';
 import pihole from './pihole.ts';
@@ -41,5 +46,5 @@ import todo from './todo.ts';
 import twitch from './twitch.ts';
 
 export const registry: Record<string, Integration> = Object.fromEntries(
-  [aimonitor, arr, camera, changedetection, glances, homeassistant, http, immich, indexers, karakeep, ollama, paperless, pihole, qbittorrent, rgbcontrol, romm, scrutiny, seerr, tautulli, uptimekuma, weather, links, rss, hackernews, reddit, releases, markets, calendar, api, docker, host, apcups, minecraft, clock, iframe, lobsters, repository, todo, twitch, ...services].map(i => [i.type, i as Integration]),
+  [aimonitor, arr, camera, changedetection, glances, homeassistant, http, immich, indexers, karakeep, kavita, komga, mealie, miniflux, ollama, paperless, pihole, qbittorrent, rgbcontrol, romm, scrutiny, seerr, tandoor, tautulli, uptimekuma, weather, links, rss, hackernews, reddit, releases, markets, calendar, api, docker, host, apcups, minecraft, clock, iframe, lobsters, repository, todo, twitch, ...services].map(i => [i.type, i as Integration]),
 );

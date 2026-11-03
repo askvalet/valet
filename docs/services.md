@@ -30,11 +30,15 @@ Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to 
 | Host | `host` |
 | Immich | `immich` |
 | Karakeep | `karakeep` |
+| Kavita | `kavita` |
+| Komga | `komga` |
 | Links | `links` |
 | Lobsters | `lobsters` |
 | Local AI | `aimonitor` |
 | Markets | `markets` |
+| Mealie | `mealie` |
 | Minecraft | `minecraft` |
+| Miniflux | `miniflux` |
 | Ollama | `ollama` |
 | Paperless | `paperless` |
 | PC | `rgb-control` |
@@ -49,6 +53,7 @@ Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to 
 | Seerr | `seerr` |
 | Service status | `http` |
 | Sonarr / Radarr | `arr` |
+| Tandoor | `tandoor` |
 | To-do list | `todo` |
 | Twitch | `twitch` |
 | Uptime Kuma | `uptimekuma` |
@@ -115,8 +120,6 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | Jackett | `jackett` | none |
 | Jellyfin | `jellyfin` | key |
 | Jellystat | `jellystat` | key |
-| Kavita | `kavita` | username, password |
-| Komga | `komga` | username, password |
 | Komodo | `komodo` | key |
 | Kopia | `kopia` | none |
 | Kubernetes | `kubernetes` | key |
@@ -126,10 +129,8 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | Mailcow | `mailcow` | key |
 | Maintainerr | `maintainerr` | none |
 | Mastodon | `mastodon` | none |
-| Mealie | `mealie` | key |
 | Medusa | `medusa` | none |
 | MikroTik | `mikrotik` | username, password |
-| Miniflux | `miniflux` | key |
 | MinIO | `minio` | none |
 | Moonraker | `moonraker` | none |
 | Mylar3 | `mylar` | key |
@@ -184,7 +185,6 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | Syncthing | `syncthing` | key |
 | Syncthing Relay | `syncthing-relay` | none |
 | Tailscale | `tailscale` | key |
-| Tandoor | `tandoor` | key |
 | Tdarr | `tdarr` | none |
 | Technitium DNS | `technitium` | key |
 | Tracearr | `tracearr` | key |

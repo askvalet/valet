@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { fmt, service, tally } from '../../server/service.ts';
 
 const rows = (v: unknown): any[] => Array.isArray(v) ? v : [];
-const sum = (o: unknown) => Object.values((o ?? {}) as Record<string, number>).reduce((a, b) => a + (b ?? 0), 0);
 const signed = (pct?: number | null) => pct == null ? undefined : `${pct > 0 ? '+' : ''}${pct.toFixed(2)}%`;
 const updown = (pct?: number | null) => pct == null ? undefined : pct < 0 ? 'bad' as const : 'good' as const;
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -26,14 +25,6 @@ const forge = (type: string, name: string) => service({
 
 export default [
   // Reading and saving
-  service({
-    type: 'miniflux', name: 'Miniflux', icon: 'rss', auth: { header: 'X-Auth-Token' },
-    get: { counters: '/v1/feeds/counters' },
-    stats: d => [{ label: 'Unread', value: sum(d.counters?.unreads) }, { label: 'Read', value: sum(d.counters?.reads) }],
-    recap: d => tally(sum(d.counters?.reads), { id: 'feeds.read', theme: 'reading', icon: 'rss', kicker: 'You read', unit: 'articles', stat: 'Articles read', scope: 'All time', line: 'Chosen by you, in the order they came. No algorithm involved.' }),
-    sample: { counters: { reads: { 1: 1200, 4: 34 }, unreads: { 1: 12, 4: 3 } } },
-    expect: { Unread: 15, Read: '1,234' },
-  }),
   service({
     type: 'linkwarden', name: 'Linkwarden', icon: 'bookmark', auth: 'bearer',
     get: { collections: '/api/v1/collections', tags: '/api/v1/tags' },
@@ -182,27 +173,6 @@ export default [
   }),
 
   // Home and everyday
-  service<{ version: number }>({
-    type: 'mealie', name: 'Mealie', icon: 'book', auth: 'bearer',
-    options: { version: z.union([z.literal(1), z.literal(2)]).default(2) },
-    get: o => ({ stats: o.version === 1 ? '/api/groups/statistics' : '/api/households/statistics' }),
-    stats: d => [
-      { label: 'Recipes', value: d.stats?.totalRecipes ?? 0 }, { label: 'Categories', value: d.stats?.totalCategories ?? 0 },
-      { label: 'Tags', value: d.stats?.totalTags ?? 0 }, { label: 'Users', value: d.stats?.totalUsers ?? 0 }],
-    sample: { stats: { totalRecipes: 1312, totalUsers: 2, totalCategories: 14, totalTags: 38, totalTools: 6 } },
-    expect: { Recipes: '1,312', Tags: 38, Users: 2 },
-  }),
-  service({
-    type: 'tandoor', name: 'Tandoor', icon: 'book', auth: 'bearer',
-    get: { space: '/api/space/', keywords: '/api/keyword/' },
-    stats: d => {
-      const space = rows(d.space?.results ?? d.space)[0];
-      return [{ label: 'Recipes', value: space?.recipe_count ?? 0 }, { label: 'Keywords', value: d.keywords?.count ?? 0 }, { label: 'Users', value: space?.user_count ?? 0 }];
-    },
-    recap: d => tally(rows(d.space?.results ?? d.space)[0]?.recipe_count, { id: 'recipes', theme: 'food', icon: 'book', kicker: 'Your cookbook has', unit: 'recipes', stat: 'Recipes', scope: 'All time', line: 'All of them without a life story above the ingredients.' }),
-    sample: { space: { count: 1, results: [{ id: 1, name: 'Home', user_count: 2, recipe_count: 1204 }] }, keywords: { count: 96, results: [{ id: 1, name: 'dinner' }] } },
-    expect: { Recipes: '1,204', Keywords: 96, Users: 2 },
-  }),
   service({
     type: 'vikunja', name: 'Vikunja', icon: 'calendar', auth: 'bearer',
     // /tasks/all became /tasks in 1.0
