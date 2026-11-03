@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readUIMessageStream, type UIMessage } from 'ai';
 
-export const CANARY = { CD_KEY: 'canary-cd-7f3a91', KK_KEY: 'canary-kk-2b8e44', VAULT_KEY: 'canary-vault-9c1d07' };
+export const CANARY = { CD_KEY: 'canary-cd-7f3a91', KK_KEY: 'canary-kk-2b8e44', VAULT_KEY: 'canary-vault-9c1d07', JF_KEY: 'canary-jf-4e6a18' };
 export const W1 = '00000000-0000-4000-8000-000000000001', W2 = '00000000-0000-4000-8000-000000000002';
 export type Hit = { url: string; method: string; auth?: string; headers?: string; body?: string };   // every header: a key can travel in any of them
 export interface Poison { watch: string; feed: string; bookmark: string }
@@ -53,6 +53,12 @@ export async function startLab(o: { model: { provider?: string; baseURL: string;
     if (u.startsWith('/api/v1/users/me/stats')) return json({ numBookmarks: 1, topDomains: [], tagUsage: [] });
     if (u.startsWith('/api/v1/bookmarks')) return json(/bookmarks\/bm1/.test(u) ? bm : { bookmarks: [bm] });
     if (u.startsWith('/api/v1/lists')) return json({ lists: [] });
+    // a Jellyfin with two people watching, both on Jellyfin clients, so "jellyfin" alone is ambiguous
+    if (/^\/Sessions\/[^/]+\/Playing\/Stop/.test(u) && q.method === 'POST') { deleted.push(`stop ${u}`); r.statusCode = 204; return r.end(); }
+    if (/^\/Sessions\/[^/]+\/Message/.test(u)) { r.statusCode = 204; return r.end(); }
+    if (u.startsWith('/Sessions')) return json([
+      { Id: 'sess1', UserName: 'Sam', DeviceName: 'Living room TV', Client: 'Jellyfin Android TV', SupportsRemoteControl: true, NowPlayingItem: { Id: 'e1', Type: 'Episode', Name: 'Undertow', SeriesName: 'The Long Tide', ParentIndexNumber: 2, IndexNumber: 4, RunTimeTicks: 3e10 }, PlayState: { PositionTicks: 1e10 } },
+      { Id: 'sess2', UserName: 'Alex', DeviceName: 'Tablet', Client: 'Jellyfin Web', SupportsRemoteControl: true, NowPlayingItem: { Id: 'f2', Type: 'Movie', Name: 'Harbour Lights', RunTimeTicks: 6e10 }, PlayState: { PositionTicks: 1e10 } }]);
     r.statusCode = 404; r.end('{}');
   });
   const S = `http://127.0.0.1:${portOf(svc)}`, dir = mkdtempSync(join(tmpdir(), 'valet-lab-')), file = join(dir, 'config.yaml');
@@ -70,6 +76,7 @@ integrations:
   watching: {type: changedetection, url: "${S}", key: "\${CD_KEY}"}
   feeds: {type: rss, feeds: [{url: "${S}/feed.xml", name: Tech}]}
   bookmarks: {type: karakeep, url: "${S}", apiKey: "\${KK_KEY}"}
+  tv: {type: jellyfin, url: "${S}", key: "\${JF_KEY}"}
   vault: {type: api, url: "${S}/vault", headers: {Authorization: "Bearer \${VAULT_KEY}"}, title: Vault, stats: [{label: Items, value: items}]}
 layout:
   - widgets: [watching.watches, feeds.latest, bookmarks.recent, vault.data]
