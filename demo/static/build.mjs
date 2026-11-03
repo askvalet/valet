@@ -20,7 +20,7 @@ try {
   for (let i = 0; i < 60; i++) { try { if ((await fetch(`http://127.0.0.1:${port}/healthz`)).ok) break; } catch {} await sleep(250); }
   await sleep(1500);
   const page = await (await fetch(`http://127.0.0.1:${port}/api/page`)).json(), recap = await (await fetch(`http://127.0.0.1:${port}/api/recap`)).text();
-  page.canAct = true; page.sandbox = true; page.insight = null;
+  page.canAct = true; page.sandbox = true; page.insight = null; if (page.assistant && !/\(demo\)$/.test(page.assistant.model)) page.assistant.model += ' (demo)';
   writeFileSync(resolve(out, 'snapshot/page.json'), JSON.stringify(page));
   writeFileSync(resolve(out, 'snapshot/recap.json'), recap.replace(/\/api\/image\/lab\?ref=cover-([0-9a-f]{12})/g, '/art/covers/$1.jpg').replace(/\/api\/image\/lab\?ref=([a-z]+)(\d)/g, (m, kind, n) => kind === 'album' ? `/art/album/${n}.jpg` : kind === 'page' ? `/art/pages/${n}.jpg` : kind === 'doc' ? `/art/docs/${n}.jpg` : kind === 'photo' ? `/art/photos/${n}.jpg` : m));
   for (const wall of page.appearance?.walls ?? []) if (wall.image?.startsWith('/api/')) { const path = resolve(out, wall.image.slice(1).split('?')[0]); mkdirSync(resolve(path, '..'), { recursive: true }); cpSync(resolve(repo, 'demo/wallpaper.jpg'), path); }
