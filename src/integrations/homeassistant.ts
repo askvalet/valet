@@ -374,7 +374,10 @@ export default defineIntegration({
               entity_id, ...(domain === 'light' && brightness != null ? { brightness_pct: brightness } : {}), ...(domain === 'light' && color ? { rgb_color: color } : {}) });
             await new Promise(r => setTimeout(r, 600));
             const s = (await states()).find(x => x.entity_id === entity_id);
-            return { data: { entity_id, state: s?.state }, card: s ? { type: 'controls', items: [control(s)] } : undefined };
+            // a light or the vacuum on a floor plan answers with the plan itself, lit as it is now; anything else, its control
+            const plan = Object.entries(cfg.floorplans).find(([, p]) => p.vacuum === entity_id || Object.values(p.rooms).some(r => r.includes(entity_id)))?.[0];
+            const card = plan && widgets[plan] ? await widgets[plan].fetch().catch(() => undefined) : undefined;
+            return { data: { entity_id, state: s?.state }, card: card ?? (s ? { type: 'controls', items: [control(s)] } : undefined) };
           },
         },
       },

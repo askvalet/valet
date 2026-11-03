@@ -156,7 +156,7 @@ export default defineIntegration({
             if (t instanceof Error) return { data: { error: t.message } };
             const paths: Record<string, string> = { pause: 'torrents/stop', resume: 'torrents/start', remove: 'torrents/delete' }, path = paths[what];
             await api(path, { method: 'POST', body: new URLSearchParams({ hashes: t.hash, ...(what === 'remove' ? { deleteFiles: 'false' } : {}) }) });
-            return { data: { done: what, torrent: t.name }, card: { type: 'text', tone: 'good', text: `${what === 'remove' ? 'Removed' : what === 'pause' ? 'Paused' : 'Resumed'} ${t.name}.` } };
+            return { data: { done: what, torrent: t.name }, card: await widgets.active.fetch() };
           },
         },
         downloads_status: {
@@ -184,7 +184,7 @@ export default defineIntegration({
           access: 'control', input: z.object({ hash: z.string().optional() }),
           async run({ hash }) {
             await api('torrents/stop', { method: 'POST', body: new URLSearchParams({ hashes: hash ?? 'all' }) });
-            return { data: { paused: hash ?? 'all' } };
+            return { data: { paused: hash ?? 'all' }, card: await widgets.active.fetch() };
           },
         },
         resume_downloads: {
@@ -195,7 +195,7 @@ export default defineIntegration({
           access: 'control', input: z.object({ hash: z.string().optional() }),
           async run({ hash }) {
             await api('torrents/start', { method: 'POST', body: new URLSearchParams({ hashes: hash ?? 'all' }) });
-            return { data: { resumed: hash ?? 'all' } };
+            return { data: { resumed: hash ?? 'all' }, card: await widgets.active.fetch() };
           },
         },
       },
