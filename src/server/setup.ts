@@ -77,6 +77,12 @@ export function bindings(text: string) {
   for (const [k, v] of Object.entries(doc)) if (k !== 'integrations') walkStrings(v, k, s => { for (const r of refsIn(s)) outside.add(r); });
   return { hosts, outside, doc };
 }
+/** Every host the config mentions anywhere: what Valet fetches, and what the browser loads or embeds. */
+export function addresses(text: string) {
+  const out = new Set<string>();
+  walkStrings(parseYaml(text) ?? {}, '', s => { for (const m of s.matchAll(/\bhttps?:\/\/[^\s"'<>)]+/g)) { try { out.add(new URL(m[0].replace(REF, 'x')).host); } catch { /* not an address */ } } });
+  return out;
+}
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 /** Did anything owner-only change, whatever the edit looked like? Judged on the parsed result, not the paths asked for. */
 function ownerChanged(before: Record<string, any>, after: Record<string, any>) {
@@ -115,7 +121,9 @@ const after = (text: string, end: number) => { if (text[end - 1] === '\n') retur
  *  the shapes this doesn't cover. */
 function splice(text: string, o: Op): string | null {
   const doc = parseDocument(text);
-  const parent = doc.getIn(o.path.slice(0, -1), true) ?? doc.contents, target = doc.getIn(o.path, true) as any;
+  // a parent that isn't there yet is created by the slow path below; falling back to the top would write the key in the wrong place
+  const parent = o.path.length === 1 ? doc.contents : doc.getIn(o.path.slice(0, -1), true), target = doc.getIn(o.path, true) as any;
+  if (!parent) return null;
   const put = (at: number, s: string) => text.slice(0, at) + s + text.slice(at);
   if (o.op === 'set' && target?.range && !(target.items && !target.flow)) return text.slice(0, target.range[0]) + flow(o.value) + text.slice(target.range[1]);
   // a whole block replaced: its lines and nothing else, so the file around it and the diff stay readable
@@ -264,6 +272,12 @@ export function setupTools(path: string, registry: Record<string, Integration>):
     },
     config_apply: {
       label: 'Changed the config', access: 'control', input: edits, undo: 'config_undo',
+      // a page, wallpaper or embed somewhere new is how poisoned content would reach out, so the card names any first contact
+      confirm: async ({ ops }) => {
+        const t = await trial(ops), fresh = [...addresses(t.after)].filter(h => !addresses(t.before).has(h));
+        return { title: 'Save this change to your config?', icon: 'file', danger: fresh.length > 0 || undefined,
+          detail: fresh.length ? `First time Valet or your browser would contact ${fresh.join(', ')}. Only allow it if you know that address.` : undefined };
+      },
       description: 'Save edits you already previewed, once the problems list is empty. The page updates by itself. Asks the person first.',
       async run({ ops }) {
         try {

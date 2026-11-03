@@ -121,6 +121,12 @@ test('setup: replacing a block leaves the rest of the file exactly as it was', (
   assert.doesNotMatch(diff(text, out), /title: Home/);
 });
 
+test('setup: a key under a section that isn\'t there yet lands inside that section', () => {
+  const out = applyOps('title: Home\nlayout: []\n', [{ op: 'set', path: ['appearance', 'wallpaper'], value: 'https://example.com/a.jpg' }]);
+  assert.match(out, /appearance:\n\s+wallpaper: https:\/\/example\.com\/a\.jpg/);
+  assert.doesNotMatch(out, /^wallpaper:/m);
+});
+
 test('setup: the options cover the config\'s sections as well as integrations', async () => {
   const file = join(tmpdir(), `valet-sections-${process.pid}.yaml`); await writeFile(file, 'title: Home\n');
   const out = await setupTools(file, registry).config_options.run({ type: 'hero' }) as any;

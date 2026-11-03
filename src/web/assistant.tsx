@@ -188,9 +188,9 @@ function Confirmation({ p, name, approve, tools }: { p: any; name: string; appro
   // by the tool's name, never by the shape of its input: an MCP tool could send `steps` to look like something else
   const [said, setSaid] = useState<(Confirm & { steps?: (Confirm | null)[] }) | null>(null), raw = p.input ?? {}, isPlan = name === 'plan', isConfig = name === 'config__config_apply';
   const input = isPlan ? raw : isConfig ? raw : {} as any, listed = isPlan || isConfig;
-  useEffect(() => { if (isConfig) return; let live = true; fetch('/api/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: name, input: raw }) }).then(r => r.json()).then(c => { if (live) setSaid(c); }, () => { if (live) setSaid({} as Confirm); }); return () => { live = false; }; }, [name, listed]);
+  useEffect(() => { let live = true; fetch('/api/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: name, input: raw }) }).then(r => r.json()).then(c => { if (live) setSaid(c); }, () => { if (live) setSaid({} as Confirm); }); return () => { live = false; }; }, [name, listed]);
   const title = input.steps ? input.title : input.ops ? 'Save this change to your config?' : said?.title ?? `Allow this: ${(tools[name]?.label ?? toolLabel(name)).toLowerCase()}?`;
-  const detail = listed ? undefined : said?.detail ?? (said?.title ? undefined : plainInput(raw));
+  const detail = isPlan ? undefined : isConfig ? said?.detail : said?.detail ?? (said?.title ? undefined : plainInput(raw));
   return (
     // a slow beam around the edge: nothing goes further until this has an answer
     <BorderBeam size="md" colorVariant={said?.danger ? 'sunset' : 'gold'} strength={.6} duration={3.2} className="chat-card is-asking rounded-2xl" style={{ display: 'block', width: 'min(560px, calc(100vw - 48px))' }}>

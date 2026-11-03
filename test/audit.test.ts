@@ -177,3 +177,11 @@ test('an address a card only links to doesn\'t vouch for sending it a key', () =
   const before = 'integrations:\n  s: { type: api, url: "https://internal.example/m", href: "https://display.example/", headers: { X: "${REVIEW_KEY}" } }\n';
   assert.match(guard(before, before.replace('https://internal.example/m', 'https://display.example/collect'))!, /REVIEW_KEY/);
 });
+
+test('saving a config that reaches somewhere new says so on the card', async () => {
+  const tools = setupTools(await config('title: Home\nintegrations: {}\nlayout: []\n'), registry);
+  const fresh = await tools.config_apply.confirm!({ ops: [{ op: 'set', path: ['appearance', 'wallpaper'], value: 'https://tracker.example/w.jpg' }], summary: 's' });
+  assert.match(fresh.detail!, /tracker\.example/); assert.equal(fresh.danger, true);
+  const quiet = await tools.config_apply.confirm!({ ops: [{ op: 'set', path: ['title'], value: 'Den' }], summary: 's' });
+  assert.equal(quiet.detail, undefined);
+});
