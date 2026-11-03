@@ -186,6 +186,7 @@ A list of widget keys, or this, to say more about the bar:
 | Option | Default | |
 |---|---|---|
 | `clock` | `auto` | `12h`, `24h`; `auto` follows the browser |
+| `emby` | `url`, `key`, `user` (whose shelves; the first administrator by default) | the same as `jellyfin` |
 | `date` | `short` | `short` (Sat, Oct 31), `long` (Saturday, October 31), `numeric` (10/31/2026), `iso` (2026-10-31) |
 | `locale` | `auto` | a language tag like `en-GB` or `de-DE`: sets month names and how numbers are written (`1.234,5`) on what Valet formats itself. Values a service writes out in full stay as they are |
 | `temperature` | `auto` | `c`, `f`: converts anything a service reports as `°C` or `°F` on any card, and is the default for the `weather` integration's `units`. `auto` leaves everything as reported |
@@ -482,6 +483,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `aimonitor` | `url` | `usage`, `gpu` |
 | `apcups` | `host`, `port` (3551), `title` | `status` |
 | `arr` | `sonarr`, `radarr` (each `{ url, apiKey, href }`), `days` (14), `plex` (its web address, so what's ready opens there) | `upcoming` |
+| `audiobookshelf` | `url`, `key` (an API token; an administrator's to see what's playing now) | `status`, `progress` (books in progress), `playing`, `recent` (new on the shelf), `week` (listening, last 7 days) |
 | `camera` | `cameras` (`{ name, url, video }`), `title`, `href`, `refresh` (seconds), `username`, `password`, `insecure` | `cameras` |
 | `clock` | `clocks` (`{ name, zone }`), `title` | `times` |
 | `glances` | `url`, `disks` (mounts, or `{ mount, name, sub }`), `network` (interface), `cpuSensor` (`CPU`) | `tiles`, `overview`, `disks` |
@@ -489,11 +491,13 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `http` | `targets` (`name`, `url`, `href`, `icon`, `group`, `quiet`, `expect`), `interval` (30000 ms) | `status` |
 | `iframe` | `url`, `title`, `height` (360), `scripts` (`true`) | `page` |
 | `immich` | `url`, `apiKey` | `memories` |
+| `jellyfin` | `url`, `key` (an API key), `user` (whose continue watching and recently added; the first administrator by default) | `status`, `streams` (now playing), `resume` (continue watching), `recent`, `library` |
 | `indexers` | `prowlarr`, `bazarr` (each `{ url, apiKey }`) | `health` |
 | `changedetection` | `url`, `key`, `limit` (8) | `watches`, `status` |
 | `karakeep` | `url`, `apiKey` | `recent`, `digest`, `reading` |
 | `lobsters` | `tags`, `sort` (`hottest`, `newest`), `limit` (8) | `stories` |
 | `minecraft` | `host`, `port` (25565), `title` | `status` |
+| `navidrome` | `url`, `username`, `password` | `status`, `playing`, `recent` (recently played), `added` (new music), `top` (most played), `rediscover` |
 | `ollama` | `url` | `models` |
 | `paperless` | `url`, `token` | `recent` |
 | `pihole` | `url`, `password` (an app password) | `stats` |

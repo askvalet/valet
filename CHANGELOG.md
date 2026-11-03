@@ -5,6 +5,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- Jellyfin, Emby, Navidrome and Audiobookshelf are full integrations: what's playing (with its ring in the top bar), what you're partway through and what's new, with posters and covers. Navidrome adds recently and most played and albums to rediscover; Audiobookshelf, books in progress and your listening this week. The assistant can search each library, and stop a Jellyfin or Emby stream after asking. Existing configs keep working, `status` widget included.
+
 ### Changed
 
 - Turning a light on or off, or sending the vacuum, from chat answers with the floor plan as it is now. Pausing or resuming downloads answers with the downloads card.
