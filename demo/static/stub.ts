@@ -8,4 +8,6 @@ export const readFile = async () => '', writeFile = async () => {}, mkdir = asyn
 export const join = (...p: string[]) => p.join('/'), resolve = join, dirname = (p: string) => p.replace(/\/[^/]*$/, ''), basename = (p: string) => p.split('/').pop();
 export const createServer = () => ({ listen() {} }), Readable = { toWeb: (s: unknown) => s };
 export const randomBytes = () => new Uint8Array(16), createHash = () => ({ update() { return this; }, digest: () => '' });
+// one visitor per tab, so whoever is asking is whoever asked last
+export class AsyncLocalStorage<T> { private s?: T; run<R>(s: T, f: () => R) { this.s = s; return f(); } getStore() { return this.s; } }
 export default {};
