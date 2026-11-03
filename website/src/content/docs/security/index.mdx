@@ -111,3 +111,13 @@ And the general rules:
 ## Reporting a problem
 
 Please don't open a public issue for a security problem. Use GitHub's private vulnerability reporting on the repository: Security, then Report a vulnerability. You'll get a reply within a few days.
+
+## How this is checked
+
+Every change runs these in CI:
+
+- **Attacked from outside.** `npm run test:exposure` starts the real build in each sign-in mode and tries every route without a session, along with forged cookies, spoofed identity headers and path tricks. A new route is found automatically and has to refuse. Anything open on purpose is listed in that file with its reason.
+- **Signing in, end to end.** The setup code, a wrong password, cross-site requests, signing out, and that passwords are stored hashed.
+- **Dependencies and secrets.** `npm audit`, and a secret scan of the whole git history.
+
+Automated checks find what they're written to find. They aren't a security audit, and Valet hasn't had an independent one.

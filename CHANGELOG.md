@@ -19,6 +19,7 @@ The first public version, 0.1.0, is being prepared.
 - Docker images for amd64 and arm64, published on each release.
 - The year in review ends on your card: no more "The Generous Seeder" style personalities.
 - Live activities as rings in the top bar, configured under `live`.
+- `npm run test:exposure`, in CI with `npm audit`, a secret scan of all of history, and CodeQL once the repo is public.
 - The assistant answers from Valet's own docs, can change the look as well as the page from chat, undoes its last save, and writes up a bug as a filled-in GitHub issue.
 - changedetection.io as a full integration: each watch with what it last saw and what changed, failures first, and assistant tools to read, add, check and remove watches.
 - Plain-English approval cards for every action that changes something.

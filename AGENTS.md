@@ -154,6 +154,7 @@ https://askvalet.dev.
 - `npm run eval:chat` asks a real model real questions against a made-up homelab (`test/chat.eval.ts`), so nothing real is
   touched. It catches what scripted tests can't: the wrong tool, a claim it can't back up, a poisoned document. When the
   assistant gets something wrong in real use, add it as a case. Run it after changing a tool description or the prompt.
+- `npm run test:exposure` runs the real build (`npm run build` first) in every sign-in mode and attacks it from outside: every route in `main.ts` without a session, forged cookies, spoofed identity headers, raw path tricks. A new route needs nothing: it's found and it's locked. A route that must be open goes in `PUBLIC` in that file with its reason, and nothing with data qualifies.
 - `npm run test:live` checks every widget in your `config.yaml` against your real services. `/#gallery` shows the whole
   library, including the live rings.
 - Integration tests use made-up data only. Never commit recorded responses from real services (they carry personal data).

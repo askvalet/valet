@@ -100,7 +100,8 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
   const parse = (c: Context) => {
     const raw = getCookie(c, COOKIE); if (!raw) return null;
     const [body, mac] = raw.split('.');
-    if (!body || !mac || mac.length !== 43 || !timingSafeEqual(Buffer.from(mac), Buffer.from(sign(body)))) return null;
+    const given = Buffer.from(mac ?? ''), real = Buffer.from(sign(body ?? ''));   // bytes, not characters: timingSafeEqual throws on a mismatch
+    if (!body || given.length !== real.length || !timingSafeEqual(given, real)) return null;
     const [name, version, exp] = Buffer.from(body, 'base64url').toString().split('|');
     return Date.now() > Number(exp) ? null : { name, version: Number(version) };
   };
@@ -208,6 +209,6 @@ export function clientIp(sock: string, xff: string | undefined, trusted: Set<str
 export const sameOrigin: MiddlewareHandler = async (c, next) => {
   if (c.req.method === 'GET' || c.req.method === 'HEAD') return next();
   const origin = c.req.header('origin'), host = c.req.header('x-forwarded-host') ?? c.req.header('host');
-  if (origin && host && new URL(origin).host !== host) return c.json({ error: 'cross-site request refused' }, 403);
+  if (origin && host && URL.parse(origin)?.host !== host) return c.json({ error: 'cross-site request refused' }, 403);   // a browser's opaque `Origin: null` parses to nothing
   return next();
 };

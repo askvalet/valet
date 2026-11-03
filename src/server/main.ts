@@ -103,7 +103,7 @@ if (sandbox.on) {
 app.get('/healthz', c => c.json({ ok: true, widgets: site.hub.snapshot().filter(s => s.card && !s.error).length }));
 
 // Sign-in first: /api/auth/* are open; the wallpaper and icons too (the sign-in screen uses them); everything else
-// under /api needs a session. Anything that changes something must also come from this page's origin.
+// under /api needs a session, and test/exposure.ts holds that for every route in this file. Anything that changes something must also come from this page's origin.
 const tooBig = (c: Context) => c.json({ error: 'request too large' }, 413);
 const small = bodyLimit({ maxSize: 256 * 2 ** 10, onError: tooBig }), chatSize = bodyLimit({ maxSize: 8 * 2 ** 20, onError: tooBig });   // a chat carries its history
 app.use('/api/*', sameOrigin);                 // before the auth routes, so sign-in is covered too
@@ -113,7 +113,7 @@ app.use('/api/*', async (c, next) => c.req.path === '/api/files' ? next() : c.re
 const signedIn = await setupAuth(app, config);
 app.use('/api/*', async (c, next) => {
   const p = c.req.path;
-  if (p.startsWith('/api/auth/') || p.startsWith('/api/wallpaper') || p === '/api/custom.css' || p === '/api/font' || p.startsWith('/api/icon/') || p.startsWith('/api/favicon/')) return next();
+  if (p.startsWith('/api/auth/') || p.startsWith('/api/wallpaper') || p === '/api/custom.css' || p === '/api/font' || p.startsWith('/api/icon/')) return next();
   return signedIn(c, next);
 });
 
