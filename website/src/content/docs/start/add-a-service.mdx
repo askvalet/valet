@@ -41,7 +41,7 @@ integrations:
 
 Names are letters, numbers, `-` and `_`. `valet`, `pins` and `config` are taken.
 
-A self-signed certificate? Add `insecure: true` to that service. It applies to that service only.
+A self-signed certificate? If the service's page lists `insecure`, add `insecure: true` to it. It applies to that service only.
 
 ## 4. Put its widget on the page
 
@@ -82,7 +82,7 @@ A widget that can't reach its service says so, in the card.
 - Run `config check` for mistakes in the file.
 - Read the log: `docker logs valet`. It lists problems at startup.
 - `npm run test:live`, from a source checkout, tests every widget in your config against your real services.
-- `sign-in refused` usually means the wrong key, or a key with too little access.
+- An error that the sign-in failed or was refused, or `answered 401`, usually means the wrong key, or a key with too little access.
 - `didn't send JSON: is the url right?` usually means the URL is a login page or the wrong port.
 
 ## If there's no integration for it

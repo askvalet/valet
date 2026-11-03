@@ -17,6 +17,7 @@ services:
     image: ghcr.io/askvalet/valet:latest
     container_name: valet
     restart: unless-stopped
+    mem_limit: 512m
     environment: { TZ: America/Toronto }
     env_file: .env
     volumes:
@@ -52,7 +53,7 @@ docker run -d --name valet -p 127.0.0.1:7575:7575 \
   ghcr.io/askvalet/valet:latest
 ```
 
-This leaves out the hardening flags. Prefer Compose, or add `--read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true`.
+This leaves out the hardening flags. Prefer Compose, or add `--memory 512m --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true`.
 
 ## Getting the image
 
@@ -71,6 +72,7 @@ Then use `image: local/valet:dev` in your Compose file.
 | Line | Why |
 |---|---|
 | `127.0.0.1:7575:7575` | This machine only. Use `7575:7575` for your whole network, after reading [sign-in and network safety](/start/sign-in/). |
+| `mem_limit: 512m` | A cap, so nothing a service sends can take the machine down with it. |
 | `./config:/config` | A folder, not the file, so edits show up live. Add `:ro` if the assistant should never save config changes. |
 | `./data:/app/data` | Wallpaper, icon cache, uploads, history, accounts and plugins. |
 | `env_file: .env` | Secrets that `config.yaml` refers to as `${NAME}`. The file has to exist, even if it's empty. |

@@ -16,7 +16,7 @@ A plugin has the same access as a built-in, including the keys you give it. Its 
 2. Add its block under `integrations:`, with the `type:` the plugin declares. Place its widgets in the layout as usual. Secrets go in `.env`.
 3. Restart Valet. Editing the file doesn't reload it. The log lists what loaded, and why anything was skipped.
 
-Every `.js` and `.mjs` file in that folder loads, in name order.
+Every `.js` and `.mjs` file in that folder loads, in name order, apart from `.web.js` visuals.
 
 From source, you can also install from npm and list the package:
 
