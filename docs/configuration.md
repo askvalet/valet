@@ -492,6 +492,10 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `indexers` | `prowlarr`, `bazarr` (each `{ url, apiKey }`) | `health` |
 | `changedetection` | `url`, `key`, `limit` (8) | `watches`, `status` |
 | `karakeep` | `url`, `apiKey` | `recent`, `digest`, `reading` |
+| `kavita` | `url`, `username` and `password`, or `key` (an auth key) | `reading` (what you're in the middle of), `recent`, `status` |
+| `komga` | `url`, `username` and `password`, or `key` (an API key, Komga 1.20+) | `reading` (in progress, with how far along), `ondeck` (next in a series you've started), `recent`, `status` |
+| `mealie` | `url`, `key`, `version` (`2`; `1` before households) | `week` (the meal plan from today), `today` (a recipe of the day), `recent`, `status` |
+| `miniflux` | `url`, `key` | `unread` (a pile to step through; archiving marks read), `feeds` (unread per feed), `starred`, `status` |
 | `lobsters` | `tags`, `sort` (`hottest`, `newest`), `limit` (8) | `stories` |
 | `minecraft` | `host`, `port` (25565), `title` | `status` |
 | `ollama` | `url` | `models` |
@@ -502,6 +506,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `rgb-control` | `url`, `build`, `view` (`turn`, `tilt`, `draggable`), `presets`, `controls`, `interval` | `pc` |
 | `romm` | `url`, `username`, `password` | `recent` |
 | `scrutiny` | `url`, `hotC` (55) | `drives` |
+| `tandoor` | `url`, `key` (read scope; write to add to the shopping list) | `week` (the meal plan from today), `today` (a recipe of the day), `recent`, `status` |
 | `seerr` | `url`, `apiKey`, `downloads` (where "See progress" goes) | `requests` |
 | `tautulli` | `url`, `apiKey` | `streams`, `recent`, `top`, `people`, `library`, `plays` (a stream of 30 days), `race` (the year's titles overtaking each other; refreshes every few hours), `viewing` (a year of days) |
 | `todo` | `title` | `list` |
