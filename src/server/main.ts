@@ -38,6 +38,8 @@ if (process.argv[2] === 'user') process.exit(await userCommand(process.argv.slic
 if (process.argv[2] === 'config') process.exit(await (await import('./cli.ts')).configCommand(process.argv.slice(3), CONFIG, registry));
 
 const sseClients = new Set<() => void>();
+// why the last edit to config.yaml wasn't applied, until one is: shown on the page, not only in the log
+let configError: { message: string; at: number } | null = null;
 
 // one bad promise in an integration shouldn't take the whole page down: log it and carry on
 process.on('unhandledRejection', e => console.error('unhandled:', e instanceof Error ? e.message : e));
@@ -69,7 +71,13 @@ for (const sig of ['SIGTERM', 'SIGINT'] as const) process.once(sig, async () => 
 if (config.reload) {
   let timer: NodeJS.Timeout | undefined;
   const reload = async () => {
-    let next; try { next = loadConfig(CONFIG); } catch (e) { console.error(`config: not applied: ${(e as Error).message}`); return; }
+    let next; try { next = loadConfig(CONFIG); } catch (e) {
+      console.error(`config: not applied: ${(e as Error).message}`);
+      configError = { message: (e as Error).message, at: Date.now() };
+      for (const tell of sseClients) tell();   // open pages fetch the page again, and say so
+      return;
+    }
+    if (configError) { configError = null; if (JSON.stringify(next) === JSON.stringify(site.config)) { for (const tell of sseClients) tell(); return; } }
     if (JSON.stringify(next) === JSON.stringify(site.config)) return;
     if (JSON.stringify(next.auth) !== JSON.stringify(site.config.auth) || JSON.stringify(next.plugins) !== JSON.stringify(site.config.plugins)) console.log('config: auth and plugins changes take effect after a restart');
     if (next.timezone) { process.env.TZ = next.timezone; zoneKnown = true; }
@@ -204,6 +212,7 @@ app.get('/api/page', c => {
   if (!zoneKnown && tz && validZone(tz)) { process.env.TZ = tz; zoneKnown = true; console.log(`time zone: ${tz} (from the browser; set timezone in config.yaml to fix it)`); }
   return c.json(JSON.parse(site.redact(JSON.stringify({
     title: config.title, greeting: config.greeting, notice: config.notice, location: config.location, canAct: site.acting, sandbox: sandbox.on, search: config.search,
+    configError: site.acting && configError ? { message: site.redact(configError.message).slice(0, 600), at: configError.at } : undefined,
     welcome: config.welcome ? { path: CONFIG, saved, setup: site.acting && instances.has('config') } : undefined,
     recap: config.recap, hero: { ...config.hero, scope: config.hero.scope === true ? scopeOf([...site.meta.values()].map(m => m.type)) : config.hero.scope || undefined }, labels: { ...LABELS, ...config.labels }, format: config.format,
     appearance: { walls: wallsOf(config.appearance.wallpaper), tabWalls: Object.fromEntries(Object.entries(config.appearance.wallpapers).map(([t, w]) => [t, wallsOf(w)])), rotate: config.appearance.rotate, sizes: config.appearance.sizes },

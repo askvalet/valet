@@ -86,7 +86,7 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
     // the live rings, and one opened
     const ringAt = await page.locator('.menubar .group\\/ring').first().boundingBox().catch(() => null);
     if (ringAt) { await page.mouse.move(ringAt.x + 19, ringAt.y + 19); await sleep(700); }
-    await shot(page, cdp, 'scene/island-open', { x: 0, y: 0, width: 1440, height: 240 }, 0);
+    await shot(page, cdp, 'scene/ring-open', { x: 0, y: 0, width: 1440, height: 240 }, 0);
     await page.mouse.move(10, 500);
     await page.keyboard.press('Escape'); await page.mouse.click(700, 760); await sleep(500);
 
@@ -95,14 +95,14 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
     await ask('Is anything down?');
     await page.waitForSelector('textarea[aria-label="Message"]', { timeout: 15000 }); await sleep(6000);
     await shot(page, cdp, 'scene/chat');
-    await page.fill('textarea[aria-label="Message"]', 'restart mealie'); await page.keyboard.press('Enter');
+    await page.fill('textarea[aria-label="Message"]', 'pause pi-hole'); await page.keyboard.press('Enter');
     await sleep(5000);
     await shot(page, cdp, 'scene/approval');
     const hold = await page.locator('.chat-card').last().boundingBox({ timeout: 4000 }).catch(() => null);
     if (hold) await shot(page, cdp, 'scene/approval-card', hold, 16);
-    await page.getByRole('button', { name: /restart/i }).last().click(); await sleep(4000);
+    await page.getByRole('button', { name: /^pause$/i }).last().click(); await sleep(4000);
     await shot(page, cdp, 'scene/after-approval');
-    await page.fill('textarea[aria-label="Message"]', 'pause downloads'); await page.keyboard.press('Enter');
+    await page.fill('textarea[aria-label="Message"]', 'stop the stream'); await page.keyboard.press('Enter');
     await sleep(4000);
     const risky = await page.locator('.chat-card').last().boundingBox({ timeout: 4000 }).catch(() => null);
     if (risky) await shot(page, cdp, 'scene/approval-danger', risky, 16); else problems.push('scene/approval-danger: no card');

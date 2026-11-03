@@ -12,6 +12,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- A config edit that can't be applied now says so on the page, with the error, until the next good save. Before, only the log said.
+- The top of the overview takes less room.
+- The demo is honest about what Valet can do: it explains why a service is down but doesn't pretend to restart it (Valet reads Docker through a read-only proxy). Approvals are shown with pausing Pi-hole and stopping a stream instead, which real Valet does.
+- The docs and README no longer claim actions Valet doesn't have, and say plainly which changes ask first: anything the assistant does.
 - Saving the config no longer flashes the page empty: cards keep what they show until the new answers arrive.
 - A new wallpaper always shows after a save, even when the new file has the same timestamp as the old one.
 - Local AI and PC read a published JSON format, so they work with your own endpoint: only `/api/live` is needed for Local AI, the PC's screen preview is optional, and a field that doesn't fit is named in the error. `examples/local-ai/` serves Local AI's format from nvidia-smi and Ollama.

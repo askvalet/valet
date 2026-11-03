@@ -131,7 +131,7 @@ const counts = { integrations: catalog.integrations.length, widgets: catalog.int
 writeFileSync(join(docs, 'integrations/index.mdx'), page({ title: 'Integrations', description: `All ${counts.integrations} integrations: what each shows, how to set it up, and what the assistant can do with it.` }, "import Grid from '~/components/IntegrationGrid.astro';", `
 Valet has ${counts.integrations} integrations, with ${counts.widgets} widgets and ${counts.tools} assistant tools between them. Every page here is generated from the code. Every screenshot is the real card, drawn from made-up data.
 
-Use the search box to find one. If yours isn't here, [\`api\`](/integrations/api/) turns any JSON API into a card from YAML, and [writing an integration](/build/) is usually about ten lines.
+Use the search box to find one. If yours isn't here, [\`api\`](/integrations/api/) turns any JSON API into a card from YAML, and [writing an integration](/build/) takes about ten lines for a simple read-only one.
 
 ${byCategory.map(([c, l]: any) => `## ${c}\n\n<Grid items={${JSON.stringify(l.map((i: any) => ({ type: i.type, name: i.name, logo: !!logos[i.type] })))}} />`).join('\n\n')}
 

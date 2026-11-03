@@ -9,10 +9,10 @@ Real Valet, made-up homelab. The page runs the published code; the only stand-in
   The small proxy is the only way in.
 - **No AI bill:** the chat calls the scripted model, so it costs nothing and can't be talked into anything. It never
   repeats what's typed into it.
-- **Scripted, and says so:** it can explain why Mealie is down from its logs and restart it, turn a room's lights on or
+- **Scripted, and says so:** it can explain why Mealie is down from its logs (and say, honestly, that Valet can't restart it), pause Pi-hole, stop a stream, turn a room's lights on or
   off, suggest what to watch, sum up last night and report on the downloads, the drives and the server. It also takes
-  plain orders for the thermostat and the vacuum. Anything that changes the house needs a plain instruction ("restart
-  mealie"), never a question or a mention, and whatever it can't do it says so, with what a real Valet would do instead.
+  plain orders for the thermostat and the vacuum. Anything that changes the house needs a plain instruction ("pause
+  pi-hole"), never a question or a mention, and whatever it can't do it says so, with what a real Valet would do instead.
 - **One set of numbers:** Plays, Most watched and Who's watching add up one table, and everything Pi-hole shows adds up
   one day of queries. Change the table, not the cards.
 - **Self-healing:** whatever a visitor changes lapses after ten minutes, and restarting wipes everything else.

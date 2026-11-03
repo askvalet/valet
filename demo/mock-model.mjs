@@ -12,14 +12,16 @@ const heat = String.raw`(?:the |my )?(?:thermostat|heat|heating|furnace|hallway)
 const ROOM_IDS = ['living room', 'kitchen', 'dining room', 'hallway', 'office', 'bedroom', 'bathroom', 'laundry', 'guest room'];
 const roomId = said => ROOM_IDS.findIndex(r => said.toLowerCase().includes(r)) + 1;
 const lights = said => ({ room: /\ball\b/i.test(said) ? 'All' : titled(new RegExp(lit, 'i').exec(said)?.[0].toLowerCase() ?? 'living room'), on: /\bon\b/i.test(said) });
-const logsSay = d => d.up ? 'Mealie is running again. It ran out of memory at 3:12 AM when it hit its 256 MB limit, so it may need a higher one.' : 'Mealie ran out of memory at 3:12 AM and hasn\'t come back. Its logs end with the out-of-memory kill, so it hit its 256 MB limit. Want me to restart it?';
+const logsSay = d => d.up ? 'Mealie is running again. It ran out of memory at 3:12 AM when it hit its 256 MB limit, so it may need a higher one.' : 'Mealie ran out of memory at 3:12 AM and hasn\'t come back. Its logs end with the out-of-memory kill, so it hit its 256 MB limit. Raise `mem_limit` for it in its compose file, then restart it there: Valet reads Docker but can\'t restart containers.';
 // [what's said, the tool (by its name), its input, or how to get it from what's said, how to word the answer]. An order has
 // to match the whole sentence, so a question or a passing mention can never touch the house.
 export const ORDERS = [
   [/^(?:add|put|show)\b.*\b(?:internet|speed\w*)\b.*$/i, 'add_speed_card', {}, d => d.denied ? 'Okay, the page stays as it is.' : "Done. Internet speed is on your page, under Services. Say undo and it's gone."],
   [/^(?:undo(?: that| it)?|take (?:it|that) (?:back|off)|remove (?:it|that|the (?:internet |speed )*card))$/i, 'undo_config', {}, d => d.denied ? 'Okay, it stays.' : d.undone ? 'Undone. The page is back as it was.' : "There's nothing to undo yet."],
   [/^(?:pause|stop|hold) (?:all |the |my )*(?:downloads?|torrents?)$/i, 'pause_downloads', {}, d => d.denied ? 'Okay, downloads keep going.' : "Paused. They'll pick up again by themselves in ten minutes, since this is a demo."],
-  [/^(?:restart|reboot|revive|fix) (?:the )?mealie(?: container| service)?$|^bring (?:the )?mealie back(?: up)?$/i, 'restart_service', { name: 'Mealie' }, d => d.denied ? 'Left it as it is.' : d.wasUp ? "Restarted Mealie. It was already up, and it's answering." : 'Restarted Mealie and it answered straight away. It had run out of memory, so it may need a higher limit than 256 MB.'],
+  [/^(?:pause|stop|turn off|disable) (?:the |my )?(?:pi-?hole|ad ?block(?:ing|er)?|ads? blocking)(?: for (\d{1,4}) ?(?:min(?:ute)?s?|m))?$/i, 'adblock_pause', (said, m) => ({ minutes: Number(m?.[1] ?? 5) }), d => d.denied ? 'Okay, ad blocking stays on.' : `Ad blocking is paused for ${d.minutes ?? 5} minutes, then it turns itself back on.`],
+  [/^stop (?:theo'?s |the |that )?(?:stream|movie|film|playback)(?: on plex)?$/i, 'plex_stop_stream', { who: 'Theo' }, d => d.denied ? 'Okay, Theo keeps watching.' : "Stopped Theo's stream, with a note saying you did."],
+  [/^(?:resume|turn on|enable) (?:the |my )?(?:pi-?hole|ad ?block(?:ing|er)?)$/i, 'adblock_pause', { minutes: 0 }, d => d.denied ? 'Okay, it stays paused.' : 'Ad blocking is back on.'],
   [new RegExp(String.raw`^(?:turn|switch) (?:on|off) (?:all )?(?:of )?(?:the |my )?(?:${lit} )?lights?$|^(?:turn|switch) (?:all )?(?:of )?(?:the |my )?(?:${lit} )?lights? (?:on|off)$`, 'i'), 'set_lights', lights, d => d.denied ? 'Okay, I left the lights alone.' : `${d.room === 'All' ? 'All the lights are' : `The ${d.room?.toLowerCase()} lights are`} ${d.on ? 'on' : 'off'}. You can see it on the floor plan on the Home tab.`],
   [new RegExp(String.raw`^(?:set|change|put|turn) ${heat}(?: up| down)? to (\d\d?(?:\.\d)?)(?:\s*(?:°|degrees?)\s*c?)?$`, 'i'), 'set_thermostat', (said, m) => ({ temperature: Math.min(30, Math.max(10, Number(m[1]))) }), d => d.denied ? 'Okay, the thermostat stays as it is.' : `The hallway is set to ${d.temperature}°, and the room will drift there over a few minutes.`],
   [new RegExp(String.raw`^(?:set|put|switch) ${heat} to (home|sleep|night)(?: mode)?$`, 'i'), 'set_thermostat', (said, m) => ({ preset: m[1].toLowerCase() }), d => d.denied ? 'Okay, the thermostat stays as it is.' : `The hallway is on its ${d.preset} setting.`],
@@ -30,6 +32,7 @@ export const ORDERS = [
   [new RegExp(String.raw`^find ${robot}$`, 'i'), 'run_vacuum', { command: 'locate' }, vacuumSay],
 ];
 export const ANSWERS = [
+  [/\b(?:restart|reboot|revive)\b/i, null, {}, () => "Valet can't restart containers or services. It reads Docker through a read-only proxy on purpose, so a mistake, or a bad prompt, can't stop your stack. Restart it in Docker or Portainer."],
   [/\bhow (?:do|can|would) i\b.*\b(?:add|connect|support|build|make|write)\b|\b(?:valet|you) (?:doesn'?t|don'?t) (?:support|have)\b|\bnot supported\b/i, 'docs_search', {}, () => 'Two ways. If it has a JSON API, the `api` integration turns it into a card from YAML, with no code. Otherwise, one file in `data/integrations` adds a full integration in about ten lines. The Build an integration page in the docs has both.'],
   [/^(?=.*\bmealie\b).*\b(?:why|how'?s|how is|logs?|down|up|wrong|happened|crash\w*|stopped|broken|diagnose|check|status|ok|okay|working|running|memory)\b|\bwhy\b.*\b(?:it|that)\b.*\b(?:down|crash\w*|stopp?\w*|fail\w*)\b/i, 'container_logs', { name: 'mealie' }, logsSay],
   [/\bbazarr\b/i, 'service_status', {}, () => BAZARR],
@@ -49,7 +52,7 @@ function vacuumSay(d) { return d.denied ? 'Okay, the vacuum stays where it is.' 
 const standIn = "This demo only knows a few things", noFiles = "so I can't read files. On a real Valet, the assistant would read what you attached and answer from it.";
 const TOPICS = [
   [/\b(?:files?|attach\w*|upload\w*|pdfs?|documents?|photos?|pictures?|images?|screenshots?|spreadsheets?)\b/i, noFiles],
-  [/^(?:turn|switch|set|start|stop|pause|resume|cancel|delete|remove|open|close|lock|unlock|kill|shut|reboot|restart|play|add|install|update|upgrade|change|run|send|clean|dock)\b/i, 'so I can only do a few things, asked plainly: restart Mealie, turn a room\'s lights on or off, set the thermostat, send the vacuum or pause downloads. On a real Valet, the assistant could do whatever you allow, after asking you first.'],
+  [/^(?:turn|switch|set|start|stop|pause|resume|cancel|delete|remove|open|close|lock|unlock|kill|shut|play|add|install|update|upgrade|change|run|send|clean|dock)\b/i, 'so I can only do a few things, asked plainly: restart Mealie, turn a room\'s lights on or off, set the thermostat, send the vacuum or pause downloads. On a real Valet, the assistant could do whatever you allow, after asking you first.'],
   [/\b(?:lights?|lamps?|bulbs?|thermostat|heating|vacuum|robot)\b/i, "so I can act on a plain instruction, but I can't look at the house to answer questions about it. On a real Valet, the assistant would check Home Assistant and tell you."],
   [/\b(?:remember|remind|forget|recall|memories)\b|\bwhat'?s my name\b|\bwho am i\b/i, "so I don't remember anything between questions. On a real Valet, the assistant can look back through your services' history and its own activity log."],
 ];
@@ -57,11 +60,11 @@ const OTHERS = [
   [/\bmemory\b/i, TOPICS[3][1]],
   [/\b(?:weather|forecast|rain|calendar|schedule|appointments?)\b/i, "so I can't look that up. On a real Valet, the assistant would ask the weather or calendar you've connected."],
 ];
-export const can = 'Here I can explain why Mealie is down and restart it, add an internet speed card to this page, turn the lights on or off, suggest what to watch, sum up last night or check the downloads.';
+export const can = 'Here I can explain why Mealie is down, pause Pi-hole, add an internet speed card to this page, turn the lights on or off, suggest what to watch, sum up last night or check the downloads.';
 export const FALLBACK = `${standIn}. ${can} On a real Valet this is your own model, local or hosted, or none at all.`;
 const noAnswer = `${standIn}, so I can't answer that one. On a real Valet, a real model would work it out from your own services.`;
 // The page lists "Why is Mealie down?" itself, live from the status cards, while the server keeps this list for up to ten
-// minutes. So nothing here may depend on Mealie still being down, or it would outlive the restart.
+// minutes. So nothing here may say Mealie is up or down: the page says that, live.
 export const SUGGESTIONS = ['Add an internet speed card', 'What should we watch tonight?', 'Turn off the living room lights', 'Anything happen overnight?'];
 export const suggestions = down => down ? SUGGESTIONS : ['What took Mealie down?', ...SUGGESTIONS.slice(0, 3)];
 
@@ -73,15 +76,15 @@ const mealieDown = text => /mealie is down/i.test(/Wrong right now:\n([\s\S]*?)(
 /** The sentence without its manners, so "Hey, could you restart Mealie, please?" is the same order as "restart mealie". */
 const plain = said => said.replace(/\n?\[attached: [^\]]*\]/g, '').trim().replace(/^(?:(?:hey|hi|ok|okay|valet|please)\b[,!]*\s+)+/i, '').replace(/^(?:can|could|would|will) you (?:please )?(.*?)\??$/i, '$1').replace(/^please\s+/i, '').replace(/[,\s]+(?:please|thanks|thank you)[.!\s]*$/i, '').replace(/[.!\s]+$/, '');
 const NO = /^(?:no|nope|nah|not now|don'?t|leave it|no thanks)\b[\s.!]*$/i, HELLO = /^(?:hi|hello|hey|yo|hiya|good (?:morning|afternoon|evening))\b[\s.!]*$/i, THANKS = /^(?:thanks?|thank you|ty|cheers|nice|great|cool|perfect)\b[\s.!]*$/i;
-const YES = /^(?:yes|yep|yeah|sure|ok|okay|go ahead|do it|restart it|please do|yes please)\b[\s.!]*$/i;
+const YES = /^(?:yes|yep|yeah|sure|ok|okay|go ahead|do it|please do|yes please)\b[\s.!]*$/i;
 
 export function reply(body) {
   const msgs = body.messages ?? [], all = msgs.map(m => textOf(m.content)).join('\n'), system = msgs.filter(m => m.role === 'system' || m.role === 'developer').map(m => textOf(m.content)).join('\n');
   if (/suggest what the owner/.test(system)) return { text: suggestions(mealieDown(all)).join('\n') };
   if (/one short line/.test(system)) return { text: mealieDown(all) ? (sick(all) ? 'Mealie is down and Bazarr is unhealthy' : 'Mealie is down, everything else is fine') : sick(all) ? 'Bazarr is unhealthy, the rest is quiet' : 'All quiet, everything is up' };
-  if (/explain what's on a homelab dashboard/.test(system)) return { text: /Asked about:[^\n]*bazarr/i.test(all) ? BAZARR : /Asked about:[^\n]*(?:mealie|services|containers|uptime)/i.test(all) && /"ok":false/.test(all) ? 'Mealie ran out of memory at 3:12 AM and hit its 256 MB limit. Restart it, and give it more memory if it happens again.' : `${standIn}, so I can't explain this one. On a real Valet, the assistant would read this card's numbers and say what's behind them.` };
-  const last = msgs.at(-1), at = msgs.findLastIndex(m => m.role === 'user'), user = msgs[at]?.content, offered = /Want me to restart it\?\s*$/.test(textOf(msgs.slice(0, Math.max(at, 0)).findLast(m => m.role === 'assistant')?.content));
-  const said = YES.test(plain(textOf(user))) && offered ? 'restart mealie' : plain(textOf(user));
+  if (/explain what's on a homelab dashboard/.test(system)) return { text: /Asked about:[^\n]*bazarr/i.test(all) ? BAZARR : /Asked about:[^\n]*(?:mealie|services|containers|uptime)/i.test(all) && /"ok":false/.test(all) ? 'Mealie ran out of memory at 3:12 AM and hit its 256 MB limit. Give it more memory in its compose file and restart it there.' : `${standIn}, so I can't explain this one. On a real Valet, the assistant would read this card's numbers and say what's behind them.` };
+  const last = msgs.at(-1), at = msgs.findLastIndex(m => m.role === 'user'), user = msgs[at]?.content, offered = /Want me to pause it\?\s*$/.test(textOf(msgs.slice(0, Math.max(at, 0)).findLast(m => m.role === 'assistant')?.content));
+  const said = YES.test(plain(textOf(user))) && offered ? 'pause pi-hole' : plain(textOf(user));
   const told = msgs.slice(0, Math.max(at, 0)).some(m => m.role === 'assistant' && textOf(m.content).includes(can));
   const cant = why => ({ text: `${standIn}, ${why}${told ? '' : ` ${can}`}` });
   const offScript = () => told ? { text: noAnswer } : { text: FALLBACK };
@@ -95,6 +98,7 @@ export function reply(body) {
   const answer = rule ?? ANSWERS.find(([re]) => re.test(said));
   if (!answer) { const limit = OTHERS.find(([re]) => re.test(said)); return limit ? cant(limit[1]) : offScript(); }
   const [re, tool, input, say] = answer;
+  if (!tool) return { text: say({}) };
   if (last?.role === 'tool') {
     let data = {};
     try { data = JSON.parse(textOf(last.content)); } catch { data = /denied|not approved/i.test(textOf(last.content)) ? { denied: true } : {}; }

@@ -10,23 +10,23 @@ A `write` or `control` tool doesn't run when the model calls it. The call stops,
 
 This happens in Valet's server, not in the prompt. The model has no way to approve its own call.
 
-<Shot id="scene/approval" alt="The chat with a card asking to restart Mealie, with Not now and Restart buttons" caption="Asked to restart Mealie, the assistant stops and waits." full />
+<Shot id="scene/approval" alt="The chat with a card asking to pause ad blocking for 5 minutes, with Not now and Pause buttons" caption="Asked to pause Pi-hole, the assistant stops and waits." full />
 
 ## The approval card
 
 The card says what's about to happen, in plain words. The words come from the tool, not from the model. A tool's `confirm` function can look things up, so the card can show what the service says rather than what the model typed.
 
 <Row>
-  <Shot id="scene/approval-card" label="An ordinary approval" alt="Approval card: restart Mealie, it stopped at 3:12 AM" />
+  <Shot id="scene/approval-card" label="An ordinary approval" alt="Approval card: pause ad blocking for 5 minutes; ads come back on every device until it ends" />
 </Row>
 
-**Not now** refuses, and the assistant is told so. The other button names the action: Restart, Pause, Request. One click either way. If a tool has no words of its own, the card says "Allow this:" and shows its input.
+**Not now** refuses, and the assistant is told so. The other button names the action: Pause, Stop, Request. One click either way. If a tool has no words of its own, the card says "Allow this:" and shows its input.
 
 ## Dangerous actions
 
 Some actions are hard to take back, like stopping someone's stream. Those tools set `danger`, and the button turns red. It's still one click, so read the card.
 
-<Shot id="scene/approval-danger" alt="An approval card asking to pause all downloads, with a red Pause button" />
+<Shot id="scene/approval-danger" alt="An approval card asking to stop Theo's stream, with a red Stop button" />
 
 ## Several changes, one approval
 
@@ -41,7 +41,7 @@ An approved plan runs all its steps, including control tools, with that one appr
 
 ## After you approve
 
-<Shot id="scene/after-approval" alt="The chat after approval, showing Restarted a service and a short answer" caption="The step shows in the chat, and the answer says what happened." full />
+<Shot id="scene/after-approval" alt="The chat after approval, showing Paused ad blocking and a short answer" caption="The step shows in the chat, and the answer says what happened." full />
 
 If the tool fails, the chat says so, and the failure goes in the log.
 
@@ -57,7 +57,7 @@ Put `valet.activity` in your layout to see it on the page, or ask "what did you 
 
 A tool can name the tool that reverses it. qBittorrent's `pause_downloads` and `resume_downloads` name each other. When one has run, the activity card offers an **Undo** button for the latest entry that can be undone.
 
-Most tools have no undo. Restarting a service or stopping a stream can't be taken back, so check the card before you approve.
+Most tools have no undo. Removing a torrent or stopping a stream can't be taken back, so check the card before you approve.
 
 ## What approval doesn't do
 

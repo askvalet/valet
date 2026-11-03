@@ -18,7 +18,7 @@ A self-hosted, open-source, AI-native homepage.
 
 <br>
 
-<a href="https://askvalet.dev/film/valet.mp4"><img src="docs/images/film.webp" alt="Play the 70-second film: the main screen, asking why a service is down, approving a restart, adding a card from chat, and the integrations" width="100%"></a>
+<a href="https://askvalet.dev/film/valet.mp4"><img src="docs/images/film.webp" alt="Play the 70-second film: the main screen, asking why a service is down, approving a change, adding a card from chat, and the integrations" width="100%"></a>
 
 <sub>▶ <a href="https://askvalet.dev/film/valet.mp4">Watch the 70-second film</a> · or <a href="https://demo.askvalet.dev">try the demo</a>, right in your browser</sub>
 
@@ -43,11 +43,11 @@ links and a status dot, Valet is meant to be powerful and actionable.
 ### AI-native, if you want it
 
 Ask Valet anything about your homelab. Use a local model or a hosted one. Valet knows
-its own documentation, so you can use it to build itself! Every change waits for your approval, and Valet
+its own documentation, so you can use it to build itself! Anything it changes waits for your approval, and Valet
 works just fine with the AI switched off.
 
 <table><tr>
-<td width="50%" valign="top"><img src="docs/images/ask-whats-down.gif" alt="Asking what's down: Valet checks the services, reads Mealie's logs to explain why, and restarts it after a one-click approval"><br><sub>"What's down right now?" Valet checks, reads the logs, and restarts Mealie once you approve.</sub></td>
+<td width="50%" valign="top"><img src="docs/images/ask-whats-down.gif" alt="Asking what's down: Valet checks the services, reads Mealie's logs to explain why, then pauses Pi-hole after a one-click approval"><br><sub>"What's down right now?" Valet checks and reads the logs to say why. Then "Pause Pi-hole" waits for your approval.</sub></td>
 <td width="50%" valign="top"><img src="docs/images/ask-for-a-card.gif" alt="Asking for an internet speed card: Valet asks first, then the card appears on the page"><br><sub>"Add an internet speed card." Valet edits its own config, after asking first.</sub></td>
 </tr></table>
 
@@ -83,7 +83,7 @@ runs as one Node process, uses about 45 MB of RAM on a fresh install, and the im
 
 Valet is read-only until you turn on sign-in or tell it your network is private. Your API keys stay on the server, so
 neither the browser nor the AI ever sees them, and the assistant only gets the access you give it, one integration at a
-time. Every change asks first. It runs on your own hardware, with no account and no telemetry. The
+time. Anything the assistant changes asks first. It runs on your own hardware, with no account and no telemetry. The
 [security docs](https://askvalet.dev/security/) cover the rest.
 
 <br>

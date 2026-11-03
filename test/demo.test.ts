@@ -32,7 +32,7 @@ test('demo: every widget returns a valid card, and the layout only names widgets
 });
 
 test('demo: the script only calls tools that exist, and answers from what they return', async () => {
-  for (const [, tool] of SCRIPT) assert.ok(inst.tools[tool as string], tool as string);
+  for (const [, tool] of SCRIPT) if (tool) assert.ok(inst.tools[tool as string], tool as string);   // a null tool is a plain answer
   assert.equal(ask('How are the downloads?').call?.name, 'lab__downloads_status');
   assert.equal(ask('turn off the lights').call?.name, 'lab__set_lights');
   const { data } = await inst.tools.service_status.run({});
@@ -85,7 +85,7 @@ test('demo: what a visitor types never comes back', () => {
 
 test('demo: only a plain instruction touches the house', () => {
   const orders: [string, string, any?][] = [['Turn off the living room lights', 'set_lights', { room: 'Living Room', on: false }], ['turn the kitchen lights on', 'set_lights', { room: 'Kitchen', on: true }], ['Hey, could you turn off the bedroom lights, please?', 'set_lights', { room: 'Bedroom', on: false }], ['turn off all the lights', 'set_lights', { room: 'All', on: false }],
-    ['Restart Mealie', 'restart_service', { name: 'Mealie' }], ['please restart mealie', 'restart_service'], ['Pause downloads', 'pause_downloads'], ['stop all the torrents.', 'pause_downloads'],
+    ['Pause Pi-hole', 'adblock_pause', { minutes: 5 }], ['pause ad blocking for 30 minutes', 'adblock_pause', { minutes: 30 }], ['Resume Pi-hole', 'adblock_pause', { minutes: 0 }], ['Pause downloads', 'pause_downloads'], ['stop all the torrents.', 'pause_downloads'],
     ['Set the thermostat to 21', 'set_thermostat', { temperature: 21 }], ['set the heating to 99 degrees', 'set_thermostat', { temperature: 30 }], ['set the thermostat to sleep', 'set_thermostat', { preset: 'sleep' }], ['turn off the heating', 'set_thermostat', { power: false }],
     ['Start the vacuum', 'run_vacuum', { command: 'start' }], ['clean the kitchen', 'run_vacuum', { command: 'clean_rooms', rooms: [2] }], ['send the robot to the guest room', 'run_vacuum', { command: 'clean_rooms', rooms: [9] }], ['dock the vacuum', 'run_vacuum', { command: 'dock' }], ['find the vacuum', 'run_vacuum', { command: 'locate' }]];
   for (const [q, tool, args] of orders) {
@@ -127,7 +127,9 @@ test('demo: a question it has no answer for says so, and never gets the nearest 
 });
 
 test('demo: every scenario the README promises works from start to finish', async () => {
-  assert.match(await carry('Why is Mealie down?'), /out of memory at 3:12 AM.*Want me to restart it\?/);
+  // real Valet reads Docker but can't restart it, so the demo explains and says how, rather than offering to
+  assert.match(await carry('Why is Mealie down?'), /out of memory at 3:12 AM.*can't restart containers/);
+  assert.match(ask('Restart Mealie').text!, /can't restart containers or services/);
   assert.equal(ask('Show me the Mealie logs').call?.name, 'lab__container_logs');
   assert.match(await carry('Anything happen overnight?'), /Mealie ran out of memory.*Severance/);
   const watch = await carry('What should we watch tonight?');
@@ -136,12 +138,9 @@ test('demo: every scenario the README promises works from start to finish', asyn
   assert.match(await carry('Turn off the living room lights'), /living room lights are off/);
   assert.equal((await inst.widgets.home.fetch()).visual.data.rooms[0].lights.filter((l: any) => l.on).length, 0);
   assert.match(await carry('Turn on the living room lights'), /on\./);
-  // "yes" only means something straight after the offer
-  const offer = [{ role: 'user', content: 'Why is Mealie down?' }, { role: 'assistant', content: 'It ran out of memory. Want me to restart it?' }];
-  assert.equal(ask('Yes please', offer).call?.name, 'lab__restart_service');
   assert.equal(ask('yes').call, undefined);
-  assert.match(await carry('yes', offer), /Restarted Mealie/);
-  assert.match(await carry('Why is Mealie down?'), /running again/);
+  assert.match(await carry('Pause Pi-hole'), /paused for 5 minutes/);
+  assert.match(await carry('Resume Pi-hole'), /back on/);
   assert.equal(ask('Set the thermostat to 21', [{ role: 'user', content: 'x' }]).call?.name, 'lab__set_thermostat');
   assert.match(await carry('Set the thermostat to 21'), /21°/);
   assert.match(await carry('Clean the kitchen'), /Cleaning/);
@@ -170,8 +169,6 @@ test('demo: the suggestions name what works, and go when they stop being true', 
   const house = (plugin as any)({ z, defineIntegration }).create(lab.config.parse({}), { image: (r: string) => r } as any), kept = suggestions(true);
   const chips = async () => suggest({ 'lab.services': { key: 'lab.services', card: await house.widgets.services.fetch() } } as any, [], 12, kept).slice(0, 4);
   assert.equal((await chips())[0], 'Why is Mealie down?');
-  await house.tools.restart_service.run({ name: 'Mealie' });
-  assert.deepEqual(await chips(), kept);
 });
 
 test('demo: every figure agrees with every other, whenever you look', async () => {

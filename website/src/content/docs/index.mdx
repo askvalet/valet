@@ -13,7 +13,7 @@ hero:
       link: /integrations/
       variant: minimal
 ---
-<video class="film" controls autoplay muted loop playsinline preload="metadata" poster="/film/poster.webp" aria-label="Valet in 70 seconds: the main screen, asking about a service that's down, approving a restart, adding a card from chat, and the integrations.">
+<video class="film" controls autoplay muted loop playsinline preload="metadata" poster="/film/poster.webp" aria-label="Valet in 70 seconds: the main screen, asking about a service that's down, approving a change, adding a card from chat, and the integrations.">
   <source src="/film/valet-mobile.mp4" media="(max-width: 640px)" type="video/mp4" />
   <source src="/film/valet.mp4" type="video/mp4" />
 </video>
@@ -28,10 +28,10 @@ Instead of opening five different tabs to work out what's going on, just open Va
 
 ## AI-native, if you want it
 
-Ask Valet anything about your homelab. Use a local model or a hosted one. Valet knows its own documentation, so you can use it to build itself! Every change waits for your approval, and Valet works just fine with the AI switched off.
+Ask Valet anything about your homelab. Use a local model or a hosted one. Valet knows its own documentation, so it can help you set itself up! Anything it changes waits for your approval, and Valet works just fine with the AI switched off.
 
 <div class="why-pair">
-<figure><img src="/why/ask-whats-down.gif" alt="Asking what's down: Valet checks the services, reads Mealie's logs to explain why, and restarts it after a one-click approval" loading="lazy" /><figcaption>"What's down right now?" Valet checks, reads the logs, and restarts Mealie once you approve.</figcaption></figure>
+<figure><img src="/why/ask-whats-down.gif" alt="Asking what's down: Valet checks the services, reads Mealie's logs to explain why, then pauses Pi-hole after a one-click approval" loading="lazy" /><figcaption>"What's down right now?" Valet checks and reads the logs to say why. Then "Pause Pi-hole" waits for your approval.</figcaption></figure>
 <figure><img src="/why/ask-for-a-card.gif" alt="Asking for an internet speed card: Valet asks first, then the card appears on the page" loading="lazy" /><figcaption>"Add an internet speed card." Valet edits its own config, after asking first.</figcaption></figure>
 </div>
 
@@ -55,7 +55,7 @@ One YAML file controls everything, with [185 integrations](/integrations/) and a
 
 ## Security first
 
-Valet is read-only until you turn on sign-in or tell it your network is private. Your API keys stay on the server, so neither the browser nor the AI ever sees them, and the assistant only gets the access you give it, one integration at a time. Every change asks first. It runs on your own hardware, with no account and no telemetry. The [security docs](/security/) cover the rest.
+Valet is read-only until you turn on sign-in or tell it your network is private. Keep your API keys in `.env` and they stay on the server, so neither the browser nor the AI ever sees them, and the assistant only gets the access you give it, one integration at a time. Anything the assistant changes asks first. It runs on your own hardware, with no account and no telemetry. The [security docs](/security/) cover the rest.
 
 ## Next
 

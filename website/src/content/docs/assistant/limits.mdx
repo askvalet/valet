@@ -19,7 +19,7 @@ The rules on this page are enforced by Valet's code. They hold whatever the mode
 
 ## What it can't do
 
-- **See your keys.** They stay on the server. See [secrets](/security/secrets/).
+- **See your keys.** Keys kept in `.env` as `${NAME}` stay on the server, and are redacted from anything the model reads. See [secrets](/security/secrets/).
 - **Reach anything without a tool.** It has no shell, no file access and no general web access. It can only do what a tool offers.
 - **Approve itself.** A `write` or `control` tool needs a press from you.
 - **Give itself more power.** See below.

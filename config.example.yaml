@@ -92,7 +92,7 @@ integrations:
   #   cameras:
   #     - { name: Shed, url: http://192.168.1.20/snapshot.jpg }
   pc:
-    type: rgb-control              # github.com/<you>/rgb-control: a live 3D model of the PC with its lighting
+    type: rgb-control              # a live 3D model of the PC from your own endpoint: askvalet.dev/integrations/rgb-control/
     url: http://host:8098
     presets: true                  # show the lighting presets when no part is selected
     controls: true                 # false: look, don't touch

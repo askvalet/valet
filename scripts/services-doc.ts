@@ -12,7 +12,7 @@ export function doc() {
 Generated from the code by \`npm run docs:services\`: please don't edit by hand.
 
 ${all.length} integrations. If yours isn't here, \`type: api\` turns any JSON API into a card from YAML, and a new integration is
-usually about ten lines ([docs/plugins.md](plugins.md)).
+a simple read-only one is about ten lines ([docs/plugins.md](plugins.md)).
 
 **How these are tested:** every service below runs in \`npm test\` against a sample of its API, which proves the card, the
 sign-in flow and failure handling. A sample can't prove the service still answers that way, so if one misbehaves on your

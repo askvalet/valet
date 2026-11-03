@@ -39,7 +39,7 @@ Media, photo and chart cards with nothing to show give up their slot. It comes b
 
 ## How much does it use?
 
-About 45 MB of RAM on a fresh install, and 60 to 65 MB with a full homelab connected. It's one Node process, with no database. Heavy things, such as the assistant and the 3D models, load on first use.
+About 45 MB of RAM on a fresh install, and about 70 MB with a full homelab connected. It's one Node process, with no database. Heavy things, such as the assistant and the 3D models, load on first use.
 
 ## How often does it call my services?
 
@@ -71,7 +71,7 @@ Yes: see [`appearance`](/reference/configuration/#appearance). Colours, fonts, c
 
 ## Can the assistant edit my config?
 
-Only with `access: { config: control }`, and it shows you a diff and saves after you approve. It can't touch `auth`, `assistant`, `appearance`, `mcp`, `plugins` or `allowedHosts`, and it won't write a secret. Mount the config folder read-only and it hands you the diff instead.
+Only with `access: { config: control }`, and it previews the diff, then saves once you approve. It can't touch `auth`, `allowedHosts`, `plugins`, `mcp`, `mcpServer`, `notify`, its own access and model, or `appearance.css`, and it won't write a secret. Mount the config folder read-only and it hands you the diff instead.
 
 ## Is there a demo?
 

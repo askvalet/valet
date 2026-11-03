@@ -89,7 +89,7 @@ The title is "Sam's homelab" until you say otherwise. `hero.greeting` replaces i
 
 `status` is one sentence under the title, two things at most: "All 30 services are running and Sam is watching Dune." or "Everything's running except Mealie." What needs someone comes first, and services off by choice aren't counted. With an assistant, hover it for the brief.
 
-`search` is the ask box, or a search box when there's no assistant. `review` is the year in review link, on its own line under the suggested questions. You can dismiss it for the visit,. `review: end` also closes the overview with a card, and `false` drops both.
+For a denser page, `hero: { greeting: false }` drops the title, and adding `status: false` and `search: false` drops the summary line and the ask box too. `search` is the ask box, or a search box when there's no assistant. `review` is the year in review link, on its own line under the suggested questions. You can dismiss it for the visit,. `review: end` also closes the overview with a card, and `false` drops both.
 
 ## The menubar
 
@@ -109,7 +109,7 @@ What's playing, what's downloading, the vacuum, an event in progress. They're ri
 
 Hover or tap one for the story, like every other ring. On phones they share the top row, up to two of them, and the clock steps aside to make room. When nothing is live, they're not there.
 
-<Shot id="scene/island-open" label="A ring opened" alt="A ring in the top bar with its popover open, showing what's playing and how far along it is." />
+<Shot id="scene/ring-open" label="A ring opened" alt="A ring in the top bar with its popover open, showing what's playing and how far along it is." />
 
 ```yaml
 live:

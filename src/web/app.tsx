@@ -1,4 +1,4 @@
-import { ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Search, Sun, X } from 'lucide-react';
+import { ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Search, Sun, TriangleAlert, X } from 'lucide-react';
 import { Fragment, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -38,6 +38,7 @@ interface Page {
   search?: string;
   insight?: string;
   welcome?: { path: string; saved: boolean; setup?: boolean };
+  configError?: { message: string; at: number };
   menubar?: { widgets: string[]; position: 'left' | 'center' | 'right'; labels: boolean; clock: boolean; date: boolean; theme: boolean };
   nav?: { side: 'left' | 'right' | 'top' | 'bottom'; style: 'icons' | 'labels' | 'both'; hide: string[]; order?: string[] };
   live?: { activities: string[] };
@@ -493,13 +494,13 @@ function Home({ account }: { account: boolean }) {
   // the hero: ask anything
   const line = cause || oneLine(trouble, how.parts);
   const hero = view === 'all' && (hello || h?.status !== false || boxed || pill || page?.notice) && (
-          <header className={cn('wall-text w-full max-w-[720px] pt-8 xl:pt-10', side)}>
+          <header className={cn('wall-text w-full max-w-[720px] pt-3 xl:pt-5', side)}>
             {page?.notice && <p className="mb-2 text-[12px] text-muted-foreground">{page.notice}</p>}
             {hello && <h1 className="hero-title text-[28px] leading-tight font-medium">{hello}</h1>}
             {/* its line is held from the start, so its words arriving move nothing */}
             {h?.status !== false && <div key={line} role="status" title={brief ?? undefined} className="brief-in mx-auto mt-1 min-h-[21px] max-w-full text-[14px] leading-[1.5] text-pretty text-muted-foreground sm:truncate">{line}</div>}
             {askHere && boxed && (
-              <ChatBeam ui={ui} className="mt-5"><form className="glass-round flex items-center gap-2.5 py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
+              <ChatBeam ui={ui} className="mt-4"><form className="glass-round flex items-center gap-2.5 py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
                 <label htmlFor="ask-box" className="sr-only">{label('ask', named)}</label>
                 <input id="ask-box" value={draft} onChange={e => setDraft(e.target.value)} onFocus={warm} placeholder={placeholder}
@@ -510,7 +511,7 @@ function Home({ account }: { account: boolean }) {
               </form></ChatBeam>
             )}
             {page && !askHere && boxed && (
-              <button onClick={() => setPalette(true)} className="glass-round mt-5 flex h-11 w-full items-center gap-2.5 rounded-sm px-5 text-left text-[15px] text-muted-foreground">
+              <button onClick={() => setPalette(true)} className="glass-round mt-4 flex h-11 w-full items-center gap-2.5 rounded-sm px-5 text-left text-[15px] text-muted-foreground">
                 <Search className="size-4" /><span className="flex-1">{label('search')}</span>
                 <kbd className="hidden rounded-[6px] border border-white/15 px-1.5 py-0.5 font-sans text-[12px] sm:block">⌘K</kbd>
               </button>
@@ -682,6 +683,13 @@ function Home({ account }: { account: boolean }) {
       <main ref={pageEl} data-settling={settled ? undefined : ''} style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-28', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide && navSide === 'left' && (topbar?.position ?? 'right') === 'right' ? 'max-w-none md:pr-5!' : chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
         {(view !== 'all' || !hello) && <h1 className="sr-only">{view === 'all' ? page?.title : view}</h1>}
         {!hasSide && hero}
+        {/* an edit that didn't apply says so here, on every tab, until the next one that does */}
+        {page?.configError && <div role="alert" className="settle flex gap-3 rounded-[calc(var(--radius)*1.2)] border border-[color-mix(in_oklab,var(--warn)_45%,transparent)] bg-card px-5 py-4 shadow-card">
+          <TriangleAlert className="mt-0.5 size-5 shrink-0 text-(--warn)" aria-hidden />
+          <div className="min-w-0"><div className="text-[15px] font-semibold">Your last edit to config.yaml wasn't applied</div>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">The page is still running the last version that worked. Fix this and save again:</p>
+            <pre className="mt-2 overflow-x-auto rounded-md bg-foreground/[.06] px-3 py-2 font-mono text-[12px] leading-relaxed whitespace-pre-wrap text-foreground/85">{page.configError.message}</pre></div>
+        </div>}
         {page?.welcome && view === 'all' && <Welcome path={page.welcome.path} saved={page.welcome.saved} setup={page.welcome.setup && !!page.assistant} ask={ask} />}
 
         {/* phones: the assistant's tab is its stats plus a way into the chat sheet */}

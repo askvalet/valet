@@ -96,7 +96,7 @@ Each service decides what its keys can do. Use the narrowest kind it offers.
 | Paperless-ngx | A separate user with view permissions (add "add document" only if you want filing from chat) |
 | Pi-hole | An app password (Settings, Web interface/API), not your admin password |
 | Uptime Kuma | An API key (Settings, API Keys). It only reads metrics |
-| Sonarr, Radarr, Prowlarr, Bazarr | These apps only have full API keys. Keep `assistant.access` at `read` unless you want "search for missing" |
+| Sonarr, Radarr, Prowlarr, Bazarr | These apps only have full API keys. Keep `assistant.access` at `read` unless you want the assistant to search for a title |
 | qBittorrent | Its web login can do everything. Keep `assistant.access` at `read` unless you want pause and resume from chat |
 | Seerr | Its API key acts as the admin. Requests from chat ask you first |
 | Tautulli | Its API key. Stopping a stream from chat asks you first |
