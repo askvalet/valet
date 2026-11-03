@@ -25,6 +25,8 @@ jobs:
       - run: npm run build
       # the real build, in every sign-in mode, attacked from outside
       - run: npm run test:exposure
+      # a model that is entirely the attacker's: the guardrails must hold whatever it does
+      - run: npm run test:hostile
       - run: npm audit --omit=dev --audit-level=high
 
   secrets:

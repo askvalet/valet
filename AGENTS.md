@@ -155,6 +155,12 @@ https://askvalet.dev.
   touched. It catches what scripted tests can't: the wrong tool, a claim it can't back up, a poisoned document. When the
   assistant gets something wrong in real use, add it as a case. Run it after changing a tool description or the prompt.
 - `npm run test:exposure` runs the real build (`npm run build` first) in every sign-in mode and attacks it from outside: every route in `main.ts` without a session, forged cookies, spoofed identity headers, raw path tricks. A new route needs nothing: it's found and it's locked. A route that must be open goes in `PUBLIC` in that file with its reason, and nothing with data qualifies.
+- `npm run test:hostile` (after a build) gives Valet a model that is entirely the attacker's, in a made-up homelab with a
+  fake secret and a stand-in for the attacker's server (`test/lab/`). Nothing may change without approval, and no secret
+  may leave or power grow even with every approval clicked. A new tool that changes something gets a case there.
+- `npm run eval:inject` runs poisoned pages, feeds and bookmarks past your real model (from your config), blatant and
+  hidden in what you ask for. It fails only on a guardrail, never on what the model chose; `EVAL_APPROVE=1` clicks every
+  approval too.
 - `npm run test:live` checks every widget in your `config.yaml` against your real services. `/#gallery` shows the whole
   library, including the live rings.
 - Integration tests use made-up data only. Never commit recorded responses from real services (they carry personal data).

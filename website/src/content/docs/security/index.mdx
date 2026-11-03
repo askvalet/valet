@@ -117,6 +117,7 @@ Please don't open a public issue for a security problem. Use GitHub's private vu
 Every change runs these in CI:
 
 - **Attacked from outside.** `npm run test:exposure` starts the real build in each sign-in mode and tries every route without a session, along with forged cookies, spoofed identity headers and path tricks. A new route is found automatically and has to refuse. Anything open on purpose is listed in that file with its reason.
+- **A model that is the attacker's.** `npm run test:hostile` gives Valet a model that does whatever an attacker wants and checks that nothing changes without your approval, and that no secret leaves and no power grows even when every approval is clicked. `npm run eval:inject` runs poisoned content past your own model, for you to run by hand.
 - **Signing in, end to end.** The setup code, a wrong password, cross-site requests, signing out, and that passwords are stored hashed.
 - **Dependencies and secrets.** `npm audit`, and a secret scan of the whole git history.
 

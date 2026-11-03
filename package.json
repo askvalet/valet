@@ -17,6 +17,8 @@
     "export:pc-model": "esbuild src/web/visuals/pc-model.ts --bundle --format=esm --minify --outdir=${PC_MODEL_OUT:-dist/pc-model}",
     "test": "esbuild test/*.test.ts test/*.test.tsx --bundle --platform=node --format=esm --outdir=.test --out-extension:.js=.test.mjs --packages=external --jsx=automatic --tsconfig=tsconfig.web.json --loader:.css=empty --loader:.txt=text --log-level=warning && node --test .test/*.test.mjs",
     "test:exposure": "node --test --test-concurrency=1 test/exposure.ts",
+    "test:hostile": "node --test --test-concurrency=1 test/hostile.ts",
+    "eval:inject": "node --env-file-if-exists=.env test/inject.eval.ts",
     "eval:chat": "esbuild test/chat.eval.ts --bundle --platform=node --format=esm --outfile=.test/chat.eval.mjs --packages=external --loader:.txt=text --log-level=warning && node --env-file-if-exists=.env .test/chat.eval.mjs",
     "test:live": "esbuild test/live.ts --bundle --platform=node --format=esm --outfile=.test/live.mjs --packages=external --loader:.txt=text --log-level=warning && node --env-file-if-exists=.env .test/live.mjs",
     "test:services": "esbuild test/live-services.ts --bundle --platform=node --format=esm --outfile=.test/live-services.mjs --packages=external --loader:.txt=text --log-level=warning && node --env-file-if-exists=.env .test/live-services.mjs",
