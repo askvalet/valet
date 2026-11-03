@@ -34,7 +34,7 @@ chat:
   beamColor: colorful
   beamStrength: 1
   followUps: [Why is Mealie down?, Pause Pi-hole, Turn off the living room lights, What should we watch tonight?, Anything happen overnight?, How are the downloads doing?]
-hero: { scope: [downloads, lights, what to watch], review: end }
+hero: { scope: [downloads, lights, what to watch], review: false }   # the year in review is still at #recap, just not offered
 
 menubar: [lab.system]
 weather: lab.weather
