@@ -30,9 +30,10 @@ A self-hosted, open-source, AI-native homepage.
 
 Valet is a homepage for your homelab that can also do things.
 
-**Why another dashboard?** Most are a page of links with a status dot. Valet shows what's actually happening in your
-services, like what's playing, what's downloading or what just went down and why. You can act on it from the same page:
-pause a download, restart a service, turn off the lights.
+**The front door to your homelab.** Instead of opening Plex, qBittorrent, Home Assistant and five other tabs to work
+out what's going on, you open Valet. It shows what's happening across all your services, like what's playing, what's
+downloading or what just went down and why, and you can act on it right there: pause a download, restart a service,
+turn off the lights. Most dashboards are a page of links with a status dot; this is meant to be the one page you check.
 
 **AI-native, if you want it.** Ask why something is down and it reads the logs, or ask for a new card and it edits the
 config for you. Use a local model or a hosted one. Every change waits for your approval, and Valet works fine with the AI
