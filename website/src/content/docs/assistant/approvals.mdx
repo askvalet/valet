@@ -49,7 +49,7 @@ If the tool fails, the chat says so, and the failure goes in the log.
 
 Everything that isn't a read goes in `data/activity.json`: who asked, how, what it did, and whether it worked. Secrets are redacted before it's stored. It keeps the last 2,000 entries.
 
-That covers changes from chat, plans, the page's own buttons, and pins. For MCP, only tools that needed approval are logged.
+That covers changes from chat, plans, the page's own buttons, and pins. From MCP servers the assistant uses, only tools that needed approval are logged. Every call an outside client makes to [Valet's own MCP server](/assistant/mcp/#valet-as-an-mcp-server) is logged, reads included.
 
 Put `valet.activity` in your layout to see it on the page, or ask "what did you change?". The `activity_log` tool answers that, so you can check what it did by asking.
 

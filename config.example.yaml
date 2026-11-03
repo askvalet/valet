@@ -1,5 +1,5 @@
 # Sign-in. Off by default, and then Valet is read-only (no buttons, no assistant tools that change things).
-# local: built-in accounts · proxy: trust your sign-in proxy's user header · trustNetwork: true if only your VPN/tailnet reaches it
+# local: built-in accounts · proxy: trust your sign-in proxy's user header · oidc: OpenID Connect · trustNetwork: true if only your VPN/tailnet reaches it
 auth: { mode: none, trustNetwork: false }
 
 # Valet configuration. `${NAME}` is replaced from the environment, so keep secrets in .env or Docker secrets.
@@ -96,7 +96,7 @@ integrations:
     url: http://host:8098
     presets: true                  # show the lighting presets when no part is selected
     controls: true                 # false: look, don't touch
-    view: { turn: -27, tilt: -18, draggable: true }
+    view: { turn: -27, tilt: -18, draggable: true }   # a view you drag to is remembered in your browser
     build:                         # what's in the case, so the model looks like yours (all optional)
       radiatorFans: 3              # 0–3 on a top radiator
       floorFans: 3                 # 0–3 intake fans on the floor
@@ -104,7 +104,7 @@ integrations:
       ram: 4                       # sticks
       ramLabel: ""                 # text on the sticks
       board: { label: "", plate: "", accent: "#8a8f98" }   # heatsink name, M.2 plate text, line-art colour
-      gpu: { label: "", badge: "" }   # engraved name, lit badge; gpu: null for none   # a view you drag to is remembered in your browser
+      gpu: { label: "", badge: "" }   # engraved name, lit badge; gpu: null for none
   weather:
     type: weather                  # Open-Meteo, no key needed
     latitude: 43.65

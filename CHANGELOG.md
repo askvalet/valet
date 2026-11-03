@@ -8,6 +8,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 ### Changed
 
 - Turning a light on or off, or sending the vacuum, from chat answers with the floor plan as it is now. Pausing or resuming downloads answers with the downloads card.
+- The docs say what the code does: which `${NAME}` values are redacted, which keys the config tools leave alone, that a sandbox has no MCP server, which integrations take `insecure`, and Frigate's options.
 
 ## [0.1.2] - 2026-11-03
 

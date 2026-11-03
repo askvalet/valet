@@ -31,8 +31,8 @@ export const AssistantConfig = z.object({
   // hand the chat to another agent (Hermes, say): anything with an OpenAI-compatible API. It runs its own tools, so
   // Valet's access levels and approvals don't apply to it, and a read-only page stays on Valet's own assistant.
   agent: z.object({ name: z.string(), baseURL: z.string().url(), apiKey: z.string().optional(), model: z.string() }).strict().optional(),
-  // what it does on its own: a morning brief, and spotting a shared cause when several things break at once. These get
-  // no tools, so they can only say something. perDay caps the model calls they make.
+  // what it does on its own: a short brief, spotting a shared cause when several things break at once, and writing the
+  // suggested questions. These get no tools, so they can only say something. perDay caps the model calls they make.
   background: z.object({ watch: z.boolean().default(true), brief: z.boolean().default(true), suggest: z.boolean().default(true), perDay: z.number().int().min(1).max(500).default(100) }).default({ watch: true, brief: true, suggest: true, perDay: 100 }),
   // questions offered on an empty chat and in ⌘K
   suggestions: z.array(z.string()).default(['Is anything down?', 'How are my downloads doing?', "What's playing on Plex?", 'Show me the GPU and Plex side by side']),
@@ -63,7 +63,7 @@ const Columns = z.number().int().min(1).max(6);
 const Section = z.object({
   title: z.string().optional(),
   // "instance.widget", or { widget, size } to pick a size: small (its headline as a tile), wide (that tile at twice the
-  // width), medium (the card), tall (the card over two rows), large (the card across two columns, with room for more)
+  // width), medium (the card), tall (the card over two rows), large (the card across four of six columns, with room for more)
   // `every` overrides how often it refreshes while someone's looking: seconds, or "30s", "5m", "1h"
   // title, icon, header: false, and for its surface tint, opacity 0..1, blur in px, background (an image URL)
   tabColumns: z.number().int().min(1).max(6).optional(),   // columns on its own tab, when that should differ from the overview

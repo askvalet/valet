@@ -23,7 +23,7 @@ There's no telemetry or analytics in the code. A hosted model sees your question
 
 ## Can the model see my API keys?
 
-No. Tools run on the server, and the model gets their results. Every value a `${NAME}` stood for is redacted from anything Valet sends out. See [secrets](/security/secrets/).
+No. Tools run on the server, and the model gets their results. Every secret a `${NAME}` stood for is redacted from anything Valet sends out. Plain names, addresses and ports (a `_USER`, `_URL`, `_HOST` or `_PORT`) aren't, since blanking those would mangle ordinary text. See [secrets](/security/secrets/).
 
 ## What stops it from doing something stupid?
 
@@ -71,7 +71,7 @@ Yes: see [`appearance`](/reference/configuration/#appearance). Colours, fonts, c
 
 ## Can the assistant edit my config?
 
-Only with `access: { config: control }`, and it previews the diff, then saves once you approve. It can't touch `auth`, `allowedHosts`, `plugins`, `mcp`, `mcpServer`, `notify`, its own access and model, or `appearance.css`, and it won't write a secret. Mount the config folder read-only and it hands you the diff instead.
+Only with `access: { config: control }`, and it previews the diff, then saves once you approve. It can't touch `auth`, `allowedHosts`, `plugins`, `mcp`, `mcpServer`, `notify`, `sandbox`, its own access, model and instructions, `appearance.css`, or a file on disk, and it won't write a secret. Mount the config folder read-only and it hands you the diff instead.
 
 ## Is there a demo?
 

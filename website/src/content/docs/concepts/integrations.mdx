@@ -59,7 +59,7 @@ Services with a `service()` definition also take `every:` in their integration b
 
 ## Self-signed certificates
 
-`insecure: true` on a service accepts its self-signed certificate. It applies to that service alone.
+`insecure: true` on a service accepts its self-signed certificate. It applies to that service alone. Every [`service()`](/build/service/) integration takes it, and so do `camera` and `frigate`; an integration's page lists it if it's there.
 
 ## Community integrations
 

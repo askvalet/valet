@@ -5,7 +5,8 @@ is a working starting point; this page lists every option. Anything you leave ou
 
 `${NAME}` anywhere in the file is replaced from the environment, or from the file `NAME_FILE` points at (the Docker
 secrets convention). `${secret:name}` reads `/run/secrets/name` and `${file:/path}` any file; `\${…}` is left alone.
-Valet redacts every replaced value from anything it sends out.
+Valet redacts every replaced secret from anything it sends out. A name ending in `_USER`, `_URL`, `_HOST`, `_PORT` (and
+the like) isn't treated as one, unless it also says `TOKEN`, `KEY`, `SECRET`, `PASS` or `WEBHOOK`.
 
 Edits to the file apply live (`reload: true`): a broken edit is reported and the last good config keeps running, and
 open pages pick up the new layout. Sign-in settings and plugins are read once, so those need a restart. An unknown key
@@ -19,7 +20,7 @@ without starting the server, and `config schema` prints a JSON schema editors an
 | Variable | Default | |
 |---|---|---|
 | `VALET_CONFIG` | `config.yaml` (`/config/config.yaml` in Docker) | the config file |
-| `VALET_DATA` | `data` (`/app/data` in Docker) | wallpaper, icon cache, uploads, history, accounts, plugins |
+| `VALET_DATA` | `data` (`/app/data` in Docker) | wallpaper, icon cache, uploads, history, accounts, pins, the activity log, plugins |
 | `PORT` / `HOST` | `7575` / `0.0.0.0` | where it listens |
 
 ```sh
@@ -51,7 +52,7 @@ In Docker, prefix these with `docker exec -it valet`.
 | `links` | `{}` | bookmarks by group, each group a widget `links.<group-slug>`: `Media: [{ name, url, icon?, note? }]`. Without `icon`, the site's favicon (fetched by Valet) |
 | `notify` | `{ channels: [] }` | where reminders go when you're not looking: see below. `insights: true` also pushes the shared-cause line |
 | `reload` | `true` | watch the file and apply edits live |
-| `sandbox` | `false` | for trying Valet out: nothing is saved, and each visitor gets a private copy of the site in memory, told apart by a cookie. At most 40 at once (a new visitor replaces the one idle longest), each dropped after 15 idle minutes. No file uploads and no config tools. It doesn't turn controls on, that's `auth`, and integrations still reach whatever they're pointed at, so use made-up services. The demo runs this way |
+| `sandbox` | `false` | for trying Valet out: nothing is saved, and each visitor gets a private copy of the site in memory, told apart by a cookie. At most 40 at once (a new visitor replaces the one idle longest), each dropped after 15 idle minutes. No file uploads, no config tools and no MCP server. It doesn't turn controls on, that's `auth`, and integrations still reach whatever they're pointed at, so use made-up services. The demo runs this way |
 | `recap` | `true` | your year in review, at `#recap` and on the overview: the strongest slides first, then all the rest without a break, and a share card where you choose what shows |
 | `welcome` | `false` | the getting-started card; a fresh starter config turns it on |
 
@@ -324,7 +325,8 @@ What `assistant` sets is what it knows and may do. How it looks on the page is `
 weather", "make the cards more compact", "add a card for http://box/status". It reads this file and what a section or
 integration accepts, checks the change without saving or contacting anything (a diff and any problems; a real card only if you allow the fetch), and saves only when
 you approve; hot reload does the rest, and it can undo the last save. It changes only the lines it must. It can't touch
-`auth`, `allowedHosts`, `mcp`, `mcpServer`, `plugins`, `notify`, or its own access, model and instructions in `assistant`; it can't
+`auth`, `allowedHosts`, `mcp`, `mcpServer`, `plugins`, `notify`, `sandbox` or `reload`, and of `assistant` only its `name` and
+`suggestions`, never its access, model or instructions; it can't
 point `appearance` at a file on disk or write its `css`, it refuses to write a secret (it asks you to put `${NAME}` in `.env`),
 and a secret only ever goes to hosts it already goes to.
 Mount the config folder read-only and it hands you the diff to paste instead.
@@ -389,7 +391,7 @@ Each entry is an MCP server whose tools the assistant may use, under the same ru
 | `url` | required | |
 | `transport` | `http` | or `sse` |
 | `headers` | none | e.g. `{ Authorization: "Bearer ${TOKEN}" }` |
-| `access` | `read` | `read` offers only tools the server marks read-only; `control` offers all, and anything not read-only asks first |
+| `access` | `read` | `read` offers only tools the server marks read-only; `control` offers all, and anything not read-only asks first; `none` turns it off |
 | `readOnly` | `[]` | tool names to treat as read-only even if the server doesn't mark them |
 | `name` | the key | |
 
@@ -483,6 +485,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `apcups` | `host`, `port` (3551), `title` | `status` |
 | `arr` | `sonarr`, `radarr` (each `{ url, apiKey, href }`), `days` (14), `plex` (its web address, so what's ready opens there) | `upcoming` |
 | `camera` | `cameras` (`{ name, url, video }`), `title`, `href`, `refresh` (seconds), `username`, `password`, `insecure` | `cameras` |
+| `frigate` | `url` (the port that needs no sign-in), `cameras` (names, in order), `go2rtc` (for smooth video), `every`, `insecure` | `status`, `cameras` |
 | `clock` | `clocks` (`{ name, zone }`), `title` | `times` |
 | `glances` | `url`, `disks` (mounts, or `{ mount, name, sub }`), `network` (interface), `cpuSensor` (`CPU`) | `tiles`, `overview`, `disks` |
 | `homeassistant` | `url`, `token`, `cards`, `schedules`, `floorplans`, `thermostats` (`{ entity, title, modes, unit }`), `controllable` (extra entities the assistant may control) | one per entry in `cards`, `schedules`, `floorplans`, `thermostats` |
