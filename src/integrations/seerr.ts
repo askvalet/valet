@@ -75,6 +75,9 @@ export default defineIntegration({
           },
         },
       },
+      commands: [
+        { say: ['requests', 'my requests', 'media requests', 'show requests', '{name} requests', "what's requested", 'requested'], run: 'tool:media_requests', label: 'Show requests' },
+      ],
       tools: {
         media_search: {
           label: 'Searched movies & shows',

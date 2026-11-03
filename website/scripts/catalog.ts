@@ -142,6 +142,13 @@ async function widgetsFrom(type: string, def: any, cfg: any, make: () => any, st
 const describe = (t: any) => { try { return z.toJSONSchema(t, { unrepresentable: 'any', io: 'input' }); } catch { return {}; } };
 const toolsOf = (inst: any) => Object.entries<any>(inst.tools ?? {}).map(([name, t]) => ({ name, label: t.label, access: t.access, about: t.description, confirms: !!t.confirm, undo: t.undo, followUps: t.followUps, input: Object.keys((describe(t.input) as any).properties ?? {}) }));
 const actionsOf = (inst: any) => Object.entries<any>(inst.actions ?? {}).map(([name, a]) => ({ name, about: a.description, input: Object.keys((describe(a.input) as any).properties ?? {}) }));
+// ⌘K's commands: a list, or a function a few integrations answer from their service (the fake here); what fails lists none
+const commandsOf = async (inst: any) => {
+  try {
+    const list = typeof inst.commands === 'function' ? await inst.commands() : inst.commands ?? [];
+    return (list as any[]).map(c => ({ say: c.say, run: c.run, label: c.label, ...(typeof inst.commands === 'function' ? { made: true } : {}) }));
+  } catch { return []; }
+};
 const recapOf = async (inst: any, problems: string[]) => {
   if (!inst.recap) return [];
   try { return clean(await inst.recap({ year: new Date().getFullYear(), from: Date.UTC(new Date().getFullYear(), 0, 1), to: Date.now() })); }
@@ -193,7 +200,7 @@ for (const [type, i] of Object.entries<any>(registry).sort(([a], [b]) => a.local
       const { widgets, inst } = await widgetsFrom(type, def, parsed, make, [{ state: 'down', label: 'Can\'t reach it', make: () => make(500) }], problems);
       // a list says so when it's empty: the same card with nothing in it, as toCard writes it
       for (const w of widgets) { const first = w.cards[0]?.card; if (first?.type === 'list') w.cards.splice(1, 0, { state: 'empty', label: 'Empty', card: { ...first, items: [] } }); }
-      base.widgets = widgets; base.tools = toolsOf(inst); base.actions = actionsOf(inst); base.recap = await recapOf(inst, problems);
+      base.widgets = widgets; base.tools = toolsOf(inst); base.actions = actionsOf(inst); base.commands = await commandsOf(inst); base.recap = await recapOf(inst, problems);
       base.config = dressConfig(type, sampleConfig(def)); base.sample = 'service';
     } else if (fx) {
       const undo = await fx.before?.();
@@ -202,16 +209,16 @@ for (const [type, i] of Object.entries<any>(registry).sort(([a], [b]) => a.local
       const states = (fx.states ?? []).map((s: any) => ({ ...s, make: () => i.create(i.config.parse({ ...fx.config, ...s.config }), fake(s.http ?? fx.http ?? (() => { throw new Error('no fake network'); }), image, type)) }));
       const make = () => i.create(parsed, fake(fx.http ?? (() => { throw new Error('no fake network'); }), image, type));
       const { widgets, inst } = await widgetsFrom(type, def, parsed, make, [...states, ...(states.some((s: any) => s.state === 'down') ? [] : [{ state: 'down', label: 'Can\'t reach it', make: () => i.create(parsed, fake(() => new Response('nope', { status: 500 }), image, type)) }])], problems, fx.warm);
-      base.widgets = widgets; base.tools = toolsOf(inst); base.actions = actionsOf(inst); base.recap = await recapOf(inst, problems);
+      base.widgets = widgets; base.tools = toolsOf(inst); base.actions = actionsOf(inst); base.commands = await commandsOf(inst); base.recap = await recapOf(inst, problems);
       base.config = dressConfig(type, fx.config); base.sample = 'fixture'; base.note = fx.note;
       if (typeof undo === 'function') undo();
     } else {
       // no sample: say so, and still document what can be read without running it
       problems.push('no sample yet');
-      base.widgets = []; base.tools = []; base.actions = []; base.recap = []; base.config = {}; base.sample = 'none';
+      base.widgets = []; base.tools = []; base.actions = []; base.commands = []; base.recap = []; base.config = {}; base.sample = 'none';
       try { const inst = i.create(i.config.parse({}), fake(() => { throw new Error('no fake'); }, r => `/img/${r}`, type)); base.tools = toolsOf(inst); base.actions = actionsOf(inst); base.widgets = Object.entries<any>(inst.widgets ?? {}).map(([key, w]) => ({ key, title: w.title, interval: w.interval, cards: [] })); } catch {}
     }
-  } catch (e) { problems.push(`it wouldn't start: ${(e as Error).message}`); base.widgets ??= []; base.tools ??= []; base.actions ??= []; base.recap ??= []; base.config ??= {}; }
+  } catch (e) { problems.push(`it wouldn't start: ${(e as Error).message}`); base.widgets ??= []; base.tools ??= []; base.actions ??= []; base.commands ??= []; base.recap ??= []; base.config ??= {}; }
   base.problems = problems;
   catalog.push(base);
 }

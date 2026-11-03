@@ -91,6 +91,11 @@ export default defineIntegration({
           },
         },
       },
+      async commands() {
+        if (!cfg.controls) return [];
+        const presets: { id: string; name: string }[] = (await get()).presets ?? [];
+        return presets.map(p => ({ say: [`pc ${p.name}`, `{name} ${p.name}`, `pc lights ${p.name}`], run: 'action:preset' as const, input: { id: p.id }, label: `Set the PC to ${p.name}` }));
+      },
       actions: {
         preset: {
           description: 'Apply a lighting preset to the whole PC',

@@ -69,6 +69,7 @@ The instance:
 | `widgets` | Named cards for the page. Required, even if it's `{}`. |
 | `actions` | What the page's controls and buttons can do. |
 | `tools` | What the assistant can use. |
+| `commands` | Plain words for ⌘K that run an action or a tool with no model. See [below](#commands). |
 | `image(ref, range)` | Serves pictures. See [below](#images). |
 | `recap(range)` | [Slides](/build/recap/) for the year in review. |
 | `onChat()` | Called when someone asks the assistant something. Returns the widgets to refresh right away. |
@@ -113,6 +114,31 @@ Choosing the level:
 - `read` only looks.
 - `write` adds something the person asked for. Every call asks first.
 - `control` changes or removes something. Every call asks first.
+
+## Commands
+
+Plain words for the [palette](/concepts/layout/#the-palette) that run an action or a tool by rule, with no model. Typing one exactly runs it.
+
+```ts
+commands: [
+  { say: ['pause downloads', 'pause {name}'], run: 'action:pause', label: 'Pause all downloads' },
+  { say: ["what's downloading", 'downloads'], run: 'tool:downloads_status' },
+  { say: ['pause ads {minutes} min'], run: 'action:pause', label: 'Pause ad blocking: {minutes} min' },
+],
+```
+
+| Field | Required | What it does |
+|---|---|---|
+| `say` | yes | Every phrasing you'd accept. `{name}` is the instance's name in `config.yaml`, or the integration's. `{minutes}` or any other slot takes a whole number and goes into the input under that name. |
+| `run` | yes | `action:<name>` runs a page action, as its button would. `tool:<name>` runs a tool: a `read` one shows its card, anything else asks with its `confirm` words first. |
+| `input` | | Fixed input, or a function of the slots. It may look things up, never change them, and may throw to say why it can't run now. |
+| `label` | | What the palette shows. `{slot}` in it is filled in. The first phrase if left out. |
+
+Matching ignores case, punctuation, word order, plurals and filler words ("the", "all", "please", "turn"), and a few words mean the same: off and disable, on and enable, pause and stop, resume, start and continue, min and minutes. Nothing else is guessed, so write the variants out. Two commands with the same words are both shown, and neither runs until one is picked.
+
+`commands` can be a function, asked each time the palette opens. Home Assistant uses that to name every light it may control.
+
+A command passes the same checks as the chat: a [read-only page](/start/sign-in/) only looks, a tool needs the [access](/assistant/access/) the assistant would need, input is checked by the target's schema, results are redacted, and anything that changes something goes in the activity log.
 
 ## Context
 

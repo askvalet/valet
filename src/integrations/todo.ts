@@ -30,6 +30,10 @@ export default defineIntegration({
     const add = (text: string) => change(l => [...l, { id: `t${Date.now().toString(36)}`, text, done: false }]);
     return {
       widgets: { list: { title: cfg.title, interval: 30_000, fetch: card } },
+      commands: [
+        { say: ['clear finished', 'clear done', 'clear finished {name}', 'clear done {name}', `clear finished ${cfg.title}`], run: 'action:clear', label: `Clear what's finished` },
+        { say: ['{name}', `show ${cfg.title}`, 'show {name}', `what's on ${cfg.title}`], run: 'tool:todo_list', label: `Show ${cfg.title}` },
+      ],
       actions: {
         tick: { description: 'Tick something off', input: z.object({ id: z.string(), value: z.boolean() }), run: ({ id, value }) => change(l => l.map(t => t.id === id ? { ...t, done: value } : t)) },
         clear: { description: 'Clear what is finished', input: z.object({}), run: () => change(l => l.filter(t => !t.done)) },

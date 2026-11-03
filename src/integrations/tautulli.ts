@@ -226,6 +226,19 @@ export default defineIntegration({
     return {
       recap,
       widgets,
+      commands: [
+        { say: ["what's playing", "what's on plex", "what's playing on plex", 'now playing', "who's watching", 'plex streams', '{name} streams', 'streams'], run: 'tool:plex_streams', label: "Show what's playing" },
+        { say: ['recently added', "what's new", "what's new on plex", 'new on plex', 'recently added on plex'], run: 'tool:plex_recently_added', label: 'Show what was added' },
+        { say: ['watch history', 'plex history', '{name} history', 'what was watched'], run: 'tool:plex_history', label: 'Show watch history' },
+        { say: ['most watched', 'plex stats', "what's popular", '{name} stats'], run: 'tool:plex_stats', label: "Show what's popular" },
+        // only when there's one: with several playing, which one is a question for a person (or the chat)
+        { say: ['stop plex', 'stop {name}', 'stop stream', 'stop the stream', 'stop playing', 'stop plex stream'], run: 'tool:plex_stop_stream', label: 'Stop the stream',
+          async input() {
+            const { sessions } = await activity();
+            if (sessions.length !== 1) throw new Error(sessions.length ? `${sessions.length} streams are playing: stop one from its card, or ask which` : 'nothing is playing');
+            return { who: String(sessions[0].friendly_name ?? sessions[0].full_title) };
+          } },
+      ],
       image(ref) {
         if (!/^\/library\/metadata\/\d+\/(thumb|art)(\/\d+)?$/.test(ref)) throw new Error('bad image ref');
         // backdrops wide and sharp; posters at 2× for retina shelves

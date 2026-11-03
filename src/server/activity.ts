@@ -4,7 +4,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { sandbox } from './sandbox.ts';
 
-export interface Entry { id: number; at: number; who: string; via: 'chat' | 'plan' | 'page' | 'watch' | 'pin' | 'mcp' | 'rule'; rule?: string; what: string; input?: unknown; ok: boolean; error?: string; undo?: { tool: string; input: unknown }; undone?: boolean; action?: string; target?: string }   // rule: the rule that did it · action: what was done, in past-tense words; target: what to
+export interface Entry { id: number; at: number; who: string; via: 'chat' | 'plan' | 'page' | 'watch' | 'pin' | 'mcp' | 'rule' | 'command'; rule?: string; what: string; input?: unknown; ok: boolean; error?: string; undo?: { tool: string; input: unknown }; undone?: boolean; action?: string; target?: string }   // rule: the rule that did it · action: what was done, in past-tense words; target: what to
 // the input fields that name the thing acted on, in the order they're worth reading; ids and numbers say nothing to a person
 const NAMING = ['title', 'name', 'who', 'query', 'url', 'say', 'text'];
 const host = (s: string) => { try { return /^https?:/.test(s) ? new URL(s).hostname.replace(/^www\./, '') : s; } catch { return s; } };
@@ -23,7 +23,7 @@ export function sentence(e: Pick<Entry, 'what' | 'action' | 'target' | 'input'>)
 /** How it went, then who, in the words of the log: "worked · you in chat". */
 export function outcome(e: Pick<Entry, 'ok' | 'error' | 'undone' | 'who' | 'via'>) {
   const how = e.undone ? 'undone' : e.ok ? 'worked' : `failed${e.error ? `: ${e.error}` : ''}`;
-  return `${how} · ${e.who}${e.via === 'chat' ? ' in chat' : e.via === 'plan' ? ' in a plan' : e.via === 'watch' ? ', by a reminder' : e.via === 'rule' ? ', by a rule' : ''}`;
+  return `${how} · ${e.who}${e.via === 'chat' ? ' in chat' : e.via === 'plan' ? ' in a plan' : e.via === 'watch' ? ', by a reminder' : e.via === 'rule' ? ', by a rule' : e.via === 'command' ? ' by command' : ''}`;
 }
 const FILE = () => resolve(process.env.VALET_DATA ?? 'data', 'activity.json');
 

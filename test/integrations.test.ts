@@ -566,6 +566,7 @@ test('scaffold: new-integration writes a plugin that loads and whose cards and t
   const inst = i.create(i.config.parse({ url: 'http://x' }), { http: async () => ({}) });
   valid(await inst.widgets.status.fetch());
   assert.equal(inst.tools['my_full_restart'].access, 'control');
+  for (const c of inst.commands) { const [kind, name] = c.run.split(':'); assert.ok(inst[kind === 'action' ? 'actions' : 'tools'][name], c.run); }
 });
 
 test('check-integration: names what is wrong with a service, in words', async () => {

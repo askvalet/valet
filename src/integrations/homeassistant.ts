@@ -1,7 +1,7 @@
 // Home Assistant (REST API, long-lived token): cards of chosen entities as live controls, and tools to look up any
 // entity and (with approval) control the ones you've put on the page or listed under `controllable`.
 import { z } from 'zod';
-import { defineIntegration, type Instance, type Widget } from '../server/core.ts';
+import { defineIntegration, type Command, type Instance, type Widget } from '../server/core.ts';
 import type { Control, ThermostatCard, ThermostatMode } from '../shared/cards.ts';
 
 const PRESS = new Set(['scene', 'script', 'button', 'input_button', 'automation']);
@@ -279,6 +279,28 @@ export default defineIntegration({
           line: `${runs.toLocaleString('en')} runs and ${hours.toLocaleString('en')} hours of work.` }];
       },
       widgets: widgets satisfies Instance['widgets'],
+      // only what's already controllable from Valet, each by its own name: "desk lamp off", "run movie night"
+      async commands() {
+        const byId = new Map((await states().catch(() => [] as any[])).map(s => [s.entity_id, s]));
+        const named = (id: string) => nameOf(byId.get(id) ?? { entity_id: id, attributes: { friendly_name: id.split('.')[1].replace(/_/g, ' ') } });
+        const out: Command[] = [];
+        const lights = [...allowed].filter(id => id.startsWith('light.'));
+        if (lights.length) out.push(
+          { say: ['lights off', 'all lights off', 'lights off {name}'], run: 'action:light', input: { entity_id: lights, on: false }, label: 'Turn off the lights' },
+          { say: ['lights on', 'all lights on', 'lights on {name}'], run: 'action:light', input: { entity_id: lights, on: true }, label: 'Turn on the lights' });
+        for (const id of allowed) {
+          const [domain] = id.split('.'), name = named(id);
+          if (['light', 'switch', 'input_boolean', 'fan'].includes(domain)) out.push(
+            { say: [`${name} on`], run: 'action:set', input: { entity_id: id, value: true }, label: `Turn on ${name}` },
+            { say: [`${name} off`], run: 'action:set', input: { entity_id: id, value: false }, label: `Turn off ${name}` });
+          else if (['scene', 'script'].includes(domain)) out.push({ say: [`run ${name}`, `${name} on`, `activate ${name}`], run: 'action:press', input: { entity_id: id }, label: `Run ${name}` });
+          else if (domain === 'vacuum') out.push(
+            { say: [`${name} start`, 'start vacuum', 'vacuum', 'start vacuuming', 'clean'], run: 'action:vacuum', input: { entity_id: id, command: 'start' }, label: `Start ${name}` },
+            { say: [`${name} dock`, `${name} home`, 'dock vacuum', 'vacuum home', 'send vacuum home'], run: 'action:vacuum', input: { entity_id: id, command: 'dock' }, label: `Send ${name} home` },
+            { say: [`${name} pause`, 'pause vacuum'], run: 'action:vacuum', input: { entity_id: id, command: 'pause' }, label: `Pause ${name}` });
+        }
+        return out;
+      },
       actions: {
         set: { description: 'Turn an entity on or off', input: z.object({ entity_id: z.string(), value: z.boolean() }), run: ({ entity_id, value }) => set(entity_id, value) },
         choose: { description: 'Pick an option of a select entity', input: z.object({ entity_id: z.string(), value: z.string() }),

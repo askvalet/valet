@@ -209,7 +209,7 @@ services and the assistant write is theirs, and the status sentence is built fro
 | `goodEvening` | Good evening |
 | `goodNight` | Good night |
 | `overview` | Overview |
-| `search` | Search services and actions |
+| `search` | Type a command, or search services |
 | `review` | Your {year} in review |
 | `reviewMore` | What your homelab got up to this year, in a few screens |
 | `reviewGo` | Play |
@@ -335,6 +335,11 @@ Mount the config folder read-only and it hands you the diff to paste instead.
 **It knows Valet.** Whatever its access, the assistant searches these docs to answer questions about Valet, and
 `report_issue` writes up a bug, an idea or a missing integration as a filled-in GitHub issue for you to read and submit.
 It sends nothing itself.
+
+**Commands, with no model.** ⌘K runs plain commands that integrations declare ("pause downloads", "lights off",
+"pause ads 10 min") without asking the model. They follow `access` like the chat: a command that uses a `control` tool
+needs `control` for that integration and still shows the approval card. With no `assistant` block, commands run page
+actions and tools that only look. See [integrations.md](integrations.md#the-parts) for writing them.
 
 **On the page, not in chat:** A summary when you hover the status sentence, ⌘K answers and approvals in
 place, and pin on a chat card to keep it on the page. A pin re-runs the same tool, so no model is involved after that;
