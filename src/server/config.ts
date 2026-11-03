@@ -248,6 +248,12 @@ export const Config = z.object({
   assistant: AssistantConfig.optional(),
   integrations: z.record(z.string(), z.object({ type: z.string() }).loose()).default({}),
   mcp: z.record(z.string(), McpServer).default({}),
+  // Valet as a read-only MCP server for an AI client you already use: off unless set. The token is a long secret from
+  // .env, and access says which integrations it may look at (none or read; never more)
+  mcpServer: z.object({
+    token: z.string().min(32, 'use a long random token, at least 32 characters, from .env'),
+    access: z.record(z.string(), z.enum(['none', 'read'])).default({ default: 'read' }),
+  }).strict().optional(),
   layout: z.array(Section).default([]),
   // widget keys whose headline numbers sit as small rings in the top bar; or the object, to say more about the bar
   menubar: z.union([z.array(z.string()), z.object({

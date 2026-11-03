@@ -393,6 +393,18 @@ Each entry is an MCP server whose tools the assistant may use, under the same ru
 | `readOnly` | `[]` | tool names to treat as read-only even if the server doesn't mark them |
 | `name` | the key | |
 
+## `mcpServer`
+
+Valet as a read-only MCP server, so an AI client you already use (Claude Desktop, an editor) can look at your homelab
+through the same tools Valet's assistant has. Off unless set. It answers at `/mcp` (Streamable HTTP) to its own bearer
+token, offers only tools that look, never one that adds or changes something, and never Valet's config tools. Results go
+through the same redactor as the chat's, and every call is in the activity log.
+
+| Option | Default | |
+|---|---|---|
+| `token` | required | at least 32 characters; keep it in `.env`, e.g. `token: ${VALET_MCP_TOKEN}` |
+| `access` | `{ default: read }` | per integration, `none` or `read`. `{ default: none, plex: read }` opens only Plex |
+
 ## `live`
 
 What's happening right now, as rings in the top bar: what's playing, what's downloading, the vacuum, an event in progress.

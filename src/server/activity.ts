@@ -4,7 +4,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { sandbox } from './sandbox.ts';
 
-export interface Entry { id: number; at: number; who: string; via: 'chat' | 'plan' | 'page' | 'watch' | 'pin'; what: string; input?: unknown; ok: boolean; error?: string; undo?: { tool: string; input: unknown }; undone?: boolean; action?: string; target?: string }   // action: what was done, in past-tense words; target: what to
+export interface Entry { id: number; at: number; who: string; via: 'chat' | 'plan' | 'page' | 'watch' | 'pin' | 'mcp'; what: string; input?: unknown; ok: boolean; error?: string; undo?: { tool: string; input: unknown }; undone?: boolean; action?: string; target?: string }   // action: what was done, in past-tense words; target: what to
 // the input fields that name the thing acted on, in the order they're worth reading; ids and numbers say nothing to a person
 const NAMING = ['title', 'name', 'who', 'query', 'url', 'say', 'text'];
 const host = (s: string) => { try { return /^https?:/.test(s) ? new URL(s).hostname.replace(/^www\./, '') : s; } catch { return s; } };

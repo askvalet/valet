@@ -202,3 +202,36 @@ describe('a proxy is believed only from its own address', () => {
     assert.equal((await fetch(`${s.base}/api/page`)).status, 401);
   });
 });
+
+describe('the read-only MCP server', () => {
+  const TOKEN = 'mcp-token-0123456789abcdef0123456789';
+  let s: Awaited<ReturnType<typeof boot>>;
+  before(async () => { s = await boot({ mode: 'local', secureCookie: false }, `mcpServer: { token: "${TOKEN}", access: { default: read, probe: read } }\n`); });
+  after(() => { s.proc.kill(); });
+  const rpc = (body: unknown, token = TOKEN) => fetch(`${s.base}/mcp`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+
+  test('no token, a wrong one, or GET: nothing but 401', async () => {
+    for (const r of [await fetch(`${s.base}/mcp`, { method: 'POST', body: '{}' }), await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, `${TOKEN}x`), await fetch(`${s.base}/mcp`)]) {
+      assert.equal(r.status, 401); clean('/mcp refused', await r.text());
+    }
+  });
+
+  test('it offers only tools that look, never the config, and its answers keep secrets out', async () => {
+    const init = await (await rpc({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } } })).json();
+    assert.equal(init.result.protocolVersion, '2025-06-18');
+    assert.equal((await rpc({ jsonrpc: '2.0', method: 'notifications/initialized' })).status, 202);
+    const { result } = await (await rpc({ jsonrpc: '2.0', id: 2, method: 'tools/list' })).json();
+    assert.ok(result.tools.length > 0, 'something to look at');
+    for (const t of result.tools) {
+      assert.equal(t.annotations.readOnlyHint, true);
+      assert.doesNotMatch(t.name, /^config__/, `${t.name} reads the config file`);
+      assert.match(t.name, /^[A-Za-z0-9_-]{1,64}$/);
+    }
+    for (const t of result.tools.slice(0, 6)) {
+      const text = await (await rpc({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: t.name, arguments: {} } })).text();
+      assert.ok(!text.includes(SECRET), `${t.name} leaked the secret`);
+    }
+    const nope = await (await rpc({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'config__config_apply', arguments: {} } })).json();
+    assert.ok(nope.error, 'a tool it never offered can\'t be called');
+  });
+});

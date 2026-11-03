@@ -146,6 +146,11 @@ mcp:
     headers: { Authorization: "Bearer ${HA_TOKEN}" }
     access: read
 
+# Valet as a read-only MCP server for your own AI client (Claude Desktop, an editor): POST /mcp with this token.
+# mcpServer:
+#   token: ${VALET_MCP_TOKEN}        # openssl rand -hex 32, in .env
+#   access: { default: read }        # or { default: none, plex: read }: only what you open
+
 # What the homepage shows, top to bottom. Widgets are "<integration>.<widget>".
 # Small ring gauges in the top bar; hover one for its live graph. Any widget with headline numbers works.
 menubar: [system.tiles]

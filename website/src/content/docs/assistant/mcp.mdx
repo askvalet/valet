@@ -1,6 +1,6 @@
 ---
 title: MCP
-description: Point Valet at an MCP server and the assistant can use its tools, under the same rules.
+description: Give the assistant an MCP server's tools under the same rules, or let your own AI client look at Valet, read-only.
 sidebar: { order: 5 }
 ---
 
@@ -60,3 +60,26 @@ mcp:
 | `access` | `read` | `none`, `read`, `write` or `control`. |
 | `readOnly` | `[]` | Tool names to treat as read-only. |
 | `name` | none | A friendly name, shown to the model. |
+
+## Valet as an MCP server
+
+It works the other way too. With `mcpServer` set, an AI client you already use (Claude Desktop, an editor, anything that
+speaks MCP) can look at your homelab through Valet, read-only.
+
+```yaml title="config.yaml"
+mcpServer:
+  token: ${VALET_MCP_TOKEN}   # a long random secret in .env: openssl rand -hex 32
+  access: { default: read }   # or { default: none, plex: read, pihole: read }
+```
+
+Point the client at `https://<your valet>/mcp` (Streamable HTTP) with the header `Authorization: Bearer <token>`.
+
+- **Only tools that look.** It offers each integration's read tools and nothing that adds, changes or removes, so there's
+  nothing to approve. Valet's own config tools are never offered, whatever `access` says.
+- **Its own leash.** `access` is separate from the assistant's: open only what that client needs.
+- **The same protection as the chat.** Secrets stay on the server, results pass the same redactor, and every call shows
+  in the activity log as "MCP client".
+- **Off means invisible.** Without `mcpServer`, or with a wrong token, `/mcp` answers 401 and says nothing else. The demo
+  never offers it.
+
+Anything the client reads goes to whatever model it uses, so give it only what you'd paste into that model yourself.

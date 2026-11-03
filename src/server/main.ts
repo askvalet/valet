@@ -17,6 +17,7 @@ import { loadPlugins } from './plugins.ts';
 import { chatAgent } from './model.ts';
 import { buildRecap, recapYear } from './recap.ts';
 import { discover } from './discover.ts';
+import { mcpServer } from './mcpserver.ts';
 import { buildSite, type Site } from './site.ts';
 import { registry } from '../integrations/index.ts';
 import { LABELS } from '../shared/labels.ts';
@@ -100,6 +101,12 @@ if (sandbox.on) {
     return own.run(await v.site, next);
   });
 }
+// Valet as a read-only MCP server, for an AI client of the owner's choosing. Outside /api: it has no session or page
+// origin, so it answers only to its own bearer token, and only when mcpServer is configured. The demo never offers it.
+const mcpSize = bodyLimit({ maxSize: 64 * 2 ** 10, onError: c => c.json({ error: 'request too large' }, 413) });
+app.post('/mcp', mcpSize, c => sandbox.on ? c.notFound() : mcpServer(c, site));
+app.get('/mcp', c => sandbox.on ? c.notFound() : mcpServer(c, site));
+
 // for Docker's healthcheck and uptime monitors: up, and how many widgets have a fresh card
 app.get('/healthz', c => c.json({ ok: true, widgets: site.hub.snapshot().filter(s => s.card && !s.error).length }));
 
