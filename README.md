@@ -71,8 +71,6 @@ runs as one Node process, uses about 45 MB of RAM on a fresh install, and the im
 
 <br>
 
-<br>
-
 ## Quick start
 
 ```sh
