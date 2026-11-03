@@ -30,13 +30,19 @@ A self-hosted, open-source, AI-native homepage.
 
 Valet is a homepage for your homelab that can also do things.
 
-**The front door to your homelab.** Instead of opening five different tabs to work out what's going on, just open Valet.
+### The front door to your homelab
+
+Instead of opening five different tabs to work out what's going on, just open Valet.
 It shows what's happening across all your services, and you can act on it right there. Instead of being a page with
 links and a status dot, Valet is meant to be powerful and actionable.
 
 <p align="center"><img src="docs/images/front-door.webp" alt="Valet's main screen: a one-line summary of what's wrong and what's playing, an ask box, every service's status, a 3D floor plan and the PC" width="620"></p>
 
-**AI-native, if you want it.** Ask Valet anything about your homelab. Use a local model or a hosted one. Valet knows
+<br>
+
+### AI-native, if you want it
+
+Ask Valet anything about your homelab. Use a local model or a hosted one. Valet knows
 its own documentation, so you can use it to build itself! Every change waits for your approval, and Valet
 works just fine with the AI switched off.
 
@@ -45,15 +51,27 @@ works just fine with the AI switched off.
 <td width="50%" valign="top"><img src="docs/images/ask-for-a-card.gif" alt="Asking for an internet speed card: Valet asks first, then the card appears on the page"><br><sub>"Add an internet speed card." Valet edits its own config, after asking first.</sub></td>
 </tr></table>
 
-**Made to be enjoyed.** Live cards, real artwork, smooth animations and 3D models of your house and PC. It's a page
+<br>
+
+### Made to be enjoyed
+
+Live cards, real artwork, smooth animations and 3D models of your house and PC. It's a page
 you'll want to look at and use.
 
 <p align="center"><img src="docs/images/home-3d.gif" alt="The 3D floor plan: picking the living room, turning its lights blue, and sending the vacuum, which drives through the house" width="620"><br><sub>Pick a room, change its lights, and send the vacuum, which drives through the house.</sub></p>
 
-**Flexible, and light.** One YAML file controls everything, with 185 integrations and a simple way to add your own. It
+<br>
+
+### Flexible, and light
+
+One YAML file controls everything, with 185 integrations and a simple way to add your own. It
 runs as one Node process, uses about 45 MB of RAM on a fresh install, and the image is 166 MB.
 
 <p align="center"><img src="docs/images/config-live.gif" alt="Editing config.yaml while Valet runs: the greeting, the wallpaper and its brightness change on the page as each line is saved" width="620"></p>
+
+<br>
+
+<br>
 
 ## Quick start
 
