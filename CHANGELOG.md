@@ -5,7 +5,9 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
-The first public version, 0.1.0, is being prepared.
+## [0.1.0] - 2026-11-03
+
+The first public version.
 
 ### Security
 
@@ -42,4 +44,5 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/commits/master
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/askvalet/valet/releases/tag/v0.1.0
