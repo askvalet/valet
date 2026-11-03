@@ -482,9 +482,11 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `aimonitor` | `url` | `usage`, `gpu` |
 | `apcups` | `host`, `port` (3551), `title` | `status` |
 | `arr` | `sonarr`, `radarr` (each `{ url, apiKey, href }`), `days` (14), `plex` (its web address, so what's ready opens there) | `upcoming` |
+| `backrest` | `url`, `username`, `password` (only if Backrest has users), `insecure` | `plans`, `status` |
 | `camera` | `cameras` (`{ name, url, video }`), `title`, `href`, `refresh` (seconds), `username`, `password`, `insecure` | `cameras` |
 | `clock` | `clocks` (`{ name, zone }`), `title` | `times` |
 | `glances` | `url`, `disks` (mounts, or `{ mount, name, sub }`), `network` (interface), `cpuSensor` (`CPU`) | `tiles`, `overview`, `disks` |
+| `healthchecks` | `url` (`https://healthchecks.io` or your own), `key` (the read-only key is enough to look; pausing needs the full one), `insecure` | `checks`, `status` |
 | `homeassistant` | `url`, `token`, `cards`, `schedules`, `floorplans`, `thermostats` (`{ entity, title, modes, unit }`), `controllable` (extra entities the assistant may control) | one per entry in `cards`, `schedules`, `floorplans`, `thermostats` |
 | `http` | `targets` (`name`, `url`, `href`, `icon`, `group`, `quiet`, `expect`), `interval` (30000 ms) | `status` |
 | `iframe` | `url`, `title`, `height` (360), `scripts` (`true`) | `page` |
@@ -497,12 +499,15 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `ollama` | `url` | `models` |
 | `paperless` | `url`, `token` | `recent` |
 | `pihole` | `url`, `password` (an app password) | `stats` |
+| `proxmox` | `url`, `key` (an API token, `user@realm!tokenid=secret`), `insecure` (Proxmox's certificate is self-signed), `node` (only this one), `vmid` (the status card shows just this guest) | `guests`, `storage`, `status` |
 | `qbittorrent` | `url`, `username`, `password`, `arr` (Sonarr/Radarr `{ type, url, apiKey }` for titles and posters) | `active` |
 | `repository` | `repos` (`owner/name`), `token`, `title` | `repos` |
 | `rgb-control` | `url`, `build`, `view` (`turn`, `tilt`, `draggable`), `presets`, `controls`, `interval` | `pc` |
 | `romm` | `url`, `username`, `password` | `recent` |
 | `scrutiny` | `url`, `hotC` (55) | `drives` |
 | `seerr` | `url`, `apiKey`, `downloads` (where "See progress" goes) | `requests` |
+| `speedtest-tracker` | `url`, `key` (an API token that can read results, and run tests if you want that from chat), `days` (7, how far back the chart goes), `insecure` | `speed`, `status` |
+| `syncthing` | `url`, `key` (its API key), `insecure` | `sync`, `status` |
 | `tautulli` | `url`, `apiKey` | `streams`, `recent`, `top`, `people`, `library`, `plays` (a stream of 30 days), `race` (the year's titles overtaking each other; refreshes every few hours), `viewing` (a year of days) |
 | `todo` | `title` | `list` |
 | `twitch` | `clientId`, `clientSecret`, `channels`, `limit` (8) | `channels`, `games` |
