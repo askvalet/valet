@@ -18,7 +18,7 @@ A self-hosted, open-source, AI-native homepage.
 
 <br>
 
-<a href="https://askvalet.dev/film/valet.mp4"><img src="docs/images/film.webp" alt="Play the one-minute film: the main screen, asking why a service is down, approving a change, adding a card from chat, and the integrations" width="100%"></a>
+<a href="https://askvalet.dev/film/valet.mp4"><img src="docs/images/film.webp" alt="Play the one-minute film: the main screen, asking what's playing and what to watch, approving a change, adding a card from chat, and the integrations" width="100%"></a>
 
 <sub>▶ <a href="https://askvalet.dev/film/valet.mp4">Watch the one-minute film</a> · or <a href="https://demo.askvalet.dev">try the demo</a>, right in your browser</sub>
 
@@ -47,7 +47,7 @@ its own documentation, so you can use it to build itself! Anything it changes wa
 works just fine with the AI switched off.
 
 <table><tr>
-<td width="50%" valign="top"><img src="docs/images/ask-whats-down.gif" alt="Asking what's down: Valet checks the services, reads Mealie's logs to explain why, then pauses Pi-hole after a one-click approval"><br><sub>"What's down right now?" Valet checks and reads the logs to say why. Then "Pause Pi-hole" waits for your approval.</sub></td>
+<td width="50%" valign="top"><img src="docs/images/ask-chat.gif" alt="Asking who's watching shows the now-playing card, asking what to watch shows the most-watched list with posters, and pausing Pi-hole waits for approval, then shows its chart"><br><sub>"Who's watching?" "What should we watch tonight?" Then "Pause Pi-hole", which waits for your approval.</sub></td>
 <td width="50%" valign="top"><img src="docs/images/ask-for-a-card.gif" alt="Asking for an internet speed card: Valet asks first, then the card appears on the page"><br><sub>"Add an internet speed card." Valet edits its own config, after asking first.</sub></td>
 </tr></table>
 
