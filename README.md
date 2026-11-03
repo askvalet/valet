@@ -33,7 +33,7 @@ Valet is a homepage for your homelab that can also do things.
 ### The front door to your homelab
 
 Instead of opening five different tabs to work out what's going on, just open Valet.
-It shows what's happening across all your services, and you can act on it right there. Instead of being a page with
+It shows what's happening across all your services, and you can act on it right there. Instead of just being a page with
 links and a status dot, Valet is meant to be powerful and actionable.
 
 <p align="center"><img src="docs/images/front-door.webp" alt="Valet's main screen: a one-line summary of what's wrong and what's playing, an ask box, every service's status, a 3D floor plan and the PC" width="620"></p>
