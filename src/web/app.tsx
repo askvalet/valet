@@ -38,7 +38,7 @@ interface Page {
   search?: string;
   insight?: string;
   welcome?: { path: string; saved: boolean; setup?: boolean };
-  configError?: { message: string; at: number };
+  configError?: { message?: string; at: number };
   menubar?: { widgets: string[]; position: 'left' | 'center' | 'right'; labels: boolean; clock: boolean; date: boolean; theme: boolean };
   nav?: { side: 'left' | 'right' | 'top' | 'bottom'; style: 'icons' | 'labels' | 'both'; hide: string[]; order?: string[] };
   live?: { activities: string[] };
@@ -687,8 +687,8 @@ function Home({ account }: { account: boolean }) {
         {page?.configError && <div role="alert" className="settle flex gap-3 rounded-[calc(var(--radius)*1.2)] border border-[color-mix(in_oklab,var(--warn)_45%,transparent)] bg-card px-5 py-4 shadow-card">
           <TriangleAlert className="mt-0.5 size-5 shrink-0 text-(--warn)" aria-hidden />
           <div className="min-w-0"><div className="text-[15px] font-semibold">Your last edit to config.yaml wasn't applied</div>
-            <p className="mt-0.5 text-[13px] text-muted-foreground">The page is still running the last version that worked. Fix this and save again:</p>
-            <pre className="mt-2 overflow-x-auto rounded-md bg-foreground/[.06] px-3 py-2 font-mono text-[12px] leading-relaxed whitespace-pre-wrap text-foreground/85">{page.configError.message}</pre></div>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">The page is still running the last version that worked. {page.configError.message ? 'Fix this and save again:' : 'The server log says what went wrong.'}</p>
+            {page.configError.message && <pre className="mt-2 overflow-x-auto rounded-md bg-foreground/[.06] px-3 py-2 font-mono text-[12px] leading-relaxed whitespace-pre-wrap text-foreground/85">{page.configError.message}</pre>}</div>
         </div>}
         {page?.welcome && view === 'all' && <Welcome path={page.welcome.path} saved={page.welcome.saved} setup={page.welcome.setup && !!page.assistant} ask={ask} />}
 

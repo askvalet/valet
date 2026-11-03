@@ -5,6 +5,13 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+
+- Pausing Pi-hole from chat answers with its chart, now showing the pause and its countdown.
+- A config edit that can't be applied is flagged on read-only pages too, without the error itself, which stays with people who can change things.
+- The MCP server reports Valet's real version.
+- The image no longer carries the README's pictures: 165 MB again.
+
 ## [0.1.1] - 2026-11-03
 
 ### Added

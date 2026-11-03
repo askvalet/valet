@@ -12,3 +12,5 @@ data
 .test
 **/.env*
 !.env.example
+# the README's pictures: the assistant searches the docs' words, not their images
+docs/images

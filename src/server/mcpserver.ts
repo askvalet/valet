@@ -4,12 +4,16 @@
 // changes something, so there's nothing to approve. Results pass the same redactor as the chat's, and every call is in
 // the activity log.
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { Context } from 'hono';
 import { z } from 'zod';
 import type { Instance } from './core.ts';
 import type { Site } from './site.ts';
 
 const VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
+// Valet's own version: package.json sits beside dist/ in the image, and at the repo root in development
+const VERSION = (() => { for (const f of ['package.json', '../package.json']) { try { return JSON.parse(readFileSync(resolve(process.cwd(), f), 'utf8')).version as string; } catch { /* next */ } } return 'unknown'; })();
 // Valet's own setup tools read the config file itself: that stays with the owner and the assistant
 const PRIVATE = new Set(['config']);
 type Tool = NonNullable<Instance['tools']>[string];
@@ -44,7 +48,7 @@ export async function mcpServer(c: Context, site: Site) {
   if (method === 'initialize') {
     const asked = String(params?.protocolVersion ?? '');
     return c.json(reply(id, { protocolVersion: VERSIONS.includes(asked) ? asked : VERSIONS[0], capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: 'valet', title: 'Valet', version: process.env.npm_package_version ?? '0.1.0' },
+      serverInfo: { name: 'valet', title: 'Valet', version: VERSION },
       instructions: `${site.config.title}: a homelab's services, read-only. Look things up with these tools; nothing here can change anything.` }));
   }
   if (method === 'ping') return c.json(reply(id, {}));

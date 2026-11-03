@@ -212,7 +212,8 @@ app.get('/api/page', c => {
   if (!zoneKnown && tz && validZone(tz)) { process.env.TZ = tz; zoneKnown = true; console.log(`time zone: ${tz} (from the browser; set timezone in config.yaml to fix it)`); }
   return c.json(JSON.parse(site.redact(JSON.stringify({
     title: config.title, greeting: config.greeting, notice: config.notice, location: config.location, canAct: site.acting, sandbox: sandbox.on, search: config.search,
-    configError: site.acting && configError ? { message: site.redact(configError.message).slice(0, 600), at: configError.at } : undefined,
+    // everyone learns an edit didn't apply; the error itself can quote the file, so only people who can change things see it
+    configError: configError ? { message: site.acting ? site.redact(configError.message).slice(0, 600) : undefined, at: configError.at } : undefined,
     welcome: config.welcome ? { path: CONFIG, saved, setup: site.acting && instances.has('config') } : undefined,
     recap: config.recap, hero: { ...config.hero, scope: config.hero.scope === true ? scopeOf([...site.meta.values()].map(m => m.type)) : config.hero.scope || undefined }, labels: { ...LABELS, ...config.labels }, format: config.format,
     appearance: { walls: wallsOf(config.appearance.wallpaper), tabWalls: Object.fromEntries(Object.entries(config.appearance.wallpapers).map(([t, w]) => [t, wallsOf(w)])), rotate: config.appearance.rotate, sizes: config.appearance.sizes },
