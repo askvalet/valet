@@ -12,6 +12,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- Saving the config no longer flashes the page empty: cards keep what they show until the new answers arrive.
+- A new wallpaper always shows after a save, even when the new file has the same timestamp as the old one.
 - Local AI and PC read a published JSON format, so they work with your own endpoint: only `/api/live` is needed for Local AI, the PC's screen preview is optional, and a field that doesn't fit is named in the error. `examples/local-ai/` serves Local AI's format from nvidia-smi and Ollama.
 - ROADMAP.md is gone; the changelog says what shipped.
 - The year-in-review link waits until there's a story: a near-empty install doesn't offer it.

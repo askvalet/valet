@@ -35,7 +35,7 @@ export interface Site {
   history?: History;
   acting: boolean;
   redact: (s: string) => string;
-  walls: { path: string; file: string; version: number }[];   // wallpapers on this disk, served by number
+  walls: { path: string; file: string; version: string }[];   // wallpapers on this disk, served by number
   cssVersion?: string;
   recent: Notice[];
   noticeListeners: Set<(n: Notice) => void>;
@@ -190,7 +190,11 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   // a local wallpaper is served by Valet; a URL is handed to the browser as is, and paint is CSS
   const { appearance: a } = config;
   const local = [...new Set([a.wallpaper, ...Object.values(a.wallpapers)].flatMap(w => listOf(w)).filter(w => !isPaint(w) && !/^https?:\/\//.test(w)))];
-  const walls = await Promise.all(local.map(async path => ({ path, file: resolve(path), version: Math.round((await stat(resolve(path)).catch(() => ({ mtimeMs: 0 }))).mtimeMs) })));
+  // the version is in the picture's address, so a different file (or the same one changed) is never the cached one
+  const walls = await Promise.all(local.map(async path => {
+    const at = await stat(resolve(path)).catch(() => ({ mtimeMs: 0, size: 0 }));
+    return { path, file: resolve(path), version: createHash('sha1').update(`${resolve(path)}:${at.mtimeMs}:${at.size}`).digest('base64url').slice(0, 10) };
+  }));
   // ?v= changes with the CSS, so an open page swaps its stylesheet the moment you save
   const cssStamp = a.cssFile && await stat(resolve(a.cssFile)).then(s => s.mtimeMs, () => 0);
   const cssVersion = a.css || a.cssFile ? createHash('sha256').update(`${a.css}|${cssStamp}`).digest('hex').slice(0, 10) : undefined;

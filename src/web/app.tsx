@@ -66,7 +66,8 @@ function useLive() {
       setState(prev => ({ ...prev, [s.key]: s }));
     });
     // the config changed: drop what we know and come back for the new layout (the stream ends; this effect reruns)
-    es.addEventListener('reload', () => { es.close(); setState({}); setInsight(undefined); setGeneration(g => g + 1); });
+    // the cards keep what they show until the new config's answers arrive, so a saved edit doesn't flash the page empty
+    es.addEventListener('reload', () => { es.close(); setInsight(undefined); setGeneration(g => g + 1); });
     es.onopen = () => setOnline(true);
     es.onerror = () => setOnline(false);
     return () => es.close();

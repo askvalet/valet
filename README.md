@@ -35,15 +35,25 @@ out what's going on, you open Valet. It shows what's happening across all your s
 downloading or what just went down and why, and you can act on it right there: pause a download, restart a service,
 turn off the lights. Most dashboards are a page of links with a status dot; this is meant to be the one page you check.
 
+<img src="docs/images/front-door.webp" alt="Valet's main screen: a one-line summary of what's wrong and what's playing, an ask box, every service's status, a 3D floor plan and the PC" width="100%">
+
 **AI-native, if you want it.** Ask why something is down and it reads the logs, or ask for a new card and it edits the
 config for you. Use a local model or a hosted one. Every change waits for your approval, and Valet works fine with the AI
 switched off.
 
+<img src="docs/images/ask-whats-down.gif" alt="Asking what's down: Valet checks the services, reads Mealie's logs to explain why, and restarts it after a one-click approval" width="100%">
+
+<img src="docs/images/ask-for-a-card.gif" alt="Asking for an internet speed card: Valet asks first, then the card appears on the page" width="100%">
+
 **Made to be enjoyed.** Live cards, real artwork, smooth animations and 3D models of your house and PC. It's a page
 you'll want to look at and use.
 
+<img src="docs/images/home-3d.gif" alt="The 3D floor plan: picking the living room, turning its lights blue, and sending the vacuum, which drives through the house" width="100%">
+
 **Flexible, and light.** One YAML file controls everything, with 185 integrations and a simple way to add your own. It
 runs as one Node process, uses about 45 MB of RAM on a fresh install, and the image is 166 MB.
+
+<img src="docs/images/config-live.gif" alt="Editing config.yaml while Valet runs: the greeting, the wallpaper and its brightness change on the page as each line is saved" width="100%">
 
 ## Screenshots
 
