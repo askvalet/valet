@@ -74,6 +74,10 @@ function integrationPage(it: any) {
 }
 for (const it of catalog.integrations) writeFileSync(join(docs, 'integrations', `${it.type}.mdx`), integrationPage(it));
 
+// the home page's pictures are the README's: copied in, so they live in the repo once
+const why = resolve(root, 'public/why'); mkdirSync(why, { recursive: true });
+for (const f of ['front-door.webp', 'ask-whats-down.gif', 'ask-for-a-card.gif', 'home-3d.gif', 'config-live.gif']) copyFileSync(join(repo, 'docs/images', f), join(why, f));
+
 // the icons on the index, small: the same dashboard-icons Valet shows
 const iconDir = resolve(root, 'public/shots/icons'); mkdirSync(iconDir, { recursive: true });
 let sharp: any; try { sharp = (await import('sharp')).default; } catch { /* the page does without */ }

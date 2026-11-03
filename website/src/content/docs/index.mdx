@@ -13,53 +13,43 @@ hero:
       link: /integrations/
       variant: minimal
 ---
-import Shot from '~/components/Shot.astro';
-import Row from '~/components/Row.astro';
-
 <video class="film" controls autoplay muted loop playsinline preload="metadata" poster="/film/poster.webp" aria-label="Valet in 70 seconds: the main screen, asking about a service that's down, approving a restart, adding a card from chat, and the integrations.">
   <source src="/film/valet-mobile.mp4" media="(max-width: 640px)" type="video/mp4" />
   <source src="/film/valet.mp4" type="video/mp4" />
 </video>
 
-## What it is
+Valet is a homepage for your homelab that can also do things.
 
-Valet is one Node process that talks to your services and draws them as live cards: what's playing, what's downloading, what's down, which lights are on. You describe the page in `config.yaml`. Secrets stay in your environment, and the browser never sees them. It uses about 65 MB of RAM and has no database.
+## The front door to your homelab
 
-It works with [185 integrations](/integrations/). If yours isn't one of them, [`api`](/integrations/api/) turns any JSON API into a card from YAML, with no code.
+Instead of opening five different tabs to work out what's going on, just open Valet. It shows what's happening across all your services, and you can act on it right there. Instead of just being a page with links and a status dot, Valet is meant to be powerful and actionable.
 
-## The assistant is optional
+<figure class="why"><img src="/why/front-door.webp" alt="Valet's main screen: a one-line summary of what's wrong and what's playing, an ask box, every service's status, a 3D floor plan and the PC" loading="lazy" /></figure>
 
-Leave out the `assistant:` block and the page loses nothing. [Running with no AI](/assistant/no-ai/) is a supported way to use Valet, not a reduced one.
+## AI-native, if you want it
 
-If you add a model, local or hosted, it answers with the same cards the page uses.
+Ask Valet anything about your homelab. Use a local model or a hosted one. Valet knows its own documentation, so you can use it to build itself! Every change waits for your approval, and Valet works just fine with the AI switched off.
 
-The security story is the valet key: the key that drives the car but can't open the boot. The assistant reads freely and changes nothing without your approval. Each tool is `read`, `write` or `control`, you set the [access level](/assistant/access/) per integration, and every `write` or `control` call stops and waits for you.
+<div class="why-pair">
+<figure><img src="/why/ask-whats-down.gif" alt="Asking what's down: Valet checks the services, reads Mealie's logs to explain why, and restarts it after a one-click approval" loading="lazy" /><figcaption>"What's down right now?" Valet checks, reads the logs, and restarts Mealie once you approve.</figcaption></figure>
+<figure><img src="/why/ask-for-a-card.gif" alt="Asking for an internet speed card: Valet asks first, then the card appears on the page" loading="lazy" /><figcaption>"Add an internet speed card." Valet edits its own config, after asking first.</figcaption></figure>
+</div>
 
-<Row>
-<Shot id="scene/approval-card" label="A control tool waits for you" alt="An approval card asking whether to restart Mealie, with Not now and Restart buttons." />
-<Shot id="scene/approval-danger" label="Anything dangerous gets a red button" alt="An approval card asking to pause all downloads, with a red button." />
-</Row>
+## Made to be enjoyed
 
-## Cards fit the space they get
+Live cards, real artwork, smooth animations and 3D models. It's a page you'll want to look at and use.
 
-Every widget is one card, and every card works at five sizes. Small and wide show its headline. Medium, tall and large show the card. You pick the size in YAML. In chat the same card comes out denser. See [sizes](/concepts/sizes/) and the [card gallery](/cards/).
+<figure class="why"><img src="/why/home-3d.gif" alt="The 3D floor plan: picking the living room, turning its lights blue, and sending the vacuum, which drives through the house" loading="lazy" /><figcaption>Pick a room, change its lights, and send the vacuum, which drives through the house.</figcaption></figure>
 
-<Shot id="scene/tab-media" full alt="The media tab: now playing, downloads, a shelf of recently added titles and a chart of the year." />
+## Flexible, and light
 
-## Your house, in three dimensions
+One YAML file controls everything, with [185 integrations](/integrations/) and a simple way to [add your own](/build/). It runs as one Node process, uses about 45 MB of RAM on a fresh install, and the image is 166 MB.
 
-With [Home Assistant](/integrations/homeassistant/) and a robot vacuum's map, Valet draws a floor plan with each room's lights. The same stage draws your PC from [`rgb-control`](/integrations/rgb-control/). These load only on pages that use them.
+<figure class="why"><img src="/why/config-live.gif" alt="Editing config.yaml while Valet runs: the greeting, the wallpaper and its brightness change on the page as each line is saved" loading="lazy" /></figure>
 
-<Shot id="scene/house" full alt="A 3D floor plan of a house with lit rooms, and a list of rooms with their lights." />
+## Security first
 
-## It works on a phone
-
-The tabs move to the bottom and the cards stack.
-
-<Row>
-<Shot id="scene/phone" label="Overview" alt="The Valet overview on a phone." scale={0.5} />
-<Shot id="scene/phone-home" label="Home tab" alt="The home tab on a phone." scale={0.5} />
-</Row>
+Valet is read-only until you turn on sign-in or tell it your network is private. Your API keys stay on the server, so neither the browser nor the AI ever sees them, and the assistant only gets the access you give it, one integration at a time. Every change asks first. It runs on your own hardware, with no account and no telemetry. The [security docs](/security/) cover the rest.
 
 ## Next
 
