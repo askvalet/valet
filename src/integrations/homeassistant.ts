@@ -276,7 +276,7 @@ export default defineIntegration({
         const since = new Date(read('first_cleaning_date') ?? NaN), hours = Math.round(mins / 60), card: any = await this.widgets[key].fetch();
         return [{ id: 'home.vacuum', theme: 'home', icon: 'home', kicker: 'Your robot has vacuumed', value: Math.round(area).toLocaleString('en'), unit: 'm²', stat: 'Floor vacuumed', score: 88, facts: { vacuumHours: hours },
           scope: Number.isNaN(+since) ? 'All time' : `Since ${since.toLocaleDateString('en', { month: 'short', year: 'numeric' })}`, visual: { kind: 'home', data: card.visual.data },
-          line: `${runs.toLocaleString('en')} runs and ${hours.toLocaleString('en')} hours of work.`, trait: { name: 'The Delegator', line: 'Why do it yourself when a robot will do it and tell you about it afterwards?', strength: Math.min(.75, runs / 300) } }];
+          line: `${runs.toLocaleString('en')} runs and ${hours.toLocaleString('en')} hours of work.` }];
       },
       widgets: widgets satisfies Instance['widgets'],
       actions: {

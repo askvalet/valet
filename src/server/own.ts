@@ -28,12 +28,12 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
       ...guideTools(),
       year_in_review: {
         label: 'Looked back over the year', followUps: ['What was my most watched thing?'],
-        description: 'The year in review: the headline numbers from every service, and who that makes the person this year. Use for "my year", "wrapped", "year in review".',
+        description: 'The year in review: the headline numbers from every service. Use for "my year", "wrapped", "year in review".',
         access: 'read', input: z.object({ year: z.number().int().optional() }),
         async run({ year }) {
           const r = await o.recap(year);
-          return { data: { year: r.year, soFar: r.soFar, persona: r.persona.name, numbers: r.stats, moments: r.slides.filter(s => s.id !== 'explore').map(s => `${s.kicker} ${s.value}${s.unit ? ` ${s.unit}` : ''}`) },
-            card: { type: 'stats', title: `Your ${r.year} in review`, icon: 'chart', href: '#recap', note: r.persona.name, items: r.stats.filter(st => !r.slides.some(s => s.private && s.stat === st.label)).slice(0, 6).map(s => ({ label: s.label, value: s.value })) } };
+          return { data: { year: r.year, soFar: r.soFar, numbers: r.stats, moments: r.slides.filter(s => s.id !== 'explore').map(s => `${s.kicker} ${s.value}${s.unit ? ` ${s.unit}` : ''}`) },
+            card: { type: 'stats', title: `Your ${r.year} in review`, icon: 'chart', href: '#recap', items: r.stats.filter(st => !r.slides.some(s => s.private && s.stat === st.label)).slice(0, 6).map(s => ({ label: s.label, value: s.value })) } };
         },
       },
       timeline: {

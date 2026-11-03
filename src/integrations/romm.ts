@@ -18,8 +18,7 @@ export default defineIntegration({
         if (!stats?.ROMS) return [];
         const covers = (roms.items ?? []).map(tile).flatMap((t: any) => t.image ? [t.image] : []);
         return [{ id: 'games', theme: 'games', icon: 'game', kicker: 'Your game shelf holds', value: String(stats.ROMS), unit: 'games', stat: 'Games', score: 64, scope: 'All time', show: { images: covers, shape: 'square' },
-          line: `Across ${stats.PLATFORMS} systems, in ${fmt.bytes(stats.TOTAL_FILESIZE_BYTES, 0)}. Save files so far: ${stats.SAVES}.`,
-          trait: { name: 'The Retro Keeper', line: 'Somewhere in the rack, a Game Boy lives on.', strength: Math.min(.5, stats.ROMS / 400) } }];
+          line: `Across ${stats.PLATFORMS} systems, in ${fmt.bytes(stats.TOTAL_FILESIZE_BYTES, 0)}. Save files so far: ${stats.SAVES}.` }];
       },
       widgets: {
         recent: {

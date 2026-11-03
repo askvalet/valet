@@ -8,16 +8,15 @@ import type { Instance } from '../src/server/core.ts';
 const at = new Date(2026, 9, 30);
 const inst = (recap: Instance['recap']) => ({ widgets: {}, recap }) as Instance;
 
-test('recap: orders slides, takes the strongest trait, and survives a service that fails', async () => {
+test('recap: orders slides, and survives a service that fails', async () => {
   clearRecap();
   const r = await buildRecap(new Map([
-    ['a', inst(async () => [{ id: 'low', kicker: 'x', value: '1', line: 'l', score: 10, stat: 'Low', trait: { name: 'Weak', line: 'w', strength: .2 } }])],
+    ['a', inst(async () => [{ id: 'low', kicker: 'x', value: '1', line: 'l', score: 10, stat: 'Low' }])],
     ['b', inst(async () => { throw new Error('down'); })],
-    ['c', inst(async () => [{ id: 'high', kicker: 'y', value: '2', unit: 'h', line: 'l', score: 90, stat: 'High', trait: { name: 'Strong', line: 's', strength: .9 } }])],
+    ['c', inst(async () => [{ id: 'high', kicker: 'y', value: '2', unit: 'h', line: 'l', score: 90, stat: 'High' }])],
     ['d', { widgets: {} } as Instance],
   ]), 2026, at);
   assert.deepEqual(r.slides.map(s => s.id), ['high', 'low']);
-  assert.equal(r.persona.name, 'Strong');
   assert.deepEqual(r.stats, [{ label: 'High', value: '2 h' }, { label: 'Low', value: '1' }]);
   assert.equal(r.soFar, true);
 });
@@ -43,14 +42,13 @@ test('recap: the short story takes the slides with something to show, a theme pa
   const bare = (theme: string, score: number) => ({ id: `${theme}.count`, theme, kicker: 'k', value: '1', line: 'l', score });
   const r = await buildRecap(new Map([['a', inst(async () => [
     bare('media', 60), { id: 'media.chart', theme: 'media', kicker: 'k', value: '2', line: 'l', score: 70, chart: { pct: .5, from: 'a', to: 'b', mark: 'm' } },
-    bare('home', 60), { id: 'home.trait', theme: 'home', kicker: 'k', value: '3', line: 'l', score: 50, trait: { name: 'T', line: 't', strength: .5 } },
+    bare('home', 60), { id: 'home.bars', theme: 'home', kicker: 'k', value: '3', line: 'l', score: 55, bars: [{ label: 'a', value: 1, show: '1' }] },
     bare('files', 60), bare('ops', 58), bare('reach', 56), bare('code', 55), bare('food', 54), bare('games', 53), bare('music', 52), bare('ai', 51),
   ])]]), 2023, at);
   const ids = r.slides.map(s => s.id);
   assert.ok(ids.slice(0, 8).includes('media.chart') && !ids.slice(0, 8).includes('media.count'));   // the chart beat the bare count of the same theme
-  assert.ok(ids.slice(0, 8).includes('home.trait') && !ids.slice(0, 8).includes('home.count'));
+  assert.ok(ids.slice(0, 8).includes('home.bars') && !ids.slice(0, 8).includes('home.count'));
   assert.equal(ids.length, 12);                                                               // nothing lost
-  assert.equal(r.persona.name, 'T');
   clearRecap();
   const few = await buildRecap(new Map([['a', inst(async () => [bare('media', 80), bare('home', 60), bare('ai', 50)])]]), 2022, at);
   assert.deepEqual(few.slides.map(s => s.id), ['media.count', 'home.count', 'ai.count']);

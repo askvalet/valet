@@ -41,8 +41,7 @@ export default defineIntegration({
         if (!st?.documents_total) return [];
         return [{ id: 'docs', theme: 'files', icon: 'file', kicker: 'You keep', value: Number(st.documents_total).toLocaleString('en'), unit: 'documents', stat: 'Documents kept', score: 78, scope: 'All time',
           line: `${Math.round(st.character_count / 1e6)} million characters of text, every word searchable. Most of it from:`, show: { images: docs.results.map((d: any) => ctx.image(String(d.id))), soft: true },
-          bars: who.results.filter((c: any) => c.document_count).map((c: any) => ({ label: c.name, value: c.document_count, show: Number(c.document_count).toLocaleString('en') })),
-          trait: { name: 'The Archivist', line: 'If it has ever been printed, emailed or scanned, you can find it in four seconds.', strength: Math.min(.8, st.documents_total / 5000) } }];
+          bars: who.results.filter((c: any) => c.document_count).map((c: any) => ({ label: c.name, value: c.document_count, show: Number(c.document_count).toLocaleString('en') })) }];
       },
       widgets: {
         recent: {

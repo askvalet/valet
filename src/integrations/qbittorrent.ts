@@ -128,8 +128,7 @@ export default defineIntegration({
         if (!s?.alltime_dl) return [];
         const ratio = s.alltime_ul / s.alltime_dl;
         return [{ id: 'seed.ratio', theme: 'network', icon: 'download', kicker: 'Your share ratio', value: ratio.toFixed(2), stat: 'Share ratio', score: 75, scope: 'All time', facts: { uploadedBytes: s.alltime_ul, downloadedBytes: s.alltime_dl },
-          line: `For every byte you took, ${ratio.toFixed(2)} went back.`, bars: [{ label: 'Taken', value: s.alltime_dl, show: fmt.bytes(s.alltime_dl) }, { label: 'Given back', value: s.alltime_ul, show: fmt.bytes(s.alltime_ul) }],
-          trait: { name: 'The Generous Seeder', line: 'You give back far more than you take, and somewhere a stranger finished their download because of you.', strength: Math.min(1, ratio / 4) } }];
+          line: `For every byte you took, ${ratio.toFixed(2)} went back.`, bars: [{ label: 'Taken', value: s.alltime_dl, show: fmt.bytes(s.alltime_dl) }, { label: 'Given back', value: s.alltime_ul, show: fmt.bytes(s.alltime_ul) }] }];
       },
       widgets,
       actions: {

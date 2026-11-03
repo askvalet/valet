@@ -107,7 +107,7 @@ function slide(id: string, slides: any[], at: number) {
   jobs.push({ id, async run(page, cdp) {
     if (!wanted(id)) return;
     await page.setViewportSize({ width: 1280, height: 720 });
-        await page.evaluate(s => (window as any).show(s), { mode: 'recap', key: id, recap: { year: new Date().getFullYear(), soFar: true, slides, persona: { name: 'The curator', line: 'Everything in its place.' }, stats: [], wall: [] } });
+        await page.evaluate(s => (window as any).show(s), { mode: 'recap', key: id, recap: { year: new Date().getFullYear(), soFar: true, slides, stats: [], wall: [] } });
     await page.waitForSelector('.rc', { timeout: 5000 });
     await page.waitForFunction(() => document.querySelector('.rc-ctl'), undefined, { timeout: 5000 });
     await page.keyboard.press('p');                 // stop the timer: this is one slide, held

@@ -37,7 +37,6 @@ export interface RecapSlide {
   score?: number;          // higher comes earlier; 50 by default
   stat?: string;           // its label on the shareable card, if it belongs there
   private?: boolean;       // names people, so it stays off the shareable card unless chosen
-  trait?: { name: string; line: string; strength: number };     // who this makes you, 0..1: the strongest wins
   icon?: string;
   backdrop?: string;       // wide artwork, full bleed behind the slide
   wall?: boolean;          // the drifting wall of posters behind it
@@ -52,7 +51,7 @@ export interface RecapSlide {
   race?: Race;             // the top titles overtaking each other, beside the words
   facts?: Record<string, number>;   // raw numbers, so slides can be written across services
 }
-export interface Recap { year: number; soFar: boolean; slides: RecapSlide[]; persona: { name: string; line: string }; stats: { label: string; value: string }[]; wall: string[] }
+export interface Recap { year: number; soFar: boolean; slides: RecapSlide[]; stats: { label: string; value: string }[]; wall: string[] }
 
 /** What an action is about to do, in words a person would use, for the approval card. */
 export interface Confirm { title: string; detail?: string; image?: string; icon?: string; verb?: string; danger?: boolean; logo?: string }

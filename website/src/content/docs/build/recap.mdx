@@ -19,7 +19,6 @@ async recap({ year, from, to }) {
     line: 'One sentence on why that matters.',
     stat: 'Things made',
     score: 60,
-    trait: { name: 'The Maker', line: 'Who this makes them.', strength: 0.6 },
   }];
 }
 ```
@@ -57,7 +56,7 @@ A `service()` gets its app icon on the slide without asking, unless the slide br
 
 ## How slides are chosen
 
-Valet keeps up to 3 slides per theme from each service and 4 per theme overall, sorted by `score`. The strongest slides play first, up to eight, the richest at the front. A slide with a chart, artwork or a trait beats a bare count, and neighbours never share a theme. All the rest follow without a break.
+Valet keeps up to 3 slides per theme from each service and 4 per theme overall, sorted by `score`. The strongest slides play first, up to eight, the richest at the front. A slide with a chart or artwork beats a bare count, and neighbours never share a theme. All the rest follow without a break.
 
 ## Slide fields
 
@@ -73,7 +72,6 @@ Valet keeps up to 3 slides per theme from each service and 4 per theme overall, 
 | `theme` | One of `media`, `music`, `reading`, `food`, `home`, `network`, `reach`, `security`, `files`, `ops`, `code`, `ai`, `hardware`, `games`. |
 | `stat` | Its label on the shareable card, if it belongs there. |
 | `private` | It names people. |
-| `trait` | `{ name, line, strength }`. Who this makes you, 0 to 1. The strongest across all services wins. |
 | `logo` | The app's icon, large, tinting the slide with its colours. |
 | `items` | A top five: `{ name, value, image }`. |
 | `bars` | A small chart of what the number is made of: `{ label, value, show }`. |

@@ -72,14 +72,13 @@ export default defineIntegration({
       const race = raceOf(rows, ctx.image), led = race && ledFrom(race);
       const slides: RecapSlide[] = [
         { id: 'watch.hours', theme: 'media', icon: 'play', kicker: 'You watched', value: hours.toLocaleString('en'), unit: 'hours', stat: 'Hours watched', score: 95, scope: 'year', facts: { watchedHours: total / 3600 }, art: recent, wall: true,
-          line: `${rows.length} plays, all from your own server.`,
-          trait: { name: 'The Projectionist', line: 'The lights go down, the server spins up, and the house gets exactly what it wanted to watch.', strength: Math.min(.9, hours / 500) } },
+          line: `${rows.length} plays, all from your own server.` },
         { id: 'watch.top', theme: 'media', icon: 'film', kicker: 'Your most watched', value: titles[0][0], backdrop: art, line: `${titles[0][1].n} ${titles[0][1].n === 1 ? 'play' : 'plays'} and ${hrs(titles[0][1].s)}, more time than anything else this year.${led ? ` In front from ${race!.steps[led]}.` : ''}`, score: race ? 99 : 90, scope: 'year', race,
           items: titles.slice(0, 5).map(([name, e]) => ({ name, value: hrs(e.s), image: poster(e.h) })) },
         { id: 'watch.day', theme: 'media', icon: 'calendar', kicker: 'Your night in', value: `${day}s`, line: `${dayN} of your ${rows.length} plays started on a ${day}.`, score: 60, scope: 'year', bars: byDay },
       ];
       if (people.length > 1) slides.push({ id: 'watch.people', theme: 'media', icon: 'play', kicker: 'Who kept Plex busiest', value: people[0][0], line: `${hrs(people[0][1].s)} of the ${hrs(total)} everyone watched.`, score: 70, scope: 'year', private: true, bars: people.slice(0, 5).map(([label, e]) => ({ label, value: e.s, show: hrs(e.s) })) });
-      if (late > .25) slides.push({ id: 'watch.late', theme: 'media', icon: 'moon', kicker: 'After 11 PM', value: `${Math.round(late * 100)}%`, line: 'of everything you watched started when you should have been asleep.', score: 55, scope: 'year', trait: { name: 'The Night Owl', line: "The disks spin, the house sleeps, and you're still one more episode away from bed.", strength: late } });
+      if (late > .25) slides.push({ id: 'watch.late', theme: 'media', icon: 'moon', kicker: 'After 11 PM', value: `${Math.round(late * 100)}%`, line: 'of everything you watched started when you should have been asleep.', score: 55, scope: 'year' });
       return slides;
     }
 

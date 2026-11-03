@@ -135,8 +135,7 @@ async recap({ year, from, to }) {
   const n = await countThings(from, to);
   if (!n) return [];                               // nothing to say? say nothing
   return [{ id: 'things', kicker: 'You made', value: n.toLocaleString('en'), unit: 'things', scope: 'year',
-    line: 'One sentence on why that matters.', stat: 'Things made', score: 60,
-    trait: { name: 'The Maker', line: 'Who this makes them.', strength: 0.6 } }];
+    line: 'One sentence on why that matters.', stat: 'Things made', score: 60 }];
 }
 ```
 
@@ -145,7 +144,6 @@ async recap({ year, from, to }) {
   the review opens "Your homelab / Busy, wasn't it?" rather than on the year.
 - `score` orders the story (higher comes earlier, 50 by default), and `stat` puts the number on the shareable card.
 - `items` is a top five, with an optional `image`. Mark a slide `private: true` if it names people.
-- `trait` is a personality: the strongest across all services becomes who the person was this year.
 - `backdrop` is wide artwork behind the slide, `wall: true` puts the drifting wall of posters behind it, and `art` adds
   posters to that wall. `bars` is a small chart of what the number is made of, `chart` a progress bar.
 - `logo` is the app's icon, shown large with its colours across the slide. A `service()` gets its own without asking.

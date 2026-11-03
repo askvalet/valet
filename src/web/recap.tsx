@@ -1,5 +1,5 @@
 // The year in review, in Valet's own design: one idea per screen, over your artwork and your wallpaper. A short story, a
-// screen that offers the rest, who you were, and a card drawn to a canvas, so the picture you save is exactly the one you see.
+// screen that offers the rest, and a card drawn to a canvas, so the picture you save is exactly the one you see.
 import { ThinkingOrb } from 'thinking-orbs';
 import './recap.css';
 import { AlignLeft, ChevronLeft, ChevronRight, Download, Eye, EyeOff, Pause, Play, X } from 'lucide-react';
@@ -11,7 +11,7 @@ import type { Recap, RecapSlide } from '../shared/cards.ts';
 
 type Stat = Recap['stats'][number];
 
-const STEP = 7000, RACE = 10_000, OPENING = 3200, PAYOFF = 10_000, CARD_MAX = 6, HINT = 'valet-recap-hint', TINTS = ['#64d2ff', '#ff9f6b', '#5ee0c5', '#ffc266', '#ff8ac4', '#7d9cff'];
+const STEP = 7000, RACE = 10_000, OPENING = 3200, CARD_MAX = 6, HINT = 'valet-recap-hint', TINTS = ['#64d2ff', '#ff9f6b', '#5ee0c5', '#ffc266', '#ff8ac4', '#7d9cff'];
 const OUTWARD = new Set(['network', 'reach', 'security']);   // how your network is built and what it shares: nobody's business on a public card
 
 const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches || /motion-(reduced|none)/.test(document.documentElement.className);
@@ -109,10 +109,9 @@ function Slide({ s, year, children }: { s: RecapSlide; year: number; children?: 
 
 const pictures = new Map<string, Promise<HTMLImageElement | null>>();
 const picture = (src: string) => { if (!pictures.has(src)) pictures.set(src, new Promise(ok => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; })); return pictures.get(src)!; };
-const lines = (x: CanvasRenderingContext2D, text: string, width: number) => text.split(' ').reduce<string[]>((out, w) => { const l = out.at(-1); if (l !== undefined && x.measureText(`${l} ${w}`).width <= width) out[out.length - 1] = `${l} ${w}`; else out.push(w); return out; }, []);
 
-/** The card to share: a wall of your posters with who you were and your numbers over it. Without the posters there's
- *  nothing to fill the middle, so it's as tall as what it holds and says who you were in full. Drawn aside and copied in whole, so a toggle never shows a half-made card. */
+/** The card to share: a wall of your posters with your numbers over it. Without the posters there's
+ *  nothing to fill the middle, so it's as tall as what it holds. Drawn aside and copied in whole, so a toggle never shows a half-made card. */
 async function drawCard(c: HTMLCanvasElement, r: Recap, art: boolean, title: string, list: Stat[], stale: () => boolean) {
   await document.fonts.load('600 80px "Geist Variable"').catch(() => {});
   const pics = art && r.wall.length ? (await Promise.all(r.wall.slice(0, 18).map(picture))).filter(Boolean) as HTMLImageElement[] : [];
@@ -120,9 +119,9 @@ async function drawCard(c: HTMLCanvasElement, r: Recap, art: boolean, title: str
   const o = document.createElement('canvas'), x = o.getContext('2d')!, posters = pics.length > 0;
   const font = (n: number, w = 600) => { x.font = `${w} ${n}px "Geist Variable", system-ui, sans-serif`; };
   const W = 1080, gap = 20, cw = (W - 144 - gap) / 2, ch = 172, odd = list.length % 2, rows = Math.ceil(list.length / 2), grid = rows ? rows * (ch + gap) - gap : 0;
-  let n = 104; do { font(n); n -= 2; } while (x.measureText(r.persona.name).width > W - 144 && n > 40);
-  const size = n + 2; font(40, 500); const about = posters ? [] : lines(x, r.persona.line, W - 144);
-  const H = posters ? 1350 : 214 + about.length * 54 + 40 + grid + (grid ? 44 : 0) + 78;
+  let n = 104; do { font(n); n -= 2; } while (x.measureText(title).width > W - 144 && n > 40);
+  const size = n + 2;
+  const H = posters ? 1350 : 214 + 40 + grid + (grid ? 44 : 0) + 78;
   o.width = W; o.height = H;
   x.fillStyle = '#0b0b0d'; x.fillRect(0, 0, W, H);
   if (posters) {
@@ -141,10 +140,8 @@ async function drawCard(c: HTMLCanvasElement, r: Recap, art: boolean, title: str
     glow.addColorStop(0, 'rgba(100,210,255,.26)'); glow.addColorStop(1, 'rgba(100,210,255,0)');
     x.fillStyle = glow; x.fillRect(0, 0, W, H);
   }
-  x.fillStyle = '#fff'; font(34, 500); x.globalAlpha = .85; x.fillText(title, 72, 104); x.globalAlpha = 1;
-  font(size); x.letterSpacing = '-2px'; x.fillText(r.persona.name, 72, 214); x.letterSpacing = '0px';
-  font(40, 500); x.globalAlpha = .82; about.forEach((l, i) => x.fillText(l, 72, 280 + i * 54)); x.globalAlpha = 1;
-  const top = posters ? H - 118 - grid : 214 + about.length * 54 + 44 + 40;
+  x.fillStyle = '#fff'; font(size); x.letterSpacing = '-2px'; x.fillText(title, 72, 190); x.letterSpacing = '0px';
+  const top = posters ? H - 118 - grid : 214 + 44 + 40;
   list.forEach((s, i) => {   // an odd one out leads, across the full width
     const lead = odd && i === 0, at = i + (odd && i ? 1 : 0), px = 72 + (at % 2) * (cw + gap), py = top + Math.floor(at / 2) * (ch + gap), w = lead ? W - 144 : cw;
     x.fillStyle = 'rgba(40,40,46,.72)'; x.beginPath(); x.roundRect(px, py, w, ch, 28); x.fill();
@@ -165,7 +162,7 @@ function Card({ r, art, title, list }: { r: Recap; art: boolean; title: string; 
 }
 
 /** Everything the story says, as ordinary text, in its order: no timer, nothing to catch. */
-function Transcript({ r, heading, closing, list }: { r: Recap; heading: string; closing: string; list: Stat[] }) {
+function Transcript({ r, heading, list }: { r: Recap; heading: string; list: Stat[] }) {
   const detail = (s: RecapSlide) => [...(s.chart ? [`${s.chart.mark}: ${(s.chart.pct * 100).toFixed(1)}%`] : []), ...(s.items ?? []).map(i => [i.name, i.value].filter(Boolean).join(', ')), ...(s.bars ?? []).map(b => [b.label, b.show].filter(Boolean).join(', '))];
   return (
     <div className="rc-text">
@@ -175,7 +172,6 @@ function Transcript({ r, heading, closing, list }: { r: Recap; heading: string; 
         {detail(s).length > 0 && <ul>{detail(s).map(d => <li key={d}>{d}</li>)}</ul>}
         {s.scope && <small>{scopeLabel(s, r.year)}</small>}
       </li>)}</ol>
-      <h3>{closing} <b>{r.persona.name}</b></h3><p>{r.persona.line}</p>
       {list.length > 0 && <dl>{list.map(s => <div key={s.label}><dt>{s.label}</dt><dd>{s.value}</dd></div>)}</dl>}
     </div>
   );
@@ -186,9 +182,9 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
   const [text, setText] = useState(false), [hint, setHint] = useState(false), [bare, setBare] = useState(false), [picked, setPicked] = useState<string[] | null>(null);
   useEffect(() => { fetch(`/api/recap${year ? `?year=${year}` : ''}`).then(x => x.ok ? x.json() : Promise.reject()).then(setR, () => setFailed(true)); }, [year]);
   const shown = r?.slides ?? [];
-  // the opening, the slides, who you were, the card
-  const last = r ? shown.length + 2 : 0, done = i >= last, who = !!r && i === shown.length + 1, s = i > 0 && i <= shown.length ? shown[i - 1] : undefined;
-  const yearly = !!r && aboutTheYear(r), heading = !r || yearly ? `Your ${r?.year ?? ''} in review` : 'Your homelab in review', closing = yearly ? 'This year, you were' : 'All told, you are';
+  // the opening, the slides, the card
+  const last = r ? shown.length + 1 : 0, done = i >= last, s = i > 0 && i <= shown.length ? shown[i - 1] : undefined;
+  const yearly = !!r && aboutTheYear(r), heading = !r || yearly ? `Your ${r?.year ?? ''} in review` : 'Your homelab in review';
   const title = yearly ? `My ${r?.year} homelab${r?.soFar ? ', so far' : ''}` : 'My homelab';
   const list = useMemo(() => { if (!r) return []; const on = picked ?? startingStats(r); return r.stats.filter(st => on.includes(st.label) && !(bare && revealing(r, st))).slice(0, CARD_MAX); }, [r, picked, bare]);
   const go = useCallback((by: number) => setI(n => Math.max(0, Math.min(last, n + by))), [last]);
@@ -208,7 +204,7 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
     addEventListener('keydown', key); return () => removeEventListener('keydown', key);
   }, [go, onClose, text]);
   // the timer keeps what's left, so a hold or a pause carries on from where the bar stopped
-  const ms = i === 0 ? OPENING : who ? PAYOFF : s?.race ? RACE : STEP, left = useRef(ms), running = !!r?.slides.length && !held && !paused && !done && !text;
+  const ms = i === 0 ? OPENING : s?.race ? RACE : STEP, left = useRef(ms), running = !!r?.slides.length && !held && !paused && !done && !text;
   useEffect(() => { left.current = ms; }, [i, ms]);
   useEffect(() => { if (!running) return; const t0 = performance.now(), t = setTimeout(() => go(1), left.current); return () => { clearTimeout(t); left.current = Math.max(0, left.current - (performance.now() - t0)); }; }, [running, i, go]);
   useEffect(() => { for (const s of r?.slides ?? []) if (s.backdrop) new Image().src = s.backdrop; }, [r]);
@@ -221,14 +217,14 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
   const drop = () => { pressed.current = 0; setHeld(false); };
   const save = () => document.querySelector<HTMLCanvasElement>('.rc-share canvas')?.toBlob(b => { if (!b) return; const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `my-homelab${yearly ? `-${r!.year}` : ''}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }, 'image/png');
   const toggle = (label: string) => setPicked(p => { const on = p ?? startingStats(r!); return on.includes(label) ? on.filter(l => l !== label) : [...on, label]; });
-  const say = !r?.slides.length ? '' : `Screen ${i + 1} of ${last + 1}. ${i === 0 ? heading : who ? `${closing} ${r.persona.name}. ${r.persona.line}` : done ? 'Your card. Choose what goes on it, then save the picture.' : s ? said(s, r.year) : ''}`;
+  const say = !r?.slides.length ? '' : `Screen ${i + 1} of ${last + 1}. ${i === 0 ? heading : done ? 'Your card. Choose what goes on it, then save the picture.' : s ? said(s, r.year) : ''}`;
   return createPortal(
     <div ref={dialog} tabIndex={-1} role="dialog" aria-modal aria-label={heading} className="rc" style={{ '--tint': TINTS[i % TINTS.length] } as React.CSSProperties}
       onContextMenu={e => e.preventDefault()}
       onPointerDown={e => { if (e.button || off(e)) return; pressed.current = Date.now(); setHeld(true); }}
       onPointerUp={e => { if (!pressed.current) return; const quick = Date.now() - pressed.current < 280; drop(); if (quick) go(e.clientX < innerWidth * .28 ? -1 : 1); }}
       onPointerCancel={drop} onPointerLeave={drop}>
-      <Backdrop s={s ?? (r && (i === 0 || who) ? { id: who ? 'who' : 'open', kicker: '', value: '', line: '', wall: true } : undefined)} wall={r?.wall ?? []} wallpaper={wallpaper} />
+      <Backdrop s={s ?? (r && i === 0 ? { id: 'open', kicker: '', value: '', line: '', wall: true } : undefined)} wall={r?.wall ?? []} wallpaper={wallpaper} />
       {s?.visual && <Model key={s.id} visual={s.visual} />}
       {s?.icons && <Icons key={s.id} icons={s.icons} />}
       {s?.logo && <div key={s.id} className="rc-logo"><img src={s.logo} alt="" /></div>}
@@ -239,10 +235,9 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
             {yearly ? <><div className="rc-kicker">Your</div><div className="rc-value" style={{ fontSize: 'clamp(96px, 22vw, 210px)' }}>{r.year}</div><p className="rc-line">{r.soFar ? 'The year so far.' : 'The whole year.'}</p></>
               : <><div className="rc-kicker">Your homelab</div><div className="rc-value" style={{ fontSize: 'clamp(64px, 12vw, 124px)' }}>Busy, wasn't it?</div><p className="rc-line">Here's what it got up to while you weren't looking.</p></>}
           </div>
-        : who ? <div className="rc-body" key="who"><div className="rc-kicker">{closing}</div><div className="rc-value" style={{ fontSize: 'clamp(50px, 10vw, 100px)' }}>{r.persona.name}</div><p className="rc-line">{r.persona.line}</p></div>
         : done ? <div className="rc-share" key="card">
             <Card r={r} art={!bare} title={title} list={list} />
-            <div className="sr-only"><p>{title}: {r.persona.name}. {r.persona.line}</p>{list.length > 0 && <dl>{list.map(st => <div key={st.label}><dt>{st.label}</dt><dd>{st.value}</dd></div>)}</dl>}</div>
+            <div className="sr-only"><p>{title}</p>{list.length > 0 && <dl>{list.map(st => <div key={st.label}><dt>{st.label}</dt><dd>{st.value}</dd></div>)}</dl>}</div>
             <div className="rc-pick">
               <div className="rc-chips" role="group" aria-label="Numbers on the card">
                 {r.stats.filter(st => !(bare && revealing(r, st))).map(st => { const on = list.includes(st); return <button key={st.label} aria-pressed={on} disabled={!on && list.length >= CARD_MAX} onClick={() => toggle(st.label)} className="press rc-pill">{st.label}</button>; })}
@@ -252,7 +247,7 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
             </div>
           </div>
         : s && <Slide s={s} year={r.year} />}
-      {text && r && <Transcript r={r} heading={heading} closing={closing} list={list} />}
+      {text && r && <Transcript r={r} heading={heading} list={list} />}
       <div className="sr-only" aria-live="polite">{text ? '' : say}</div>
       {!!r?.slides.length && <div className="rc-seg" aria-hidden>{Array.from({ length: last + 1 }, (_, n) => <span key={n}><i className={n === i && !done ? 'on' : ''} style={n < i || done ? { animation: 'none' } : n === i ? { animationDuration: `${ms}ms`, animationPlayState: running ? 'running' : 'paused' } : { transform: 'scaleX(0)' }} /></span>)}</div>}
       {hint && i < 2 && !text && <div className="rc-hint">Tap the right to go on, the left to go back. Hold to pause. Arrow keys work too.</div>}
