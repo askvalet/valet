@@ -3,6 +3,7 @@ import { feeds } from './feeds.ts';
 import { home } from './home.ts';
 import { infra } from './infra.ts';
 import { media } from './media.ts';
+import { mediaRich } from './media-rich.ts';
 import type { Fixture } from './types.ts';
 
-export const fixtures: Record<string, Fixture> = { ...media, ...home, ...infra, ...feeds };
+export const fixtures: Record<string, Fixture> = { ...media, ...mediaRich, ...home, ...infra, ...feeds };
