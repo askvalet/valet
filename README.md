@@ -55,7 +55,7 @@ works just fine with the AI switched off.
 
 ### Made to be enjoyed
 
-Live cards, real artwork, smooth animations and 3D models of your house and PC. It's a page
+Live cards, real artwork, smooth animations and 3D models. It's a page
 you'll want to look at and use.
 
 <p align="center"><img src="docs/images/home-3d.gif" alt="The 3D floor plan: picking the living room, turning its lights blue, and sending the vacuum, which drives through the house" width="620"><br><sub>Pick a room, change its lights, and send the vacuum, which drives through the house.</sub></p>
