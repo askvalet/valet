@@ -8,6 +8,9 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 ### Added
 
 - Proxmox VE, Speedtest Tracker, Syncthing, Backrest and Healthchecks.io are full integrations. Proxmox shows every node and guest with its CPU, memory and uptime and the storage pools by fill, and can start, shut down or reboot one guest. Speedtest Tracker charts the last days and can run a test. Syncthing shows folders and devices, out of sync first, and can rescan a folder. Backrest shows each plan's last backup and the next, and can run one now. Healthchecks shows each check with its last ping, and can pause and resume one. Everything that changes something asks first, and their old `status` widget and settings still work.
+- Mealie and Tandoor are full integrations: this week's meal plan from today, a recipe of the day with its photo, and new recipes. The assistant searches and reads recipes and adds to the shopping list, asking first.
+- Komga and Kavita: continue reading with covers and how far along, what's next in a series (Komga) and what was added lately. The assistant searches the library and says what you're reading.
+- Miniflux: the unread articles as a pile to step through (archiving one marks it read), unread per feed, and starred. The assistant searches and reads entries, and marks them read or stars them, asking first.
 
 ### Changed
 

@@ -106,6 +106,10 @@ Each service decides what its keys can do. Use the narrowest kind it offers.
 | Syncthing | It has one API key, which can do everything. Keep `assistant.access` at `read` unless you want rescans from chat |
 | Backrest | Its users can do everything. Keep `assistant.access` at `read` unless you want backups started from chat |
 | Healthchecks.io | The project's read-only API key. Pausing and resuming from chat need the full key |
+| Mealie | An API token from a user who isn't an admin. Adding to a shopping list from chat asks you first |
+| Tandoor | A token with the `read` scope; add `write` only if you want the shopping list from chat |
+| Komga, Kavita | A user who isn't an admin (Kavita's server totals on `status` need one). Nothing from chat changes them |
+| Miniflux | An API key. Marking read or starring from chat asks you first |
 
 And the general rules:
 

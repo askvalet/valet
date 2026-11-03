@@ -3,12 +3,12 @@ export const FAMILY_NAMES: Record<string, string> = { media: 'Media', downloads:
 const group = (name: string, types: string) => Object.fromEntries(types.split(' ').map(t => [t, name]));
 export const CATEGORIES = ['Media', 'Downloads', 'Network', 'Infrastructure', 'Home and daily life', 'Feeds and web', 'Apps', 'Build your own'];
 export const CATEGORY: Record<string, string> = {
-  ...group('Media', 'arr tautulli seerr immich romm'),
+  ...group('Media', 'arr tautulli seerr immich romm komga kavita'),
   ...group('Downloads', 'qbittorrent indexers'),
   ...group('Network', 'pihole speedtest-tracker'),
-  ...group('Infrastructure', 'docker glances host uptimekuma scrutiny proxmox backrest healthchecks apcups minecraft ollama aimonitor'),
-  ...group('Home and daily life', 'homeassistant weather calendar camera rgb-control todo clock frigate esphome evcc homebridge opendtu octoprint moonraker spoolman'),
-  ...group('Feeds and web', 'rss hackernews lobsters reddit releases repository markets twitch'),
+  ...group('Infrastructure', 'docker glances host uptimekuma scrutiny apcups minecraft ollama aimonitor proxmox backrest healthchecks'),
+  ...group('Home and daily life', 'homeassistant weather calendar camera rgb-control todo clock frigate esphome evcc homebridge opendtu octoprint moonraker spoolman mealie tandoor'),
+  ...group('Feeds and web', 'rss hackernews lobsters reddit releases repository markets twitch miniflux'),
   ...group('Apps', 'changedetection karakeep paperless syncthing'),
   ...group('Build your own', 'api http iframe links'),
 };

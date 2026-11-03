@@ -141,29 +141,6 @@ export default [
     expect: { Libraries: 3, 'Book libraries': 2, 'Podcast libraries': 1 },
   }),
   service({
-    type: 'kavita', name: 'Kavita', icon: 'book', auth: { login: '/api/Account/login', body: c => ({ username: c.username, password: c.password, apiKey: '' }), token: r => r.token },
-    get: { stats: '/api/Stats/server/stats' },
-    stats: d => [{ label: 'Series', value: d.stats?.seriesCount ?? 0 }, { label: 'Files', value: d.stats?.totalFiles ?? 0 }],
-    recap: d => tally(d.stats?.seriesCount, { id: 'kavita.series', theme: 'reading', icon: 'book', kicker: 'Your Kavita library holds', unit: 'series', stat: 'Series', scope: 'All time', line: `${d.stats?.totalFiles ?? 0} files, ready on any screen you own.` }),
-    sample: { stats: { seriesCount: 214, totalFiles: 5620 } },
-    expect: { Series: 214, Files: '5,620' },
-  }),
-  service({
-    type: 'komga', name: 'Komga', icon: 'book', auth: 'basic',
-    // newer versions list with a POST, older ones with a GET
-    get: {
-      libraries: '/api/v1/libraries',
-      series: { path: '/api/v1/series/list?size=1', method: 'POST', body: {}, optional: true }, seriesOld: { path: '/api/v1/series?size=1', optional: true },
-      books: { path: '/api/v1/books/list?size=1', method: 'POST', body: {}, optional: true }, booksOld: { path: '/api/v1/books?size=1', optional: true },
-    },
-    stats: d => [{ label: 'Libraries', value: (d.libraries ?? []).filter((l: any) => !l?.unavailable).length },
-      { label: 'Series', value: d.series?.totalElements ?? d.seriesOld?.totalElements ?? 0 }, { label: 'Books', value: d.books?.totalElements ?? d.booksOld?.totalElements ?? 0 }],
-    recap: d => tally(d.books?.totalElements ?? d.booksOld?.totalElements, { id: 'komga.books', theme: 'reading', icon: 'book', kicker: 'On your shelves', unit: 'books', stat: 'Books', scope: 'All time', line: `Across ${d.series?.totalElements ?? d.seriesOld?.totalElements ?? 0} series, and none of them can be pulled from a store.` }),
-    sample: { libraries: [{ id: '1', name: 'Comics', unavailable: false }, { id: '2', name: 'Unplugged', unavailable: true }],
-      series: { totalElements: 318, content: [] }, seriesOld: { totalElements: 318, content: [] }, books: { totalElements: 7240, content: [] }, booksOld: { totalElements: 7240, content: [] } },
-    expect: { Libraries: 1, Series: 318, Books: '7,240' },
-  }),
-  service({
     type: 'calibre-web', name: 'Calibre-Web', icon: 'book', auth: 'basic',
     get: { stats: '/opds/stats' },
     stats: d => [{ label: 'Books', value: d.stats?.books ?? 0 }, { label: 'Authors', value: d.stats?.authors ?? 0 },
