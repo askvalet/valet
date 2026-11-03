@@ -8,7 +8,7 @@ new gotcha is learned. `CLAUDE.md`-style tools should treat this file as their i
 ## What Valet is
 
 A homepage for a homelab: live cards for the services you run, controls for the things you can change, and an
-assistant that answers with the same cards. One Node process, one YAML file, about 65 MB of RAM. The public site is
+assistant that answers with the same cards. One Node process, one YAML file, about 45 MB of RAM on a fresh install. The public site is
 https://askvalet.dev.
 
 ## Principles
