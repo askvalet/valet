@@ -24,41 +24,8 @@ const ago = (t?: string | number | null) => {
 };
 const kw = (w = 0) => Math.round(w / 10) / 100;
 
-const PROXMOX_TYPES = ['qemu', 'lxc'];
-
 export default [
   // Virtual machines
-  service<{ node?: string; vmid?: number }>({
-    type: 'proxmox', name: 'Proxmox', icon: 'cpu', auth: { header: 'Authorization', prefix: 'PVEAPIToken=' },   // key: user@pam!tokenid=secret
-    options: { node: z.string().optional(), vmid: z.number().optional() },   // one node, or just one VM or container
-    get: { resources: '/api2/json/cluster/resources' },
-    stats: (d, o) => {
-      const all = list(d.resources?.data).filter(r => !o.node || r.node === o.node);
-      if (o.vmid != null) {
-        const vm = all.find(r => PROXMOX_TYPES.includes(r.type) && r.vmid === o.vmid);
-        if (!vm) return [{ label: 'Status', value: 'Not found' }];
-        const on = vm.status === 'running';
-        return [{ label: 'Status', value: vm.status ?? 'unknown', tone: on ? 'good' : 'neutral', sub: vm.name },
-          ...(on ? [meter('CPU', vm.cpu, 1), meter('Memory', vm.mem, vm.maxmem, `of ${fmt.bytes(vm.maxmem ?? 0)}`), { label: 'Uptime', value: uptime(vm.uptime) }] : [])];
-      }
-      const guests = (type: string) => all.filter(r => r.type === type && !r.template), running = (g: any[]) => g.filter(r => r.status === 'running').length;
-      const vms = guests('qemu'), lxc = guests('lxc'), hosts = all.filter(r => r.type === 'node'), online = hosts.filter(r => r.status === 'online');
-      const memory = sum(online, n => n.maxmem);
-      return [{ label: 'VMs', value: of(running(vms), vms.length) }, { label: 'Containers', value: of(running(lxc), lxc.length) },
-        meter('CPU', sum(online, n => n.cpu * n.maxcpu), sum(online, n => n.maxcpu)), meter('Memory', sum(online, n => n.mem), memory, `of ${fmt.bytes(memory)}`),
-        { label: 'Nodes', value: of(online.length, hosts.length), tone: online.length < hosts.length ? 'bad' : 'good' }];
-    },
-    recap: (d, o) => tally(list(d.resources?.data).filter(r => PROXMOX_TYPES.includes(r.type) && (!o.node || r.node === o.node)).length, { id: 'proxmox.guests', theme: 'hardware', icon: 'cpu', kicker: 'Proxmox is running', unit: 'machines', stat: 'Virtual machines', line: 'Whole computers inside your computer.' }),
-    sample: { resources: { data: [
-      { id: 'node/pve', type: 'node', node: 'pve', status: 'online', cpu: 0.25, maxcpu: 16, mem: 34359738368, maxmem: 68719476736, uptime: 1209600 },
-      { id: 'node/pve2', type: 'node', node: 'pve2', status: 'offline' },
-      { id: 'qemu/100', type: 'qemu', vmid: 100, name: 'haos', node: 'pve', status: 'running', cpu: 0.04, mem: 2147483648, maxmem: 4294967296, uptime: 86400, template: 0 },
-      { id: 'qemu/101', type: 'qemu', vmid: 101, name: 'windows', node: 'pve', status: 'stopped', cpu: 0, mem: 0, maxmem: 8589934592, uptime: 0, template: 0 },
-      { id: 'qemu/9000', type: 'qemu', vmid: 9000, name: 'debian-template', node: 'pve', status: 'stopped', template: 1 },
-      { id: 'lxc/200', type: 'lxc', vmid: 200, name: 'pihole', node: 'pve', status: 'running', cpu: 0.01, mem: 268435456, maxmem: 536870912, uptime: 86400, template: 0 },
-      { id: 'storage/pve/local', type: 'storage', node: 'pve', status: 'available' }] } },
-    expect: { VMs: '1 / 2', Containers: '1 / 1', CPU: '25%', Memory: '50%', Nodes: '1 / 2' },
-  }),
   service<{ datastore?: string }>({
     type: 'proxmox-backup', name: 'Proxmox Backup Server', icon: 'shield', logo: 'proxmox', auth: { header: 'Authorization', prefix: 'PBSAPIToken=' },   // key: user@pbs!tokenid:secret
     options: { datastore: z.string().optional() },
@@ -283,20 +250,6 @@ export default [
       { source: { host: 'nas', userName: 'root', path: '/new' } }] } },
     expect: { Sources: 3, Size: '3.0 GB', Errors: 2 },
   }),
-  service<Creds>({
-    type: 'backrest', name: 'Backrest', icon: 'shield', options: userpass,
-    get: o => ({ summary: { path: '/v1.Backrest/GetSummaryDashboard', method: 'POST', body: {}, headers: basic(o) } }),
-    stats: d => {
-      const plans = list(d.summary?.planSummaries), latest = (s: string) => plans.filter(p => p.recentBackups?.status?.[0] === s).length;
-      return [{ label: 'Plans', value: plans.length }, { label: 'Latest fine', value: latest('STATUS_SUCCESS') }, alarm('Latest failed', latest('STATUS_ERROR')),
-        alarm('Failed, 30 days', sum(plans, p => p.backupsFailed30days)), { label: 'Added, 30 days', value: fmt.bytes(sum(plans, p => p.bytesAddedLast30days)) }];
-    },
-    sample: { summary: { planSummaries: [   // int64s arrive as strings
-      { id: 'daily', backupsSuccessLast30days: '30', backupsFailed30days: '1', bytesAddedLast30days: '1073741824', recentBackups: { status: ['STATUS_SUCCESS', 'STATUS_ERROR'] } },
-      { id: 'photos', backupsSuccessLast30days: '4', backupsFailed30days: '0', bytesAddedLast30days: '1073741824', recentBackups: { status: ['STATUS_ERROR'] } },
-      { id: 'fresh' }] } },
-    expect: { Plans: 3, 'Latest fine': 1, 'Latest failed': 1, 'Failed, 30 days': 1, 'Added, 30 days': '2.0 GB' },
-  }),
   service({
     type: 'duplicati', name: 'Duplicati', icon: 'shield',
     auth: { login: '/api/v1/auth/login', needs: ['password'], body: c => ({ Password: c.password, RememberMe: true }), token: r => r.AccessToken },
@@ -379,16 +332,6 @@ export default [
     sampleOptions: { site: 'cmk', username: 'automation', password: 's' },
     sample: { hosts: { value: [{ id: 'web1', extensions: { state: 1 } }] }, services: { value: [{ id: 'web1-CPU', extensions: { state: 2 } }, { id: 'web2-Disk', extensions: { state: 1 } }] } },
     expect: { 'Host problems': 1, 'Service problems': 2 },
-  }),
-  service({
-    type: 'healthchecks', name: 'Healthchecks', icon: 'pulse', auth: { header: 'X-Api-Key' },
-    get: { checks: '/api/v3/checks/' },
-    stats: d => {
-      const count = (s: string) => list(d.checks?.checks).filter(c => c.status === s).length;
-      return [{ label: 'Up', value: count('up') }, alarm('Down', count('down')), { label: 'Late', value: count('grace'), tone: count('grace') ? 'warn' : 'good' }, { label: 'Paused', value: count('paused') }];
-    },
-    sample: { checks: { checks: [{ name: 'Backups', status: 'up' }, { name: 'Certs', status: 'up' }, { name: 'Sync', status: 'down' }, { name: 'Cron', status: 'grace' }, { name: 'Old', status: 'paused' }, { name: 'Fresh', status: 'new' }] } },
-    expect: { Up: 2, Down: 1, Late: 1, Paused: 1 },
   }),
   service({
     type: 'uptimerobot', name: 'UptimeRobot', icon: 'pulse', auth: { query: 'api_key' },   // url: https://api.uptimerobot.com

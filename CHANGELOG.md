@@ -5,6 +5,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- Proxmox VE, Speedtest Tracker, Syncthing, Backrest and Healthchecks.io are full integrations. Proxmox shows every node and guest with its CPU, memory and uptime and the storage pools by fill, and can start, shut down or reboot one guest. Speedtest Tracker charts the last days and can run a test. Syncthing shows folders and devices, out of sync first, and can rescan a folder. Backrest shows each plan's last backup and the next, and can run one now. Healthchecks shows each check with its last ping, and can pause and resume one. Everything that changes something asks first, and their old `status` widget and settings still work.
+
 ### Changed
 
 - Turning a light on or off, or sending the vacuum, from chat answers with the floor plan as it is now. Pausing or resuming downloads answers with the downloads card.

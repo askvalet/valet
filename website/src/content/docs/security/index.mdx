@@ -101,6 +101,11 @@ Each service decides what its keys can do. Use the narrowest kind it offers.
 | Seerr | Its API key acts as the admin. Requests from chat ask you first |
 | Tautulli | Its API key. Stopping a stream from chat asks you first |
 | Karakeep | An API key. It can add bookmarks, and saving from chat asks you first |
+| Proxmox VE | An API token with the PVEAuditor role on `/`, to look (with privilege separation on, the token needs the role itself, not only its user). For start, shutdown and reboot from chat, add only VM.PowerMgmt, on just the guests you want (`/vms/<id>`) |
+| Speedtest Tracker | A token with only "Read results". Add "Run speedtest" only if you want tests started from chat |
+| Syncthing | It has one API key, which can do everything. Keep `assistant.access` at `read` unless you want rescans from chat |
+| Backrest | Its users can do everything. Keep `assistant.access` at `read` unless you want backups started from chat |
+| Healthchecks.io | The project's read-only API key. Pausing and resuming from chat need the full key |
 
 And the general rules:
 

@@ -20,6 +20,11 @@ import scrutiny from './scrutiny.ts';
 import seerr from './seerr.ts';
 import tautulli from './tautulli.ts';
 import uptimekuma from './uptimekuma.ts';
+import proxmox from './proxmox.ts';
+import speedtesttracker from './speedtesttracker.ts';
+import syncthing from './syncthing.ts';
+import backrest from './backrest.ts';
+import healthchecks from './healthchecks.ts';
 import weather from './weather.ts';
 import { links } from './links.ts';
 import rss from './rss.ts';
@@ -41,5 +46,5 @@ import todo from './todo.ts';
 import twitch from './twitch.ts';
 
 export const registry: Record<string, Integration> = Object.fromEntries(
-  [aimonitor, arr, camera, changedetection, glances, homeassistant, http, immich, indexers, karakeep, ollama, paperless, pihole, qbittorrent, rgbcontrol, romm, scrutiny, seerr, tautulli, uptimekuma, weather, links, rss, hackernews, reddit, releases, markets, calendar, api, docker, host, apcups, minecraft, clock, iframe, lobsters, repository, todo, twitch, ...services].map(i => [i.type, i as Integration]),
+  [aimonitor, arr, camera, changedetection, glances, homeassistant, http, immich, indexers, karakeep, ollama, paperless, pihole, qbittorrent, rgbcontrol, romm, scrutiny, seerr, tautulli, uptimekuma, weather, links, rss, hackernews, reddit, releases, markets, calendar, api, docker, host, apcups, minecraft, clock, iframe, lobsters, repository, todo, twitch, proxmox, speedtesttracker, syncthing, backrest, healthchecks, ...services].map(i => [i.type, i as Integration]),
 );

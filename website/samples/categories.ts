@@ -5,11 +5,11 @@ export const CATEGORIES = ['Media', 'Downloads', 'Network', 'Infrastructure', 'H
 export const CATEGORY: Record<string, string> = {
   ...group('Media', 'arr tautulli seerr immich romm'),
   ...group('Downloads', 'qbittorrent indexers'),
-  ...group('Network', 'pihole'),
-  ...group('Infrastructure', 'docker glances host uptimekuma scrutiny apcups minecraft ollama aimonitor'),
+  ...group('Network', 'pihole speedtest-tracker'),
+  ...group('Infrastructure', 'docker glances host uptimekuma scrutiny proxmox backrest healthchecks apcups minecraft ollama aimonitor'),
   ...group('Home and daily life', 'homeassistant weather calendar camera rgb-control todo clock frigate esphome evcc homebridge opendtu octoprint moonraker spoolman'),
   ...group('Feeds and web', 'rss hackernews lobsters reddit releases repository markets twitch'),
-  ...group('Apps', 'changedetection karakeep paperless'),
+  ...group('Apps', 'changedetection karakeep paperless syncthing'),
   ...group('Build your own', 'api http iframe links'),
 };
 // docs/services.md's list, and the things people ask for most.

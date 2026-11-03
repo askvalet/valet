@@ -269,20 +269,6 @@ export default [
 
   // Sync, storage, automation
   service({
-    type: 'syncthing', name: 'Syncthing', icon: 'disk', auth: { header: 'X-API-Key' },
-    get: { connections: '/rest/system/connections', folders: { path: '/rest/config/folders', optional: true } },
-    stats: d => {
-      const peers = Object.values<any>(d.connections?.connections ?? {});
-      return [
-        { label: 'Devices online', value: peers.filter(p => p.connected).length, sub: `of ${peers.length}` }, { label: 'Folders', value: rows(d.folders).length },
-        { label: 'Received', value: fmt.bytes(d.connections?.total?.inBytesTotal ?? 0) }, { label: 'Sent', value: fmt.bytes(d.connections?.total?.outBytesTotal ?? 0) }];
-    },
-    recap: d => { const moved = (d.connections?.total?.inBytesTotal ?? 0) + (d.connections?.total?.outBytesTotal ?? 0); return tally(moved, { id: 'sync.moved', theme: 'files', icon: 'disk', kicker: 'Your devices passed around', value: fmt.bytes(moved), scope: 'Since Syncthing last restarted', line: 'From one to the next, with no cloud account holding the copy.' }); },
-    sample: { connections: { total: { at: '2026-10-31T10:00:00Z', inBytesTotal: 1073741824, outBytesTotal: 536870912 }, connections: { 'AAAAAAA-BBBBBBB': { connected: true, paused: false, inBytesTotal: 1073741824, outBytesTotal: 536870912 }, 'CCCCCCC-DDDDDDD': { connected: false, paused: false, inBytesTotal: 0, outBytesTotal: 0 } } },
-      folders: [{ id: 'default', label: 'Default', paused: false }, { id: 'photos', label: 'Photos', paused: false }] },
-    expect: { 'Devices online': 1, Folders: 2, Received: '1.0 GB', Sent: '512.0 MB' },
-  }),
-  service({
     type: 'syncthing-relay', name: 'Syncthing Relay', logo: 'syncthing', icon: 'wifi',
     get: { status: '/status' },
     stats: d => [
