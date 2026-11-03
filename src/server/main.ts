@@ -268,6 +268,14 @@ app.get('/api/events', c => streamSSE(c, async stream => {
 
 // Files attached in chat (pasted, dropped or picked): stored for a day so a tool can file them (to Paperless, say).
 // The browser gets back an id it puts in the message; nothing is served back out.
+// attachments last a day: swept on each upload, at start and every hour, so a quiet week still clears them
+async function sweepUploads() {
+  for (const f of await readdir(UPLOAD_DIR).catch(() => [] as string[])) {
+    const st = await stat(resolve(UPLOAD_DIR, f)).catch(() => null);
+    if (st && Date.now() - st.mtimeMs > 864e5) await rm(resolve(UPLOAD_DIR, f), { force: true });
+  }
+}
+if (!sandbox.on) { void sweepUploads(); setInterval(() => void sweepUploads(), 3_600_000).unref(); }
 app.post('/api/files', bodyLimit({ maxSize: 50 * 2 ** 20, onError: c => c.json({ error: 'files are limited to 50 MB' }, 413) }), async c => {
   if (!site.acting || sandbox.on) return c.json({ error: site.acting ? 'This demo keeps nothing, so it takes no files' : 'Valet is read-only: attaching files is off' }, 403);
   // at most 500 MB waiting to be filed at once
@@ -285,11 +293,7 @@ app.post('/api/files', bodyLimit({ maxSize: 50 * 2 ** 20, onError: c => c.json({
   await mkdir(UPLOAD_DIR, { recursive: true });
   await writeFile(resolve(UPLOAD_DIR, `${id}.bin`), body);
   await writeFile(resolve(UPLOAD_DIR, `${id}.json`), JSON.stringify({ name, type, size: body.length }));
-  // sweep anything older than a day
-  for (const f of await readdir(UPLOAD_DIR).catch(() => [] as string[])) {
-    const st = await stat(resolve(UPLOAD_DIR, f)).catch(() => null);
-    if (st && Date.now() - st.mtimeMs > 864e5) await rm(resolve(UPLOAD_DIR, f), { force: true });
-  }
+  await sweepUploads();
   return c.json({ id, name, type, size: body.length });
 });
 
@@ -413,7 +417,10 @@ app.post('/api/pins', async c => {
   if (typeof tool !== 'string' || !input || typeof input !== 'object') return c.json({ error: 'bad pin' }, 400);
   const a = site.config.assistant;
   if (!a) return c.json({ error: 'no assistant configured' }, 404);
-  if ((a.access[tool.split('__')[0]] ?? a.access.default ?? 'read') === 'none') return c.json({ error: 'the assistant can\'t reach that' }, 403);
+  // a pin of several cards is checked card by card: `show` is a key the access list doesn't name
+  const barred = (inst: string) => (a.access[inst] ?? a.access.default ?? 'read') === 'none';
+  const reaches = tool === 'show' ? (Array.isArray(input.widgets) ? input.widgets : []).map((k: unknown) => String(k).split('.')[0]) : [tool.split('__')[0]];
+  if (!reaches.length || reaches.some(barred)) return c.json({ error: 'the assistant can\'t reach that' }, 403);
   if (sandbox.on) return c.json({ ok: true });   // a demo saves nothing, and a rebuild would reload every other visitor
   const pins = await loadPins();
   if (pins.length >= 24) return c.json({ error: 'that\'s plenty of pins; unpin one first' }, 409);

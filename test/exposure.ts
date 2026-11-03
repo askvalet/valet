@@ -30,11 +30,11 @@ async function routes() {
 const fill = (p: string) => p.replace(/:n\?/, '').replace(/:\w+/g, 'x');
 const freePort = () => new Promise<number>(ok => { const s = createServer().listen(0, '127.0.0.1', () => { const { port } = s.address() as any; s.close(() => ok(port)); }); });
 
-async function boot(auth: Record<string, unknown>, extra = '') {
+async function boot(auth: Record<string, unknown>, extra = '', access = '{ config: control }') {
   const dir = await mkdtemp(join(tmpdir(), 'valet-exposure-')), port = await freePort(), file = join(dir, 'config.yaml');
   await writeFile(file, `title: ${TITLE}
 auth: ${JSON.stringify(auth)}
-assistant: { model: none, baseURL: "http://127.0.0.1:9/v1", access: { config: control } }
+assistant: { model: none, baseURL: "http://127.0.0.1:9/v1", access: ${access} }
 integrations:
   probe: { type: api, url: "http://127.0.0.1:9/x", headers: { Authorization: "Bearer \${PROBE_KEY}" }, stats: [{ label: Up, value: a }] }
 ${extra}layout:
@@ -191,6 +191,17 @@ describe('the approval card\'s route, on a page that can\'t act', () => {
     const r = await fetch(`${s.base}/api/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: 'cd__watch_remove', input: { id: '../watch?recheck_all=1&x=' } }) });
     assert.doesNotMatch(await r.text(), /ADMIN-ONLY/);
     assert.deepEqual(seen.filter(u => u.includes('recheck')), []);
+  });
+});
+
+describe('a pin can\'t show what the assistant is barred from', () => {
+  let s: Awaited<ReturnType<typeof boot>>;
+  before(async () => { s = await boot({ mode: 'none', trustNetwork: true }, '', '{ default: read, probe: none }'); });
+  after(() => { s.proc.kill(); });
+  test('a card of several widgets is checked widget by widget', async () => {
+    const pin = (widgets: string[]) => fetch(`${s.base}/api/pins`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: 'show', input: { widgets } }) });
+    assert.equal((await pin(['probe.data'])).status, 403);
+    assert.equal((await pin(['valet.activity', 'probe.data'])).status, 403);
   });
 });
 

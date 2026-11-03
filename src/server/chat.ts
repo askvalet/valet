@@ -203,8 +203,12 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     const m = await mcp();
     // MCP results pass through the redactor too (their headers can hold keys)
     const mcp_ = Object.fromEntries(Object.entries(m.tools).map(([k, t]: [string, any]) => [k, { ...t, execute: async (...args: any[]) => {
-      const out = JSON.parse(safety.redact(JSON.stringify(await t.execute(...args) ?? null)));
-      if (m.approval[k]) safety.activity?.add({ who: who(), via: 'chat', what: k.replace(/_/g, ' '), input: args[0], ok: true });
+      // logged as it really went: a call that throws or answers with an error is a failure, not a success
+      const log = (ok: boolean, error?: string) => { if (m.approval[k]) safety.activity?.add({ who: who(), via: 'chat', what: k.replace(/_/g, ' '), input: args[0], ok, error }); };
+      let out: any;
+      try { out = JSON.parse(safety.redact(JSON.stringify(await t.execute(...args) ?? null))); }
+      catch (e) { log(false, safety.redact((e as Error).message)); throw e; }
+      log(!out?.isError, out?.isError ? safety.redact(JSON.stringify(out.content ?? '').slice(0, 300)) : undefined);
       return out;
     } }]));
     const all = { ...tools, ...mcp_ }, approvals = { ...approval, ...m.approval };
