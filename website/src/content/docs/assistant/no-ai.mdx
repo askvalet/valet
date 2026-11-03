@@ -25,12 +25,18 @@ That's the whole setup. There's no switch to turn off.
 
 - Every card, widget and integration.
 - Every button and control, when [sign-in](/start/sign-in/) allows them.
-- The palette, for finding services and running actions.
+- The palette, for finding services, running actions and typing [commands](#commands).
 - Live rings, notices, and [notifications](/reference/configuration/#notify) from `live.notify`.
 - The year in review. No model writes it.
 - History graphs on tiles.
 
 The AI SDK and the MCP client load on the first question. With no assistant, they never load, so they cost no memory.
+
+## Commands
+
+Type a plain command in the palette and it runs straight away, with no model: "pause downloads", "lights off", "what's playing", "pause ads 10 min". Integrations bring their own; there's nothing to set up.
+
+With no assistant, commands do what the page can already do: its actions (when [sign-in](/start/sign-in/) allows them) and tools that only look, which show their card in the palette. Anything that would need a tool to add or change something waits for an assistant, and then follows `assistant.access` like the chat does, approval card included. On a read-only page commands only look. Nothing on this path ever calls a model, with an assistant or without.
 
 ## What goes
 

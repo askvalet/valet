@@ -65,6 +65,7 @@ function integrationPage(it: any) {
     parts.push(`## Assistant tools\n\nWhat the assistant can use, once its [access level](/assistant/access/) allows it. Read tools run freely. Everything else asks first.`);
     parts.push(table(['Tool', 'Access', 'What it does'], it.tools.map((t: any) => [`\`${t.name}\``, ACCESS[t.access] ?? t.access, cell(firstSentence(t.about))])));
   }
+  if (it.commands?.length) parts.push(`## Commands\n\nWhat to type in the [palette](/concepts/layout/#the-palette) to run it with no model. \`{name}\` is the instance's name in your config; a number goes where a slot like \`{minutes}\` is. Commands follow the same [access](/assistant/access/) as the chat.\n\n${table(['Type', 'Does'], it.commands.slice(0, 8).map((c: any) => [c.say.map((s: string) => `\`${s}\``).join(', '), cell(c.label ?? c.say[0])]))}${it.commands[0].made ? '\n\nThese are made from what it finds, so yours name your own things. The ones above come from the example on this page.' : ''}`);
   if (it.actions.length) parts.push(`## Actions\n\nWhat the page's own buttons and controls can do. They need a [signed-in person or a trusted network](/start/sign-in/).\n\n${table(['Action', 'What it does'], it.actions.map((a: any) => [`\`${a.name}\``, cell(firstSentence(a.about))]))}`);
   if (it.recap?.length) {
     parts.push(`## Year in review\n\nSlides this integration adds to the [recap](/concepts/recap/).`);

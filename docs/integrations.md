@@ -81,6 +81,37 @@ A tool can also carry:
 - `find`: the input field that takes search words, which puts the tool in the assistant's `search_everything`.
 - `live: true`, on a cheap look-only tool whose answer changes by itself: its card keeps itself current in chat.
 
+**`commands`** are plain words for ⌘K that run an action or a tool by rule, with no model: "pause downloads",
+"what's playing", "pause ads 10 min". Typing one exactly runs it; nothing else does. Each is
+`{ say, run, input?, label? }`:
+
+```ts
+commands: [
+  { say: ['pause downloads', 'pause {name}'], run: 'action:pause', label: 'Pause all downloads' },
+  { say: ["what's downloading", 'downloads'], run: 'tool:downloads_status' },
+  { say: ['pause ads {minutes} min'], run: 'action:pause', label: 'Pause ad blocking: {minutes} min' },
+  { say: ['pause ads {hours} hour'], run: 'action:pause', input: ({ hours }) => ({ minutes: hours * 60 }) },
+],
+```
+
+- `say` lists every phrasing you'd accept. Matching ignores case, punctuation, word order, plurals and filler ("the",
+  "all", "please", "turn"), and treats a few words as one: off/disable, on/enable, pause/stop, resume/start/continue,
+  min/minutes, h/hours. Nothing else is guessed, so write the variants out. `{name}` becomes the instance's name in
+  `config.yaml` and the integration's own name.
+- A slot like `{minutes}` takes a whole number and is added to the input under its name. The target's schema still checks it.
+- `run: 'action:<name>'` runs a page action, as its button would. `run: 'tool:<name>'` runs a tool: a `read` tool shows its
+  card in the palette; anything else shows the tool's approval card (its `confirm`) first.
+- `input` is fixed, or a function of the slots that may look things up (never change them) and may throw to say why it
+  can't run now ("2 streams are playing").
+- `label` is what the palette shows; `{slot}` in it is filled in. It defaults to the first phrase.
+- `commands` may be a function, called each time the palette opens: Home Assistant uses that to name each light it may
+  control ("desk lamp off").
+
+A command goes through the same doors as the chat: a read-only page only looks, a tool needs the access
+`assistant.access` gives that instance (with no assistant, only `read` tools and page actions), input is checked,
+results are redacted, and anything that changes something goes in the activity log as `by command`. Two commands with
+the same words are both shown, and Enter waits for you to pick one.
+
 **`image(ref, range)`** serves images (posters, snapshots) through Valet so the browser never needs the service's key.
 Put `ctx.image(ref)` in a card; validate `ref` before fetching.
 

@@ -5,6 +5,11 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- Plain commands in ⌘K, run by rule with no model: "pause downloads", "lights off", "what's playing", "pause ads 10 min", "stop plex". Typed exactly, Enter runs one at once: something that looks shows its card, anything that changes something shows the approval card first. A half-typed command is offered below Ask, two that match are both shown, and when nothing matches Enter asks the assistant. They follow the chat's access levels and are logged as `by command`; with no assistant they run page actions and tools that only look. qBittorrent, Pi-hole, Plex (Tautulli), Home Assistant (every light, switch and scene it may control, by name), Seerr, the PC's presets, Sonarr and Radarr, Prowlarr, changedetection.io, Docker and the to-do list have them, and plugins can add their own (`commands`).
+- Pi-hole's and Prowlarr's status tools answer with their cards.
+
 ### Changed
 
 - Turning a light on or off, or sending the vacuum, from chat answers with the floor plan as it is now. Pausing or resuming downloads answers with the downloads card.
