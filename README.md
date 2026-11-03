@@ -34,10 +34,10 @@ Valet is a homepage for your homelab that can also do things.
 It shows what's happening across all your services, and you can act on it right there. Instead of being a page with
 links and a status dot, Valet is meant to be powerful and actionable.
 
-<p align="center"><img src="docs/images/front-door.webp" alt="Valet's main screen: a one-line summary of what's wrong and what's playing, an ask box, every service's status, a 3D floor plan and the PC" width="620"><br><sub>The overview: what's wrong, what's playing and every service, on one page.</sub></p>
+<p align="center"><img src="docs/images/front-door.webp" alt="Valet's main screen: a one-line summary of what's wrong and what's playing, an ask box, every service's status, a 3D floor plan and the PC" width="620"></p>
 
 **AI-native, if you want it.** Ask Valet anything about your homelab. Use a local model or a hosted one. Valet knows
-its own documentation inside out, so you can use it to build itself! Every change waits for your approval, and Valet
+its own documentation, so you can use it to build itself! Every change waits for your approval, and Valet
 works just fine with the AI switched off.
 
 <table><tr>
@@ -53,7 +53,7 @@ you'll want to look at and use.
 **Flexible, and light.** One YAML file controls everything, with 185 integrations and a simple way to add your own. It
 runs as one Node process, uses about 45 MB of RAM on a fresh install, and the image is 166 MB.
 
-<p align="center"><img src="docs/images/config-live.gif" alt="Editing config.yaml while Valet runs: the greeting, the wallpaper and its brightness change on the page as each line is saved" width="620"><br><sub>Edits to <code>config.yaml</code> show up on the page as you save, without a restart.</sub></p>
+<p align="center"><img src="docs/images/config-live.gif" alt="Editing config.yaml while Valet runs: the greeting, the wallpaper and its brightness change on the page as each line is saved" width="620"></p>
 
 ## Quick start
 
