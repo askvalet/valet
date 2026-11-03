@@ -1,6 +1,6 @@
 // The kitchen and the reading chair: Mealie, Tandoor, Komga, Kavita and Miniflux. Recipes, feeds and people are
 // invented; the books are real ones, with their covers from demo/art.
-import { DAY, HOUR, ago, over, route, webPage, ymd } from './helpers.ts';
+import { DAY, HOUR, ago, over, route, ymd } from './helpers.ts';
 import type { Fixture } from './types.ts';
 
 // ── Recipes, shared by both cookbooks
