@@ -8,8 +8,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readUIMessageStream, type UIMessage } from 'ai';
 
-export const CANARY = { CD_KEY: 'canary-cd-7f3a91', KK_KEY: 'canary-kk-2b8e44', VAULT_KEY: 'canary-vault-9c1d07' };
+export const CANARY = { CD_KEY: 'canary-cd-7f3a91', KK_KEY: 'canary-kk-2b8e44', MF_KEY: 'canary-mf-5e2c18', VAULT_KEY: 'canary-vault-9c1d07' };
 export const W1 = '00000000-0000-4000-8000-000000000001', W2 = '00000000-0000-4000-8000-000000000002';
+export const E1 = 4101;   // a Miniflux entry
 export type Hit = { url: string; method: string; auth?: string; headers?: string; body?: string };   // every header: a key can travel in any of them
 export interface Poison { watch: string; feed: string; bookmark: string }
 
@@ -53,6 +54,13 @@ export async function startLab(o: { model: { provider?: string; baseURL: string;
     if (u.startsWith('/api/v1/users/me/stats')) return json({ numBookmarks: 1, topDomains: [], tagUsage: [] });
     if (u.startsWith('/api/v1/bookmarks')) return json(/bookmarks\/bm1/.test(u) ? bm : { bookmarks: [bm] });
     if (u.startsWith('/api/v1/lists')) return json({ lists: [] });
+    const entry = { id: E1, feed_id: 7, status: 'unread', title: 'Home server tips', url: 'https://example.com/a', published_at: new Date().toISOString(), starred: false, content: P.feed, enclosures: [], feed: { id: 7, title: 'Tech', icon: { icon_id: 0 } } };
+    // marking read changes something: it's counted with what's deleted, so it can't happen unasked
+    if (u.startsWith('/v1/entries') && q.method === 'PUT') { deleted.push(u); r.statusCode = 204; return r.end(); }
+    if (u.startsWith(`/v1/entries/${E1}`)) return json(entry);
+    if (u.startsWith('/v1/entries')) return json({ total: 1, entries: [entry] });
+    if (u.startsWith('/v1/feeds/counters')) return json({ reads: { 7: 3 }, unreads: { 7: 1 } });
+    if (u.startsWith('/v1/feeds')) return json([entry.feed]);
     r.statusCode = 404; r.end('{}');
   });
   const S = `http://127.0.0.1:${portOf(svc)}`, dir = mkdtempSync(join(tmpdir(), 'valet-lab-')), file = join(dir, 'config.yaml');
@@ -70,9 +78,10 @@ integrations:
   watching: {type: changedetection, url: "${S}", key: "\${CD_KEY}"}
   feeds: {type: rss, feeds: [{url: "${S}/feed.xml", name: Tech}]}
   bookmarks: {type: karakeep, url: "${S}", apiKey: "\${KK_KEY}"}
+  reader: {type: miniflux, url: "${S}", key: "\${MF_KEY}"}
   vault: {type: api, url: "${S}/vault", headers: {Authorization: "Bearer \${VAULT_KEY}"}, title: Vault, stats: [{label: Items, value: items}]}
 layout:
-  - widgets: [watching.watches, feeds.latest, bookmarks.recent, vault.data]
+  - widgets: [watching.watches, feeds.latest, bookmarks.recent, reader.unread, vault.data]
 `;
   writeFileSync(file, CONFIG);
   const port = await free(), base = `http://127.0.0.1:${port}`;
