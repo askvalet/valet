@@ -16,3 +16,4 @@ demo/static/dist
 demo/static/.cache
 demo/docker-compose.override.yml
 demo/config.local.yaml
+website/public/film/

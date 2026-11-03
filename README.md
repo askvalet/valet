@@ -18,7 +18,9 @@ A self-hosted, open-source, AI-native homepage.
 
 <br>
 
-<a href="https://demo.askvalet.dev"><img src="docs/images/overview.webp" alt="The Valet overview: a one-line summary, an ask box, service status, a 3D floor plan and a 3D model of the PC" width="100%"></a>
+<a href="https://askvalet.dev/film/valet.mp4"><img src="docs/images/film.webp" alt="Play the 70-second film: the main screen, asking why a service is down, approving a restart, adding a card from chat, and the integrations" width="100%"></a>
+
+<sub>▶ <a href="https://askvalet.dev/film/valet.mp4">Watch the 70-second film</a> · or <a href="https://demo.askvalet.dev">try the demo</a>, right in your browser</sub>
 
 </div>
 

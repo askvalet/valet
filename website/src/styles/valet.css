@@ -128,3 +128,6 @@ header.header { background: var(--sl-color-bg-nav); backdrop-filter: blur(24px) 
   .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
   .card-grid img { height: 6.5rem; }
 }
+/* the launch film on the home page: 16:9, and the 4:5 cut on a phone */
+.film { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 14px; border: 1px solid var(--sl-color-hairline); background: #0b0b0d; }
+@media (max-width: 640px) { .film { aspect-ratio: 4 / 5; } }

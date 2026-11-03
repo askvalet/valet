@@ -16,7 +16,10 @@ hero:
 import Shot from '~/components/Shot.astro';
 import Row from '~/components/Row.astro';
 
-<Shot id="scene/overview" full alt="The Valet demo overview: greeting, ask box, now playing, downloads and services over a dusk wallpaper." caption="The demo: real Valet, with a made-up homelab behind it." />
+<video class="film" controls autoplay muted loop playsinline preload="metadata" poster="/film/poster.webp" aria-label="Valet in 70 seconds: the main screen, asking about a service that's down, approving a restart, adding a card from chat, and the integrations.">
+  <source src="/film/valet-mobile.mp4" media="(max-width: 640px)" type="video/mp4" />
+  <source src="/film/valet.mp4" type="video/mp4" />
+</video>
 
 ## What it is
 
