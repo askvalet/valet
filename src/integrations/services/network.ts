@@ -266,16 +266,6 @@ export default [
     sample: { latest: [{ id: 412, ping: 14, download: 512.34, upload: 48.9, time: 18, type: 'auto', created: '2026-10-30T12:00:00.000Z' }] },
     expect: { Download: '512 Mbps', Upload: '49 Mbps', Ping: '14 ms' },
   }),
-  service({
-    type: 'speedtest-tracker', name: 'Speedtest Tracker', icon: 'chart', auth: 'bearer',
-    get: { latest: '/api/v1/results/latest' },
-    stats: d => {
-      const t = d.latest?.data, bits = (v: unknown) => v == null ? undefined : mbps(num(v) * 8 / 1e6);   // bytes a second
-      return [{ label: 'Download', value: bits(t?.download) }, { label: 'Upload', value: bits(t?.upload) }, { label: 'Ping', value: ms(t?.ping) }];
-    },
-    sample: { latest: { message: 'ok', data: { id: 88, ping: 11.8, download: 117500000, upload: 12500000, status: 'completed' } } },
-    expect: { Download: '940 Mbps', Upload: '100 Mbps', Ping: '12 ms' },
-  }),
 
   // Sign-in and intrusion
   service({

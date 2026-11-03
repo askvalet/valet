@@ -16,6 +16,7 @@ Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to 
 | Service | `type:` |
 |---|---|
 | APC UPS | `apcups` |
+| Backrest | `backrest` |
 | Calendar | `calendar` |
 | Camera | `camera` |
 | changedetection.io | `changedetection` |
@@ -26,6 +27,7 @@ Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to 
 | GitHub repositories | `repository` |
 | Glances | `glances` |
 | Hacker News | `hackernews` |
+| Healthchecks | `healthchecks` |
 | Home Assistant | `homeassistant` |
 | Host | `host` |
 | Immich | `immich` |
@@ -41,6 +43,7 @@ Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to 
 | Pi-hole | `pihole` |
 | Plex (Tautulli) | `tautulli` |
 | Prowlarr / Bazarr | `indexers` |
+| Proxmox | `proxmox` |
 | qBittorrent | `qbittorrent` |
 | Reddit | `reddit` |
 | Releases | `releases` |
@@ -49,6 +52,8 @@ Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to 
 | Seerr | `seerr` |
 | Service status | `http` |
 | Sonarr / Radarr | `arr` |
+| Speedtest Tracker | `speedtest-tracker` |
+| Syncthing | `syncthing` |
 | To-do list | `todo` |
 | Twitch | `twitch` |
 | Uptime Kuma | `uptimekuma` |
@@ -70,7 +75,6 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | authentik | `authentik` | key |
 | autobrr | `autobrr` | key |
 | Azure DevOps | `azure-devops` | none |
-| Backrest | `backrest` | none |
 | Bazarr | `bazarr` | key |
 | Beszel | `beszel` | username, password |
 | BookLore | `booklore` | username, password |
@@ -109,7 +113,6 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | Grafana | `grafana` | username, password |
 | HDHomeRun | `hdhomerun` | none |
 | Headscale | `headscale` | key |
-| Healthchecks | `healthchecks` | key |
 | Homebox | `homebox` | username, password |
 | Homebridge | `homebridge` | username, password |
 | Jackett | `jackett` | none |
@@ -163,7 +166,6 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | Prometheus | `prometheus` | none |
 | Prometheus | `prometheus-metric` | none |
 | Prowlarr | `prowlarr` | key |
-| Proxmox | `proxmox` | key |
 | Proxmox Backup Server | `proxmox-backup` | key |
 | Pterodactyl | `pterodactyl` | key |
 | Pulse | `pulse` | key |
@@ -174,14 +176,12 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | SABnzbd | `sabnzbd` | key |
 | slskd | `slskd` | key |
 | SparkyFitness | `sparkyfitness` | key |
-| Speedtest Tracker | `speedtest-tracker` | key |
 | Spoolman | `spoolman` | none |
 | Sportarr | `sportarr` | key |
 | Stash | `stash` | none |
 | Stirling-PDF | `stirling-pdf` | none |
 | Suwayomi | `suwayomi` | none |
 | SWAG | `swag` | none |
-| Syncthing | `syncthing` | key |
 | Syncthing Relay | `syncthing-relay` | none |
 | Tailscale | `tailscale` | key |
 | Tandoor | `tandoor` | key |
