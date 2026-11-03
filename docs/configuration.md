@@ -312,7 +312,7 @@ layout:
 | `model` | required | |
 | `name` | `Assistant` | what it's called on the page |
 | `instructions` | none | added to the system prompt |
-| `access` | `{ default: read }` | per integration (by its id): `none`, `read`, `write` (adds things, like saving a link) or `control` (changes or removes things). Both ask you every time. `config: control` lets it edit this file: see below |
+| `access` | `{ default: read }` | per integration (by its id): `none`, `read`, `write` (adds things, like saving a link) or `control` (changes or removes things). Both ask you every time. `config: control` lets it edit this file: see below. `valet` (Valet's own tools) defaults to `control`; `write` keeps reminders and turns rules off |
 | `maxSteps` | `6` | tool calls per answer, 1–20 |
 | `agent` | none | hand the chat to another agent: `{ name, baseURL, apiKey, model }`, anything OpenAI-compatible (Hermes Agent's API server, say). Remove it to go back. It runs its own tools, so access levels and approvals don't apply; it gets only the conversation, answers are plain text, and a read-only page stays on Valet's assistant. The brief and shared causes stay on `model` |
 | `suggestions` | four examples | questions offered until the model has written its own, or if `background.suggest` is off |
@@ -340,6 +340,14 @@ pins live in `data/pins.json`.
 **Tell me when.** "Tell me when Dune finishes" or "warn me if the drive stays above 55° for 10 minutes" sets a one-off
 reminder. A plain rule checks it every half minute, with no model, even with the page closed. Add `valet.activity` to the
 layout for a card of everything Valet changed, with Undo where a change can be reversed.
+
+**Standing instructions.** "When a download finishes, pause the rest", "if the GPU stays over 85° for 10 minutes, unload
+the model", "every morning at 7, if anything is down, tell me" set up a rule: a trigger on one of your cards or a time of
+day (in `timezone`), optionally only if something else is true, one integration tool and a message. You approve it once
+and it runs with no model from then on, at most once per cooldown (30 minutes by default). A rule can't use the config,
+Valet's own tools, plans, pins or MCP; before each run its action is checked again against `assistant.access` and whether
+Valet may act, so lowering access stops it, and `access: { valet: write }` turns rules off. Three failures in a row pause
+it. `valet.rules` lists them with Pause and Remove; they live in `data/rules.json`. See the docs site's Rules page.
 
 **Several changes at once.** The assistant can propose a plan: every step listed, one approval, stopping at the first
 failure. Each step is still a tool its access level allows.

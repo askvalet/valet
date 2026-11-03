@@ -1,7 +1,7 @@
 ---
 title: What it can and can't do
 description: The assistant's edges, stated plainly, including prompt injection.
-sidebar: { order: 6 }
+sidebar: { order: 7 }
 ---
 
 The rules on this page are enforced by Valet's code. They hold whatever the model says or does. What the model *says* is a separate matter: it can be wrong.
@@ -15,6 +15,7 @@ The rules on this page are enforced by Valet's code. They hold whatever the mode
 - File something you attach or paste, and save a link you send, once you approve.
 - Set a reminder, once you approve. A plain rule checks it every half minute, with no model involved, and it goes to your [notification channels](/reference/configuration/#notify).
 - Make changes you approve.
+- Set up a [rule](/assistant/rules/), once you approve: one action that then runs by itself every time something happens, checked by code with no model involved.
 - Pin a card to the page. Only `read` tools can be pinned, and no model runs after that.
 
 ## What it can't do
@@ -22,6 +23,7 @@ The rules on this page are enforced by Valet's code. They hold whatever the mode
 - **See your keys.** Keys kept in `.env` as `${NAME}` stay on the server, and are redacted from anything the model reads. See [secrets](/security/secrets/).
 - **Reach anything without a tool.** It has no shell, no file access and no general web access. It can only do what a tool offers.
 - **Approve itself.** A `write` or `control` tool needs a press from you.
+- **Make a rule do more.** A rule runs one integration tool at the access you've granted, checked again every time, and never the config, Valet's own tools, plans or MCP. See [rules](/assistant/rules/#what-a-rule-cant-do).
 - **Give itself more power.** See below.
 - **Restart a container.** The Docker integration is read-only on purpose. See [the threat model](/security/).
 - **Act on a read-only page.** Without sign-in or `auth.trustNetwork`, it gets read tools only.
@@ -42,6 +44,7 @@ The cards are real. The sentence beside a card is the model's reading of it. Whe
 The assistant reads text written by strangers: feed titles, web pages saved to Karakeep, documents, logs. Any of that can say "ignore your instructions". A model might listen. Valet assumes it might, and works on what happens next.
 
 - **Anything that isn't a read needs your press.** A poisoned document can make the model *ask*. You still see the card.
+- **A rule's card isn't the model's.** A poisoned page can make the model propose a rule. Its card names the trigger by the card's real title and the action in the tool's own words, so what you approve is what will run.
 - **Background calls have no tools.** The brief, the suggestions and the shared-cause line call the model with no tools at all. A poisoned feed title can make it say something odd, and nothing more.
 - **Suggestions can't carry a stranger's words.** A tapped suggestion goes out as your own message. So the model writes suggestions without seeing feeds, and any suggestion with a link in it is thrown away.
 - **A shared cause must be real.** The model's verdict is believed only if it names at least two of the actual problems.

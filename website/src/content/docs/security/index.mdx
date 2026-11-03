@@ -44,6 +44,7 @@ Valet is locked down by default. Each protection below also says what it doesn't
 - **It can't give itself more power.** Editing the config needs `assistant.access.config`, and each save needs your approval. Approvals are signed by the server, so a request can't claim one. A secret only ever goes to hosts it already goes to. Sign-in, plugins, MCP, allowed hosts and its own access are off limits, and secrets can't be written.
 - **Another agent is its own thing.** If `assistant.agent` hands the chat to another agent, it gets the conversation and nothing else from Valet. But it runs its own tools, so access levels and approvals don't cover it. The chat says so.
 - **Reminders can only tell you things.** A reminder sends a message. It can't run a tool.
+- **Rules act only as approved, and only as allowed now.** A [rule](/assistant/rules/) is the one thing that acts without a fresh press: you approve it once, on a card written from the card's title and the action tool's own words. It runs exactly one integration tool, never the config, Valet's own tools, plans, pins or MCP, and before each run it's checked again against `assistant.access` and whether Valet may act. Lowering access stops it.
 - **Pins only look.** Only `read` tools can be pinned, and no model runs after that.
 - **Everything it changes is written down**, in `data/activity.json`, with secrets redacted.
 
@@ -117,7 +118,7 @@ Please don't open a public issue for a security problem. Use GitHub's private vu
 Every change runs these in CI:
 
 - **Attacked from outside.** `npm run test:exposure` starts the real build in each sign-in mode and tries every route without a session, along with forged cookies, spoofed identity headers and path tricks. A new route is found automatically and has to refuse. Anything open on purpose is listed in that file with its reason.
-- **A model that is the attacker's.** `npm run test:hostile` gives Valet a model that does whatever an attacker wants and checks that nothing changes without your approval, and that no secret leaves and no power grows even when every approval is clicked. `npm run eval:inject` runs poisoned content past your own model, for you to run by hand.
+- **A model that is the attacker's.** `npm run test:hostile` gives Valet a model that does whatever an attacker wants and checks that nothing changes without your approval, and that no secret leaves and no power grows even when every approval is clicked. That includes rules: one that would edit the config or make more rules is refused even approved, and one whose integration's access is lowered stops. `npm run eval:inject` runs poisoned content past your own model, for you to run by hand.
 - **Signing in, end to end.** The setup code, a wrong password, cross-site requests, signing out, and that passwords are stored hashed.
 - **Dependencies and secrets.** `npm audit`, and a secret scan of the whole git history.
 

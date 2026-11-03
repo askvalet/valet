@@ -5,8 +5,14 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- Rules: standing instructions like "when a download finishes, tell me and pause the rest" or "every morning at 7, if anything is down, tell me". Set up in chat with one approval, whose card names the trigger by the card's title and the action in its tool's own words, then run every half minute with no model. A rule runs one integration tool (never the config, Valet's own tools, plans, pins or MCP), is checked again against `assistant.access` before every run, waits out a cooldown, and pauses itself after three failures. Every run goes in the activity log, the timeline and your notifications. `valet.rules` lists them with Pause and Remove.
+- List rows can carry their own buttons.
+
 ### Changed
 
+- `assistant.access.valet` defaults to `control`, which setting up a rule needs. `valet: write` keeps reminders and turns rules off.
 - Turning a light on or off, or sending the vacuum, from chat answers with the floor plan as it is now. Pausing or resuming downloads answers with the downloads card.
 
 ## [0.1.2] - 2026-11-03
