@@ -223,9 +223,9 @@ test('the list card: each rule in words, when it ran, when it runs next, a dot w
     rule({ id: 'c', when: { widget: 'pc.gpu', on: 'above', name: 'gpu', value: 85, minutes: 10 }, paused: 'you paused it' }),
   ], e);
   const [a, b, c] = rules.card(at(9)).items;
-  assert.equal(a.title, 'When something on Downloads finishes: pause all downloads'); assert.match(a.subtitle!, /Last ran/); assert.equal(a.dot, undefined);
-  assert.equal(b.title, 'Every day at 07:00, if anything on Services is down: tell you'); assert.equal(b.dot, 'bad'); assert.match(b.meta!, /Next/); assert.equal(b.subtitle, 'Failed: timed out');
-  assert.equal(c.title, 'When "gpu" on GPU is above 85 for 10 minutes: tell you'); assert.equal(c.dot, 'warn');
+  assert.equal(a.title, 'hi'); assert.equal(a.detail, 'When something on Downloads finishes: pause all downloads'); assert.match(a.subtitle!, /Last ran/); assert.equal(a.dot, undefined);
+  assert.equal(b.detail, 'Every day at 07:00, if anything on Services is down: tell you'); assert.equal(b.dot, 'bad'); assert.match(b.meta!, /Next/); assert.equal(b.subtitle, 'Failed: timed out');
+  assert.equal(c.detail, 'When "gpu" on GPU is above 85 for 10 minutes: tell you'); assert.equal(c.dot, 'warn');
   assert.deepEqual(c.buttons!.map(x => x.label), ['Resume', 'Remove']); assert.deepEqual(a.buttons![0].args, { id: 'a', on: true });
   assert.equal(trigger({ when: { widget: 'svc.status', on: 'up', name: 'plex', minutes: 5 } }, w => TITLES[w]), 'When "plex" on Services is up for 5 minutes');
 });

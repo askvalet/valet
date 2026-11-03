@@ -333,7 +333,8 @@ export class Rules {
   changed() { if (this.snapshot && this.list.length) this.check(this.snapshot()); }
   stop() { clearInterval(this.timer); this.snapshot = this.refresh = undefined; }
 
-  /** The list card: each rule in words, when it last ran, when a timed one runs next, and a dot when it's in trouble. */
+  /** The list card: each rule by its message, then in words (which wrap, where a title would be cut), when it last
+   *  ran, when a timed one runs next, and a dot when it's in trouble. */
   card(now = Date.now()): ListCard {
     const title = (w: string) => this.env.title(w);
     const at = (t: number) => new Date(t).toDateString() === new Date(now).toDateString() ? new Date(t).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }) : new Date(t).toLocaleString('en', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
@@ -341,7 +342,7 @@ export class Rules {
       items: this.list.map(r => {
         const no = r.paused ? undefined : blocked(r, this.env);
         const said = r.paused ? `Paused: ${r.paused}` : no ? `Can't run: ${no}` : r.lastError ? `Failed: ${r.lastError}` : r.lastRun ? `Last ran ${at(r.lastRun)}` : 'Not run yet';
-        return { id: r.id, title: sentence(r, title), subtitle: said, meta: r.at && !r.paused ? `Next ${at(nextRun(r.at, now))}` : undefined,
+        return { id: r.id, title: r.say, detail: sentence(r, title), subtitle: said, meta: r.at && !r.paused ? `Next ${at(nextRun(r.at, now))}` : undefined,
           tone: r.lastError || no ? 'bad' as const : undefined, dot: r.paused ? 'warn' as const : r.failures || no ? 'bad' as const : undefined,
           buttons: [{ label: r.paused ? 'Resume' : 'Pause', action: 'rule_pause', args: { id: r.id, on: !r.paused } }, { label: 'Remove', action: 'rule_remove', args: { id: r.id } }] };
       }) };

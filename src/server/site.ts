@@ -140,7 +140,9 @@ export async function buildSite(config: Config, registry: Record<string, Integra
       setTimeout(() => hub.refreshInstance(s.id), 300);
       return { ok: !out?.data?.error, error: out?.data?.error ? String(out.data.error) : undefined };
     },
-    tell: ({ text, sub, tone, rule }) => {
+    tell: ({ text: said, sub: why, tone, rule }) => {
+      // a card's words can carry anything a service sent back, and these go to the phone too
+      const text = redactNow(said), sub = why && redactNow(why);
       const n: Notice = { key: rule.when?.widget ?? 'valet.rules', text, sub, icon: 'pulse', tone, at: Date.now() };
       recent.push(n); if (recent.length > 5) recent.shift();
       for (const l of noticeListeners) l(n);
