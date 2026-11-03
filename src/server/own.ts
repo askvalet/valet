@@ -1,5 +1,6 @@
 // Valet's own abilities, shaped like an integration so the chat treats them like any other: what happened, what it
-// changed, and "tell me when". Access defaults to write (see chat.ts), so these work without any config.
+// changed, "tell me when" and rules. Access defaults to control (see run.ts), so these work without any config; each
+// that changes something still asks.
 import { z } from 'zod';
 import { outcome, sentence, type Activity } from './activity.ts';
 import { guideTools } from './guide.ts';
@@ -9,12 +10,13 @@ import type { Instance } from './core.ts';
 import type { Recap } from '../shared/cards.ts';
 import type { Timeline } from './timeline.ts';
 import type { Watches } from './watches.ts';
+import { ruleTools, type Rules } from './rules.ts';
 
 const when = (t: number) => new Date(t).toLocaleString('en', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 // today needs no day
 const stamp = (t: number) => new Date(t).toDateString() === new Date().toDateString() ? new Date(t).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }) : when(t);
 
-export function ownInstance(o: { timeline: Timeline; activity: Activity; watches: Watches; hub: () => Hub; widgets: string[]; history?: History; recap: (year?: number) => Promise<Recap>; undo: (id: number) => Promise<string> }): Instance {
+export function ownInstance(o: { timeline: Timeline; activity: Activity; watches: Watches; rules: Rules; hub: () => Hub; widgets: string[]; history?: History; recap: (year?: number) => Promise<Recap>; undo: (id: number) => Promise<string> }): Instance {
   const log = () => {
     const list = o.activity.recent(12), undoable = list.find(e => e.undo && !e.undone);
     return { type: 'list' as const, title: 'Activity', icon: 'pulse', empty: 'Nothing changed yet', log: true,
@@ -22,10 +24,18 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
       buttons: undoable ? [{ label: `Undo: ${sentence(undoable)}`, action: 'undo', args: { id: undoable.id } }] : undefined };
   };
   return {
-    widgets: { activity: { title: 'Activity', interval: 15_000, fetch: async () => log() } },
-    actions: { undo: { description: 'Undo something from the activity log', input: z.object({ id: z.number() }), run: ({ id }: { id: number }) => o.undo(id) } },
+    widgets: { activity: { title: 'Activity', interval: 15_000, fetch: async () => log() }, rules: { title: 'Rules', interval: 15_000, fetch: async () => o.rules.card() } },
+    actions: {
+      undo: { description: 'Undo something from the activity log', input: z.object({ id: z.number() }), run: ({ id }: { id: number }) => o.undo(id) },
+      // switching a rule off needs no approval: it only takes power away. Resuming checks it could run now.
+      rule_pause: { description: 'Pause or resume a rule', input: z.object({ id: z.string().max(20), on: z.boolean() }),
+        run: async ({ id, on }: { id: string; on: boolean }) => { await o.rules.pause(id, on); return { done: on ? 'Paused a rule' : 'Resumed a rule' }; } },
+      rule_remove: { description: 'Remove a rule', input: z.object({ id: z.string().max(20) }),
+        run: async ({ id }: { id: string }) => { if (!await o.rules.remove(id)) throw new Error('no such rule'); return { done: 'Removed a rule' }; } },
+    },
     tools: {
       ...guideTools(),
+      ...ruleTools(o.rules, o.widgets),
       year_in_review: {
         label: 'Looked back over the year', followUps: ['What was my most watched thing?'],
         description: 'The year in review: the headline numbers from every service. Use for "my year", "wrapped", "year in review".',

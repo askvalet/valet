@@ -22,6 +22,8 @@ import { push, type Message } from './notify.ts';
 import { ownInstance } from './own.ts';
 import { Timeline } from './timeline.ts';
 import { loadWatches, Watches } from './watches.ts';
+import { loadRules, Rules } from './rules.ts';
+import { accessOf, runTool } from './run.ts';
 import { loadPins, pinsInstance, savePins, type Pin } from './pins.ts';
 import { setupTools } from './setup.ts';
 import { sandbox } from './sandbox.ts';
@@ -46,6 +48,7 @@ export interface Site {
   timeline: Timeline;
   activity: Activity;
   watches: Watches;
+  rules: Rules;
   push: (m: Message) => void;
 }
 
@@ -126,6 +129,25 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     timeline.add('reminder', w.say, w.widget);
     sendPush({ title: w.say });
   });
+  // standing instructions: each run re-checked against the config as it is now, then through the chat's own door
+  const rules = new Rules(await loadRules(), {
+    instances: () => instances,
+    access: id => accessOf(config.assistant, id),
+    acting: () => canAct(config),
+    title: key => hub.widget(key)?.title,
+    act: async (r, s) => {
+      const out = await runTool({ ...s, via: 'rule', who: r.by, rule: r.id, activity, redact: redactNow });
+      setTimeout(() => hub.refreshInstance(s.id), 300);
+      return { ok: !out?.data?.error, error: out?.data?.error ? String(out.data.error) : undefined };
+    },
+    tell: ({ text, sub, tone, rule }) => {
+      const n: Notice = { key: rule.when?.widget ?? 'valet.rules', text, sub, icon: 'pulse', tone, at: Date.now() };
+      recent.push(n); if (recent.length > 5) recent.shift();
+      for (const l of noticeListeners) l(n);
+      timeline.add('rule', sub ? `${text} (${sub})` : text, rule.when?.widget);
+      sendPush({ title: text, text: sub, urgent: tone === 'bad' });
+    },
+  });
   const undo = async (id: number) => {
     const e = activity.entries.find(x => x.id === id);
     if (!e?.undo || e.undone) throw new Error('nothing to undo there');
@@ -136,7 +158,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     activity.add({ who: e.who, via: 'page', what: `Undid: ${e.what}`, ok: true });
     return 'done';
   };
-  instances.set('valet', ownInstance({ timeline, activity, watches, hub: () => hub, widgets: [...placed], history, recap: year => buildRecap(instances, recapYear(year == null ? undefined : String(year))), undo }));
+  instances.set('valet', ownInstance({ timeline, activity, watches, rules, hub: () => hub, widgets: [...placed], history, recap: year => buildRecap(instances, recapYear(year == null ? undefined : String(year))), undo }));
   meta.set('valet', { type: 'valet', name: 'Valet', integration: { type: 'valet', name: 'Valet' } as Integration });
 
   const hub = new Hub(new Map([...instances].map(([id, i]) => [id, {
@@ -182,10 +204,12 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     for (const [id, text] of open) if (!now.has(id)) timeline.add('cleared', text);
     open = now; known = new Set(states.map(s => s.key));
     watcher?.see(states);
+    rules.changed();
   };
 
   if (history && config.history && config.history.background) hub.sampleInBackground(config.history.every * 60_000);
   watches.start(() => hub.snapshot(), key => void hub.refresh(key));
+  rules.start(() => hub.snapshot(), key => void hub.refresh(key));
 
   // a local wallpaper is served by Valet; a URL is handed to the browser as is, and paint is CSS
   const { appearance: a } = config;
@@ -201,6 +225,6 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   allowFonts(fontOrigins(a.font?.url));
 
   // the redactor knows every secret any config used, so a value from before a reload stays covered
-  return { config, instances, meta, placed, hub, history, acting: canAct(config), redact: redactor(usedSecrets), walls, cssVersion, recent, noticeListeners, problems, pins, ask, watcher, timeline, activity, watches, push: sendPush };
+  return { config, instances, meta, placed, hub, history, acting: canAct(config), redact: redactor(usedSecrets), walls, cssVersion, recent, noticeListeners, problems, pins, ask, watcher, timeline, activity, watches, rules, push: sendPush };
 }
 

@@ -39,8 +39,9 @@ const home = () => new Map<string, any>([
   ['links', { widgets: {}, tools: { save: tool('save', 'write') } }],
   ['secret', { widgets: {}, tools: { peek: tool('peek', 'read') } }],
   ['config', { widgets: {}, tools: { config_apply: tool('config_apply', 'control') } }],
+  ['valet', { widgets: {}, tools: { rule_add: tool('rule_add', 'control') } }],
 ]);
-const meta = () => new Map<string, any>(['dl', 'links', 'secret', 'config'].map(id => [id, { type: id, name: id }]));
+const meta = () => new Map<string, any>(['dl', 'links', 'secret', 'config', 'valet'].map(id => [id, { type: id, name: id }]));
 const redact = (s: string) => s.replaceAll('sekret-value-123', '•••');
 
 async function talk(model: MockLanguageModelV4, messages: any[], o: { acting?: boolean; access?: object; activity?: InstanceType<typeof Activity> } = {}) {
@@ -85,6 +86,15 @@ test('a control tool asks first and doesn\'t run until approved; a denial stays 
   assert.deepEqual(ran, ['pause']);
 });
 
+test('rules: setting one up is offered by default and asks first; valet: write turns rules off', async () => {
+  const r = await talk(scripted([['valet__rule_add', {}]]), say('every time a download finishes, pause the rest'));
+  assert.ok(r.offered.includes('valet__rule_add'));
+  assert.deepEqual(ran, []);
+  assert.ok(r.events.some(e => e.type === 'tool-approval-request'));
+  assert.ok(!(await talk(scripted('hi'), say('hi'), { access: { valet: 'write' } })).offered.includes('valet__rule_add'));
+  assert.ok(!(await talk(scripted('hi'), say('hi'), { acting: false })).offered.includes('valet__rule_add'));
+});
+
 test('write tools: always ask, even with exactly what the person typed', async () => {
   const r = await talk(scripted([['links__save', { url: 'https://example.com/a' }]]), say('save https://example.com/a'));
   assert.deepEqual(ran, []);
@@ -116,7 +126,8 @@ test('plan: one approval for all of it, but every step is checked before anythin
   assert.deepEqual(ran, ['pause', 'resume']);
   assert.deepEqual(ok.activity.recent().map(e => e.via), ['plan', 'plan']);
   // a tool that isn't there, one it isn't allowed, or its own config: nothing runs at all
-  for (const bad of ['dl__nope', 'secret__peek', 'config__config_apply']) {
+  // a rule is a standing permission: it gets an approval of its own, never a step in a plan
+  for (const bad of ['dl__nope', 'secret__peek', 'config__config_apply', 'valet__rule_add']) {
     await go([{ tool: 'dl__pause', why: 'a' }, { tool: bad, why: 'b' }]);
     assert.deepEqual(ran, [], bad);
   }

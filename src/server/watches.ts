@@ -16,14 +16,14 @@ async function save(list: Watch[]) {
   await writeFile(`${FILE()}.tmp`, JSON.stringify(list, null, 2), { mode: 0o600 }); await rename(`${FILE()}.tmp`, FILE());
 }
 
-const has = (hay: string, needle?: string) => !needle || hay.toLowerCase().includes(needle.toLowerCase());
+export const has = (hay: string, needle?: string) => !needle || hay.toLowerCase().includes(needle.toLowerCase());
 /** Everything live on a card: its activity, and any media or list rows. */
-function titles(c: Card | undefined) {
+export function titles(c: Card | undefined) {
   const out = c?.activity ? [c.activity.title] : [];
   if (c?.type === 'media' || c?.type === 'list' || c?.type === 'shelf') out.push(...c.items.map(i => i.title));
   return out;
 }
-const running = (c: Card | undefined, name?: string) => name ? titles(c).some(t => has(t, name)) : !!c?.activity;
+export const running = (c: Card | undefined, name?: string) => name ? titles(c).some(t => has(t, name)) : !!c?.activity;
 /** A number on the card, found by its label. */
 export function reading(c: Card | undefined, name?: string) {
   const heads = [c?.summary, ...(c?.summaries ?? [])].filter(Boolean).map(h => [h!.label, h!.value] as const);
