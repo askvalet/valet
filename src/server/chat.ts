@@ -5,7 +5,6 @@ import {
   type LanguageModel, type ToolSet, type UIMessage,
 } from 'ai';
 import { splitThink } from '../shared/think.ts';
-import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes } from 'node:crypto';
 import type { Context as HonoContext } from 'hono';
 import { z } from 'zod';
@@ -15,8 +14,8 @@ import type { Instance, Integration } from './core.ts';
 import { mcpTools } from './mcp.ts';
 import { chatAgent, makeAgentModel, makeModel } from './model.ts';
 import { checkCard } from '../shared/cards.schema.ts';
+import { accessOf as granted, asker, rank, runTool as run, who } from './run.ts';
 
-const rank = { none: 0, read: 1, write: 2, control: 3 } as const;
 // Approvals are signed when they're asked for and checked when they come back, so a request can't just claim one.
 const APPROVALS = randomBytes(32);
 
@@ -42,31 +41,16 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   safety: { acting: boolean; redact: (s: string) => string; activity?: Activity; model?: LanguageModel } = { acting: true, redact: s => s }) {
   const a = config.assistant!;
   const model = safety.model ?? makeModel(a);
-  // Valet's own tools (what happened, reminders) work without being granted; read-only pages still cap them
-  const accessOf = (id: string) => rank[a.access[id] ?? (id === 'valet' ? 'write' : a.access.default ?? 'read')];
-
-  // who's asking, per request: two people can be chatting at once
-  const asker = new AsyncLocalStorage<string>(), who = () => asker.getStore() ?? 'you';
+  // Valet's own tools (what happened, reminders, rules) work without being granted; read-only pages still cap them
+  const accessOf = (id: string) => granted(a, id);
 
   // Tool names are "<instance>__<tool>" so two instances of one integration (two Plex servers) don't collide.
   const tools: ToolSet = {};
   const approval: Record<string, 'user-approval'> = {};
   const catalog: string[] = [];
   const steps = new Map<string, { id: string; name: string; t: Instance['tools'] extends Record<string, infer T> | undefined ? T : never }>();
-  // every tool call goes through here: results are redacted (a secret in an error or a payload never reaches the model or
-  // the page), and anything that isn't just looking goes in the activity log
-  const runTool = async (id: string, name: string, t: any, args: any, via: 'chat' | 'plan') => {
-    const log = (ok: boolean, error?: string) => { if (t.access !== 'read') safety.activity?.add({ who: who(), via, what: t.label ?? name, input: args, ok, error, undo: t.undo ? { tool: `${id}__${t.undo}`, input: args } : undefined }); };
-    try {
-      const out = await t.run(args), failed = out?.data?.error;
-      log(!failed, failed ? String(failed) : undefined);
-      return JSON.parse(safety.redact(JSON.stringify(out)));
-    } catch (e) {
-      const error = safety.redact((e as Error).message);
-      log(false, error);
-      return { data: { error } };
-    }
-  };
+  // every tool call goes through one door (run.ts): redacted, and logged unless it only looks
+  const runTool = (id: string, name: string, t: any, args: any, via: 'chat' | 'plan') => run({ id, name, t, args, via, who: who(), activity: safety.activity, redact: safety.redact });
   for (const [id, inst] of instances) {
     // read-only Valet (no sign-in, untrusted network): the assistant may look, never add or change
     const level = Math.min(accessOf(id), safety.acting ? rank.control : rank.read);
@@ -75,7 +59,8 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     catalog.push(`- ${id} (${meta.get(id)!.name}): ${usable.map(([n]) => n).join(', ')}`);
     for (const [name, t] of usable) {
       const key = `${id}__${name}`;
-      if (id !== 'config') steps.set(key, { id, name, t });
+      // a plan can't edit the config or set up a rule: each of those gets an approval of its own
+      if (id !== 'config' && key !== 'valet__rule_add') steps.set(key, { id, name, t });
       tools[key] = tool({
         description: `[${id}] ${t.description}`,
         inputSchema: t.input as z.ZodType<any>,
@@ -191,6 +176,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     'A service can run in Docker or directly on a machine. Check both kinds of status and logs before saying you cannot find one.',
     'Name a cause only if a tool result shows it. If two things happened at the same time, say that, not that one caused the other. If you cannot tell, say so.',
     'When asked to be told about something later, set a reminder with watch_add; do not offer to check back yourself.',
+    'When asked to do something every time something happens, or every day at a time ("when a download finishes, pause the rest", "every morning at 7 tell me what is down"), set up a rule with rule_add: it then runs by itself, with no model. One action per rule, and never for a one-off.',
     `You are part of Valet, the software behind this page. For any question about Valet itself, what it can do or how to set something up, search its docs with docs_search and answer from them, never from memory.`,
     instances.has('config')
       ? 'You can change Valet: any page, tab, card, widget, integration, its look, words and layout are its config, and config_* tools edit it. Read with config_read, look up what a section accepts with config_options or the docs, check it with config_preview and fix what it reports, then save with config_apply, which asks the person. It applies at once. config_undo takes the last save back. Do several edits as one set of ops.'

@@ -19,6 +19,7 @@ import { buildRecap, recapYear } from './recap.ts';
 import { discover } from './discover.ts';
 import { mcpServer } from './mcpserver.ts';
 import { buildSite, type Site } from './site.ts';
+import { accessOf, rank } from './run.ts';
 import { registry } from '../integrations/index.ts';
 import { LABELS } from '../shared/labels.ts';
 import { cardLook, isPaint, listOf, lookOf } from '../shared/look.ts';
@@ -56,7 +57,7 @@ let base: Site = await buildSite(config, registry, fromPlugins, opts);
 // In a sandbox each request runs against that visitor's own copy of the site; otherwise there's just the one.
 const own = new AsyncLocalStorage<Site>();
 const site = new Proxy({} as Site, { get: (_, k) => Reflect.get(own.getStore() ?? base, k), set: (_, k, v) => Reflect.set(own.getStore() ?? base, k, v) });
-const stopSite = (s: Site) => { s.hub.dispose(); s.watcher?.stop(); s.watches.stop(); };
+const stopSite = (s: Site) => { s.hub.dispose(); s.watcher?.stop(); s.watches.stop(); s.rules.stop(); };
 // A new site takes over from the old one, and every open page refetches and reconnects.
 async function swap(next: Config) {
   const old = base;
@@ -333,7 +334,7 @@ app.post('/api/confirm', async c => {
   const [inst, name] = String(tool ?? '').split('__'), t = name ? site.instances.get(inst)?.tools?.[name] : undefined;
   const type = site.config.integrations[inst]?.type, logo = type ? `/api/icon/${type}` : undefined;
   // the same doors the chat has: a page that can't act gets no words, and a tool only ever sees checked input
-  const a = site.config.assistant, may = (id: string) => !!a && (a.access[id] ?? (id === 'valet' ? 'write' : a.access.default ?? 'read')) !== 'none';
+  const may = (id: string) => accessOf(site.config.assistant, id) > rank.none;
   if (!site.acting) return c.json({ logo });
   const words = async (id: string, step: NonNullable<typeof t>, raw: unknown) => {
     const args = step.input.safeParse(raw ?? {});
