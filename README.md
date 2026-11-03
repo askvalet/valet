@@ -71,6 +71,15 @@ runs as one Node process, uses about 45 MB of RAM on a fresh install, and the im
 
 <br>
 
+### Security first
+
+Valet is read-only until you turn on sign-in or tell it your network is private. Your API keys stay on the server, so
+neither the browser nor the AI ever sees them, and the assistant only gets the access you give it, one integration at a
+time. Every change asks first. It runs on your own hardware, with no account and no telemetry. The
+[security docs](https://askvalet.dev/security/) cover the rest.
+
+<br>
+
 ## Quick start
 
 ```sh
