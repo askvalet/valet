@@ -5,6 +5,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-03
+
 ### Added
 
 - Valet as a read-only MCP server (`mcpServer`): your own AI client can look at your homelab through Valet's read tools, behind its own token and access, with results redacted and every call logged.
@@ -63,5 +65,6 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/askvalet/valet/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/askvalet/valet/releases/tag/v0.1.0
