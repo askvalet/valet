@@ -322,10 +322,11 @@ What `assistant` sets is what it knows and may do. How it looks on the page is `
 
 **Setting up by talking.** With `access: { config: control }` you can change the page from chat: "move Plex above the
 weather", "make the cards more compact", "add a card for http://box/status". It reads this file and what a section or
-integration accepts, tries the change without saving (a diff, problems, and the real card in chat), and saves only when
+integration accepts, checks the change without saving or contacting anything (a diff and any problems; a real card only if you allow the fetch), and saves only when
 you approve; hot reload does the rest, and it can undo the last save. It changes only the lines it must. It can't touch
 `auth`, `allowedHosts`, `mcp`, `plugins`, `notify`, or its own access, model and instructions in `assistant`; it can't
-point `appearance` at a file on disk, and it refuses to write a secret: it asks you to put `${NAME}` in `.env`.
+point `appearance` at a file on disk or write its `css`, it refuses to write a secret (it asks you to put `${NAME}` in `.env`),
+and a secret only ever goes to hosts it already goes to.
 Mount the config folder read-only and it hands you the diff to paste instead.
 
 **It knows Valet.** Whatever its access, the assistant searches these docs to answer questions about Valet, and

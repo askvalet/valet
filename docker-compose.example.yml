@@ -4,6 +4,7 @@ services:
     image: ghcr.io/askvalet/valet:latest
     container_name: valet
     restart: unless-stopped
+    mem_limit: 512m                   # so nothing a service sends can take the machine down with it
     environment: { TZ: America/Toronto }   # your time zone, for times the server writes
     env_file: .env                    # secrets referenced as ${NAME} in config.yaml
     volumes:

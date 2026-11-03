@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { usedSecrets, type Config } from './config.ts';
+import { setFrames } from './security.ts';
 import { makeContext, type Instance, type Integration } from './core.ts';
 import { History } from './history.ts';
 import { Hub } from './hub.ts';
@@ -102,6 +103,8 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     instances.set('config', { widgets: {}, tools: setupTools(opts.path, registry) });
     meta.set('config', { type: 'config', name: 'Setup', integration: { type: 'config', name: 'Setup' } as Integration });
   }
+
+  setFrames([...instances.values()].flatMap(i => i.frame ? [i.frame] : []));
 
   // history survives a reload unless its settings changed
   const sameHistory = previous && JSON.stringify(previous.config.history) === JSON.stringify(config.history);

@@ -3,7 +3,7 @@
 // `assistant.access.config`. It can't touch sign-in, plugins, MCP or its own access, point at files on disk, or write a
 // secret into the file: those stay in .env. The save before this one is kept, so a change can be undone. Saved edits go through the same hot reload as a person's.
 import { readFile, writeFile } from 'node:fs/promises';
-import { isMap, isSeq, parseDocument, stringify } from 'yaml';
+import { isMap, isSeq, parse as parseYaml, parseDocument, stringify } from 'yaml';
 import { z } from 'zod';
 import { Config, parseConfig } from './config.ts';
 import { makeContext, type Instance, type Integration, type Tool } from './core.ts';
@@ -23,10 +23,10 @@ const Op = z.object({
 export type Op = z.infer<typeof Op>;
 
 // Appearance can name files, and Valet serves those: the assistant may set looks, never point it at something on disk.
-const LOCAL = /^(\/|\.{1,2}\/|~|file:)/;
+const LOCAL = /^(\/|\.{1,2}\/|~|file:)/;   // and `css`, which is served to the sign-in screen and can load things from anywhere
 function namesAFile(o: Op): string | null {
   const walk = (v: unknown, key: string): string | null => {
-    if (/file$/i.test(key)) return `"${key}" names a file on disk; the owner sets that by hand`;
+    if (/file$|^css$/i.test(key)) return `"${key}" is something the owner sets by hand`;
     if (typeof v === 'string' && LOCAL.test(v)) return `"${v}" is a file on disk; use an image URL, a colour or a gradient, or the owner sets it by hand`;
     if (Array.isArray(v)) { for (const x of v) { const r = walk(x, key); if (r) return r; } }
     else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) { const r = walk(x, k); if (r) return r; }
@@ -49,6 +49,55 @@ export function refused(ops: Op[]): string | null {
     };
     const bad = walk(o.value, String(o.path.at(-1)));
     if (bad) return bad;
+  }
+  return null;
+}
+
+const REF = /(\\?)\$\{(?:(secret|file):[^}]+|([A-Z0-9_]+))\}/g;
+const refsIn = (s: string) => [...s.matchAll(REF)].filter(m => !m[1]).map(m => m[0]);
+const walkStrings = (v: unknown, key: string, see: (s: string, key: string) => void) => {
+  if (typeof v === 'string') see(v, key);
+  else if (Array.isArray(v)) for (const x of v) walkStrings(x, key, see);
+  else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) walkStrings(x, k, see);
+};
+/** Which secrets go where: each `${NAME}` in an integration, and the hosts that block talks to. */
+export function bindings(text: string) {
+  const doc = (parseYaml(text) ?? {}) as Record<string, unknown>, hosts = new Map<string, Set<string>>(), outside = new Set<string>();
+  for (const [id, block] of Object.entries((doc.integrations ?? {}) as Record<string, unknown>)) {
+    const names = new Set<string>(), at = new Set<string>();
+    walkStrings(block, id, (s, key) => {
+      for (const r of refsIn(s)) names.add(r);
+      if (/^https?:\/\//.test(s)) { try { at.add(new URL(s.replace(REF, 'x')).host); } catch { at.add(s); } }
+      else if (/url$/i.test(key)) at.add(s);
+    });
+    for (const n of names) { const set = hosts.get(n) ?? new Set<string>(); for (const h of at) set.add(h); hosts.set(n, set); }
+  }
+  for (const [k, v] of Object.entries(doc)) if (k !== 'integrations') walkStrings(v, k, s => { for (const r of refsIn(s)) outside.add(r); });
+  return { hosts, outside, doc };
+}
+const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+/** Did anything owner-only change, whatever the edit looked like? Judged on the parsed result, not the paths asked for. */
+function ownerChanged(before: Record<string, any>, after: Record<string, any>) {
+  for (const k of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (k === 'assistant') {
+      const strip = (a: Record<string, unknown> = {}) => Object.fromEntries(Object.entries(a).filter(([x]) => !ASSISTANT.has(x)));
+      if (!same(strip(before[k]), strip(after[k]))) return 'assistant';
+    } else if (!EDITABLE.has(k) && !same(before[k], after[k])) return k;
+  }
+  for (const k of ['css', 'cssFile']) if (!same(before.appearance?.[k], after.appearance?.[k])) return `appearance.${k}`;
+  return null;
+}
+/** The rule that keeps secrets home: a secret only ever goes to hosts it already goes to, and none moves into the page.
+ *  One check for every way of getting there: pointing an integration somewhere new, copying a reference into a new
+ *  block, or putting one in a title or a wallpaper the browser would fetch. */
+export function guard(beforeText: string, afterText: string): string | null {
+  const a = bindings(beforeText), b = bindings(afterText), owner = ownerChanged(a.doc, b.doc);
+  if (owner) return `"${owner}" isn't something the assistant may change; the owner edits that by hand`;
+  for (const r of b.outside) if (!a.outside.has(r)) return `${r} can't go outside an integration: the page would show it`;
+  for (const [r, hosts] of b.hosts) {
+    if (/^\$\{(file|secret):/.test(r) && !a.hosts.has(r)) return `${r} reads a file; the owner adds those by hand`;
+    const known = a.hosts.get(r);
+    if (known) for (const h of hosts) if (!known.has(h)) return `${r} goes to ${[...known].join(', ') || 'nowhere yet'}, and this would send it to ${h} as well. The owner has to make that change by hand`;
   }
   return null;
 }
@@ -134,9 +183,11 @@ export function validate(text: string, registry: Record<string, Integration>) {
 export function setupTools(path: string, registry: Record<string, Integration>): Record<string, Tool<any>> {
   const previous = `${path}.previous`;   // the one save before this, for undo
   const edits = z.object({ ops: z.array(Op).min(1), summary: z.string().describe('in plain words, what this changes') });
+  const newIntegration = (ops: Op[]) => { const o = ops.find(o => o.op === 'set' && o.path[0] === 'integrations' && o.path.length === 2); return o ? String(o.path[1]) : undefined; };
   const trial = async (ops: Op[]) => {
     const why = refused(ops); if (why) throw new Error(why);
     const before = await readFile(path, 'utf8'), after = applyOps(before, ops);
+    const blocked = guard(before, after); if (blocked) throw new Error(blocked);
     return { before, after, ...validate(after, registry) };
   };
   return {
@@ -161,31 +212,51 @@ export function setupTools(path: string, registry: Record<string, Integration>):
       },
     },
     api_sample: {
-      label: 'Looked at the API', confirm: ({ url }) => ({ title: 'Fetch this address?', detail: url, icon: 'pulse', verb: 'Fetch' }), access: 'write',
-      description: 'Fetch a JSON URL the person gave you and return the start of the response, to write a `type: api` block from: which paths hold the numbers. Headers may use ${NAME}.',
+      label: 'Looked at the API', access: 'write',
+      confirm: async ({ url, headers }) => {
+        const sends = Object.entries((headers ?? {}) as Record<string, string>).map(([k, v]) => `${k}${refsIn(v).length ? ` (${refsIn(v).join(', ')})` : ''}`);
+        return { title: `Fetch from ${new URL(url).host}?`, detail: `${url}${sends.length ? ` · sends ${sends.join(', ')}` : ''}`, icon: 'pulse', verb: 'Fetch' };
+      },
+      description: 'Fetch a JSON URL the person gave you and return the start of the response, to write a `type: api` block from: which paths hold the numbers. Headers may use a ${NAME} only if the config already sends it to that same host.',
       input: z.object({ url: z.string().url(), headers: z.record(z.string(), z.string()).optional() }),
       async run({ url, headers }) {
-        const ctx = makeContext('setup');
-        const filled = Object.fromEntries(Object.entries((headers ?? {}) as Record<string, string>).map(([k, v]) => [k, v.replace(/\$\{(\w+)\}/g, (_: string, n: string) => process.env[n] ?? '')]));
-        try { return { data: { sample: (await ctx.http<string>(url, { as: 'text', headers: filled, timeout: 15_000 })).slice(0, 6000) } }; }
-        catch (e) { return { data: { error: (e as Error).message } }; }
+        const given = (headers ?? {}) as Record<string, string>, { hosts } = bindings(await readFile(path, 'utf8')), host = new URL(url).host;
+        for (const r of Object.values(given).flatMap(refsIn)) if (!hosts.get(r)?.has(host)) return { data: { error: `${r} doesn't go to ${host}, so it isn't sent` } };
+        const filled = Object.fromEntries(Object.entries(given).map(([k, v]) => [k, v.replace(/\$\{(\w+)\}/g, (_: string, n: string) => process.env[n] ?? '')]));
+        try {
+          const r = await makeContext('setup').http<Response>(url, { as: 'response', headers: filled, timeout: 15_000, redirect: 'manual' });
+          if (r.status >= 300 && r.status < 400) return { data: { error: `it redirects to ${r.headers.get('location')}, which wasn't followed; ask them for that address` } };
+          return { data: { status: r.status, sample: (await r.text()).slice(0, 6000) } };
+        } catch (e) { return { data: { error: (e as Error).message } }; }
       },
     },
     config_preview: {
       label: 'Tried the change', access: 'read', input: edits,
-      description: 'Try edits WITHOUT saving: returns the diff, any problems, env variables it still needs, and shows the person the new card. Always do this before config_apply, and fix what it reports. Edit the smallest path that does the job: one widget or section, by index, never the whole of `layout`. New cards go in `layout` too, or they won\'t appear. Secrets are never written: use ${NAME}.',
+      description: 'Check edits WITHOUT saving and without contacting anything: returns the diff, any problems, the env variables it still needs and which widgets a new integration offers. Always do this before config_apply, and fix what it reports. Edit the smallest path that does the job: one widget or section, by index, never the whole of `layout`. New cards go in `layout` too, or they won\'t appear. Secrets are never written: use ${NAME}. To see a new card with real data, config_try.',
       async run({ ops }) {
         try {
-          const t = await trial(ops);
-          // the first new integration, really fetched: the person sees the card before agreeing to it
-          const added = (ops as Op[]).find(o => o.op === 'set' && o.path[0] === 'integrations' && o.path.length === 2);
-          const inst = added && t.instances.get(String(added.path[1]));
-          const w = inst && Object.values(inst.widgets)[0];
-          let card, fetchError: string | undefined;
-          if (w && !t.missing.length) { try { card = await w.fetch(); } catch (e) { fetchError = (e as Error).message; } }
-          // what the card really shows, so a wrong path is caught here and not on the page
-          const change: Card = { type: 'code', title: 'What changes', diff: true, lines: diff(t.before, t.after).split('\n') };
-          return { data: { diff: diff(t.before, t.after), problems: t.problems, fetchError, cardShows: card ? JSON.stringify(card).slice(0, 900) : undefined, needsInEnv: t.missing, widgets: inst ? Object.keys(inst.widgets) : undefined }, card: card ? { type: 'group', layout: 'column', cards: [card, change] } : change };
+          const t = await trial(ops), id = newIntegration(ops), inst = id ? t.instances.get(id) : undefined;
+          return { data: { diff: diff(t.before, t.after), problems: t.problems, needsInEnv: t.missing, widgets: inst ? Object.keys(inst.widgets) : undefined },
+            card: { type: 'code', title: 'What changes', diff: true, lines: diff(t.before, t.after).split('\n') } satisfies Card };
+        } catch (e) { return { data: { error: (e as Error).message } }; }
+      },
+    },
+    config_try: {
+      label: 'Tried the card', access: 'write', input: edits,
+      // a card really fetched is a request really sent, with its keys, so it's shown first and asked about
+      confirm: async ({ ops }) => {
+        const id = newIntegration(ops), block = (ops as Op[]).find(o => o.path[1] === id)?.value as Record<string, any> | undefined, where: string[] = [], keys: string[] = [];
+        walkStrings(block, 'url', s => { keys.push(...refsIn(s)); if (/^https?:/.test(s)) where.push(s.replace(/\?.*/, '')); });
+        return { title: `Fetch ${id ?? 'this card'} to try it?`, detail: `${String(block?.method ?? 'GET')} ${where.join(', ') || 'its address'}${keys.length ? ` · sends ${[...new Set(keys)].join(', ')}` : ''}`, icon: 'pulse', verb: 'Fetch' };
+      },
+      description: 'Really fetch a new integration from edits you previewed, once, so the person sees its card before saving and you can see whether the paths are right. Nothing is saved. Asks first, because it sends a request.',
+      async run({ ops }) {
+        try {
+          const t = await trial(ops), id = newIntegration(ops), w = id && Object.values(t.instances.get(id)?.widgets ?? {})[0];
+          if (!w) return { data: { error: 'that adds no integration to try' } };
+          if (t.problems.length || t.missing.length) return { data: { error: 'fix these first', problems: t.problems, needsInEnv: t.missing } };
+          const card = await w.fetch();
+          return { data: { cardShows: JSON.stringify(card).slice(0, 900) }, card };
         } catch (e) { return { data: { error: (e as Error).message } }; }
       },
     },
@@ -205,12 +276,19 @@ export function setupTools(path: string, registry: Record<string, Integration>):
     },
     config_undo: {
       label: 'Undid the last config change', access: 'control', input: z.object({}),
-      confirm: async () => ({ title: 'Undo the last config change?', detail: await readFile(previous, 'utf8').then(old => readFile(path, 'utf8').then(now => diff(now, old).slice(0, 600))).catch(() => 'There is nothing to undo.'), icon: 'pulse', verb: 'Undo' }),
+      confirm: async () => {
+        const [old, now] = await Promise.all([readFile(previous, 'utf8').catch(() => null), readFile(path, 'utf8')]);
+        if (old == null) return { title: 'There is nothing to undo.', icon: 'pulse' };
+        const change = diff(now, old);
+        return { title: 'Undo the last config change?', detail: change.length > 1200 ? `${change.slice(0, 1200)}\n… and ${change.length - 1200} characters more` : change, icon: 'pulse', verb: 'Undo' };
+      },
       description: 'Put the config back as it was before the last save. Undoing twice puts the change back.',
       async run() {
         const old = await readFile(previous, 'utf8').catch(() => null);
         if (old == null) return { data: { error: 'nothing to undo' } };
         const now = await readFile(path, 'utf8'), { problems } = validate(old, registry);
+        const owner = ownerChanged(parseYaml(now) ?? {}, parseYaml(old) ?? {});   // a hand edit made since then stays yours
+        if (owner) return { data: { error: `${owner} has been changed by hand since then, so the owner undoes this` } };
         if (problems.length) return { data: { error: 'the earlier version no longer works', problems } };
         await writeFile(previous, now); await writeFile(path, old);
         return { data: { undone: true } };

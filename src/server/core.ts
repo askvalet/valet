@@ -6,6 +6,8 @@
 //   tools    what the assistant may call; each is 'read', 'write' (adds something, e.g. saves a bookmark) or 'control' (changes or removes
 //            something). Anything but 'read' asks the person first. Config decides which it gets.
 // Everything runs on the server, so API keys and internal URLs never reach the browser.
+import { usedSecrets } from './config.ts';
+import { redactor } from './security.ts';
 import type { Format } from './config.ts';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -52,6 +54,8 @@ export interface Instance {
   /** Someone just asked the assistant something; returns the widgets to refresh now. */
   onChat?(): string[] | void;
   widgets: Record<string, Widget>;
+  /** An address its cards embed. The page's content security policy names it once this config is the live one. */
+  frame?: string;
   actions?: Record<string, Action>;
   tools?: Record<string, Tool>;
   /** Serve an image (poster, camera snapshot) or a video through Valet so the browser never needs the service's key.
@@ -119,17 +123,48 @@ async function selfSigned(url: string, init: RequestInit, timeout: number) {
   });
 }
 
+const redactLog = redactor(usedSecrets);
+const MAX_BODY = 32 * 2 ** 20;
+/** A reply as text, up to what any service has reason to send: past that it's refused rather than held in memory. */
+export async function bounded(res: Response, max = MAX_BODY) {
+  if (Number(res.headers.get('content-length') ?? 0) > max) { await res.body?.cancel(); throw new Error('the reply is too large'); }
+  const reader = res.body?.getReader(), parts: Uint8Array[] = []; let size = 0;
+  for (;;) {
+    const r = await reader?.read();
+    if (!r || r.done) break;
+    size += r.value.length;
+    if (size > max) { await reader!.cancel(); throw new Error('the reply is too large'); }
+    parts.push(r.value);
+  }
+  return Buffer.concat(parts).toString('utf8');
+}
+
+/** fetch, but keys stay with the service they belong to. fetch drops Authorization and cookies on a redirect to another
+ *  origin and keeps every other header, which is where most services carry their key. */
+export async function keptHome(url: string, init: RequestInit, hops = 5): Promise<Response> {
+  if (init.redirect === 'manual') return fetch(url, init);
+  const res = await fetch(url, { ...init, redirect: 'manual' });
+  const to = res.status >= 300 && res.status < 400 && res.headers.get('location');
+  if (!to) return res;
+  if (!hops) throw new Error('too many redirects');
+  await res.body?.cancel();
+  const from = new URL(url), next = new URL(to, url), home = next.origin === from.origin || (next.hostname === from.hostname && next.protocol === 'https:' && next.port === '');
+  const get = res.status === 303 || ((res.status === 301 || res.status === 302) && init.method && init.method !== 'GET' && init.method !== 'HEAD');
+  return keptHome(next.href, { ...init, ...(get ? { method: 'GET', body: undefined } : {}), headers: home ? init.headers : { Accept: new Headers(init.headers).get('accept') ?? '*/*' } }, hops - 1);
+}
+
 export function makeContext(id: string, format?: Partial<Format>): Context {
   return {
     id, format,
     async http(url, init = {}) {
       const { timeout = 8000, as = 'json', insecure, ...rest } = init;
-      const res = insecure && url.startsWith('https:') ? await selfSigned(url, rest, timeout) : await fetch(url, { ...rest, signal: AbortSignal.timeout(timeout) });
+      const res = insecure && url.startsWith('https:') ? await selfSigned(url, rest, timeout) : await keptHome(url, { ...rest, signal: AbortSignal.timeout(timeout) });
       if (as === 'response') return res as any;
       if (!res.ok) throw new Error(`${new URL(url).host} answered ${res.status}`);
-      return (as === 'text' ? res.text() : res.json()) as any;
+      const text = await bounded(res);
+      return (as === 'text' ? text : JSON.parse(text)) as any;
     },
-    log: (...a) => console.log(`[${id}]`, ...a),
+    log: (...a) => console.log(`[${id}]`, ...a.map(x => typeof x === 'string' ? redactLog(x) : x)),
     image: ref => `/api/image/${encodeURIComponent(id)}?ref=${encodeURIComponent(ref)}`,
     upload: readUpload,
     session,

@@ -124,9 +124,9 @@ export function guideTools(): Record<string, Tool<any>> {
       }),
       async run({ kind, title, what, expected, steps, area, integration, link, logs, config }) {
         const url = kind === 'bug'
-          ? issueUrl('bug', title, { what: clip(what, 1500), steps: clip(steps, 1000), expected: clip(expected, 600), area, integration, version: await version(), logs: clip(logs, 1000), config: clip(config, 800) })
+          ? issueUrl('bug', title, { what: clip(what, 1500), steps: clip(steps, 1000), expected: clip(expected, 600), area, integration: clip(integration, 60), version: await version(), logs: clip(logs, 1000), config: clip(config, 800) })
           : kind === 'feature' ? issueUrl('feature', title, { problem: clip(what, 1500), idea: clip(expected, 1500) })
-          : issueUrl('integration', title, { service: integration, api: link, show: clip(what, 1500) });
+          : issueUrl('integration', title, { service: clip(integration, 100), api: clip(link, 300), show: clip(what, 1500) });
         return { data: { url, shown: true, sent: false, note: 'nothing has been sent; they read it and submit it on GitHub' },
           card: { type: 'links', title: 'Report this on GitHub', icon: 'pulse', items: [{ name: title.slice(0, 80), href: url, icon: '/api/icon/github', note: 'Filled in for you. Read it, then submit.' }] } };
       },

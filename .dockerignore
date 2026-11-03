@@ -7,3 +7,8 @@ website/node_modules
 website/dist
 website/public
 website/.cache
+config
+data
+.test
+**/.env*
+!.env.example

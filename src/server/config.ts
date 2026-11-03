@@ -306,7 +306,7 @@ export function substitute(v: unknown): unknown {
     else if (process.env[`${name}_FILE`]) value = readSecret(process.env[`${name}_FILE`]!, m);
     else throw new Error(`config: environment variable ${name} is not set (nor ${name}_FILE)`);
     // a user name, an address or a port isn't a secret, and blanking one mangles real text ("sam" inside "samantha")
-    if (kind || !/USER|LOGIN|URL|HOST|PORT|ADDR/.test(name)) usedSecrets.push(value);
+    if (kind || !/(^|_)(USER(NAME)?|LOGIN|URL|HOST|HOSTNAME|PORT|ADDR(ESS)?)$/.test(name) || /WEBHOOK|SECRET|TOKEN|KEY|PASS|ICS|CAL/.test(name)) usedSecrets.push(value);
     return value;
   });
   if (Array.isArray(v)) return v.map(substitute);

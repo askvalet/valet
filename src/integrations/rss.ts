@@ -19,12 +19,18 @@ export function parseFeed(xml: string, name?: string): Entry[] {
     const x = e.inner;
     const link = atom ? (elements(x, 'link').find(l => !l.attrs.rel || l.attrs.rel === 'alternate')?.attrs.href ?? child(x, 'link', 'href')) : child(x, 'link') || child(x, 'guid');
     const image = child(x, 'media:thumbnail', 'url') ?? child(x, 'media:content', 'url') ?? child(x, 'enclosure', 'url')
-      ?? (child(x, 'description') ?? child(x, 'content:encoded') ?? '').match(/<img[^>]+src=["']([^"']+)/)?.[1];
+      ?? firstImage(child(x, 'description') ?? child(x, 'content:encoded') ?? '');
     const body = child(x, 'media:description') ?? child(x, 'summary') ?? child(x, 'description') ?? child(x, 'content') ?? '';
     return { title: text(child(x, 'title') ?? 'Untitled'), href: link?.trim(), source, at: when(child(x, atom ? 'published' : 'pubDate') ?? child(x, atom ? 'updated' : 'dc:date')),
       image: image && /^https?:\/\//.test(image) ? image : undefined, summary: text(body).slice(0, 280) || undefined };
   });
 }
+
+const MAX_FEED = 4 * 2 ** 20;   // far more than any feed; a parser has no business reading further
+const firstImage = (html: string) => {
+  const at = html.indexOf('<img'), end = at < 0 ? -1 : html.indexOf('>', at);
+  return end < 0 ? undefined : html.slice(at, end).match(/\ssrc=["']([^"']+)/)?.[1];
+};
 
 const ago = (t?: number) => {
   if (!t) return '';
@@ -48,8 +54,8 @@ export default defineIntegration({
     async function entries() {
       if (cache && Date.now() - cache.at < cfg.every * 1000) return cache.entries;
       const all = await Promise.all(cfg.feeds.map(async f => {
-        try { return parseFeed(await ctx.http<string>(f.url, { as: 'text', timeout: 15_000, headers: { 'User-Agent': 'Valet (feed reader)' } }), f.name); }
-        catch (e) { ctx.log(`${f.url}: ${(e as Error).message}`); return []; }
+        try { return parseFeed((await ctx.http<string>(f.url, { as: 'text', timeout: 15_000, headers: { 'User-Agent': 'Valet (feed reader)' } })).slice(0, MAX_FEED), f.name); }
+        catch (e) { ctx.log(`${new URL(f.url).host}: ${(e as Error).message}`); return []; }
       }));
       const list = all.flat().sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
       cache = { at: Date.now(), entries: list };

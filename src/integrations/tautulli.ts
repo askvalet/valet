@@ -83,6 +83,11 @@ export default defineIntegration({
     }
 
     const bw: number[] = [];
+    async function theStream(who: string) {
+      const w = who.toLowerCase(), hits = (await activity()).sessions.filter((x: any) => String(x.friendly_name).toLowerCase().includes(w) || String(x.full_title).toLowerCase().includes(w));
+      if (hits.length !== 1) throw new Error(hits.length ? `${hits.length} streams match ${who}: be more specific` : `no stream matches ${who}`);
+      return hits[0];
+    }
     async function activity() {
       const d = await api('get_activity');
       return { count: Number(d.stream_count), bandwidth: Number(d.total_bandwidth), sessions: d.sessions as any[] };
@@ -232,13 +237,12 @@ export default defineIntegration({
       tools: {
         plex_stop_stream: {
           label: 'Stopped a stream',
-          confirm: ({ who, message }) => ({ title: `Stop ${who}'s stream?`, detail: message ? `They'll see: ${message}` : undefined, icon: 'play', verb: 'Stop', danger: true }),
+          confirm: async ({ who, message }) => ({ title: await theStream(who).then(s => `Stop ${s.friendly_name}'s ${s.full_title}?`), detail: message ? `They'll see: ${message}` : undefined, icon: 'play', verb: 'Stop', danger: true }),
           description: 'Stop someone\'s Plex stream, with a short message they\'ll see. Identify it by the user\'s name or the title (from plex_streams).',
-          access: 'control', input: z.object({ who: z.string().describe('user name or title'), message: z.string().default('Stopped by the server owner.') }),
+          access: 'control', input: z.object({ who: z.string().min(2).describe('user name or title'), message: z.string().default('Stopped by the server owner.') }),
           async run({ who, message }) {
-            const a = await activity(), w = who.toLowerCase();
-            const s = a.sessions.find(x => String(x.friendly_name).toLowerCase().includes(w) || String(x.full_title).toLowerCase().includes(w));
-            if (!s) return { data: { error: `no stream matches ${who}` } };
+            const s = await theStream(who).catch(e => e as Error);
+            if (s instanceof Error) return { data: { error: s.message } };
             await api('terminate_session', { session_key: s.session_key, message });
             return { data: { stopped: s.full_title, user: s.friendly_name }, card: { type: 'text', tone: 'warn', text: `Stopped ${s.friendly_name}'s ${s.full_title}.` } };
           },

@@ -12,6 +12,15 @@ interface Discovery { authorization_endpoint: string; token_endpoint: string; jw
 const b64 = (b: Buffer) => b.toString('base64url');
 const json = (s: string) => JSON.parse(Buffer.from(s, 'base64url').toString());
 
+/** Only ever back into this page: browsers read `/\\x` and a tab or newline in a path their own way, so it's judged as they would. */
+export const backHere = (to: unknown) => {
+  if (typeof to !== 'string' || !to.startsWith('/') || /[\\\t\r\n]/.test(to)) return '/';
+  try { return new URL(to, 'http://valet.invalid').origin === 'http://valet.invalid' ? to : '/'; } catch { return '/'; }
+};
+/** An address only counts once the provider says it checked it; otherwise anyone there could just type yours. */
+export const allowed = (list: string[], name: string, claims: Record<string, unknown>) => !list.length || list.some(a => a.toLowerCase() === name.toLowerCase()
+  || (claims.email_verified === true && a.toLowerCase() === String(claims.email ?? '').toLowerCase()));
+
 export function setupOidc(app: Hono, config: Config, sign: (body: string) => string, startSession: (c: Context, name: string) => void) {
   const o = config.auth.oidc as OidcConfig;
   const secure = config.auth.secureCookie, trusted = new Set(config.auth.proxy.trusted);
@@ -71,10 +80,10 @@ export function setupOidc(app: Hono, config: Config, sign: (body: string) => str
     if (claims.nonce !== flow.nonce) return fail('nonce mismatch', 401);
     const name = String(claims[o.claim] ?? claims.preferred_username ?? claims.email ?? claims.sub ?? '');
     if (!name) return fail(`the token has no "${o.claim}" claim`, 401);
-    if (o.allow.length && !o.allow.some(a => a.toLowerCase() === name.toLowerCase() || a.toLowerCase() === String(claims.email ?? '').toLowerCase())) return fail(`${name} isn't on the allow list`, 403);
+    if (!allowed(o.allow, name, claims)) return fail(`${name} isn't on the allow list`, 403);
     deleteCookie(c, 'valet_oidc', { path: '/api/auth/oidc' });
     startSession(c, name);
-    return c.redirect(/^\/[^/]/.test(flow.to) ? flow.to : '/');   // only back into this page
+    return c.redirect(backHere(flow.to));   // only back into this page
   });
 }
 

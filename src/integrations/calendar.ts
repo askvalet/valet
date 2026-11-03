@@ -108,7 +108,7 @@ export default defineIntegration({
             .map(e => c.color && paint(c.color) ? { ...e, color: paint(c.color) } : e);
           last.set(c.url, list);
           return list;
-        } catch (e) { ctx.log(`${c.name ?? c.url}: ${(e as Error).message}`); return last.get(c.url) ?? []; }
+        } catch (e) { ctx.log(`${c.name ?? 'a calendar'}: ${(e as Error).message}`); return last.get(c.url) ?? []; }
       }));
       const list = all.flat().sort((a, b) => a.start - b.start);
       cache = { at: Date.now(), events: list, from, to };

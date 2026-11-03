@@ -2,7 +2,7 @@
 // stack (smart search understands what's in a picture; people and dates narrow it). The homepage shows today's
 // memories ("on this day"), or a handful of random photos when there are none.
 import { z } from 'zod';
-import { defineIntegration, fmt } from '../server/core.ts';
+import { defineIntegration, fmt, keptHome } from '../server/core.ts';
 import type { ShelfItem } from '../shared/cards.ts';
 
 export default defineIntegration({
@@ -97,7 +97,7 @@ export default defineIntegration({
       },
       image(ref) {
         if (!/^[0-9a-f-]{36}$/.test(ref)) throw new Error('bad image ref');
-        return fetch(`${base}/api/assets/${ref}/thumbnail?size=preview`, { headers: { 'x-api-key': cfg.apiKey }, signal: AbortSignal.timeout(15_000) });
+        return keptHome(`${base}/api/assets/${ref}/thumbnail?size=preview`, { headers: { 'x-api-key': cfg.apiKey }, signal: AbortSignal.timeout(15_000) });
       },
     };
   },

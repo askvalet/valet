@@ -67,3 +67,7 @@ An approval means you saw a sentence and pressed a button. It doesn't check the 
 - A tool without `confirm` shows its raw input, which is harder to read.
 - If you approve everything without reading, you've given the assistant control. Use `read` for anything you wouldn't check.
 - MCP tools' cards can only show their input, since Valet doesn't know what they do. See [MCP](/assistant/mcp/).
+
+## How it holds
+
+An approval is signed by the server when it's asked for and checked when it comes back, against the tool and its input, so a request can't claim one. A plan's card shows each step in the tool's own words, and a step that names something vague is refused rather than guessed at. Signatures last until Valet restarts, so a card left open across a restart has to be asked again.

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { Hono } from 'hono';
-import { headers as securityHeaders } from '../src/server/security.ts';
+import { headers as securityHeaders, setFrames } from '../src/server/security.ts';
 import { Config } from '../src/server/config.ts';
 import { session, type Context, type Instance } from '../src/server/core.ts';
 import { Timeline } from '../src/server/timeline.ts';
@@ -773,9 +773,12 @@ test('clock: every zone is checked at startup', async () => {
 test('iframe: only what it names can load, and nothing can be framed otherwise', async () => {
   const before = headersFor();
   assert.match(await before, /frame-src 'none'/);
-  const c: any = await make(iframe, { url: 'https://grafana.example/d/1' }, fake(() => null)).widgets.page.fetch();
+  const inst = make(iframe, { url: 'https://grafana.example/d/1' }, fake(() => null)), c: any = await inst.widgets.page.fetch();
   valid(c);
+  assert.match(await headersFor(), /frame-src 'none'/);   // checking a config opens nothing: only a config in use does
+  setFrames([inst.frame!]);
   assert.match(await headersFor(), /frame-src https:\/\/grafana\.example[;\s]/);
+  setFrames([]);
   assert.throws(() => iframe.config.parse({ url: 'javascript:alert(1)' }));
 });
 

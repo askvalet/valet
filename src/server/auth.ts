@@ -95,14 +95,17 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
 
   // ── a session cookie signed with a secret kept in data/secret, for local accounts and OIDC alike
   const key = await secret();
-  const sign = (body: string) => createHmac('sha256', key).update(body).digest('base64url');
+  // a purpose in every signature, so nothing signed for one job can pass for another (a sign-in in progress isn't a session)
+  const signFor = (purpose: string) => (body: string) => createHmac('sha256', key).update(`${purpose}\0${body}`).digest('base64url');
+  const sign = signFor('session');
   const secure = config.auth.secureCookie;
   const parse = (c: Context) => {
     const raw = getCookie(c, COOKIE); if (!raw) return null;
     const [body, mac] = raw.split('.');
     const given = Buffer.from(mac ?? ''), real = Buffer.from(sign(body ?? ''));   // bytes, not characters: timingSafeEqual throws on a mismatch
     if (!body || given.length !== real.length || !timingSafeEqual(given, real)) return null;
-    const [name, version, exp] = Buffer.from(body, 'base64url').toString().split('|');
+    const parts = Buffer.from(body, 'base64url').toString().split('|'), [name, version, exp] = parts;
+    if (parts.length !== 3 || !name || !Number.isFinite(Number(version)) || !Number.isFinite(Number(exp))) return null;
     return Date.now() > Number(exp) ? null : { name, version: Number(version) };
   };
   function start(c: Context, name: string, version: number, remember: boolean) {
@@ -116,7 +119,7 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
     app.get('/api/auth/me', c => { const u = session(c); return u ? c.json({ mode, user: { name: u } }) : c.json({ mode, user: null, provider: config.auth.oidc!.name }, 401); });
     app.post('/api/auth/logout', c => { deleteCookie(c, COOKIE, { path: '/' }); return c.json({ ok: true }); });
     const { setupOidc } = await import('./oidc.ts');
-    setupOidc(app, config, sign, (c, name) => start(c, name, 1, true));
+    setupOidc(app, config, signFor('oidc-flow'), (c, name) => start(c, name, 1, true));
     console.log(`auth: OpenID Connect via ${config.auth.oidc!.issuer}`);
     return async (c, next) => { const u = session(c); if (!u) return c.json({ error: 'not signed in' }, 401); (c.set as any)('user', u); return next(); };
   }
@@ -140,6 +143,9 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
   const trusted = new Set(config.auth.proxy.trusted);
   const ipOf = (c: Context) => clientIp((getConnInfo(c).remote.address ?? '?').replace(/^::ffff:/, ''), c.req.header('x-forwarded-for'), trusted);
   const throttled = (ip: string) => { const f = fails.get(ip); return f && f.until > Date.now() ? Math.ceil((f.until - Date.now()) / 1000) : 0; };
+  const same = (a: string, b: string) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
+  // tries still being hashed count too: scrypt is slow, and a burst shouldn't all slip in before the first failure lands
+  const pending = new Map<string, number>(), hold = (k: string, d: number) => { const n = (pending.get(k) ?? 0) + d; if (n > 0) pending.set(k, n); else pending.delete(k); };
   const failed = (ip: string) => {
     if (fails.size > 5000) for (const [k, v] of fails) if (v.until < Date.now()) fails.delete(k);   // stays bounded
     const f = fails.get(ip) ?? { n: 0, until: 0 }; f.n++;
@@ -156,9 +162,11 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
     const { name, password, remember } = await c.req.json().catch(() => ({}));
     const who = `user:${String(name ?? '').slice(0, 32)}`, wait = Math.max(throttled(ip), throttled(who));
     if (wait) return c.json({ error: `Too many tries. Wait ${wait}s.` }, 429);
+    if ((pending.get(ip) ?? 0) >= 5 || (pending.get(who) ?? 0) >= 5) return c.json({ error: 'Too many tries. Wait a moment.' }, 429);
     const u = users.find(x => x.name === String(name ?? ''));
     // check a hash even for unknown names, so timing doesn't reveal which names exist
-    const ok = u ? await verify(u, String(password ?? '')) : (await hash(String(password ?? '')), false);
+    hold(ip, 1); hold(who, 1);
+    const ok = await (u ? verify(u, String(password ?? '')) : hash(String(password ?? '')).then(() => false)).finally(() => { hold(ip, -1); hold(who, -1); });
     if (!ok) { failed(ip); failed(who); return c.json({ error: 'That name and password don\'t match.' }, 401); }
     fails.delete(ip); fails.delete(who);
     start(c, u!.name, u!.version, remember !== false);
@@ -169,7 +177,7 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
     if (wait) return c.json({ error: `Too many tries. Wait ${wait}s.` }, 429);
     if (!setupCode) return c.json({ error: 'Already set up.' }, 409);
     const { code, name, password } = await c.req.json().catch(() => ({}));
-    if (String(code ?? '').trim().toLowerCase() !== setupCode) { failed(ip); return c.json({ error: 'That setup code isn\'t right. It\'s in the server log.' }, 401); }
+    if (!same(String(code ?? '').trim().toLowerCase(), setupCode)) { failed(ip); return c.json({ error: 'That setup code isn\'t right. It\'s in the server log.' }, 401); }
     if (!validName(String(name ?? ''))) return c.json({ error: 'Pick a name: letters, numbers, . _ -' }, 400);
     if (String(password ?? '').length < 8) return c.json({ error: 'Use at least 8 characters.' }, 400);
     const u: User = { name, ...(await hash(password)), version: 1, created: new Date().toISOString() };

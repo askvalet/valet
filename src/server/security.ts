@@ -8,11 +8,18 @@ export const canAct = (config: Config) => config.auth.mode !== 'none' || config.
 
 /** Every secret Valet knows (each ${VAR} the config used), so none can slip out in an error message or a tool result. */
 export function redactor(secrets: string[]) {
-  const list = [...new Set(secrets.filter(s => s && s.length >= 4))].sort((a, b) => b.length - a.length);
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // short values only as whole words: a four-letter password shouldn't punch holes in ordinary text
-  const re = list.length ? new RegExp(list.map(s => s.length < 8 ? `(?<![\\w])${esc(s)}(?![\\w])` : esc(s)).join('|'), 'g') : null;
-  return (text: string) => (re ? text.replace(re, '•••') : text);
+  // the list grows as configs load, so it's looked at on each call rather than copied once
+  let seen = -1, re: RegExp | null = null;
+  const build = () => {
+    seen = secrets.length;
+    const list = [...new Set(secrets.filter(s => s && s.length >= 4))];
+    // as written, and as it looks inside JSON or a URL, because most of what passes through here is one or the other
+    const forms = [...new Set(list.flatMap(s => [s, JSON.stringify(s).slice(1, -1), encodeURIComponent(s)]))].sort((a, b) => b.length - a.length);
+    // short values only as whole words: a four-letter password shouldn't punch holes in ordinary text
+    re = forms.length ? new RegExp(forms.map(s => s.length < 8 ? `(?<![\\w])${esc(s)}(?![\\w])` : esc(s)).join('|'), 'g') : null;
+  };
+  return (text: string) => { if (seen !== secrets.length) build(); return re ? text.replace(re, '•••') : text; };
 }
 
 /** Someone's own CSS, made safe to sit in a stylesheet or a <style> tag: it can't close the tag or open a comment that
@@ -32,9 +39,10 @@ export const allowFonts = (origins: string[]) => { fonts = origins; };
 
 /** What the image proxy may pass on: pictures and video only, so a service that answers with HTML, a PDF or an SVG never
  *  gets it served from Valet's origin. Null means refuse. */
+const SERVED = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/bmp', 'image/x-icon', 'image/vnd.microsoft.icon', 'video/mp4', 'video/webm']);
 export function served(res: Response) {
-  const type = (res.headers.get('content-type') ?? '').split(';')[0].trim();
-  if (!/^(image\/(?!svg)|video\/(mp4|webm)$)/.test(type)) return null;
+  const type = (res.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
+  if (!SERVED.has(type)) return null;
   const h = new Headers({ 'Content-Type': type, 'Cache-Control': /no-store/.test(res.headers.get('cache-control') ?? '') ? 'no-store' : 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff',
     'Content-Security-Policy': "sandbox; default-src 'none'", 'Content-Disposition': 'inline' });
   for (const k of ['accept-ranges', 'content-range', ...(res.headers.has('content-encoding') ? [] : ['content-length'])]) { const v = res.headers.get(k); if (v) h.set(k, v); }
@@ -44,10 +52,11 @@ export function served(res: Response) {
 /** Headers for every response: only Valet's own scripts run, nothing frames it, referrers stay home. */
 const frames = new Set<string>();
 /** An address a card may embed, added by the iframe integration. Nothing can be framed otherwise. */
-export const allowFrame = (origin: string) => { frames.add(origin); };
+export const setFrames = (origins: Iterable<string>) => { frames.clear(); for (const o of origins) frames.add(o); };
 export const headers: MiddlewareHandler = async (c, next) => {
   await next();
-  c.header('Content-Security-Policy', [
+  // what the image proxy set is stricter than this, and it's the reason a service's file can't act as this page
+  if (!c.res.headers.has('Content-Security-Policy')) c.header('Content-Security-Policy', [
     "default-src 'self'", "script-src 'self'", ["style-src 'self' 'unsafe-inline'", ...fonts].join(' '),   // React sets inline style attributes
     "img-src 'self' data: blob: https:", ["font-src 'self' data:", ...fonts].join(' '), "connect-src 'self'", "media-src 'self' blob:",
     `frame-src ${[...frames].join(' ') || "'none'"}`, "frame-ancestors 'none'", "base-uri 'none'", "form-action 'self'", "object-src 'none'",

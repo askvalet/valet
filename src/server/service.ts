@@ -13,7 +13,7 @@
 // When a service needs more than this, write a full integration: docs/integrations.md.
 import { z } from 'zod';
 import { Every } from './config.ts';
-import { defineIntegration, fmt, type Context, type Instance, type Integration } from './core.ts';
+import { bounded, defineIntegration, fmt, type Context, type Instance, type Integration } from './core.ts';
 import type { Card, ListItem, Summary, StatItem, StatusItem, RecapSlide } from '../shared/cards.ts';
 
 /** How it signs in. `bearer`, `token` and a `header` use `key:` from the config, `basic` uses `username:` and `password:`,
@@ -117,7 +117,7 @@ export function service<O = Record<string, never>>(def: ServiceDef<O>): Integrat
         if ((res.status === 401 || res.status === 403) && session && retry) { session.reset(); return one(g, false); }
         if (!res.ok) throw new Error(`${def.name} answered ${res.status}`);
         if (o.as === 'headers') return Object.fromEntries(res.headers);
-        const text = await res.text();
+        const text = await bounded(res);
         if (o.as === 'text') return text;
         let json: unknown;
         try { json = JSON.parse(text); } catch { throw new Error(`${def.name} didn't send JSON: is the url right?`); }

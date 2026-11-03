@@ -7,6 +7,17 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 The first public version, 0.1.0, is being prepared.
 
+### Security
+
+From an audit before the first release. Everyone signed in has to sign in once more, because sessions are signed differently now.
+
+- OpenID Connect: the cookie that starts a sign-in could be used as a session, which gave anyone full access. Everything signed now says what it's for.
+- Previewing a config edit could send a `${NAME}` to any address without asking. A preview now contacts nothing; `config_try` fetches, and asks first.
+- A secret now only goes to hosts it already goes to, judged on the resulting file.
+- Approvals are signed by the server. Plan cards use each tool's own words, and a vague name is refused rather than matched to the first thing it fits.
+- `/api/confirm` checks input and the read-only rule. The image proxy passes an exact list of types and keeps its own policy.
+- Hostile feeds, oversized replies and redirects to another host can no longer stall Valet, fill its memory or carry a key away.
+
 ### Added
 
 - Live cards, tabs and layout from one YAML file, with 185 integrations.

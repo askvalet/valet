@@ -5,6 +5,8 @@ import {
   type LanguageModel, type ToolSet, type UIMessage,
 } from 'ai';
 import { splitThink } from '../shared/think.ts';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomBytes } from 'node:crypto';
 import type { Context as HonoContext } from 'hono';
 import { z } from 'zod';
 import type { Activity } from './activity.ts';
@@ -15,6 +17,8 @@ import { chatAgent, makeAgentModel, makeModel } from './model.ts';
 import { checkCard } from '../shared/cards.schema.ts';
 
 const rank = { none: 0, read: 1, write: 2, control: 3 } as const;
+// Approvals are signed when they're asked for and checked when they come back, so a request can't just claim one.
+const APPROVALS = randomBytes(32);
 
 /** What goes back to the model: reasoning left in old replies comes out, and tool results from earlier turns shrink to a
  *  preview. It keeps the thread of the conversation; a question about old logs can look again. Without this a chat's
@@ -41,7 +45,8 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   // Valet's own tools (what happened, reminders) work without being granted; read-only pages still cap them
   const accessOf = (id: string) => rank[a.access[id] ?? (id === 'valet' ? 'write' : a.access.default ?? 'read')];
 
-  let who = 'you';
+  // who's asking, per request: two people can be chatting at once
+  const asker = new AsyncLocalStorage<string>(), who = () => asker.getStore() ?? 'you';
 
   // Tool names are "<instance>__<tool>" so two instances of one integration (two Plex servers) don't collide.
   const tools: ToolSet = {};
@@ -51,7 +56,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   // every tool call goes through here: results are redacted (a secret in an error or a payload never reaches the model or
   // the page), and anything that isn't just looking goes in the activity log
   const runTool = async (id: string, name: string, t: any, args: any, via: 'chat' | 'plan') => {
-    const log = (ok: boolean, error?: string) => { if (t.access !== 'read') safety.activity?.add({ who, via, what: t.label ?? name, input: args, ok, error, undo: t.undo ? { tool: `${id}__${t.undo}`, input: args } : undefined }); };
+    const log = (ok: boolean, error?: string) => { if (t.access !== 'read') safety.activity?.add({ who: who(), via, what: t.label ?? name, input: args, ok, error, undo: t.undo ? { tool: `${id}__${t.undo}`, input: args } : undefined }); };
     try {
       const out = await t.run(args), failed = out?.data?.error;
       log(!failed, failed ? String(failed) : undefined);
@@ -124,7 +129,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
         const found = await Promise.all(finders.map(async ({ source, t }) => {
           try {
             const out = await Promise.race([t.run(t.input.parse({ [t.find!]: query })), new Promise<never>((_, no) => setTimeout(() => no(new Error('timed out')), 10_000).unref())]);
-            const text = JSON.stringify(out.data ?? null);
+            const text = safety.redact(JSON.stringify(out.data ?? null));   // before it's cut, or a cut secret slips past
             return { source, found: text.length > 1500 ? `${text.slice(0, 1500)}…` : text };
           } catch { return { source, found: 'could not be searched' }; }
         }));
@@ -188,7 +193,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     'When asked to be told about something later, set a reminder with watch_add; do not offer to check back yourself.',
     `You are part of Valet, the software behind this page. For any question about Valet itself, what it can do or how to set something up, search its docs with docs_search and answer from them, never from memory.`,
     instances.has('config')
-      ? 'You can change Valet: any page, tab, card, widget, integration, its look, words and layout are its config, and config_* tools edit it. Read with config_read, look up what a section accepts with config_options or the docs, try it with config_preview and fix what it reports, then save with config_apply, which asks the person. It applies at once. config_undo takes the last save back. Do several edits as one set of ops.'
+      ? 'You can change Valet: any page, tab, card, widget, integration, its look, words and layout are its config, and config_* tools edit it. Read with config_read, look up what a section accepts with config_options or the docs, check it with config_preview and fix what it reports, then save with config_apply, which asks the person. It applies at once. config_undo takes the last save back. Do several edits as one set of ops.'
       : 'You cannot change Valet from here: tell them the page, cards and look are in config.yaml, or that `assistant.access: { config: control }` lets you edit it with their approval.',
     'What you can never change, so say so plainly and point to the docs: sign-in, allowed hosts, plugins, MCP, notifications, your own access, model or instructions, files on disk, and secrets, which go in .env by hand. You cannot change Valet\'s code, install anything, or restart it.',
     'If something looks like a bug in Valet itself, not a service that is down, say so and use report_issue to give them a filled-in GitHub issue to read and submit. Also use it when they ask for a feature or an integration Valet lacks.',
@@ -196,7 +201,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     a.instructions ?? '',
   ].join('\n');
 
-  return async (c: HonoContext) => {
+  return async (c: HonoContext) => asker.run((c.get as (k: string) => string | undefined)('user') ?? 'you', async () => {
     const { messages: all_ } = await c.req.json<{ messages: UIMessage[] }>();
     const other = chatAgent(a, safety.acting);
     if (other) {
@@ -206,7 +211,6 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       const result = streamText({ model: makeAgentModel(other), abortSignal: c.req.raw.signal, messages: await convertToModelMessages(plain) });
       return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream }) });
     }
-    who = (c.get as (k: string) => string | undefined)('user') ?? 'you';
     // the model gets the last 24 messages: enough context for a conversation, bounded cost for a long one
     // and without any reasoning that leaked into earlier replies
     const messages = trimHistory(all_.slice(-24));
@@ -214,7 +218,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     // MCP results pass through the redactor too (their headers can hold keys)
     const mcp_ = Object.fromEntries(Object.entries(m.tools).map(([k, t]: [string, any]) => [k, { ...t, execute: async (...args: any[]) => {
       const out = JSON.parse(safety.redact(JSON.stringify(await t.execute(...args) ?? null)));
-      if (m.approval[k]) safety.activity?.add({ who, via: 'chat', what: k.replace(/_/g, ' '), input: args[0], ok: true });
+      if (m.approval[k]) safety.activity?.add({ who: who(), via: 'chat', what: k.replace(/_/g, ' '), input: args[0], ok: true });
       return out;
     } }]));
     const all = { ...tools, ...mcp_ }, approvals = { ...approval, ...m.approval };
@@ -225,6 +229,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       messages: await convertToModelMessages(messages, { tools: all }),
       tools: all,
       toolApproval: approvals,
+      experimental_toolApprovalSecret: APPROVALS,
       stopWhen: isStepCount(a.maxSteps),
       // the last step is for answering: a model still looking things up when its steps run out would otherwise say nothing
       prepareStep: ({ stepNumber }) => stepNumber >= a.maxSteps - 1 ? { toolChoice: 'none' as const, system: `${system(m.catalog)}\n\nYou have no more lookups. Answer now in plain words from what you already found. If it doesn't settle the question, say what you checked and that you can't tell. Do not write tool calls.` } : undefined,
@@ -232,5 +237,5 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     // a tool that throws past runTool (a failed input check, say): the log and the page should both say what happened
     const failed = (e: unknown) => { const m = safety.redact((e as Error)?.message ?? String(e)); console.error(`assistant: ${m}`); return m; };
     return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream, tools: all, onError: failed } as Parameters<typeof toUIMessageStream>[0]) });
-  };
+  });
 }

@@ -185,10 +185,12 @@ const plainInput = (input: Record<string, unknown>) => Object.entries(input).fil
 /** Asking before something happens: what it is, in words, and two buttons. The service supplies the words and the picture
  *  (a plan or a config change lists its steps); until they arrive, the action's own name stands in. */
 function Confirmation({ p, name, approve, tools }: { p: any; name: string; approve: (id: string, ok: boolean) => void; tools: Record<string, ToolInfo> }) {
-  const [said, setSaid] = useState<Confirm | null>(null), input = p.input ?? {}, listed = !!(input.steps || input.ops);
-  useEffect(() => { if (listed) return; let live = true; fetch('/api/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: name, input }) }).then(r => r.json()).then(c => { if (live) setSaid(c); }, () => { if (live) setSaid({} as Confirm); }); return () => { live = false; }; }, [name, listed]);
+  // by the tool's name, never by the shape of its input: an MCP tool could send `steps` to look like something else
+  const [said, setSaid] = useState<(Confirm & { steps?: (Confirm | null)[] }) | null>(null), raw = p.input ?? {}, isPlan = name === 'plan', isConfig = name === 'config__config_apply';
+  const input = isPlan ? raw : isConfig ? raw : {} as any, listed = isPlan || isConfig;
+  useEffect(() => { if (isConfig) return; let live = true; fetch('/api/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: name, input: raw }) }).then(r => r.json()).then(c => { if (live) setSaid(c); }, () => { if (live) setSaid({} as Confirm); }); return () => { live = false; }; }, [name, listed]);
   const title = input.steps ? input.title : input.ops ? 'Save this change to your config?' : said?.title ?? `Allow this: ${(tools[name]?.label ?? toolLabel(name)).toLowerCase()}?`;
-  const detail = listed ? undefined : said?.detail ?? (said?.title ? undefined : plainInput(input));
+  const detail = listed ? undefined : said?.detail ?? (said?.title ? undefined : plainInput(raw));
   return (
     // a slow beam around the edge: nothing goes further until this has an answer
     <BorderBeam size="md" colorVariant={said?.danger ? 'sunset' : 'gold'} strength={.6} duration={3.2} className="chat-card is-asking rounded-2xl" style={{ display: 'block', width: 'min(560px, calc(100vw - 48px))' }}>
@@ -204,19 +206,21 @@ function Confirmation({ p, name, approve, tools }: { p: any; name: string; appro
         <div className="hidden shrink-0 gap-2 sm:flex">{buttons()}</div>
       </div>
       {listed && <div className="px-3.5 pb-3.5">
-      {p.input?.steps ? (
+      {isPlan ? (
         // a plan: every step, in order, before any of them runs
         <ol className="mt-2 space-y-2">
           {p.input.steps.map((s: any, i: number) => (
             <li key={i} className="flex gap-2.5 text-[13px]">
               <span className="mt-px grid size-5 shrink-0 place-items-center rounded-full bg-white/10 text-[11px] font-semibold tabular">{i + 1}</span>
               <span className="min-w-0"><span className="font-medium">{tools[s.tool]?.label ?? toolLabel(s.tool)}</span>
-                {plainInput(s.input ?? {}) && <span className="ml-1.5 text-xs text-muted-foreground">{plainInput(s.input)}</span>}
+                {said?.steps?.[i]?.title
+                  ? <span className="block text-xs text-foreground/85">{said.steps[i]!.title}{said.steps[i]!.detail ? ` · ${said.steps[i]!.detail}` : ''}</span>
+                  : <span className="ml-1.5 text-xs text-muted-foreground">{Object.entries(s.input ?? {}).map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`).join(' · ')}</span>}
                 <span className="block text-xs text-muted-foreground">{s.why}</span></span>
             </li>
           ))}
         </ol>
-      ) : p.input?.ops ? (
+      ) : isConfig ? (
         // a change to the config: what it means, then exactly what it writes
         <div className="mt-1 space-y-1.5 text-xs text-muted-foreground">
           {p.input.summary && <div>{p.input.summary}</div>}
@@ -232,7 +236,7 @@ function Confirmation({ p, name, approve, tools }: { p: any; name: string; appro
     return <>
       <button onClick={() => approve(p.approval.id, false)} className="press h-9 flex-1 rounded-sm px-4 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:flex-none">{label('notNow')}</button>
       {/* waits for the words: nobody should say yes to something it hasn't named yet */}
-      <button disabled={!listed && !said} onClick={() => approve(p.approval.id, true)} className={cn('press h-9 flex-1 rounded-sm px-5 text-[14px] font-semibold transition-opacity disabled:opacity-40 sm:flex-none', said?.danger ? 'bg-bad text-white' : 'bg-primary text-primary-foreground')}>{said?.verb ?? label('allow')}</button>
+      <button disabled={!isConfig && !said} onClick={() => approve(p.approval.id, true)} className={cn('press h-9 flex-1 rounded-sm px-5 text-[14px] font-semibold transition-opacity disabled:opacity-40 sm:flex-none', said?.danger ? 'bg-bad text-white' : 'bg-primary text-primary-foreground')}>{said?.verb ?? label('allow')}</button>
     </>;
   }
 }

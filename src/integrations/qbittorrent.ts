@@ -122,6 +122,14 @@ export default defineIntegration({
       },
     } satisfies Instance['widgets'];
 
+
+    // one torrent or none: the approval names it, and the same lookup runs after, so a vague name can't take the wrong one
+    async function theOne(name: string) {
+      const all = await api<any[]>('torrents/info'), q = name.toLowerCase(), hits = all.filter(x => String(x.name).toLowerCase().includes(q));
+      const t = hits.find(x => String(x.name).toLowerCase() === q) ?? (hits.length === 1 ? hits[0] : undefined);
+      if (!t) throw new Error(hits.length ? `${hits.length} torrents match ${name}: be more specific` : `no torrent matches ${name}`);
+      return t;
+    }
     return {
       async recap() {
         const { server_state: s } = await api<any>('sync/maindata');
@@ -140,13 +148,12 @@ export default defineIntegration({
       tools: {
         torrent_control: {
           label: 'Changed a download',
-          confirm: ({ name, do: what }) => ({ title: `${what === 'remove' ? 'Remove' : what === 'pause' ? 'Pause' : 'Resume'} ${name}?`, detail: what === 'remove' ? 'The downloaded files are kept' : undefined, icon: 'download', verb: what === 'remove' ? 'Remove' : what === 'pause' ? 'Pause' : 'Resume', danger: what === 'remove' }),
+          confirm: async ({ name, do: what }) => ({ title: `${what === 'remove' ? 'Remove' : what === 'pause' ? 'Pause' : 'Resume'} ${await theOne(name).then(t => t.name)}?`, detail: what === 'remove' ? 'The downloaded files are kept' : undefined, icon: 'download', verb: what === 'remove' ? 'Remove' : what === 'pause' ? 'Pause' : 'Resume', danger: what === 'remove' }),
           description: 'Pause, resume or remove ONE torrent (by part of its name, from downloads_status). Removing keeps the downloaded files.',
-          access: 'control', input: z.object({ name: z.string(), do: z.enum(['pause', 'resume', 'remove']) }),
+          access: 'control', input: z.object({ name: z.string().min(2), do: z.enum(['pause', 'resume', 'remove']) }),
           async run({ name, do: what }) {
-            const all = await api<any[]>('torrents/info'), q = name.toLowerCase();
-            const t = all.find(x => String(x.name).toLowerCase().includes(q));
-            if (!t) return { data: { error: `no torrent matches ${name}` } };
+            const t = await theOne(name).catch(e => e as Error);
+            if (t instanceof Error) return { data: { error: t.message } };
             const paths: Record<string, string> = { pause: 'torrents/stop', resume: 'torrents/start', remove: 'torrents/delete' }, path = paths[what];
             await api(path, { method: 'POST', body: new URLSearchParams({ hashes: t.hash, ...(what === 'remove' ? { deleteFiles: 'false' } : {}) }) });
             return { data: { done: what, torrent: t.name }, card: { type: 'text', tone: 'good', text: `${what === 'remove' ? 'Removed' : what === 'pause' ? 'Paused' : 'Resumed'} ${t.name}.` } };

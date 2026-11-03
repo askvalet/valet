@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { createServer as createHttp } from 'node:http';
 import { connect, createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -29,14 +30,14 @@ async function routes() {
 const fill = (p: string) => p.replace(/:n\?/, '').replace(/:\w+/g, 'x');
 const freePort = () => new Promise<number>(ok => { const s = createServer().listen(0, '127.0.0.1', () => { const { port } = s.address() as any; s.close(() => ok(port)); }); });
 
-async function boot(auth: Record<string, unknown>) {
+async function boot(auth: Record<string, unknown>, extra = '') {
   const dir = await mkdtemp(join(tmpdir(), 'valet-exposure-')), port = await freePort(), file = join(dir, 'config.yaml');
   await writeFile(file, `title: ${TITLE}
 auth: ${JSON.stringify(auth)}
 assistant: { model: none, baseURL: "http://127.0.0.1:9/v1", access: { config: control } }
 integrations:
-  probe: { type: api, url: "http://127.0.0.1:9/x", headers: { Authorization: "Bearer \${PROBE_KEY}" }, stats: [{ label: Up, path: a }] }
-layout:
+  probe: { type: api, url: "http://127.0.0.1:9/x", headers: { Authorization: "Bearer \${PROBE_KEY}" }, stats: [{ label: Up, value: a }] }
+${extra}layout:
   - widgets: [probe.data]
 `);
   let log = '';
@@ -78,6 +79,14 @@ function everyRoute(name: string, auth: Record<string, unknown>) {
       }
     });
 
+    test('something Valet signed for another purpose is not a session', async () => {
+      if (auth.mode !== 'oidc') return;
+      const started = await fetch(`${s.base}/api/auth/oidc/start`, { redirect: 'manual' });
+      const flow = (started.headers.get('set-cookie') ?? '').split(';')[0].split('=').slice(1).join('=');
+      assert.ok(flow, 'the sign-in started and handed out its cookie');
+      assert.equal((await fetch(`${s.base}/api/page`, { headers: { cookie: `valet_session=${flow}` } })).status, 401);
+    });
+
     test('nothing public says what is configured', async () => {
       for (const key of PUBLIC) {
         const [method, path] = key.split(' '), url = path === '*' ? '/anything' : fill(path);
@@ -108,7 +117,9 @@ function everyRoute(name: string, auth: Record<string, unknown>) {
 
 everyRoute('local accounts', { mode: 'local', secureCookie: false });
 everyRoute('an auth proxy', { mode: 'proxy', proxy: { header: 'Remote-User', trusted: ['10.9.9.9'] } });
-everyRoute('OpenID Connect', { mode: 'oidc', oidc: { issuer: 'http://127.0.0.1:9', clientId: 'x', clientSecret: 'x' } });
+const idp = createHttp((_, r) => { const b = `http://127.0.0.1:${(idp.address() as any).port}`; r.setHeader('content-type', 'application/json'); r.end(JSON.stringify({ issuer: b, authorization_endpoint: `${b}/auth`, token_endpoint: `${b}/token`, jwks_uri: `${b}/jwks` })); });
+await new Promise<void>(ok => idp.listen(0, '127.0.0.1', ok)); idp.unref();
+everyRoute('OpenID Connect', { mode: 'oidc', oidc: { issuer: `http://127.0.0.1:${(idp.address() as any).port}`, clientId: 'x', clientSecret: 'x' } });
 
 describe('signing in, from start to finish', () => {
   let s: Awaited<ReturnType<typeof boot>>, cookie = '';
@@ -163,6 +174,22 @@ describe('no sign-in, network not trusted', () => {
     assert.ok(text.includes(TITLE)); assert.ok(!text.includes(SECRET));
     assert.match(await raw(s.port, '/api/page'), new RegExp(TITLE), 'raw requests really reach the server');
     assert.equal((await fetch(`${s.base}/api/action/probe/x`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 403);
+  });
+});
+
+describe('the approval card\'s route, on a page that can\'t act', () => {
+  let s: Awaited<ReturnType<typeof boot>>, seen: string[] = [];
+  const svc = createHttp((q, r) => { seen.push(String(q.url)); r.setHeader('content-type', 'application/json'); r.end('{"title":"ADMIN-ONLY"}'); });
+  before(async () => {
+    await new Promise<void>(ok => svc.listen(0, '127.0.0.1', ok));
+    s = await boot({ mode: 'none' }, `  cd: { type: changedetection, url: "http://127.0.0.1:${(svc.address() as any).port}", key: "\${PROBE_KEY}" }\n`);
+  });
+  after(() => { s.proc.kill(); svc.close(); });
+  test('it can\'t reach a service, whatever is passed as input', async () => {
+    seen = [];
+    const r = await fetch(`${s.base}/api/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: 'cd__watch_remove', input: { id: '../watch?recheck_all=1&x=' } }) });
+    assert.doesNotMatch(await r.text(), /ADMIN-ONLY/);
+    assert.deepEqual(seen.filter(u => u.includes('recheck')), []);
   });
 });
 

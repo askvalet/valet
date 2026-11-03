@@ -95,7 +95,7 @@ export default defineIntegration({
           label: 'Requested',
           async confirm({ title, year, media_type, tmdb_id }) {
             // the service's own record, so a wrong id shows up here and not after it has downloaded
-            const d = await details(media_type, tmdb_id).catch(() => null), t = d ? tile({ ...d, mediaType: media_type }, 2) : undefined;
+            const d = await details(media_type, tmdb_id), t = d ? tile({ ...d, mediaType: media_type }, 2) : undefined;
             return { title: `Request ${t?.title ?? title}?`, detail: t?.subtitle ?? [year, media_type === 'tv' ? 'Series' : 'Movie'].filter(Boolean).join(' · '), image: t?.image, icon: 'film', verb: 'Request' };
           },
           description: 'Request a movie or a whole TV show so it downloads into Plex. Pass tmdb_id and media_type from media_search, plus its title and year so the person can confirm the right one.',

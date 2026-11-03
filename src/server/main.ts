@@ -158,12 +158,13 @@ app.get('/api/icon/:slug', async c => {
   const svg = await readFile(resolve(ICON_DIR, `${slug}.svg`)).catch(() => null);
   if (svg) return c.body(svg, 200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' });
   // "immich-postgres" has no icon of its own, but "immich" does. What isn't there is remembered, so the CDN is asked once.
-  const parts = slug.split('-');
+  const parts = slug.split('-').slice(0, 6);
   for (let n = parts.length; n > 0; n--) {
     const name = parts.slice(0, n).join('-');
     if (noIcon.has(name)) continue;
     const r = await cached(resolve(ICON_DIR, `${name}.png`), `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/${name}.png`, 'image/png', c);
     if (r.status === 200) return r;
+    if (noIcon.size > 5000) noIcon.clear();
     noIcon.add(name);
   }
   return c.notFound();
@@ -192,7 +193,7 @@ app.get('/api/page', c => {
   const agent = config.assistant && chatAgent(config.assistant, site.acting);
   const tz = c.req.query('tz');
   if (!zoneKnown && tz && validZone(tz)) { process.env.TZ = tz; zoneKnown = true; console.log(`time zone: ${tz} (from the browser; set timezone in config.yaml to fix it)`); }
-  return c.json({
+  return c.json(JSON.parse(site.redact(JSON.stringify({
     title: config.title, greeting: config.greeting, notice: config.notice, location: config.location, canAct: site.acting, sandbox: sandbox.on, search: config.search,
     welcome: config.welcome ? { path: CONFIG, saved } : undefined,
     recap: config.recap, hero: { ...config.hero, scope: config.hero.scope === true ? scopeOf([...site.meta.values()].map(m => m.type)) : config.hero.scope || undefined }, labels: { ...LABELS, ...config.labels }, format: config.format,
@@ -214,7 +215,7 @@ app.get('/api/page', c => {
       sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium').map(w => [w.widget, w.size])),
       looks: Object.fromEntries(s.widgets.filter(w => 'title' in w || 'icon' in w || 'header' in w || 'view' in w || 'rows' in w || cardLook(w)).map(w => [w.widget, { title: w.title, icon: w.icon, header: w.header, view: w.view, rows: w.rows, style: cardLook(w) }])) }))],
     widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
-  });
+  }))));
 });
 
 // Live updates: the full current state on connect, then each change as it happens.
@@ -311,8 +312,27 @@ app.post('/api/confirm', async c => {
   const { tool, input } = await c.req.json().catch(() => ({} as any));
   const [inst, name] = String(tool ?? '').split('__'), t = name ? site.instances.get(inst)?.tools?.[name] : undefined;
   const type = site.config.integrations[inst]?.type, logo = type ? `/api/icon/${type}` : undefined;
-  if (!t?.confirm) return c.json({ logo });
-  try { return c.json(JSON.parse(site.redact(JSON.stringify({ logo, ...await t.confirm(input ?? {}) })))); } catch { return c.json({ logo }); }
+  // the same doors the chat has: a page that can't act gets no words, and a tool only ever sees checked input
+  const a = site.config.assistant, may = (id: string) => !!a && (a.access[id] ?? (id === 'valet' ? 'write' : a.access.default ?? 'read')) !== 'none';
+  if (!site.acting) return c.json({ logo });
+  const words = async (id: string, step: NonNullable<typeof t>, raw: unknown) => {
+    const args = step.input.safeParse(raw ?? {});
+    if (!args.success || !step.confirm || !may(id)) return null;
+    return step.confirm(args.data);
+  };
+  try {
+    if (tool === 'plan' && Array.isArray(input?.steps)) {
+      // each step in the service's own words, so what's approved is what the tool says, not what the model wrote beside it
+      const steps = await Promise.all(input.steps.map(async (s: any) => {
+        const [id, n] = String(s?.tool ?? '').split('__'), step = site.instances.get(id)?.tools?.[n];
+        return step ? await words(id, step, s.input).catch(() => null) : null;
+      }));
+      return c.json(JSON.parse(site.redact(JSON.stringify({ steps, danger: steps.some(s => s?.danger) || undefined }))));
+    }
+    if (!t?.confirm) return c.json({ logo });
+    const said = await words(inst, t, input);
+    return c.json(said ? JSON.parse(site.redact(JSON.stringify({ logo, ...said }))) : { logo });
+  } catch { return c.json({ logo }); }
 });
 
 // the page has just opened, so give its widgets a moment to report in
@@ -320,7 +340,7 @@ const settled = async () => { for (let i = 0; i < 12 && site.hub.snapshot().leng
 // Suggestions are rewritten every half hour while the page is in use, sooner (every ten minutes at most) when what's
 // playing or downloading changes, and at once when what's wrong changes: a chip about what's over is worse than none.
 // Each rewrite takes the GPU for a while, so they're on the daily budget. The assistant's own work must not count as news: its activity would set off the next rewrite.
-const OUTSIDE = new Set(['rss', 'hackernews', 'reddit', 'lobsters']);   // written by strangers: see suggestPrompt
+const OUTSIDE = new Set(['rss', 'hackernews', 'reddit', 'lobsters', 'changedetection', 'karakeep', 'paperless', 'calendar', 'releases', 'repository', 'twitch', 'iframe', 'http', 'api']);   // written by strangers: see suggestPrompt
 let tailored: { at: number; mood: string; wrong: string; names: string[]; list: string[] | null } | undefined, tailoring: Promise<void> | undefined;
 app.get('/api/suggest', async c => {
   if (!site.ask || !site.config.assistant?.background.suggest || site.config.chat.suggestions !== 'ai') return c.json({ list: null });
@@ -359,7 +379,10 @@ app.post('/api/pins', async c => {
   if (!site.acting) return c.json({ error: 'Valet is read-only' }, 403);
   const { tool, input } = await c.req.json().catch(() => ({} as any));
   if (typeof tool !== 'string' || !input || typeof input !== 'object') return c.json({ error: 'bad pin' }, 400);
-  if (!site.config.assistant) return c.json({ error: 'no assistant configured' }, 404);
+  const a = site.config.assistant;
+  if (!a) return c.json({ error: 'no assistant configured' }, 404);
+  if ((a.access[tool.split('__')[0]] ?? a.access.default ?? 'read') === 'none') return c.json({ error: 'the assistant can\'t reach that' }, 403);
+  if (sandbox.on) return c.json({ ok: true });   // a demo saves nothing, and a rebuild would reload every other visitor
   const pins = await loadPins();
   if (pins.length >= 24) return c.json({ error: 'that\'s plenty of pins; unpin one first' }, 409);
   if (pins.some(p => p.tool === tool && JSON.stringify(p.input) === JSON.stringify(input))) return c.json({ ok: true });
