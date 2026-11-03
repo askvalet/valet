@@ -363,7 +363,7 @@ export default ({ z, defineIntegration }) => {
         calendar: w('Calendar', 900_000, calendar),
         thermostat: w('Thermostat', 30_000, thermostat),
         pc: w('Desktop', 30_000, pcCard),
-        home: w('Home', 5_000, homeCard),
+        home: w('Home', 1_000, homeCard),   // every second, so the robot glides rather than hops
         streams: w('Now playing', 10_000, () => { const s = stream(); return { type: 'media', title: 'Now playing', icon: 'play', source: { name: 'Plex', icon: '/api/icon/plex' }, note: '1 stream · 12 Mbps',
           items: [{ title: s.title, subtitle: String(s.year), image: poster(s.title), backdrop: backdrop(s.title), pct: s.pct, state: 'playing', user: 'Theo', device: 'Living room TV', tags: ['1080p', 'Direct Play', '12 Mbps'], remaining: `${s.left} min left` }],
           activity: { title: s.title, subtitle: 'Theo · Living room TV', image: poster(s.title), icon: 'play', pct: s.pct, trailing: `${s.left}m left` } }; }),
