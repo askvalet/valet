@@ -5,6 +5,7 @@ import { homeRich } from './home-rich.ts';
 import { infra } from './infra.ts';
 import { infraRich } from './infra-rich.ts';
 import { media } from './media.ts';
+import { mediaRich } from './media-rich.ts';
 import type { Fixture } from './types.ts';
 
-export const fixtures: Record<string, Fixture> = { ...media, ...home, ...homeRich, ...infra, ...infraRich, ...feeds };
+export const fixtures: Record<string, Fixture> = { ...media, ...mediaRich, ...home, ...homeRich, ...infra, ...infraRich, ...feeds };

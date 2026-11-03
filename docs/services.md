@@ -2,33 +2,39 @@
 
 Generated from the code by `npm run docs:services`: please don't edit by hand.
 
-185 integrations. If yours isn't here, `type: api` turns any JSON API into a card from YAML, and a new integration is
-a simple read-only one is about ten lines ([docs/plugins.md](plugins.md)).
+185 integrations. If yours isn't here, `type: api` turns any JSON API into a card from YAML, and a simple read-only
+integration of your own is about ten lines ([docs/plugins.md](plugins.md)).
 
-**How these are tested:** every service below runs in `npm test` against a sample of its API, which proves the card, the
+**How these are tested:** every service in the catalog below runs in `npm test` against a sample of its API, which proves the card, the
 sign-in flow and failure handling. A sample can't prove the service still answers that way, so if one misbehaves on your
 version, please open an issue with the response it sent. `npm run test:services` runs them against your real services.
 
-Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to that integration.
+Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to that integration. Every service in the
+catalog takes it, and so do `camera` and `frigate`.
 
 ## Full integrations
 
 | Service | `type:` |
 |---|---|
 | APC UPS | `apcups` |
+| Audiobookshelf | `audiobookshelf` |
+| Backrest | `backrest` |
 | Calendar | `calendar` |
 | Camera | `camera` |
 | changedetection.io | `changedetection` |
 | Custom API | `api` |
 | Docker | `docker` |
 | Embedded page | `iframe` |
+| Emby | `emby` |
 | Feeds | `rss` |
 | GitHub repositories | `repository` |
 | Glances | `glances` |
 | Hacker News | `hackernews` |
+| Healthchecks | `healthchecks` |
 | Home Assistant | `homeassistant` |
 | Host | `host` |
 | Immich | `immich` |
+| Jellyfin | `jellyfin` |
 | Karakeep | `karakeep` |
 | Kavita | `kavita` |
 | Komga | `komga` |
@@ -39,12 +45,14 @@ Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to 
 | Mealie | `mealie` |
 | Minecraft | `minecraft` |
 | Miniflux | `miniflux` |
+| Navidrome | `navidrome` |
 | Ollama | `ollama` |
 | Paperless | `paperless` |
 | PC | `rgb-control` |
 | Pi-hole | `pihole` |
 | Plex (Tautulli) | `tautulli` |
 | Prowlarr / Bazarr | `indexers` |
+| Proxmox | `proxmox` |
 | qBittorrent | `qbittorrent` |
 | Reddit | `reddit` |
 | Releases | `releases` |
@@ -53,6 +61,8 @@ Self-signed certificate (Proxmox, TrueNAS and friends)? Add `insecure: true` to 
 | Seerr | `seerr` |
 | Service status | `http` |
 | Sonarr / Radarr | `arr` |
+| Speedtest Tracker | `speedtest-tracker` |
+| Syncthing | `syncthing` |
 | Tandoor | `tandoor` |
 | To-do list | `todo` |
 | Twitch | `twitch` |
@@ -70,12 +80,10 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | Arcane | `arcane` | key |
 | Argo CD | `argocd` | key |
 | Atsumeru | `atsumeru` | username, password |
-| Audiobookshelf | `audiobookshelf` | key |
 | Authelia | `authelia` | none |
 | authentik | `authentik` | key |
 | autobrr | `autobrr` | key |
 | Azure DevOps | `azure-devops` | none |
-| Backrest | `backrest` | none |
 | Bazarr | `bazarr` | key |
 | Beszel | `beszel` | username, password |
 | BookLore | `booklore` | username, password |
@@ -95,7 +103,6 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | Dockhand | `dockhand` | none |
 | Download Station | `download-station` | username, password |
 | Duplicati | `duplicati` | password |
-| Emby | `emby` | key |
 | ESPHome | `esphome` | none |
 | evcc | `evcc` | none |
 | File Browser | `filebrowser` | username, password |
@@ -114,11 +121,9 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | Grafana | `grafana` | username, password |
 | HDHomeRun | `hdhomerun` | none |
 | Headscale | `headscale` | key |
-| Healthchecks | `healthchecks` | key |
 | Homebox | `homebox` | username, password |
 | Homebridge | `homebridge` | username, password |
 | Jackett | `jackett` | none |
-| Jellyfin | `jellyfin` | key |
 | Jellystat | `jellystat` | key |
 | Komodo | `komodo` | key |
 | Kopia | `kopia` | none |
@@ -136,7 +141,6 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | Mylar3 | `mylar` | key |
 | MySpeed | `myspeed` | none |
 | n8n | `n8n` | key |
-| Navidrome | `navidrome` | none |
 | NetAlertX | `netalertx` | key |
 | NetBird | `netbird` | key |
 | Netdata | `netdata` | none |
@@ -164,7 +168,6 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | Prometheus | `prometheus` | none |
 | Prometheus | `prometheus-metric` | none |
 | Prowlarr | `prowlarr` | key |
-| Proxmox | `proxmox` | key |
 | Proxmox Backup Server | `proxmox-backup` | key |
 | Pterodactyl | `pterodactyl` | key |
 | Pulse | `pulse` | key |
@@ -175,14 +178,12 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | SABnzbd | `sabnzbd` | key |
 | slskd | `slskd` | key |
 | SparkyFitness | `sparkyfitness` | key |
-| Speedtest Tracker | `speedtest-tracker` | key |
 | Spoolman | `spoolman` | none |
 | Sportarr | `sportarr` | key |
 | Stash | `stash` | none |
 | Stirling-PDF | `stirling-pdf` | none |
 | Suwayomi | `suwayomi` | none |
 | SWAG | `swag` | none |
-| Syncthing | `syncthing` | key |
 | Syncthing Relay | `syncthing-relay` | none |
 | Tailscale | `tailscale` | key |
 | Tdarr | `tdarr` | none |

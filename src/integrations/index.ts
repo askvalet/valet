@@ -2,6 +2,7 @@
 import type { Integration } from '../server/core.ts';
 import aimonitor from './aimonitor.ts';
 import arr from './arr.ts';
+import audiobookshelf from './audiobookshelf.ts';
 import camera from './camera.ts';
 import changedetection from './changedetection.ts';
 import glances from './glances.ts';
@@ -40,6 +41,9 @@ import markets from './markets.ts';
 import calendar from './calendar.ts';
 import api from './api.ts';
 import docker from './docker.ts';
+import emby from './emby.ts';
+import jellyfin from './jellyfin.ts';
+import navidrome from './navidrome.ts';
 import host from './host.ts';
 import { services } from './services/index.ts';
 import clock from './clock.ts';
@@ -51,5 +55,5 @@ import todo from './todo.ts';
 import twitch from './twitch.ts';
 
 export const registry: Record<string, Integration> = Object.fromEntries(
-  [aimonitor, arr, camera, changedetection, glances, homeassistant, http, immich, indexers, karakeep, kavita, komga, mealie, miniflux, ollama, paperless, pihole, qbittorrent, rgbcontrol, romm, scrutiny, seerr, tandoor, tautulli, uptimekuma, weather, links, rss, hackernews, reddit, releases, markets, calendar, api, docker, host, apcups, minecraft, clock, iframe, lobsters, repository, todo, twitch, proxmox, speedtesttracker, syncthing, backrest, healthchecks, ...services].map(i => [i.type, i as Integration]),
+  [aimonitor, arr, audiobookshelf, camera, changedetection, glances, homeassistant, http, immich, indexers, karakeep, kavita, komga, mealie, miniflux, ollama, paperless, pihole, qbittorrent, rgbcontrol, romm, scrutiny, seerr, tandoor, tautulli, jellyfin, emby, navidrome, uptimekuma, weather, links, rss, hackernews, reddit, releases, markets, calendar, api, docker, host, apcups, minecraft, clock, iframe, lobsters, repository, todo, twitch, proxmox, speedtesttracker, syncthing, backrest, healthchecks, ...services].map(i => [i.type, i as Integration]),
 );

@@ -1,44 +1,16 @@
-// Media servers and what feeds them.
-import { createHash, randomBytes } from 'node:crypto';
+// Media servers and what feeds them. Jellyfin, Emby, Navidrome and Audiobookshelf are full integrations of their own.
 import { z } from 'zod';
 import { fmt, service, tally } from '../../server/service.ts';
 
 const key = { key: z.string().optional() };
-const login = { username: z.string(), password: z.string() };
 const header = (name: string, v?: string): Record<string, string> => v ? { [name]: v } : {};
 const sum = (...n: unknown[]) => n.reduce<number>((a, v) => a + (Number(v) || 0), 0);
 
-// Subsonic answers 200 even when it says no
-const subsonic = (r: any) => {
-  const s = r?.['subsonic-response'];
-  if (s?.status === 'failed') throw new Error(`Navidrome refused: ${s.error?.message ?? 'no reason given'}`);
-  return s;
-};
 // Tdarr keeps each state in two tables, transcodes and health checks
 const tdarrCount = (s: any, n: number) => Number.parseInt(s?.[`table${n}ViewableCount`] || s?.[`table${n}Count`], 10) || 0;
 
 export default [
   // Servers
-  service({
-    type: 'jellyfin', name: 'Jellyfin', icon: 'film', auth: { header: 'X-Emby-Token' },
-    get: { counts: '/Items/Counts', sessions: '/Sessions?activeWithinSeconds=120' },
-    stats: d => [
-      { label: 'Playing now', value: d.sessions.filter((s: any) => s.NowPlayingItem).length },
-      { label: 'Movies', value: d.counts.MovieCount }, { label: 'Series', value: d.counts.SeriesCount }, { label: 'Episodes', value: d.counts.EpisodeCount }],
-    recap: d => tally(sum(d.counts?.MovieCount, d.counts?.SeriesCount), { id: 'jellyfin.shelf', theme: 'media', icon: 'film', kicker: 'On your Jellyfin shelf', unit: 'titles', stat: 'Titles', scope: 'All time', line: `${d.counts?.MovieCount ?? 0} films and ${d.counts?.SeriesCount ?? 0} shows, ${d.counts?.EpisodeCount ?? 0} episodes in all.` }),
-    sample: { counts: { MovieCount: 1204, SeriesCount: 88, EpisodeCount: 3120 }, sessions: [{ NowPlayingItem: { Name: 'A Film' } }, {}] },
-    expect: { 'Playing now': 1, Movies: '1,204', Episodes: '3,120' },
-  }),
-  service({
-    type: 'emby', name: 'Emby', icon: 'film', auth: { header: 'X-Emby-Token' },
-    get: { counts: '/emby/Items/Counts', sessions: '/emby/Sessions' },
-    stats: d => [
-      { label: 'Playing now', value: (d.sessions ?? []).filter((s: any) => s?.NowPlayingItem).length },
-      { label: 'Movies', value: d.counts?.MovieCount ?? 0 }, { label: 'Series', value: d.counts?.SeriesCount ?? 0 },
-      { label: 'Episodes', value: d.counts?.EpisodeCount ?? 0 }, { label: 'Songs', value: d.counts?.SongCount ?? 0 }],
-    sample: { counts: { MovieCount: 642, SeriesCount: 51, EpisodeCount: 2210, SongCount: 8100 }, sessions: [{ NowPlayingItem: { Name: 'An Episode' } }, { Client: 'Web' }] },
-    expect: { 'Playing now': 1, Movies: 642, Songs: '8,100' },
-  }),
   service({
     type: 'plex', name: 'Plex', icon: 'film', auth: { header: 'X-Plex-Token' },
     about: 'What the Plex server itself reports: streams playing now and how much is in its libraries.',
@@ -54,24 +26,6 @@ export default [
     },
     sample: { sessions: { MediaContainer: { size: 2 } }, movies: { MediaContainer: { size: 0, totalSize: 1530 } }, shows: { MediaContainer: { size: 0, totalSize: 96 } }, albums: { MediaContainer: { size: 0, totalSize: 412 } } },
     expect: { 'Playing now': 2, Movies: '1,530', Shows: 96 },
-  }),
-  service<{ username: string; password: string }>({
-    type: 'navidrome', name: 'Navidrome', icon: 'play', options: login,
-    // Subsonic signs each request: md5 of the password and a fresh salt
-    get: o => {
-      const salt = randomBytes(8).toString('hex'), token = createHash('md5').update(`${o.password}${salt}`).digest('hex');
-      const rest = (call: string) => `/rest/${call}?u=${encodeURIComponent(o.username)}&t=${token}&s=${salt}&v=1.16.1&c=valet&f=json`;
-      return { playing: rest('getNowPlaying'), scan: { path: rest('getScanStatus'), optional: true } };
-    },
-    stats: d => {
-      const entry = subsonic(d.playing)?.nowPlaying?.entry;
-      return [{ label: 'Playing now', value: entry ? Object.values(entry).length : 0 }, { label: 'Songs', value: d.scan?.['subsonic-response']?.scanStatus?.count }];
-    },
-    recap: d => tally(d.scan?.['subsonic-response']?.scanStatus?.count, { id: 'music.songs', theme: 'music', icon: 'play', kicker: 'Your music, on your own disks', unit: 'songs', stat: 'Songs', scope: 'All time', line: 'No subscription can take a single one of them away.' }),
-    sample: { playing: { 'subsonic-response': { status: 'ok', nowPlaying: { entry: [{ id: 'a1', title: 'A Song', artist: 'A Band' }] } } },
-      scan: { 'subsonic-response': { status: 'ok', scanStatus: { scanning: false, count: 18422, folderCount: 930 } } } },
-    sampleOptions: { username: 'admin', password: 'hunter2' },
-    expect: { 'Playing now': 1, Songs: '18,422' },
   }),
   service({
     type: 'photoprism', name: 'PhotoPrism', icon: 'image',
@@ -128,18 +82,6 @@ export default [
   }),
 
   // Books, comics and manga
-  service({
-    type: 'audiobookshelf', name: 'Audiobookshelf', icon: 'book', auth: 'bearer',
-    // item counts and hours live per library, a call each: service() has no way to follow up on this answer
-    get: { libraries: '/api/libraries' },
-    stats: d => {
-      const libs = d.libraries?.libraries ?? [];
-      return [{ label: 'Libraries', value: libs.length }, { label: 'Book libraries', value: libs.filter((l: any) => l.mediaType === 'book').length },
-        { label: 'Podcast libraries', value: libs.filter((l: any) => l.mediaType === 'podcast').length }];
-    },
-    sample: { libraries: { libraries: [{ id: 'l1', name: 'Audiobooks', mediaType: 'book' }, { id: 'l2', name: 'Lectures', mediaType: 'book' }, { id: 'l3', name: 'Podcasts', mediaType: 'podcast' }] } },
-    expect: { Libraries: 3, 'Book libraries': 2, 'Podcast libraries': 1 },
-  }),
   service({
     type: 'calibre-web', name: 'Calibre-Web', icon: 'book', auth: 'basic',
     get: { stats: '/opds/stats' },

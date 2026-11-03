@@ -11,6 +11,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 - Mealie and Tandoor are full integrations: this week's meal plan from today, a recipe of the day with its photo, and new recipes. The assistant searches and reads recipes and adds to the shopping list, asking first.
 - Komga and Kavita: continue reading with covers and how far along, what's next in a series (Komga) and what was added lately. The assistant searches the library and says what you're reading.
 - Miniflux: the unread articles as a pile to step through (archiving one marks it read), unread per feed, and starred. The assistant searches and reads entries, and marks them read or stars them, asking first.
+- Jellyfin, Emby, Navidrome and Audiobookshelf are full integrations: what's playing (with its ring in the top bar), what you're partway through and what's new, with posters and covers. Navidrome adds recently and most played and albums to rediscover; Audiobookshelf, books in progress and your listening this week. The assistant can search each library, and stop a Jellyfin or Emby stream after asking. Existing configs keep working, `status` widget included.
 
 ### Changed
 

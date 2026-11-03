@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readUIMessageStream, type UIMessage } from 'ai';
 
-export const CANARY = { CD_KEY: 'canary-cd-7f3a91', KK_KEY: 'canary-kk-2b8e44', MF_KEY: 'canary-mf-5e2c18', VAULT_KEY: 'canary-vault-9c1d07', PVE_KEY: 'canary-pve-4e6b13', HC_KEY: 'canary-hc-8a2c50' };
+export const CANARY = { CD_KEY: 'canary-cd-7f3a91', KK_KEY: 'canary-kk-2b8e44', MF_KEY: 'canary-mf-5e2c18', VAULT_KEY: 'canary-vault-9c1d07', PVE_KEY: 'canary-pve-4e6b13', HC_KEY: 'canary-hc-8a2c50', JF_KEY: 'canary-jf-4e6a18' };
 export const HC1 = '00000000-0000-4000-8000-0000000000c1';
 export const W1 = '00000000-0000-4000-8000-000000000001', W2 = '00000000-0000-4000-8000-000000000002';
 export const E1 = 4101;   // a Miniflux entry
@@ -68,6 +68,12 @@ export async function startLab(o: { model: { provider?: string; baseURL: string;
     if (u.startsWith('/v1/entries')) return json({ total: 1, entries: [entry] });
     if (u.startsWith('/v1/feeds/counters')) return json({ reads: { 7: 3 }, unreads: { 7: 1 } });
     if (u.startsWith('/v1/feeds')) return json([entry.feed]);
+    // a Jellyfin with two people watching, both on Jellyfin clients, so "jellyfin" alone is ambiguous
+    if (/^\/Sessions\/[^/]+\/Playing\/Stop/.test(u) && q.method === 'POST') { deleted.push(`stop ${u}`); r.statusCode = 204; return r.end(); }
+    if (/^\/Sessions\/[^/]+\/Message/.test(u)) { r.statusCode = 204; return r.end(); }
+    if (u.startsWith('/Sessions')) return json([
+      { Id: 'sess1', UserName: 'Sam', DeviceName: 'Living room TV', Client: 'Jellyfin Android TV', SupportsRemoteControl: true, NowPlayingItem: { Id: 'e1', Type: 'Episode', Name: 'Undertow', SeriesName: 'The Long Tide', ParentIndexNumber: 2, IndexNumber: 4, RunTimeTicks: 3e10 }, PlayState: { PositionTicks: 1e10 } },
+      { Id: 'sess2', UserName: 'Alex', DeviceName: 'Tablet', Client: 'Jellyfin Web', SupportsRemoteControl: true, NowPlayingItem: { Id: 'f2', Type: 'Movie', Name: 'Harbour Lights', RunTimeTicks: 6e10 }, PlayState: { PositionTicks: 1e10 } }]);
     r.statusCode = 404; r.end('{}');
   });
   const S = `http://127.0.0.1:${portOf(svc)}`, dir = mkdtempSync(join(tmpdir(), 'valet-lab-')), file = join(dir, 'config.yaml');
@@ -86,6 +92,7 @@ integrations:
   feeds: {type: rss, feeds: [{url: "${S}/feed.xml", name: Tech}]}
   bookmarks: {type: karakeep, url: "${S}", apiKey: "\${KK_KEY}"}
   reader: {type: miniflux, url: "${S}", key: "\${MF_KEY}"}
+  tv: {type: jellyfin, url: "${S}", key: "\${JF_KEY}"}
   vault: {type: api, url: "${S}/vault", headers: {Authorization: "Bearer \${VAULT_KEY}"}, title: Vault, stats: [{label: Items, value: items}]}
   servers: {type: proxmox, url: "${S}", key: "\${PVE_KEY}"}
   jobs: {type: healthchecks, url: "${S}", key: "\${HC_KEY}"}
