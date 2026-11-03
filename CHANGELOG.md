@@ -5,6 +5,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-03
+
 ### Added
 
 - Proxmox VE, Speedtest Tracker, Syncthing, Backrest and Healthchecks.io are full integrations. Proxmox shows every node and guest with its CPU, memory and uptime and the storage pools by fill, and can start, shut down or reboot one guest. Speedtest Tracker charts the last days and can run a test. Syncthing shows folders and devices, out of sync first, and can rescan a folder. Backrest shows each plan's last backup and the next, and can run one now. Healthchecks shows each check with its last ping, and can pause and resume one. Everything that changes something asks first, and their old `status` widget and settings still work.
@@ -92,7 +94,8 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/askvalet/valet/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/askvalet/valet/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/askvalet/valet/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/askvalet/valet/releases/tag/v0.1.0
