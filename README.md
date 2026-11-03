@@ -28,28 +28,21 @@ A self-hosted, open-source, AI-native homepage.
 
 ## Why Valet
 
-Valet is a homepage for your homelab that can also do things. Here's what it's good at, and where it's still rough.
+Valet is a homepage for your homelab that can also do things.
 
-**It shows what's going on, not just links.** What's playing, what's downloading, what's down and why, with real
-artwork and graphs. The 3D floor plan and PC model are there if you want them, and easy to leave out if you'd rather
-have a denser page.
+**Why another dashboard?** Most are a page of links with a status dot. Valet shows what's actually happening in your
+services, like what's playing, what's downloading or what just went down and why. You can act on it from the same page:
+pause a download, restart a service, turn off the lights.
 
-**You can act from it.** Pause a download, restart a service or turn off the lights without opening each app. How much
-you can do depends on the integration: some only read.
+**AI-native, if you want it.** Ask why something is down and it reads the logs, or ask for a new card and it edits the
+config for you. Use a local model or a hosted one. Every change waits for your approval, and Valet works fine with the AI
+switched off.
 
-**It's one YAML file.** Every section, card and wallpaper lives in `config.yaml`. That's nice if you like config files
-and less nice if you don't, because there's no visual editor yet. There are 185 integrations, some more battle-tested
-than others, and anything with a JSON API works through `type: api`.
+**Made to be enjoyed.** Live cards, real artwork, smooth animations and 3D models of your house and PC. It's a page
+you'll want to look at and use.
 
-**The AI is optional.** Turn it on and you can ask why something is down and get an answer from the logs, or ask for a
-new card and it edits the config for you. It works with a local model or a hosted one, it never sees your API keys, and
-every change waits for your approval. Leave it off and you still have a complete homepage.
-
-**It's light.** One Node process, about 45 MB of RAM on a fresh install, a 166 MB image. MIT licensed, runs on your own
-hardware, no account, no telemetry.
-
-**It's new.** The first release was in November 2026, so expect rough edges, and please open an issue when you hit one.
-The demo shows a fully set-up homelab. A fresh install starts nearly empty and fills in as you connect your services.
+**Flexible, and light.** One YAML file controls everything, with 185 integrations and a simple way to add your own. It
+runs as one Node process, uses about 45 MB of RAM on a fresh install, and the image is 166 MB.
 
 ## Screenshots
 
