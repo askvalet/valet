@@ -7,7 +7,9 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono, type Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { bodyLimit } from 'hono/body-limit';
-import { sameOrigin, setupAuth, userCommand } from './auth.ts';
+import { sameOrigin, setupAuth, setupWall, userCommand } from './auth.ts';
+import { wallPages, wallReads, wallWidgets } from './wall.ts';
+import type { WidgetState } from '../shared/cards.ts';
 import { loadConfig, startConfig, validZone, type Config } from './config.ts';
 import { cleanCss, headers, hostGuard, served } from './security.ts';
 import { UPLOAD_DIR, LOGO } from './core.ts';
@@ -129,10 +131,18 @@ app.use('/api/*', sameOrigin);                 // before the auth routes, so sig
 // can make the server buffer megabytes (sign-in routes included).
 app.use('/api/*', async (c, next) => c.req.path === '/api/files' ? next() : c.req.path === '/api/chat' ? chatSize(c, next) : small(c, next));
 const signedIn = await setupAuth(app, config);
+// A paired wall display (wall.token) may make three reads, each held to the wall's own cards below, and nothing else
+const paired = config.auth.mode === 'none' ? () => false : await setupWall(app, config, () => site.config.wall.token);
+const WALL_READS = (p: string) => p === '/api/page' || p === '/api/events' || /^\/api\/image\/[^/]+$/.test(p);
+const isWall = (c: Context) => !!(c.get as (k: string) => unknown)('wall');
 app.use('/api/*', async (c, next) => {
   const p = c.req.path;
   if (p.startsWith('/api/auth/') || p.startsWith('/api/wallpaper') || p === '/api/custom.css' || p === '/api/font' || p.startsWith('/api/icon/')) return next();
-  return signedIn(c, next);
+  let person = false;
+  const res = await signedIn(c, async () => { person = true; await next(); });
+  if (person || c.req.method !== 'GET' || !WALL_READS(p) || !paired(c)) return res;
+  (c.set as (k: string, v: unknown) => void)('wall', true);
+  return next();
 });
 
 // by number, so only what the config lists can be asked for
@@ -207,19 +217,39 @@ const fontOf = ({ appearance: { font } }: Config) => {
   return { family: font.family!.split(',')[0].replace(/["']/g, '').trim(), ...(file ? { file: remote ? font.url : '/api/font' } : { sheet: font.url }) };
 };
 
+/** A layout's sections as the page draws them, for the main page and the wall's pages alike */
+const sectionsOf = (layout: Config['layout']) => layout.map(s => ({ title: s.title, icon: s.icon, columns: typeof s.columns === 'object' ? s.columns.desktop ?? s.columns.tablet ?? s.columns.phone : s.columns, grid: typeof s.columns === 'object' ? s.columns : undefined, gap: s.gap, tabColumns: s.tabColumns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat, favorites: s.favorites,
+  widgets: s.widgets.map(w => w.widget).filter(k => site.hub.widget(k)),
+  sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium').map(w => [w.widget, w.size])),
+  looks: Object.fromEntries(s.widgets.filter(w => 'title' in w || 'icon' in w || 'header' in w || 'view' in w || 'rows' in w || cardLook(w)).map(w => [w.widget, { title: w.title, icon: w.icon, header: w.header, view: w.view, rows: w.rows, style: cardLook(w) }])) }));
+/** The wall's settings and pages; never its token. No pages: the browser builds the default one from the cards it hears. */
+const wallOf = (config: Config) => {
+  const { token: _, pages: __, layout: ___, ...wall } = config.wall;
+  return { ...wall, pages: wallPages(config).map(p => ({ title: p.title, every: p.every, clock: p.clock, sections: sectionsOf(p.layout).map(x => ({ ...x, chat: false })) })) };
+};
+
 app.get('/api/page', c => {
   const { config, instances, hub, placed } = site;
-  const agent = config.assistant && chatAgent(config.assistant, site.acting);
   const tz = c.req.query('tz');
   if (!zoneKnown && tz && validZone(tz)) { process.env.TZ = tz; zoneKnown = true; console.log(`time zone: ${tz} (from the browser; set timezone in config.yaml to fix it)`); }
+  const look = { ...lookOf(config), theme: config.appearance.theme, css: site.cssVersion && `/api/custom.css?v=${site.cssVersion}`, font: fontOf(config) };
+  const appearance = { walls: wallsOf(config.appearance.wallpaper), tabWalls: Object.fromEntries(Object.entries(config.appearance.wallpapers).map(([t, w]) => [t, wallsOf(w)])), rotate: config.appearance.rotate, sizes: config.appearance.sizes, sounds: config.appearance.sounds };
+  const weather = config.weather && hub.widget(config.weather) ? config.weather : undefined;
+  // a paired wall display learns how the page looks and the wall's own pages: no title, no assistant, nothing it could act
+  // with, and no other card's name
+  if (isWall(c)) return c.json(JSON.parse(site.redact(JSON.stringify({
+    title: '', paired: true, canAct: false, sandbox: false, labels: { ...LABELS, ...config.labels }, format: config.format, look, weather,
+    appearance: { ...appearance, tabWalls: {} }, wall: wallOf(config), sections: [],
+    widgets: Object.fromEntries([...wallWidgets(config), ...weather ? [weather] : []].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
+  }))));
+  const agent = config.assistant && chatAgent(config.assistant, site.acting);
   return c.json(JSON.parse(site.redact(JSON.stringify({
     title: config.title, greeting: config.greeting, notice: config.notice, location: config.location, canAct: site.acting, sandbox: sandbox.on, search: config.search,
     // everyone learns an edit didn't apply; the error itself can quote the file, so only people who can change things see it
     configError: configError ? { message: site.acting ? site.redact(configError.message).slice(0, 600) : undefined, at: configError.at } : undefined,
     welcome: config.welcome ? { path: CONFIG, saved, setup: site.acting && instances.has('config') } : undefined,
     recap: config.recap, hero: { ...config.hero, scope: config.hero.scope === true ? scopeOf([...site.meta.values()].map(m => m.type)) : config.hero.scope || undefined }, labels: { ...LABELS, ...config.labels }, format: config.format,
-    appearance: { walls: wallsOf(config.appearance.wallpaper), tabWalls: Object.fromEntries(Object.entries(config.appearance.wallpapers).map(([t, w]) => [t, wallsOf(w)])), rotate: config.appearance.rotate, sizes: config.appearance.sizes, sounds: config.appearance.sounds },
-    look: { ...lookOf(config), theme: config.appearance.theme, css: site.cssVersion && `/api/custom.css?v=${site.cssVersion}`, font: fontOf(config) },
+    appearance, look,
     chat: config.chat,
     // the demo's model is scripted, and says so beside its name
     assistant: config.assistant ? { ...(agent ? { name: agent.name, model: agent.model, external: true } : { name: config.assistant.name, model: sandbox.on ? `${config.assistant.model} (demo)` : config.assistant.model }), suggestions: config.assistant.suggestions,
@@ -229,28 +259,28 @@ app.get('/api/page', c => {
     menubar: { ...config.menubar, widgets: config.menubar.widgets.filter(k => hub.widget(k)) },
     nav: config.nav,
     live: config.live && { activities: config.live.activities.filter(k => hub.widget(k)) },
-    weather: config.weather && hub.widget(config.weather) ? config.weather : undefined,
+    weather,
     calendar: config.calendar && hub.widget(config.calendar) ? config.calendar : undefined,
     insight: site.watcher?.insight?.text,
-    sections: [...(site.pins.length ? [{ widgets: site.pins.map(p => `pins.${p.id}`).filter(k => hub.widget(k)), display: 'cards', place: 'main', overview: true, sizes: {} }] : []), ...config.layout.map(s => ({ title: s.title, icon: s.icon, columns: typeof s.columns === 'object' ? s.columns.desktop ?? s.columns.tablet ?? s.columns.phone : s.columns, grid: typeof s.columns === 'object' ? s.columns : undefined, gap: s.gap, tabColumns: s.tabColumns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat, favorites: s.favorites,
-      widgets: s.widgets.map(w => w.widget).filter(k => hub.widget(k)),
-      sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium').map(w => [w.widget, w.size])),
-      looks: Object.fromEntries(s.widgets.filter(w => 'title' in w || 'icon' in w || 'header' in w || 'view' in w || 'rows' in w || cardLook(w)).map(w => [w.widget, { title: w.title, icon: w.icon, header: w.header, view: w.view, rows: w.rows, style: cardLook(w) }])) }))],
+    sections: [...(site.pins.length ? [{ widgets: site.pins.map(p => `pins.${p.id}`).filter(k => hub.widget(k)), display: 'cards', place: 'main', overview: true, sizes: {} }] : []), ...sectionsOf(config.layout)],
     widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
+    wall: wallOf(config),
   }))));
 });
 
 // Live updates: the full current state on connect, then each change as it happens.
 app.get('/api/events', c => streamSSE(c, async stream => {
   const { hub, redact, recent, noticeListeners } = site;
+  // a paired wall display hears the wall's cards and nothing else: no other widget, and no notices, which can name anything
+  const wall = isWall(c), config = site.config, heard = (s: WidgetState) => !wall || wallReads(config, s);
   // subscribe first so nothing changes unseen while the snapshot is written; a slow page keeps only the newest state
   // of each widget, so its queue can't grow without bound
   const queue = new Map<string, string>();
   let wake: (() => void) | null = null, reloaded = false;
-  const notices: string[] = recent.filter(n => Date.now() - n.at < 60_000).map(n => redact(JSON.stringify(n)));
-  const off = hub.subscribe(s => { queue.delete(s.key); queue.set(s.key, redact(JSON.stringify(s))); wake?.(); });
-  for (const s of hub.snapshot()) if (!queue.has(s.key)) queue.set(s.key, redact(JSON.stringify(s)));
-  const tell = (n: { at: number }) => { notices.push(redact(JSON.stringify(n))); wake?.(); };
+  const notices: string[] = wall ? [] : recent.filter(n => Date.now() - n.at < 60_000).map(n => redact(JSON.stringify(n)));
+  const off = hub.subscribe(s => { if (!heard(s)) return; queue.delete(s.key); queue.set(s.key, redact(JSON.stringify(s))); wake?.(); });
+  for (const s of hub.snapshot()) if (heard(s) && !queue.has(s.key)) queue.set(s.key, redact(JSON.stringify(s)));
+  const tell = (n: { at: number }) => { if (wall) return; notices.push(redact(JSON.stringify(n))); wake?.(); };
   const onReload = () => { reloaded = true; wake?.(); };
   noticeListeners.add(tell); sseClients.add(onReload);
   const done = () => { off(); noticeListeners.delete(tell); sseClients.delete(onReload); };
@@ -326,6 +356,8 @@ app.post('/api/command', c => runCommand(c, site));
 app.get('/api/image/:inst', async c => {
   const inst = site.instances.get(c.req.param('inst'));
   const ref = c.req.query('ref');
+  // a paired wall display sees only the pictures its cards show now
+  if (isWall(c) && (!ref || !site.hub.snapshot().some(s => wallReads(site.config, s) && JSON.stringify(s.card ?? null).includes(`/api/image/${encodeURIComponent(c.req.param('inst'))}?ref=${encodeURIComponent(ref)}`)))) return c.json({ error: 'not signed in' }, 401);
   if (!inst?.image || !ref) return c.notFound();
   try {
     const res = await inst.image(ref, c.req.header('range'));

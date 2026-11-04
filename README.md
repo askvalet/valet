@@ -61,6 +61,13 @@ Everything on the page is live. Progress bars move, numbers tick over, and new t
 
 <br>
 
+### On the wall, too
+
+Open `/wall` on a tablet or a spare monitor for a page made to be read from across the room: the time and weather large, and the
+cards you pick for it, taking turns. It only shows, dims at night, and keeps the screen awake.
+
+<br>
+
 ### Made to be enjoyed
 
 Live cards, real artwork, smooth animations and 3D models. It's a page

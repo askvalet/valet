@@ -30,7 +30,7 @@ async function routes() {
 const fill = (p: string) => p.replace(/:n\?/, '').replace(/:\w+/g, 'x');
 const freePort = () => new Promise<number>(ok => { const s = createServer().listen(0, '127.0.0.1', () => { const { port } = s.address() as any; s.close(() => ok(port)); }); });
 
-async function boot(auth: Record<string, unknown>, extra = '', access = '{ config: control }') {
+async function boot(auth: Record<string, unknown>, extra = '', access = '{ config: control }', env: Record<string, string> = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'valet-exposure-')), port = await freePort(), file = join(dir, 'config.yaml');
   await writeFile(file, `title: ${TITLE}
 auth: ${JSON.stringify(auth)}
@@ -41,7 +41,7 @@ ${extra}layout:
   - widgets: [probe.data]
 `);
   let log = '';
-  const proc = spawn('node', ['dist/server.js'], { env: { ...process.env, VALET_CONFIG: file, VALET_DATA: dir, PORT: String(port), HOST: '127.0.0.1', PROBE_KEY: SECRET } });
+  const proc = spawn('node', ['dist/server.js'], { env: { ...process.env, VALET_CONFIG: file, VALET_DATA: dir, PORT: String(port), HOST: '127.0.0.1', PROBE_KEY: SECRET, ...env } });
   proc.stdout!.on('data', d => { log += d; }); proc.stderr!.on('data', d => { log += d; });
   const base = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 100; i++) {
@@ -245,5 +245,79 @@ describe('the read-only MCP server', () => {
     }
     const nope = await (await rpc({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'config__config_apply', arguments: {} } })).json();
     assert.ok(nope.error, 'a tool it never offered can\'t be called');
+  });
+});
+
+describe('a paired wall display reads the wall and nothing else', () => {
+  const KEY = 'wall-key-0123456789abcdef0123456789abcdef';
+  let s: Awaited<ReturnType<typeof boot>>, cookie = '';
+  // a second integration that is on the main page only: the wall must never name or read it
+  before(async () => { s = await boot({ mode: 'local', secureCookie: false }, `  hidden: { type: api, url: "http://127.0.0.1:9/y", stats: [{ label: Hidden, value: a }] }
+wall:
+  token: "\${WALL_KEY}"
+  pages: [{ title: Hall, layout: [{ widgets: [probe.data] }] }]
+`, undefined, { WALL_KEY: KEY }); });
+  after(() => { s.proc.kill(); });
+  const pair = (key: unknown, headers: Record<string, string> = {}) => fetch(`${s.base}/api/auth/wall`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({ key }) });
+
+  test('a wrong key, a forged cookie or none at all: nothing', async () => {
+    for (const k of ['nope', `${KEY}x`, '', 42]) assert.equal((await pair(k)).status, 401, String(k));
+    for (const c of ['valet_wall=x', `valet_wall=${'A'.repeat(43)}`, `valet_wall=${KEY}`]) {
+      assert.equal((await fetch(`${s.base}/api/auth/wall`, { headers: { cookie: c } })).status, 401, c);
+      assert.equal((await fetch(`${s.base}/api/page`, { headers: { cookie: c } })).status, 401, c);
+    }
+  });
+
+  test('the right key pairs, from this page\'s origin only', async () => {
+    assert.equal((await pair(KEY, { Origin: 'https://evil.example' })).status, 403);
+    const r = await pair(KEY);
+    assert.equal(r.status, 200);
+    assert.match(r.headers.get('set-cookie') ?? '', /HttpOnly/i);
+    assert.match(r.headers.get('set-cookie') ?? '', /SameSite=Strict/i);
+    cookie = (r.headers.get('set-cookie') ?? '').split(';')[0];
+    assert.equal((await fetch(`${s.base}/api/auth/wall`, { headers: { cookie } })).status, 200);
+  });
+
+  test('it reads the wall\'s page: no title, no assistant, no token, no other card', async () => {
+    const r = await fetch(`${s.base}/api/page`, { headers: { cookie } }), text = await r.text(), page = JSON.parse(text);
+    assert.equal(r.status, 200);
+    clean('the paired page', text);
+    assert.ok(!text.includes(KEY), 'the token stays on the server');
+    assert.doesNotMatch(text, /hidden/, 'a card that isn\'t on the wall isn\'t named');
+    assert.equal(page.canAct, false); assert.equal(page.assistant, undefined);
+    assert.deepEqual(page.wall.pages[0].sections[0].widgets, ['probe.data']);
+  });
+
+  test('its live updates carry the wall\'s cards and no notices', async () => {
+    const ac = new AbortController(), r = await fetch(`${s.base}/api/events`, { headers: { cookie }, signal: ac.signal });
+    assert.equal(r.status, 200);
+    const reader = r.body!.getReader(); let text = '';
+    const until = Date.now() + 2500;
+    while (Date.now() < until && !text.includes('probe.data')) { const { value } = await Promise.race([reader.read(), new Promise<any>(ok => setTimeout(() => ok({ value: undefined }), 300))]); if (value) text += new TextDecoder().decode(value); }
+    ac.abort();
+    clean('the paired stream', text);
+    assert.doesNotMatch(text, /hidden\./);
+    assert.doesNotMatch(text, /event: notice/);
+  });
+
+  test('everything else refuses it, and it is not a session', async () => {
+    const list = await routes();
+    for (const r of list) {
+      const key = `${r.method} ${r.path}`;
+      if (PUBLIC.has(key) || IN_AUTH.test(r.path) || key === 'GET /api/page' || key === 'GET /api/events' || key === 'GET /api/image/:inst') continue;   // pictures: below
+      const res = await fetch(s.base + fill(r.path), { method: r.method, headers: r.method === 'GET' ? { cookie } : { cookie, 'Content-Type': 'application/json' }, body: r.method === 'GET' ? undefined : '{}' });
+      const text = await res.text();
+      assert.equal(res.status, 401, `${key} answered ${res.status} to a paired wall: ${text.slice(0, 120)}`);
+      clean(key, text);
+    }
+    assert.equal((await fetch(`${s.base}/api/image/probe?ref=anything`, { headers: { cookie } })).status, 401, 'only pictures its cards show');
+    assert.equal((await fetch(`${s.base}/api/image/hidden?ref=x`, { headers: { cookie } })).status, 401);
+    assert.equal((await fetch(`${s.base}/api/auth/me`, { headers: { cookie } })).status, 401);
+  });
+
+  test('wrong keys slow down', async () => {
+    let last = 0;
+    for (let i = 0; i < 8; i++) last = (await pair('wrong', { 'X-Forwarded-For': '1.2.3.4' })).status;
+    assert.equal(last, 429);
   });
 });

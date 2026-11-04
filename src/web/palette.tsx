@@ -1,6 +1,6 @@
 // The ⌘K palette: run a plain command, ask, do a card's action, open a service, jump to a tab. Loaded the first time it opens.
 // Commands come first and need no model: they're matched here as you type and run by the server (src/server/commands.ts).
-import { ArrowUp, CornerDownLeft, Globe, LayoutGrid, LogOut, Search, Volume2, VolumeX, Zap } from 'lucide-react';
+import { ArrowUp, CornerDownLeft, Globe, LayoutGrid, LogOut, Monitor, Search, Volume2, VolumeX, Zap } from 'lucide-react';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { defaultFilter } from 'cmdk';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
@@ -11,6 +11,7 @@ import { clear, match, type Match, type Phrase } from '../shared/commands.ts';
 import { Approval, ChatCard } from './approval.tsx';
 import type { ChatUi } from './assistant.tsx';
 import { DOT, Icon } from './cards.tsx';
+import { label } from './format.ts';
 import { toast } from './feel.tsx';
 import { signOut } from './signin.tsx';
 import { play, toggleSounds, useSounds } from './sound.ts';
@@ -83,7 +84,7 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
   const opening = (sv: StatusItem) => ({ value: `open ${sv.name} ${sv.group ?? ''}`, keywords: [sv.name] });
   const going = (key: string) => ({ value: `go ${key}`, keywords: [key] });
   const best = (items: { value: string; keywords?: string[] }[]) => query.trim() ? Math.max(0, ...items.map(i => rank(i.value, query, i.keywords))) : 0;
-  const pages = [{ key: 'Overview' }, ...nav];
+  const pages = [{ key: 'Overview' }, ...nav, { key: label('wall') }];
   // best match first; with nothing typed they all tie and stay in this order
   const run: [number, React.ReactNode] = [matches.length ? matches[0].score : 0, matches.length > 0 && (
     <CommandGroup key="run" heading={tied ? 'Commands · pick one' : 'Commands'}>
@@ -124,6 +125,8 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
     [best(pages.map(p => going(p.key))), <CommandGroup key="go" heading="Go to">
       <CommandItem {...going('Overview')} onSelect={() => { setView('all'); setPalette(false); }}><LayoutGrid />Overview</CommandItem>
       {nav.map(s => <CommandItem key={s.key} {...going(s.key)} onSelect={() => { setView(s.key); setPalette(false); }}><Icon name={s.chat ? 'chat' : sectionIcon(s) ?? 'pulse'} />{s.key}</CommandItem>)}
+      {/* the wall's own pages, full screen: for a tablet on the wall or a spare monitor */}
+      <CommandItem {...going(label('wall'))} keywords={[label('wall'), 'kiosk', 'tv', 'screen']} onSelect={() => location.assign('/wall')}><Monitor />{label('wall')}</CommandItem>
     </CommandGroup>],
     // after Open and Go to, so a service or tab with the same name as a command keeps Enter
     run,

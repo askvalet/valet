@@ -35,7 +35,19 @@ Valet is locked down by default. Each protection below also says what it doesn't
 - **The page runs only Valet's scripts.** See [CSP](/security/csp/).
 - **It answers only to names it knows.** See [allowed hosts](/security/hosts/).
 - **A sandbox keeps Valet's own state apart, nothing more.** With `sandbox: true` nothing is saved, each visitor gets a private copy of the site in memory, and there are no file uploads, config tools or MCP server. Integrations still reach whatever they're pointed at, so on a page that may act, a visitor's press reaches the real service. Use it with made-up services. See [the recipe](/recipes/#a-public-demo).
+- **A paired wall display reads the wall, and only the wall.** See [below](#a-paired-wall-display).
 - **Icons, the wallpaper and your own CSS and font are open.** `/api/icon/`, `/api/wallpaper/`, `/api/custom.css` and `/api/font` answer without sign-in, because the sign-in screen uses them (`/api/favicon/` needs a session). Icons fetch from an outside service. See [requests Valet makes on its own](#requests-valet-makes-on-its-own). If you don't want that, keep Valet behind your own network or proxy.
+
+## A paired wall display
+
+A [wall display](/concepts/wall/) that can't sign in can be paired with `wall.token`. Off unless you set one, and only with sign-in on.
+
+- **Pairing needs the token.** `/wall#key=…` sends it once, from Valet's own origin. The part after `#` never reaches your proxy's logs. A wrong key slows down per address, as a wrong password does.
+- **The cookie is a signature, not the token.** It's HttpOnly, `SameSite=Strict`, and signed with Valet's secret for this purpose only, so it can't pass for a session. Changing the token unpairs every screen.
+- **It reads three things and does nothing.** The wall's page, its live updates and the pictures its cards show right now. The page leaves out the title, the assistant, the other cards and the token. Live updates carry only the wall's cards and the weather, and no notices. Every other route, and anything that isn't a GET, refuses it as it would a stranger.
+- **What it doesn't cover.** Whoever holds the tablet can read what's on the wall. Put nothing there you wouldn't leave on a screen in that room.
+
+`npm run test:exposure` pairs a screen and tries every route with it.
 
 ## The assistant
 

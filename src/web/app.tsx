@@ -24,12 +24,12 @@ import type { ChatUi, ToolInfo } from './assistant.tsx';
 const Palette = lazy(() => import('./palette.tsx'));
 const RecapStory = lazy(() => import('./recap.tsx'));
 
-type Size = 'small' | 'wide' | 'medium' | 'tall' | 'large';
-type Paper = { image?: string; paint?: string };
+export type Size = 'small' | 'wide' | 'medium' | 'tall' | 'large';
+export type Paper = { image?: string; paint?: string };
 type Grid = { phone?: number; tablet?: number; desktop?: number };
-type CardOverride = { title?: string; icon?: string; header?: boolean; view?: View; rows?: number; style?: Record<string, string> };
+export type CardOverride = { title?: string; icon?: string; header?: boolean; view?: View; rows?: number; style?: Record<string, string> };
 
-interface Page {
+export interface Page {
   title: string; greeting?: string; notice?: string; location?: string; canAct?: boolean; sandbox?: boolean;
   appearance: { walls: Paper[]; tabWalls: Record<string, Paper[]>; rotate?: number; sizes: Partial<Record<Size, { cols?: number; rows?: number }>>; sounds?: Sounds };
   look: Look;
@@ -49,9 +49,11 @@ interface Page {
   recap?: boolean;
   sections: { title?: string; icon?: string; columns?: number; grid?: Grid; gap?: number; looks?: Record<string, CardOverride>; tabColumns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; sizes?: Record<string, Size>; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; favorites?: string[]; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
+  // the wall display's own pages (/wall); none means it builds its default from the cards it hears
+  wall: { every: number; pause: number; scale?: number; night: false | { from: string; to: string; dim: number }; awake: boolean; pages: { title?: string; every?: number; clock: boolean; sections: Page['sections'] }[] };
 }
 
-function useLive() {
+export function useLive() {
   const [state, setState] = useState<Record<string, WidgetState>>({});
   const [online, setOnline] = useState(true);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -159,7 +161,7 @@ function useDock(box: React.RefObject<HTMLElement | null>, side: 'left' | 'right
 }
 
 /** The page's backdrop: a picture or paint, taking turns if there's a list. The last one stays underneath while the next fades up. */
-function Walls({ list, every }: { list: Paper[]; every?: number }) {
+export function Walls({ list, every }: { list: Paper[]; every?: number }) {
   const [n, setN] = useState(0), now = list[n % list.length] ?? list[0];
   const [shown, setShown] = useState([now]);
   useEffect(() => { setN(0); if (!every || list.length < 2) return; const t = setInterval(() => { if (!document.hidden) setN(i => i + 1); }, every); return () => clearInterval(t); }, [list, every]);
@@ -203,7 +205,7 @@ function useLeaving(list: string[], ms = 260) {
 }
 
 /** True once `on` has stayed true for a while, for what's only worth saying if it lasts. */
-function useHeld(on: boolean, ms: number) {
+export function useHeld(on: boolean, ms: number) {
   const [held, setHeld] = useState(false);
   useEffect(() => {
     if (!on) { setHeld(false); return; }
@@ -271,13 +273,32 @@ function useWide(query = '(min-width: 1280px)') {
 
 /** Signed in? Show the page; otherwise the sign-in screen (over the wallpaper, which needs no session). */
 const Gallery = lazy(() => import('./gallery.tsx'));
+const WallScreen = lazy(() => import('./wall.tsx'));
+const onWall = () => /^\/wall\/?$/.test(location.pathname);
+
+/** A screen that can't sign in can still show the wall, once it's paired with wall.token: /wall#key=… The key leaves the
+ *  address bar at once, and the browser keeps a cookie that reads the wall and nothing else. */
+function usePaired(ask: boolean) {
+  const [paired, setPaired] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!ask) return;
+    const key = /^#key=(.+)$/.exec(location.hash)?.[1];
+    if (key) history.replaceState(null, '', location.pathname + location.search);
+    const pair = key ? fetch('/api/auth/wall', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: decodeURIComponent(key) }) }).catch(() => null) : Promise.resolve(null);
+    void pair.then(() => fetch('/api/auth/wall')).then(r => setPaired(r.ok), () => setPaired(false));
+  }, [ask]);
+  return paired;
+}
 
 export function App() {
   const { me, setMe } = useMe();
+  const wall = onWall(), paired = usePaired(wall && !!me && !me.user && me.mode !== 'none');
   const [hash, setHash] = useState(location.hash);
   useEffect(() => { const on = () => setHash(location.hash); addEventListener('hashchange', on); return () => removeEventListener('hashchange', on); }, []);
   useEffect(() => { if (me && !me.user) document.documentElement.classList.add('dark', 'has-wallpaper'); }, [me]);
   if (!me) return null;
+  if (wall && me && (me.user || paired)) return <Suspense fallback={null}><WallScreen /></Suspense>;
+  if (wall && me && !me.user && paired === null) return null;
   if (me.user && hash === '#gallery') { document.documentElement.classList.add('dark'); return <Suspense fallback={null}><Gallery /></Suspense>; }
   if (!me.user) return (
     <SignIn setup={!!me.setup} provider={me.provider} onDone={name => setMe({ ...me, user: { name } })}
@@ -288,7 +309,7 @@ export function App() {
 
 // a card's own title and icon, from its layout entry: the same object for the same card, so memoised renderers stay still
 const dressed = new WeakMap<CardOverride, { card: CardData; out: CardData }>();
-function dress(card?: CardData, o?: CardOverride) {
+export function dress(card?: CardData, o?: CardOverride) {
   if (!card || (!o?.title && !o?.icon)) return card;
   const hit = dressed.get(o);
   if (hit?.card === card) return hit.out;

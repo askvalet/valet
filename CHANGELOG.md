@@ -5,6 +5,13 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- A wall display at `/wall` (and **Wall display** in ⌘K): a full-screen page for a wall tablet or a spare monitor, with the time and weather large across the top and the cards you pick below, sized to fill the screen. It's its own page in the config, `wall:`, written like `layout`, with pages that take turns (`every`, a touch holds one for `pause`). Left out, it shows your services and what's playing or downloading. It never acts, whoever is signed in: no chat, ⌘K, buttons or links. It dims nearly to black from sunset to sunrise (or set times), keeps the screen awake where the browser allows, and hides the pointer.
+- `wall.token`: pair a screen that can't sign in by opening `/wall#key=<token>` once. That browser can read the wall's cards and nothing else.
+- The weather card knows today's sunrise and sunset (`sun`), which the wall dims by.
+- The demo has three wall pages.
+
 ## [0.1.4] - 2026-11-04
 
 ### Security
