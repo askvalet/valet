@@ -83,6 +83,9 @@ https://askvalet.dev.
   so an empty result *is* the design, and `test/look.test.ts` holds that. A new visual option is a variable with a fallback
   in `styles.css`, never a value in a component. `format.ts` writes times, dates, numbers and `labels`: renderers call it
   instead of `toLocale…`, and new words the page writes go in `src/shared/labels.ts`.
+- **The wall is its own page** (`wall:`, `src/server/wall.ts`, `src/web/wall.tsx`): pages written like `layout`, drawn read-only (no
+  `run`, no pointer on cards, no palette or chat) and scaled to fill the screen. `wallReads` is everything a screen paired with
+  `wall.token` may hear; main.ts holds it to that on `/api/page`, `/api/events` and `/api/image`, and refuses it everywhere else.
 - **Layout is data.** Sections choose how they draw (`display`), where they sit (`place`), how dense they are
   (`variant`, `header`, `columns`) and whether they're on the overview (`overview`); the tab buttons' side is `nav.side`.
   A new arrangement is a new option with a default, never a fork of the page.

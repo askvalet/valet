@@ -195,3 +195,19 @@ layout:
     widgets: [home.lights]
   - title: Services
     widgets: [services.status, system.disks]
+
+# /wall: a full-screen page for a wall tablet or a spare monitor, with its own cards. Left out, it shows the time and
+# weather, your services and what's playing or downloading. It never acts, whoever is signed in.
+# wall:
+#   every: 1m                        # how long each page stays
+#   night: { from: sunset, to: sunrise, dim: 0.9 }   # or times like 22:00; false never dims
+#   token: ${VALET_WALL_TOKEN}       # for a screen that can't sign in: open /wall#key=<token> once (openssl rand -hex 32)
+#   pages:
+#     - title: Now
+#       layout:
+#         - widgets: [plex.streams, downloads.active]
+#           columns: 2
+#     - title: Services
+#       every: 30s
+#       layout:
+#         - widgets: [services.status]

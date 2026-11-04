@@ -46,6 +46,29 @@ live:
 
 nav: { order: [Services, AI, Home, Media, Library] }
 
+# /wall: its own pages for a screen across the room, taking turns every minute
+wall:
+  every: 1m
+  pages:
+    - title: Now
+      layout:
+        - widgets: [lab.streams, lab.downloads]
+          columns: 2
+        - display: tiles
+          widgets: [lab.system]
+    - title: House
+      every: 30s
+      layout:
+        - widgets:
+            - { widget: lab.cameras, size: large, rows: 2 }
+            - { widget: lab.thermostat, size: medium }
+            - { widget: lab.sky, size: medium }
+    - title: Services
+      layout:
+        - widgets: [lab.services]
+          columns: 1
+          header: false
+
 layout:
   - title: Services
     variant: minimal

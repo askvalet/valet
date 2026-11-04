@@ -33,5 +33,7 @@ execFileSync('npx', ['vite', 'build', '--config', 'demo/static/vite.config.mjs']
 cpSync(resolve(repo, 'demo/art'), resolve(out, 'art'), { recursive: true });
 for (const f of readdirSync(resolve(repo, 'demo/icons'))) cpSync(resolve(repo, 'demo/icons', f), resolve(out, 'api/icon', f.replace(/\.(png|svg|webp)$/, '')));
 cpSync(resolve(repo, 'demo/static/_headers'), resolve(out, '_headers'));
+// /wall is the same page, which reads its address; a static host needs a file there
+mkdirSync(resolve(out, 'wall'), { recursive: true }); cpSync(resolve(out, 'index.html'), resolve(out, 'wall/index.html'));
 rmSync(tmp, { recursive: true, force: true });
 console.log(`demo: ${out}`);

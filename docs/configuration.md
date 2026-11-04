@@ -518,6 +518,43 @@ widgets:
 `heatmap` needs dates. A view that doesn't fit leaves the card as it was. It changes the card, so a small or wide tile keeps
 showing the headline.
 
+## `wall`
+
+A full-screen page at `/wall` for a wall tablet or a spare monitor: the time and weather large across the top, then the
+cards you choose, sized to fill the screen. It's its own page, written like `layout`, so the main page doesn't change
+what it shows. It only shows: no chat, no ⌘K, no buttons or links, whoever is signed in. Left out, it shows the main
+page's services and what's playing or downloading.
+
+```yaml
+wall:
+  every: 1m                         # how long each page stays
+  pages:
+    - title: Now
+      layout:
+        - widgets: [plex.streams, qbit.downloads]
+          columns: 2
+    - title: House
+      every: 30s
+      layout:
+        - widgets:
+            - { widget: frigate.cameras, size: large, rows: 2 }
+            - { widget: ha.thermostat, size: medium }
+```
+
+| Option | Default | |
+|---|---|---|
+| `pages` | the default page | pages that take turns; each has `layout` (sections, as in [`layout`](#layout)), and optionally `title`, `every` and `clock: false` to drop the time and weather |
+| `layout` | none | one page, written straight here instead of `pages` |
+| `every` | `1m` | how long each page stays: seconds, or `45s`, `2m` |
+| `pause` | `2m` | after a touch, how long it stays on that page (and how long the night's dimming lifts) |
+| `scale` | grows with the screen | how big everything is, 0.6 to 3 |
+| `night` | sunset to sunrise | `{ from, to, dim }`: times like `22:00`, or `sunset`/`sunrise` from the weather (21:00 and 07:00 if it doesn't know); `dim` 0 to 0.95, default 0.9. `false`: never |
+| `awake` | `true` | keep the screen on while it's open, where the browser allows it (https or localhost) |
+| `token` | none | for a screen that can't sign in: at least 32 characters, from `.env`. Open `/wall#key=<token>` once and that browser can read the wall's cards and nothing else. Change it to unpair every screen |
+
+`/wall?page=House` keeps one page on screen. A section's `chat` and the main page's `tab`, `place`, `overview` and
+`favorites` mean nothing here. A card that isn't there is a problem `config check` names.
+
 ## Integrations
 
 Each entry under `integrations:` has an id (what you use in widget keys and `assistant.access`) and a `type`. Most take

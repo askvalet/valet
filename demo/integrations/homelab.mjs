@@ -177,6 +177,7 @@ export default ({ z, defineIntegration }) => {
         return { type: 'forecast', title: 'Weather', icon, now: { temp, feels: temp - 2, words, icon, hi: today.hi, lo: today.lo },
           hours: Array.from({ length: 12 }, (_, i) => { const at = new Date(now() + (i + 1) * 36e5), hour = at.getHours(); return { time: at.toLocaleTimeString('en', { hour: 'numeric' }).replace(' ', '').toLowerCase(), temp: tempAt(hour), icon: dark(today.icon, hour), pop: today.pop }; }),
           days: [1, 2, 3, 4, 5].map(n => { const s = skyOn(n); return { name: new Date(now() + n * 864e5).toLocaleDateString('en', { weekday: 'short' }), icon: s.icon, hi: s.hi, lo: s.lo, pop: s.pop }; }),
+          sun: { rise: '07:12', set: '18:02' },   // as the daylight card has them
           summary: { label: words, icon, value: `${temp}°`, pct: today.hi > today.lo ? (temp - today.lo) / (today.hi - today.lo) : .5, tone: 'good', detail: `H ${today.hi}° · L ${today.lo}°` } };
       };
       const calendar = () => {

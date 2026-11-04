@@ -195,6 +195,34 @@ export const Format = z.object({
   locale: z.string().refine(v => v === 'auto' || validLocale(v), 'a language tag, like en-GB or de-DE').default('auto'),   // sets numbers (1.234,5) and month names
 }).strict();
 
+// The wall display (/wall): its own pages, made for reading from across a room. It shows and never acts: no buttons,
+// no chat, no editing, whoever is signed in.
+const At = z.string().regex(/^([01]?\d|2[0-3]):[0-5]\d$/, 'a time like 22:00');
+const WallPage = z.object({
+  title: z.string().optional(),
+  every: Every.optional(),                  // how long this page stays, when it isn't the wall's `every`
+  clock: z.boolean().default(true),        // the time and weather across the top
+  layout: z.array(Section).min(1),         // sections and cards, written as in the main layout
+}).strict();
+export const WallDisplay = z.object({
+  pages: z.array(WallPage).min(1).optional(),   // several take turns
+  layout: z.array(Section).min(1).optional(),   // or one page, written straight here
+  every: Every.default(60_000),            // how long each page stays: seconds, or "45s", "2m"
+  pause: Every.default(120_000),           // after a touch, how long it stays on that page
+  scale: z.number().min(.6).max(3).optional(),   // how big everything is; left out, it grows with the screen
+  // night: dims from sunset to sunrise when the weather knows them (otherwise 21:00 to 07:00), or between set times.
+  // dim 0 changes nothing and .95 is nearly black. false: never.
+  night: z.union([z.literal(false), z.object({
+    from: z.union([z.literal('sunset'), At]).default('sunset'),
+    to: z.union([z.literal('sunrise'), At]).default('sunrise'),
+    dim: z.number().min(0).max(.95).default(.9),
+  }).strict()]).prefault({}),
+  awake: z.boolean().default(true),        // keep the screen on while it's open, where the browser allows it
+  // for a screen that can't sign in: a long random secret from .env. Opening /wall#key=<token> once pairs that browser,
+  // which can then read the wall's cards and nothing else. Change it to unpair every screen.
+  token: z.string().min(32, 'use a long random token, at least 32 characters, from .env').optional(),
+}).strict().refine(w => !(w.pages && w.layout), { message: 'use pages or layout, not both', path: ['layout'] }).prefault({});
+
 export const Auth = z.object({
   // like other dashboards, no sign-in by default: keep it on a private network/VPN or behind your proxy's auth.
   // local: built-in accounts · proxy: trust the user header from an auth proxy (Authelia, Authentik…) · none
@@ -260,6 +288,8 @@ export const Config = z.object({
     access: z.record(z.string(), z.enum(['none', 'read'])).default({ default: 'read' }),
   }).strict().optional(),
   layout: z.array(Section).default([]),
+  // the wall display at /wall: its own pages, for a wall tablet or a spare monitor (left out: time, weather, status, what's playing)
+  wall: WallDisplay,
   // widget keys whose headline numbers sit as small rings in the top bar; or the object, to say more about the bar
   menubar: z.union([z.array(z.string()), z.object({
     widgets: z.array(z.string()).default([]),

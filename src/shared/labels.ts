@@ -7,6 +7,7 @@ export const LABELS = {
   chatTitle: 'Talk to your homelab',
   thinking: 'Thinking', writing: 'Writing', thought: 'Thought', thoughtFor: 'Thought for {n}s', steps: '{n} steps', worked: 'Worked for {n}s',
   allow: 'Allow', notNow: 'Not now',
+  wall: 'Wall display', paused: 'Paused',
   context: '{used} of {total} tokens', contextUsed: '{used} tokens so far', contextFull: 'Long chats get slower and lose track of how they started.', newChat: 'Start a new chat',
 };
 export type Labels = typeof LABELS;

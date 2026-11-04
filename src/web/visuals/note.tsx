@@ -8,7 +8,7 @@ import './note.css';
 /** The one way anything says "not from here": a small lock and a few words, where the control would be. */
 export function Cant({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <p className={cn('flex min-w-0 items-start gap-1.5 text-[12px] leading-[1.35] text-muted-foreground', className)}>
+    <p className={cn('cant flex min-w-0 items-start gap-1.5 text-[12px] leading-[1.35] text-muted-foreground', className)}>
       <svg viewBox="0 0 16 16" className="mt-px size-3 flex-none" aria-hidden><path fill="currentColor" fillRule="evenodd" d="M5 7V5a3 3 0 0 1 6 0v2h.5A1.5 1.5 0 0 1 13 8.5v4a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 3 12.5v-4A1.5 1.5 0 0 1 4.5 7H5Zm1.5 0h3V5a1.5 1.5 0 0 0-3 0v2Z" /></svg>
       <span className="min-w-0">{children}</span>
     </p>

@@ -28,6 +28,7 @@ import { accessOf, runTool } from './run.ts';
 import { loadPins, pinsInstance, savePins, type Pin } from './pins.ts';
 import { setupTools } from './setup.ts';
 import { sandbox } from './sandbox.ts';
+import { wallPages, wallProblems, wallWidgets } from './wall.ts';
 
 export interface Site {
   config: Config;
@@ -90,6 +91,10 @@ export function check(config: Config, registry: Record<string, Integration>, fro
     if (!instances.get(inst)?.widgets[w]) problems.push(`layout: no widget "${key}"${instances.has(inst) ? ` (${inst} has: ${Object.keys(instances.get(inst)!.widgets).join(', ')})` : ''}`);
   }
   for (const [id] of Object.entries(config.assistant?.access ?? {})) if (!['default', 'config', 'valet'].includes(id) && !instances.has(id)) problems.push(`assistant.access.${id}: no such integration`);
+  // the wall's own cards are polled too, while a wall is open; its typos name the wall
+  const has = (key: string) => { const [inst, w] = key.split('.'); return inst === 'valet' || !!instances.get(inst)?.widgets[w]; };
+  problems.push(...wallProblems(config, has));
+  for (const key of wallWidgets(config)) placed.add(key);
   for (const n of config.live?.notify ?? []) if (!placed.has(n.widget)) problems.push(`live.notify: "${n.widget}" isn't placed on the page`);
   const tabs = new Set(config.layout.flatMap(s => s.tab ?? s.title ?? []));
   for (const t of Object.keys(config.appearance.wallpapers)) if (!tabs.has(t)) problems.push(`appearance.wallpapers: no tab "${t}" (the tabs are: ${[...tabs].join(', ')})`);
@@ -119,7 +124,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
 
   // refresh cadence: the widget's own, unless the layout says `every`
   const every = new Map<string, number>();
-  for (const s of config.layout) for (const w of s.widgets) if (w.every) every.set(w.widget, Math.min(w.every, every.get(w.widget) ?? Infinity));
+  for (const s of [...config.layout, ...wallPages(config).flatMap(p => p.layout)]) for (const w of s.widgets) if (w.every) every.set(w.widget, Math.min(w.every, every.get(w.widget) ?? Infinity));
 
   const recent: Notice[] = previous?.recent ?? [], noticeListeners = previous?.noticeListeners ?? new Set<(n: Notice) => void>();
   const timeline = previous?.timeline ?? await new Timeline().load();

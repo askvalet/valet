@@ -8,6 +8,9 @@ const CODES: [number, string, string][] = [
   [67, 'Rain', 'rain'], [77, 'Snow', 'snow'], [82, 'Showers', 'rain'], [86, 'Snow showers', 'snow'], [99, 'Thunderstorm', 'storm'],
 ];
 const describe = (code: number) => CODES.find(([max]) => code <= max) ?? CODES.at(-1)!;
+// today's sunrise and sunset, in the place's own time ("2026-11-04T06:52" comes back as 06:52)
+const hm = (iso: unknown) => typeof iso === 'string' ? /T(\d\d:\d\d)/.exec(iso)?.[1] : undefined;
+const sunOf = (d: { sunrise?: unknown[]; sunset?: unknown[] }) => { const rise = hm(d.sunrise?.[0]), set = hm(d.sunset?.[0]); return rise && set ? { rise, set } : undefined; };
 
 export default defineIntegration({
   type: 'weather',
@@ -21,7 +24,7 @@ export default defineIntegration({
   create(cfg, ctx) {
     const units = cfg.units ?? (ctx.format?.temperature === 'f' ? 'imperial' : 'metric');
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${cfg.latitude}&longitude=${cfg.longitude}&timezone=auto&forecast_days=6`
-      + '&current=temperature_2m,apparent_temperature,weather_code,is_day,precipitation&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max'
+      + '&current=temperature_2m,apparent_temperature,weather_code,is_day,precipitation&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,sunrise,sunset'
       + '&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,is_day&forecast_hours=13'
       + (units === 'imperial' ? '&temperature_unit=fahrenheit' : '');
     const get = () => ctx.http<any>(url, { timeout: 8000 });
@@ -46,7 +49,7 @@ export default defineIntegration({
             }));
             return { type: 'forecast', title: 'Weather', icon,
               now: { temp: Math.round(t), feels: Math.round(w.current.apparent_temperature), words, icon, hi: Math.round(hi), lo: Math.round(lo), precip: w.current.precipitation },
-              hours, days,
+              hours, days, ...(sunOf(d) && { sun: sunOf(d) }),
               summary: { label: words, icon, value: `${Math.round(t)}°`,
                 detail: `H ${Math.round(hi)}° · L ${Math.round(lo)}° · feels ${Math.round(w.current.apparent_temperature)}°`,
                 pct: hi > lo ? (t - lo) / (hi - lo) : 0.5,

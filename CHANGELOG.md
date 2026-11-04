@@ -9,6 +9,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 - Backup health: one **Backups** card (`valet.backups`) with every backup job your services report, failed and overdue ones first, then the rest with when they last worked, their size and a small line of it run by run. A sudden drop or jump in size is flagged as worth a look. Overdue means no success within the job's schedule, `backups.expect`, or `backups.overdue` (26 hours). Going wrong and coming right are told once each, on the page, on the timeline and through `notify.channels`, checked every 15 minutes even with the page closed. Ask "are my backups ok?", or type **backups** in ⌘K.
 - Backrest, Kopia, Duplicati, Proxmox VE, Proxmox Backup Server, Home Assistant (its automatic backups), TrueNAS (cloud sync and replication) and Healthchecks (checks named for a backup) report their jobs to it. Integrations and plugins join with `backups()`, and a `service()` with `backups` and `backupGet`.
+- A wall display at `/wall` (and **Wall display** in ⌘K): a full-screen page for a wall tablet or a spare monitor, with the time and weather large across the top and the cards you pick below, sized to fill the screen. It's its own page in the config, `wall:`, written like `layout`, with pages that take turns (`every`, a touch holds one for `pause`). Left out, it shows your services and what's playing or downloading. It never acts, whoever is signed in: no chat, ⌘K, buttons or links. It dims nearly to black from sunset to sunrise (or set times), keeps the screen awake where the browser allows, and hides the pointer.
+- `wall.token`: pair a screen that can't sign in by opening `/wall#key=<token>` once. That browser can read the wall's cards and nothing else.
+- The weather card knows today's sunrise and sunset (`sun`), which the wall dims by.
+- The demo has three wall pages.
 
 ## [0.1.4] - 2026-11-04
 

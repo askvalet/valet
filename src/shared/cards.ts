@@ -197,6 +197,7 @@ export interface ForecastCard extends Base {
   now: { temp: number; feels: number; words: string; icon: string; hi: number; lo: number; precip?: number };
   hours: { time: string; temp: number; icon: string; pop: number; mm?: number }[];   // pop: chance of precipitation, 0..100
   days?: { name: string; icon: string; hi: number; lo: number; pop?: number }[];     // from tomorrow, name as "Tue"
+  sun?: { rise: string; set: string };     // today's sunrise and sunset where the weather is, as "06:52": the wall dims by them
 }
 
 /** Photos to look at, not browse: a slow crossfading flashback, or a mosaic. */

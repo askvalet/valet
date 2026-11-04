@@ -78,6 +78,7 @@ export const SAMPLES: { name: string; card: Card }[] = [
   { name: 'photos · mosaic', card: { type: 'photos', title: 'Trip', icon: 'image', style: 'mosaic', items: Array.from({ length: 5 }, (_, i) => ({ image: img(`m${i}`, 800, 800) })) } },
   { name: 'forecast · days', card: { type: 'forecast', title: 'Weather', icon: 'cloud', now: { temp: 16, feels: 15, words: 'Cloudy', icon: 'cloud', hi: 17, lo: 11 },
     hours: Array.from({ length: 12 }, (_, i) => ({ time: `${(i + 1) % 12 || 12}pm`, temp: 16 - (i >> 2), icon: i > 7 ? 'cloud-moon' : 'cloud', pop: i * 3 })),
+    sun: { rise: '06:52', set: '16:58' },
     days: [['Tue', 'rain', 15, 10], ['Wed', 'cloud-sun', 18, 9], ['Thu', 'sun', 21, 11], ['Fri', 'storm', 17, 12], ['Sat', 'snow', 3, -2]].map(([name, icon, hi, lo]) => ({ name: name as string, icon: icon as string, hi: hi as number, lo: lo as number })),
     summary: { label: 'Cloudy', icon: 'cloud', value: '16°', detail: 'H 17° · L 11°', pct: .8, tone: 'good' } } },
   { name: 'calendar', card: { type: 'calendar', title: 'Calendar', icon: 'calendar', events: [
