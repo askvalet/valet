@@ -2,7 +2,7 @@
 // change without saving (a diff, every problem, and the new card), and, with the person's approval, save it. Only with
 // `assistant.access.config`. It can't touch sign-in, plugins, MCP or its own access, point at files on disk, or write a
 // secret into the file: those stay in .env. The save before this one is kept, so a change can be undone. Saved edits go through the same hot reload as a person's.
-import { readFile, writeFile } from 'node:fs/promises';
+import { chmod, readFile, writeFile } from 'node:fs/promises';
 import { Document, isMap, isSeq, parse as parseYaml, parseDocument, stringify, YAMLMap, YAMLSeq } from 'yaml';
 import { z } from 'zod';
 import { Config, parseConfig } from './config.ts';
@@ -233,6 +233,8 @@ export function validate(text: string, registry: Record<string, Integration>) {
 
 export function setupTools(path: string, registry: Record<string, Integration>): Record<string, Tool<any>> {
   const previous = `${path}.previous`;   // the one save before this, for undo
+  // the copy kept for undo is the config itself, so only Valet's user may read it, whatever the folder's default
+  const keep = async (text: string) => { await writeFile(previous, text, { mode: 0o600 }); await chmod(previous, 0o600); };
   const edits = z.object({ ops: z.array(Op).min(1), summary: z.string().describe('in plain words, what this changes') });
   const newIntegration = (ops: Op[]) => { const o = ops.find(o => o.op === 'set' && o.path[0] === 'integrations' && o.path.length === 2); return o ? String(o.path[1]) : undefined; };
   const trial = async (ops: Op[]) => {
@@ -325,7 +327,7 @@ export function setupTools(path: string, registry: Record<string, Integration>):
           const t = await trial(ops);
           if (t.missing.length) return { data: { error: `add ${t.missing.join(', ')} to .env and recreate the container first` } };
           if (t.problems.length) return { data: { error: 'not saved', problems: t.problems } };
-          try { await writeFile(previous, t.before); await writeFile(path, t.after); }
+          try { await keep(t.before); await writeFile(path, t.after); }
           catch { return { data: { error: 'the config folder is read-only to Valet, so nothing was saved; give the person this to paste in', diff: diff(t.before, t.after) } }; }
           return { data: { saved: true } };
         } catch (e) { return { data: { error: (e as Error).message } }; }
@@ -347,7 +349,7 @@ export function setupTools(path: string, registry: Record<string, Integration>):
         const owner = ownerChanged(parseYaml(now) ?? {}, parseYaml(old) ?? {});   // a hand edit made since then stays yours
         if (owner) return { data: { error: `${owner} has been changed by hand since then, so the owner undoes this` } };
         if (problems.length) return { data: { error: 'the earlier version no longer works', problems } };
-        await writeFile(previous, now); await writeFile(path, old);
+        await keep(now); await writeFile(path, old);
         return { data: { undone: true } };
       },
     },

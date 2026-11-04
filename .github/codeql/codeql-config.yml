@@ -1,0 +1,8 @@
+# Scan what ships in the image. The docs site's build scripts, the demo's build and the tests run on a developer's
+# machine against fixed, local inputs, and none of them reaches the image (see .dockerignore).
+name: Valet
+paths-ignore:
+  - website/scripts
+  - website/samples
+  - demo/static
+  - test

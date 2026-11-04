@@ -137,7 +137,7 @@ export const ABOUT: Record<string, string> = {
   readarr: 'Readarr manages books. This shows books, what\'s wanted and what\'s queued.',
   reddit: 'Posts from the subreddits you name, as a list or as image tiles.',
   releases: 'The newest GitHub releases of the repositories you name.',
-  repository: 'Stats for the GitHub repositories you name.',
+  repository: 'Stats for the GitHub repositories you name, and, for your own repos, who visited and where they came from over GitHub\'s last 14 days.',
   'rgb-control': 'Shows your PC as a 3D model with its parts, temperatures and lighting, and lets you or the assistant change the lights. It reads a small JSON endpoint you run in front of whatever controls them, described below.',
   romm: 'RomM is a game library. This shows recent games as a Cover Flow, and lets the assistant search them.',
   rss: 'Reads the RSS and Atom feeds you name, as a list or as thumbnails. The assistant can read them too.',

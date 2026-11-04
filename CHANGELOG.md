@@ -5,6 +5,14 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Security
+
+- The copy of the config kept for undo (`config.yaml.previous`) is readable only by Valet's user, like the config itself.
+
+### Added
+
+- GitHub repositories: a `traffic` widget and tool for your own repos, with views, visitors, clones and where visitors came from over GitHub's last 14 days. It needs a token that can push to the repo.
+
 ## [0.1.3] - 2026-11-03
 
 ### Added

@@ -31,6 +31,11 @@ const repoOf = (url: string) => /repos\/([^/]+\/[^/?]+)/.exec(url)?.[1] ?? '';
 const github = route([
   [/\/releases\/latest$/, (u: string) => release(repoOf(u))], [/\/releases\?per_page=3$/, (u: string) => [release(repoOf(u), repoOf(u).startsWith('home')), release(repoOf(u))]],
   ['/search/issues', (u: string) => ({ total_count: u.length % 40 + 3 })],
+  // two weeks of traffic, with a launch-day spike
+  [/\/traffic\/views$/, () => { const day = (i: number) => new Date(Date.UTC(2026, 9, 21 + i)).toISOString(), v = [12, 9, 14, 11, 18, 640, 420, 260, 190, 150, 132, 120, 104, 98], u = v.map(n => Math.round(n * .42));
+    return { count: v.reduce((a, b) => a + b, 0), uniques: u.reduce((a, b) => a + b, 0), views: v.map((count, i) => ({ timestamp: day(i), count, uniques: u[i] })) }; }],
+  [/\/traffic\/clones$/, () => ({ count: 186, uniques: 92, clones: [] })],
+  [/\/traffic\/popular\/referrers$/, () => [{ referrer: 'news.ycombinator.com', count: 980, uniques: 610 }, { referrer: 'reddit.com', count: 520, uniques: 340 }, { referrer: 'github.com', count: 210, uniques: 120 }, { referrer: 'Google', count: 90, uniques: 64 }, { referrer: 'example.dev', count: 30, uniques: 21 }]],
   [/\/repos\/[^/]+\/[^/?]+$/, (u: string) => { const r = repoOf(u); return { stargazers_count: r.length * 4_100, forks_count: r.length * 320, open_issues_count: r.length * 12, pushed_at: ago((r.length % 6 + 1) * DAY), html_url: `https://github.com/${r}` }; }],
 ]);
 

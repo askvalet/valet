@@ -849,3 +849,21 @@ test('home assistant thermostat: says whether it is holding or on a schedule, on
   assert.equal(await note({ preset_mode: 'temp' }), 'Temporary hold');
   assert.equal(await note({ preset_mode: 'hold' }), 'Held until you change it');
 });
+
+test('repository: traffic sums views per day across repos and ranks where visitors came from', async () => {
+  const day = (d: number) => `2026-11-0${d}T00:00:00Z`;
+  const ctx = fake(url => {
+    if (url.endsWith('/traffic/views')) return { count: 30, uniques: 12, views: [{ timestamp: day(1), count: 10, uniques: 4 }, { timestamp: day(2), count: 20, uniques: 8 }] };
+    if (url.endsWith('/traffic/clones')) return { count: 3, uniques: 2 };
+    if (url.endsWith('/traffic/popular/referrers')) return url.includes('/a/') ? [{ referrer: 'reddit.com', count: 9, uniques: 5 }] : [{ referrer: 'news.ycombinator.com', count: 12, uniques: 7 }, { referrer: 'reddit.com', count: 2, uniques: 1 }];
+    return {};
+  });
+  const inst = repository.create(repository.config.parse({ repos: ['a/one', 'b/two'], token: 'x' }), ctx);
+  const card: any = await inst.widgets.traffic.fetch();
+  assert.equal(card.headline, '24');                                                  // 12 visitors from each
+  assert.deepEqual(card.series[0].points, [8, 16]);                                   // the same day, both repos
+  assert.deepEqual(card.facts.map((f: any) => f.label), ['news.ycombinator.com', 'reddit.com']);
+  assert.equal(card.facts[1].value, '6');
+  const none = repository.create(repository.config.parse({ repos: ['a/one'] }), fake(() => { throw new Error('403'); }));
+  await assert.rejects(none.widgets.traffic.fetch(), /needs a token that can push/);
+});

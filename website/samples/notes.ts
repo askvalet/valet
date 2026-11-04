@@ -190,7 +190,7 @@ export const NOTES: Record<string, string> = {
   'releases.limit': 'How many releases.',
   'releases.prereleases': 'Include prereleases.',
   'repository.repos': 'As `owner/name`.',
-  'repository.token': 'A GitHub token, for a higher rate limit. Use `${VAR}`.',
+  'repository.token': 'A GitHub token, for a higher rate limit. One that can push to a repo also shows its traffic. Use `${VAR}`.',
   'repository.title': 'The card\'s title.',
   mcpServer: 'Valet as a read-only MCP server. Off unless set.',
   'mcpServer.token': 'A long random secret, at least 32 characters. Use `${VAR}`.',
