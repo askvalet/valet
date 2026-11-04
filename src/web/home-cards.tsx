@@ -6,6 +6,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSP
 import { cn } from '@/lib/utils';
 import type { CalendarCard, CalendarEvent, ForecastCard, ThermostatCard, ThermostatMode } from '../shared/cards.ts';
 import { Counter } from './feel.tsx';
+import { LinkButton } from './link-button.tsx';
 import { Cant } from './visuals/note.tsx';
 import './home-cards.css';
 
@@ -258,12 +259,16 @@ function Agenda({ days, from, today, cap, empty }: { days: Map<string, CalendarE
     const n = Math.round((+d - +today) / 864e5);
     return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : n > 1 && n < 7 ? d.toLocaleDateString('en', { weekday: 'long' }) : d.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
   };
-  const row = (e: CalendarEvent, i: number, lead?: boolean) => (
-    <li key={i} className={cn('flex min-w-0 items-stretch gap-2.5', e.end && !dated(e.end) && +parse(e.end) < now && 'opacity-50')}>
-      <span className="w-[3.5px] shrink-0 rounded-full" style={{ background: colorOf(e) }} />
-      <div className="min-w-0 py-px"><div className="truncate text-[14px] leading-[1.3] font-semibold">{e.title}</div><div className="truncate text-[13px] leading-[1.35] text-muted-foreground tabular">{span(e)}{lead && soon(e, now)}</div></div>
-    </li>
-  );
+  const row = (e: CalendarEvent, i: number, lead?: boolean) => {
+    const over = !!e.end && !dated(e.end) && +parse(e.end) < now;
+    return (
+      <li key={i} className={cn('flex min-w-0 items-stretch gap-2.5', over && 'opacity-50')}>
+        <span className="w-[3.5px] shrink-0 rounded-full" style={{ background: colorOf(e) }} />
+        <div className="min-w-0 flex-1 py-px"><div className="truncate text-[14px] leading-[1.3] font-semibold">{e.title}</div><div className="truncate text-[13px] leading-[1.35] text-muted-foreground tabular">{span(e)}{lead && soon(e, now)}{e.join && ` · ${e.join.provider}`}</div></div>
+        {e.join && !over && <LinkButton link={{ label: 'Join', href: e.join.href, note: e.join.provider }} className="self-center" />}
+      </li>
+    );
+  };
   if (!groups.length) return <p className="pt-3 text-[14px] text-muted-foreground">{empty}</p>;
   return (
     <div className="space-y-4">

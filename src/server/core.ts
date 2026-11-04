@@ -46,8 +46,9 @@ export interface Tool<A = any> {
   /** The tool that reverses this one, given the same input: it adds Undo in the activity log. */
   undo?: string;
   input: z.ZodType<A>;
-  /** `data` goes to the model (keep it compact); `card` is what the person sees in chat. */
-  run(args: A): Promise<{ data: unknown; card?: Card }>;
+  /** `data` goes to the model (keep it compact); `card` is what the person sees in chat. `open`: an https link the answer
+   *  is about, which a ⌘K command with `open` goes to (a meeting's join link). */
+  run(args: A): Promise<{ data: unknown; card?: Card; open?: string }>;
 }
 
 /** A plain command for ⌘K ("pause downloads", "pause ads {minutes} min"): it runs one of this instance's actions or tools
@@ -64,6 +65,9 @@ export interface Command {
   input?: Record<string, unknown> | ((slots: Record<string, number>) => unknown | Promise<unknown>);
   /** In the palette: "Pause all downloads". The first phrase if left out. */
   label?: string;
+  /** A `read` tool's answer carries a link (`open`, https only): go there in a new tab, as "join meeting" does. Opening a
+   *  link changes nothing, so this asks nothing first. */
+  open?: boolean;
 }
 
 export interface Instance {
@@ -85,6 +89,27 @@ export interface Instance {
   /** Its backup jobs, for Valet's Backups card: the overdue and failing ones lead it, raise a notice and reach the page's
    *  summary. Report what the service knows; Valet works out what's late. */
   backups?(): Promise<BackupJob[]>;
+  /** What to tell the owner at a set time, like a meeting about to start. Valet asks every half minute, sends each one
+   *  once when its `at` comes (to the notification channels, and to devices if `device`), and remembers that it did. */
+  reminders?(): Promise<Reminder[]>;
+}
+
+/** One thing to say at one time. Its `id` stays the same for the same thing at the same time, so it's never said twice. */
+export interface Reminder {
+  id: string;
+  /** when to say it (ms since 1970) */
+  at: number;
+  /** past this it's no longer worth saying, e.g. the meeting has started; one due while Valet was down is said late,
+   *  until then */
+  until: number;
+  /** reminders that share it and fall due together are said once, the latest: e.g. one meeting's ten and two minutes */
+  about?: string;
+  title: string;
+  text?: string;
+  /** an https link: tapping the notification opens it (a meeting's join link) */
+  link?: string;
+  /** also to the browsers with notifications on (notify.webPush), not only the channels */
+  device?: boolean;
 }
 
 /** One backup job, plan or source, as any integration reports it. Times are ms since 1970 or an ISO date. Leave out what

@@ -180,6 +180,24 @@ export default ({ z, defineIntegration }) => {
           sun: { rise: '07:12', set: '18:02' },   // as the daylight card has them
           summary: { label: words, icon, value: `${temp}°`, pct: today.hi > today.lo ? (temp - today.lo) / (today.hi - today.lo) : .5, tone: 'good', detail: `H ${today.hi}° · L ${today.lo}°` } };
       };
+      // an online meeting a few minutes after this visitor arrived, and one every forty minutes after, so the ring, its
+      // countdown and Join are always there to see
+      const born = now(), MEET = { first: born + 4 * 6e4, every: 40 * 6e4, mins: 25, lead: 10 * 6e4 };
+      const MEETING = { title: 'Product sync', href: 'https://meet.google.com/vlt-qpzr-kmd', provider: 'Google Meet', people: ['Alex Chen', 'Priya Shah', 'Sam Lee'] };
+      const meeting = () => {
+        let k = Math.max(0, Math.floor((now() - MEET.first) / MEET.every));
+        if (now() >= MEET.first + k * MEET.every + MEET.mins * 6e4) k++;
+        const start = MEET.first + k * MEET.every;
+        return { ...MEETING, start, end: start + MEET.mins * 6e4 };
+      };
+      const clockOf = t => new Date(t).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' });
+      const spanOf = m => { const a = clockOf(m.start), b = clockOf(m.end); return `${a.slice(-2) === b.slice(-2) ? a.slice(0, -3) : a}–${b}`; };
+      const meetingRing = () => {
+        const m = meeting();
+        if (now() < m.start - MEET.lead) return undefined;
+        return { title: m.title, subtitle: `${spanOf(m)} · with ${m.people.slice(0, 2).join(', ')} +${m.people.length - 2}`, icon: 'video', tone: 'accent',
+          countdown: { from: m.start - MEET.lead, start: m.start, end: m.end }, link: { label: 'Join', href: m.href, note: m.provider } };
+      };
       const calendar = () => {
         const d = new Date(now()), first = new Date(d.getFullYear(), d.getMonth() - 1, 1), last = new Date(d.getFullYear(), d.getMonth() + 7, 0), events = [];
         const timed = (day, [title, h, m, mins, [calendar, color]]) => { const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m); events.push({ title, start: start.toISOString(), end: new Date(+start + mins * 6e4).toISOString(), calendar, color }); };
@@ -189,11 +207,14 @@ export default ({ z, defineIntegration }) => {
           if (r() < .1) timed(day, NOW_AND_THEN[Math.floor(r() * NOW_AND_THEN.length)]);
           if (day.getDay() === 5 && r() < .13) { const back = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 3); events.push({ title: r() < .5 ? 'Grandparents visiting' : 'Cottage weekend', start: dateOf(day), end: dateOf(back), calendar: FAMILY[0], color: FAMILY[1] }); }
         }
+        const m = meeting();
+        events.push({ title: m.title, start: new Date(m.start).toISOString(), end: new Date(m.end).toISOString(), calendar: WORK[0], color: WORK[1], join: { href: m.href, provider: m.provider } });
         events.sort((a, b) => a.start < b.start ? -1 : 1);
         const today = events.filter(e => e.start.length > 10 && new Date(e.start).toDateString() === d.toDateString()), next = events.find(e => e.start.length > 10 && new Date(e.end) > d);
         const clock = iso => new Date(iso).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' });
         return { type: 'calendar', title: 'Calendar', icon: 'calendar', events, from: dateOf(first), to: dateOf(last),
-          summary: { label: 'Calendar', icon: 'calendar', value: next?.title ?? 'Free', sub: next ? `${new Date(next.start).toDateString() === d.toDateString() ? 'Today' : new Date(next.start).toLocaleDateString('en', { weekday: 'long' })} · ${clock(next.start)}` : undefined, detail: today.length ? `${today.length} today` : undefined } };
+          summary: { label: 'Calendar', icon: 'calendar', value: next?.title ?? 'Free', sub: next ? `${new Date(next.start).toDateString() === d.toDateString() ? 'Today' : new Date(next.start).toLocaleDateString('en', { weekday: 'long' })} · ${clock(next.start)}` : undefined, detail: today.length ? `${today.length} today` : undefined },
+          activity: meetingRing() };
       };
       // the house at rest, or as a visitor left it; a changed target pulls the room towards it over a few minutes
       const roomAt = target => target + Math.round(2 * Math.sin(now() / 54e5)) / 10;
@@ -361,7 +382,7 @@ export default ({ z, defineIntegration }) => {
         system: w('System', 2_000, () => { const busy = now() < thinking, speed = 3.6 + flutter(1.6), cpu = cpuLoad() + (busy ? 18 : 0), gpu = busy ? 88 + Math.round(flutter(10)) : gpuLoad(), gauge = (label, icon, v, detail, lo, hi) => ({ label, icon, value: `${v}%`, ring: `${v}%`, pct: v / 100, tone: 'good', detail, trend: past(48, lo, hi, 300_000), every: 300_000 });
           return { type: 'stats', title: 'System', icon: 'cpu', items: [{ label: 'CPU', value: cpu, unit: '%' }], summaries: [gauge('CPU', 'cpu', cpu, `${Math.round(cpuTemp())}°C`, 4, 20), gauge('Memory', 'memory', pctOf(memoryNow()), `${memoryNow()[0]} of ${memoryNow()[1]} GB`, 29, 37), { label: 'Network', icon: 'wifi', color: '#64d2ff', sub: 'eth0', value: `${speed.toFixed(1)} MB/s`, detail: `↑ ${(speed / 9).toFixed(1)} MB/s`, ring: `${speed.toFixed(1)} MB`, pct: speed / 12, tone: 'accent', trend: past(48, 1, 7, 300_000), every: 300_000 }, gauge('GPU', 'gpu', gpu, `${Math.round(gpuTemp())}°C`, 1, 11), gauge('Storage', 'disk', pctOf(STORAGE), `${STORAGE[0]} of ${STORAGE[1]} TB`, 56, 59)] }; }),
         weather: w('Weather', 900_000, weather),
-        calendar: w('Calendar', 900_000, calendar),
+        calendar: w('Calendar', 60_000, calendar),
         thermostat: w('Thermostat', 30_000, thermostat),
         pc: w('Desktop', 30_000, pcCard),
         home: w('Home', 1_000, homeCard),   // every second, so the robot glides rather than hops
@@ -434,6 +455,8 @@ export default ({ z, defineIntegration }) => {
         onChat() { asked += 1; thinking = now() + 9_000; return ['ai']; },
         backups: async () => backups(),
         widgets,
+        commands: [{ say: ['join meeting', 'join next meeting', 'join the meeting', 'join my meeting', 'join call'], run: 'tool:calendar_next_meeting', input: {}, open: true, label: 'Join the next meeting' },
+          { say: ['next meeting', 'my next meeting', "what's my next meeting", 'when is my next meeting'], run: 'tool:calendar_next_meeting', input: {}, label: 'Next meeting' }],
         // the clips, with the byte ranges phones ask for. Nothing but the files named above can be reached
         image(ref, range) {
           const still = /^cover-[0-9a-f]{12}$/.test(ref) ? `covers/${ref.slice(6)}.jpg` : /^album[0-8]$/.test(ref) ? `album/${ref[5]}.jpg` : ref === 'article' ? 'article.jpg' : /^photo[0-3]$/.test(ref) ? `photos/${ref[5]}.jpg` : /^page[0-4]$/.test(ref) ? `pages/${ref[4]}.jpg` : /^doc[0-7]$/.test(ref) ? `docs/${ref[3]}.jpg` : null;
@@ -496,6 +519,10 @@ export default ({ z, defineIntegration }) => {
             run: async () => ({ data: { lines: LOGS, up: mealieUp() }, card: { type: 'code', title: 'mealie logs', lines: LOGS } }) },
           add_speed_card: { label: 'Changed the config', confirm: () => ({ title: 'Add an Internet speed card?', detail: 'It goes under Services, and you can undo it', logo: '/api/icon/demo-homelab', verb: 'Add' }), access: 'control', input: z.object({}), description: 'Add an internet speed card to the page.', run: async () => { page.speed = true; page.onChange(); return { data: { added: true } }; } },
           undo_config: { label: 'Undid the last config change', confirm: () => ({ title: 'Undo the last config change?', logo: '/api/icon/demo-homelab', verb: 'Undo' }), access: 'control', input: z.object({}), description: 'Put the page back as it was.', run: async () => { const had = page.speed; page.speed = false; page.onChange(); return { data: { undone: had } }; } },
+          calendar_next_meeting: { label: 'Checked your meetings', live: true, access: 'read', input: z.object({}), description: "The person's next online meeting, or the one on now: when, who with, the service and its join link.",
+            run: async () => { const m = meeting(), on = m.start <= now(), mins = Math.max(1, Math.ceil(((on ? m.end : m.start) - now()) / 6e4)), link = { label: 'Join', href: m.href, note: m.provider };
+              return { open: m.href, data: { next: { title: m.title, start: new Date(m.start).toISOString(), end: new Date(m.end).toISOString(), provider: m.provider, join: m.href, with: m.people } },
+                card: { type: 'list', title: on ? 'On now' : 'Next meeting', icon: 'video', items: [{ title: m.title, subtitle: `${m.provider} · with ${m.people.slice(0, 2).join(', ')} +${m.people.length - 2}`, meta: on ? `Now · ${mins} min left` : `in ${mins} min · ${spanOf(m)}`, tone: on ? 'accent' : undefined, link }] } }; } },
           docs_search: { label: 'Searched the docs', access: 'read', input: z.object({}), description: "Valet's own docs.", run: async () => ({ data: { page: 'Build an integration' } }) },
           plex_stop_stream: { label: 'Stopped a stream', confirm: () => ({ title: `Stop Theo's ${FILMS[0]}?`, detail: "They'll see: Stopped by the server owner.", logo: '/api/icon/plex', verb: 'Stop', danger: true }),
             description: "Stop someone's Plex stream.", access: 'control', input: z.object({ who: z.string().default('Theo') }),

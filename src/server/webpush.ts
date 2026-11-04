@@ -112,7 +112,7 @@ export async function has(endpoint: string, user: string | undefined) { return (
 
 // ── sending
 
-export interface Note { title: string; body?: string; url?: string; urgent?: boolean }
+export interface Note { title: string; body?: string; url?: string; urgent?: boolean; open?: string }   // url: a place in Valet · open: an https link a tap opens instead (a meeting)
 export interface PushOptions { contact: string; services: string[]; send?: typeof fetch }
 
 /** One push to one browser. Gone (404/410) means the browser dropped it, so it goes from the list too. */
@@ -127,7 +127,8 @@ async function deliver(s: Saved, payload: Buffer, urgent: boolean, o: PushOption
   return r.status === 404 || r.status === 410 ? 'gone' : r.ok ? 'ok' : `answered ${r.status}`;
 }
 
-const fit = (n: Note) => Buffer.from(JSON.stringify({ title: n.title.slice(0, 200), body: n.body?.slice(0, 1000), url: n.url, urgent: n.urgent || undefined }));
+export const httpsOnly = (s?: string) => { const u = s && s.length <= 2000 ? URL.parse(s) : null; return u && u.protocol === 'https:' && !u.username && !u.password ? u.href : undefined; };
+const fit = (n: Note) => Buffer.from(JSON.stringify({ title: n.title.slice(0, 200), body: n.body?.slice(0, 1000), url: n.url, open: httpsOnly(n.open), urgent: n.urgent || undefined }));
 
 /** To every browser that turned notifications on, or only `to`. Failures are logged and never thrown: nothing here can
  *  break the page. */

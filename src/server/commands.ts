@@ -9,6 +9,7 @@ import type { Config } from './config.ts';
 import type { Action, Command, Instance, Tool } from './core.ts';
 import type { Hub } from './hub.ts';
 import { match, type Phrase } from '../shared/commands.ts';
+import { httpsOnly } from './webpush.ts';
 
 const RANK = { none: 0, read: 1, write: 2, control: 3 } as const;
 // Valet's own parts (its setup tools above all) never answer to a command, whatever they declare. Valet's own tools
@@ -113,7 +114,9 @@ export async function runCommand(c: Context, site: CommandSite) {
     log(!failed, failed ? site.redact(String(failed)) : undefined);
     if (t.access !== 'read') setTimeout(() => site.hub?.refreshInstance(e.inst), 300);
     if (failed) return c.json({ error: site.redact(String(failed)) }, 502);
-    return c.json(clean(site, { tool, input: args.data, card: out.card, done: out.card ? undefined : t.label ?? label }));
+    // a link to go to, only from a tool that looks, only when the command asks for it, and only https
+    const open = e.cmd.open && t.access === 'read' ? httpsOnly(out.open) : undefined;
+    return c.json(clean(site, { tool, input: args.data, card: out.card, done: out.card ? undefined : t.label ?? label, ...(open ? { open } : {}) }));
   } catch (err) {
     const error = site.redact((err as Error).message);
     log(false, error);

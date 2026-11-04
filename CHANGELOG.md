@@ -5,6 +5,20 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- Online meetings from your calendar. Valet finds the meeting link in each event (Google Meet, Zoom, Microsoft Teams, Webex, Whereby, Jitsi, GoTo and a few more), and from ten minutes before a meeting until it ends the calendar's ring counts down ("in 4 min", then "Now · 20 min left") with a **Join** button. Two at once: the one on now leads and the ring says "+1".
+- Meeting reminders: two minutes before (or any list of times), one notification per meeting to your channels and to devices with notifications on. Tapping it on a device opens the meeting. Each is sent once, kept in `data/reminders.json`, so a restart never sends it again.
+- Calendar rows show the meeting's service and a small Join button. ⌘K has **join meeting** (opens the next or current one) and **next meeting**; the assistant has `calendar_next_meeting`, and `calendar_upcoming` returns join links.
+- `calendar.meetings`: `lead`, `remind`, `push` and `me` (your address, so meetings you declined are left out), or `false`. It works with no config.
+- Calendars read time zones (a meeting set in New York lands at the right time anywhere), moved and cancelled occurrences of a repeating event, `DURATION`, monthly rules like "second Tuesday" or "last Friday", and leave cancelled events out.
+- Integrations and plugins can say things at a set time with `reminders()`; a command can open a link with `open: true`; an activity can carry a `countdown` and a `link`, and a list row a `link`.
+- The demo has an online meeting a few minutes away.
+
+### Security
+
+- Calendar text is other people's invitations: only an https link on a known meeting service becomes a Join button, its host is always shown, and the link is scanned without a backtracking regex. A notification opens a link only if it's https.
+
 ## [0.1.5] - 2026-11-04
 
 ### Added

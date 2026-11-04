@@ -61,7 +61,7 @@ let base: Site = await buildSite(config, registry, fromPlugins, opts);
 // In a sandbox each request runs against that visitor's own copy of the site; otherwise there's just the one.
 const own = new AsyncLocalStorage<Site>();
 const site = new Proxy({} as Site, { get: (_, k) => Reflect.get(own.getStore() ?? base, k), set: (_, k, v) => Reflect.set(own.getStore() ?? base, k, v) });
-const stopSite = (s: Site) => { s.hub.dispose(); s.watcher?.stop(); s.watches.stop(); s.rules.stop(); s.stopBackups(); };
+const stopSite = (s: Site) => { s.hub.dispose(); s.watcher?.stop(); s.watches.stop(); s.rules.stop(); s.stopBackups(); s.stopReminders(); };
 // A new site takes over from the old one, and every open page refetches and reconnects.
 async function swap(next: Config) {
   const old = base;

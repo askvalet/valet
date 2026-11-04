@@ -104,6 +104,8 @@ commands: [
 - `input` is fixed, or a function of the slots that may look things up (never change them) and may throw to say why it
   can't run now ("2 streams are playing").
 - `label` is what the palette shows; `{slot}` in it is filled in. It defaults to the first phrase.
+- `open: true` on a command for a `read` tool goes to the link its answer carries (`open`, https only) in a new tab, as
+  "join meeting" does. Opening a link changes nothing, so it asks nothing first.
 - `commands` may be a function, called each time the palette opens: Home Assistant uses that to name each light it may
   control ("desk lamp off").
 
@@ -122,6 +124,12 @@ size?, sizes?, next?, every?, href? }`, times in ms or ISO dates, only `name` re
 Valet works out what's overdue or oddly sized; a job that doesn't fit is left out. In a `service()`, `backups: (d, o) => [...]`
 reads the card's answers and `backupGet` adds calls made only for backups.
 
+**`reminders()`** returns what to tell the owner at a set time, like a meeting about to start: `{ id, at, until, about?,
+title, text?, link?, device? }` (`Reminder` in `src/server/core.ts`). Valet asks every half minute, says each `id` once when
+its `at` comes (a notice, `notify.channels`, and devices unless `device: false`), and keeps what it said in
+`data/reminders.json`. Past `until` it's not said, nor if `until` came before Valet started; of several due together with
+the same `about`, only the latest is said. `link` must be https: tapping the notification opens it.
+
 **`onChat()`** is called when someone asks the assistant something. It returns the widgets to refresh right away, for a
 service that shows the assistant at work.
 
@@ -134,7 +142,7 @@ parallel requests (call `.get()` for the token, `.reset()` after a 401). `ctx.up
 attached in chat. `fmt` (from `core.ts`) formats bytes, rates, speeds, durations, percentages, days (`fmt.day`,
 `fmt.relativeDay`: "Today", "Tomorrow", "Fri") and times consistently.
 
-Icons in cards are names: `camera cpu gpu memory wifi disk download pulse play film search bulb home shield chat image
+Icons in cards are names: `camera video cpu gpu memory wifi disk download pulse play film search bulb home shield chat image
 clock crescent game book coins text file bookmark rss news reddit tag chart calendar sun moon cloud cloud-sun cloud-moon
 rain snow fog storm thermometer`, or an image URL or path.
 
@@ -182,7 +190,10 @@ Any card can also carry:
 - `summary` (or `summaries`): its headline, shown when the widget is placed with `size: small`, in the menubar, or as a
   tile. `trend` draws a graph behind it and `color` (a hex colour) tints that graph; `pct` fills a ring, `waffle` draws it
   as ten rows of ten squares, `marks` is a row of small bars, and `image` fills the tile.
-- `activity`: set only while something is happening; it shows as a ring in the top bar.
+- `activity`: set only while something is happening; it shows as a ring in the top bar. `countdown: { from, start, end }`
+  (ms) lets the page count it down itself: "in 4 min" filling from `from`, then "Now · 20 min left" until `end`, when the
+  ring goes. `link: { label, href, note }` puts a button in its story (an https link, opened in a new tab, its host shown).
+  With a countdown, `count` shows as "+1" on the ring.
 - `buttons`: quick actions along the bottom (`{ label, action, args }`), run through the integration's `actions`.
 - `banner`: a state the person chose and shouldn't forget, at the top of the card: `{ text, until, tone, button }`, as in
   "Blocking paused until 14:05" with Resume beside it. `until` is in milliseconds.
@@ -198,6 +209,8 @@ Some cards and rows take a little more:
 | `limit` | `list`, `layout: chips` | how many chips show; "19 in all" opens the rest in place |
 | `band` | `list` item, `layout: temps` | the normal stretch of the track, `[low, high]`, each 0..1 |
 | `section` | `list` item | a quiet heading wherever it changes: "Watching now" above "Last 30 days" |
+| `link` | `list` item | a small button on the row that opens an https link in a new tab: `{ label: 'Join', href, note }` |
+| `join` | `calendar` event | an online meeting: `{ href, provider }`; the agenda shows the service and a Join button |
 | `cta` | `shelf` item | its next step, `{ label, href }`, which the whole tile then opens: "Open in Plex", "See progress" |
 | `doc` | `shelf` item | a document's `{ sender, date, type }`: its columns in list view |
 | `archived` | `shelf`, `article` | a link to where archived things go |

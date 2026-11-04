@@ -42,7 +42,7 @@ weather: lab.weather
 calendar: lab.calendar
 format: { weekStart: monday }
 live:
-  activities: [lab.streams, lab.downloads, lab.home]
+  activities: [lab.calendar, lab.streams, lab.downloads, lab.home]
 
 nav: { order: [Services, AI, Home, Media, Library] }
 

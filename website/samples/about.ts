@@ -20,7 +20,7 @@ export const ABOUT: Record<string, string> = {
   bookorbit: 'BookOrbit is a self-hosted book library. This shows books, authors, reading and finished counts, and storage.',
   bookstack: 'BookStack is a wiki. This shows pages, chapters, books and shelves.',
   caddy: 'Caddy is a web server and reverse proxy. This shows upstreams, active requests and failures from its admin API.',
-  calendar: 'Reads iCal calendars by URL. This shows the next events as a list, and an agenda beside a month you can browse.',
+  calendar: 'Reads iCal calendars by URL (Google Calendar\'s secret address works). This shows the next events as a list, and an agenda beside a month you can browse. An online meeting gets a Join button, a ring that counts down before it starts, and a reminder.',
   'calibre-web': 'Calibre-Web serves a Calibre library. This shows books, authors, series and categories.',
   camera: 'Any camera that can hand over a JPEG, or an MP4 stream. This shows them in one live view, and Valet fetches the pictures so the browser never sees the address or password. MJPEG and RTSP streams aren\'t supported.',
   changedetection: 'changedetection.io watches web pages for changes. This shows each watch with what it last saw and when it changed, puts failures first, and lets the assistant read, add, check and remove watches.',

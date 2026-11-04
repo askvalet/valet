@@ -22,6 +22,7 @@ import { push, type Message } from './notify.ts';
 import { pushAll } from './webpush.ts';
 import { ownInstance } from './own.ts';
 import { Backups, news } from './backups.ts';
+import { Reminders } from './reminders.ts';
 import { Timeline } from './timeline.ts';
 import { loadWatches, Watches } from './watches.ts';
 import { loadRules, Rules } from './rules.ts';
@@ -55,6 +56,8 @@ export interface Site {
   push: (m: Message) => void;
   backups: Backups;
   stopBackups: () => void;
+  reminders: Reminders;
+  stopReminders: () => void;
 }
 
 const EVERYTHING = ['start', 'end', 'down', 'up'] as const;
@@ -185,6 +188,18 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   };
   if (sources.length) placed.add('valet.backups');
 
+  // reminders at a set time (a meeting about to start): said once, as a notice, to the channels and, if asked, to devices
+  const reminders = previous?.reminders ?? await new Reminders().load();
+  const reminding = [...instances].filter(([id, i]) => typeof i.reminders === 'function' && !['valet', 'pins', 'config'].includes(id)).map(([id, instance]) => ({ id, instance }));
+  reminders.sources = () => reminding;
+  reminders.tell = r => {
+    const text = redactNow(r.title), sub = r.text && redactNow(r.text), link = r.link && redactNow(r.link) === r.link ? r.link : undefined;
+    const n: Notice = { key: r.source, text, sub, icon: 'calendar', tone: 'accent', at: Date.now() };
+    recent.push(n); if (recent.length > 5) recent.shift();
+    for (const l of noticeListeners) l(n);
+    sendPush({ title: text, text: sub, link, device: r.device !== false, where: [...placed].find(k => k.startsWith(`${r.source}.`)) });
+  };
+
   instances.set('valet', ownInstance({ timeline, activity, watches, rules, hub: () => hub, widgets: [...placed], history, backups: bk ? backups : undefined, recap: year => buildRecap(instances, recapYear(year == null ? undefined : String(year))), undo }));
   meta.set('valet', { type: 'valet', name: 'Valet', integration: { type: 'valet', name: 'Valet' } as Integration });
 
@@ -207,7 +222,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   const web = config.notify.webPush;
   const sendPush = (m: Message) => {
     void push(config.notify.channels, m, fetch, redactNow);
-    if (web.enabled && !sandbox.on) void pushAll({ title: redactNow(m.title), body: m.text && redactNow(m.text), urgent: m.urgent, url: placeOf(config, m.where) }, web);
+    if (web.enabled && !sandbox.on && m.device !== false) void pushAll({ title: redactNow(m.title), body: m.text && redactNow(m.text), urgent: m.urgent, url: placeOf(config, m.where), open: m.link }, web);
   };
   const redactNow = redactor(usedSecrets);
 
@@ -245,6 +260,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   watches.start(() => hub.snapshot(), key => void hub.refresh(key));
   rules.start(() => hub.snapshot(), key => void hub.refresh(key));
   const stopBackups = bk ? backups.start(bk.every) : () => {};
+  const stopReminders = sandbox.on ? () => {} : reminders.start();
 
   // a local wallpaper is served by Valet; a URL is handed to the browser as is, and paint is CSS
   const { appearance: a } = config;
@@ -260,7 +276,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   allowFonts(fontOrigins(a.font?.url));
 
   // the redactor knows every secret any config used, so a value from before a reload stays covered
-  return { config, instances, meta, placed, hub, history, acting: canAct(config), redact: redactor(usedSecrets), walls, cssVersion, recent, noticeListeners, problems, pins, ask, watcher, timeline, activity, watches, rules, push: sendPush, backups, stopBackups };
+  return { config, instances, meta, placed, hub, history, acting: canAct(config), redact: redactor(usedSecrets), walls, cssVersion, recent, noticeListeners, problems, pins, ask, watcher, timeline, activity, watches, rules, push: sendPush, backups, stopBackups, reminders, stopReminders };
 }
 
 

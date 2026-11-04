@@ -92,6 +92,11 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
     const out = await r?.json().catch(() => ({})) ?? {};
     if (!r?.ok) { play('no'); return setRan({ m, c, error: out.error ?? 'Couldn\'t reach Valet' }); }
     if (out.confirm) return setRan({ m, c, said: out.confirm });
+    // a link to go to ("join meeting"): a new tab, and the card stays in case the browser held the tab back
+    if (typeof out.open === 'string' && out.open.startsWith('https://')) {
+      const w = window.open(out.open, '_blank');
+      if (w) { w.opener = null; setPalette(false); play('done'); return; }
+    }
     if (out.card) return setRan({ m, c, card: out.card, tool: out.tool, input: out.input });
     // done, and its card on the page shows it: just say so
     setPalette(false); play('done');

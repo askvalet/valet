@@ -15,7 +15,7 @@ import HomeCase from '../src/web/visuals/home-case.tsx';
 import { batteryNote, heard, near, restoreGroups, restoreOf, unsettled, wearNote, type PlanData, type PlanLight } from '../src/web/visuals/home-model.ts';
 import PcCase, { type PcCaseData } from '../src/web/visuals/pc-case.tsx';
 import type { ForecastCard, ThermostatCard } from '../src/shared/cards.ts';
-import { LiveRings } from '../src/web/live.tsx';
+import { counted, LiveRings } from '../src/web/live.tsx';
 import { SAMPLES } from '../src/web/samples.ts';
 import { chartless, Heatmap, Race, standing, Waffle } from '../src/web/charts.tsx';
 
@@ -173,9 +173,22 @@ test('schema: new cards reject what would break them', () => {
 
 test('live rings: each activity gets a ring with its story, and none when nothing is live', () => {
   const a = { key: 'a', title: 'Joker', icon: 'play', pct: .3, trailing: '1h left' };
-  const out = renderToString(<>{LiveRings({ live: [a, { ...a, key: 'b', title: 'Download', icon: 'download' }] })}</>);
+  const out = renderToString(<LiveRings live={[a, { ...a, key: 'b', title: 'Download', icon: 'download' }]} />);
   assert.ok(out.includes('Joker') && out.includes('Download') && out.includes('1h left'));
-  assert.equal(renderToString(<>{LiveRings({ live: [] })}</>), '');
+  assert.equal(renderToString(<LiveRings live={[]} />), '');
+});
+
+test('live rings: a meeting counts itself down, says how many more, and Join names its host', () => {
+  const now = Date.now(), link = { label: 'Join', href: 'https://meet.google.com/abc-defg-hij', note: 'Google Meet' };
+  const m = { key: 'cal', title: 'Standup', icon: 'video', countdown: { from: now - 6 * 6e4, start: now + 4 * 6e4 - 1000, end: now + 20 * 6e4 }, link, count: 2 };
+  const out = renderToString(<LiveRings live={[m]} />);
+  assert.ok(out.includes('in 4 min') && out.includes('4m') && out.includes('+1') && out.includes('meet.google.com') && out.includes('href="https://meet.google.com/abc-defg-hij"'), out);
+  assert.match(out, /target="_blank" rel="noopener noreferrer"/);
+  assert.match(renderToString(<LiveRings live={[{ ...m, countdown: { start: now - 6e4, end: now + 20 * 6e4 - 1000 } }]} />), /Now · 20 min left/);
+  assert.equal(renderToString(<LiveRings live={[{ ...m, countdown: { start: now - 40 * 6e4, end: now - 6e4 } }]} />), '', 'over is gone, before the card says so');
+  assert.equal(counted({ start: now + 30 * 6e4, from: now - 6e4 * 10 }, now)!.pct! < .3, true);
+  // only https opens, whatever a card says
+  assert.doesNotMatch(renderToString(<LiveRings live={[{ ...m, link: { label: 'Join', href: 'javascript:alert(1)' } }]} />), /javascript:/);
 });
 
 const weather = (over: Partial<ForecastCard['now']> = {}, hours: ForecastCard['hours'] = [], days?: ForecastCard['days']): ForecastCard => ({ type: 'forecast', now: { temp: 12, feels: 11, words: 'Cloudy', icon: 'cloud', hi: 14, lo: 8, ...over }, hours, days });

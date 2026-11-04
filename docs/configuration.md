@@ -628,8 +628,38 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `docker` | `url` (a read-only socket proxy, never the raw socket), `hide` (names to leave out, e.g. containers that are meant to stay stopped), `sources` (container → GitHub `owner/repo` for release notes, when its image doesn't say), `github` (a token, past 60 requests an hour) | `containers`, `updates` |
 | `host` | `url` (the Valet agent), `token`, `title`, `quiet` (services often off on purpose) | `services` |
 | `api` | `url`, `headers`, `method`, `body`, `every` (60s), `title`, `icon`, `href`, `about`, and one of `stats`, `list`, `rows`, `status` (see below) | `data` |
-| `calendar` | `calendars` (iCal URLs, or `{ url, name, color }`), `days` (14), `limit` (10), `title`, `months` (6, how far ahead the month browses) | `upcoming`, `agenda` (place it `wide` or `large` for the month beside it) |
+| `calendar` | `calendars` (iCal URLs, or `{ url, name, color }`), `days` (14), `limit` (10), `title`, `months` (6, how far ahead the month browses), `meetings` (see below) | `upcoming`, `agenda` (place it `wide` or `large` for the month beside it) |
 | `links` | (from the top-level `links:` block) | one per group |
+
+### Online meetings: `calendar.meetings`
+
+A calendar finds the meeting link in each event (Google Meet, Zoom, Microsoft Teams, Webex, Whereby, Jitsi, GoTo, Around,
+Discord, FaceTime, Chime, BlueJeans), from Google's conference property, the event's URL, its location or its description.
+Only https links on those services count. From `lead` before a meeting until it ends, the calendar's ring (add the widget to
+`live.activities`) counts down with a Join button; each `remind` sends one notification, once, to `notify.channels` and
+to devices with notifications on. Rows get a Join button, ⌘K gets **join meeting** and **next meeting**, and the assistant
+gets `calendar_next_meeting`. Works with no config; `meetings: false` turns it all off.
+
+```yaml
+integrations:
+  work:
+    type: calendar
+    calendars: ["${GOOGLE_ICAL_URL}"]   # Google Calendar: Settings → your calendar → Secret address in iCal format
+    meetings: { lead: 10m, remind: [10m, 1m], push: true, me: you@example.com }
+live:
+  activities: [work.agenda]
+```
+
+| Option | Default | |
+|---|---|---|
+| `lead` | `10m` | how long before a meeting its ring appears |
+| `remind` | `[2m]` | when to remind you before it starts: one time or a list; `[]` for none |
+| `push` | `true` | reminders also go to devices with notifications on (⌘K), not only `notify.channels` |
+| `me` | none | your address, or a list: meetings you declined are left out, and so are you from who it's with |
+
+Cancelled events are always left out. A reminder is never sent twice (what was sent is kept in `data/reminders.json`), nor
+for a meeting already under way when Valet started. The feed is read every 10 minutes, and Google can take a while to
+update its secret address, so a meeting added at the last minute may come late.
 
 ### Services outside Docker: `type: host`
 

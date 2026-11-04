@@ -48,7 +48,11 @@ const timed = (title: string, day: number, h: number, m: number, mins: number, l
 const whole = (title: string, day: number, days = 1) => ['BEGIN:VEVENT', `SUMMARY:${title}`, `DTSTART;VALUE=DATE:${allDay(midnight + day * DAY)}`, `DTEND;VALUE=DATE:${allDay(midnight + (day + days) * DAY)}`, 'END:VEVENT'].join('\n');
 const ics = (events: string[]) => ['BEGIN:VCALENDAR', 'VERSION:2.0', ...events, 'END:VCALENDAR'].join('\n');
 const FAMILY = ics([timed('Daycare drop-off', 0, 8, 30, 20), timed('Dentist', 1, 15, 0, 45, 'Harbour Dental'), timed('Swimming lesson', 2, 17, 30, 45, 'Community pool'), whole('Long weekend', 4, 3), timed('Parent-teacher meeting', 8, 17, 0, 30)]);
-const WORK = ics([timed('Team standup', 1, 9, 30, 15), timed('Design review', 2, 11, 0, 60), timed('Quarterly planning', 3, 13, 0, 90, 'Room 4')]);
+// an online meeting soon after the shot is taken, so the ring and Join show
+const soon = Math.ceil((Date.now() + 4 * MIN) / MIN) * MIN;
+const meeting = ['BEGIN:VEVENT', 'UID:sync@example.com', 'SUMMARY:Product sync', `DTSTART:${stamp(soon)}`, `DTEND:${stamp(soon + 30 * MIN)}`, 'X-GOOGLE-CONFERENCE:https://meet.google.com/vlt-qpzr-kmd',
+  'ATTENDEE;CN=Alex Chen:mailto:alex@example.com', 'ATTENDEE;CN=Priya Shah:mailto:priya@example.com', 'END:VEVENT'].join('\n');
+const WORK = ics([meeting, timed('Team standup', 1, 9, 30, 15), timed('Design review', 2, 11, 0, 60), timed('Quarterly planning', 3, 13, 0, 90, 'Room 4')]);
 const HOME_CAL = ics([whole('Bins out', 1), timed('Furnace service', 5, 13, 0, 120)]);
 const calendarHttp = route([['family', FAMILY], ['work', WORK], ['home', HOME_CAL]]);
 
