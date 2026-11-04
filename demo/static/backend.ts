@@ -90,6 +90,7 @@ async function answer(path: string, method: string, body: any, signal?: AbortSig
   if (route === 'brief') return json({ text: null });
   if (route === 'suggest') { const s = await lab.widgets.services.fetch(); return json({ list: suggestions(s.items.some((i: any) => i.name === 'Mealie' && !i.ok)).filter(q => !demoPage.speed || !/speed/.test(q)), wrong: [] }); }
   if (route === 'files') return json({ error: 'This demo keeps nothing, so it takes no files' }, 403);
+  if (route === 'push') return method === 'GET' ? json({ ready: false, why: 'demo' }) : json({ error: 'The demo can\'t send notifications', why: 'demo' }, 403);
   if (route === 'action') {
     const act = instances.get(a)?.actions?.[b]; if (!act) return json({ error: `no action ${a}.${b}` }, 404);
     const args = act.input.safeParse(body ?? {}); if (!args.success) return json({ error: args.error.issues[0]?.message }, 400);

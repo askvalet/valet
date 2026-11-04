@@ -5,6 +5,15 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- Valet as an app: add it to a phone's Home Screen or install it on a computer, and it opens in its own window with Valet's icon and your title. When the server can't be reached it says so, instead of the browser's error page. See [Valet as an app](https://askvalet.dev/start/app/).
+- Notifications on this device, from ⌘K: Valet's own push notifications, with no ntfy or Telegram needed. Everything that goes to your channels (reminders, rules, `live.notify` with `push: true`, insights) goes to these devices too, and a notification opens the tab it's about. On iPhone and iPad it needs Valet on the Home Screen, and the switch says so. `notify.webPush` sets the contact and push services; it's on by default and sends nothing until a device turns it on.
+
+### Security
+
+- The service worker caches only the "can't be reached" page, never the page, its data or anything behind sign-in. Turning notifications on needs what a button needs. Each notification is encrypted for its browser and signed with Valet's own key, kept in `data/vapid.json` (0600), and Valet posts only to the browsers' push services. The CSP names `worker-src 'self'` and `manifest-src 'self'`.
+
 ## [0.1.4] - 2026-11-04
 
 ### Security

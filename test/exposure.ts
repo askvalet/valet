@@ -2,7 +2,7 @@
 // tried without a session, so a route added later is covered without anyone remembering to. Needs `npm run build`.
 import assert from 'node:assert/strict';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import { createServer as createHttp } from 'node:http';
 import { connect, createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -19,6 +19,7 @@ const PUBLIC = new Set([
   'GET /api/font',
   'GET /api/icon/:slug',
   'GET /plugins/:file',      // a plugin's browser half: code, no data
+  'GET /manifest.webmanifest', // fetched before sign-in to install the app: it says "Valet" until there's a session
   'GET *',                   // the page's shell, which holds no data until /api answers
 ]);
 const IN_AUTH = /^\/api\/auth\//;   // the sign-in routes themselves
@@ -108,9 +109,9 @@ function everyRoute(name: string, auth: Record<string, unknown>) {
     });
 
     test('the data folder stays unreadable by name', async () => {
-      for (const f of ['secret', 'users.json', 'activity.json']) {
+      for (const f of ['secret', 'users.json', 'activity.json', 'vapid.json', 'push.json']) {
         const text = await fetch(`${s.base}/${f}`).then(r => r.text());
-        assert.doesNotMatch(text, /"hash"|"salt"/);
+        assert.doesNotMatch(text, /"hash"|"salt"|"d":|p256dh/);
       }
     });
   });
@@ -175,6 +176,58 @@ describe('no sign-in, network not trusted', () => {
     assert.ok(text.includes(TITLE)); assert.ok(!text.includes(SECRET));
     assert.match(await raw(s.port, '/api/page'), new RegExp(TITLE), 'raw requests really reach the server');
     assert.equal((await fetch(`${s.base}/api/action/probe/x`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 403);
+  });
+  test('and it takes no push subscriptions: turning notifications on is acting', async () => {
+    assert.deepEqual(await fetch(`${s.base}/api/push`).then(r => r.json()), { ready: false, why: 'read-only' });
+    for (const method of ['POST', 'DELETE']) assert.equal((await fetch(`${s.base}/api/push`, { method, headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 403, method);
+  });
+});
+
+describe('notifications on a device, end to end', () => {
+  let s: Awaited<ReturnType<typeof boot>>, cookie = '';
+  const got: { url: string; headers: Record<string, unknown>; body: Buffer }[] = [];
+  const pushSvc = createHttp((q, r) => { const parts: Buffer[] = []; q.on('data', d => parts.push(d)); q.on('end', () => { got.push({ url: String(q.url), headers: q.headers, body: Buffer.concat(parts) }); r.statusCode = q.url === '/gone' ? 410 : 201; r.end(); }); });
+  const sub = (path: string) => ({ endpoint: `http://127.0.0.1:${(pushSvc.address() as any).port}${path}`, keys: { p256dh: 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4', auth: 'BTBZMqHH6r4Tts7J_aSIgg' } });
+  const call = (method: string, body: object, headers: Record<string, string> = {}) => fetch(`${s.base}/api/push`, { method, headers: { 'Content-Type': 'application/json', cookie, ...headers }, body: JSON.stringify(body) });
+  before(async () => {
+    await new Promise<void>(ok => pushSvc.listen(0, '127.0.0.1', ok));
+    s = await boot({ mode: 'local', secureCookie: false }, `notify: { webPush: { services: ["http://127.0.0.1:${(pushSvc.address() as any).port}"] } }\n`);
+    const code = s.log().match(/setup code:\s+(\S+)/)![1];
+    cookie = ((await fetch(`${s.base}/api/auth/setup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, name: 'me', password: 'correct horse' }) })).headers.get('set-cookie') ?? '').split(';')[0];
+  });
+  after(() => { s.proc.kill(); pushSvc.close(); });
+
+  test('the manifest names the homelab only to a session', async () => {
+    assert.equal((await fetch(`${s.base}/manifest.webmanifest`).then(r => r.json())).name, 'Valet');
+    const m = await fetch(`${s.base}/manifest.webmanifest`, { headers: { cookie } }).then(r => r.json());
+    assert.equal(m.name, TITLE); assert.equal(m.display, 'standalone');
+  });
+
+  test('a subscription needs a session from this page, and a push service the config allows', async () => {
+    assert.equal((await fetch(`${s.base}/api/push`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub('/a') }) })).status, 401);
+    assert.equal((await call('POST', { subscription: sub('/a') }, { Origin: 'https://evil.example' })).status, 403);
+    assert.equal((await call('POST', { subscription: { ...sub('/a'), endpoint: 'http://127.0.0.1:9/elsewhere' } })).status, 400);
+    assert.equal((await call('POST', { subscription: { ...sub('/a'), keys: { p256dh: 'AAAA', auth: 'AAAA' } } })).status, 400);
+  });
+
+  test('turning it on sends this device one notification, encrypted, signed, and nothing in the clear', async () => {
+    const info = await fetch(`${s.base}/api/push`, { headers: { cookie } }).then(r => r.json());
+    assert.equal(info.ready, true); assert.match(info.key, /^B[A-Za-z0-9_-]{86}$/);
+    assert.equal((await call('POST', { subscription: sub('/a') })).status, 200);
+    for (let i = 0; i < 50 && !got.length; i++) await new Promise(r => setTimeout(r, 100));
+    assert.equal(got.length, 1);
+    assert.equal(got[0].url, '/a'); assert.equal(got[0].headers['content-encoding'], 'aes128gcm'); assert.match(String(got[0].headers.authorization), new RegExp(`^vapid t=.+, k=${info.key}$`));
+    assert.ok(!got[0].body.toString('latin1').includes(TITLE), 'the push service sees only ciphertext');
+    assert.equal((await fetch(`${s.base}/api/push?endpoint=${encodeURIComponent(sub('/a').endpoint)}`, { headers: { cookie } }).then(r => r.json())).on, true);
+    assert.equal((await call('POST', { subscription: sub('/a') })).status, 200);
+    await new Promise(r => setTimeout(r, 300));
+    assert.equal(got.length, 1, 'only the first time');
+  });
+
+  test('the keys and subscriptions are the owner\'s alone, and off means off', async () => {
+    for (const f of ['vapid.json', 'push.json']) assert.equal((await stat(join(s.dir, f))).mode & 0o777, 0o600, f);
+    assert.equal((await call('DELETE', { endpoint: sub('/a').endpoint })).status, 200);
+    assert.equal((await fetch(`${s.base}/api/push?endpoint=${encodeURIComponent(sub('/a').endpoint)}`, { headers: { cookie } }).then(r => r.json())).on, false);
   });
 });
 

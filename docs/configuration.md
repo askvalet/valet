@@ -50,7 +50,7 @@ In Docker, prefix these with `docker exec -it valet`.
 | `calendar` | none | a calendar widget (e.g. `family.agenda`) whose events appear when you hover the clock |
 | `search` | none | web search from ⌘K: `duckduckgo`, `google`, `kagi`, `brave`, `startpage`, `searxng`, or a URL with `{q}` |
 | `links` | `{}` | bookmarks by group, each group a widget `links.<group-slug>`: `Media: [{ name, url, icon?, note? }]`. Without `icon`, the site's favicon (fetched by Valet) |
-| `notify` | `{ channels: [] }` | where reminders go when you're not looking: see below. `insights: true` also pushes the shared-cause line |
+| `notify` | `{ channels: [] }` | where reminders go when you're not looking: see below. `insights: true` also pushes the shared-cause line. `webPush` is Valet's own notifications, to each device that turns them on in ⌘K |
 | `reload` | `true` | watch the file and apply edits live |
 | `sandbox` | `false` | for trying Valet out: nothing is saved, and each visitor gets a private copy of the site in memory, told apart by a cookie. At most 40 at once (a new visitor replaces the one idle longest), each dropped after 15 idle minutes. No file uploads, no config tools and no MCP server. It doesn't turn controls on, that's `auth`, and integrations still reach whatever they're pointed at, so use made-up services. The demo runs this way |
 | `recap` | `true` | your year in review, at `#recap` and on the overview: the strongest slides first, then all the rest without a break, and a share card where you choose what shows |
@@ -401,7 +401,22 @@ notify:
     - { type: pushover, token: "${PUSHOVER_TOKEN}", user: "${PUSHOVER_USER}" }
     - { type: apprise, url: http://apprise:8000/notify/mykey }     # reaches dozens more services
     - { type: webhook, url: http://anything/hook, headers: { X-Key: "${KEY}" } }
+  webPush:                                                        # Valet's own notifications (on by default)
+    contact: mailto:you@example.com
 ```
+
+Everything that goes to the channels also goes to each browser that turned on **Notifications on this device** in ⌘K. That
+needs HTTPS (or localhost), and a page that may act. On iPhone and iPad, Valet must be on the Home Screen first.
+
+| `notify.webPush` | Default | |
+|---|---|---|
+| `enabled` | `true` | lets each browser turn notifications on. Nothing is sent until one does; `false` sends nothing and refuses new devices |
+| `contact` | `https://askvalet.dev` | how a push service can reach whoever runs this Valet: a `mailto:` address or an `https://` URL, sent signed with each push |
+| `services` | Google, Mozilla, Apple, Microsoft | the push services Valet will post to: `fcm.googleapis.com`, `*.push.services.mozilla.com`, `*.push.apple.com`, `*.notify.windows.com`. A host means HTTPS; add an origin like `http://10.0.0.5:8080` only for a push server of your own |
+
+The signing key is made the first time a browser asks and kept in `data/vapid.json`; subscriptions are in
+`data/push.json`. Both are readable only by Valet's user. Delete both to start over: every device then turns notifications
+on again.
 
 ## `mcp`
 

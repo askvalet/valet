@@ -1,6 +1,6 @@
 // The ⌘K palette: run a plain command, ask, do a card's action, open a service, jump to a tab. Loaded the first time it opens.
 // Commands come first and need no model: they're matched here as you type and run by the server (src/server/commands.ts).
-import { ArrowUp, CornerDownLeft, Globe, LayoutGrid, LogOut, Search, Volume2, VolumeX, Zap } from 'lucide-react';
+import { ArrowUp, Bell, BellOff, CornerDownLeft, Globe, LayoutGrid, LogOut, Search, Volume2, VolumeX, Zap } from 'lucide-react';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { defaultFilter } from 'cmdk';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
@@ -14,6 +14,7 @@ import { DOT, Icon } from './cards.tsx';
 import { toast } from './feel.tsx';
 import { signOut } from './signin.tsx';
 import { play, toggleSounds, useSounds } from './sound.ts';
+import { cannot, checkPush, disablePush, enablePush, usePush } from './push.ts';
 
 const InlineAnswer = lazy(() => import('./assistant.tsx').then(m => ({ default: m.InlineAnswer })));
 
@@ -25,6 +26,7 @@ export interface PaletteProps {
   nav: { key: string; chat?: boolean; icon?: string }[]; sectionIcon: (s: any) => string | undefined;
   search?: string;   // a provider name or a URL with {q}
   placeholder?: string; ui?: ChatUi;
+  device: { sandbox?: boolean; canAct: boolean };   // whether this page could turn notifications on at all
 }
 
 const PROVIDERS: Record<string, string> = { duckduckgo: 'https://duckduckgo.com/?q={q}', google: 'https://www.google.com/search?q={q}', kagi: 'https://kagi.com/search?q={q}',
@@ -51,12 +53,28 @@ export function rank(value: string, query: string, names: string[] = []) {
 // the look shadcn's CommandDialog gives it; that one can't take a filter
 const SHELL = '**:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5';
 
-export default function Palette({ palette, setPalette, assistantName, ask, actions, runAction, services, SUGGESTIONS, setView, nav, sectionIcon, search, account, tools, openChat, placeholder, ui }: PaletteProps) {
+export default function Palette({ palette, setPalette, assistantName, ask, actions, runAction, services, SUGGESTIONS, setView, nav, sectionIcon, search, account, tools, openChat, placeholder, ui, device }: PaletteProps) {
   const [query, setQuery] = useState('');
   // a question is answered right here; approvals too. Only a longer conversation needs the chat.
   const [inline, setInline] = useState<{ text: string; n: number } | null>(null);
   const answer = (text: string) => { play('send'); setInline({ text, n: Date.now() }); setQuery(''); };
   const sounds = useSounds(), sound = { value: `sounds ${sounds.on ? 'off' : 'on'}`, keywords: ['sound', 'sounds', 'audio', sounds.on ? 'mute' : 'unmute'] };
+  // notifications on this device: what it is now is asked of the browser and the server as the palette opens
+  const pushed = usePush(), alerts = { value: 'notifications on this device', keywords: ['notifications', 'notify', 'push', 'alerts', 'phone'] };
+  useEffect(() => { if (!cannot(device)) void checkPush(); }, []);
+  const [asking, setAsking] = useState(false);
+  const flipPush = async () => {
+    const no = cannot(device);
+    if (no) { play('no'); return toast('push', { text: no }, { ms: 7000 }); }
+    if (asking) return;
+    setAsking(true);
+    try {
+      if (pushed === 'on') { await disablePush(); toast('push', { text: 'Notifications off on this device' }, { ms: 2500 }); return; }
+      const r = await enablePush();
+      play(r.ok ? 'done' : 'no'); toast('push', { text: r.text, tone: r.ok ? undefined : 'warn' }, { ms: r.ok ? 4000 : 7000 });
+    } catch (e) { play('no'); toast('push', { text: `Notifications couldn't be turned on: ${(e as Error).message}`, tone: 'warn' }, { ms: 7000 }); }
+    finally { setAsking(false); }
+  };
   // what this page may run, fetched as the palette opens; matching it is instant and needs nothing else
   const [commands, setCommands] = useState<Phrase[]>([]), [ran, setRan] = useState<Ran | null>(null);
   useEffect(() => { let on = true; fetch('/api/commands').then(r => r.ok ? r.json() : { commands: [] }).then(d => { if (on) setCommands(d.commands ?? []); }, () => {}); return () => { on = false; }; }, []);
@@ -128,9 +146,13 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
     // after Open and Go to, so a service or tab with the same name as a command keeps Enter
     run,
     // this browser's say over appearance.sounds; it's remembered here and nowhere else
-    [best([sound]), <CommandGroup key="feel" heading="This browser">
+    [best([sound, alerts]), <CommandGroup key="feel" heading="This device">
       <CommandItem {...sound} onSelect={() => { const on = toggleSounds(); toast('sounds', { text: on ? 'Sounds on' : 'Sounds off' }, { ms: 2000 }); }}>
         {sounds.on ? <VolumeX /> : <Volume2 />}{sounds.on ? 'Turn sounds off' : 'Turn sounds on'}
+      </CommandItem>
+      <CommandItem {...alerts} onSelect={() => void flipPush()} className={cn(asking && 'chat-shimmer')}>
+        {pushed === 'on' ? <Bell /> : <BellOff className="text-muted-foreground" />}Notifications on this device
+        <span className="ml-auto text-[12px] text-muted-foreground">{pushed === 'on' ? 'On' : 'Off'}</span>
       </CommandItem>
     </CommandGroup>],
     [best([{ value: 'sign out' }, { value: 'sign out everywhere' }]), account && <CommandGroup key="account" heading="Account">

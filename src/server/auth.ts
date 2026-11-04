@@ -17,6 +17,7 @@ import { getConnInfo } from '@hono/node-server/conninfo';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { Config } from './config.ts';
 import { sandbox } from './sandbox.ts';
+import { forgetUser } from './webpush.ts';
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number, opts: object) => Promise<Buffer>;
 // OWASP's floor for scrypt is N=2^17,r=8,p=1 or the same work as N=2^15,r=8,p=3, which needs a quarter of the memory
@@ -192,7 +193,7 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
   app.post('/api/auth/logout', async c => {
     const { everywhere } = await c.req.json().catch(() => ({}));
     const u = await session(c);
-    if (u && everywhere) { u.version++; await save(users); }
+    if (u && everywhere) { u.version++; await save(users); await forgetUser(u.name).catch(() => {}); }   // and its devices stop hearing
     deleteCookie(c, COOKIE, { path: '/' });
     return c.json({ ok: true });
   });

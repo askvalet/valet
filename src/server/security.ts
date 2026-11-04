@@ -58,7 +58,7 @@ export const headers: MiddlewareHandler = async (c, next) => {
   // what the image proxy set is stricter than this, and it's the reason a service's file can't act as this page
   if (!c.res.headers.has('Content-Security-Policy')) c.header('Content-Security-Policy', [
     "default-src 'self'", "script-src 'self'", ["style-src 'self' 'unsafe-inline'", ...fonts].join(' '),   // React sets inline style attributes
-    "img-src 'self' data: blob: https:", ["font-src 'self' data:", ...fonts].join(' '), "connect-src 'self'", "media-src 'self' blob:",
+    "img-src 'self' data: blob: https:", ["font-src 'self' data:", ...fonts].join(' '), "connect-src 'self'", "media-src 'self' blob:", "worker-src 'self'", "manifest-src 'self'",   // the app's own service worker and manifest
     `frame-src ${[...frames].join(' ') || "'none'"}`, "frame-ancestors 'none'", "base-uri 'none'", "form-action 'self'", "object-src 'none'",
   ].join('; '));
   c.header('X-Content-Type-Options', 'nosniff');

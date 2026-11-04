@@ -147,6 +147,12 @@ mcp:
     headers: { Authorization: "Bearer ${HA_TOKEN}" }
     access: read
 
+# Reminders and notices when you're not looking. Valet's own notifications need nothing here: turn them on per device in
+# ⌘K ("Notifications on this device"; HTTPS and sign-in needed). Other services as channels, e.g. ntfy:
+# notify:
+#   channels: [{ type: ntfy, url: https://ntfy.sh/my-topic }]
+#   webPush: { contact: "mailto:you@example.com" }   # how a push service can reach you
+
 # Valet as a read-only MCP server for your own AI client (Claude Desktop, an editor): POST /mcp with this token.
 # mcpServer:
 #   token: ${VALET_MCP_TOKEN}        # openssl rand -hex 32, in .env

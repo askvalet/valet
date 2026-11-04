@@ -74,6 +74,7 @@ you'll want to look at and use.
 
 One YAML file controls everything, with 185 integrations and a simple way to add your own. It
 runs as one Node process, uses about 45 MB of RAM on a fresh install, and the image is 165 MB.
+Add it to your phone's Home Screen and it's an app, with [its own notifications](https://askvalet.dev/start/app/).
 
 <p align="center"><img src="docs/images/config-live.gif" alt="Editing config.yaml while Valet runs: the greeting, the wallpaper and its brightness change on the page as each line is saved" width="620"></p>
 
