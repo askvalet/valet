@@ -5,6 +5,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-11-04
+
 ### Added
 
 - Online meetings from your calendar. Valet finds the meeting link in each event (Google Meet, Zoom, Microsoft Teams, Webex, Whereby, Jitsi, GoTo and a few more), and from ten minutes before a meeting until it ends the calendar's ring counts down ("in 4 min", then "Now · 20 min left") with a **Join** button. Two at once: the one on now leads and the ring says "+1".
@@ -158,7 +160,8 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/askvalet/valet/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/askvalet/valet/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/askvalet/valet/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/askvalet/valet/compare/v0.1.3...v0.1.4
