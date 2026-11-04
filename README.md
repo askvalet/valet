@@ -61,10 +61,13 @@ Everything on the page is live. Progress bars move, numbers tick over, and new t
 
 <br>
 
-### On the wall, too
+### Wall display mode
 
-Open `/wall` on a tablet or a spare monitor for a page made to be read from across the room: the time and weather large, and the
-cards you pick for it, taking turns. It only shows, dims at night, and keeps the screen awake.
+Open `/wall` on a tablet or a spare monitor for a page made to be read from across the room. The wall is its own page: you
+pick exactly which cards it shows, several pages can take turns, and it dims at night. Nothing on it can be pressed, and
+chat never shows.
+
+<p align="center"><img src="docs/images/wall-services.webp" alt="The wall display: a large clock, the date and the weather, with every service's status below" width="620"><br><img src="docs/images/wall-house.webp" alt="The wall display's House page: the cameras, the thermostat and the daylight" width="620"><br><sub>Two wall pages taking turns: the services, then the house.</sub></p>
 
 <br>
 
