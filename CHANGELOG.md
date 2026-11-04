@@ -12,6 +12,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- A meeting's popover is plainer: "In 4 min" or "Now" and the time on top, the title, who's in it as initials, a progress bar only while it's on, and one button that names the service ("Join Google Meet"). No icon tile.
 - The chat's header is one line: the assistant's name, then the model and its context meter, whose place is kept so nothing moves when the numbers arrive.
 - The context meter knows a local model's window by itself when its server's model list says it (`max_model_len`, `context_length`, as vLLM and llama.cpp do), so `assistant.contextWindow` is only needed when it doesn't.
 - In light mode, the selected tab is a dark pill with a white icon, like dark mode's white one, instead of the accent colour.
