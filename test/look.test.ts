@@ -70,6 +70,8 @@ test('every appearance option reaches the page as a variable or a class', () => 
   assert.equal(v['--chat-w'], '500px'); assert.equal(v['--chat-h'], '80vh'); assert.equal(v['--chat-bubble'], '#111111'); assert.equal(v['--chat-ink'], '#ffffff');
   assert.equal(v['--nav-size'], '66px'); assert.equal(v['--bar-zoom'], '1.2');
   assert.deepEqual(look({ appearance: { glass: { blur: 0 } } }).classes, ['no-blur']);
+  assert.deepEqual(look({ appearance: { glass: { material: 'liquid' } } }).classes, ['glass-liquid']);
+  assert.deepEqual(look({ appearance: { glass: { material: 'frosted' } } }), look({ appearance: {} }));
   assert.deepEqual(look({ appearance: { motion: 'reduced' } }).classes, ['motion-reduced']);
 });
 
@@ -96,7 +98,7 @@ test('bad values are refused', () => {
     refused({ appearance: { colors: { accent: color } } });
   for (const wallpaper of ['linear-gradient(url(//x))', 'rgb(1;2)', 'color(</style>)']) refused({ appearance: { wallpaper } });
   for (const appearance of [
-    { theme: 'sepia' }, { density: 'cosy' }, { motion: 'slow' }, { dim: 2 }, { glass: { opacity: 2 } }, { glass: { blur: -1 } }, { shape: { shadow: 'huge' } }, { shape: { radius: 400 } },
+    { theme: 'sepia' }, { density: 'cosy' }, { motion: 'slow' }, { dim: 2 }, { glass: { opacity: 2 } }, { glass: { blur: -1 } }, { glass: { material: 'clear' } }, { shape: { shadow: 'huge' } }, { shape: { radius: 400 } },
     { font: { family: 'A</style>' } }, { font: { family: 'A; color: red' } }, { font: { url: 'https://x.test/f.woff2' } }, { font: { family: 'A', url: 'notes.txt' } }, { font: { scale: 9 } },
     { maxWidth: '100px; color: red' }, { cssFile: '/etc/passwd' }, { sizes: { huge: { cols: 1 } } }, { sizes: { tall: { cols: 9 } } }, { rotate: 'soon' },
   ]) refused({ appearance });

@@ -14,7 +14,7 @@ location: Toronto, Canada          # gives the assistant local context
 #   colors: { accent: "#0a84ff" }
 #   font: { family: Inter, url: "https://fonts.googleapis.com/css2?family=Inter:wght@400;600" }
 #   shape: { radius: 14 }            # 0 is sharp corners
-#   glass: { opacity: 0.5, blur: 36 }
+#   glass: { opacity: 0.5, blur: 36 }   # material: liquid for clearer glass with a lit edge (each browser can try it in ⌘K)
 #   density: comfortable             # or compact, spacious
 #   rim: 0.6                         # a fixed bevel of light on the edge of dark glass, 0 to 1
 #   sounds: { enabled: false, volume: 0.4 }   # quiet sounds for taps, done, not now, notices; each browser can flip them in ⌘K

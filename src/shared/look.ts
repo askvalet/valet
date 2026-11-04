@@ -7,7 +7,7 @@ interface Look {
     colors?: { accent?: string; good?: string; warn?: string; bad?: string; card?: string };
     font?: { family?: string; mono?: string; scale?: number; headingWeight?: number };
     shape?: { radius?: number; border?: number; borderColor?: string; shadow?: 'none' | 'soft' | 'deep' };
-    glass?: { opacity?: number; blur?: number };
+    glass?: { opacity?: number; blur?: number; material?: 'frosted' | 'liquid' };
     rim?: number;
     dim: number; blur: number;
     density: 'compact' | 'comfortable' | 'spacious';
@@ -60,6 +60,7 @@ export function lookOf({ appearance: a, chat, nav, menubar }: Look) {
   if (g?.blur === 0) classes.push('no-blur');
   else if (g?.blur != null) set(+(g.blur / 36).toFixed(3), '--frost');
 
+  if (g?.material === 'liquid') classes.push('glass-liquid');
   if (a.rim) { set(a.rim, '--rim'); classes.push('has-rim'); }
 
   if (a.dim !== .35) set(a.dim, '--wall-dim');

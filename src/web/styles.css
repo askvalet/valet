@@ -252,6 +252,91 @@
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .05), 0 8px 20px -10px rgb(0 0 0 / .5); }
 :root:not(.dark) .glass-round { background: rgb(255 255 255 / .7); border-color: rgb(0 0 0 / .06); }
 
+/* ── Liquid glass (appearance.glass.material: liquid, or ⌘K on this device). Clearer than the frost: a thin tint, a light blur
+   with the colour kept (saturate) and dimmed rather than greyed (brightness), an edge lit from the top left, a soft shadow and
+   a sheen inside. Same surfaces, same variables: only the tokens change. The spec it follows uses blur(2px); over a busy
+   photo that leaves text sitting on the photo's detail, so cards blur 10px and what floats over content 18px, both under the
+   frost's scale. Ink stays the page's own; blend modes would wash out the posters and photos the cards hold. */
+.glass-liquid.has-wallpaper {
+  --card-tint: rgb(20 20 24); --card-alpha: .36;
+  --card: rgb(20 20 24 / .36);
+  --popover: rgb(20 20 24 / .62);
+  --glass-sheet: rgb(20 20 24 / .5);
+  --glass-blur: blur(calc(10px * var(--frost, 1))) saturate(1.6) brightness(.8);
+  --glass-float: blur(calc(18px * var(--frost, 1))) saturate(1.6) brightness(.8);
+  --glass-edge: transparent;
+  --glass-shadow: inset 1.5px 1.5px 1px -1px rgb(255 255 255 / .34), inset -1.5px -1.5px 1px -1px rgb(255 255 255 / .18),
+    inset 0 0 0 .5px rgb(255 255 255 / .1), 0 0 0 .5px rgb(0 0 0 / .4), 0 6px 24px rgb(0 0 0 / .24);
+  --glass-lifted: inset 1.5px 1.5px 1px -1px rgb(255 255 255 / .34), inset -1.5px -1.5px 1px -1px rgb(255 255 255 / .18),
+    inset 0 0 0 .5px rgb(255 255 255 / .1), 0 0 0 .5px rgb(0 0 0 / .45), 0 24px 56px -20px rgb(0 0 0 / .6);
+  --glass-sheen: radial-gradient(140% 100% at 0 0, rgb(255 255 255 / .1), transparent 55%), linear-gradient(transparent 80%, rgb(0 0 0 / .08));
+  --glass-hover: rgb(44 44 50 / .4);   /* the tint, ~14% lighter: hover brightens the glass rather than lifting a shadow */
+  --glass-stroke: rgb(255 255 255 / .22);
+  --bar-bg: rgb(20 20 24 / .42); --bar-blur: var(--glass-float);
+  --muted-foreground: rgb(235 235 245 / .7);
+  --accent: rgb(255 255 255 / .12); --sidebar-accent: rgb(255 255 255 / .12);
+}
+/* light glass, dark ink (appearance.theme: light over a wallpaper) */
+.glass-liquid.glass-light, .glass-liquid.glass-light [data-ink="dark"] {
+  --card-tint: #ffffff; --card-alpha: .3;
+  --card: rgb(255 255 255 / .3);
+  --popover: rgb(255 255 255 / .72);
+  --glass-sheet: rgb(255 255 255 / .58);
+  --glass-blur: blur(calc(10px * var(--frost, 1))) saturate(1.8) brightness(1.06);
+  --glass-float: blur(calc(18px * var(--frost, 1))) saturate(1.8) brightness(1.06);
+  --glass-shadow: inset 1.5px 1.5px 1px -1px rgb(255 255 255 / .95), inset -1.5px -1.5px 1px -1px rgb(255 255 255 / .55),
+    inset 0 0 0 .5px rgb(255 255 255 / .3), 0 0 0 .5px rgb(0 0 0 / .06), 0 6px 24px rgb(0 0 0 / .08);
+  --glass-lifted: inset 1.5px 1.5px 1px -1px rgb(255 255 255 / .95), inset -1.5px -1.5px 1px -1px rgb(255 255 255 / .55),
+    inset 0 0 0 .5px rgb(255 255 255 / .3), 0 0 0 .5px rgb(0 0 0 / .08), 0 18px 40px -18px rgb(0 0 0 / .22);
+  --glass-sheen: radial-gradient(140% 100% at 0 0, rgb(255 255 255 / .3), transparent 55%), linear-gradient(transparent 80%, rgb(0 0 0 / .03));
+  --glass-hover: rgb(255 255 255 / .42);
+  --glass-stroke: rgb(255 255 255 / .9);
+  --bar-bg: rgb(255 255 255 / .42);
+  --muted-foreground: rgb(60 60 67 / .8);
+  --accent: rgb(255 255 255 / .5); --sidebar-accent: rgb(255 255 255 / .5);   /* a lighter layer of the glass, never a grey wash */
+}
+/* light mode over a dark part of the wallpaper (ink.ts says where): the same glass tinted dark, with light ink */
+.glass-liquid.glass-light [data-ink="light"] {
+  --card-tint: rgb(16 18 22); --card-alpha: .34;
+  --card: rgb(16 18 22 / .34);
+  --glass-blur: blur(calc(10px * var(--frost, 1))) saturate(1.7) brightness(.85);
+  --glass-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 .5px rgb(255 255 255 / .08), 0 0 0 .5px rgb(0 0 0 / .3), 0 6px 24px rgb(0 0 0 / .16);
+  --glass-lifted: var(--glass-shadow);
+  --glass-sheen: radial-gradient(140% 100% at 0 0, rgb(255 255 255 / .1), transparent 55%);
+  --glass-hover: rgb(40 42 48 / .4);
+  --foreground: #ededed; --card-foreground: #ededed; --muted-foreground: rgb(235 235 245 / .72);
+  --muted: rgb(255 255 255 / .08); --secondary: rgb(255 255 255 / .1); --accent: rgb(255 255 255 / .12); --border: rgb(255 255 255 / .1);
+  --glass-stroke: rgb(255 255 255 / .22);
+}
+.glass-liquid.has-wallpaper :is([data-slot="card"], .glass):not(.card-look *, .chat-card *, .glass-pop *) { background-image: var(--glass-sheen); }
+/* an ink that changes glides, alongside the lift's own movement; :where keeps a tab change's fade in charge of opacity */
+:where(.glass-liquid.has-wallpaper) [data-slot="card"][data-ink] { transition: background-color var(--dur-move) var(--ease-out), color var(--dur-move) var(--ease-out), transform var(--dur-pop) var(--ease-out), box-shadow var(--dur-pop) var(--ease-out); }
+.glass-liquid.has-wallpaper .glass-bar { box-shadow: var(--glass-shadow); }
+.glass-liquid.has-wallpaper .glass-bar::before { background-image: var(--glass-sheen); }
+.glass-liquid.has-wallpaper .glass-round:not(.is-on) { box-shadow: var(--glass-shadow); border-color: transparent; background-image: var(--glass-sheen); }
+.glass-liquid.has-wallpaper :is([data-slot="popover-content"], [data-slot="select-content"], [data-slot="dialog-content"], [data-slot="sheet-content"]) {
+  backdrop-filter: var(--glass-float); background-image: var(--glass-sheen); box-shadow: var(--glass-lifted); }
+.glass-liquid.has-wallpaper .glass-pop { --pop-blur: var(--glass-float); background-image: var(--glass-sheen); box-shadow: var(--glass-lifted); }
+.glass-liquid.glass-light .glass-pop { --glass-sheet: rgb(255 255 255 / .72); }
+.glass-liquid.has-wallpaper :is([cmdk-item][data-selected="true"], [data-slot="select-item"][data-highlighted]) { box-shadow: inset 0 0 0 .5px var(--glass-stroke); }
+.glass-liquid.has-wallpaper .toasts .undo-bar { background: rgb(20 20 24 / .5) var(--glass-sheen); backdrop-filter: var(--glass-float); box-shadow: var(--glass-lifted); }
+@media (hover: hover) and (pointer: fine) {
+  .glass-liquid.has-wallpaper [data-slot="card"].lift:hover { background-color: var(--glass-hover); box-shadow: var(--glass-shadow); }
+}
+/* asked for less see-through, or high contrast: the same tint, solid. Focus rings and status colours stay as they are. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass-liquid.has-wallpaper { --card: rgb(20 20 24); --popover: rgb(20 20 24); --glass-sheet: rgb(20 20 24); --bar-bg: rgb(20 20 24); --glass-hover: rgb(34 34 40);
+    --glass-blur: none; --glass-float: none; --glass-sheen: none; }
+  .glass-liquid.glass-light, .glass-liquid.glass-light [data-ink="dark"] { --card: #fff; --popover: #fff; --glass-sheet: #fff; --bar-bg: #fff; --glass-hover: #f4f4f6; }
+  .glass-liquid.glass-light [data-ink="light"] { --card: rgb(16 18 22); --glass-hover: rgb(30 32 38); }
+  .glass-liquid.has-wallpaper .toasts .undo-bar { background: rgb(20 20 24); }
+}
+@media (forced-colors: active) {
+  .glass-liquid.has-wallpaper :is([data-slot="card"], .glass, .glass-bar::before, .glass-round, .glass-pop, .undo-bar, [data-slot="popover-content"], [data-slot="select-content"], [data-slot="dialog-content"], [data-slot="sheet-content"]) {
+    background: Canvas; backdrop-filter: none; }
+  .glass-liquid.has-wallpaper :is([data-slot="card"], .glass, .glass-bar, .glass-pop, .undo-bar) { border: 1px solid CanvasText; }
+}
+
 .no-scrollbar { scrollbar-width: none; } .no-scrollbar::-webkit-scrollbar { display: none; }
 
 /* ── Motion. One set of curves and durations for the whole app (Emil Kowalski's): ease-out for things arriving or

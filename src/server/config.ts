@@ -132,7 +132,9 @@ export const Appearance = z.object({
     shadow: z.enum(['none', 'soft', 'deep']).optional(),
   }).strict().optional(),
   // the frost: how much of the card's tint shows (0..1), and how hard the page behind blurs in px. 0 turns blur off everywhere.
-  glass: z.object({ opacity: z.number().min(0).max(1).optional(), blur: z.number().min(0).max(80).optional() }).strict().optional(),
+  // material: frosted (heavy blur, the original) or liquid (clearer glass with a lit rim, the colour coming through from behind);
+  // each browser can try the other in ⌘K
+  glass: z.object({ opacity: z.number().min(0).max(1).optional(), blur: z.number().min(0).max(80).optional(), material: z.enum(['frosted', 'liquid']).optional() }).strict().optional(),
   wallpaper: Walls.optional(),             // local file path (served by Valet), image URL, colour or gradient; any of them turns cards to glass
   wallpapers: z.record(z.string(), Walls).default({}),         // a different one per tab, by the tab's name
   rotate: Every.optional(),                // how long each wallpaper in a list stays

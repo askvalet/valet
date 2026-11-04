@@ -1,11 +1,14 @@
 // Puts the config's look on the page. The server has already worked it out (src/shared/look.ts); this applies it and
 // takes back whatever the last config set, so a reload never leaves a stale value behind. It's also kept for theme.js,
 // which puts it back before first paint.
+import { setGlass } from './glass.ts';
+
 export type Theme = 'auto' | 'light' | 'dark';
 export interface Look { vars: Record<string, string>; classes: string[]; theme: Theme; css?: string; font?: { family: string; file?: string; sheet?: string } }
 
 const root = document.documentElement;
 let vars: string[] = [], classes: string[] = [];
+
 
 function link(id: string, href?: string) {
   const el = document.getElementById(id) as HTMLLinkElement | null;
@@ -21,6 +24,7 @@ export function applyLook(look: Look) {
   for (const [k, v] of Object.entries(look.vars)) root.style.setProperty(k, v);
   root.classList.add(...look.classes);
   vars = Object.keys(look.vars); classes = look.classes;
+  setGlass(look.classes.includes('glass-liquid'));
   link('valet-font', look.font?.sheet);
   if (look.font?.file) new FontFace(look.font.family, `url(${JSON.stringify(look.font.file)})`).load().then(f => document.fonts.add(f)).catch(() => {});
   document.getElementById('valet-css')?.remove();   // last in the head, so it comes after everything else

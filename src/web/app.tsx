@@ -14,6 +14,7 @@ import { suggest } from './suggest.ts';
 import { asView, type View } from '../shared/views.ts';
 import { clock, day, favorites, label, oneLine, sayHow, setFormat, stillTrue, tabHash, type Format } from './format.ts';
 import { applyLook, applyTheme, type Look } from './look.ts';
+import { adaptInk } from './ink.ts';
 import type { Labels } from '../shared/labels.ts';
 import { ChatBeam } from './beam.tsx';
 import { ClockMonth, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, shapeOf, TileSkeleton, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
@@ -429,6 +430,7 @@ function Home({ account }: { account: boolean }) {
   const walls = (view !== 'all' && page?.appearance.tabWalls[view]) || page?.appearance.walls || [];
   const wall = walls.length > 0, themeName = page?.look.theme;
   useEffect(() => { if (themeName) applyTheme(themeName, wall); }, [themeName, wall]);
+  useEffect(adaptInk, []);
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === 'k' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setPalette(p => !p); } };
     addEventListener('keydown', k); return () => removeEventListener('keydown', k);

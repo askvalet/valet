@@ -111,8 +111,8 @@
 /* appearance.rim: light on the edge of a pane, fixed. Bright where it falls on the top, dark down the sides, a little thrown back
    along the bottom. One conic gradient, flat along each edge and turning near the corners, which --lit says where to expect (a bar's are
    far from the top's middle, a card's nearer), and a mask that leaves only the 1px ring of it. It sits under the content and paints once.
-   Over no wallpaper, or light or unfrosted glass, there's no pane for it to be the edge of. */
-.has-rim.has-wallpaper:not(.no-blur, .glass-light) :is([data-slot="card"]:not(.chat-card *, .glass-pop *), .glass, .glass-bar, form.glass-round, .composer) {
+   Over no wallpaper, or light, unfrosted or liquid glass (which lights its own edge), there's no pane for it to be the edge of. */
+.has-rim.has-wallpaper:not(.no-blur, .glass-light, .glass-liquid) :is([data-slot="card"]:not(.chat-card *, .glass-pop *), .glass, .glass-bar, form.glass-round, .composer) {
   isolation: isolate; border-width: 0;   /* the ring is the edge: a border beside it doubles at the corners */
   &:is(form, .composer) { position: relative; }
   &:is(.glass-bar, form, .composer)::after { --lit: 84deg; }

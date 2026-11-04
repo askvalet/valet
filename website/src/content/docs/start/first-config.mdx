@@ -94,7 +94,16 @@ appearance:
   dim: 0.3
 ```
 
-Any wallpaper turns the cards to frosted glass. The [configuration reference](/reference/configuration/#appearance) has the rest: colours, fonts, corners, density, your own CSS.
+Any wallpaper turns the cards to frosted glass. For clearer glass that lets the wallpaper's colour through, with an edge that catches the light, try the liquid material:
+
+```yaml
+appearance:
+  glass: { material: liquid }   # frosted is the default
+```
+
+You can also try it in one browser first: open ⌘K and choose **Liquid glass**. In light, a card over a dark part of the wallpaper turns dark with light text so it stays readable. If your system asks for reduced transparency or high contrast, liquid glass goes solid.
+
+The [configuration reference](/reference/configuration/#appearance) has the rest: colours, fonts, corners, density, your own CSS.
 
 ## Next
 

@@ -1,6 +1,6 @@
 // The ⌘K palette: run a plain command, ask, do a card's action, open a service, jump to a tab. Loaded the first time it opens.
 // Commands come first and need no model: they're matched here as you type and run by the server (src/server/commands.ts).
-import { ArrowUp, Bell, BellOff, CornerDownLeft, Globe, LayoutGrid, LogOut, Monitor, Search, Volume2, VolumeX, Zap } from 'lucide-react';
+import { ArrowUp, Bell, BellOff, CornerDownLeft, Droplet, Globe, LayoutGrid, LogOut, Monitor, Search, Volume2, VolumeX, Zap } from 'lucide-react';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { defaultFilter } from 'cmdk';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
@@ -12,6 +12,7 @@ import { Approval, ChatCard } from './approval.tsx';
 import type { ChatUi } from './assistant.tsx';
 import { DOT, Icon } from './cards.tsx';
 import { label } from './format.ts';
+import { isLiquid, toggleGlass } from './glass.ts';
 import { toast } from './feel.tsx';
 import { signOut } from './signin.tsx';
 import { play, toggleSounds, useSounds } from './sound.ts';
@@ -64,6 +65,9 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
   // notifications on this device: what it is now is asked of the browser and the server as the palette opens
   const pushed = usePush(), alerts = { value: 'notifications on this device', keywords: ['notifications', 'notify', 'push', 'alerts', 'phone'] };
   useEffect(() => { if (!cannot(device)) void checkPush(); }, []);
+  // the glass, liquid or frosted: this browser's say over appearance.glass.material, only where there's glass to change
+  const glassy = typeof document !== 'undefined' && document.documentElement.classList.contains('has-wallpaper'), [liquid, setLiquid] = useState(isLiquid);
+  const glass = { value: 'liquid glass', keywords: ['glass', 'liquid', 'frosted', 'material', 'look'] };
   const [asking, setAsking] = useState(false);
   const flipPush = async () => {
     const no = cannot(device);
@@ -155,7 +159,7 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
     // after Open and Go to, so a service or tab with the same name as a command keeps Enter
     run,
     // this browser's say over appearance.sounds; it's remembered here and nowhere else
-    [best([sound, alerts]), <CommandGroup key="feel" heading="This device">
+    [best([sound, alerts, glass]), <CommandGroup key="feel" heading="This device">
       <CommandItem {...sound} onSelect={() => { const on = toggleSounds(); toast('sounds', { text: on ? 'Sounds on' : 'Sounds off' }, { ms: 2000 }); }}>
         {sounds.on ? <VolumeX /> : <Volume2 />}{sounds.on ? 'Turn sounds off' : 'Turn sounds on'}
       </CommandItem>
@@ -163,6 +167,10 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
         {pushed === 'on' ? <Bell /> : <BellOff className="text-muted-foreground" />}Notifications on this device
         <span className="ml-auto text-[12px] text-muted-foreground">{pushed === 'on' ? 'On' : 'Off'}</span>
       </CommandItem>
+      {glassy && <CommandItem {...glass} onSelect={() => { const on = toggleGlass(); setLiquid(on); toast('glass', { text: on ? 'Liquid glass on this device' : 'Frosted glass on this device' }, { ms: 2000 }); }}>
+        <Droplet className={cn(!liquid && 'text-muted-foreground')} />Liquid glass
+        <span className="ml-auto text-[12px] text-muted-foreground">{liquid ? 'On' : 'Off'}</span>
+      </CommandItem>}
     </CommandGroup>],
     [best([{ value: 'sign out' }, { value: 'sign out everywhere' }]), account && <CommandGroup key="account" heading="Account">
       <CommandItem value="sign out" onSelect={() => signOut()}><LogOut />Sign out</CommandItem>

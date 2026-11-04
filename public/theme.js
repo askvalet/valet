@@ -7,6 +7,7 @@
   if (l) { if (l.theme !== 'auto') root.dataset.theme = l.theme;
     for (var k in l.vars) root.style.setProperty(k, l.vars[k]);
     root.classList.add.apply(root.classList, l.classes); }
+  try { var g = localStorage.getItem('valet-glass'); if (g) root.classList.toggle('glass-liquid', g === 'liquid'); } catch (e) {}
   var apply = function () { var t = root.dataset.theme || saved(); root.classList.toggle('dark', t ? t === 'dark' : m.matches); };
   apply(); m.addEventListener('change', apply); })();
 // the browser's own chrome (and an installed app's title bar) wears the page's background, whichever way it turns

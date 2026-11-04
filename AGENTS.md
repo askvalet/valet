@@ -118,6 +118,11 @@ https://askvalet.dev.
 - **Glass over a wallpaper.** With a wallpaper, every surface is frosted glass (`has-wallpaper`): translucent graphite,
   heavy blur, saturation near 1 so surfaces stay neutral, a hairline light edge. Floating chrome (top bars,
   popovers) is frostier than cards so it stays legible over content while scrolling.
+- **Liquid glass is a second material, not a second design** (`glass-liquid`, `appearance.glass.material` or ⌘K per browser).
+  It only swaps the `--glass-*`, `--card`, `--bar-*` tokens and adds a sheen; a surface that wants glass uses the tokens and gets
+  both. `ink.ts` turns a card dark-tinted with light ink in light liquid glass over a dark patch of wallpaper (sampled once
+  per settle, never per frame). The spec's SVG rim lens was tried and left out: over a 10px blur it barely shows and it cost
+  ~20% of scroll frames.
 - **The accent is rare.** In a chart one thing leads in the accent and the rest are neutral steps; a colour that isn't a
   status or the leader doesn't belong in the chrome. Posters, the house and photos carry the colour.
 - **The title says whose homelab it is, not hello.** `hero.greeting: "{greeting}, {name}"` brings the time of day back.

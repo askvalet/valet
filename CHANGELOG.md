@@ -5,6 +5,11 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- Liquid glass, to try: `appearance.glass.material: liquid` swaps the frosted glass for a clearer one. The blur is lighter and keeps the wallpaper's colour, the edge is lit from the top left, there's a soft shadow and a sheen inside, and hovering a card brightens its glass. In light, a card over a dark part of the wallpaper turns dark with light text, and the cards in a row decide together. Frosted stays the default. Any browser can flip between the two in ⌘K (**Liquid glass**, under This device), and the demo can too.
+- With liquid glass, asking your system for reduced transparency or high contrast makes every surface solid.
+
 ## [0.1.7] - 2026-11-04
 
 ### Added

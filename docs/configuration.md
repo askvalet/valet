@@ -116,7 +116,8 @@ offline, so it's the choice if you'd rather no browser talks to a font CDN.
 |---|---|---|
 | `glass.opacity` | `1`; `0.56` over a wallpaper | how much of the card's tint shows, 0–1 |
 | `glass.blur` | 36 | px behind cards; bars and popovers keep in proportion. `0` turns blur off everywhere, and floating sheets go nearly solid so they stay readable |
-| `rim` | none | a fixed bevel of light on the edge of cards, bars and the ask box, 0–1: bright along the top, dark down the sides. It shows on dark glass only, so not without a wallpaper, in light, or with `glass.blur: 0` |
+| `glass.material` | `frosted` | `frosted` is the heavy blur. `liquid` is clearer glass: a lighter blur that keeps the wallpaper's colour, an edge lit from the top left and a soft shadow. In light, a card over a dark part of the wallpaper turns dark with light text. Each browser can try the other in ⌘K (**Liquid glass**, under This device). With reduced transparency or high contrast asked for, it goes solid |
+| `rim` | none | a fixed bevel of light on the edge of cards, bars and the ask box, 0–1: bright along the top, dark down the sides. It shows on dark frosted glass only, so not without a wallpaper, in light, with `glass.material: liquid` (which lights its own edge) or with `glass.blur: 0` |
 | `wallpaper` | none | a file (a path Valet can read: it serves it), an image URL, a colour, or a gradient like `"linear-gradient(135deg, #0f2027, #2c5364)"`. Any of them turns cards to glass. A list takes turns |
 | `rotate` | none | how long each one in a list stays: `10m`, `1h` |
 | `wallpapers` | `{}` | a different one per tab, by the tab's name: `{ Media: /data/film.jpg, Home: "#102030" }`. A value can be a list too. Other tabs and the overview use `wallpaper` |
