@@ -9,10 +9,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 - `appearance.theme: system` follows the device over a wallpaper too: light glass when the phone or computer is in light mode, dark glass in dark mode, and the page turns when the device does (at sunset, say), without a reload. The light/dark switch in the top bar shows over a wallpaper then, and overrides it in that browser only; switching back to what the device says follows the device again. The wall display follows the screen with `system` and stays dark otherwise. `auto` is unchanged: dark glass over a wallpaper, as before.
 - A wallpaper for each theme: `appearance.wallpaper: { light: …, dark: … }` (and the same in `wallpapers`, per tab). `dim` and `blur` take `{ light, dark }` too. The plain forms work as they did.
-- The demo follows the visitor's device.
 
 ### Changed
 
+- In light mode, the selected tab is a dark pill with a white icon, like dark mode's white one, instead of the accent colour.
 - Light mode over a wallpaper is light on every card. A card over a darker part of the wallpaper used to turn dark with light text in liquid glass; now it keeps its light glass and dark text and thickens its white tint (and, in liquid glass, its blur) until the words read. Frosted light glass does the same.
 
 ### Fixed
