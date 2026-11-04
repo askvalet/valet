@@ -14,6 +14,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 - Calendars read time zones (a meeting set in New York lands at the right time anywhere), moved and cancelled occurrences of a repeating event, `DURATION`, monthly rules like "second Tuesday" or "last Friday", and leave cancelled events out.
 - Integrations and plugins can say things at a set time with `reminders()`; a command can open a link with `open: true`; an activity can carry a `countdown` and a `link`, and a list row a `link`.
 - The demo has an online meeting a few minutes away.
+- Valet's docs in ⌘K: type what you're looking for ("wallpaper", "backups", "sonarr") and a **Docs** group under everything else offers the pages and sections about it, opening on askvalet.dev at the right heading. "docs" or "help" alone offers the main pages. The search runs on Valet's own copy of the docs, so it works offline, and on a read-only page too.
 
 ### Security
 

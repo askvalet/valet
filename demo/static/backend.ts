@@ -5,6 +5,7 @@ import './polyfill.ts';
 import { z } from 'zod';
 import { chatRoute } from '../../src/server/chat.ts';
 import { Backups, backupParts } from '../../src/server/backups.ts';
+import { findDocs, type DocIndex } from '../../src/shared/docs.ts';
 import plugin, { page as demoPage } from '../integrations/homelab.mjs';
 import { reply, suggestions } from '../mock-model.mjs';
 
@@ -87,7 +88,7 @@ const SPEED = { display: 'cards', place: 'main', overview: true, variant: 'full'
 const withChanges = (page: any) => demoPage.speed ? { ...page, widgets: { ...page.widgets, 'lab.speed': { title: 'Internet speed' } }, sections: [page.sections[0], SPEED, ...page.sections.slice(1)] } : page;
 demoPage.onChange = () => { if (demoPage.speed) { known.set('lab.speed', { key: 'lab.speed', at: 0 }); void refresh('lab.speed'); } else known.delete('lab.speed'); tell('reload', {}); };
 
-let chat: ((c: any) => Promise<Response>) | undefined;
+let chat: ((c: any) => Promise<Response>) | undefined, docs: Promise<DocIndex> | undefined;
 async function answer(path: string, method: string, body: any, signal?: AbortSignal | null): Promise<Response> {
   const [, , route, a, b] = path.split('?')[0].split('/');
   if (route === 'auth') return json({ mode: 'none', user: { name: 'you' } });
@@ -105,6 +106,8 @@ async function answer(path: string, method: string, body: any, signal?: AbortSig
     const out = await t.run(c.input ?? {});
     return json({ tool: `lab__${name}`, input: c.input ?? {}, card: out.card, ...(c.open && typeof out.open === 'string' && out.open.startsWith('https://') ? { open: out.open } : {}) });
   }
+  // ⌘K's docs, from the pages saved when the site was built
+  if (route === 'docs') { docs ??= snapshot('docs').catch(() => ({ parts: [], integrations: [] })); return json({ docs: findDocs(await docs, new URLSearchParams(path.split('?')[1] ?? '').get('q') ?? '') }); }
   if (route === 'files') return json({ error: 'This demo keeps nothing, so it takes no files' }, 403);
   if (route === 'push') return method === 'GET' ? json({ ready: false, why: 'demo' }) : json({ error: 'The demo can\'t send notifications', why: 'demo' }, 403);
   if (route === 'action') {

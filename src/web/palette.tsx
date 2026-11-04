@@ -16,6 +16,7 @@ import { toast } from './feel.tsx';
 import { signOut } from './signin.tsx';
 import { play, toggleSounds, useSounds } from './sound.ts';
 import { cannot, checkPush, disablePush, enablePush, usePush } from './push.ts';
+import { DOCS_SCORE, DocsGroup, isDoc } from './palette-docs.tsx';
 
 const InlineAnswer = lazy(() => import('./assistant.tsx').then(m => ({ default: m.InlineAnswer })));
 
@@ -174,7 +175,7 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
         <Dialog open={palette} onOpenChange={setPalette}>
           <DialogHeader className="sr-only"><DialogTitle>{assistantName ? `Ask ${assistantName}` : 'Search'}</DialogTitle><DialogDescription>Run a command, ask a question or jump to a section</DialogDescription></DialogHeader>
           <DialogContent showCloseButton={false} className="palette-pop top-[18%] translate-y-0 overflow-hidden rounded-[22px] p-0 sm:max-w-[600px]">
-          <Command filter={(v, q, k) => v.startsWith('cmd ') ? scores.get(v) ?? 0 : rank(v, q, k)} className={SHELL}>
+          <Command filter={(v, q, k) => v.startsWith('cmd ') ? scores.get(v) ?? 0 : isDoc(v) ? DOCS_SCORE : rank(v, q, k)} className={SHELL}>
           <CommandInput placeholder={placeholder ?? assistantName ? placeholder ?? `Ask ${assistantName} anything about your homelab…` : 'Type a command, or search services and pages…'} value={query} onValueChange={setQuery}
             onKeyDown={e => {
               if (e.key === 'ArrowDown' || e.key === 'ArrowUp') picked.current = true;
@@ -205,6 +206,8 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
               {assistantName ? <button className="mx-auto flex items-center gap-2 text-sm" onClick={() => answer(query)}><CornerDownLeft className="text-muted-foreground" />Ask “{query}”</button> : 'Nothing matches'}
             </CommandEmpty>
             {groups.map(g => g[1])}
+            {/* Valet's own docs, always last */}
+            <DocsGroup query={query} close={() => setPalette(false)} />
           </CommandList>
           )}
           </Command>

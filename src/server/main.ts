@@ -28,6 +28,7 @@ import { LABELS } from '../shared/labels.ts';
 import { cardLook, isPaint, listOf, lookOf } from '../shared/look.ts';
 import { sandbox } from './sandbox.ts';
 import { allowed, has, pushAll, Subscription, subscribe, unsubscribe, vapidKeys } from './webpush.ts';
+import { paletteDocs } from './guide.ts';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { getCookie, setCookie } from 'hono/cookie';
 
@@ -353,6 +354,9 @@ app.post('/api/action/:inst/:action', async c => {
 // ⌘K's plain commands ("pause downloads"): run by rule, never by a model, through the same doors as the chat (commands.ts)
 app.get('/api/commands', c => listCommands(c, site));
 app.post('/api/command', c => runCommand(c, site));
+// ⌘K's docs: Valet's own pages, searched here from the copy it ships, so it works offline. Read-only and public
+// knowledge, so a read-only page gets it too; titles, paths and a line each, never a file.
+app.get('/api/docs', async c => c.json({ docs: await paletteDocs(c.req.query('q') ?? '', registry) }));
 
 app.get('/api/image/:inst', async c => {
   const inst = site.instances.get(c.req.param('inst'));
