@@ -2,6 +2,7 @@
 // ends, a number where only what changed moves, and one place at the bottom of the page for what just happened. Plain React
 // and CSS: a gesture writes transform and opacity straight to the element, and everything else is a CSS transition, so it
 // can be caught mid-flight and the reduced-motion rule in styles.css needs nothing more. Licence at the end of this file.
+import { BlossomCarousel, useBlossomNavigation } from '@blossom-carousel/react';
 import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentProps, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -14,93 +15,80 @@ import './feel.css';
 const still = (el?: Element | null) => !!el && getComputedStyle(el).getPropertyValue('--move').trim() === '0';
 /** Past the end a thing still follows the finger, less and less, up to `limit` pixels. */
 export const rubber = (d: number, limit: number) => Math.sign(d) * (1 - 1 / (Math.abs(d) * .55 / limit + 1)) * limit;
-/** Where a throw comes to rest: the stop nearest to where its speed (px/s) would carry it. */
-export const landing = (x: number, v: number, stops: number[]) => stops.reduce((best, s) => Math.abs(s - (x + v * .22)) < Math.abs(best - (x + v * .22)) ? s : best, stops[0] ?? x);
 type Trail = { t: number; x: number }[];
 /** How fast a pointer was going as it let go, from its last 90 ms. */
 const speed = (trail: Trail) => { const end = trail.at(-1)!, from = trail.find(p => end.t - p.t < 90) ?? end; return end.t > from.t ? (end.x - from.x) / (end.t - from.t) * 1000 : 0; };
 
-/** A row of things that scrolls natively, so a finger keeps the phone's own momentum and the page keeps its vertical scroll,
- *  and that a mouse can throw. It lands on a stop, and a press catches it mid-glide. Keys jump: nothing animates on a keyboard. */
-export function useRow<T extends HTMLElement = HTMLDivElement>() {
-  const row = useRef<T | null>(null), [edge, setEdge] = useState({ start: true, end: false });
-  const flight = useRef(0), grab = useRef<{ x: number; left: number; trail: Trail; live: boolean; caught: boolean } | null>(null), threw = useRef(false);
-  const measure = useCallback(() => {
-    const r = row.current; if (!r) return;
-    const start = r.scrollLeft <= 2, end = r.scrollLeft + r.clientWidth >= r.scrollWidth - 2;
-    setEdge(e => e.start === start && e.end === end ? e : { start, end });
-  }, []);
-  const ref = useCallback((el: T | null) => {
-    row.current = el; if (!el) return;
-    const o = new ResizeObserver(measure); o.observe(el);
-    return () => { o.disconnect(); cancelAnimationFrame(flight.current); };
-  }, [measure]);
-  useLayoutEffect(measure);
-  const stops = (r: T) => {
-    const pad = parseFloat(getComputedStyle(r).scrollPaddingLeft) || 0, max = r.scrollWidth - r.clientWidth;
-    return [...r.children].map(c => Math.max(0, Math.min(max, (c as HTMLElement).offsetLeft - pad)));
-  };
-  const halt = (r: T) => { const flying = !!flight.current; cancelAnimationFrame(flight.current); flight.current = 0; r.classList.remove('is-held'); return flying; };
-  // a critically damped spring from wherever it is, at whatever speed it had: no duration to wait out and nothing to overshoot
-  const glide = (r: T, to: number, v = 0) => {
-    halt(r);
-    if (still(r)) { r.scrollLeft = to; return; }
-    r.classList.add('is-held');
-    const W = 14, from = r.scrollLeft, a = from - to, b = v + W * a; let t0 = 0;
-    const step = (t: number) => {
-      t0 ||= t;
-      const s = (t - t0) / 1000, x = to + (a + b * s) * Math.exp(-W * s);
-      r.scrollLeft = x;
-      if (s > .05 && Math.abs(x - to) < .5) { r.scrollLeft = to; halt(r); return; }
-      flight.current = requestAnimationFrame(step);
-    };
-    flight.current = requestAnimationFrame(step);
-  };
-  const aim = (r: T, dir: number) => {
-    const all = stops(r), to = landing(r.scrollLeft + dir * r.clientWidth * .85, 0, all);
-    return (to - r.scrollLeft) * dir > 1 ? to : all.find(s => (s - r.scrollLeft) * dir > 1) ?? to;
-  };
-  const page = (dir: number) => { const r = row.current; if (r) glide(r, aim(r, dir)); };
-  const bind = {
-    ref, onScroll: measure,
-    'data-start': edge.start || undefined, 'data-end': edge.end || undefined,
-    onPointerDown(e: PointerEvent<T>) {
-      const r = e.currentTarget, caught = halt(r); threw.current = false;
-      if (e.pointerType !== 'touch' && !e.button && r.scrollWidth > r.clientWidth) grab.current = { x: e.clientX, left: r.scrollLeft, trail: [], live: false, caught };
-    },
-    onPointerMove(e: PointerEvent<T>) {
-      const g = grab.current, r = e.currentTarget; if (!g) return;
-      const dx = e.clientX - g.x;
-      if (!g.live) { if (Math.abs(dx) < 5) return; g.live = threw.current = true; r.setPointerCapture(e.pointerId); r.classList.add('is-held', 'is-grabbed'); }
-      const want = g.left - dx, max = r.scrollWidth - r.clientWidth, x = Math.max(0, Math.min(max, want));
-      r.scrollLeft = x; r.style.translate = want === x ? '' : `${rubber(x - want, 36)}px 0`;
-      g.trail.push({ t: e.timeStamp, x: -e.clientX }); if (g.trail.length > 8) g.trail.shift();
-    },
-    onPointerUp: (e: PointerEvent<T>) => letGo(e.currentTarget),
-    onPointerCancel: (e: PointerEvent<T>) => letGo(e.currentTarget),
-    onWheel: (e: { currentTarget: T }) => { halt(e.currentTarget); },
-    onDragStart: (e: { preventDefault(): void }) => e.preventDefault(),
-    // a drag that ends on a link isn't a click on it
-    onClickCapture(e: { preventDefault(): void; stopPropagation(): void }) { if (threw.current) { threw.current = false; e.preventDefault(); e.stopPropagation(); } },
-    onKeyDown(e: KeyboardEvent<T>) {
-      const r = e.currentTarget, to = e.key === 'ArrowRight' ? aim(r, 1) : e.key === 'ArrowLeft' ? aim(r, -1) : e.key === 'Home' ? 0 : e.key === 'End' ? r.scrollWidth : null;
-      if (to != null) { e.preventDefault(); halt(r); r.scrollLeft = to; }
-    },
-  };
-  function letGo(r: T) {
-    const g = grab.current; grab.current = null; if (!g) return;
-    r.classList.remove('is-grabbed'); r.style.translate = '';
-    if (g.live) { const v = g.trail.length ? speed(g.trail) : 0; glide(r, landing(r.scrollLeft, v, stops(r)), v); }
-    else if (g.caught) glide(r, landing(r.scrollLeft, 0, stops(r)));
-  }
-  return { bind, page, edge };
+/** How a carousel moves when asked: smoothly, unless this page has been asked to hold still or it was a key. */
+export const glide = (el?: Element | null, key = false): ScrollBehavior => key || still(el ?? document.documentElement) ? 'instant' : 'smooth';
+
+/** A row of things (Blossom Carousel): a native scroller, so a finger keeps the phone's own momentum and the page keeps
+ *  its vertical scroll, and on a mouse Blossom's drag engine lets it be thrown. Snapping is the stylesheet's. Keys page
+ *  through it at once: nothing animates on a keyboard. Its arrows are `RowArrows` with the same `id`. */
+export function Row({ id, className, children, ...props }: ComponentProps<typeof BlossomCarousel> & { id: string }) {
+  return (
+    <BlossomCarousel id={id} data-start="" className={cn('carousel', className)} {...props}
+      onKeyDown={e => {
+        const r = e.currentTarget, dir = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0, to = e.key === 'Home' ? 0 : e.key === 'End' ? r.scrollWidth : null;
+        // on a poster, the arrows (and Home and End) take the focus along, which brings it into view; on the row they page it
+        const all = slidesOf(r), on = all.findIndex(s => s.contains(e.target as Node));
+        if (on >= 0 && (dir || to != null)) {
+          const next = all[dir ? on + dir : to ? all.length - 1 : 0], f = next?.matches('a, button') ? next : next?.querySelector<HTMLElement>('a, button');
+          if (f) { e.preventDefault(); f.focus(); }
+        }
+        else if (dir) { e.preventDefault(); page(r, dir, 'instant'); }
+        else if (to != null) { e.preventDefault(); r.scrollTo({ left: to, behavior: 'instant' }); }
+      }}>
+      {children}
+    </BlossomCarousel>
+  );
+}
+/** About a screenful on; snapping settles it on the nearest thing. */
+const page = (r: Element, dir: number, behavior: ScrollBehavior) => r.scrollBy({ left: dir * r.clientWidth * .85, behavior });
+
+/** The slide nearest the middle of a carousel, and how to bring one there, without moving the page around it. */
+export const nearest = (r: HTMLElement) => {
+  const mid = r.scrollLeft + r.clientWidth / 2; let best = 0, gap = Infinity;
+  slidesOf(r).forEach((s, i) => { const d = Math.abs(s.offsetLeft + s.offsetWidth / 2 - mid); if (d < gap) { gap = d; best = i; } });
+  return best;
+};
+export const centre = (r: HTMLElement, i: number, behavior: ScrollBehavior) => {
+  const all = slidesOf(r), s = all[Math.max(0, Math.min(all.length - 1, i))];
+  if (s) r.scrollTo({ left: s.offsetLeft + s.offsetWidth / 2 - r.clientWidth / 2, behavior });
+};
+const slidesOf = (r: HTMLElement) => [...r.querySelectorAll<HTMLElement>(':scope > [data-blossom-slide]')];
+
+/** Back and forward for a `Row` (or any Blossom carousel): a screenful at a time, or with `one`, the next slide to the
+ *  middle. They dim at the ends and keep the keyboard's focus there (aria-disabled, not disabled), and they're only there
+ *  when the row overflows. This is the only part that hears the row move, and only when an end is reached or left, so the
+ *  row itself never re-renders as it scrolls. It also marks the row's ends for its edge fades. */
+export function RowArrows({ id, className, label, one }: { id: string; className?: string; label?: string; one?: boolean }) {
+  const nav = useBlossomNavigation(id), known = nav.activeIndex >= 0;
+  // until it's measured it's at its start with more to come, as it was drawn, so the arrows don't pop in
+  const canPrev = known && nav.canPrev, canNext = !known || nav.canNext;
+  useEffect(() => {
+    const r = document.getElementById(id); if (!r || !known) return;
+    r.toggleAttribute('data-start', !canPrev); r.toggleAttribute('data-end', !canNext);
+  }, [id, known, canPrev, canNext]);
+  const arrow = (dir: number, shut: boolean, name: string, I: LucideIcon) => (
+    <button type="button" aria-controls={id} aria-label={label ? `${name} in ${label}` : name} aria-disabled={shut} className="shelf-arrow"
+      onClick={e => {
+        const r = document.getElementById(id); if (!r || shut) return;
+        const how = glide(r, e.detail === 0);   // a click from the keyboard jumps
+        if (one) centre(r, nearest(r) + dir, how); else page(r, dir, how);
+      }}><I className="size-4" /></button>
+  );
+  return <div className={cn('flex gap-1.5', !(canPrev || canNext) && 'invisible', className)}>{arrow(-1, !canPrev, 'Previous', ChevronLeft)}{arrow(1, !canNext, 'Next', ChevronRight)}</div>;
 }
 
-/** Back and forward for a row: they dim at the ends and keep the keyboard's focus there (aria-disabled, not disabled). */
-export function Arrows({ row, className }: { row: ReturnType<typeof useRow<any>>; className?: string }) {
-  const arrow = (dir: number, shut: boolean, label: string, I: LucideIcon) => <button type="button" onClick={() => { if (!shut) row.page(dir); }} aria-label={label} aria-disabled={shut} className="shelf-arrow"><I className="size-4" /></button>;
-  return <div className={cn('flex gap-1.5', className)}>{arrow(-1, row.edge.start, 'Previous', ChevronLeft)}{arrow(1, row.edge.end, 'Next', ChevronRight)}</div>;
-}
+/** A poster under the pointer leans a little away from it, the picture sliding inside its frame, so it reads as a thing
+ *  with depth rather than a flat tile. Only a mouse; the stylesheet holds it still for anyone who's asked for less. */
+export const lean = (e: PointerEvent<HTMLElement>) => {
+  const frame = e.currentTarget.querySelector<HTMLElement>('.poster'); if (!frame || e.pointerType !== 'mouse') return;
+  if (e.type === 'pointerleave') { frame.style.removeProperty('--px'); frame.style.removeProperty('--py'); return; }
+  const r = frame.getBoundingClientRect();
+  frame.style.setProperty('--px', ((e.clientX - r.left) / r.width * 2 - 1).toFixed(3)); frame.style.setProperty('--py', ((e.clientY - r.top) / r.height * 2 - 1).toFixed(3));
+};
 
 /** Where a card sits: 0 on top, above that behind it and dimmer, -1 thrown off to the left. Fractions are a card being dragged.
  *  Depth is a dim laid over the card, not its opacity: a see-through card would show the next one's words. */

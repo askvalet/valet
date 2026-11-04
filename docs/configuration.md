@@ -296,7 +296,7 @@ layout:
       - { widget: plex.recent, size: tall, title: New on Plex, icon: film, header: false }
       - { widget: dns.stats, size: small, tint: "#0a7d4f", opacity: 0.8, blur: 12 }
       - { widget: drives.health, size: wide, background: "https://example.com/rack.jpg" }
-      - { widget: plex.top, size: tall, view: coverflow, rows: 3 }
+      - { widget: plex.top, size: tall, view: focus, rows: 3 }
 ```
 
 ## `auth`
@@ -522,14 +522,18 @@ A widget entry takes these, all optional but `widget`:
 
 ```yaml
 widgets:
-  - { widget: plex.top, view: coverflow }
+  - { widget: plex.top, view: focus }
   - { widget: plex.plays, view: bars }
 ```
 
 | Views | Work on |
 |---|---|
 | Charts: `line`, `bars`, `stream`, `race`, `heatmap`, `ranked`, `pie` | anything with numbers: a chart, race, heatmap or ranked card, or a stats card with a pie |
-| Galleries: `row`, `spotlight`, `coverflow`, `desk`, `windows`, `tickets`, `mosaic`, `flashback`, `album` | anything with pictures: a shelf, photos, ranked, race or media card |
+| Galleries: `row`, `spotlight`, `focus`, `desk`, `windows`, `tickets`, `mosaic`, `flashback`, `album` | anything with pictures: a shelf, photos, ranked, race or media card |
+
+`focus` shows the artwork large, one at a time, with the ones either side peeking in smaller and dimmer. Swipe it, drag it
+with a mouse, use its arrows or the arrow keys, or click one at the side to bring it to the middle. `coverflow` is its old
+name and still works.
 
 `heatmap` needs dates. A view that doesn't fit leaves the card as it was. It changes the card, so a small or wide tile keeps
 showing the headline.

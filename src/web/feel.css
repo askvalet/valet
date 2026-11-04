@@ -1,23 +1,20 @@
 /* The motion in feel.tsx. Everything here is transform and opacity, but for a row's room as it opens; the reduced-motion rule in
    styles.css covers all of it. */
 
-/* A row of things. The edges fade where there's more, and something half out of view sits a little back until it arrives.
-   The scroll drives that on the compositor, with nothing written per frame; a browser that can't simply leaves it out. */
+/* A row of things (a Blossom carousel: Blossom's stylesheet adds dragging's cursor and lets go of snapping while it's held).
+   The edges fade where there's more, and something half out of view sits a little back until it arrives. The scroll drives
+   that on the compositor, with nothing written per frame; a browser that can't simply leaves it out. */
 @property --fade-start { syntax: "<length>"; inherits: false; initial-value: 0px; }
 @property --fade-end { syntax: "<length>"; inherits: false; initial-value: 0px; }
 .carousel {
-  position: relative; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none;
+  position: relative; inline-size: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none;
   --fade-start: 28px; --fade-end: 28px;
   mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
-  transition: --fade-start var(--dur-pop) var(--ease-out), --fade-end var(--dur-pop) var(--ease-out), translate var(--dur-move) var(--ease-out);
+  transition: --fade-start var(--dur-pop) var(--ease-out), --fade-end var(--dur-pop) var(--ease-out);
 }
 .carousel::-webkit-scrollbar { display: none; }
 .carousel[data-start] { --fade-start: 0px; }
 .carousel[data-end] { --fade-end: 0px; }
-.carousel.is-held { scroll-snap-type: none; }
-.carousel.is-grabbed { cursor: grabbing; user-select: none; transition-property: --fade-start, --fade-end; }
-.carousel.is-grabbed > * { pointer-events: none; }
-@media (hover: hover) and (pointer: fine) { .carousel:not([data-start][data-end]) { cursor: grab; } }
 .desk.carousel { scroll-padding-left: 10px; }
 .desk.carousel > * { scroll-snap-align: start; }
 .carousel:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }

@@ -87,7 +87,7 @@ export default defineIntegration({
         title: 'Continue listening', interval: 300_000,
         async fetch() {
           const items = (await inProgress()).map(shelf);
-          return { type: 'shelf' as const, title: 'Continue listening', icon: 'book', href: web, source, aspect: 'square' as const, layout: 'coverflow' as const, items, empty: 'Nothing in progress',
+          return { type: 'shelf' as const, title: 'Continue listening', icon: 'book', href: web, source, aspect: 'square' as const, layout: 'focus' as const, items, empty: 'Nothing in progress',
             note: items.length ? `${items.length} in progress` : undefined,
             summary: items[0] && { label: 'Listening to', icon: 'book', value: items[0].title, sub: [items[0].subtitle, items[0].badge].filter(Boolean).join(' · ') || undefined, image: items[0].image } };
         },

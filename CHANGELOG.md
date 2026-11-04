@@ -12,6 +12,9 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- Cover flow is now `focus`, a modern carousel: the artwork large in the middle, the ones either side peeking in smaller and dimmer, and the middle one's colours softly lit behind it. It snaps, a mouse can throw it, and a click on one at the side brings it to the middle. `view: coverflow` still works and draws `focus`. Games, books, audiobooks and music that used cover flow use it too.
+- Rows of artwork (shelves, the documents desk, the row beside a spotlight) are built on Blossom Carousel: the browser's own scrolling and snapping, a throw with momentum on a mouse, Previous and Next buttons that name the row, and the arrow keys. Asking for reduced motion makes them jump instead of glide, and turns `focus` into a plain row.
+- A live update that brings back the same things no longer redraws a row of artwork.
 - In light mode, the selected tab is a dark pill with a white icon, like dark mode's white one, instead of the accent colour.
 - Light mode over a wallpaper is light on every card. A card over a darker part of the wallpaper used to turn dark with light text in liquid glass; now it keeps its light glass and dark text and thickens its white tint (and, in liquid glass, its blur) until the words read. Frosted light glass does the same.
 

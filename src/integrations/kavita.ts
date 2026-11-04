@@ -67,7 +67,7 @@ export default defineIntegration({
           title: 'Continue reading', interval: 300_000,
           async fetch() {
             const list = await reading(), first = list[0], pct = first ? progress(first) : undefined;
-            return { type: 'shelf', layout: 'coverflow', title: 'Continue reading', icon: 'book', href: web, source, aspect: 'poster', items: list.map(tile), empty: 'Nothing in progress',
+            return { type: 'shelf', layout: 'focus', title: 'Continue reading', icon: 'book', href: web, source, aspect: 'poster', items: list.map(tile), empty: 'Nothing in progress',
               note: list.length ? `${list.length} in progress` : undefined,
               summary: { label: 'Reading', icon: 'book', value: first ? name(first) : 'Nothing', sub: first?.libraryName, pct, ring: pct != null ? `${Math.round(pct * 100)}%` : undefined, image: first ? ctx.image(String(first.id)) : undefined } };
           },

@@ -188,9 +188,9 @@ nav: { side: left }               # where the tab buttons sit: left, right, top 
 # A widget is "instance.widget", or { widget: instance.widget, size: small | wide | medium | tall | large }:
 #   small = its headline as a tile, wide = that tile at twice the width, medium = the card,
 #   tall = the card over two rows (a photo card as the centrepiece), large = wider, with room for more
-# It can also say how it's drawn, whatever the data, as in { widget: plex.top, view: coverflow }. What doesn't fit stays as it was:
+# It can also say how it's drawn, whatever the data, as in { widget: plex.top, view: focus }. What doesn't fit stays as it was:
 #   numbers: line, bars, stream, race, heatmap (needs dates), ranked, pie
-#   pictures: row, spotlight, coverflow, desk, windows, tickets, mosaic, flashback, album
+#   pictures: row, spotlight, focus, desk, windows, tickets, mosaic, flashback, album
 # rows: n is how many rows it spans, so smaller cards can stack beside it, as in { widget: plex.top, size: tall, rows: 3 }
 layout:
   - title: Now
