@@ -234,6 +234,7 @@ const SECTIONS: [string, string[], string][] = [
   ['Hero', ['hero'], 'The top of the overview.'], ['Chat', ['chat'], 'The assistant\'s window on the page. What it knows and may do is under `assistant`.'],
   ['Nav', ['nav'], 'The tab buttons.'], ['Menubar', ['menubar'], 'The rings in the top bar. A plain list of widget keys works too.'], ['Live', ['live'], 'Rings in the top bar for what\'s happening.'],
   ['Format', ['format'], 'How things are written. `auto` follows the browser.'], ['Labels', ['labels'], 'The words on the page. `{name}`, `{year}`, `{n}` and `{scope}` fill in.'],
+  ['Wall', ['wall'], 'The wall display at `/wall`: its own pages, separate from the main layout. See [wall displays](/concepts/wall/).'], ['Backups', ['backups'], 'Backup health on Valet\'s own Backups card. Set to `false` to turn it off. See [backup health](/concepts/backups/).'],
   ['Notify', ['notify'], 'Where "tell me when" reminders go when you\'re not looking.'], ['Auth', ['auth', 'allowedHosts'], 'Sign-in, and the names Valet answers to. See [sign-in and network safety](/start/sign-in/).'],
   ['History', ['history'], 'Each widget\'s headline numbers over time, so tiles can show a graph. Set to `false` to turn it off.'], ['Plugins', ['plugins'], 'Community integrations. A plain list of npm packages works too. See [the plugin toolkit](/build/plugins/).'],
   ['Assistant', ['assistant'], 'Left out, there is no assistant and the page loses nothing. See [models](/assistant/models/).'], ['MCP', ['mcp'], 'MCP servers the assistant may use. See [MCP](/assistant/mcp/).'], ['MCP server', ['mcpServer'], 'Valet as a read-only MCP server for an AI client you use. See [MCP](/assistant/mcp/#valet-as-an-mcp-server).'],
@@ -242,7 +243,10 @@ const SECTIONS: [string, string[], string][] = [
 const placed = new Set(SECTIONS.flatMap(s => s[1]));
 const lost = catalog.config.filter((r: any) => !placed.has(r.top));
 if (lost.length) throw new Error(`config options with no section: ${lost.map((r: any) => r.path).join(', ')}`);
-const about = (r: any) => NOTES[r.path] ?? r.about ?? (r.path.startsWith('labels.') ? `Default: "${catalog.labels[r.path.slice(7)]}"` : '');
+// a wall page's sections use the main layout's syntax, so they borrow its words
+const byPath = new Map(catalog.config.map((r: any) => [r.path, r]));
+const asLayout = (path: string) => path.replace(/^wall\.(pages\[\]\.)?layout/, 'layout');
+const about = (r: any) => NOTES[r.path] ?? r.about ?? (asLayout(r.path) !== r.path ? (NOTES[asLayout(r.path)] ?? (byPath.get(asLayout(r.path)) as any)?.about) : undefined) ?? (r.path.startsWith('labels.') ? `Default: "${catalog.labels[r.path.slice(7)]}"` : '');
 const row = (r: any) => [`\`${r.path}\``, cell(r.type), r.required ? 'required' : r.default !== undefined ? cell(code(r.default)) : 'optional', cell([about(r), r.range && `Range ${r.range}.`].filter(Boolean).join(' '))];
 const missing = catalog.config.filter((r: any) => !about(r));
 writeFileSync(join(docs, 'reference/configuration.mdx'), page({ title: 'Configuration reference', description: 'Every option in config.yaml, with its default. Generated from the schema.', tableOfContents: { maxHeadingLevel: 2 } }, '', `
