@@ -428,8 +428,11 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
             so nothing moves when the first answer brings the numbers in */}
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
           <span className="shrink-0 text-sm font-semibold">{name}</span>
-          {model && <span className="min-w-0 truncate text-xs text-muted-foreground">{model}</span>}
-          {!external && <span className="grid size-3.5 shrink-0 place-items-center self-center">{context && <ContextMeter used={context.used} total={context.window} fresh={() => { stop(); setMessages([]); setTook({}); }} />}</span>}
+          {/* the model and its meter as one inline group: the group sits on the name's baseline, the meter centred on the model's line */}
+          <span className="inline-flex min-w-0 items-center gap-1.5 text-xs leading-4 text-muted-foreground">
+            {model && <span className="min-w-0 truncate">{model}</span>}
+            {!external && <span className="relative size-3.5 shrink-0 [&>.ctx]:absolute [&>.ctx]:top-1/2 [&>.ctx]:left-1/2 [&>.ctx]:-translate-x-1/2 [&>.ctx]:-translate-y-1/2">{context && <ContextMeter used={context.used} total={context.window} fresh={() => { stop(); setMessages([]); setTook({}); }} />}</span>}
+          </span>
         </div>
         {sheet && <button onClick={onClose} onPointerDown={e => e.stopPropagation()} aria-label="Close" className="press grid size-9 place-items-center rounded-full bg-white/[.08]"><ChevronDown className="size-[18px]" /></button>}
         {onDismiss && <button onClick={onDismiss} aria-label="Close" className="chat-icon text-muted-foreground"><X className="size-4" /></button>}
