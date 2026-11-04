@@ -12,6 +12,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- The chat's header is one line: the assistant's name, then the model and its context meter, whose place is kept so nothing moves when the numbers arrive.
+- The context meter knows a local model's window by itself when its server's model list says it (`max_model_len`, `context_length`, as vLLM and llama.cpp do), so `assistant.contextWindow` is only needed when it doesn't.
 - In light mode, the selected tab is a dark pill with a white icon, like dark mode's white one, instead of the accent colour.
 - Light mode over a wallpaper is light on every card. A card over a darker part of the wallpaper used to turn dark with light text in liquid glass; now it keeps its light glass and dark text and thickens its white tint (and, in liquid glass, its blur) until the words read. Frosted light glass does the same.
 

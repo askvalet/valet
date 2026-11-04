@@ -63,11 +63,11 @@ If that matters to you, use a local model, or set sensitive integrations to `non
 | `instructions` | none | Extra text for the system prompt. |
 | `access` | `{ default: read }` | What it may use. See [access levels](/assistant/access/). |
 | `maxSteps` | `6` | Tool rounds per answer, 1 to 20. The last step is kept for answering. |
-| `contextWindow` | known Claude models | How many tokens the model holds, for the chat's context meter. |
+| `contextWindow` | known Claude models, or what your server reports | How many tokens the model holds, for the chat's context meter. |
 | `background` | see below | What it does on its own. |
 | `suggestions` | four questions | Offered on an empty chat and in the palette. |
 
-A small pie beside the model's name in the chat shows how full its context is, from the tokens the model reported for its last step. Hover or tap it for the numbers. Past three quarters it says that long chats get slower and lose track of how they started, and offers a fresh chat. Claude models know their window; for a local model, set `contextWindow` to the context length your server runs it with (Ollama's `num_ctx`, say), or the meter shows only the tokens used.
+A small pie beside the model's name in the chat shows how full its context is, from the tokens the model reported for its last step. Hover or tap it for the numbers. Past three quarters it says that long chats get slower and lose track of how they started, and offers a fresh chat. Claude models know their window. For other models Valet asks the server's model list, which vLLM, llama.cpp and similar servers answer with the model's context length (`max_model_len`, `context_length`). If yours doesn't say, as Ollama's doesn't, set `contextWindow` to the length your server runs it with (Ollama's `num_ctx`, say), or the meter shows only the tokens used.
 
 The chat window has its own options under [`chat`](/reference/configuration/#chat). Only the last 24 messages go to the model, and tool results from older turns shrink to a preview, so a long chat doesn't get slower with every turn.
 

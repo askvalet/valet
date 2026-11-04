@@ -226,7 +226,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     });
     // a tool that throws past runTool (a failed input check, say): the log and the page should both say what happened
     // how full the model's context is after each step, for the meter beside its name: what it was given, and what it said
-    const window = contextWindow(a);
+    const window = await contextWindow(a);
     const messageMetadata = ({ part }: { part: { type: string; usage?: { inputTokens?: number; outputTokens?: number } } }) =>
       part.type === 'finish-step' && part.usage?.inputTokens ? { context: { used: part.usage.inputTokens + (part.usage.outputTokens ?? 0), window } } : undefined;
     const failed = (e: unknown) => { const m = safety.redact((e as Error)?.message ?? String(e)); console.error(`assistant: ${m}`); return m; };

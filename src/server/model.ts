@@ -48,4 +48,34 @@ export function windowOf(model: string): number | undefined {
   if (family === 'fable' || family === 'mythos') return 1_000_000;
   return v >= (family === 'haiku' ? 5 : 4.6) ? 1_000_000 : 200_000;
 }
-export const contextWindow = (a: NonNullable<Config['assistant']>) => a.contextWindow ?? windowOf(a.model);
+/** A model's window as an OpenAI-style `/models` list reports it: vLLM and NInfer say `max_model_len`, others
+ *  `context_length`, `context_window` or `max_context_length`, and llama.cpp's own server `meta.n_ctx_train`. */
+export function windowFromModels(list: unknown, model: string): number | undefined {
+  const data = (list as { data?: unknown[] })?.data;
+  if (!Array.isArray(data)) return undefined;
+  const m = data.find((d: any) => d?.id === model) as any;
+  if (!m) return undefined;
+  for (const v of [m.max_model_len, m.context_length, m.context_window, m.max_context_length, m.meta?.n_ctx_train]) {
+    if (typeof v === 'number' && Number.isFinite(v) && v >= 1000 && v <= 10_000_000) return Math.round(v);
+  }
+  return undefined;
+}
+
+// what the model's own server says, asked once and kept a while: a slow or silent server just means no window
+const asked = new Map<string, { at: number; window?: number }>();
+async function askServer(a: NonNullable<Config['assistant']>): Promise<number | undefined> {
+  if (a.provider !== 'openai-compatible') return undefined;
+  const base = (a.baseURL ?? 'http://localhost:11434/v1').replace(/\/$/, ''), key = `${base} ${a.model}`, hit = asked.get(key);
+  if (hit && Date.now() - hit.at < (hit.window ? 6 * 36e5 : 6e5)) return hit.window;
+  let window: number | undefined;
+  try {
+    const r = await fetch(`${base}/models`, { headers: { 'User-Agent': 'Valet', ...(a.apiKey ? { Authorization: `Bearer ${a.apiKey}` } : {}) }, signal: AbortSignal.timeout(3000) });
+    if (r.ok) window = windowFromModels(await r.json(), a.model);
+  } catch { /* no answer: the meter shows only what's used */ }
+  asked.set(key, { at: Date.now(), window });
+  return window;
+}
+
+/** How many tokens the assistant's model holds: the config's `contextWindow`, else what its name says, else what its
+ *  server's model list reports. */
+export const contextWindow = async (a: NonNullable<Config['assistant']>) => a.contextWindow ?? windowOf(a.model) ?? await askServer(a);

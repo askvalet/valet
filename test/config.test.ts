@@ -68,10 +68,10 @@ test('context window: known Claude models fill it in, however the provider spell
   for (const m of ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-opus-5-5', 'claude-sonnet-5', 'anthropic/claude-sonnet-4.6', 'claude-haiku-5-5', 'claude-fable-5-1']) assert.equal(windowOf(m), 1_000_000, m);
   for (const m of ['claude-haiku-4-5', 'claude-sonnet-4-5', 'claude-sonnet-4-20250514', 'claude-opus-4-1-20250805', 'claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'anthropic/claude-3.5-haiku']) assert.equal(windowOf(m), 200_000, m);
   for (const m of ['qwen3.8-27b', 'llama3.1:8b', 'gpt-4o', 'claude']) assert.equal(windowOf(m), undefined, m);
-  const a = (o: object) => Config.parse({ assistant: { model: 'qwen3.8-27b', ...o } }).assistant!;
-  assert.equal(contextWindow(a({})), undefined);
-  assert.equal(contextWindow(a({ contextWindow: 32768 })), 32768);
-  assert.equal(contextWindow(a({ model: 'claude-sonnet-4-5', contextWindow: 1_000_000 })), 1_000_000);
+  const a = (o: object) => Config.parse({ assistant: { model: 'qwen3.8-27b', baseURL: 'http://127.0.0.1:9/v1', ...o } }).assistant!;   // nothing listens there
+  assert.equal(await contextWindow(a({})), undefined);
+  assert.equal(await contextWindow(a({ contextWindow: 32768 })), 32768);
+  assert.equal(await contextWindow(a({ model: 'claude-sonnet-4-5', contextWindow: 1_000_000 })), 1_000_000);
   assert.equal(Config.safeParse({ assistant: { model: 'm', contextWindow: 12 } }).success, false);
 });
 
@@ -94,4 +94,15 @@ test('notify: a config from before webPush, with channels and no webPush, still 
   assert.equal(c.notify.webPush.enabled, true);
   assert.deepEqual(c.notify.channels, []);
   assert.equal(Config.parse({ notify: { insights: true } }).notify.webPush.enabled, true);
+});
+
+test('context window: read from the model server\'s list when the name doesn\'t say', async () => {
+  const { windowFromModels } = await import('../src/server/model.ts');
+  const list = { object: 'list', data: [{ id: 'qwen3.8-27b', max_model_len: 98304 }, { id: 'small', context_length: 32768 }, { id: 'cpp', meta: { n_ctx_train: 131072 } }, { id: 'odd', max_model_len: 'lots' }] };
+  assert.equal(windowFromModels(list, 'qwen3.8-27b'), 98304);
+  assert.equal(windowFromModels(list, 'small'), 32768);
+  assert.equal(windowFromModels(list, 'cpp'), 131072);
+  assert.equal(windowFromModels(list, 'odd'), undefined);
+  assert.equal(windowFromModels(list, 'missing'), undefined);
+  assert.equal(windowFromModels({ nope: true }, 'qwen3.8-27b'), undefined);
 });

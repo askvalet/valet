@@ -424,9 +424,12 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
       <header {...(sheet ? grab : {})} className={cn('relative z-20 flex items-center gap-2.5 px-5', sheet ? 'border-b ' : '', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'py-2.5')}>
         {sheet && <span className="sheet-grip absolute top-[max(.4rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2" aria-hidden />}
         {ui.icon && <span className="icon-tile"><Icon name={ui.icon} /></span>}
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold leading-tight">{name}</div>
-          <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"><span className="truncate">{model}</span>{context && !external && <ContextMeter used={context.used} total={context.window} fresh={() => { stop(); setMessages([]); setTook({}); }} />}</div>
+        {/* one line: the name, then the model and its context meter beside it. The meter's place is kept from the start,
+            so nothing moves when the first answer brings the numbers in */}
+        <div className="flex min-w-0 flex-1 items-baseline gap-2">
+          <span className="shrink-0 text-sm font-semibold">{name}</span>
+          {model && <span className="min-w-0 truncate text-xs text-muted-foreground">{model}</span>}
+          {!external && <span className="grid size-3.5 shrink-0 place-items-center self-center">{context && <ContextMeter used={context.used} total={context.window} fresh={() => { stop(); setMessages([]); setTook({}); }} />}</span>}
         </div>
         {sheet && <button onClick={onClose} onPointerDown={e => e.stopPropagation()} aria-label="Close" className="press grid size-9 place-items-center rounded-full bg-white/[.08]"><ChevronDown className="size-[18px]" /></button>}
         {onDismiss && <button onClick={onDismiss} aria-label="Close" className="chat-icon text-muted-foreground"><X className="size-4" /></button>}
