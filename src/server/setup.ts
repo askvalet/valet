@@ -3,24 +3,19 @@
 // `assistant.access.config`. It can't touch sign-in, plugins, MCP or its own access, point at files on disk, or write a
 // secret into the file: those stay in .env. The save before this one is kept, so a change can be undone. Saved edits go through the same hot reload as a person's.
 import { chmod, readFile, writeFile } from 'node:fs/promises';
-import { Document, isMap, isSeq, parse as parseYaml, parseDocument, stringify, YAMLMap, YAMLSeq } from 'yaml';
+import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
 import { Config, parseConfig } from './config.ts';
 import { makeContext, type Instance, type Integration, type Tool } from './core.ts';
 import { check } from './site.ts';
 import type { Card } from '../shared/cards.ts';
+import { applyOps, diff, Op } from './yaml-edit.ts';
 
 const EDITABLE = new Set(['integrations', 'layout', 'links', 'menubar', 'weather', 'live', 'nav', 'hero', 'chat', 'format', 'labels', 'title', 'greeting', 'location', 'timezone', 'search', 'history', 'welcome', 'appearance', 'calendar', 'recap', 'notice']);
 // Of `assistant`, only how it comes across. Its access, model and prompt stay with the owner: it can't raise its own power.
 const ASSISTANT = new Set(['name', 'suggestions']);
 const SECRET_KEY = /^(api[-_]?key|token|password|secret|client[-_]?secret|authorization|x-api-key)$/i;
 
-const Op = z.object({
-  op: z.enum(['set', 'append', 'remove']).describe('set a value, append to a list, or remove'),
-  path: z.array(z.union([z.string(), z.number()])).min(1).describe('where, e.g. ["integrations", "kuma"] or ["layout", 2, "widgets"]'),
-  value: z.unknown().optional(),
-});
-export type Op = z.infer<typeof Op>;
 
 // Appearance can name files, and Valet serves those: the assistant may set looks, never point it at something on disk.
 const LOCAL = /^(\/|\.{1,2}\/|~|file:)/;   // and `css`, which is served to the sign-in screen and can load things from anywhere
@@ -110,111 +105,7 @@ export function guard(beforeText: string, afterText: string): string | null {
   return null;
 }
 
-const YAML = { lineWidth: 0, flowCollectionPadding: false };
-// `{ a: 1 }` or `{a: 1}`: whichever the file already uses
-const style = (text: string) => ({ ...YAML, flowCollectionPadding: (text.match(/[{[] \S/g)?.length ?? 0) > (text.match(/[{[][^\s}\]]/g)?.length ?? 0) });
-let house = YAML;
-const flow = (v: unknown) => stringify(v, { ...house, collectionStyle: 'flow' }).trim();
-const indented = (yaml: string, pad: string) => yaml.trimEnd().split('\n').map(l => l ? pad + l : l).join('\n') + '\n';
-const lineStart = (text: string, at: number) => text.lastIndexOf('\n', at - 1) + 1;
-/** Where a new line goes after a block collection: past the end of its last line, trailing comment included. */
-const after = (text: string, end: number) => { if (text[end - 1] === '\n') return end; const nl = text.indexOf('\n', end); return nl < 0 ? text.length : nl + 1; };
-
-/** Change just the bytes an edit needs, so a person's spacing and comments stay exactly as they were. Returns null for
- *  the shapes this doesn't cover. */
-function splice(text: string, o: Op): string | null {
-  const doc = parseDocument(text);
-  // a parent that isn't there yet is created by the slow path below; falling back to the top would write the key in the wrong place
-  const parent = o.path.length === 1 ? doc.contents : doc.getIn(o.path.slice(0, -1), true), target = doc.getIn(o.path, true) as any;
-  if (!parent) return null;
-  const put = (at: number, s: string) => text.slice(0, at) + s + text.slice(at);
-  if (o.op === 'set' && target?.range && !(target.items && !target.flow)) return text.slice(0, target.range[0]) + flow(o.value) + text.slice(target.range[1]);
-  // a whole block replaced: its lines and nothing else, so the file around it and the diff stay readable
-  if (o.op === 'set' && target?.range && target.items?.length && !target.flow) {
-    const start = lineStart(text, target.range[0]), pad = text.slice(start).match(/^\s*/)![0];
-    return text.slice(0, start) + indented(stringify(o.value, house), pad) + text.slice(after(text, target.range[1]));
-  }
-  if (o.op === 'set' && target == null && isMap(parent) && !parent.flow && parent.items.length) {
-    const first = (parent.items[0].key as any).range[0], pad = text.slice(lineStart(text, first), first);
-    return put(after(text, parent.range![1]), indented(stringify({ [o.path.at(-1)!]: o.value }, house), pad));
-  }
-  if (o.op === 'append' && isSeq(target)) {
-    if (target.flow) return put(target.range![1] - 1, `${target.items.length ? ', ' : ''}${flow(o.value)}`);
-    if (!target.items.length) return null;
-    const pad = text.slice(lineStart(text, target.range![0])).match(/^\s*/)![0];
-    return put(after(text, target.range![1]), indented(`- ${stringify(o.value, house).trimEnd().replace(/\n/g, '\n  ')}`, pad));
-  }
-  return null;
-}
-
-/** When an edit isn't one `splice` knows, the edited document is printed again, but only the one entry it touched:
- *  the deepest key or list item, under a block parent, that holds the change. The rest of the file keeps its bytes. */
-function reprint(text: string, edited: Document, path: (string | number)[]): string | null {
-  const old = parseDocument(text);
-  const render = (node: any, seq: boolean) => {
-    if (!seq && node.key && typeof node.key === 'object') node.key.commentBefore = undefined;   // the lines above stay where they are, so it would print twice
-    const d = new Document(); d.contents = seq ? new YAMLSeq() : new YAMLMap(); (d.contents as any).items.push(node);
-    return d.toString(house);
-  };
-  for (let i = path.length; i >= 1; i--) {
-    const up = path.slice(0, i - 1), key = path[i - 1];
-    const was: any = i === 1 ? old.contents : old.getIn(up, true), now: any = i === 1 ? edited.contents : edited.getIn(up, true);
-    if (!was || !now || was.flow || now.flow) continue;
-    if (isMap(was) && isMap(now)) {
-      const find = (m: any) => m.items.find((p: any) => String(p.key?.value ?? p.key) === String(key));
-      const a = find(was), b = find(now);
-      if (!a && !b) continue;
-      if (!a) {
-        if (!was.items.length) continue;
-        const first = (was.items[0].key as any).range[0], pad = text.slice(lineStart(text, first), first), at = after(text, was.range![1]);
-        return text.slice(0, at) + indented(render(b, false), pad) + text.slice(at);
-      }
-      const start = lineStart(text, a.key.range[0]), pad = text.slice(start, a.key.range[0]), end = after(text, (a.value?.range ?? a.key.range)[1]);
-      return text.slice(0, start) + (b ? indented(render(b, false), pad) : '') + text.slice(end);
-    }
-    if (isSeq(was) && isSeq(now) && typeof key === 'number' && was.items[key] && i === path.length && now.items.length === was.items.length - 1) {
-      const item: any = was.items[key];   // one entry out of a list: its lines go, and only those
-      return text.slice(0, lineStart(text, item.range[0])) + text.slice(after(text, item.range[1]));
-    }
-    if (isSeq(was) && isSeq(now) && typeof key === 'number' && was.items[key] && now.items[key] && was.items.length === now.items.length) {
-      const item: any = was.items[key], start = lineStart(text, item.range[0]), pad = text.slice(start).match(/^\s*/)![0];
-      return text.slice(0, start) + indented(render(now.items[key], true), pad) + text.slice(after(text, item.range[1]));
-    }
-  }
-  return null;
-}
-
-/** The edits applied to the file's text. Comments and order survive, and so does every line the edit doesn't touch. */
-export function applyOps(text: string, ops: Op[]): string {
-  let out = text;
-  house = style(text);
-  for (const o of ops) {
-    const done = splice(out, o);
-    if (done != null) { out = done; continue; }
-    const doc = parseDocument(out);
-    if (o.op === 'remove') doc.deleteIn(o.path);
-    else if (o.op === 'set') {
-      // create the parents a new path needs
-      for (let i = 1; i < o.path.length; i++) if (!doc.hasIn(o.path.slice(0, i))) doc.setIn(o.path.slice(0, i), doc.createNode({}));
-      doc.setIn(o.path, doc.createNode(o.value));
-    } else {
-      const at = doc.getIn(o.path);
-      if (at == null) doc.setIn(o.path, doc.createNode([o.value]));
-      else if (isSeq(at)) at.add(doc.createNode(o.value));
-      else throw new Error(`${o.path.join('.')} isn't a list`);
-    }
-    out = reprint(out, doc, o.path) ?? doc.toString(house);
-  }
-  return out;
-}
-
-/** Added and removed lines: the changed middle of the file, in the shape people expect of a diff. */
-export function diff(a: string, b: string) {
-  const x = a.split('\n'), y = b.split('\n');
-  let start = 0; while (start < x.length && x[start] === y[start]) start++;
-  let end = 0; while (end < x.length - start && end < y.length - start && x[x.length - 1 - end] === y[y.length - 1 - end]) end++;
-  return [...x.slice(start, x.length - end).map(l => `- ${l}`), ...y.slice(start, y.length - end).map(l => `+ ${l}`)].join('\n');
-}
+export { applyOps, diff, type Op } from './yaml-edit.ts';
 
 /** Would this text work? Problems by name, and ${NAMES} it needs that aren't set yet (those aren't its fault). */
 export function validate(text: string, registry: Record<string, Integration>) {
@@ -231,10 +122,28 @@ export function validate(text: string, registry: Record<string, Integration>) {
   return { problems: ['too many unset variables'], instances: new Map<string, Instance>(), missing };
 }
 
+// the one save before this, for undo. It's the config itself, so only Valet's user may read it, whatever the folder's default
+const previousOf = (path: string) => `${path}.previous`;
+/** Save a new config, keeping the one it replaces for undo. Throws if the folder is read-only to Valet. */
+export async function save(path: string, before: string, after: string) {
+  const previous = previousOf(path);
+  await writeFile(previous, before, { mode: 0o600 }); await chmod(previous, 0o600);
+  await writeFile(path, after);
+}
+/** Put the config back as it was before the last save, if `blocked` (given now, then) has no objection and it still works. */
+export async function undoSave(path: string, registry: Record<string, Integration>, blocked: (now: string, old: string) => string | null): Promise<{ undone: true } | { error: string; problems?: string[] }> {
+  const old = await readFile(previousOf(path), 'utf8').catch(() => null);
+  if (old == null) return { error: 'nothing to undo' };
+  const now = await readFile(path, 'utf8'), why = blocked(now, old);
+  if (why) return { error: why };
+  const { problems } = validate(old, registry);
+  if (problems.length) return { error: 'the earlier version no longer works', problems };
+  await save(path, now, old);
+  return { undone: true };
+}
+
 export function setupTools(path: string, registry: Record<string, Integration>): Record<string, Tool<any>> {
-  const previous = `${path}.previous`;   // the one save before this, for undo
-  // the copy kept for undo is the config itself, so only Valet's user may read it, whatever the folder's default
-  const keep = async (text: string) => { await writeFile(previous, text, { mode: 0o600 }); await chmod(previous, 0o600); };
+  const previous = previousOf(path);
   const edits = z.object({ ops: z.array(Op).min(1), summary: z.string().describe('in plain words, what this changes') });
   const newIntegration = (ops: Op[]) => { const o = ops.find(o => o.op === 'set' && o.path[0] === 'integrations' && o.path.length === 2); return o ? String(o.path[1]) : undefined; };
   const trial = async (ops: Op[]) => {
@@ -327,7 +236,7 @@ export function setupTools(path: string, registry: Record<string, Integration>):
           const t = await trial(ops);
           if (t.missing.length) return { data: { error: `add ${t.missing.join(', ')} to .env and recreate the container first` } };
           if (t.problems.length) return { data: { error: 'not saved', problems: t.problems } };
-          try { await keep(t.before); await writeFile(path, t.after); }
+          try { await save(path, t.before, t.after); }
           catch { return { data: { error: 'the config folder is read-only to Valet, so nothing was saved; give the person this to paste in', diff: diff(t.before, t.after) } }; }
           return { data: { saved: true } };
         } catch (e) { return { data: { error: (e as Error).message } }; }
@@ -343,14 +252,9 @@ export function setupTools(path: string, registry: Record<string, Integration>):
       },
       description: 'Put the config back as it was before the last save. Undoing twice puts the change back.',
       async run() {
-        const old = await readFile(previous, 'utf8').catch(() => null);
-        if (old == null) return { data: { error: 'nothing to undo' } };
-        const now = await readFile(path, 'utf8'), { problems } = validate(old, registry);
-        const owner = ownerChanged(parseYaml(now) ?? {}, parseYaml(old) ?? {});   // a hand edit made since then stays yours
-        if (owner) return { data: { error: `${owner} has been changed by hand since then, so the owner undoes this` } };
-        if (problems.length) return { data: { error: 'the earlier version no longer works', problems } };
-        await keep(now); await writeFile(path, old);
-        return { data: { undone: true } };
+        // a hand edit made since then stays yours
+        const owner = (now: string, old: string) => { const k = ownerChanged(parseYaml(now) ?? {}, parseYaml(old) ?? {}); return k && `${k} has been changed by hand since then, so the owner undoes this`; };
+        return { data: await undoSave(path, registry, owner) };
       },
     },
   };

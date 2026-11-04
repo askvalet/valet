@@ -66,7 +66,7 @@ function Pending({ since, label: text = label('thinking') }: { since: number; la
     <div className="flex items-center gap-2.5 text-sm animate-in fade-in duration-(--dur-pop)">
       <ThinkingOrb state="working" size={20} />
       <span className="chat-shimmer font-medium">{text}</span>
-      <span className="tabular text-xs text-muted-foreground">{((now - since) / 1000).toFixed(1)}s</span>
+      <span className="tabular text-xs text-muted-foreground">{(Math.max(0, now - since) / 1000).toFixed(1)}s</span>
     </div>
   );
 }
@@ -488,7 +488,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
             className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-[16px] leading-[22px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-[15px]" autoFocus={!sheet} />
           {busy
             ? <Button type="button" size="icon" variant="secondary" className="relative mb-0.5 size-8 overflow-hidden rounded-sm" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" />{sent > 0 && <ArrowUp key={sent} className="send-lift absolute inset-0 m-auto" aria-hidden />}</Button>
-            : <Button type="submit" size="icon" className="mb-0.5 size-8 rounded-sm bg-foreground text-background hover:bg-foreground/90 disabled:bg-foreground/20 disabled:text-foreground disabled:opacity-100" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
+            : <Button type="submit" size="icon" className="mb-0.5 size-8 rounded-sm bg-foreground text-(--card-tint) hover:bg-foreground/90 disabled:bg-foreground/20 disabled:text-foreground disabled:opacity-100" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
         </div>
         </ChatBeam>
       </form>

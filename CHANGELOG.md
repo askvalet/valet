@@ -17,9 +17,17 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 - Small touches: switches on a spring, a tick on an approval's button, the send arrow lifting out as the stop square arrives, notices that swipe away, the copy icon drawing its tick, posters that lean from the pointer, and Desk and List sliding their pill.
 - GitHub repositories: a `traffic` widget and tool for your own repos, with views, visitors, clones and where visitors came from over GitHub's last 14 days. It needs a token that can push to the repo.
 
+### Changed
+
+- The chat's working orbs: a sphere of orbiting particles while it waits for the first words, a sweeping globe while it thinks, a constellation for a lookup and a rolling wave for an action.
+- A config diff, the assistant's included, shows each change with a line either side and folds what's unchanged between two changes, rather than every line from the first change to the last. A list written one short entry to a line (`- { widget: a, size: large }`) gets new entries written the same way.
+
 ### Fixed
 
 - To-do list: ticking something off on the page works: the switch now says which item it is.
+- The chat's send button over a wallpaper is a white square with a dark arrow again; the arrow had gone white on white.
+- "Thinking" no longer starts at -0.0s.
+- A config edit that replaced or removed the first key of a list entry (a section's `title`, say) no longer drops its `- `, which turned the entry into part of the one above.
 
 ## [0.1.3] - 2026-11-03
 
