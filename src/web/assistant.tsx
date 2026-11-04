@@ -64,7 +64,7 @@ function Pending({ since, label: text = label('thinking') }: { since: number; la
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 100); return () => clearInterval(t); }, []);
   return (
     <div className="flex items-center gap-2.5 text-sm animate-in fade-in duration-(--dur-pop)">
-      <ThinkingOrb state="composing" size={20} />
+      <ThinkingOrb state="working" size={20} />
       <span className="chat-shimmer font-medium">{text}</span>
       <span className="tabular text-xs text-muted-foreground">{((now - since) / 1000).toFixed(1)}s</span>
     </div>
@@ -79,7 +79,7 @@ function Reasoning({ text, streaming, took }: { text: string; streaming: boolean
     <div className="text-[13px]">
       <button onClick={() => setOpen(o => !o)} className="press flex items-center gap-1 text-muted-foreground hover:text-foreground">
         <ChevronRight className={cn('size-3.5 transition-transform duration-(--dur-pop)', open && 'rotate-90')} />
-        {streaming && <ThinkingOrb state="breathing" size={20} />}<span className={cn(streaming && 'chat-shimmer')}>{streaming ? label('thinking') : took ? label('thoughtFor', { n: (took / 1000).toFixed(took < 10_000 ? 1 : 0) }) : label('thought')}</span>
+        {streaming && <ThinkingOrb state="searching" size={20} />}<span className={cn(streaming && 'chat-shimmer')}>{streaming ? label('thinking') : took ? label('thoughtFor', { n: (took / 1000).toFixed(took < 10_000 ? 1 : 0) }) : label('thought')}</span>
       </button>
       <div className={cn('grid transition-[grid-template-rows,opacity] duration-(--dur-move) ease-out', open ? 'mt-1.5 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
         <div className="overflow-hidden"><div className="border-l-2 border-white/10 pl-3 leading-relaxed whitespace-pre-wrap text-muted-foreground">{text.trim()}</div></div>
@@ -137,7 +137,7 @@ function ToolChips({ parts: all, settled, tools, fresh }: { parts: any[]; settle
                 <I className="size-3.5 shrink-0" />
                 <span className={cn('shrink-0', !done && !failed && !denied && 'chat-shimmer')}>{denied ? `Skipped: ${verb.toLowerCase()}` : verb}</span>
                 {arg && <span className="truncate rounded-md bg-white/[.06] px-1.5 py-px font-mono text-[12px] text-foreground/75">{arg}</span>}
-                <span className="ml-auto shrink-0">{failed ? <X className="size-3.5 text-bad" /> : done ? <Tick className="size-3.5 text-good" draw={waited.current.has(p.toolCallId) && (tools[name(p)]?.access ?? 'read') !== 'read'} /> : denied ? null : <ThinkingOrb state={(tools[name(p)]?.access ?? 'read') === 'read' ? 'searching' : 'working'} size={20} />}</span>
+                <span className="ml-auto shrink-0">{failed ? <X className="size-3.5 text-bad" /> : done ? <Tick className="size-3.5 text-good" draw={waited.current.has(p.toolCallId) && (tools[name(p)]?.access ?? 'read') !== 'read'} /> : denied ? null : <ThinkingOrb state={(tools[name(p)]?.access ?? 'read') === 'read' ? 'connecting' : 'listening'} size={20} />}</span>
               </button>
               {peek === p.toolCallId && card && <div className="chat-peek py-1"><ChatCard first={card} name={name(p)} input={p.input} tools={tools} fresh={fresh} /></div>}
               </Fragment>
