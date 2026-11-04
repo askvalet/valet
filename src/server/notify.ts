@@ -13,7 +13,7 @@ export const Channel = z.discriminatedUnion('type', [
   z.object({ type: z.literal('webhook'), url: z.string().url(), headers: z.record(z.string(), z.string()).optional() }).strict(),
 ]);
 export type Channel = z.infer<typeof Channel>;
-export interface Message { title: string; text?: string; urgent?: boolean }
+export interface Message { title: string; text?: string; urgent?: boolean; where?: string }   // where: the widget it's about
 
 const json = (url: string, body: unknown, headers: Record<string, string> = {}) => ({ url, init: { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) } });
 
@@ -28,7 +28,7 @@ export function request(c: Channel, m: Message): { url: string; init: RequestIni
     case 'slack': return json(c.url, { text: line });
     case 'pushover': return json('https://api.pushover.net/1/messages.json', { token: c.token, user: c.user, title: m.title, message: m.text ?? m.title, priority: m.urgent ? 1 : 0 });
     case 'apprise': return json(c.url, { title: m.title, body: m.text ?? m.title, type: m.urgent ? 'warning' : 'info' });
-    case 'webhook': return json(c.url, m, c.headers);
+    case 'webhook': return json(c.url, { title: m.title, text: m.text, urgent: m.urgent }, c.headers);
   }
 }
 

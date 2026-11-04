@@ -12,13 +12,14 @@ import { noticesFor, type Notice } from './notices.ts';
 import { guardCards } from './plugins.ts';
 import { allowFonts, canAct, fontOrigins, redactor } from './security.ts';
 import { inUnits } from './units.ts';
-import { isPaint, listOf } from '../shared/look.ts';
+import { isPaint, listOf, tabHash } from '../shared/look.ts';
 import { links } from '../integrations/links.ts';
 import { makeAsk, type Ask } from './brain.ts';
 import { Activity } from './activity.ts';
 import { buildRecap, recapYear } from './recap.ts';
 import { troubles, Watcher } from './insight.ts';
 import { push, type Message } from './notify.ts';
+import { pushAll } from './webpush.ts';
 import { ownInstance } from './own.ts';
 import { Backups, news } from './backups.ts';
 import { Timeline } from './timeline.ts';
@@ -135,7 +136,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     recent.push(n); if (recent.length > 5) recent.shift();
     for (const l of noticeListeners) l(n);
     timeline.add('reminder', w.say, w.widget);
-    sendPush({ title: w.say });
+    sendPush({ title: w.say, where: w.widget });
   });
   // standing instructions: each run re-checked against the config as it is now, then through the chat's own door
   const rules = new Rules(await loadRules(), {
@@ -155,7 +156,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
       recent.push(n); if (recent.length > 5) recent.shift();
       for (const l of noticeListeners) l(n);
       timeline.add('rule', sub ? `${text} (${sub})` : text, rule.when?.widget);
-      sendPush({ title: text, text: sub, urgent: tone === 'bad' });
+      sendPush({ title: text, text: sub, urgent: tone === 'bad', where: rule.when?.widget });
     },
   });
   const undo = async (id: number) => {
@@ -199,10 +200,15 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     // (not the AI's own comings and goings: they'd drown out everything else, and every summary would cause more)
     if (meta.get(key.split('.')[0])?.type !== 'aimonitor') for (const on of EVERYTHING) for (const n of noticesFor(key, prev?.card, next.card, [{ widget: key, on }])) timeline.add(on, `${n.text}${n.sub ? ` (${n.sub})` : ''}`, key);
     // and rules that asked for it reach your phone
-    for (const r of config.live?.notify ?? []) if (r.push && r.widget === key) for (const n of noticesFor(key, prev?.card, next.card, [r])) sendPush({ title: n.text, text: n.sub, urgent: n.tone === 'bad' });
+    for (const r of config.live?.notify ?? []) if (r.push && r.widget === key) for (const n of noticesFor(key, prev?.card, next.card, [r])) sendPush({ title: n.text, text: n.sub, urgent: n.tone === 'bad', where: key });
   }, history);
 
-  const sendPush = (m: Message) => { void push(config.notify.channels, m, fetch, redactNow); };
+  // to the channels, and to every browser that turned notifications on (not from a demo: there's nobody's phone to reach)
+  const web = config.notify.webPush;
+  const sendPush = (m: Message) => {
+    void push(config.notify.channels, m, fetch, redactNow);
+    if (web.enabled && !sandbox.on) void pushAll({ title: redactNow(m.title), body: m.text && redactNow(m.text), urgent: m.urgent, url: placeOf(config, m.where) }, web);
+  };
   const redactNow = redactor(usedSecrets);
 
   // the assistant's own background work, if there's an assistant
@@ -257,3 +263,10 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   return { config, instances, meta, placed, hub, history, acting: canAct(config), redact: redactor(usedSecrets), walls, cssVersion, recent, noticeListeners, problems, pins, ask, watcher, timeline, activity, watches, rules, push: sendPush, backups, stopBackups };
 }
 
+
+/** Where a widget lives on the page: its tab's address, or the overview. A notification opens there. */
+export function placeOf(config: Config, widget?: string) {
+  const i = widget ? config.layout.findIndex(s => s.widgets.some(w => w.widget === widget)) : -1, s = config.layout[i];
+  const tab = s?.tab ?? s?.title;
+  return tab ? `/#${tabHash(tab)}` : '/';
+}

@@ -250,6 +250,18 @@ export const Auth = z.object({
 }).default({ mode: 'none', sessionDays: 30, secureCookie: true, trustNetwork: false, proxy: { header: 'Remote-User', trusted: ['127.0.0.1'] } })
   .refine(a => a.mode !== 'oidc' || a.oidc, { message: 'auth.oidc (issuer, clientId, clientSecret) is needed for mode: oidc', path: ['oidc'] });
 
+// Valet's own push notifications, to each browser that turns them on in ⌘K (it needs HTTPS and sign-in, or trustNetwork).
+// contact: how a push service can reach whoever runs this Valet (mailto: or https:). services: the push services Valet
+// will post to; browsers use the four listed, so this only grows for a push server of your own.
+export const PUSH_SERVICES = ['fcm.googleapis.com', '*.push.services.mozilla.com', '*.push.apple.com', '*.notify.windows.com'];
+const WebPush = z.object({
+  enabled: z.boolean().default(true).describe('Lets each browser turn on notifications from ⌘K. Nothing is sent until one does.'),
+  contact: z.string().regex(/^(mailto:\S+@\S+|https:\/\/\S+)$/, 'a mailto: address or an https:// URL').default('https://askvalet.dev')
+    .describe('How a push service can reach whoever runs this Valet: a `mailto:` address or an `https://` URL. It goes in every push request, signed.'),
+  services: z.array(z.string().regex(/^(\*\.)?[a-z0-9.-]+$|^https?:\/\/[^/\s]+$/i, 'a host name (*.example.com for any below it) or an origin like http://10.0.0.5:8080')).default(PUSH_SERVICES)
+    .describe('The push services Valet will post to. Browsers use these four; add a host or an origin only for a push server of your own.'),
+}).strict().describe('Notifications on this device: Web Push straight to the browsers that turn it on in ⌘K.');
+
 export const Config = z.object({
   auth: Auth,
   // the names Valet answers to besides localhost and IP addresses, e.g. [valet.example.com, "*.home.example.com"].
@@ -321,7 +333,7 @@ export const Config = z.object({
   links: z.record(z.string(), z.array(z.object({ name: z.string(), url: z.string().url(), icon: z.string().optional(), note: z.string().optional() }))).default({}),
   // where "tell me when" reminders go when you're not looking (ntfy, gotify, telegram, discord, slack, pushover, apprise,
   // webhook). insights: also push the assistant's shared-cause line.
-  notify: z.object({ channels: z.array(Channel).default([]), insights: z.boolean().default(false) }).default({ channels: [], insights: false }),
+  notify: z.object({ channels: z.array(Channel).default([]), insights: z.boolean().default(false), webPush: WebPush }).default({ channels: [], insights: false, webPush: WebPush.parse({}) }),
   // backup health: every job the integrations report, gathered on Valet's Backups card (valet.backups). overdue: how long
   // a job may go without a success when its service doesn't say its schedule · expect: that per job, by name · every: how
   // often it checks with nobody looking · notify: also push failures, overdue jobs and recoveries to notify.channels

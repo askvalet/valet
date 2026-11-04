@@ -93,3 +93,9 @@ export function cardLook(w: { tint?: string; opacity?: number; blur?: number; ba
 /** a wallpaper that's paint rather than a picture: a colour or a gradient */
 export const isPaint = (v: string) => /^#[0-9a-f]{3,8}$|^[a-z]+$|^[a-z-]+\(/i.test(v);
 export const listOf = <T>(v?: T | T[]) => v == null ? [] : Array.isArray(v) ? v : [v];
+
+/** A tab's address: `#media` for Media. The server writes it too, for a notification that opens where it's about. */
+export function tabHash(key: string) {
+  const s = key.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '');
+  return /^(recap|gallery|overview)$/.test(s) ? `tab-${s}` : s;
+}

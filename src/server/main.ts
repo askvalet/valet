@@ -27,6 +27,7 @@ import { registry } from '../integrations/index.ts';
 import { LABELS } from '../shared/labels.ts';
 import { cardLook, isPaint, listOf, lookOf } from '../shared/look.ts';
 import { sandbox } from './sandbox.ts';
+import { allowed, has, pushAll, Subscription, subscribe, unsubscribe, vapidKeys } from './webpush.ts';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { getCookie, setCookie } from 'hono/cookie';
 
@@ -496,6 +497,53 @@ app.post('/api/chat', async c => {
   let chat = chats.get(key);
   if (!chat) chats.set(key, chat = (await import('./chat.ts')).chatRoute(site.config, site.instances, site.meta, { acting: site.acting, redact: site.redact, activity: site.activity }));
   return chat(c);
+});
+
+// Notifications on this device (⌘K): Valet's own Web Push. Turning them on or off is acting on the page, so it needs what
+// a button needs; the demo and a read-only page say why not instead. Each browser is one subscription, kept with its account.
+const pushRefusal = () => sandbox.on ? 'demo' : !site.acting ? 'read-only' : !site.config.notify.webPush.enabled ? 'off' : null;
+const userOf = (c: Context) => (c.get as (k: string) => string | undefined)('user');
+app.get('/api/push', async c => {
+  const why = pushRefusal();
+  if (why) return c.json({ ready: false, why });
+  const endpoint = c.req.query('endpoint');
+  return c.json({ ready: true, key: (await vapidKeys()).publicKey, on: endpoint ? await has(endpoint, userOf(c)) : undefined });
+});
+app.post('/api/push', async c => {
+  const why = pushRefusal();
+  if (why) return c.json({ error: why, why }, 403);
+  const body = await c.req.json().catch(() => ({}));
+  const sub = Subscription.safeParse(body?.subscription);
+  if (!sub.success) return c.json({ error: 'not a push subscription' }, 400);
+  if (!allowed(sub.data.endpoint, site.config.notify.webPush.services)) return c.json({ error: `Valet doesn't post to ${new URL(sub.data.endpoint).host} (notify.webPush.services)` }, 400);
+  const fresh = !(await has(sub.data.endpoint, userOf(c)));
+  await subscribe(sub.data, userOf(c), typeof body.replaces === 'string' ? body.replaces : undefined);
+  // the first time, one to this browser alone: it says it works, and it's how you'd find out it doesn't
+  if (fresh && body.hello !== false) void pushAll({ title: 'Notifications are on', body: `${site.config.title} will tell this device when something needs you.`, url: '/' }, site.config.notify.webPush, sub.data.endpoint);
+  return c.json({ ok: true });
+});
+app.delete('/api/push', async c => {
+  if (!site.acting || sandbox.on) return c.json({ error: 'Valet is read-only' }, 403);
+  const { endpoint } = await c.req.json().catch(() => ({}));
+  if (typeof endpoint !== 'string') return c.json({ error: 'which subscription?' }, 400);
+  return c.json({ ok: true, removed: await unsubscribe(endpoint, userOf(c)) });
+});
+
+// The app's manifest, for "Add to Home Screen" and installing. It's fetched before anyone signs in, so with sign-in on it
+// names the config's title only to a session (the page asks with credentials) and says Valet to everyone else.
+app.get('/manifest.webmanifest', async c => {
+  let known = false;
+  await signedIn(c, async () => { known = true; });
+  const name = known ? site.config.title : 'Valet';
+  return c.body(JSON.stringify({
+    name, short_name: name.length > 12 ? 'Valet' : name, id: '/', start_url: '/', scope: '/', display: 'standalone',
+    background_color: '#0f0f10', theme_color: '#0f0f10',
+    icons: [
+      { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+  }), 200, { 'Content-Type': 'application/manifest+json', 'Cache-Control': 'no-cache', Vary: 'Cookie' });
 });
 
 // Community visuals: the browser half of a plugin, data/integrations/<kind>.web.js, served as a module

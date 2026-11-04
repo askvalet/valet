@@ -3,6 +3,7 @@
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { disablePush } from './push.ts';
 
 type Me = { mode: string; user: { name: string } | null; setup?: boolean; provider?: string };
 
@@ -12,7 +13,8 @@ export function useMe() {
   return { me, setMe };
 }
 
-export function signOut(everywhere = false) {
+export async function signOut(everywhere = false) {
+  await disablePush().catch(() => {});   // a device nobody's signed in on hears nothing
   return fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ everywhere }) })
     .then(() => location.reload());
 }

@@ -68,6 +68,11 @@ https://askvalet.dev.
   copy, `site` reads it through `AsyncLocalStorage`, and at most 40 live, each dropped after 15 idle minutes. Anything that
   saves must check `sandbox.on` and stay in memory instead; uploads and the config tools are off.
 
+- **The service worker keeps one page** (`src/web/sw.js`, versioned by the build in `vite.config.ts`): "Valet can't be
+  reached". Never the page, `/api/` or anything behind sign-in, so an update is never stale and a signed-out visitor sees
+  nothing cached. Its other job is push. Valet's own notifications (`webpush.ts`, Node's crypto, no library) go wherever
+  `site.push` goes; anything new that tells the owner something calls that, with `where` set to its widget.
+
 - **AI is everywhere and required nowhere.** Without an `assistant:` block the page loses nothing. Rules decide when a
   model is worth asking; if a rule can do the job, no model runs. The status sentence is one of those rules (`sayHow` and
   `oneLine` in `format.ts`): two things at most, what needs someone first, and services off by choice don't count. What it does unasked (`src/server/insight.ts`, through

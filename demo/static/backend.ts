@@ -99,6 +99,7 @@ async function answer(path: string, method: string, body: any, signal?: AbortSig
   if (route === 'commands') return json({ commands: bk.commands.map((c, n) => ({ id: `valet:${n}`, say: c.say, label: c.label, service: 'Valet', kind: 'tool', access: 'read' })) });
   if (route === 'command') return body?.id === 'valet:0' ? json({ tool: 'valet__backups_status', input: {}, card: (await bk.tool.run()).card }) : json({ error: 'no command matches that' }, 404);
   if (route === 'files') return json({ error: 'This demo keeps nothing, so it takes no files' }, 403);
+  if (route === 'push') return method === 'GET' ? json({ ready: false, why: 'demo' }) : json({ error: 'The demo can\'t send notifications', why: 'demo' }, 403);
   if (route === 'action') {
     const act = instances.get(a)?.actions?.[b]; if (!act) return json({ error: `no action ${a}.${b}` }, 404);
     const args = act.input.safeParse(body ?? {}); if (!args.success) return json({ error: args.error.issues[0]?.message }, 400);

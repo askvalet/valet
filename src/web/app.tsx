@@ -686,7 +686,7 @@ function Home({ account }: { account: boolean }) {
       {/* top-right: the menubar rings, weather and time (and the theme switch when there's no wallpaper).
           Below lg it sits at the top of the page instead, centred and wrapping, so phones see it too. */}
       {/* phones: one row, condensed, and when something's live the weather gives up the clock to make room; wide screens: top right */}
-      <div ref={bar} data-labels={topbar?.labels !== false || undefined} className={cn(!settled && 'invisible', 'menubar wall-text relative z-20 flex items-stretch justify-center gap-1.5 px-3 pt-3 sm:gap-2 xl:absolute xl:top-5 xl:gap-4 xl:p-0', { left: 'xl:left-5', center: 'xl:left-1/2 xl:-translate-x-1/2', right: 'xl:right-5' }[topbar?.position ?? 'right'])}>
+      <div ref={bar} data-labels={topbar?.labels !== false || undefined} className={cn(!settled && 'invisible', 'menubar wall-text relative z-20 flex items-stretch justify-center gap-1.5 px-3 pt-[max(.75rem,env(safe-area-inset-top))] sm:gap-2 xl:absolute xl:top-5 xl:gap-4 xl:p-0', { left: 'xl:left-5', center: 'xl:left-1/2 xl:-translate-x-1/2', right: 'xl:right-5' }[topbar?.position ?? 'right'])}>
         {(!!topbar?.widgets.length || live.length > 0) && (
           <div className="glass-bar glass-plate relative flex shrink items-center gap-1 border px-2 py-1 sm:gap-3 sm:px-4 sm:py-1.5">
             {live.length > 0 && <><LiveRings live={phone ? live.slice(0, 2) : live} />{!!topbar?.widgets.length && <i className="live-rule" aria-hidden />}</>}
@@ -772,7 +772,7 @@ function Home({ account }: { account: boolean }) {
       {page && palette && (
         <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} placeholder={page.assistant && (page.chat.placeholder || page.hero.scope?.length) ? placeholder : undefined} ui={ui} ask={ask} actions={actions} account={account} tools={page.assistant?.tools}
           openChat={() => { setPalette(false); if (phone || !(chatTab && view === chatTab)) setChatOpen(true); }}
-          runAction={runAction} services={services} SUGGESTIONS={questions} setView={go} nav={nav} sectionIcon={sectionIcon} search={page.search} /></Suspense>
+          runAction={runAction} services={services} SUGGESTIONS={questions} setView={go} nav={nav} sectionIcon={sectionIcon} search={page.search} device={{ sandbox: page.sandbox, canAct: page.canAct !== false }} /></Suspense>
       )}
 
       {page?.assistant && (

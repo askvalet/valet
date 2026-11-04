@@ -14,6 +14,8 @@ img-src 'self' data: blob: https:;
 font-src 'self' data:;
 connect-src 'self';
 media-src 'self' blob:;
+worker-src 'self';
+manifest-src 'self';
 frame-src 'none';
 frame-ancestors 'none';
 base-uri 'none';
@@ -27,6 +29,7 @@ object-src 'none'
 - `connect-src 'self'` means page code can only talk to Valet. A script couldn't send data elsewhere.
 - `frame-ancestors 'none'` means no other site can frame Valet. `X-Frame-Options: DENY` says the same to older browsers.
 - `base-uri 'none'` and `form-action 'self'` stop two ways of sending things elsewhere.
+- `worker-src 'self'` and `manifest-src 'self'` allow Valet's own service worker and app manifest, for [Valet as an app](/start/app/), and nothing else. Push notifications need nothing more: the browser talks to its push service itself, outside the page.
 
 ## Where it relaxes
 

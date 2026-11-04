@@ -9,3 +9,7 @@
     root.classList.add.apply(root.classList, l.classes); }
   var apply = function () { var t = root.dataset.theme || saved(); root.classList.toggle('dark', t ? t === 'dark' : m.matches); };
   apply(); m.addEventListener('change', apply); })();
+// the browser's own chrome (and an installed app's title bar) wears the page's background, whichever way it turns
+(function () { var root = document.documentElement, meta = document.querySelector('meta[name="theme-color"]'); if (!meta) return;
+  var paint = function () { meta.setAttribute('content', root.classList.contains('dark') ? '#0f0f10' : '#f5f5f7'); };
+  paint(); new MutationObserver(paint).observe(root, { attributes: true, attributeFilter: ['class'] }); })();

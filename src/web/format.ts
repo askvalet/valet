@@ -33,10 +33,7 @@ export function firstDay() {
 }
 
 // a tab's address: its name in lower case and dashes. The names the page uses for itself stay its own.
-export function tabHash(key: string) {
-  const s = key.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '');
-  return /^(recap|gallery|overview)$/.test(s) ? `tab-${s}` : s;
-}
+export { tabHash } from '../shared/look.ts';
 
 export interface Problem { id: 'services' | 'downloads' | 'widgets'; text: string; why: string }
 const and = (l: string[]) => l.length < 2 ? l.join('') : `${l.slice(0, -1).join(', ')} and ${l.at(-1)}`;
