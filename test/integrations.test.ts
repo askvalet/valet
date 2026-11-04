@@ -790,7 +790,8 @@ test('todo: add, tick and clear', async () => {
   let c: any = await t.widgets.list.fetch();
   valid(c);
   assert.equal(c.summary.value, '1');
-  await t.actions.tick.run({ id: c.items[0].id, value: true });
+  assert.deepEqual(c.items[0].args, { id: c.items[0].id });   // the page sends a control's args with its value, so the switch can say which
+  await t.actions.tick.run({ ...c.items[0].args, value: true });
   assert.equal(((await t.widgets.list.fetch()) as any).summary.value, '0');
   await t.actions.clear.run({});
   assert.deepEqual(((await t.widgets.list.fetch()) as any).items, []);

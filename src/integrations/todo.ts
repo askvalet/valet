@@ -24,7 +24,7 @@ export default defineIntegration({
     }));
     const card = async (): Promise<Card> => {
       const l = await load(), open = l.filter(t => !t.done).length;
-      return { type: 'controls', title: cfg.title, icon: 'tag', items: l.map(t => ({ id: t.id, label: t.text, kind: 'toggle' as const, value: t.done, action: 'tick' })),
+      return { type: 'controls', title: cfg.title, icon: 'tag', items: l.map(t => ({ id: t.id, label: t.text, kind: 'toggle' as const, value: t.done, action: 'tick', args: { id: t.id } })),
         buttons: l.some(t => t.done) ? [{ label: 'Clear finished', action: 'clear' }] : undefined, summary: { label: cfg.title, icon: 'tag', value: String(open), sub: open === 1 ? 'thing left' : 'things left' } };
     };
     const add = (text: string) => change(l => [...l, { id: `t${Date.now().toString(36)}`, text, done: false }]);
