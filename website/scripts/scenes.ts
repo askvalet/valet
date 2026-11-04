@@ -66,6 +66,9 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
     for (const t of ['Services', 'AI', 'Media', 'Library']) { await tab(page, t); await shot(page, cdp, `scene/tab-${t.toLowerCase()}`); }
     await tab(page, 'Home');
     await shot(page, cdp, 'scene/tab-home');
+    // the calendar's agenda, with the meeting's Join button
+    const agenda = await page.locator('main .cal').last().evaluate((e: Element) => { const c = e.closest('[data-slot="card"]') ?? e; const r = c.getBoundingClientRect(); return { x: r.x + scrollX, y: r.y + scrollY, width: r.width, height: r.height }; }).catch(() => null);
+    if (agenda) await shot(page, cdp, 'scene/meeting-agenda', agenda); else problems.push('scene/meeting-agenda: not found');
     await page.evaluate(() => scrollTo(0, 0));
     const cardAt = (sel: string, n = 0) => page.locator(sel).nth(n).evaluate((e: Element) => { const c = e.closest('[data-slot="card"]') ?? e; const r = c.getBoundingClientRect(); return { x: r.x + scrollX, y: r.y + scrollY, width: r.width, height: r.height }; }).catch(() => null);
     const cams = await cardAt('.cam-pill');
@@ -83,10 +86,14 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
     await shot(page, cdp, 'scene/palette-search');
     await page.keyboard.press('Escape'); await sleep(400);
 
-    // the live rings, and one opened
-    const ringAt = await page.locator('.menubar .group\\/ring').first().boundingBox().catch(() => null);
+    // the live rings, and one opened: the demo's meeting comes first, then what's playing
+    const ringAt = await page.locator('.menubar .group\\/ring').nth(1).boundingBox().catch(() => null);
     if (ringAt) { await page.mouse.move(ringAt.x + 19, ringAt.y + 19); await sleep(700); }
     await shot(page, cdp, 'scene/ring-open', { x: 0, y: 0, width: 1440, height: 240 }, 0);
+    await page.mouse.move(10, 500); await sleep(400);
+    const meetAt = await page.locator('.menubar .group\\/ring').first().boundingBox().catch(() => null);
+    if (meetAt) { await page.mouse.move(meetAt.x + 19, meetAt.y + 19); await sleep(700); await shot(page, cdp, 'scene/meeting-ring', { x: 0, y: 0, width: 1440, height: 280 }, 0); }
+    else problems.push('scene/meeting-ring: no ring');
     await page.mouse.move(10, 500);
     await page.keyboard.press('Escape'); await page.mouse.click(700, 760); await sleep(500);
 

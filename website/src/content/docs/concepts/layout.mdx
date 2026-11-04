@@ -121,6 +121,30 @@ live:
 
 List widgets in order of importance. `notify` shows a short toast at the bottom of the page on `start`, `end`, `down` or `up`, and the widget must be placed on the page. `push: true` also sends it to your [notification channels](/recipes/#notifications).
 
+## Meetings
+
+A calendar knows an online meeting by its link: Google Meet, Zoom, Microsoft Teams, Webex, Whereby, Jitsi, GoTo and a few more. Ten minutes before one, the calendar's ring appears and counts down, "in 4 min", then "Now · 20 min left". Tap it for who it's with and a **Join** button. If two overlap, the one on now leads and the ring says "+1".
+
+<Shot id="scene/meeting-ring" label="A meeting about to start" alt="The calendar's ring in the top bar counting down to a meeting, its popover open with the time, who it's with and a Join button." />
+
+Two minutes before, Valet sends a reminder with the meeting's name and time to your [notification channels](/recipes/#notifications) and to every device that turned on notifications in ⌘K. Tapping it on the device opens the meeting. Each reminder is sent once, even across a restart.
+
+The calendar's rows show the service and a small Join button, ⌘K has **join meeting** and **next meeting**, and you can ask the assistant "what's my next meeting?".
+
+<Shot id="scene/meeting-agenda" label="The agenda" alt="The calendar card's agenda, with the next meeting's time, its service and a Join button." />
+
+```yaml
+integrations:
+  work:
+    type: calendar
+    calendars: ["${GOOGLE_ICAL_URL}"]   # Google Calendar: your calendar's settings, Secret address in iCal format
+    meetings: { remind: [10m, 1m], me: you@example.com }
+live:
+  activities: [work.agenda]
+```
+
+It works with no `meetings:` at all. Put the calendar's widget in `live.activities` for the ring. `me` leaves out what you declined; `meetings: false` turns it off. The [calendar page](/integrations/calendar/) has the rest.
+
 ## The palette
 
 Ctrl+K (⌘K on a Mac) opens search and actions from anywhere. Typing a plain command, like "pause downloads" or "lights off", runs it with no model: see [commands](/assistant/no-ai/#commands). Set `search:` to add web search.

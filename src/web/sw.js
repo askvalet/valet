@@ -19,19 +19,23 @@ self.addEventListener('fetch', e => {
 });
 const offline = fallback => caches.match(OFFLINE, { cacheName: CACHE }).then(r => r ?? fallback ?? Response.error());
 
+// a meeting's link, and only an https one
+const https = s => { try { const u = new URL(s); return u.protocol === 'https:' && !u.username && !u.password ? u.href : undefined; } catch { return undefined; } };
 self.addEventListener('push', e => {
   let m = {};
   try { m = e.data ? e.data.json() : {}; } catch { m = { title: e.data?.text() }; }
   e.waitUntil(self.registration.showNotification(m.title || 'Valet', {
     body: m.body, icon: '/icons/icon-192.png', badge: '/icons/badge-96.png',
-    data: { url: typeof m.url === 'string' && m.url.startsWith('/') && !m.url.startsWith('//') ? m.url : '/' },
+    data: { url: typeof m.url === 'string' && m.url.startsWith('/') && !m.url.startsWith('//') ? m.url : '/', open: https(m.open) },
     requireInteraction: !!m.urgent,
   }));
 });
 
-// An open Valet goes to the place; otherwise a new one opens there.
+// A meeting's link opens in a new window. Anything else: an open Valet goes to the place; otherwise a new one opens there.
 self.addEventListener('notificationclick', e => {
   e.notification.close();
+  const link = https(e.notification.data?.open);
+  if (link) return e.waitUntil(self.clients.openWindow(link));
   const url = new URL(e.notification.data?.url ?? '/', self.location.origin).href;
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async list => {
     const open = list.find(c => new URL(c.url).origin === self.location.origin);

@@ -66,9 +66,15 @@ export interface Activity {
   pct?: number;           // 0..1 progress
   trailing?: string;      // short text on the right, e.g. "34m left"
   tone?: Tone;
-  count?: number;         // more of the same (e.g. 3 streams)
+  count?: number;         // more of the same (e.g. 3 streams): the ring says "+2"
   paused?: boolean;
+  /** Something at a set time (ms since 1970), which the page counts down itself: before `start` "in 4 min", the ring
+   *  filling from `from`; then "Now · 20 min left", filling to `end`, after which the ring is gone. */
+  countdown?: { from?: number; start: number; end?: number };
+  link?: Link;            // a button in its story, e.g. Join
 }
+/** A button that opens an https link in a new tab ("Join"); `note` is said beside it, e.g. the service it's on. */
+export interface Link { label: string; href: string; note?: string }
 
 interface Base {
   source?: { name: string; icon?: string };   // where this comes from, shown beside the title: Plex, Seerr, RomM…
@@ -114,6 +120,7 @@ export interface ListItem {
   section?: string;       // rows: a quiet heading wherever this changes, e.g. "Today" above "Earlier"
   trend?: number[];       // rows: a small line of recent values beside the meta, e.g. a backup's size run by run
   buttons?: { label: string; action: string; args?: Record<string, unknown> }[];   // rows: quiet actions on this row alone, e.g. Pause and Remove
+  link?: Link;            // a small button on the row, e.g. Join a meeting
 }
 export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; limit?: number; log?: boolean; layout?: 'temps' | 'chips' | 'headlines' }   // headlines: a grid of stories, each anchored by its site's favicon · temps: a reading per row (pct along the track, meta the number) · chips: pills, an icon by name · limit: chips show this many, "19 in all" opens the rest in place
 
@@ -224,6 +231,7 @@ export interface CalendarEvent {
   calendar?: string;      // which calendar: gives it a stable colour when `color` isn't set
   color?: string;         // #hex or a CSS colour name
   location?: string;
+  join?: { href: string; provider: string };   // an online meeting: its https link and the service, e.g. Google Meet
 }
 /** An agenda beside a month you can browse. `from` and `to` are the dates the events cover, so browsing stops there. */
 export interface CalendarCard extends Base { type: 'calendar'; events: CalendarEvent[]; from?: string; to?: string; empty?: string }

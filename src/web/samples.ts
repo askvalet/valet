@@ -82,7 +82,7 @@ export const SAMPLES: { name: string; card: Card }[] = [
     days: [['Tue', 'rain', 15, 10], ['Wed', 'cloud-sun', 18, 9], ['Thu', 'sun', 21, 11], ['Fri', 'storm', 17, 12], ['Sat', 'snow', 3, -2]].map(([name, icon, hi, lo]) => ({ name: name as string, icon: icon as string, hi: hi as number, lo: lo as number })),
     summary: { label: 'Cloudy', icon: 'cloud', value: '16°', detail: 'H 17° · L 11°', pct: .8, tone: 'good' } } },
   { name: 'calendar', card: { type: 'calendar', title: 'Calendar', icon: 'calendar', events: [
-    { title: 'Daycare drop-off', start: at(8, 30), end: at(9), calendar: 'Family' }, { title: 'Design review', start: at(11), end: at(12), calendar: 'Work', color: '#ff9f6b' },
+    { title: 'Daycare drop-off', start: at(8, 30), end: at(9), calendar: 'Family' }, { title: 'Design review', start: at(11), end: at(12), calendar: 'Work', color: '#ff9f6b', join: { href: 'https://meet.google.com/abc-defg-hij', provider: 'Google Meet' } },
     { title: 'Long weekend', start: ago(-24).slice(0, 10), end: ago(-96).slice(0, 10), calendar: 'Family' }, { title: 'Bins out', start: ago(-48).slice(0, 10), calendar: 'Home', location: 'Kerb' }],
     summary: { label: 'Calendar', icon: 'calendar', value: 'Daycare drop-off', sub: 'Today · 8:30 AM', detail: '2 today' } } },
   { name: 'calendar · empty', card: { type: 'calendar', title: 'Calendar', events: [], empty: 'Nothing in the next 14 days' } },
@@ -103,6 +103,8 @@ export const SAMPLES: { name: string; card: Card }[] = [
   { name: 'buttons', card: { type: 'stats', title: 'Pi-hole', icon: 'shield', items: [{ label: 'Blocked', value: '14%', tone: 'good', trend: wave(30) }],
     buttons: [{ label: 'Pause 5 min', action: 'pause', args: { minutes: 5 } }, { label: 'Pause 1 hour', action: 'pause', args: { minutes: 60 } }] } },
   { name: 'activity', card: { type: 'media', title: 'Now playing', items: [], activity: { title: 'Joker', subtitle: 'someone · TV', icon: 'play', pct: .3, trailing: '1h left' } } },
+  { name: 'activity · meeting', card: { type: 'list', title: 'Coming up', icon: 'calendar', items: [{ title: 'Design review', subtitle: 'Google Meet', meta: 'Today · 11:00 AM', link: { label: 'Join', href: 'https://meet.google.com/abc-defg-hij', note: 'Google Meet' } }],
+    activity: { title: 'Design review', subtitle: '11:00–11:30 AM · with Alex, Sam', icon: 'video', tone: 'accent', countdown: { from: Date.now() - 6 * 6e4, start: Date.now() + 4 * 6e4, end: Date.now() + 34 * 6e4 }, link: { label: 'Join', href: 'https://meet.google.com/abc-defg-hij', note: 'Google Meet' }, count: 2 } } },
   { name: 'stats · 2001 at', card: { type: 'stats', title: 'Edge cases', items: [{ label: 'Huge', value: '1,234,567,890', unit: 'requests' }, { label: 'Zero', value: 0 }, { label: '', value: '' }] } },
   { name: 'cameras', card: { type: 'cameras', title: 'Cameras', icon: 'camera', summary: { label: 'Cameras', icon: 'camera', value: 3, sub: 'Person · Front', tone: 'warn' },
     cameras: [{ id: 'front', name: 'Front', image: img('front', 1280, 720), detections: [{ label: 'Person', score: .92, box: [.4, .3, .15, .5] }] }, { id: 'street', name: 'Street', image: img('street', 1280, 720), video: '/street.mp4', poster: img('street', 320, 180), loop: 12, detections: [{ label: 'Car', path: [[1, .1, .5, .1, .1], [3, .5, .5, .2, .2]] }] }, { id: 'yard', name: 'Yard', image: img('yard', 1280, 720), offline: true }],

@@ -19,6 +19,7 @@ import { cn, useOnScreen } from '@/lib/utils';
 import { Arrows, Counter, DUST_HOLD, Pile, RowSlot, Tick, toast, useRow, useRows } from './feel.tsx';
 import { dissolve, justActed, useSettle } from './dust.ts';
 import { play } from './sound.ts';
+import { LinkButton } from './link-button.tsx';
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
 import { clock as clockOf, day as dayOf, num as written } from './format.ts';
 import { stateOf } from '../shared/cards.ts';
@@ -26,7 +27,7 @@ import type { ServiceState, Banner, Stall, ArticleCard, CodeCard, RankedCard, Sh
 
 // Icon names cards may use (docs/integrations.md lists them; keep the two in step). Anything else: a URL or a path.
 const ICONS: Record<string, LucideIcon> = {
-  camera: Video, cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
+  camera: Video, video: Video, cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
   search: Search, bulb: Lightbulb, home: House, shield: Shield, chat: MessageCircle, image: ImageIcon, clock: Clock, crescent: MoonIcon, game: Gamepad2, book: BookOpen, coins: Coins, text: Type,
   file: FileText, bookmark: Bookmark, rss: Rss, news: Newspaper, reddit: MessagesSquare, tag: Tag, chart: TrendingUp, calendar: Calendar, sun: Sun, moon: Moon, cloud: Cloud, 'cloud-sun': CloudSun, 'cloud-moon': CloudMoon, rain: CloudRain, snow: CloudSnow, fog: CloudFog, storm: CloudLightning, thermometer: Thermometer,
 };
@@ -251,6 +252,7 @@ function Rows({ card, dense, run }: { card: ListCard; dense: boolean; run?: RunA
               <div className={cn('min-w-0 flex-1 font-medium', dense ? 'text-[13px]' : 'text-sm', it.href && !dense ? 'line-clamp-2 leading-snug' : 'truncate')}>{it.title}</div>
               {(it.trend?.length ?? 0) > 1 && <RowLine points={it.trend!} tone={it.tone} />}
               {it.meta && <div className="shrink-0 text-xs tabular text-muted-foreground">{it.meta}</div>}
+              {it.link && <LinkButton link={it.link} className="self-center" />}
               {it.dot && <span className={cn('dot size-1.5', it.dot === 'good' ? 'dot-good' : 'dot-bad')} style={it.dot === 'warn' ? { background: 'var(--warn)' } : undefined} title={it.dot === 'good' ? 'Healthy' : undefined} />}
               {it.href && <ArrowUpRight className="row-arrow size-3.5 shrink-0 text-muted-foreground" />}
             </div>
@@ -1481,10 +1483,10 @@ export function Ring({ s }: { s: Summary }) {
  *  opacity would stop Chrome blurring anything inside it until the fade ends (the flicker). */
 export function Popover({ group, className, children }: { group: 'ring' | 'wx'; className?: string; children: ReactNode }) {
   const show = group === 'ring'
-    ? 'group-hover/ring:visible group-focus/ring:visible'
+    ? 'group-hover/ring:visible group-focus-within/ring:visible'
     : 'group-hover/wx:visible group-focus/wx:visible';
   const pop = group === 'ring'
-    ? 'group-hover/ring:opacity-100 group-hover/ring:translate-y-0 group-hover/ring:scale-100 group-focus/ring:opacity-100 group-focus/ring:translate-y-0 group-focus/ring:scale-100'
+    ? 'group-hover/ring:opacity-100 group-hover/ring:translate-y-0 group-hover/ring:scale-100 group-focus-within/ring:opacity-100 group-focus-within/ring:translate-y-0 group-focus-within/ring:scale-100'
     : 'group-hover/wx:opacity-100 group-hover/wx:translate-y-0 group-hover/wx:scale-100 group-focus/wx:opacity-100 group-focus/wx:translate-y-0 group-focus/wx:scale-100';
   return (
     <div className={cn('invisible absolute top-full z-30 pt-3 transition-[visibility] duration-(--dur-pop)', show, className,

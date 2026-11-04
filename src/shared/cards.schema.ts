@@ -17,9 +17,12 @@ export const Summary = z.object({
   image: z.string().optional(), marks: z.array(z.object({ pct: z.number().optional(), tone: Tone.optional(), label: z.string().optional() }).strict()).optional(),
   waffle: z.boolean().optional(), every: z.number().positive().optional(),
 }).strict();
+const https = z.string().max(2000).regex(/^https:\/\/[^\s]+$/i, 'not an https link');
+const Link = z.object({ label: z.string(), href: https, note: z.string().optional() }).strict();
 export const Activity = z.object({
   title: z.string(), subtitle: z.string().optional(), image: z.string().optional(), icon: z.string().optional(), pct: z.number().optional(),
   trailing: z.string().optional(), tone: Tone.optional(), count: z.number().optional(), paused: z.boolean().optional(),
+  countdown: z.object({ from: finite.optional(), start: finite, end: finite.optional() }).strict().optional(), link: Link.optional(),
 }).strict();
 const base = {
   source: z.object({ name: z.string(), icon: z.string().optional() }).strict().optional(),
@@ -33,7 +36,7 @@ const StatItem = z.object({ label: z.string(), value: z.union([z.string(), z.num
   tone: Tone.optional(), pct: z.number().optional(), trend: nums.optional() }).strict();
 const ListItem = z.object({ id: z.string().optional(), detail: z.string().optional(), title: z.string(), href: z.string().optional(), dot: Tone.optional(), subtitle: z.string().optional(), meta: z.string().optional(), pct: unit.optional(), tone: Tone.optional(),
   image: z.string().optional(), badge: z.string().optional(), band: z.tuple([unit, unit]).optional(), section: z.string().optional(), trend: nums.optional(),
-  buttons: z.array(z.object({ label: z.string(), action: z.string(), args: z.record(z.string(), z.unknown()).optional() }).strict()).max(3).optional() }).strict();
+  buttons: z.array(z.object({ label: z.string(), action: z.string(), args: z.record(z.string(), z.unknown()).optional() }).strict()).max(3).optional(), link: Link.optional() }).strict();
 const MediaItem = z.object({ title: z.string(), subtitle: z.string().optional(), image: z.string().optional(), backdrop: z.string().optional(), pct: unit.optional(),
   state: z.enum(['playing', 'paused', 'buffering']).optional(), user: z.string().optional(), device: z.string().optional(), detail: z.string().optional(),
   tags: z.array(z.string()).optional(), remaining: z.string().optional(), icon: z.string().optional(),
@@ -81,7 +84,7 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
   z.object({ ...base, type: z.literal('article'), ...pick, more: z.array(z.object(pick).strict()).optional(), empty: z.string().optional(), archived: z.string().optional() }),
   z.object({ ...base, type: z.literal('calendar'), from: date.optional(), to: date.optional(), empty: z.string().optional(),
     events: z.array(z.object({ title: z.string(), start: when, end: when.optional(), calendar: z.string().optional(), location: z.string().optional(),
-      color: z.string().regex(/^(#[0-9a-f]{3,8}|[a-z]{3,30})$/i, 'not a colour').optional() }).strict()) }).strict(),
+      color: z.string().regex(/^(#[0-9a-f]{3,8}|[a-z]{3,30})$/i, 'not a colour').optional(), join: z.object({ href: https, provider: z.string() }).strict().optional() }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('thermostat'), unit: z.enum(['C', 'F']), state: z.string(), mode: z.enum(['heat', 'cool', 'auto', 'off']).optional(), current: finite.optional(), target: finite.optional(),
     range: z.tuple([finite, finite]).optional(), min: finite, max: finite, step: z.number().positive(), set: z.object({ action: z.string(), args: z.record(z.string(), z.unknown()).optional() }).strict().optional(),
     modes: z.array(z.object({ id: z.string(), label: z.string(), on: z.boolean().optional(), action: z.string(), args: z.record(z.string(), z.unknown()).optional(), hint: z.string().optional() }).strict()).optional(), note: z.string().optional() }).strict(),

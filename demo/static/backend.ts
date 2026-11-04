@@ -95,9 +95,16 @@ async function answer(path: string, method: string, body: any, signal?: AbortSig
   if (route === 'recap') return json(await snapshot('recap'));
   if (route === 'brief') return json({ text: null });
   if (route === 'suggest') { const s = await lab.widgets.services.fetch(); return json({ list: suggestions(s.items.some((i: any) => i.name === 'Mealie' && !i.ok)).filter(q => !demoPage.speed || !/speed/.test(q)), wrong: [] }); }
-  // ⌘K: Valet's own look-only command, as the server lists and runs it
-  if (route === 'commands') return json({ commands: bk.commands.map((c, n) => ({ id: `valet:${n}`, say: c.say, label: c.label, service: 'Valet', kind: 'tool', access: 'read' })) });
-  if (route === 'command') return body?.id === 'valet:0' ? json({ tool: 'valet__backups_status', input: {}, card: (await bk.tool.run()).card }) : json({ error: 'no command matches that' }, 404);
+  // ⌘K: the look-only commands (Valet's backups, the made-up calendar's meetings), as the server lists and runs them
+  if (route === 'commands') return json({ commands: [...bk.commands.map((c, n) => ({ id: `valet:${n}`, say: c.say, label: c.label, service: 'Valet', kind: 'tool', access: 'read' })),
+    ...(lab.commands ?? []).map((c: any, n: number) => ({ id: `lab:${n}`, say: c.say, label: c.label, service: integration.name, kind: 'tool', access: 'read' }))] });
+  if (route === 'command') {
+    if (body?.id === 'valet:0') return json({ tool: 'valet__backups_status', input: {}, card: (await bk.tool.run()).card });
+    const c = /^lab:\d+$/.test(body?.id ?? '') ? lab.commands?.[Number(body.id.slice(4))] : undefined, name = c?.run.replace('tool:', ''), t = lab.tools?.[name];
+    if (!t || t.access !== 'read') return json({ error: 'no command matches that' }, 404);
+    const out = await t.run(c.input ?? {});
+    return json({ tool: `lab__${name}`, input: c.input ?? {}, card: out.card, ...(c.open && typeof out.open === 'string' && out.open.startsWith('https://') ? { open: out.open } : {}) });
+  }
   if (route === 'files') return json({ error: 'This demo keeps nothing, so it takes no files' }, 403);
   if (route === 'push') return method === 'GET' ? json({ ready: false, why: 'demo' }) : json({ error: 'The demo can\'t send notifications', why: 'demo' }, 403);
   if (route === 'action') {

@@ -13,22 +13,23 @@ export const Channel = z.discriminatedUnion('type', [
   z.object({ type: z.literal('webhook'), url: z.string().url(), headers: z.record(z.string(), z.string()).optional() }).strict(),
 ]);
 export type Channel = z.infer<typeof Channel>;
-export interface Message { title: string; text?: string; urgent?: boolean; where?: string }   // where: the widget it's about
+export interface Message { title: string; text?: string; urgent?: boolean; where?: string; link?: string; device?: boolean }   // where: the widget it's about · link: an https link it's for (a meeting to join) · device: false keeps it off this device's notifications
 
 const json = (url: string, body: unknown, headers: Record<string, string> = {}) => ({ url, init: { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) } });
 
 /** The request each service expects. */
 export function request(c: Channel, m: Message): { url: string; init: RequestInit } {
+  if (m.link) m = { ...m, text: [m.text, m.link].filter(Boolean).join('\n') };   // every service shows a link in the words; ntfy and Pushover also open it on a tap
   const line = m.text ? `${m.title}\n${m.text}` : m.title;
   switch (c.type) {
-    case 'ntfy': return { url: c.url, init: { method: 'POST', body: m.text ?? m.title, headers: { Title: encodeURIComponent(m.title), Priority: m.urgent ? '4' : '3', ...(c.token ? { Authorization: `Bearer ${c.token}` } : {}) } } };
+    case 'ntfy': return { url: c.url, init: { method: 'POST', body: m.text ?? m.title, headers: { Title: encodeURIComponent(m.title), Priority: m.urgent ? '4' : '3', ...(m.link ? { Click: m.link } : {}), ...(c.token ? { Authorization: `Bearer ${c.token}` } : {}) } } };
     case 'gotify': return json(`${c.url.replace(/\/$/, '')}/message`, { title: m.title, message: m.text ?? m.title, priority: m.urgent ? 8 : 5 }, { 'X-Gotify-Key': c.token });
     case 'telegram': return json(`https://api.telegram.org/bot${c.token}/sendMessage`, { chat_id: c.chat, text: line });
     case 'discord': return json(c.url, { content: line });
     case 'slack': return json(c.url, { text: line });
-    case 'pushover': return json('https://api.pushover.net/1/messages.json', { token: c.token, user: c.user, title: m.title, message: m.text ?? m.title, priority: m.urgent ? 1 : 0 });
+    case 'pushover': return json('https://api.pushover.net/1/messages.json', { token: c.token, user: c.user, title: m.title, message: m.text ?? m.title, priority: m.urgent ? 1 : 0, ...(m.link ? { url: m.link } : {}) });
     case 'apprise': return json(c.url, { title: m.title, body: m.text ?? m.title, type: m.urgent ? 'warning' : 'info' });
-    case 'webhook': return json(c.url, { title: m.title, text: m.text, urgent: m.urgent }, c.headers);
+    case 'webhook': return json(c.url, { title: m.title, text: m.text, urgent: m.urgent, ...(m.link ? { link: m.link } : {}) }, c.headers);
   }
 }
 
