@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { parseDocument } from 'yaml';
-import { guideTools, issueUrl, plain, scrub, search, sections } from '../src/server/guide.ts';
+import { guideTools, issueUrl, paletteDocs, plain, scrub, search, sections } from '../src/server/guide.ts';
+import { pathOf, slug } from '../src/shared/docs.ts';
 
 test('docs: a page loses its frontmatter and components and keeps its words', () => {
   const p = plain('---\ntitle: Tabs\n---\nimport X from "y";\n\n<Aside>\nTabs group sections.\n</Aside>\n\n## Order\n\nBy config.');
@@ -57,4 +58,35 @@ test('issue: the forms are valid YAML, or GitHub drops them', () => {
 
 test('issue: it can only make a link', () => {
   assert.equal(guideTools().report_issue.access, 'read');
+});
+
+test('palette docs: a heading gets the id the docs site gives it, counted the way the site counts', () => {
+  assert.equal(slug('2. Put the secret in `.env`'), '2-put-the-secret-in-env');
+  assert.equal(slug('Do you support my camera\'s MJPEG stream?'), 'do-you-support-my-cameras-mjpeg-stream');
+  assert.equal(slug('Services outside Docker: `type: host`'), 'services-outside-docker-type-host');
+  assert.equal(slug('See [the palette](/concepts/layout/)'), 'see-the-palette');
+  const parts = sections({ page: 'guide/x', title: 'X', text: 'Intro.\n\n## Example\n\nOne.\n\n#### Detail\n\nDeep.\n\n## Example\n\nTwo.\n\n```yaml\n## not one\n```' });
+  assert.deepEqual(parts.map(p => p.anchor), [undefined, 'example', 'example-1']);
+});
+
+test('palette docs: where a page is on the site', () => {
+  assert.equal(pathOf('guide/index'), ''); assert.equal(pathOf('guide/security/index'), 'security/');
+  assert.equal(pathOf('guide/concepts/layout'), 'concepts/layout/'); assert.equal(pathOf('docs/configuration'), 'reference/configuration/');
+  assert.equal(pathOf('docs/plugins'), undefined);
+});
+
+test('palette docs: names before words, the key pages for "docs", and only a line of any page', async () => {
+  const { registry } = await import('../src/integrations/index.ts');
+  const find = (q: string) => paletteDocs(q, registry);
+  assert.deepEqual((await find('help')).map(h => h.path), ['', 'start/install/', 'reference/configuration/', 'integrations/', 'security/']);
+  assert.deepEqual(await find(''), []);
+  const sonarr = await find('sonarr docs');
+  assert.equal(sonarr[0].path, 'integrations/arr/'); assert.match(sonarr[0].title, /Sonarr/);
+  const wall = await find('wall');
+  assert.equal(wall[0].path, 'concepts/wall/');
+  assert.ok(wall.length <= 5);
+  const layout = await find('palette');
+  assert.ok(layout.some(h => h.path === 'concepts/layout/' && h.anchor === 'the-palette'));
+  for (const h of [...wall, ...layout, ...await find('backups')]) assert.ok((h.snippet ?? '').length <= 112, h.snippet);
+  assert.ok((await find('x'.repeat(10_000))).length === 0);
 });

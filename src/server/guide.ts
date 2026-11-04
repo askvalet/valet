@@ -5,53 +5,14 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
 import { z } from 'zod';
 import type { Tool } from './core.ts';
+import { findDocs, plain, search, sections, type DocIndex, type Page } from '../shared/docs.ts';
 
 const REPO = 'https://github.com/askvalet/valet';
 const ROOTS = ['docs', 'website/src/content/docs'];
 
-type Part = { page: string; title: string; heading: string; text: string };
-type Page = { page: string; title: string; text: string };
+export { plain, search, sections } from '../shared/docs.ts';
 
-/** The words of a Markdown or MDX page: frontmatter, imports and components come out, tables and code stay. */
-export function plain(source: string) {
-  const front = source.match(/^---\n([\s\S]*?)\n---\n/);
-  const title = front?.[1].match(/^title:\s*["']?(.+?)["']?\s*$/m)?.[1];
-  const body = (front ? source.slice(front[0].length) : source).split('\n')
-    .filter(l => !/^(import|export) /.test(l) && !/^\s*<\/?[A-Z]\w*[^>]*>\s*$/.test(l)).join('\n').trim();
-  return { title: title ?? body.match(/^# (.+)$/m)?.[1] ?? '', text: body };
-}
-
-/** One entry for each `## heading`, so a search can answer with the part that matters rather than a whole page. */
-export function sections(page: Page): Part[] {
-  const parts: Part[] = []; let heading = page.title, lines: string[] = [];
-  const flush = () => { const text = lines.join('\n').trim(); if (text) parts.push({ page: page.page, title: page.title, heading, text }); lines = []; };
-  let fenced = false;
-  for (const l of page.text.split('\n')) {
-    if (l.startsWith('```')) fenced = !fenced;
-    const h = !fenced && l.match(/^#{1,3} (.+)$/);
-    if (h) { flush(); heading = h[1]; } else lines.push(l);
-  }
-  flush();
-  return parts;
-}
-
-/** Best sections first: words in a heading count most, and every word of the question has to pull its weight. */
-export function search(parts: Part[], query: string, limit = 5) {
-  const words = query.toLowerCase().split(/[^\p{L}\p{N}_.-]+/u).filter(w => w.length > 2);
-  const scored = parts.map(p => {
-    const head = `${p.title} ${p.heading}`.toLowerCase(), body = p.text.toLowerCase();
-    let score = 0, hit = 0;
-    for (const w of words) {
-      const n = body.split(w).length - 1, top = head.includes(w);
-      if (n || top) hit++;
-      score += (top ? 6 : 0) + Math.min(n, 5);
-    }
-    return { p, score: score * (hit / (words.length || 1)) };
-  });
-  return scored.filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, limit).map(s => s.p);
-}
-
-let loaded: Promise<Page[]> | undefined;
+let loaded: Promise<Page[]> | undefined, index: Promise<DocIndex> | undefined;
 async function pages(base = process.env.VALET_DOCS ?? process.cwd()) {
   return loaded ??= (async () => {
     const out: Page[] = [];
@@ -65,6 +26,15 @@ async function pages(base = process.env.VALET_DOCS ?? process.cwd()) {
     }
     return out;
   })();
+}
+
+/** Everything the palette searches: the pages in sections, and the built-in integrations, which each have a page on the site. */
+export function docsIndex(integrations: Record<string, { name: string }>) {
+  return index ??= pages().then(all => ({ parts: all.flatMap(sections), integrations: Object.entries(integrations).map(([type, i]) => ({ type, name: i.name })) }));
+}
+/** ⌘K's docs results: titles, where they are, a line of each. A question is cut to 80 characters, and the index is built once. */
+export async function paletteDocs(query: string, integrations: Record<string, { name: string }>) {
+  return findDocs(await docsIndex(integrations), query.slice(0, 80));
 }
 
 // What a person might paste, taken out before it goes into a link: the redactor knows this install's secrets, but

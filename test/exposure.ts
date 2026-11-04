@@ -70,7 +70,7 @@ function everyRoute(name: string, auth: Record<string, unknown>) {
     test('every route outside the public list refuses without a session', async () => {
       const list = await routes();
       assert.ok(list.length > 15, 'found the routes');
-      for (const r of ['GET /api/commands', 'POST /api/command']) assert.ok(list.some(x => `${x.method} ${x.path}` === r), `${r} is among them`);   // ⌘K's commands
+      for (const r of ['GET /api/commands', 'POST /api/command', 'GET /api/docs']) assert.ok(list.some(x => `${x.method} ${x.path}` === r), `${r} is among them`);   // ⌘K's commands
       for (const r of list) {
         const key = `${r.method} ${r.path}`;
         if (PUBLIC.has(key) || IN_AUTH.test(r.path)) continue;
@@ -176,6 +176,14 @@ describe('no sign-in, network not trusted', () => {
     assert.ok(text.includes(TITLE)); assert.ok(!text.includes(SECRET));
     assert.match(await raw(s.port, '/api/page'), new RegExp(TITLE), 'raw requests really reach the server');
     assert.equal((await fetch(`${s.base}/api/action/probe/x`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 403);
+  });
+  test('the docs search answers a read-only page, with titles and places, never a file or the config', async () => {
+    const r = await fetch(`${s.base}/api/docs?q=wallpaper`), text = await r.text(), { docs } = JSON.parse(text);
+    assert.equal(r.status, 200); clean('GET /api/docs', text);
+    assert.ok(docs.length > 0 && docs.length <= 5);
+    for (const d of docs) { assert.deepEqual(Object.keys(d).filter(k => !['title', 'path', 'heading', 'anchor', 'snippet'].includes(k)), []); assert.ok((d.snippet ?? '').length < 120); assert.doesNotMatch(d.path, /^\/|\.\.|:/); }
+    assert.deepEqual((await fetch(`${s.base}/api/docs?q=${encodeURIComponent('wall '.repeat(600))}`).then(r => r.json())).docs.length <= 5, true);
+    assert.equal((await fetch(`${s.base}/api/docs?q=title`).then(r => r.text())).includes(TITLE), false);
   });
   test('and it takes no push subscriptions: turning notifications on is acting', async () => {
     assert.deepEqual(await fetch(`${s.base}/api/push`).then(r => r.json()), { ready: false, why: 'read-only' });

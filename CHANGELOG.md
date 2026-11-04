@@ -5,6 +5,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- Valet's docs in ⌘K: type what you're looking for ("wallpaper", "backups", "sonarr") and a **Docs** group under everything else offers the pages and sections about it, opening on askvalet.dev at the right heading. "docs" or "help" alone offers the main pages. The search runs on Valet's own copy of the docs, so it works offline, and on a read-only page too.
+
 ## [0.1.5] - 2026-11-04
 
 ### Added
