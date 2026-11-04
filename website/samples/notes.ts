@@ -119,7 +119,7 @@ export const NOTES: Record<string, string> = {
   'calendar.title': 'The card\'s title.',
   'calendar.meetings': 'Online meetings: a ring with a countdown and Join, and reminders. `false` turns it off. See [meetings](/concepts/layout/#meetings).',
   'calendar.meetings.lead': 'How long before a meeting its ring appears: `10m` if left out.',
-  'calendar.meetings.remind': 'When to remind you before it starts: one time or a list, like `[10m, 1m]`; `[2m]` if left out, `[]` for none.',
+  'calendar.meetings.remind': 'When to remind you before it starts: one time or a list, like `[10m, 1m]`; `[1m]` if left out, `[]` for none.',
   'calendar.meetings.push': 'Reminders also go to devices with notifications on, not only your channels.',
   'calendar.meetings.me': 'Your address, or a list: meetings you declined are left out.',
   'camera.title': 'The card\'s title.',

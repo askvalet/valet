@@ -35,7 +35,7 @@ const endOf = (e: Event) => e.end && e.end > e.start ? e.end : e.start + MEETING
 const Meetings = z.object({
   lead: Every.default(10 * 6e4),   // how long before an online meeting its ring appears, with a countdown and Join
   // when to remind you, before it starts: one time or a list, like [10m, 1m]; [] for none
-  remind: z.union([Every, z.array(Every).max(5)]).default([2 * 6e4]).transform(v => list(v)),
+  remind: z.union([Every, z.array(Every).max(5)]).default([6e4]).transform(v => list(v)),
   push: z.boolean().default(true),   // reminders also go to devices with notifications on (⌘K), not only notify.channels
   // your address (or a list): meetings you declined are left out, and so are you from who it's with
   me: z.union([z.string().email(), z.array(z.string().email())]).optional().transform(v => list(v)),

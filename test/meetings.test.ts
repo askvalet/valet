@@ -185,7 +185,7 @@ test('reminders: due once, the latest of one meeting, never for what began befor
 });
 
 test('reminders: said once across a restart, kept in the data folder', async () => {
-  const start = Date.now() + 90_000;
+  const start = Date.now() + 45_000;
   const instance = calendar.create(calendar.config.parse({ calendars: ['https://c/a.ics'] }), fake(meetingFeed(start)));
   const told: string[] = [];
   const first = await new Reminders().load();
