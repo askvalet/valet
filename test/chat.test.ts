@@ -190,3 +190,9 @@ test('long chats: old tool results shrink, recent ones stay whole, and it says i
   await talk(model, [{ id: 'u', role: 'user', parts: [{ type: 'text', text: 'a' }] }, { id: 'a', role: 'assistant', parts: [{ type: 'text', text: 'thinking aloud</think>b' }] }, ...say('c')]);
   assert.ok(!JSON.stringify(model.doStreamCalls[0].prompt).includes('thinking aloud'));
 });
+
+test('context: each step says how much of the model\'s window the chat now takes, from the usage it reported', async () => {
+  const r = await talk(scripted('hello'), say('hi'));
+  const meta = r.events.filter(e => e.type === 'message-metadata').map(e => e.messageMetadata);
+  assert.deepEqual(meta.at(-1), { context: { used: 2 } });   // one in, one out; the test's model has no known window
+});

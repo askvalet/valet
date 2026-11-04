@@ -89,6 +89,7 @@
 .row-slot.is-in > .row-clip > * { animation: row-from var(--dur-move) var(--ease-out) backwards; }
 .row-slot.is-out { pointer-events: none; animation: row-close var(--dur-pop) var(--ease-out) both; }
 .row-slot.is-out > .row-clip > * { animation: row-back var(--dur-pop) var(--ease-out) both; }
+.row-slot.is-out.is-dust { animation-delay: 300ms; }   /* the dust clears the row first, then its room closes */
 @keyframes row-open { from { flex-grow: 0; grid-template-rows: 0fr; opacity: 0; } }
 @keyframes row-close { to { flex-grow: 0; grid-template-rows: 0fr; opacity: 0; border-block-end-width: 0; } }
 @keyframes row-from { from { transform: translateY(-100%); } }
@@ -129,4 +130,28 @@
 .toasts > * { pointer-events: auto; }
 .toasts .undo-bar.is-bad { color: color-mix(in srgb, var(--bad) 55%, #fff); }
 .toasts .undo-bar.is-warn { color: color-mix(in srgb, var(--warn) 55%, #fff); }
-.toasts .undo-bar.is-out { opacity: 0; scale: .96; transition: opacity var(--dur-pop) var(--ease-out), scale var(--dur-pop) var(--ease-out); }
+/* a note can be swiped off sideways: it follows the finger, then rides back on the spring or is thrown the way it was going */
+.toasts .undo-bar { touch-action: pan-y; transition: translate var(--dur-move) var(--ease-spring), opacity var(--dur-pop) var(--ease-out); }
+.toasts .undo-bar.is-held { transition: none; cursor: grabbing; user-select: none; }
+.toasts .undo-bar.is-out { opacity: 0; scale: .96; transition: opacity var(--dur-pop) var(--ease-out), scale var(--dur-pop) var(--ease-out), translate var(--dur-pop) var(--ease-out); }
+
+/* Dust (dust.ts): a copy of what was taken off, where it was, masked away from the left while its specks drift off. The
+   mask is the only thing that isn't transform or opacity, on one element for a third of a second. */
+.dust { position: absolute; z-index: 70; pointer-events: none; }
+.dust > :first-child { mask-image: linear-gradient(90deg, transparent 46%, #000 54%); mask-size: 250% 100%; mask-repeat: no-repeat; mask-position: 100% 0; }
+.dust > canvas { position: absolute; pointer-events: none; }
+
+/* An approval's yes: the button gives under the press and settles back with its tick, so it reads as taken before the card goes. */
+.approve[data-chosen] { animation: approve 280ms var(--ease-out) backwards; }
+@keyframes approve { from { transform: scale(.94); } }
+
+/* A poster under the mouse: the picture slides a few pixels away from the pointer inside its frame and comes a touch closer. */
+@media (hover: hover) and (pointer: fine) {
+  .poster img { transition: opacity var(--dur-move) var(--ease-out), transform var(--dur-scene) var(--ease-out); }
+  .group:hover > .carousel-face .poster img { transform: translate(calc(var(--px, 0) * -5px * var(--move)), calc(var(--py, 0) * -5px * var(--move))) scale(calc(1 + .06 * var(--move))); transition-duration: var(--dur-move), var(--dur-pop); }
+}
+
+/* A switch: the knob is carried across on a spring, and it widens a little under the finger, toward where it's going. */
+[data-slot="switch-thumb"] { transition: translate var(--dur-move) var(--ease-spring), scale var(--dur-press) var(--ease-out), background-color var(--dur-press) var(--ease-out); transform-origin: left; }
+[data-slot="switch-thumb"][data-state="checked"] { transform-origin: right; }
+[data-slot="switch"]:active:not(:disabled) [data-slot="switch-thumb"] { scale: calc(1 + .2 * var(--move)) 1; }

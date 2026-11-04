@@ -11,7 +11,15 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- What you take off the page leaves as dust: archiving a saved link, clearing finished to-dos, removing a rule or a torrent, unpinning a card, **Not now** on an approval and dismissing the year in review. It comes apart from the left and drifts off while its room closes. Lists that change by themselves still just change, and reduced motion gets a plain fade.
+- A context meter in the chat: a small pie beside the model's name, from the tokens the model reported for its last step, with the numbers on hover and a fresh chat offered when it's nearly full. Known Claude models know their window; `assistant.contextWindow` sets it for anything else.
+- Sounds, off by default: `appearance.sounds: { enabled, volume }`, made in the browser with no files, for a switch, something done, a "not now", a notice, a message sent and something taken off. ⌘K turns them on or off for one browser.
+- Small touches: switches on a spring, a tick on an approval's button, the send arrow lifting out as the stop square arrives, notices that swipe away, the copy icon drawing its tick, posters that lean from the pointer, and Desk and List sliding their pill.
 - GitHub repositories: a `traffic` widget and tool for your own repos, with views, visitors, clones and where visitors came from over GitHub's last 14 days. It needs a token that can push to the repo.
+
+### Fixed
+
+- To-do list: ticking something off on the page works: the switch now says which item it is.
 
 ## [0.1.3] - 2026-11-03
 

@@ -62,3 +62,29 @@ test('first run: writes a starter config that checks clean, and runs from memory
   assert.equal(startConfig(join(dir, 'sub', 'config.yaml')).saved, true);     // now it's just a config
   assert.deepEqual(check(a.config, registry).problems, []);
 });
+
+test('context window: known Claude models fill it in, however the provider spells them; the config wins; others stay unknown', async () => {
+  const { contextWindow, windowOf } = await import('../src/server/model.ts');
+  for (const m of ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-opus-5-5', 'claude-sonnet-5', 'anthropic/claude-sonnet-4.6', 'claude-haiku-5-5', 'claude-fable-5-1']) assert.equal(windowOf(m), 1_000_000, m);
+  for (const m of ['claude-haiku-4-5', 'claude-sonnet-4-5', 'claude-sonnet-4-20250514', 'claude-opus-4-1-20250805', 'claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'anthropic/claude-3.5-haiku']) assert.equal(windowOf(m), 200_000, m);
+  for (const m of ['qwen3.8-27b', 'llama3.1:8b', 'gpt-4o', 'claude']) assert.equal(windowOf(m), undefined, m);
+  const a = (o: object) => Config.parse({ assistant: { model: 'qwen3.8-27b', ...o } }).assistant!;
+  assert.equal(contextWindow(a({})), undefined);
+  assert.equal(contextWindow(a({ contextWindow: 32768 })), 32768);
+  assert.equal(contextWindow(a({ model: 'claude-sonnet-4-5', contextWindow: 1_000_000 })), 1_000_000);
+  assert.equal(Config.safeParse({ assistant: { model: 'm', contextWindow: 12 } }).success, false);
+});
+
+test('sounds: off and quiet unless asked for; a browser\'s own choice wins either way', async () => {
+  const { resolveSounds } = await import('../src/web/sound.ts');
+  const c = Config.parse({});
+  assert.deepEqual(c.appearance.sounds, { enabled: false, volume: .4 });
+  assert.deepEqual(Config.parse({ appearance: { sounds: { enabled: true } } }).appearance.sounds, { enabled: true, volume: .4 });
+  assert.equal(Config.safeParse({ appearance: { sounds: { volume: 2 } } }).success, false);
+  assert.equal(Config.safeParse({ appearance: { sounds: { loud: true } } }).success, false);
+  assert.deepEqual(resolveSounds(c.appearance.sounds, null), { on: false, volume: .4 });
+  assert.deepEqual(resolveSounds({ enabled: true, volume: .2 }, null), { on: true, volume: .2 });
+  assert.equal(resolveSounds({ enabled: true }, 'off').on, false);
+  assert.equal(resolveSounds({ enabled: false }, 'on').on, true);
+  assert.equal(resolveSounds(undefined, 'something else').on, false);
+});

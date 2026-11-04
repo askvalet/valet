@@ -12,7 +12,7 @@ import type { Activity } from './activity.ts';
 import type { Config } from './config.ts';
 import type { Instance, Integration } from './core.ts';
 import { mcpTools } from './mcp.ts';
-import { chatAgent, makeAgentModel, makeModel } from './model.ts';
+import { chatAgent, contextWindow, makeAgentModel, makeModel } from './model.ts';
 import { checkCard } from '../shared/cards.schema.ts';
 import { accessOf as granted, asker, rank, runTool as run, who } from './run.ts';
 
@@ -225,7 +225,11 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       prepareStep: ({ stepNumber }) => stepNumber >= a.maxSteps - 1 ? { toolChoice: 'none' as const, system: `${system(m.catalog)}\n\nYou have no more lookups. Answer now in plain words from what you already found. If it doesn't settle the question, say what you checked and that you can't tell. Do not write tool calls.` } : undefined,
     });
     // a tool that throws past runTool (a failed input check, say): the log and the page should both say what happened
+    // how full the model's context is after each step, for the meter beside its name: what it was given, and what it said
+    const window = contextWindow(a);
+    const messageMetadata = ({ part }: { part: { type: string; usage?: { inputTokens?: number; outputTokens?: number } } }) =>
+      part.type === 'finish-step' && part.usage?.inputTokens ? { context: { used: part.usage.inputTokens + (part.usage.outputTokens ?? 0), window } } : undefined;
     const failed = (e: unknown) => { const m = safety.redact((e as Error)?.message ?? String(e)); console.error(`assistant: ${m}`); return m; };
-    return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream, tools: all, onError: failed } as Parameters<typeof toUIMessageStream>[0]) });
+    return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream, tools: all, onError: failed, messageMetadata } as Parameters<typeof toUIMessageStream>[0]) });
   });
 }

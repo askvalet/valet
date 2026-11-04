@@ -16,7 +16,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn, useOnScreen } from '@/lib/utils';
-import { Arrows, Counter, Pile, RowSlot, toast, useRow, useRows } from './feel.tsx';
+import { Arrows, Counter, DUST_HOLD, Pile, RowSlot, Tick, toast, useRow, useRows } from './feel.tsx';
+import { dissolve, justActed, useSettle } from './dust.ts';
+import { play } from './sound.ts';
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
 import { clock as clockOf, day as dayOf, num as written } from './format.ts';
 import { stateOf } from '../shared/cards.ts';
@@ -221,12 +223,14 @@ function Clamp({ text, className }: { text: string; className?: string }) {
 }
 
 function Rows({ card, dense, run }: { card: ListCard; dense: boolean; run?: RunAction }) {
-  const rows = useRows(card.items, it => it.id ?? it.title, !!card.log), Row = card.log ? 'div' : 'li';
+  // a log's rows come and go as they happen; any other list only gives a row a send-off when someone just took it off
+  const dust = justActed(), rows = useRows(card.items, it => it.id ?? it.title, true, dust ? DUST_HOLD : undefined).filter(r => card.log || r.state !== 'out' || dust);
+  const on = !!card.log || !!run, Row = on ? 'div' : 'li';
   return (
     <ul className="-my-1 divide-y">
       {rows.map(({ key, item: it, state }, i) => <Fragment key={key}>
         {it.section && it.section !== rows[i - 1]?.item.section && <li className="pt-2.5 pb-1 text-xs font-medium text-muted-foreground first:pt-1">{it.section}</li>}
-        <RowSlot as="li" state={state} on={!!card.log}><Row className={cn('flex min-w-0 items-center gap-3', dense ? 'py-1.5' : 'py-2.5', it.href && 'row-link -mx-2 cursor-pointer px-2 transition-colors hover:bg-accent')}
+        <RowSlot as="li" state={card.log || state === 'out' ? state : undefined} on={on} dust={dust}><Row className={cn('flex min-w-0 items-center gap-3', dense ? 'py-1.5' : 'py-2.5', it.href && 'row-link -mx-2 cursor-pointer px-2 transition-colors hover:bg-accent')}
           onClick={it.href ? () => window.open(it.href, '_blank', 'noopener') : undefined} role={it.href ? 'link' : undefined}>
           {it.image && <img src={it.image} alt="" loading="lazy" className={cn('shrink-0 rounded-md bg-muted object-cover', dense ? 'h-9 w-6' : 'h-12 w-8')} />}
           <div className="min-w-0 flex-1">
@@ -253,7 +257,7 @@ function RowButtons({ buttons, run }: { buttons: NonNullable<ListCard['items'][n
   return (
     <div className="mt-1 flex gap-3 text-xs">
       {buttons.map(b => (
-        <button key={b.label} type="button" disabled={!!busy} onClick={e => { e.stopPropagation(); setBusy(b.label); void run(b.action, b.args).finally(() => setBusy(null)); }}
+        <button key={b.label} type="button" disabled={!!busy} onClick={e => { e.stopPropagation(); setBusy(b.label); void run(b.action, b.args).then(() => play('done'), () => play('no')).finally(() => setBusy(null)); }}
           className={cn('title-link text-foreground/75 transition-opacity disabled:opacity-50', busy === b.label && 'chat-shimmer')}>{b.label}</button>
       ))}
     </div>
@@ -398,7 +402,7 @@ function useArchive(run?: RunAction, shared?: boolean) {
   return {
     gone, leaving, last, slip, back, undo,
     archive(id: string, by?: Element | null) {
-      setLeaving(l => [...l, id]); say(id); setBack(null);
+      dissolve(by); setLeaving(l => [...l, id]); say(id); setBack(null);
       if (shared) toast(`archive-${id}`, { text: 'Archived', undo: () => undo(id) }, { by });
       setTimeout(() => { setLeaving(without(id)); setGone(g => [...g, id]); }, 240);
       run?.('archive', { id }).catch(() => { setLeaving(without(id)); setGone(without(id)); if (shared) toast(`archive-${id}`, null); say(null, 'Couldn\'t archive that'); });
@@ -437,7 +441,7 @@ function Article({ card, run }: { card: ArticleCard; run?: RunAction }) {
       {arch.last || arch.slip ? <div className="article-corner"><UndoBar a={arch} /></div> : card.archived && run ? <div className="article-corner"><SeeArchived href={card.archived} className="article-chip" /></div> : null}
       {n > 1 || (run && a.id) ? <div className="article-tools">
         {n > 1 && <button type="button" aria-label="Previous" title="Previous" aria-disabled={now === 0} onClick={() => { if (now > 0) setAt(now - 1); }}><ChevronLeft className="size-4" /></button>}
-        {run && a.id && <button type="button" aria-label="Archive" title="Archive" onClick={() => arch.archive(a.id!)}><Archive className="size-[15px]" /></button>}
+        {run && a.id && <button type="button" aria-label="Archive" title="Archive" onClick={e => arch.archive(a.id!, e.currentTarget.closest('.pile')?.querySelector('.pile-card[data-at="0"] .article'))}><Archive className="size-[15px]" /></button>}
         {top && <a href={top} target="_blank" rel="noreferrer" aria-label="Open" title="Open"><ArrowUpRight className="size-4" /></a>}
         {n > 1 && <button type="button" aria-label="Next" title="Next" aria-disabled={now === n - 1} onClick={() => { if (now < n - 1) setAt(now + 1); }}><ChevronRight className="size-4" /></button>}
       </div> : null}
@@ -530,7 +534,7 @@ function StallLine({ m, stall, card, run }: { m: MediaItem; stall: Stall; card: 
 }
 
 function Media({ card, compact, run }: { card: MediaCard; compact?: boolean; run?: RunAction }) {
-  const rows = useRows(card.items, m => m.title);
+  const dust = justActed(), rows = useRows(card.items, m => m.title, true, dust ? DUST_HOLD : undefined);
   // in chat, an empty answer is one quiet line, not a big empty frame
   if (!card.items.length) return compact
     ? <div className="flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-[13px] text-muted-foreground"><Film className="size-4" />{card.empty ?? 'Nothing playing'}</div>
@@ -546,7 +550,7 @@ function Media({ card, compact, run }: { card: MediaCard; compact?: boolean; run
       {rows.map(({ key, item: m, state }) => {
         const stall = stallOf(m);
         return (
-          <RowSlot key={key} state={state}><div className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden px-4 py-2.5">
+          <RowSlot key={key} state={state} dust={dust}><div className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden px-4 py-2.5">
             {m.pct != null && <span className={cn('absolute inset-0 -z-10 transition-transform duration-(--dur-move) ease-out', stall ? 'bg-warn/15' : 'bg-foreground/[.07]')} style={{ transform: `translateX(${m.pct * 100 - 100}%)` }} />}
             {m.image ? <Art src={m.image} className="h-12 w-8 shrink-0 rounded-md object-cover" /> : <span className="grid h-12 w-8 shrink-0 place-items-center rounded-md bg-white/10 text-muted-foreground"><Icon name={m.icon ?? 'film'} className="size-4" /></span>}
             <div className="min-w-0 flex-1">
@@ -697,14 +701,15 @@ function Desk({ card, header }: { card: ShelfCard; header?: ReactNode }) {
 
 /** Saved pages as small browser windows, the page itself inside; hover and it scrolls by. */
 function Windows({ card, header, run }: { card: ShelfCard; header?: ReactNode; run?: RunAction }) {
-  const arch = useArchive(run, true);
+  const arch = useArchive(run, true), shown = card.items.filter(w => !w.id || !arch.gone.includes(w.id)).slice(0, 9);
+  const grid = useSettle<HTMLDivElement>(shown.map(w => w.id ?? w.title).join('\n'));
   const site = (s?: string) => s && /^[\w-]+(\.[\w-]+)+$/.test(s) ? s : undefined;
   return (
     <div>
       <div className="mb-3 flex items-center justify-between gap-3"><div className="min-w-0">{header}</div>{run && <SeeArchived href={card.archived} className="shrink-0" />}</div>
-      <div className="windows">
-        {card.items.filter(w => !w.id || !arch.gone.includes(w.id)).slice(0, 9).map((w, i) => (
-          <a key={w.id ?? i} href={w.href} target="_blank" rel="noreferrer" className={cn('window relative', w.id && arch.leaving.includes(w.id) && 'gone')}>
+      <div ref={grid} className="windows">
+        {shown.map((w, i) => (
+          <a key={w.id ?? i} data-key={w.id ?? w.title} href={w.href} target="_blank" rel="noreferrer" className={cn('window relative', w.id && arch.leaving.includes(w.id) && 'gone')}>
             {run && w.id && <button type="button" aria-label="Archive" title="Archive" className="window-archive" onClick={e => { e.preventDefault(); e.stopPropagation(); arch.archive(w.id!, e.currentTarget.closest('.window')); }}><Archive className="size-3.5" /></button>}
             <span className="window-bar"><i /><i /><i />{site(w.subtitle) && <img src={`/api/favicon/${w.subtitle}`} alt="" className="ml-1.5 size-3.5 rounded-sm" onError={e => { e.currentTarget.style.display = 'none'; }} />}<span className="min-w-0 truncate">{w.subtitle}</span></span>
             <span className="window-page">{w.image ? <Art src={w.image} className="w-full" /> : <span className="grid h-full place-items-center bg-white/[.04]"><Bookmark className="size-5 text-muted-foreground" /></span>}</span>
@@ -746,6 +751,15 @@ function Ranked({ card }: { card: RankedCard }) {
   );
 }
 
+/** A poster under the pointer leans a little away from it, the picture sliding inside its frame, so it reads as a thing
+ *  with depth rather than a flat tile. Only a mouse; the stylesheet holds it still for anyone who's asked for less. */
+const tilt = (e: React.PointerEvent<HTMLElement>) => {
+  const frame = e.currentTarget.querySelector<HTMLElement>('.poster'); if (!frame || e.pointerType !== 'mouse') return;
+  if (e.type === 'pointerleave') { frame.style.removeProperty('--px'); frame.style.removeProperty('--py'); return; }
+  const r = frame.getBoundingClientRect();
+  frame.style.setProperty('--px', ((e.clientX - r.left) / r.width * 2 - 1).toFixed(3)); frame.style.setProperty('--py', ((e.clientY - r.top) / r.height * 2 - 1).toFixed(3));
+};
+
 function ShelfRow({ card, header, small, beside, lines }: { card: ShelfCard; header?: ReactNode; small?: boolean; beside?: boolean; lines?: boolean }) {
   const row = useRow();
   const ratio = card.aspect === 'square' ? 'aspect-square' : card.aspect === 'wide' ? 'aspect-video' : 'aspect-[2/3]';
@@ -763,7 +777,7 @@ function ShelfRow({ card, header, small, beside, lines }: { card: ShelfCard; hea
             const href = it.cta?.href ?? it.href;
             const inner = (
               <div className="carousel-face">
-                <div className={cn('relative overflow-hidden rounded-xl bg-muted shadow-[0_10px_24px_-12px_rgb(0_0_0/0.45)] transition-[translate,box-shadow] duration-(--dur-pop) ease-out', href && 'group-hover:-translate-y-1 group-hover:shadow-[0_18px_32px_-12px_rgb(0_0_0/0.5)]', ratio)}>
+                <div className={cn('poster relative overflow-hidden rounded-xl bg-muted shadow-[0_10px_24px_-12px_rgb(0_0_0/0.45)] transition-[translate,box-shadow] duration-(--dur-pop) ease-out', href && 'group-hover:-translate-y-1 group-hover:shadow-[0_18px_32px_-12px_rgb(0_0_0/0.5)]', ratio)}>
                   <Art src={it.image} alt={it.title} className="size-full object-cover" />
                   {it.badge && !lines && <span className={cn('absolute bottom-2 left-2 rounded-sm px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-md', 'bg-black/60', it.badge === 'Ready' ? 'text-good' : it.badge === 'Today' && 'text-primary')}>{it.badge}</span>}
                   {lines && <i className={`ticket-line is-${lineOf(it)}`} />}
@@ -775,7 +789,7 @@ function ShelfRow({ card, header, small, beside, lines }: { card: ShelfCard; hea
               </div>
             );
             return href
-              ? <a key={i} href={href} target="_blank" rel="noreferrer" className={cn('group shrink-0 snap-start', width)}>{inner}</a>
+              ? <a key={i} href={href} target="_blank" rel="noreferrer" className={cn('group shrink-0 snap-start', width)} onPointerMove={tilt} onPointerLeave={tilt}>{inner}</a>
               : <div key={i} className={cn('shrink-0 snap-start', width)}>{inner}</div>;
           })}
         </div>
@@ -928,17 +942,19 @@ export type RunAction = (action: string, args?: Record<string, unknown>) => Prom
 
 function Controls({ card, run }: { card: ControlsCard; run?: RunAction }) {
   const fire = (c: Control, extra: Record<string, unknown>) => c.action && run?.(c.action, { ...c.args, ...extra });
+  // a row someone just cleared away (a to-do that's done) leaves as dust; one that's only gone from the list just goes
+  const dust = justActed(), rows = useRows(card.items, c => c.id, !!run, dust ? DUST_HOLD : undefined).filter(r => r.state !== 'out' || dust);
   return (
     <div className="-my-1 divide-y">
-      {card.items.map(c => (
-        <div key={c.id} className="flex min-h-12 min-w-0 items-center gap-3 py-2">
+      {rows.map(({ key, item: c, state }) => (
+        <RowSlot key={key} state={state === 'out' ? state : undefined} on={!!run} dust={dust}><div className="flex min-h-12 min-w-0 items-center gap-3 py-2">
           {c.color !== undefined && <span className="size-2.5 shrink-0 rounded-full ring-1 ring-border" style={{ background: c.color ?? 'var(--muted)' }} />}
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm">{c.label}</div>
             {c.sub && <div className="truncate text-xs text-muted-foreground">{c.sub}</div>}
           </div>
           {c.kind === 'value' && <span className="text-sm tabular text-muted-foreground">{String(c.value ?? '–')}</span>}
-          {c.kind === 'toggle' && <Switch checked={!!c.value} disabled={!run} aria-label={c.label} onCheckedChange={v => fire(c, { value: v })} />}
+          {c.kind === 'toggle' && <Switch checked={!!c.value} disabled={!run} aria-label={c.label} onCheckedChange={v => { play('tap'); fire(c, { value: v }); }} />}
           {c.kind === 'slider' && (
             <Slider className="w-32" min={c.min ?? 0} max={c.max ?? 100} step={c.step ?? 1} defaultValue={[Number(c.value ?? 0)]} disabled={!run}
               aria-label={c.label} onValueCommit={v => fire(c, { value: v[0] })} />
@@ -950,7 +966,7 @@ function Controls({ card, run }: { card: ControlsCard; run?: RunAction }) {
             </Select>
           )}
           {c.kind === 'button' && <Button size="sm" variant="secondary" disabled={!run} onClick={() => fire(c, {})}>{String(c.value ?? 'Run')}</Button>}
-        </div>
+        </div></RowSlot>
       ))}
     </div>
   );
@@ -1264,15 +1280,16 @@ function BannerLine({ b, run }: { b: Banner; run?: RunAction }) {
 /** Where a card comes from: the service's logo and name, quiet, beside the title. */
 /** Quick actions along a card's bottom: quiet pills that show they're working, then settle. */
 function CardButtons({ buttons, run }: { buttons: NonNullable<CardT['buttons']>; run: RunAction }) {
-  const [busy, setBusy] = useState<string | null>(null), [done, setDone] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null), [done, setDone] = useState<string | null>(null), box = useRef<HTMLDivElement>(null);
   return (
-    <div className="mt-3.5 flex flex-wrap gap-1.5">
+    <div ref={box} className="mt-3.5 flex flex-wrap gap-1.5">
       {buttons.map(b => (
         <button key={b.label} disabled={!!busy} onClick={async () => {
           setBusy(b.label);
-          try { await run(b.action, b.args); setDone(b.label); setTimeout(() => setDone(null), 1600); } finally { setBusy(null); }
+          const card = b.action === 'unpin' ? box.current?.closest('[data-slot="card"]') : null;   // unpinned, the card itself is leaving
+          try { await run(b.action, b.args); play('done'); if (card) dissolve(card); setDone(b.label); setTimeout(() => setDone(null), 1600); } catch { play('no'); } finally { setBusy(null); }
         }} className="press flex h-7 items-center gap-1.5 rounded-sm bg-white/[.07] px-3 text-[12px] text-foreground/85 transition-colors hover:bg-white/[.12] disabled:opacity-60">
-          {busy === b.label ? <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" /> : done === b.label ? <span className="tick">✓</span> : null}
+          {busy === b.label ? <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" /> : done === b.label ? <Tick draw className="size-3 text-good" /> : null}
           {b.label}
         </button>
       ))}

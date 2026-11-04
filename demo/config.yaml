@@ -19,6 +19,7 @@ assistant:
   baseURL: http://valet-demo-model:8080/v1
   apiKey: demo
   model: qwen3.8-27b
+  contextWindow: 32768   # what the scripted model claims to hold, so the chat's context meter has something to fill
   name: Valet
   maxSteps: 4
   access: { default: control }

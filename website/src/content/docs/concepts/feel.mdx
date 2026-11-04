@@ -1,0 +1,43 @@
+---
+title: Feel and sound
+description: How Valet moves and sounds when you do something, and how to turn it down or off.
+sidebar:
+  order: 8
+---
+
+Valet keeps still most of the time. What moves, moves because something changed, and it's short.
+
+## Things you take off the page
+
+When you archive a saved link, clear finished to-dos, remove a rule or a torrent, unpin a card, wave away an approval with **Not now**, or dismiss the year in review, it doesn't just vanish. It comes apart from the left into fine dust that drifts off, and the room it leaves closes up behind it. It takes about two thirds of a second.
+
+Only for what someone just did, on the page or by approving it in chat. A list that changes on its own (a download that finishes, a feed that moves on) just changes.
+
+## Small things
+
+- A switch's knob is carried across on a spring and widens a little under your finger.
+- Allowing something in chat shows a tick on the button for a moment before the card gives way to what it set off.
+- Sending a message lifts the arrow out of the button as the stop square takes its place.
+- A notice at the bottom of the page can be swiped away sideways.
+- Copying a reply turns the copy icon into a tick that draws itself.
+- A poster under the mouse leans away from the pointer a little.
+- **Desk** and **List** slide their pill to the one you pick.
+
+## The context meter
+
+A small pie beside the model's name in the chat shows how full the model's context is. See [Models](/assistant/models/).
+
+## Sound
+
+Off unless you turn it on. Valet makes its sounds in the browser as they play, with no files: a tap for a switch, two rising notes when something's done, a falling one for **Not now** or a failure, a bell for a notice, a lift when you send a message, and a soft puff when something turns to dust. They're short and quiet.
+
+```yaml
+appearance:
+  sounds: { enabled: true, volume: 0.4 }   # volume is 0 to 1
+```
+
+Each browser can also turn them on or off in ⌘K: type "sound". That choice is remembered in that browser and wins over the config, so the kitchen tablet can stay quiet while your desk isn't. Nothing plays until you've touched the page.
+
+## Less motion
+
+`appearance.motion: reduced` or your system's reduce-motion setting keeps fades and drops the rest: something you take off fades out, with no dust. `motion: none` drops the fades too. Sounds don't depend on motion; use the ⌘K switch.

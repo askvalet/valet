@@ -28,6 +28,8 @@ export const AssistantConfig = z.object({
   // what the assistant may use: a default plus per-integration overrides, e.g. { default: read, lights: control }
   access: z.record(z.string(), Access).default({ default: 'read' }),
   maxSteps: z.number().int().min(1).max(20).default(6),
+  // how many tokens the model can hold, for the chat's context meter; known Claude models fill it in, others show what's used
+  contextWindow: z.number().int().min(1000).max(10_000_000).optional(),
   // hand the chat to another agent (Hermes, say): anything with an OpenAI-compatible API. It runs its own tools, so
   // Valet's access levels and approvals don't apply to it, and a read-only page stays on Valet's own assistant.
   agent: z.object({ name: z.string(), baseURL: z.string().url(), apiKey: z.string().optional(), model: z.string() }).strict().optional(),
@@ -144,6 +146,9 @@ export const Appearance = z.object({
   // what the sizes mean, in a grid of 2, 4 or 6 columns as the screen widens: { tall: { rows: 3 }, large: { cols: 6 } }
   sizes: z.partialRecord(z.enum(CARD_SIZES), z.object({ cols: z.number().int().min(1).max(6).optional(), rows: z.number().int().min(1).max(6).optional() }).strict()).default({}),
   rim: z.number().min(0).max(1).optional(),   // a lit bevel on the edge of dark glass, 0 to 1; left out, or 0, there's none
+  // quiet sounds for what you do and what happens (a tap, done, not now, a notice, a message sent); off unless asked for, and
+  // each browser can turn them on or off in ⌘K
+  sounds: z.object({ enabled: z.boolean().default(false), volume: z.number().min(0).max(1).default(.4) }).strict().prefault({}),
   motion: z.enum(['full', 'reduced', 'none']).default('full'),   // reduced: nothing moves or settles in; none: not even fades. A system's reduce-motion always counts.
   css: z.string().optional(),              // your own CSS, loaded after everything else
   cssFile: z.string().regex(/\.css$/i, 'a path to a .css file').optional(),   // the same from a file; css comes after it

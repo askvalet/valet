@@ -23,7 +23,10 @@ const lab = integration.create(integration.config.parse({ art: '/art/cameras' })
 for (const t of Object.values<any>(lab.tools ?? {})) if (t.access !== 'read') { const run = t.run; t.run = async (...args: unknown[]) => { const out = await run(...args); void refreshAll(); return out; }; }
 
 // the scripted model, behind the same door as a real one
-const usage = { inputTokens: { total: 0, noCache: 0, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 0, text: 0, reasoning: 0 } };
+// what a real model would report: about one token for every four characters it was given and wrote, so the chat's context meter fills as it would
+const tokens = (v: unknown) => Math.round(JSON.stringify(v ?? '').length / 4);
+const usageOf = (prompt: unknown, tools: unknown, said: number) => { const input = tokens(prompt) + tokens(tools);
+  return { inputTokens: { total: input, noCache: input, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: said, text: said, reasoning: 0 } }; };
 const asOpenAi = (prompt: any[]) => prompt.flatMap(m => m.role !== 'tool' ? [m] : m.content.filter((p: any) => p.type === 'tool-result').map((p: any) => ({
   role: 'tool', content: JSON.stringify(/denied/.test(p.output?.type ?? '') ? { denied: true } : p.output?.value ?? {}) })));
 const model = {
@@ -42,7 +45,7 @@ const model = {
         c.enqueue({ type: 'text-end', id: 't' });
       }
       const reason = r.call ? 'tool-calls' : 'stop';
-      c.enqueue({ type: 'finish', finishReason: { unified: reason, raw: reason }, usage });
+      c.enqueue({ type: 'finish', finishReason: { unified: reason, raw: reason }, usage: usageOf(prompt, tools, r.call ? tokens(r.call) : tokens(r.text)) });
       c.close();
     } }) };
   },

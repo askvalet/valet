@@ -1,11 +1,14 @@
 // What the chat and ⌘K's commands share: a tool's card that keeps itself current, and the card that asks before
 // anything changes. Kept apart from assistant.tsx so a command can use them without loading the AI SDK.
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { BorderBeam } from 'border-beam';
 import { cn } from '@/lib/utils';
 import type { Card, Confirm } from '../shared/cards.ts';
 import { Icon, Widget } from './cards.tsx';
+import { acted, dissolve } from './dust.ts';
+import { Tick } from './feel.tsx';
 import { label } from './format.ts';
+import { play } from './sound.ts';
 
 export type ToolInfo = { label?: string; followUps?: string[]; access: 'read' | 'write' | 'control'; live?: boolean };
 
@@ -46,14 +49,23 @@ export function ChatCard({ first, name, input, tools, fresh }: { first: Card; na
 export function Approval({ said, title, detail, icon, ready, answer, children, width = 'min(560px, calc(100vw - 48px))' }: {
   said: (Confirm & { logo?: string }) | null; title: string; detail?: string; icon: string; ready: boolean; answer: (ok: boolean) => void; children?: ReactNode; width?: string;
 }) {
+  // a yes shows it took, a beat before the card gives way to what it set off; a no waves the card away
+  const box = useRef<HTMLDivElement>(null), [chose, setChose] = useState<boolean | null>(null);
+  const choose = (ok: boolean) => {
+    if (chose != null) return;
+    setChose(ok); play(ok ? 'done' : 'no');
+    if (ok) { acted(); setTimeout(() => answer(true), 220); return; }
+    dissolve(box.current?.closest('.is-asking') ?? box.current); answer(false);
+  };
   const buttons = () => <>
-    <button onClick={() => answer(false)} className="press h-9 flex-1 rounded-sm px-4 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:flex-none">{label('notNow')}</button>
-    <button disabled={!ready} onClick={() => answer(true)} className={cn('press h-9 flex-1 rounded-sm px-5 text-[14px] font-semibold transition-opacity disabled:opacity-40 sm:flex-none', said?.danger ? 'bg-bad text-white' : 'bg-primary text-primary-foreground')}>{said?.verb ?? label('allow')}</button>
+    <button onClick={() => choose(false)} disabled={chose != null} className="press h-9 flex-1 rounded-sm px-4 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:flex-none">{label('notNow')}</button>
+    <button disabled={!ready || chose != null} onClick={() => choose(true)} data-chosen={chose || undefined} className={cn('press approve relative h-9 flex-1 rounded-sm px-5 text-[14px] font-semibold transition-opacity sm:flex-none', chose ? '' : 'disabled:opacity-40', said?.danger ? 'bg-bad text-white' : 'bg-primary text-primary-foreground')}>
+      <span className={cn('transition-opacity duration-(--dur-press)', chose && 'opacity-0')}>{said?.verb ?? label('allow')}</span>{chose && <Tick draw className="absolute inset-0 m-auto size-[18px]" />}</button>
   </>;
   return (
     // a slow beam around the edge: nothing goes further until this has an answer
     <BorderBeam size="md" colorVariant={said?.danger ? 'sunset' : 'gold'} strength={.6} duration={3.2} className="chat-card is-asking rounded-2xl" style={{ display: 'block', width }}>
-    <div className="overflow-hidden rounded-2xl border bg-card shadow-card">
+    <div ref={box} className="overflow-hidden rounded-2xl border bg-card shadow-card">
       <div className="flex items-center gap-3.5 p-3.5">
         {said?.image ? <img src={said.image} alt="" className="h-[84px] w-14 shrink-0 rounded-lg object-cover shadow-md" />
           : said?.logo ? <img src={said.logo} alt="" className="size-11 shrink-0 rounded-xl object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />

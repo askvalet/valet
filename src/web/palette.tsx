@@ -1,6 +1,6 @@
 // The ⌘K palette: run a plain command, ask, do a card's action, open a service, jump to a tab. Loaded the first time it opens.
 // Commands come first and need no model: they're matched here as you type and run by the server (src/server/commands.ts).
-import { ArrowUp, CornerDownLeft, Globe, LayoutGrid, LogOut, Search, Zap } from 'lucide-react';
+import { ArrowUp, CornerDownLeft, Globe, LayoutGrid, LogOut, Search, Volume2, VolumeX, Zap } from 'lucide-react';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { defaultFilter } from 'cmdk';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
@@ -13,6 +13,7 @@ import type { ChatUi } from './assistant.tsx';
 import { DOT, Icon } from './cards.tsx';
 import { toast } from './feel.tsx';
 import { signOut } from './signin.tsx';
+import { play, toggleSounds, useSounds } from './sound.ts';
 
 const InlineAnswer = lazy(() => import('./assistant.tsx').then(m => ({ default: m.InlineAnswer })));
 
@@ -54,7 +55,8 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
   const [query, setQuery] = useState('');
   // a question is answered right here; approvals too. Only a longer conversation needs the chat.
   const [inline, setInline] = useState<{ text: string; n: number } | null>(null);
-  const answer = (text: string) => { setInline({ text, n: Date.now() }); setQuery(''); };
+  const answer = (text: string) => { play('send'); setInline({ text, n: Date.now() }); setQuery(''); };
+  const sounds = useSounds(), sound = { value: `sounds ${sounds.on ? 'off' : 'on'}`, keywords: ['sound', 'sounds', 'audio', sounds.on ? 'mute' : 'unmute'] };
   // what this page may run, fetched as the palette opens; matching it is instant and needs nothing else
   const [commands, setCommands] = useState<Phrase[]>([]), [ran, setRan] = useState<Ran | null>(null);
   useEffect(() => { let on = true; fetch('/api/commands').then(r => r.ok ? r.json() : { commands: [] }).then(d => { if (on) setCommands(d.commands ?? []); }, () => {}); return () => { on = false; }; }, []);
@@ -69,11 +71,11 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
     setRan({ m, c, busy: true, said: go ? ran?.said : undefined });
     const r = await fetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: m.text, id: m.id, go }) }).catch(() => null);
     const out = await r?.json().catch(() => ({})) ?? {};
-    if (!r?.ok) return setRan({ m, c, error: out.error ?? 'Couldn\'t reach Valet' });
+    if (!r?.ok) { play('no'); return setRan({ m, c, error: out.error ?? 'Couldn\'t reach Valet' }); }
     if (out.confirm) return setRan({ m, c, said: out.confirm });
     if (out.card) return setRan({ m, c, card: out.card, tool: out.tool, input: out.input });
     // done, and its card on the page shows it: just say so
-    setPalette(false);
+    setPalette(false); play('done');
     toast(`command:${m.id}`, { text: out.done ?? `${filled(c.label, m.slots)}: done` }, { ms: 3000 });
   };
   const web = () => { window.open(searchUrl(search!, query), '_blank', 'noopener'); setQuery(''); setPalette(false); };
@@ -97,7 +99,7 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
     [best(actions.map(doing)), actions.length > 0 && (
       <CommandGroup key="do" heading="Do">
         {actions.map(a => (
-          <CommandItem key={`${a.key}:${a.b.label}`} {...doing(a)} onSelect={() => { setPalette(false); runAction(a.key, a.b.action, a.b.args).catch(() => {}); }}>
+          <CommandItem key={`${a.key}:${a.b.label}`} {...doing(a)} onSelect={() => { setPalette(false); runAction(a.key, a.b.action, a.b.args).then(() => play('done'), () => play('no')); }}>
             <Zap className="text-muted-foreground" />{a.card}<span className="text-muted-foreground">· {a.b.label}</span>
           </CommandItem>
         ))}
@@ -125,6 +127,12 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
     </CommandGroup>],
     // after Open and Go to, so a service or tab with the same name as a command keeps Enter
     run,
+    // this browser's say over appearance.sounds; it's remembered here and nowhere else
+    [best([sound]), <CommandGroup key="feel" heading="This browser">
+      <CommandItem {...sound} onSelect={() => { const on = toggleSounds(); toast('sounds', { text: on ? 'Sounds on' : 'Sounds off' }, { ms: 2000 }); }}>
+        {sounds.on ? <VolumeX /> : <Volume2 />}{sounds.on ? 'Turn sounds off' : 'Turn sounds on'}
+      </CommandItem>
+    </CommandGroup>],
     [best([{ value: 'sign out' }, { value: 'sign out everywhere' }]), account && <CommandGroup key="account" heading="Account">
       <CommandItem value="sign out" onSelect={() => signOut()}><LogOut />Sign out</CommandItem>
       <CommandItem value="sign out everywhere" onSelect={() => signOut(true)}><LogOut />Sign out everywhere</CommandItem>

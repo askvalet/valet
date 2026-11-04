@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Card as CardData, ForecastCard, StatusCard, WidgetState } from '../shared/cards.ts';
 import { toast } from './feel.tsx';
+import { acted, dissolve } from './dust.ts';
+import { play, setSounds, type Sounds } from './sound.ts';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { LiveRings, type Live, type Notice } from './live.tsx';
@@ -29,7 +31,7 @@ type CardOverride = { title?: string; icon?: string; header?: boolean; view?: Vi
 
 interface Page {
   title: string; greeting?: string; notice?: string; location?: string; canAct?: boolean; sandbox?: boolean;
-  appearance: { walls: Paper[]; tabWalls: Record<string, Paper[]>; rotate?: number; sizes: Partial<Record<Size, { cols?: number; rows?: number }>> };
+  appearance: { walls: Paper[]; tabWalls: Record<string, Paper[]>; rotate?: number; sizes: Partial<Record<Size, { cols?: number; rows?: number }>>; sounds?: Sounds };
   look: Look;
   hero: { greeting: boolean | string; status: boolean; search: boolean; review: boolean | 'end'; align: 'center' | 'left' | 'right'; scope?: string[] };
   chat: ChatUi & { open: 'center' | 'right' | 'left' | 'bottom' | 'page'; overview: boolean; placeholder?: string; suggestions: 'ai' | 'fixed' | 'off' };
@@ -96,6 +98,7 @@ function useTheme() {
 const greet = (h: number) => label(h < 5 ? 'goodNight' : h < 12 ? 'goodMorning' : h < 17 ? 'goodAfternoon' : 'goodEvening');
 
 async function runAction(key: string, action: string, args?: Record<string, unknown>) {
+  acted();
   const r = await fetch(`/api/action/${key.split('.')[0]}/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(args ?? {}) });
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? r.statusText);
 }
@@ -302,6 +305,7 @@ const SPANS: Record<Size, [number, number]> = { small: [1, 1], wide: [2, 1], med
 function Home({ account }: { account: boolean }) {
   const [page, setPage] = useState<Page | null>(null);
   const { state, notice, generation, insight: liveInsight } = useLive();
+  useEffect(() => { if (notice) play('notice'); }, [notice]);
   useEffect(() => { if (notice) toast(`notice:${notice.n}`, { text: notice.sub ? `${notice.text} · ${notice.sub}` : notice.text, tone: notice.tone === 'accent' ? undefined : notice.tone }, { ms: 6000 }); }, [notice]);
   const [brief, setBrief] = useState<string | null>(null);
   const [tailored, setTailored] = useState<{ list: string[]; wrong: string[] } | null>(null);
@@ -372,7 +376,7 @@ function Home({ account }: { account: boolean }) {
   }, [chatOpen, phone]);
   const [draft, setDraft] = useState('');
 
-  useEffect(() => { fetch(`/api/page?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`).then(r => r.json()).then((p: Page) => { setFormat(p.format, p.labels); applyLook(p.look); setPage(p); }); }, [generation]);
+  useEffect(() => { fetch(`/api/page?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`).then(r => r.json()).then((p: Page) => { setFormat(p.format, p.labels); applyLook(p.look); setSounds(p.appearance.sounds); setPage(p); }); }, [generation]);
   useEffect(() => { if (page) document.title = page.title; }, [page]);
   // what's wrong and what's merely going on; a stall has to last, because a torrent between peers reads 0 B/s for a moment
   const how = sayHow(Object.values(state)), stalled = useHeld(how.problems.some(p => p.id === 'downloads'), 20_000);
@@ -412,6 +416,7 @@ function Home({ account }: { account: boolean }) {
   const chatTab = page?.sections.map((s, i) => (s.chat ? tabOf(s, i) : null)).find(Boolean) ?? null;
   const ask = useCallback((text: string) => {
     if (!text.trim()) return;
+    play('send');
     setChat({ text: text.trim(), n: Date.now() }); setPalette(false); setDraft('');
     // on the assistant's own tab the answer appears on the page; anywhere else (and always on a phone), in the sheet
     if (phone || !(chatTab && view === chatTab)) setChatOpen(true);
@@ -528,7 +533,7 @@ function Home({ account }: { account: boolean }) {
             )}
             {pill && <div className={cn('mt-1 flex items-center text-[13px] text-muted-foreground', h?.align === 'left' ? 'justify-start' : h?.align === 'right' ? 'justify-end' : 'justify-center')}>
               <a href="#recap" className="press rounded-sm py-1 pr-1 pl-2.5 hover:text-foreground">{label('review', { year: now.getFullYear() })}</a>
-              <button onClick={dismissReview} aria-label={label('dismiss')} className="press grid size-6 flex-none place-items-center rounded-sm hover:text-foreground"><X className="size-3" /></button>
+              <button onClick={e => { dissolve(e.currentTarget.parentElement); dismissReview(); }} aria-label={label('dismiss')} className="press grid size-6 flex-none place-items-center rounded-sm hover:text-foreground"><X className="size-3" /></button>
             </div>}
           </header>
         );
@@ -728,7 +733,7 @@ function Home({ account }: { account: boolean }) {
               <div className="mt-0.5 truncate text-[14px] text-muted-foreground">{label('reviewMore')}</div>
             </div>
             <a href="#recap" className="review-end-go press">{label('reviewGo')}<ArrowUp className="size-4 rotate-90" /></a>
-            <button onClick={dismissReview} aria-label={label('dismiss')} className="press grid size-8 flex-none place-items-center rounded-full text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
+            <button onClick={e => { dissolve(e.currentTarget.closest('.review-end')); dismissReview(); }} aria-label={label('dismiss')} className="press grid size-8 flex-none place-items-center rounded-full text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
           </div>
         )}
       </main>

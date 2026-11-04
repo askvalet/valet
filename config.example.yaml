@@ -17,6 +17,7 @@ location: Toronto, Canada          # gives the assistant local context
 #   glass: { opacity: 0.5, blur: 36 }
 #   density: comfortable             # or compact, spacious
 #   rim: 0.6                         # a fixed bevel of light on the edge of dark glass, 0 to 1
+#   sounds: { enabled: false, volume: 0.4 }   # quiet sounds for taps, done, not now, notices; each browser can flip them in ⌘K
 # notice: Family server            # a quiet pill above the greeting
 # sandbox: true                    # for trying Valet on made-up services: nothing is saved, each visitor gets a private copy in memory
 # hero: { align: center, review: true, scope: true }   # review: true, false or end (a card closing the overview as well as the link). scope: the ask box names real examples, from your integrations or a list

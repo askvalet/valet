@@ -16,7 +16,8 @@ import { splitThink } from '../shared/think.ts';
 import { Icon } from './cards.tsx';
 import { Approval, ChatCard, type ToolInfo } from './approval.tsx';
 import { Tick } from './feel.tsx';
-import { label } from './format.ts';
+import { label, num } from './format.ts';
+import { play } from './sound.ts';
 
 /** What `chat:` says about the window. */
 export interface ChatUi { followUps?: string[]; review?: string; steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string; beam?: 'off' | 'always' | 'focus' | 'thinking' | 'once'; beamColor?: 'colorful' | 'mono' | 'ocean' | 'sunset'; beamStrength?: number }
@@ -236,7 +237,7 @@ export function InlineAnswer({ text, tools, onMore, ui }: { text: string; tools:
 
 /** One message. Memoised, so a reply streaming in doesn't re-render everything above it. */
 const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, since, tools, act, next }: { m: any; isLast: boolean; next?: string; busy: boolean; tookMs?: number; fresh: boolean; since: number; tools: Record<string, ToolInfo>; act: { approve: (id: string, ok: boolean) => void; regenerate: () => void; ask: (t: string) => void } }) {
-  const [copied, setCopied] = useState(false), ui = useContext(Ui);
+  const [copied, setCopied] = useState<boolean | null>(null), ui = useContext(Ui);
   if (m.role === 'user') return (
     <div className="chat-msg flex justify-end">
       <div className="chat-in chat-bubble max-w-[85%] rounded-[20px] rounded-br-md px-3.5 py-2 text-[15px]">
@@ -282,7 +283,7 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
       {!live && text && (
         <div className="flex items-center gap-1 text-muted-foreground animate-in fade-in duration-(--dur-pop)">
           <button aria-label="Copy" title="Copy" onClick={() => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1400); }}
-            className="chat-icon">{copied ? <Check className="size-3.5 text-good" /> : <Copy className="size-3.5" />}</button>
+            className="chat-icon">{copied ? <Tick draw className="morph size-3.5 text-good" /> : <Copy className={cn('size-3.5', copied === false && 'morph')} />}</button>
           {isLast && <button aria-label="Ask again" title="Ask again" onClick={act.regenerate} className="chat-icon"><RotateCcw className="size-3.5" /></button>}
           {tookMs != null && tookMs >= 1000 && <span className="ml-1 text-[12px] tabular">{label('worked', { n: (tookMs / 1000).toFixed(tookMs < 10_000 ? 1 : 0) })}</span>}
         </div>
@@ -298,6 +299,29 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
     </div>
   );
 });
+
+/** How full the model's context is, from what the last step really used: a small ring beside its name, and the numbers on
+ *  hover or a tap. Near full it says what that means and offers a fresh start. Unknown until the first answer, and then only
+ *  what's used if the window isn't known. */
+function ContextMeter({ used, total, fresh }: { used: number; total?: number; fresh: () => void }) {
+  const pct = total ? Math.min(1, used / total) : 0, full = pct >= .75, r = 2.75, c = 2 * Math.PI * r;   // a pie, not an arc: an arc this small reads as a spinner
+  const words = total ? label('context', { used: num(used, { notation: 'compact', maximumFractionDigits: 1 }), total: num(total, { notation: 'compact', maximumFractionDigits: 1 }) }) : label('contextUsed', { used: num(used, { notation: 'compact', maximumFractionDigits: 1 }) });
+  return (
+    <span className="ctx group/ctx relative grid shrink-0 place-items-center" tabIndex={0} role="img" aria-label={words}>
+      <svg viewBox="0 0 14 14" className={cn('size-3.5 -rotate-90', pct >= .9 ? 'text-bad' : full ? 'text-warn' : 'text-muted-foreground')} aria-hidden>
+        <circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" strokeOpacity=".55" strokeWidth="1.2" />
+        {total ? <circle cx="7" cy="7" r={r} fill="none" stroke="currentColor" strokeWidth={r * 2} strokeDasharray={c} strokeDashoffset={c * (1 - Math.max(.04, pct))} className="ctx-arc" />
+          : <circle cx="7" cy="7" r="1.6" fill="currentColor" />}
+      </svg>
+      <span className="ctx-pop glass-pop">
+        <span className="block text-[13px] font-medium text-foreground tabular">{words}</span>
+        {total && <span className="block text-[12px] text-muted-foreground tabular">{num(pct, { style: 'percent' })}</span>}
+        {full && <><span className="mt-1.5 block text-[12px] leading-snug text-muted-foreground">{label('contextFull')}</span>
+          <button type="button" onClick={fresh} className="press mt-2 rounded-sm bg-white/10 px-2.5 py-1 text-[12px] text-foreground hover:bg-white/15">{label('newChat')}</button></>}
+      </span>
+    </span>
+  );
+}
 
 export default function Assistant({ name, model, ask, suggestions, tools = {}, external, onAsk, onClose, onDismiss, ui = { steps: true, thinking: 'collapsed', send: 'enter' }, attach: canAttach = true }: {
   name: string; model: string; ask: { text: string; n: number } | null; suggestions: string[]; tools?: Record<string, ToolInfo>; onAsk: (t: string) => void;
@@ -323,7 +347,8 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
       p.el.style.transition = 'transform 280ms var(--ease-drawer)'; p.el.style.transform = '';
     },
   };
-  const { messages, sendMessage, status, addToolApprovalResponse, error, stop, regenerate } = useChat({ chat, experimental_throttle: 60 });
+  const { messages, sendMessage, status, addToolApprovalResponse, error, stop, regenerate, setMessages } = useChat({ chat, experimental_throttle: 60 });
+  const context = (messages.findLast(m => m.role === 'assistant' && (m.metadata as any)?.context)?.metadata as { context?: { used: number; window?: number } } | undefined)?.context;
   // how long each answer took, measured from the question to the last word
   const started = useRef(0);
   const [took, setTook] = useState<Record<string, number>>({});
@@ -337,7 +362,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
       started.current = 0;
     }
   }, [busyNow, messages]);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(''), [sent, setSent] = useState(0);
   // the same three functions for every message, whatever else changes, so finished messages don't re-render
   const latest = useRef({ addToolApprovalResponse, regenerate, onAsk }); latest.current = { addToolApprovalResponse, regenerate, onAsk };
   const act = useRef({ approve: (id: string, ok: boolean) => { latest.current.addToolApprovalResponse({ id, approved: ok }); }, regenerate: () => { latest.current.regenerate(); }, ask: (t: string) => latest.current.onAsk(t) }).current;
@@ -387,7 +412,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
   const submit = () => {
     if ((!draft.trim() && !ready.length) || busy || uploading) return;
     const lines = ready.map(f => `[attached: ${f.name} (file id ${f.id})]`);
-    following.current = true;
+    following.current = true; play('send'); setSent(n => n + 1);
     sendMessage({ text: [draft.trim() || 'File this.', ...lines].join('\n') }); setDraft(''); setFiles([]);
   };
 
@@ -396,12 +421,12 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
   const nextUp = ui.followUps?.filter(f => !said.has(f)).slice(0, 3).join('\n');
   return (
     <Ui.Provider value={ui}><div className="relative flex h-full flex-col">
-      <header {...(sheet ? grab : {})} className={cn('relative flex items-center gap-2.5 px-5', sheet ? 'border-b ' : '', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'py-2.5')}>
+      <header {...(sheet ? grab : {})} className={cn('relative z-20 flex items-center gap-2.5 px-5', sheet ? 'border-b ' : '', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'py-2.5')}>
         {sheet && <span className="sheet-grip absolute top-[max(.4rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2" aria-hidden />}
         {ui.icon && <span className="icon-tile"><Icon name={ui.icon} /></span>}
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold leading-tight">{name}</div>
-          <div className="truncate text-xs text-muted-foreground">{model}</div>
+          <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"><span className="truncate">{model}</span>{context && !external && <ContextMeter used={context.used} total={context.window} fresh={() => { stop(); setMessages([]); setTook({}); }} />}</div>
         </div>
         {sheet && <button onClick={onClose} onPointerDown={e => e.stopPropagation()} aria-label="Close" className="press grid size-9 place-items-center rounded-full bg-white/[.08]"><ChevronDown className="size-[18px]" /></button>}
         {onDismiss && <button onClick={onDismiss} aria-label="Close" className="chat-icon text-muted-foreground"><X className="size-4" /></button>}
@@ -462,7 +487,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
             onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
             className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-[16px] leading-[22px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-[15px]" autoFocus={!sheet} />
           {busy
-            ? <Button type="button" size="icon" variant="secondary" className="mb-0.5 size-8 rounded-sm" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" /></Button>
+            ? <Button type="button" size="icon" variant="secondary" className="relative mb-0.5 size-8 overflow-hidden rounded-sm" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" />{sent > 0 && <ArrowUp key={sent} className="send-lift absolute inset-0 m-auto" aria-hidden />}</Button>
             : <Button type="submit" size="icon" className="mb-0.5 size-8 rounded-sm bg-foreground text-background hover:bg-foreground/90 disabled:bg-foreground/20 disabled:text-foreground disabled:opacity-100" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
         </div>
         </ChatBeam>

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExter
 import { createRoot } from 'react-dom/client';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
+import { dissolve } from './dust.ts';
 import './feel.css';
 
 /** True when this page has been asked to hold still: the system's setting or appearance.motion, through the one --move. */
@@ -203,10 +204,13 @@ export function Flap({ was, now }: { was: string; now: string }) {
 }
 
 const CLOSE = 200;   // --dur-pop
+/** How long a row leaving as dust keeps its room: the sweep across it (dust.ts), then the close. */
+export const DUST_HOLD = 300 + CLOSE;
 interface Gone<T> { key: string; item: T; after?: string }
 /** A list whose rows come and go: a new one is marked `in`, and one that's gone stays a moment as `out`, where it was. Nothing
- *  on first paint, and a list with nothing in common with the last is another list, so that simply shows. */
-export function useRows<T>(items: T[], keyOf: (item: T) => string, on = true) {
+ *  on first paint, and a list with nothing in common with the last is another list, so that simply shows. `hold`: how long
+ *  a gone row stays, longer for one leaving as dust. */
+export function useRows<T>(items: T[], keyOf: (item: T) => string, on = true, hold = CLOSE) {
   const seen = new Map<string, number>();
   const rows = items.map(item => { const k = keyOf(item), n = seen.get(k) ?? 0; seen.set(k, n + 1); return { key: n ? `${k}#${n}` : k, item }; });
   const sig = rows.map(r => r.key).join('\n'), last = useRef(rows), [s, setS] = useState({ sig, fresh: [] as string[], gone: [] as Gone<T>[], n: 0 });
@@ -216,15 +220,18 @@ export function useRows<T>(items: T[], keyOf: (item: T) => string, on = true) {
     setS({ sig, fresh: same ? rows.filter(r => !had.has(r.key)).map(r => r.key) : [], gone: same ? [...s.gone.filter(g => !has.has(g.key)), ...left] : [], n: s.n + 1 });
   }
   useEffect(() => { last.current = rows; });
-  useEffect(() => { if (!s.gone.length) return; const t = setTimeout(() => setS(x => ({ ...x, gone: [] })), CLOSE); return () => clearTimeout(t); }, [s.n]);
+  useEffect(() => { if (!s.gone.length) return; const t = setTimeout(() => setS(x => ({ ...x, gone: [] })), hold); return () => clearTimeout(t); }, [s.n]);
   const out: { key: string; item: T; state?: 'in' | 'out' }[] = rows.map(r => s.fresh.includes(r.key) ? { ...r, state: 'in' } : r);
   for (const g of s.gone) { const at = g.after == null ? 0 : out.findIndex(r => r.key === g.after) + 1 || out.length; out.splice(at, 0, { key: g.key, item: g.item, state: 'out' }); }
   return out;
 }
-/** A row's room in the list: it opens as the row slides out from under the one above, and closes quicker. */
-export function RowSlot({ state, as: As = 'div', on = true, className, children }: { state?: 'in' | 'out'; as?: 'div' | 'li'; on?: boolean; className?: string; children: ReactNode }) {
+/** A row's room in the list: it opens as the row slides out from under the one above, and closes quicker. `dust`: it was
+ *  taken off by someone just now, so it leaves as dust, and its room closes once the dust has cleared it (DUST_HOLD). */
+export function RowSlot({ state, as: As = 'div', on = true, dust, className, children }: { state?: 'in' | 'out'; as?: 'div' | 'li'; on?: boolean; dust?: boolean; className?: string; children: ReactNode }) {
+  const clip = useRef<HTMLDivElement>(null), gone = state === 'out' && dust;
+  useLayoutEffect(() => { if (gone) dissolve(clip.current?.firstElementChild ?? clip.current); }, [gone]);
   if (!on) return children;
-  return <As className={cn('row-slot', state && `is-${state}`, className)}><div className="row-clip">{children}</div></As>;
+  return <As className={cn('row-slot', state && `is-${state}`, gone && 'is-dust', className)}><div ref={clip} className="row-clip">{children}</div></As>;
 }
 
 /** A tick. `draw` strokes it on, once: for something that has only now finished. */
@@ -265,13 +272,38 @@ export function toast(key: string, t: Toast | null, o: { ms?: number; by?: Eleme
   publish(toasts.some(x => x.key === key) ? toasts.map(x => x.key === key ? up : x) : [...toasts, up].slice(-4));
   lapse(up);
 }
+/** A note can be swiped away sideways: it follows the finger, and far or fast enough it's thrown off; otherwise it rides back. */
+function useSwipe(key: string) {
+  const grab = useRef<{ x: number; dx: number; trail: Trail; live: boolean } | null>(null);
+  const letGo = (el: HTMLElement) => {
+    const g = grab.current; grab.current = null; if (!g?.live) return;
+    const v = g.trail.length ? speed(g.trail) : 0, away = Math.abs(g.dx) > 64 || (Math.abs(v) > 500 && v * g.dx > 0);
+    el.classList.remove('is-held');
+    if (away) { el.style.translate = `${Math.sign(g.dx || v) * 160}px 0`; el.style.opacity = '0'; toast(key, null); }
+    else { el.style.translate = ''; el.style.opacity = ''; }
+  };
+  return {
+    onPointerDown(e: PointerEvent<HTMLElement>) { if (!e.button && !(e.target as Element).closest('button') && !still(e.currentTarget)) grab.current = { x: e.clientX, dx: 0, trail: [], live: false }; },
+    onPointerMove(e: PointerEvent<HTMLElement>) {
+      const g = grab.current; if (!g) return;
+      g.dx = e.clientX - g.x;
+      if (!g.live) { if (Math.abs(g.dx) < 6) return; g.live = true; e.currentTarget.setPointerCapture(e.pointerId); e.currentTarget.classList.add('is-held'); }
+      e.currentTarget.style.translate = `${g.dx}px 0`; e.currentTarget.style.opacity = String(Math.max(.2, 1 - Math.abs(g.dx) / 220));
+      g.trail.push({ t: e.timeStamp, x: e.clientX }); if (g.trail.length > 8) g.trail.shift();
+    },
+    onPointerUp: (e: PointerEvent<HTMLElement>) => letGo(e.currentTarget),
+    onPointerCancel: (e: PointerEvent<HTMLElement>) => letGo(e.currentTarget),
+  };
+}
+function Note({ t }: { t: Up }) {
+  const swipe = useSwipe(t.key);
+  return <div {...swipe} className={cn('undo-bar', t.tone && `is-${t.tone}`, t.out && 'is-out')}>{t.text}{t.undo && <button type="button" onClick={() => { t.undo!(); toast(t.key, null); }}>Undo</button>}</div>;
+}
 function Toasts() {
   const list = useSyncExternalStore(f => { subs.add(f); return () => subs.delete(f); }, () => toasts, () => toasts);
   return (
     <div role="status" className={cn('toasts', near && 'is-near')} style={near ?? undefined}>
-      {list.map(t => (
-        <div key={t.key} className={cn('undo-bar', t.tone && `is-${t.tone}`, t.out && 'is-out')}>{t.text}{t.undo && <button type="button" onClick={() => { t.undo!(); toast(t.key, null); }}>Undo</button>}</div>
-      ))}
+      {list.map(t => <Note key={t.key} t={t} />)}
     </div>
   );
 }

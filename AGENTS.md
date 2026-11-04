@@ -128,8 +128,15 @@ https://askvalet.dev.
   `ElasticSlider`: Radix's slider with give at the ends; `Counter`: every number that changes, still on first paint and
   faster than 1.5 s (`flap` makes it a departures board, for a countdown); `useRows` + `RowSlot`: a list whose rows come and go, never
   on first paint or when the whole list is another list; `Tick`: draws itself only for what was seen unfinished; `toast(key, note)`: the page's stack, only for what piles up or a note whose place is out of view, with
-  `by` to stay beside the action on a large screen. A note beside its control stays there. A gesture writes transform and
+  `by` to stay beside the action on a large screen, and swipeable sideways. A note beside its control stays there. A gesture writes transform and
   opacity directly and hands off to a CSS transition, so it can be caught mid-flight; `still()` reads `--move` for what JS moves.
+- **What someone takes off the page leaves as dust** (`dust.ts`): `dissolve(el)` puts a copy where it was, masks it away from the
+  left and blows a canvas of specks (coloured from a rough sketch of the element) up and to the right, ~700 ms, while the real one
+  goes at once and its list closes (`RowSlot dust`, `useSettle`). Only for what someone just did: `acted()` marks an action or an
+  approval and `justActed()` asks; a list that changed by itself keeps its quiet ways. Held still, it's a quick fade.
+- **Sounds are opt-in and made, not loaded** (`sound.ts`): `play('tap' | 'done' | 'no' | 'notice' | 'send' | 'dust')` synthesises
+  a few soft notes with Web Audio. `appearance.sounds` is the default, ⌘K's per-browser choice (localStorage) wins, and nothing plays
+  before the first pointer or key press. A new sound goes in `SCORE`, short and quiet, and only on an event that means something.
 - **Alive, not busy.** Motion explains a change. The chat shows work happening (a shimmering label with a timer, tool
   calls as chips that settle into a collapsed "n steps"), words fade in as they stream. Live numbers change digit by digit (`Counter`). Anything
   that happens many times a day stays still: no loops on status elements, no entrances on a load, no charts redrawing. The

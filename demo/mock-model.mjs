@@ -118,7 +118,9 @@ const server = createServer((req, res) => {
   req.on('end', async () => {
     let body; try { body = JSON.parse(raw); } catch { res.writeHead(400).end(); return; }
     const r = reply(body), base = { id: 'demo', object: 'chat.completion', created: Math.floor(Date.now() / 1000), model: 'qwen3.8-27b' };
-    const usage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+    // about a token for every four characters, so the chat's context meter fills as it would with a real model
+    const given = Math.round(JSON.stringify([body.messages, body.tools]).length / 4), said = Math.round(JSON.stringify(r.text ?? r.call ?? '').length / 4);
+    const usage = { prompt_tokens: given, completion_tokens: said, total_tokens: given + said };
     const toolCall = r.call && { id: `call_${Date.now()}`, type: 'function', function: { name: r.call.name, arguments: r.call.args } };
     if (!body.stream) {
       res.writeHead(200, { 'Content-Type': 'application/json' });

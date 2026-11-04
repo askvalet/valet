@@ -35,3 +35,17 @@ export function makeModel(a: NonNullable<Config['assistant']>) {
     ? createAnthropic({ apiKey: a.apiKey, baseURL: a.baseURL })(a.model)
     : createOpenAICompatible({ name: 'assistant', baseURL: a.baseURL ?? 'http://localhost:11434/v1', apiKey: a.apiKey, includeUsage: true, headers: { 'User-Agent': 'Valet' } })(a.model);
 }
+
+/** How many tokens a model can hold, when its name says: Claude's from Opus and Sonnet 4.6, Haiku 5 and every Fable on take
+ *  a million, the ones before 200k. Anything else is unknown, and the chat's meter then shows only what's used. Written
+ *  either way a provider spells it: claude-sonnet-4-6, anthropic/claude-sonnet-4.6, claude-3-5-haiku-20241022. */
+export function windowOf(model: string): number | undefined {
+  const m = model.toLowerCase();
+  if (/claude-\d([-.]\d)?-(opus|sonnet|haiku)/.test(m) || /claude-(instant|2)/.test(m)) return 200_000;
+  const named = /claude-(opus|sonnet|haiku|fable|mythos)(?:-(\d+)(?:[-.](\d{1,2})(?!\d))?)?/.exec(m);
+  if (!named) return undefined;
+  const [, family, major = '0', minor = '0'] = named, v = +major + +minor / 10;
+  if (family === 'fable' || family === 'mythos') return 1_000_000;
+  return v >= (family === 'haiku' ? 5 : 4.6) ? 1_000_000 : 200_000;
+}
+export const contextWindow = (a: NonNullable<Config['assistant']>) => a.contextWindow ?? windowOf(a.model);
