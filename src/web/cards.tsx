@@ -4,10 +4,10 @@ import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calend
   Activity, Archive, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Thermometer, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Play, Shield, Wifi,
   Box, Video, type LucideIcon,
 } from 'lucide-react';
-import { createContext, Fragment, lazy, memo, Suspense, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { createContext, Fragment, lazy, memo, Suspense, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Cameras } from './cameras.tsx';
 import { Album } from './album.tsx';
-import { CoverFlow } from './coverflow.tsx';
+import { Focus } from './focus.tsx';
 import { chartless, flow, Heatmap, Race, smooth, Stream, Waffle } from './charts.tsx';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn, useOnScreen } from '@/lib/utils';
-import { Arrows, Counter, DUST_HOLD, Pile, RowSlot, Tick, toast, useRow, useRows } from './feel.tsx';
+import { Counter, DUST_HOLD, lean, Pile, Row, RowArrows, RowSlot, Tick, toast, useRows } from './feel.tsx';
 import { dissolve, justActed, useSettle } from './dust.ts';
 import { play } from './sound.ts';
 import { LinkButton } from './link-button.tsx';
@@ -484,9 +484,11 @@ function Links({ card }: { card: LinksCard }) {
 /** Artwork that fades in once decoded, so nothing pops. */
 function Art({ src, className, alt = '', style, onLoaded }: { src?: string; className?: string; alt?: string; style?: React.CSSProperties; onLoaded?: (img: HTMLImageElement) => void }) {
   const [ready, setReady] = useState(false);
+  // one the browser already has is simply there: a tab you come back to doesn't fade its pictures up again. A steady ref,
+  // so a render doesn't call it again and set the state again, which rendered it again on every live update
+  const had = useCallback((el: HTMLImageElement | null) => { if (el?.complete && el.naturalWidth) setReady(true); }, []);
   if (!src) return null;
-  // one the browser already has is simply there: a tab you come back to doesn't fade its pictures up again
-  return <img src={src} alt={alt} loading="lazy" decoding="async" style={style} ref={el => { if (el?.complete && el.naturalWidth) setReady(true); }} onLoad={e => { setReady(true); onLoaded?.(e.currentTarget); }}
+  return <img src={src} alt={alt} loading="lazy" decoding="async" style={style} ref={had} onLoad={e => { setReady(true); onLoaded?.(e.currentTarget); }}
     className={cn('transition-opacity duration-(--dur-move) ease-out', ready ? 'opacity-100' : 'opacity-0', className)} />;
 }
 
@@ -624,7 +626,7 @@ function Shelf({ card, header, small, run }: { card: ShelfCard; header?: ReactNo
   const [spread, setSpread] = useState(false);
   if (card.stack && !spread && card.items.length) return <Stack card={card} header={header} onOpen={() => setSpread(true)} />;
   if (!small && card.layout === 'spotlight' && card.items.length) return <Spotlight card={card} header={header} />;
-  if (!small && card.layout === 'coverflow' && card.items.length > 2) return <CoverFlow card={card} header={header} />;
+  if (!small && (card.layout === 'focus' || card.layout === 'coverflow') && card.items.length > 2) return <Focus card={card} header={header} />;
   if (!small && card.layout === 'desk' && card.items.length) return <Desk card={card} header={header} />;
   if (!small && card.layout === 'windows' && card.items.length) return <Windows card={card} header={header} run={run} />;
   // what's coming and what's asked for wear the same shelf as what's new: one shape, three times
@@ -692,28 +694,34 @@ function DocList({ items }: { items: ShelfItem[] }) {
 function Desk({ card, header }: { card: ShelfCard; header?: ReactNode }) {
   const [list, setList] = useState(() => { try { return localStorage.getItem(VIEW) === 'list'; } catch { return false; } });
   const pick = (v: boolean) => { setList(v); try { localStorage.setItem(VIEW, v ? 'list' : 'desk'); } catch { /* private mode */ } };
-  const row = useRow();   // the desk has room on a large screen; on a small one it's a row to throw, without losing the tilt
+  const id = useId();   // the desk has room on a large screen; on a small one it's a row to throw, without losing the tilt
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">{header}</div>
-        {!list && !(row.edge.start && row.edge.end) && <Arrows row={row} className="ml-auto hidden sm:flex" />}
+        {!list && <RowArrows id={id} label={card.title} className="ml-auto hidden sm:flex" />}
         <div className="seg" role="group" aria-label="View documents as">
           {[false, true].map(v => <button key={String(v)} type="button" aria-pressed={list === v} onClick={() => pick(v)}>{v ? 'List' : 'Desk'}</button>)}
         </div>
       </div>
-      {list ? <DocList items={card.items} /> : <div className="desk carousel" {...row.bind}>
-        {card.items.slice(0, 8).map((d, i) => (
-          <a key={i} href={d.href} target="_blank" rel="noreferrer" className="desk-page" style={{ '--tilt': `${TILT[i]}deg` } as React.CSSProperties}>
-            <span className="desk-sheet"><Art src={d.image} className="size-full object-cover object-top" />{d.badge && <span className="desk-stamp">{d.badge}</span>}</span>
-            <span className="mt-2.5 block truncate text-sm font-medium">{d.title}</span>
-            {d.subtitle && <span className="block truncate text-xs text-muted-foreground">{d.subtitle}</span>}
-          </a>
-        ))}
-      </div>}
+      {list ? <DocList items={card.items} /> : <DeskRow id={id} card={card} />}
     </div>
   );
 }
+/** The pages themselves, which a live update bringing the same documents back leaves alone. */
+const DeskRow = memo(function DeskRow({ id, card }: { id: string; card: ShelfCard }) {
+  return (
+    <Row id={id} className="desk" role="group" aria-roledescription="carousel" aria-label={card.title}>
+      {card.items.slice(0, 8).map((d, i) => (
+        <a key={i} data-blossom-slide href={d.href} target="_blank" rel="noreferrer" className="desk-page" style={{ '--tilt': `${TILT[i]}deg` } as React.CSSProperties}>
+          <span className="desk-sheet"><Art src={d.image} className="size-full object-cover object-top" />{d.badge && <span className="desk-stamp">{d.badge}</span>}</span>
+          <span className="mt-2.5 block truncate text-sm font-medium">{d.title}</span>
+          {d.subtitle && <span className="block truncate text-xs text-muted-foreground">{d.subtitle}</span>}
+        </a>
+      ))}
+    </Row>
+  );
+}, (a, b) => a.id === b.id && (a.card === b.card || sameShelf(a.card, b.card)));
 
 /** Saved pages as small browser windows, the page itself inside; hover and it scrolls by. */
 function Windows({ card, header, run }: { card: ShelfCard; header?: ReactNode; run?: RunAction }) {
@@ -767,52 +775,49 @@ function Ranked({ card }: { card: RankedCard }) {
   );
 }
 
-/** A poster under the pointer leans a little away from it, the picture sliding inside its frame, so it reads as a thing
- *  with depth rather than a flat tile. Only a mouse; the stylesheet holds it still for anyone who's asked for less. */
-const tilt = (e: React.PointerEvent<HTMLElement>) => {
-  const frame = e.currentTarget.querySelector<HTMLElement>('.poster'); if (!frame || e.pointerType !== 'mouse') return;
-  if (e.type === 'pointerleave') { frame.style.removeProperty('--px'); frame.style.removeProperty('--py'); return; }
-  const r = frame.getBoundingClientRect();
-  frame.style.setProperty('--px', ((e.clientX - r.left) / r.width * 2 - 1).toFixed(3)); frame.style.setProperty('--py', ((e.clientY - r.top) / r.height * 2 - 1).toFixed(3));
-};
-
 function ShelfRow({ card, header, small, beside, lines }: { card: ShelfCard; header?: ReactNode; small?: boolean; beside?: boolean; lines?: boolean }) {
-  const row = useRow();
-  const ratio = card.aspect === 'square' ? 'aspect-square' : card.aspect === 'wide' ? 'aspect-video' : 'aspect-[2/3]';
-  const width = small ? (card.aspect === 'wide' ? 'w-[180px]' : 'w-[92px]') : card.aspect === 'wide' ? 'w-[240px] @3xl/main:w-[280px]' : 'w-[128px] @3xl/main:w-[150px]';
+  const id = useId();
   return (
     <div className={cn(beside && 'relative min-w-0')}>
       <div className={cn('flex items-center gap-2', beside ? 'absolute -top-10 right-0 @max-4xl/main:hidden' : !!(header || card.items.length > (small ? 4 : 6)) && 'mb-3')}>
         {header}
-        <Arrows row={row} className={cn('ml-auto hidden', !(row.edge.start && row.edge.end) && 'sm:flex')} />
+        {card.items.length > 0 && <RowArrows id={id} label={card.title} className="ml-auto hidden sm:flex" />}
       </div>
-      {card.items.length === 0 ? <Empty text={card.empty ?? 'Nothing here yet'} /> : (
-        <div {...row.bind} role="group" aria-label={card.title} tabIndex={card.items.some(it => it.cta?.href ?? it.href) ? undefined : 0}
-          className="carousel -mx-2 -my-3 flex scroll-px-2 gap-4 overflow-x-auto px-2 py-3">
-          {card.items.map((it, i) => {
-            const href = it.cta?.href ?? it.href;
-            const inner = (
-              <div className="carousel-face">
-                <div className={cn('poster relative overflow-hidden rounded-xl bg-muted shadow-[0_10px_24px_-12px_rgb(0_0_0/0.45)] transition-[translate,box-shadow] duration-(--dur-pop) ease-out', href && 'group-hover:-translate-y-1 group-hover:shadow-[0_18px_32px_-12px_rgb(0_0_0/0.5)]', ratio)}>
-                  <Art src={it.image} alt={it.title} className="size-full object-cover" />
-                  {it.badge && !lines && <span className={cn('absolute bottom-2 left-2 rounded-sm px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-md', 'bg-black/60', it.badge === 'Ready' ? 'text-good' : it.badge === 'Today' && 'text-primary')}>{it.badge}</span>}
-                  {lines && <i className={`ticket-line is-${lineOf(it)}`} />}
-                </div>
-                <div className="mt-2.5 truncate text-[13px] font-medium">{it.title}</div>
-                {(lines ? it.badge ?? it.subtitle : it.subtitle) && <div className="truncate text-xs text-muted-foreground">{lines ? it.badge ?? it.subtitle : it.subtitle}</div>}
-                {lines && it.note && <div className="truncate text-xs text-muted-foreground">{it.note}</div>}
-                {it.cta && <div className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground"><span className="truncate">{it.cta.label}</span><ArrowUpRight className="size-3 shrink-0" /></div>}
-              </div>
-            );
-            return href
-              ? <a key={i} href={href} target="_blank" rel="noreferrer" className={cn('group shrink-0 snap-start', width)} onPointerMove={tilt} onPointerLeave={tilt}>{inner}</a>
-              : <div key={i} className={cn('shrink-0 snap-start', width)}>{inner}</div>;
-          })}
-        </div>
-      )}
+      {card.items.length === 0 ? <Empty text={card.empty ?? 'Nothing here yet'} /> : <Shelved id={id} card={card} small={small} lines={lines} />}
     </div>
   );
 }
+
+/** The row itself. A live update that brings the same things back changes nothing here, so a poll never re-renders it. */
+const Shelved = memo(function Shelved({ id, card, small, lines }: { id: string; card: ShelfCard; small?: boolean; lines?: boolean }) {
+  const ratio = card.aspect === 'square' ? 'aspect-square' : card.aspect === 'wide' ? 'aspect-video' : 'aspect-[2/3]';
+  const width = small ? (card.aspect === 'wide' ? 'w-[180px]' : 'w-[92px]') : card.aspect === 'wide' ? 'w-[240px] @3xl/main:w-[280px]' : 'w-[128px] @3xl/main:w-[150px]';
+  return (
+    <Row id={id} role="group" aria-roledescription="carousel" aria-label={card.title} tabIndex={card.items.some(it => it.cta?.href ?? it.href) ? undefined : 0}
+      className="-mx-2 -my-3 flex scroll-px-2 gap-4 px-2 py-3">
+      {card.items.map((it, i) => {
+        const href = it.cta?.href ?? it.href;
+        const inner = (
+          <div className="carousel-face">
+            <div className={cn('poster relative overflow-hidden rounded-xl bg-muted shadow-[0_10px_24px_-12px_rgb(0_0_0/0.45)] transition-[translate,box-shadow] duration-(--dur-pop) ease-out', href && 'group-hover:-translate-y-1 group-hover:shadow-[0_18px_32px_-12px_rgb(0_0_0/0.5)]', ratio)}>
+              <Art src={it.image} alt={it.title} className="size-full object-cover" />
+              {it.badge && !lines && <span className={cn('absolute bottom-2 left-2 rounded-sm px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-md', 'bg-black/60', it.badge === 'Ready' ? 'text-good' : it.badge === 'Today' && 'text-primary')}>{it.badge}</span>}
+              {lines && <i className={`ticket-line is-${lineOf(it)}`} />}
+            </div>
+            <div className="mt-2.5 truncate text-[13px] font-medium">{it.title}</div>
+            {(lines ? it.badge ?? it.subtitle : it.subtitle) && <div className="truncate text-xs text-muted-foreground">{lines ? it.badge ?? it.subtitle : it.subtitle}</div>}
+            {lines && it.note && <div className="truncate text-xs text-muted-foreground">{it.note}</div>}
+            {it.cta && <div className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground"><span className="truncate">{it.cta.label}</span><ArrowUpRight className="size-3 shrink-0" /></div>}
+          </div>
+        );
+        return href
+          ? <a key={i} data-blossom-slide href={href} target="_blank" rel="noreferrer" className={cn('group shrink-0 snap-start', width)} onPointerMove={lean} onPointerLeave={lean}>{inner}</a>
+          : <div key={i} data-blossom-slide className={cn('shrink-0 snap-start', width)}>{inner}</div>;
+      })}
+    </Row>
+  );
+}, (a, b) => a.id === b.id && a.small === b.small && a.lines === b.lines && (a.card === b.card || sameShelf(a.card, b.card)));
+const sameShelf = (a: ShelfCard, b: ShelfCard) => a.title === b.title && a.aspect === b.aspect && JSON.stringify(a.items) === JSON.stringify(b.items);
 
 /** A line you can read with your finger: scrub across it for the exact value and when it was, and it says how far it's
  *  moved. The line draws itself in once. */

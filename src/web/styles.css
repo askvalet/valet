@@ -1,6 +1,9 @@
+/* Blossom Carousel's base styles sit in their own layer, declared first so any of ours, utilities included, win over them */
+@layer blossom-carousel;
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@fontsource-variable/geist";
+@import "@blossom-carousel/react/style.css";
 
 /* dark: follows the system (html.dark is set before first paint in index.html) */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -150,12 +153,14 @@
 .motion-reduced *, .motion-reduced *::before, .motion-reduced *::after { animation: none !important; transition-property: opacity, color, background-color, border-color !important; }
 :is(.motion-none, .motion-reduced) :is(.article .article-page, .window .window-page img) { transform: none !important; }
 :is(.motion-none, .motion-reduced) :is(.chip-out, .row-slot.is-out, .edge-head, .send-lift) { display: none; }
+:is(.motion-none, .motion-reduced) [blossom-carousel] { scroll-behavior: auto; }
 :is(.motion-none, .motion-reduced) .edge-tail { stroke-dasharray: none !important; stroke-opacity: .5; }
 @media (prefers-reduced-motion: reduce) {
   :root { --move: 0; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .article .article-page, .window .window-page img { transform: none !important; }
   .chip-out, .row-slot.is-out, .edge-head, .send-lift { display: none; }
+  [blossom-carousel] { scroll-behavior: auto; }
   .edge-tail { stroke-dasharray: none !important; stroke-opacity: .5; }
 }
 

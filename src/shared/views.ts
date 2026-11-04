@@ -3,7 +3,8 @@
 import type { Card, ChartCard, HeatmapCard, RaceCard, RankedCard, ShelfCard, ShelfItem } from './cards.ts';
 
 export const CHART_VIEWS = ['line', 'bars', 'stream', 'race', 'heatmap', 'ranked', 'pie'] as const;
-export const GALLERY_VIEWS = ['row', 'spotlight', 'coverflow', 'desk', 'windows', 'tickets', 'mosaic', 'flashback', 'album'] as const;
+// `coverflow` is the name `focus` had before it was a modern carousel; it still works and draws `focus`
+export const GALLERY_VIEWS = ['row', 'spotlight', 'focus', 'coverflow', 'desk', 'windows', 'tickets', 'mosaic', 'flashback', 'album'] as const;
 export const VIEWS = [...CHART_VIEWS, ...GALLERY_VIEWS] as const;
 export type View = (typeof VIEWS)[number];
 
@@ -78,7 +79,7 @@ function gallery(card: Card, view: View): Card | undefined {
     return seen.length ? { ...base, type: 'photos', style: view, items: seen } : undefined;
   }
   const was = card.type === 'shelf' ? card : undefined;
-  return { ...base, ...was, type: 'shelf', layout: view === 'row' ? undefined : view as ShelfCard['layout'], aspect: was?.aspect ?? (card.type === 'photos' ? 'wide' : undefined), items } as ShelfCard;
+  return { ...base, ...was, type: 'shelf', layout: view === 'row' ? undefined : view === 'coverflow' ? 'focus' : view as ShelfCard['layout'], aspect: was?.aspect ?? (card.type === 'photos' ? 'wide' : undefined), items } as ShelfCard;
 }
 
 const drawn = new WeakMap<Card, { view: View; out: Card }>();

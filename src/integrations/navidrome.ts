@@ -106,7 +106,7 @@ export default defineIntegration({
         title: 'Rediscover', interval: 3_600_000,
         async fetch() {
           const items = (await rediscover()).map(a => ({ ...tile(a), note: a.year ? String(a.year) : undefined }));
-          return { type: 'shelf' as const, title: 'Rediscover', icon: 'play', href: web, source, aspect: 'square' as const, layout: 'coverflow' as const, items, empty: 'No albums yet',
+          return { type: 'shelf' as const, title: 'Rediscover', icon: 'play', href: web, source, aspect: 'square' as const, layout: 'focus' as const, items, empty: 'No albums yet',
             summary: items[0] && { label: 'Rediscover', icon: 'play', value: items[0].title, sub: items[0].subtitle, image: items[0].image } };
         },
       },

@@ -118,7 +118,7 @@ layout:
       - { widget: lab.weather, size: medium }
       - { widget: lab.calendar, size: large }
   - widgets:
-      - { widget: lab.recent, view: coverflow }
+      - { widget: lab.recent, view: focus }
   - widgets:
       - { widget: lab.sky, size: medium }
       - { widget: lab.photos, size: tall }
