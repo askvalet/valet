@@ -653,7 +653,7 @@ live:
 | Option | Default | |
 |---|---|---|
 | `lead` | `10m` | how long before a meeting its ring appears |
-| `remind` | `[2m]` | when to remind you before it starts: one time or a list; `[]` for none |
+| `remind` | `[1m]` | when to remind you before it starts: one time or a list; `[]` for none |
 | `push` | `true` | reminders also go to devices with notifications on (⌘K), not only `notify.channels` |
 | `me` | none | your address, or a list: meetings you declined are left out, and so are you from who it's with |
 
