@@ -5,6 +5,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-11-04
+
 ### Added
 
 - Backup health: one **Backups** card (`valet.backups`) with every backup job your services report, failed and overdue ones first, then the rest with when they last worked, their size and a small line of it run by run. A sudden drop or jump in size is flagged as worth a look. Overdue means no success within the job's schedule, `backups.expect`, or `backups.overdue` (26 hours). Going wrong and coming right are told once each, on the page, on the timeline and through `notify.channels`, checked every 15 minutes even with the page closed. Ask "are my backups ok?", or type **backups** in ⌘K.
@@ -135,7 +137,8 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/askvalet/valet/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/askvalet/valet/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/askvalet/valet/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/askvalet/valet/compare/v0.1.1...v0.1.2
