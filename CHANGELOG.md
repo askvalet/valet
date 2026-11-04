@@ -5,6 +5,12 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-11-04
+
+### Fixed
+
+- A config with a `notify:` block from before 0.1.5 (channels or insights, and no `webPush`) loads again. In 0.1.5 it stopped Valet from starting.
+
 ## [0.1.5] - 2026-11-04
 
 ### Added
@@ -137,7 +143,8 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/askvalet/valet/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/askvalet/valet/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/askvalet/valet/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/askvalet/valet/compare/v0.1.2...v0.1.3

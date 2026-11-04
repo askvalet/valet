@@ -333,7 +333,7 @@ export const Config = z.object({
   links: z.record(z.string(), z.array(z.object({ name: z.string(), url: z.string().url(), icon: z.string().optional(), note: z.string().optional() }))).default({}),
   // where "tell me when" reminders go when you're not looking (ntfy, gotify, telegram, discord, slack, pushover, apprise,
   // webhook). insights: also push the assistant's shared-cause line.
-  notify: z.object({ channels: z.array(Channel).default([]), insights: z.boolean().default(false), webPush: WebPush }).default({ channels: [], insights: false, webPush: WebPush.parse({}) }),
+  notify: z.object({ channels: z.array(Channel).default([]), insights: z.boolean().default(false), webPush: WebPush.prefault({}) }).default({ channels: [], insights: false, webPush: WebPush.parse({}) }),
   // backup health: every job the integrations report, gathered on Valet's Backups card (valet.backups). overdue: how long
   // a job may go without a success when its service doesn't say its schedule · expect: that per job, by name · every: how
   // often it checks with nobody looking · notify: also push failures, overdue jobs and recoveries to notify.channels

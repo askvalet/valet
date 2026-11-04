@@ -88,3 +88,10 @@ test('sounds: off and quiet unless asked for; a browser\'s own choice wins eithe
   assert.equal(resolveSounds({ enabled: false }, 'on').on, true);
   assert.equal(resolveSounds(undefined, 'something else').on, false);
 });
+
+test('notify: a config from before webPush, with channels and no webPush, still loads', () => {
+  const c = Config.parse({ notify: { channels: [] } });
+  assert.equal(c.notify.webPush.enabled, true);
+  assert.deepEqual(c.notify.channels, []);
+  assert.equal(Config.parse({ notify: { insights: true } }).notify.webPush.enabled, true);
+});
