@@ -5,6 +5,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-11-04
+
 ### Added
 
 - Liquid glass, to try: `appearance.glass.material: liquid` swaps the frosted glass for a clearer one. The blur is lighter and keeps the wallpaper's colour, the edge is lit from the top left, there's a soft shadow and a sheen inside, and hovering a card brightens its glass. In light, a card over a dark part of the wallpaper turns dark with light text, and the cards in a row decide together. Frosted stays the default. Any browser can flip between the two in ⌘K (**Liquid glass**, under This device), and the demo can too.
@@ -165,7 +167,8 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/compare/v0.1.7...HEAD
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/askvalet/valet/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/askvalet/valet/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/askvalet/valet/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/askvalet/valet/compare/v0.1.4...v0.1.5
