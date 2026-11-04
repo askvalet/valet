@@ -11,7 +11,9 @@ export type Live = Activity & { key: string; href?: string; source?: { name: str
 export type Notice = { key: string; text: string; sub?: string; icon?: string; image?: string; tone: 'good' | 'warn' | 'bad' | 'accent'; n: number };
 
 const TONE: Record<string, string> = { accent: 'var(--primary)', good: 'var(--good)', warn: 'var(--warn)', bad: 'var(--bad)' };
-const tint = (a: Live) => TONE[a.tone ?? ''] ?? (a.icon === 'play' ? 'var(--primary)' : a.icon === 'download' ? '#64d2ff' : 'var(--good)');
+// a meeting is blue, the colour people know a call by, wherever it shows (the ring, its bar, its Join)
+export const MEETING = '#0a84ff';
+const tint = (a: Live) => a.link ? MEETING : TONE[a.tone ?? ''] ?? (a.icon === 'play' ? 'var(--primary)' : a.icon === 'download' ? '#64d2ff' : 'var(--good)');
 
 /** Where a countdown is at `now`: the words, how far along, and the minutes for inside the ring. Over is null. */
 export function counted(c: NonNullable<Activity['countdown']>, now: number) {
@@ -35,6 +37,7 @@ function useNow(on: boolean) {
 const host = (href: string) => { try { return new URL(href).host; } catch { return ''; } };
 
 function Story({ a, when }: { a: Live; when?: ReturnType<typeof counted> }) {
+  if (a.link) return <Meeting a={a} when={when} />;
   const title = <span className="block truncate text-[14px] font-medium">{a.title}</span>;
   const pct = when ? when.pct : a.pct, trailing = when ? when.text : a.trailing;
   return (
@@ -47,13 +50,31 @@ function Story({ a, when }: { a: Live; when?: ReturnType<typeof counted> }) {
         <div className="mt-1.5 flex justify-between gap-3 text-[12px] text-muted-foreground tabular">
           <span className="truncate">{a.paused ? 'Paused' : (a.count ?? 0) > 1 && when ? `${a.count! - 1} more at the same time` : a.source?.name}</span>{trailing && <span className={cn('shrink-0', when && 'text-foreground/85')}>{trailing}</span>}
         </div>
-        {a.link && (
-          <div className="mt-2.5 flex min-w-0 items-center gap-2.5">
-            <LinkButton link={a.link} strong />
-            <span className="min-w-0 truncate text-[12px] text-muted-foreground">{[a.link.note, host(a.link.href)].filter(Boolean).join(' · ')}</span>
-          </div>
-        )}
       </div>
+    </div>
+  );
+}
+
+/** A meeting: what and when on top, how close it is, then one big Join. The link's address is on the button's tooltip. */
+function Meeting({ a, when }: { a: Live; when?: ReturnType<typeof counted> }) {
+  const [time, ...rest] = (a.subtitle ?? '').split(' · '), who = rest.join(' · ');
+  const pct = when ? when.pct : a.pct, trailing = when ? when.text : a.trailing;
+  return (
+    <div className="grid gap-3 p-3.5">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl" style={{ background: `color-mix(in srgb, ${MEETING} 18%, transparent)`, color: MEETING }}><Icon name={a.icon} className="size-5" /></span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="min-w-0 truncate text-[15px] font-semibold">{a.title}</span>
+            {trailing && <span className="shrink-0 text-[13px] font-medium tabular" style={{ color: MEETING }}>{trailing}</span>}
+          </div>
+          {time && <div className="text-[13px] text-muted-foreground tabular">{time}</div>}
+          {who && <div className="line-clamp-2 text-[13px] text-muted-foreground">{who}</div>}
+        </div>
+      </div>
+      {pct != null && <div className="h-1 overflow-hidden rounded-full bg-foreground/10"><div className="h-full rounded-full transition-transform duration-(--dur-move) ease-out" style={{ background: MEETING, transform: `translateX(${Math.round(pct * 100) - 100}%)` }} /></div>}
+      {(a.count ?? 0) > 1 && when && <div className="-mt-1 text-[12px] text-muted-foreground">{a.count! - 1} more at the same time</div>}
+      <LinkButton link={a.link!} big />
     </div>
   );
 }
