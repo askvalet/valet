@@ -1,0 +1,39 @@
+---
+title: Backup jobs
+description: How an integration or plugin joins the Backups card.
+sidebar: { order: 8 }
+---
+
+[Backup health](/concepts/backups/) gathers jobs from every integration that offers them. Return `backups` beside `widgets`. It answers with a list of jobs; Valet works out what's late, failing or oddly sized.
+
+```js
+async backups() {
+  const jobs = await api('/jobs');
+  return jobs.map(j => ({
+    name: j.name,                       // the only thing required
+    lastSuccess: j.lastGoodAt,          // ms or an ISO date
+    lastRun: j.lastRunAt,
+    result: j.ok ? 'ok' : 'failed',     // or 'warning', 'running'
+    error: j.error,
+    size: j.bytes,                      // the whole of what it keeps, not what one run added
+    next: j.nextAt,
+    every: j.intervalMs,
+  }));
+}
+```
+
+| Field | |
+|---|---|
+| `name` | the job, plan or source |
+| `source` | what runs it, e.g. "Kopia"; your integration's name if left out |
+| `lastSuccess` | when it last finished without an error |
+| `lastRun`, `result` | when it last ran at all, and how: `ok`, `warning` (worked, worth a look), `failed` (a problem until a run works) or `running` |
+| `error` | why it failed, in the service's words |
+| `size`, `sizes` | bytes now, and earlier sizes oldest first if the service keeps them. Otherwise Valet remembers |
+| `next` | when it runs next |
+| `every` | ms it should never go without a success, if the service knows its schedule. Without it, the gap from `lastRun` to `next` is used, then `backups.overdue` |
+| `href` | where to look at it |
+
+Leave out what the service doesn't say. A job that doesn't fit the shape is left out, never trusted, and a `backups()` that throws is shown as "couldn't ask".
+
+In a built-in `service()`, `backups: (d, o) => [...]` reads the same answers as the card, and `backupGet` adds calls made only when backups are asked. The sample must give at least one job: `npm test` checks it.

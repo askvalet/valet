@@ -2,11 +2,11 @@
 // trouble first. With control, the assistant can pause a check (it stops alerting until its next ping) and resume it.
 // A read-only API key shows everything; pausing needs the project's full key.
 import { z } from 'zod';
-import { bounded, defineIntegration, fmt } from '../server/core.ts';
+import { bounded, defineIntegration, fmt, type BackupJob } from '../server/core.ts';
 import { Every } from '../server/config.ts';
 import type { ListItem, StatItem, Tone } from '../shared/cards.ts';
 
-interface Check { key: string; uuid?: string; name: string; slug?: string; tags: string[]; status: string; started: boolean; lastPing?: number; nextPing?: number; pings: number; manualResume: boolean }
+interface Check { key: string; uuid?: string; name: string; slug?: string; tags: string[]; status: string; started: boolean; lastPing?: number; nextPing?: number; pings: number; manualResume: boolean; period?: number }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const when = (t: unknown) => { if (t == null || t === '') return undefined; const v = new Date(String(t)).getTime(); return Number.isFinite(v) ? v : undefined; };
@@ -35,7 +35,8 @@ export default defineIntegration({
       return text ? JSON.parse(text) : {};
     }
     const parse = (c: any): Check => ({ key: String(c?.uuid ?? c?.unique_key ?? c?.slug ?? c?.name), uuid: typeof c?.uuid === 'string' && UUID.test(c.uuid) ? c.uuid : undefined, name: String(c?.name || c?.slug || 'Unnamed'), slug: c?.slug || undefined,
-      tags: String(c?.tags ?? '').split(' ').filter(Boolean), status: String(c?.status ?? 'new'), started: !!c?.started, lastPing: when(c?.last_ping), nextPing: when(c?.next_ping), pings: Number(c?.n_pings) || 0, manualResume: !!c?.manual_resume });
+      tags: String(c?.tags ?? '').split(' ').filter(Boolean), status: String(c?.status ?? 'new'), started: !!c?.started, lastPing: when(c?.last_ping), nextPing: when(c?.next_ping), pings: Number(c?.n_pings) || 0, manualResume: !!c?.manual_resume,
+      period: Number(c?.timeout) > 0 ? (Number(c.timeout) + (Number(c?.grace) || 0)) * 1000 : undefined });
     let cached: { at: number; p: Promise<Check[]> } | undefined;
     function checks() {
       if (cached && Date.now() - cached.at < 5000) return cached.p;
@@ -66,7 +67,14 @@ export default defineIntegration({
     }
     const CHECK = z.object({ check: z.string().min(1).max(200).describe('its name, slug or id') });
 
+    // a check named or tagged as a backup is one, for Valet's Backups card. Down means it failed or never pinged in time;
+    // paused ones aren't expected to run
+    const backups = async (): Promise<BackupJob[]> => (await checks()).filter(c => c.status !== 'paused' && /backup/i.test(`${c.name} ${c.tags.join(' ')}`)).map(c => ({
+      name: c.name, source: 'Healthchecks', lastRun: c.lastPing, next: c.nextPing, every: c.period, href,
+      ...(c.status === 'down' ? { result: 'failed' as const, error: 'Healthchecks has it down' } : c.started ? { result: 'running' as const } : c.lastPing && c.status !== 'new' ? { lastSuccess: c.lastPing, result: 'ok' as const } : {}) }));
+
     return {
+      backups,
       widgets: {
         status: {
           title: 'Healthchecks', interval: every,

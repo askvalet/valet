@@ -418,8 +418,20 @@ export default ({ z, defineIntegration }) => {
       };
       const pile = () => { const ids = got('archived', []); return [...ART.saved].reverse().filter(p => !ids.includes(p.title)); };
       const textCard = text => ({ type: 'text', tone: 'good', text });
+      // for Valet's Backups card: most nights went fine, the offsite copy has been quiet for three days and the documents
+      // shrank by half in their last run, which is worth a look
+      const nightly = (hour, back = 0) => { const d = new Date(now()); d.setHours(hour, 0, 0, 0); if (+d > now()) d.setDate(d.getDate() - 1); return +d - back * 864e5; };
+      const GB = 2 ** 30, grow = (from, step, n) => Array.from({ length: n }, (_, i) => Math.round((from + step * i + (i % 3) * step * .4) * GB));
+      const backups = () => [
+        { name: 'Photos', source: 'Backrest', lastSuccess: nightly(4), lastRun: nightly(4), result: 'ok', sizes: grow(398, 1.1, 14), next: nightly(4) + 864e5 },
+        { name: 'Media server (VM 101)', source: 'Proxmox', lastSuccess: nightly(3), result: 'ok', sizes: grow(40.2, .06, 14), next: nightly(3) + 864e5, every: 864e5 },
+        { name: 'Home Assistant', source: 'Home Assistant', lastSuccess: nightly(5), result: 'ok', sizes: grow(1.1, .01, 10), next: nightly(5) + 864e5 },
+        { name: 'Documents', source: 'Kopia', lastSuccess: now() - 2 * 36e5 - 17 * 6e4, result: 'ok', sizes: [...grow(18.1, .02, 12), 9.2 * GB], next: now() + 4 * 36e5 - 17 * 6e4, every: 6 * 36e5 },
+        { name: 'Offsite copy', source: 'Duplicati', lastSuccess: nightly(2, 3), lastRun: nightly(2, 3), result: 'ok', size: 212 * GB, next: nightly(2) + 864e5, every: 864e5 },
+      ].map(({ sizes, ...j }) => ({ ...j, ...(sizes ? { sizes, size: sizes.at(-1) } : {}) }));
       return {
         onChat() { asked += 1; thinking = now() + 9_000; return ['ai']; },
+        backups: async () => backups(),
         widgets,
         // the clips, with the byte ranges phones ask for. Nothing but the files named above can be reached
         image(ref, range) {

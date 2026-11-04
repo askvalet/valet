@@ -124,6 +124,16 @@ function lab(ran: Ran): Map<string, Instance> {
         config_read: { description: 'x', access: 'read', input: z.object({}), async run() { ran.tool.push('config_read'); return { data: {} }; } },
       },
     }],
+    // Valet's own: a tool that only looks (the backups) may answer to a command; anything else of its own may not
+    ['valet', {
+      widgets: {},
+      commands: [{ say: ['are my backups ok'], run: 'tool:backups_status' }, { say: ['remind me'], run: 'tool:watch_add' }, { say: ['undo it'], run: 'action:undo' }],
+      actions: { undo: { description: 'x', input: z.object({}), async run() { ran.action.push('undo'); } } },
+      tools: {
+        backups_status: { description: 'x', access: 'read', input: z.object({}), async run() { ran.tool.push('backups'); return { data: {}, card: { type: 'text', text: 'All fine' } }; } },
+        watch_add: { description: 'x', access: 'write', input: z.object({}), async run() { ran.tool.push('watch_add'); return { data: {} }; } },
+      },
+    }],
   ]);
 }
 
@@ -187,7 +197,7 @@ test('gate: the assistant\'s access decides which tools a command may use', asyn
 test('gate: a read-only page only looks', async () => {
   const s = serve({ acting: false, assistant: { access: { default: 'control' } } });
   const listed = (await s.listed()).map(c => c.say[0]);
-  assert.deepEqual(listed.sort(), ['ad blocking', 'downloads']);
+  assert.deepEqual(listed.sort(), ['ad blocking', 'are my backups ok', 'downloads']);
   assert.equal((await s.run('pause downloads', await idOf(s, 'pause downloads'))).status, 403);
   assert.equal((await s.run('remove the stuck one', await idOf(s, 'remove the stuck one'), true)).status, 403);
   assert.equal((await s.run('downloads')).status, 200);
@@ -240,6 +250,18 @@ test('gate: what runs is what was typed, and never Valet\'s own tools, plan or M
   assert.equal((await s.run('downloads', await idOf(s, 'remove the stuck one'), true)).status, 404);
   assert.equal((await s.run('pause downlods', await idOf(s, 'pause downloads'))).status, 404);
   assert.deepEqual(s.ran, { tool: [], action: [] });
+});
+
+test('gate: Valet\'s own backups answer to a command; its reminders and undo don\'t', async () => {
+  for (const s of [serve(), serve({ assistant: { access: { default: 'control' } } })]) {
+    const said = (await s.listed()).map(c => c.say[0]);
+    assert.ok(said.includes('are my backups ok')); assert.ok(!said.includes('remind me') && !said.includes('undo it'));
+    assert.equal((await s.run('are my backups ok')).body.card.text, 'All fine');
+    for (const id of ['valet:1', 'valet:2']) for (const text of ['remind me', 'undo it']) assert.equal((await s.run(text, id, true)).status, 404);
+    assert.deepEqual(s.ran, { tool: ['backups'], action: [] });
+  }
+  const off = serve({ assistant: { access: { default: 'control', valet: 'none' } } });
+  assert.ok(!(await off.listed()).some(c => c.say[0] === 'are my backups ok'), 'valet: none turns it off');
 });
 
 test('gate: results are redacted, and no session or another site gets nothing', async () => {

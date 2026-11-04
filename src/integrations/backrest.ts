@@ -3,13 +3,13 @@
 // backup now. Everything comes from GetSummaryDashboard, the call Backrest's own dashboard makes, so the repositories'
 // passwords in its config are never asked for.
 import { z } from 'zod';
-import { bounded, defineIntegration, fmt } from '../server/core.ts';
+import { bounded, defineIntegration, fmt, type BackupJob } from '../server/core.ts';
 import { Every } from '../server/config.ts';
 import type { ListItem, StatItem, Tone } from '../shared/cards.ts';
 
 type State = 'ok' | 'warning' | 'failed' | 'running' | 'cancelled' | 'none';
 interface Run { at: number; ms: number; state: State; added: number }
-interface Plan { id: string; last?: Run; ok30: number; failed30: number; warned30: number; added30: number; protects: number; snapshots: number; next?: number; overdue: boolean }
+interface Plan { id: string; last?: Run; good?: number; ok30: number; failed30: number; warned30: number; added30: number; protects: number; snapshots: number; next?: number; overdue: boolean }
 
 const n = (v: unknown) => Number(v) || 0;   // int64s arrive as strings
 const PLAN = /^[A-Za-z0-9_.-]{1,100}$/;      // Backrest's own rule for an id
@@ -25,7 +25,7 @@ function parse(raw: any): Plan {
   // newest first in today's Backrest; picked by time anyway, so an older order reads the same
   const runs: Run[] = at.map((t, i) => ({ at: n(t), ms: n(c.durationMs?.[i]), state: STATE[String(c.status?.[i])] ?? 'none', added: n(c.bytesAdded?.[i]) })).sort((a, b) => b.at - a.at);
   const days = Array.isArray(raw?.historyLast30days) ? raw.historyLast30days : [];
-  return { id: String(raw?.id ?? ''), last: runs[0], ok30: n(raw?.backupsSuccessLast30days), failed30: n(raw?.backupsFailed30days), warned30: n(raw?.backupsWarningLast30days), added30: n(raw?.bytesAddedLast30days),
+  return { id: String(raw?.id ?? ''), last: runs[0], good: runs.find(r => r.state === 'ok' || r.state === 'warning')?.at, ok30: n(raw?.backupsSuccessLast30days), failed30: n(raw?.backupsFailed30days), warned30: n(raw?.backupsWarningLast30days), added30: n(raw?.bytesAddedLast30days),
     protects: n(raw?.protectedBytes), snapshots: n(raw?.totalSnapshots), next: n(raw?.nextBackupTimeMs) || undefined, overdue: !!days.at(-1)?.overdue };
 }
 function words(p: Plan) {
@@ -88,7 +88,12 @@ export default defineIntegration({
     const brief = (p: Plan) => ({ plan: p.id, last: p.last ? { state: p.last.state, at: new Date(p.last.at).toISOString(), took: fmt.duration(p.last.ms / 1000), added: fmt.bytes(p.last.added) } : 'never', next: p.next ? new Date(p.next).toISOString() : undefined,
       overdue: p.overdue || undefined, protects: p.protects ? fmt.bytes(p.protects) : undefined, snapshots: p.snapshots || undefined, last30days: { ok: p.ok30, warnings: p.warned30, failed: p.failed30, added: fmt.bytes(p.added30) } });
 
+    // for Valet's Backups card: a cancelled run says nothing about whether backups work, so it's left as it was
+    const job = (p: Plan): BackupJob => ({ name: p.id, source: 'Backrest', lastSuccess: p.good, lastRun: p.last && p.last.state !== 'cancelled' && p.last.state !== 'none' ? p.last.at : p.good,
+      result: p.last?.state === 'failed' || p.last?.state === 'warning' || p.last?.state === 'running' || p.last?.state === 'ok' ? p.last.state : undefined, size: p.protects || undefined, next: p.next, href });
+
     return {
+      backups: async () => (await plans()).map(job),
       widgets: {
         status: {
           title: 'Backrest', interval: every,

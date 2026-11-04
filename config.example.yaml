@@ -152,6 +152,10 @@ mcp:
 #   token: ${VALET_MCP_TOKEN}        # openssl rand -hex 32, in .env
 #   access: { default: read }        # or { default: none, plex: read }: only what you open
 
+# Backup health: every job the integrations report, on the card valet.backups, worst first. Overdue means no success
+# within the job's schedule, or this when the service doesn't say one. Problems and recoveries reach notify.channels.
+# backups: { overdue: 26h, expect: { Offsite copy: 8d } }
+
 # What the homepage shows, top to bottom. Widgets are "<integration>.<widget>".
 # Small ring gauges in the top bar; hover one for its live graph. Any widget with headline numbers works.
 menubar: [system.tiles]

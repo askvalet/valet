@@ -112,6 +112,7 @@ export interface ListItem {
   badge?: string;         // a small mark on a chip: "Major", "Read first"
   band?: [number, number];   // temps: the normal stretch of the track, 0..1 at each end
   section?: string;       // rows: a quiet heading wherever this changes, e.g. "Today" above "Earlier"
+  trend?: number[];       // rows: a small line of recent values beside the meta, e.g. a backup's size run by run
   buttons?: { label: string; action: string; args?: Record<string, unknown> }[];   // rows: quiet actions on this row alone, e.g. Pause and Remove
 }
 export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; limit?: number; log?: boolean; layout?: 'temps' | 'chips' | 'headlines' }   // headlines: a grid of stories, each anchored by its site's favicon · temps: a reading per row (pct along the track, meta the number) · chips: pills, an icon by name · limit: chips show this many, "19 in all" opens the rest in place

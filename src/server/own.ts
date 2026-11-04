@@ -11,20 +11,24 @@ import type { Recap } from '../shared/cards.ts';
 import type { Timeline } from './timeline.ts';
 import type { Watches } from './watches.ts';
 import { ruleTools, type Rules } from './rules.ts';
+import { backupParts, type Backups } from './backups.ts';
 
 const when = (t: number) => new Date(t).toLocaleString('en', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 // today needs no day
 const stamp = (t: number) => new Date(t).toDateString() === new Date().toDateString() ? new Date(t).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }) : when(t);
 
-export function ownInstance(o: { timeline: Timeline; activity: Activity; watches: Watches; rules: Rules; hub: () => Hub; widgets: string[]; history?: History; recap: (year?: number) => Promise<Recap>; undo: (id: number) => Promise<string> }): Instance {
+export function ownInstance(o: { timeline: Timeline; activity: Activity; watches: Watches; rules: Rules; hub: () => Hub; widgets: string[]; history?: History; backups?: Backups; recap: (year?: number) => Promise<Recap>; undo: (id: number) => Promise<string> }): Instance {
   const log = () => {
     const list = o.activity.recent(12), undoable = list.find(e => e.undo && !e.undone);
     return { type: 'list' as const, title: 'Activity', icon: 'pulse', empty: 'Nothing changed yet', log: true,
       items: list.map(e => ({ id: String(e.id), title: sentence(e), subtitle: `${outcome(e)} · ${stamp(e.at)}`, tone: e.ok ? undefined : 'bad' as const })),
       buttons: undoable ? [{ label: `Undo: ${sentence(undoable)}`, action: 'undo', args: { id: undoable.id } }] : undefined };
   };
+  // backup health, only when some integration reports backups: its card, its tool and its ⌘K words
+  const bk = o.backups?.sources().length ? backupParts(o.backups) : undefined;
   return {
-    widgets: { activity: { title: 'Activity', interval: 15_000, fetch: async () => log() }, rules: { title: 'Rules', interval: 15_000, fetch: async () => o.rules.card() } },
+    widgets: { activity: { title: 'Activity', interval: 15_000, fetch: async () => log() }, rules: { title: 'Rules', interval: 15_000, fetch: async () => o.rules.card() }, ...(bk ? { backups: bk.widget } : {}) },
+    ...(bk ? { commands: bk.commands } : {}),
     actions: {
       undo: { description: 'Undo something from the activity log', input: z.object({ id: z.number() }), run: ({ id }: { id: number }) => o.undo(id) },
       // switching a rule off needs no approval: it only takes power away. Resuming checks it could run now.
@@ -36,6 +40,7 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
     tools: {
       ...guideTools(),
       ...ruleTools(o.rules, o.widgets),
+      ...(bk ? { backups_status: bk.tool } : {}),
       year_in_review: {
         label: 'Looked back over the year', followUps: ['What was my most watched thing?'],
         description: 'The year in review: the headline numbers from every service. Use for "my year", "wrapped", "year in review".',

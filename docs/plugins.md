@@ -151,6 +151,23 @@ async recap({ year, from, to }) {
   zero. It isn't in the plugin toolkit, so a plugin writes that slide out.
 - No model writes any of this: a recap of real numbers can't have one inventing a few.
 
+## Backup jobs
+
+If your service makes backups, return `backups` next to `widgets` and its jobs join Valet's Backups card, with what's
+late or failing first and a notice when that changes:
+
+```js
+async backups() {
+  return (await api('/jobs')).map(j => ({ name: j.name, lastSuccess: j.lastGoodAt, lastRun: j.lastRunAt,
+    result: j.ok ? 'ok' : 'failed', error: j.error, size: j.bytes, next: j.nextAt, every: j.intervalMs }));
+}
+```
+
+Only `name` is required; times are ms or ISO dates; `result` is `ok`, `warning`, `failed` or `running`; `size` is the
+whole of what it keeps, so a sudden change means something. Leave out what the service doesn't say: Valet works out
+what's overdue from `every`, the gap between `lastRun` and `next`, or `backups.overdue`. A job that doesn't fit the shape
+is left out.
+
 ## Visuals of your own
 
 The catalog covers most things, but a plugin can draw anything. Return a `showcase` card whose `visual.kind` is the

@@ -117,6 +117,11 @@ Put `ctx.image(ref)` in a card; validate `ref` before fetching.
 
 **`recap(range)`** adds slides to the year in review: see [plugins.md](plugins.md#the-year-in-review).
 
+**`backups()`** returns its backup jobs for Valet's Backups card: `{ name, source?, lastSuccess?, lastRun?, result?, error?,
+size?, sizes?, next?, every?, href? }`, times in ms or ISO dates, only `name` required (`BackupJob` in `src/server/core.ts`).
+Valet works out what's overdue or oddly sized; a job that doesn't fit is left out. In a `service()`, `backups: (d, o) => [...]`
+reads the card's answers and `backupGet` adds calls made only for backups.
+
 **`onChat()`** is called when someone asks the assistant something. It returns the widgets to refresh right away, for a
 service that shows the assistant at work.
 

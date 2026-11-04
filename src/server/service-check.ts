@@ -3,6 +3,7 @@
 import { checkCard } from '../shared/cards.schema.ts';
 import { session, type Context } from './core.ts';
 import type { ServiceDef } from './service.ts';
+import { BackupShape } from './backups.ts';
 
 const creds = (def: ServiceDef<any>) => {
   const a: any = def.auth, needs = a?.needs ?? ['username', 'password'];
@@ -13,7 +14,7 @@ export const sampleConfig = (def: ServiceDef<any>) => ({ url: 'http://svc', ...c
 export function fakeContext(def: ServiceDef<any>, status = 200) {
   const options: any = { url: 'http://svc', session: 'tok', ...def.sampleOptions };
   const first = typeof def.get === 'function' ? def.get(options) : def.get;
-  const gets = [...Object.entries(first), ...Object.entries(def.then?.(def.sample, options) ?? {})] as [string, any][];
+  const gets = [...Object.entries(first), ...Object.entries(def.then?.(def.sample, options) ?? {}), ...Object.entries(def.backupGet?.(def.sample, options) ?? {})] as [string, any][];
   const pathOf = (g: any) => typeof g === 'string' ? g : g.path;
   let signedIn = false;
   const c: Context & { asked: string[] } = {
@@ -55,6 +56,11 @@ export async function checkService(s: { def: ServiceDef<any>; config: any; creat
     const slides = await inst.recap({ year: 2026, from: 0, to: Date.now() }).catch((e: Error) => { problems.push(`its recap failed: ${e.message}`); return null; });
     if (slides && !slides.length) problems.push('its recap said nothing about its own sample');
     for (const s of slides ?? []) if (/undefined|NaN|null/.test(`${s.value} ${s.line}`)) problems.push(`its recap came up empty: "${s.value}", "${s.line}"`);
+  }
+  if (def.backups) {
+    const jobs = await inst.backups().catch((e: Error) => { problems.push(`its backups failed: ${e.message}`); return null; });
+    if (jobs && !jobs.length) problems.push('its backups said nothing about its own sample');
+    for (const j of jobs ?? []) { const r = BackupShape.safeParse(j); if (!r.success) problems.push(`a backup job doesn't fit: ${r.error.issues[0].path.join('.')}: ${r.error.issues[0].message}`); }
   }
   if (!Object.keys(def.expect ?? {}).length) problems.push('add `expect`, so a test proves the numbers land in the right place');
   if (Object.values(inst.tools ?? {}).some((t: any) => t.access !== 'read')) problems.push('its tool must only read');

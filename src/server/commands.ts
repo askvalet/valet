@@ -11,8 +11,10 @@ import type { Hub } from './hub.ts';
 import { match, type Phrase } from '../shared/commands.ts';
 
 const RANK = { none: 0, read: 1, write: 2, control: 3 } as const;
-// Valet's own parts (its setup tools above all) never answer to a command, whatever they declare
+// Valet's own parts (its setup tools above all) never answer to a command, whatever they declare. Valet's own tools
+// that only look (the backups) may, since anyone who can open the page could see the same card.
 const OWN = new Set(['config', 'valet', 'pins']);
+const looks = (inst: string, kind: string, target: Action | Tool | undefined) => inst === 'valet' && kind === 'tool' && (target as Tool | undefined)?.access === 'read';
 
 export interface CommandSite {
   config: Config; instances: Map<string, Instance>; meta: Map<string, { type: string; name: string }>;
@@ -24,14 +26,14 @@ interface Entry extends Phrase { inst: string; name: string; cmd: Command; targe
 export async function commandsOf(site: CommandSite): Promise<Entry[]> {
   const types = [...site.meta.values()].map(m => m.type);
   const lists = await Promise.all([...site.instances].map(async ([inst, i]) => {
-    if (OWN.has(inst) || !i.commands) return [];
+    if ((OWN.has(inst) && inst !== 'valet') || !i.commands) return [];
     const list = await Promise.resolve(typeof i.commands === 'function' ? i.commands() : i.commands).catch(() => [] as Command[]);
     const m = site.meta.get(inst), names = [...new Set([inst.replace(/[-_]+/g, ' '), m?.name ?? inst])];
     const service = m && types.filter(t => t === m.type).length > 1 ? `${m.name} · ${inst}` : m?.name ?? inst;
     return (Array.isArray(list) ? list : []).flatMap((cmd, n): Entry[] => {
       const [kind, name] = String(cmd?.run ?? '').split(':') as ['action' | 'tool', string];
       const target = kind === 'action' ? i.actions?.[name] : kind === 'tool' ? i.tools?.[name] : undefined;
-      if (!target || !Array.isArray(cmd.say)) return [];
+      if (!target || !Array.isArray(cmd.say) || (OWN.has(inst) && !looks(inst, kind, target))) return [];
       const say = [...new Set(cmd.say.flatMap(s => typeof s !== 'string' ? [] : s.includes('{name}') ? names.map(x => s.replaceAll('{name}', x)) : [s]))];
       const label = cmd.label ?? say[0] ?? name;
       return say.length ? [{ id: `${inst}:${n}`, say, label: label[0].toUpperCase() + label.slice(1), service, kind, access: kind === 'action' ? 'control' : (target as Tool).access, inst, name, cmd, target }] : [];
@@ -42,7 +44,8 @@ export async function commandsOf(site: CommandSite): Promise<Entry[]> {
 
 /** Whether this page may run it, and why not. */
 export function refusal(site: CommandSite, e: Entry): string | null {
-  if (OWN.has(e.inst)) return 'that isn\'t something a command can do';
+  if (OWN.has(e.inst) && !looks(e.inst, e.kind, e.target)) return 'that isn\'t something a command can do';
+  if (OWN.has(e.inst)) return site.config.assistant?.access.valet === 'none' ? 'assistant.access gives valet none' : null;
   if (e.kind === 'action') return site.acting ? null : 'Valet is read-only: sign-in is off (set auth.mode, or auth.trustNetwork if the network is private)';
   const a = site.config.assistant, t = e.target as Tool;
   // no assistant: only looking. With one, what the assistant may use here, capped at looking on a read-only page

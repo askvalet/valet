@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { Config } from '../src/server/config.ts';
 import { defineIntegration } from '../src/server/core.ts';
 import { checkCard } from '../src/shared/cards.schema.ts';
+import { Backups, backupParts } from '../src/server/backups.ts';
 import { suggest } from '../src/web/suggest.ts';
 import plugin from '../demo/integrations/homelab.mjs';
 import { can, FALLBACK, reply, SCRIPT, suggestions, SUGGESTIONS } from '../demo/mock-model.mjs';
@@ -32,12 +33,26 @@ test('demo: every widget returns a valid card, and the layout only names widgets
 });
 
 test('demo: the script only calls tools that exist, and answers from what they return', async () => {
-  for (const [, tool] of SCRIPT) if (tool) assert.ok(inst.tools[tool as string], tool as string);   // a null tool is a plain answer
+  // a null tool is a plain answer; Valet's own backups tool gathers from the lab, as the server's does
+  for (const [, tool] of SCRIPT) if (tool) assert.ok(inst.tools[tool as string] || tool === 'backups_status', tool as string);
   assert.equal(ask('How are the downloads?').call?.name, 'lab__downloads_status');
   assert.equal(ask('turn off the lights').call?.name, 'lab__set_lights');
   const { data } = await inst.tools.service_status.run({});
   const r = reply({ tools, messages: [{ role: 'user', content: 'Is anything down?' }, { role: 'tool', content: JSON.stringify(data) }] });
   assert.match(r.text!, /Mealie is down/);
+});
+
+test('demo: the backups card leads with the overdue job and flags the shrunk one, and the script says so', async () => {
+  const b = new Backups(); b.sources = () => [{ id: 'lab', name: 'Homelab', instance: inst }];
+  const parts = backupParts(b), card = await parts.widget.fetch();
+  assert.ok(checkCard(card).success);
+  assert.equal(card.items[0].title, 'Offsite copy');
+  assert.equal(card.items[0].tone, 'bad');
+  assert.equal(card.items.find(i => i.title === 'Documents')?.tone, 'warn');
+  assert.equal(card.summary?.value, '1 needs a look');
+  const { data } = await parts.tool.run();
+  const said = reply({ tools: [...tools, { function: { name: 'valet__backups_status' } }], messages: [{ role: 'user', content: 'Are my backups ok?' }, { role: 'tool', content: JSON.stringify(data) }] }).text!;
+  assert.match(said, /Offsite copy \(Duplicati\) is overdue.*Documents worked, but it shrank \d+% since the run before.*other 3 are fine/);
 });
 
 test('demo: the calendar is about today, and the thermostat answers then lapses after ten minutes', async () => {

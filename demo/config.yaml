@@ -60,6 +60,7 @@ layout:
       - { widget: lab.containers, size: large }
       - { widget: lab.updates, size: tall }
       - { widget: lab.jobs, size: medium }
+      - { widget: valet.backups, size: medium }
       - { widget: lab.system, size: medium }
   - title: AI
     display: tiles

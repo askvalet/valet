@@ -82,6 +82,35 @@ export interface Instance {
   image?(ref: string, range?: string): Promise<Response> | Response;
   /** What this service can say about a stretch of time, for the year in review. Leave out anything it can't really know. */
   recap?(range: { year: number; from: number; to: number }): Promise<RecapSlide[]>;
+  /** Its backup jobs, for Valet's Backups card: the overdue and failing ones lead it, raise a notice and reach the page's
+   *  summary. Report what the service knows; Valet works out what's late. */
+  backups?(): Promise<BackupJob[]>;
+}
+
+/** One backup job, plan or source, as any integration reports it. Times are ms since 1970 or an ISO date. Leave out what
+ *  the service doesn't say: only `name` is needed. */
+export interface BackupJob {
+  name: string;
+  /** what runs it, e.g. "Kopia"; the integration's name if left out */
+  source?: string;
+  /** when it last finished without an error */
+  lastSuccess?: number | string;
+  /** when it last ran at all, and how that went: `failed` makes it a problem until a run works; `warning` is a success
+   *  worth a look; `running` is under way now */
+  lastRun?: number | string;
+  result?: 'ok' | 'warning' | 'failed' | 'running';
+  /** why the last run failed, in the service's words */
+  error?: string;
+  /** bytes: the whole of what it keeps (the latest snapshot's size), not what one run added, so a sudden change means something */
+  size?: number;
+  /** earlier sizes, oldest first, if the service keeps them; otherwise Valet remembers what it saw */
+  sizes?: number[];
+  /** when it runs next */
+  next?: number | string;
+  /** ms it should never go without a success, if the service knows its schedule */
+  every?: number;
+  /** where to look at it */
+  href?: string;
 }
 
 export interface Context {

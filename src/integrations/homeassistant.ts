@@ -1,7 +1,7 @@
 // Home Assistant (REST API, long-lived token): cards of chosen entities as live controls, and tools to look up any
 // entity and (with approval) control the ones you've put on the page or listed under `controllable`.
 import { z } from 'zod';
-import { defineIntegration, type Command, type Instance, type Widget } from '../server/core.ts';
+import { defineIntegration, type BackupJob, type Command, type Instance, type Widget } from '../server/core.ts';
 import type { Control, ThermostatCard, ThermostatMode } from '../shared/cards.ts';
 
 const PRESS = new Set(['scene', 'script', 'button', 'input_button', 'automation']);
@@ -267,6 +267,15 @@ export default defineIntegration({
     }
 
     return {
+      // Home Assistant's own automatic backups (2025.1 and later), from the backup integration's sensors; nothing if it has none
+      async backups(): Promise<BackupJob[]> {
+        const all = await states(), read = (end: string) => all.find(e => /^sensor\.backup_/.test(e.entity_id) && e.entity_id.endsWith(end))?.state;
+        const time = (v?: string) => { const t = v ? new Date(v).getTime() : NaN; return Number.isFinite(t) ? t : undefined; };
+        const manager = read('backup_manager_state'), good = time(read('last_successful_automatic_backup')), tried = time(read('last_attempted_automatic_backup'));
+        if (manager == null && good == null && tried == null) return [];
+        return [{ name: 'Automatic backups', source: 'Home Assistant', lastSuccess: good, lastRun: tried ?? good, next: time(read('next_scheduled_automatic_backup')), href: cfg.href ?? `${base}/config/backup`,
+          result: manager && manager !== 'idle' ? 'running' : tried && (!good || tried > good + 36e5) ? 'failed' : good ? 'ok' : undefined }];
+      },
       async recap(this: Instance) {
         const [key, plan] = Object.entries(cfg.floorplans).find(([, p]) => p.vacuum) ?? [];
         if (!key || !plan?.vacuum) return [];

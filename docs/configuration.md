@@ -403,6 +403,29 @@ notify:
     - { type: webhook, url: http://anything/hook, headers: { X-Key: "${KEY}" } }
 ```
 
+## `backups`
+
+Every backup job the integrations report (Backrest, Kopia, Duplicati, Proxmox VE and Backup Server, Home Assistant,
+TrueNAS, Healthchecks checks named for a backup, and plugins), gathered on Valet's own card `valet.backups`. A job going
+wrong and coming right is told once each: a notice, a line on the timeline, and a push to `notify.channels`.
+
+```yaml
+backups:
+  overdue: 26h
+  expect: { Offsite copy: 8d }
+  every: 15m
+  notify: true
+```
+
+| Option | Default | |
+|---|---|---|
+| `overdue` | `26h` | how long a job may go without a success when its service doesn't say its schedule |
+| `expect` | none | that, per job, by name (any case) |
+| `every` | `15m` | how often it checks with nobody looking |
+| `notify` | `true` | also push failures, overdue jobs and recoveries to `notify.channels` |
+
+`backups: false` turns it off. What it has told, and the sizes it has seen, live in `data/backups.json`.
+
 ## `mcp`
 
 Each entry is an MCP server whose tools the assistant may use, under the same rules.

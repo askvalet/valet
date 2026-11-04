@@ -56,6 +56,9 @@ https://askvalet.dev.
   here and re-export; never fork it.
 - **Visuals are lazy**: registered in `VISUALS` in `cards.tsx` with `lazy(() => import(...))`, so a page without them
   never downloads them. A showcase card with no `items` hands the whole card to its visual.
+- **Backups are one shape** (`BackupJob` in `core.ts`, `src/server/backups.ts`). An integration reports its jobs through
+  `backups()` (a `service()` through `backups`/`backupGet`) and never judges them: Valet works out overdue, failing and
+  odd sizes once, for the card, the tool, the timeline and the push, and tells each change once.
 - **Server stays small.** Hono + node-server, bundled with esbuild (dependencies included, so the image ships no
   `node_modules`) into `dist/server/`. No database: state lives in the services Valet talks to.
 - **A config is a Site** (`src/server/site.ts`): `check()` turns a config into instances and the list of problems

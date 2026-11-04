@@ -2,7 +2,7 @@
 // and how full they are, with trouble first. The assistant can read one guest and, with control, start, shut down or
 // reboot it. Everything comes from /cluster/resources, which shows only what the token may see.
 import { z } from 'zod';
-import { bounded, defineIntegration, fmt } from '../server/core.ts';
+import { bounded, defineIntegration, fmt, type BackupJob } from '../server/core.ts';
 import { tally } from '../server/service.ts';
 import { Every } from '../server/config.ts';
 import type { ListItem, StatItem, Tone } from '../shared/cards.ts';
@@ -10,7 +10,7 @@ import type { ListItem, StatItem, Tone } from '../shared/cards.ts';
 type Kind = 'qemu' | 'lxc';
 interface Node { name: string; online: boolean; cpu: number; maxcpu: number; mem: number; maxmem: number; uptime: number }
 interface Guest { vmid: number; name: string; type: Kind; node: string; status: string; cpu: number; maxcpu: number; mem: number; maxmem: number; uptime: number; template: boolean; lock?: string; hastate?: string }
-interface Pool { id: string; name: string; node: string; status: string; used: number; size: number; plugin?: string; shared: boolean }
+interface Pool { id: string; name: string; node: string; status: string; used: number; size: number; plugin?: string; shared: boolean; backups: boolean }
 
 // Names that go into a path: the service's own answer is checked too, since it's a stranger's text as far as a URL goes.
 const NODE = /^[A-Za-z0-9][A-Za-z0-9.-]{0,62}$/;
@@ -64,7 +64,7 @@ export default defineIntegration({
           const shared = !!n(r.shared), key = shared ? `shared/${r.storage}` : r.id;
           if (seen.has(key)) continue;
           seen.add(key);
-          pools.push({ id: key, name: String(r.storage), node: String(r.node), status: String(r.status ?? 'unknown'), used: n(r.disk), size: n(r.maxdisk), plugin: r.plugintype || undefined, shared });
+          pools.push({ id: key, name: String(r.storage), node: String(r.node), status: String(r.status ?? 'unknown'), used: n(r.disk), size: n(r.maxdisk), plugin: r.plugintype || undefined, shared, backups: String(r.content ?? '').split(',').includes('backup') });
         }
         return { nodes: nodes.sort((a, b) => a.name.localeCompare(b.name)), guests: guests.sort((a, b) => a.vmid - b.vmid), pools };
       });
@@ -136,6 +136,25 @@ export default defineIntegration({
           sub: top.status !== 'available' ? undefined : `${top.name} is fullest`, marks: order.map(p => ({ pct: share(p.used, p.size), tone: fill(p), label: `${p.name} · ${fmt.pct(share(p.used, p.size))}` })) } : { label: 'Storage', icon: 'disk', value: 'None' } };
     }
 
+    // ── backups, for Valet's Backups card: each guest's backups (vzdump) on every storage that holds them, newest last, and
+    // a failed backup task since its newest. Only guests that have been backed up at least once are listed.
+    async function backups(): Promise<BackupJob[]> {
+      const { guests, pools } = await load(), byId = new Map(guests.map(g => [g.vmid, g]));
+      const stores = pools.filter(p => p.backups && p.status === 'available' && NODE.test(p.node) && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(p.name));
+      const [files, tasks] = await Promise.all([
+        Promise.all(stores.map(p => api<any[]>(`/nodes/${p.node}/storage/${p.name}/content?content=backup`).then(l => (Array.isArray(l) ? l : []).map(f => ({ ...f, store: p.name })), () => []))).then(l => l.flat()),
+        api<any[]>('/cluster/tasks').then(l => (Array.isArray(l) ? l : []).filter(t => t.type === 'vzdump' && t.id), () => []),
+      ]);
+      const seen = new Map<number, { at: number; size: number; store: string }[]>();
+      for (const f of files) { const id = n(f.vmid), t = n(f.ctime); if (id && t) seen.set(id, [...seen.get(id) ?? [], { at: t * 1000, size: n(f.size), store: String(f.store) }]); }
+      return [...seen].map(([id, list]) => {
+        const all = list.sort((a, b) => a.at - b.at), last = all.at(-1)!, g = byId.get(id);
+        const failed = tasks.filter(t => n(t.id) === id && t.status && t.status !== 'OK' && n(t.endtime || t.starttime) * 1000 > last.at).sort((a, b) => n(b.starttime) - n(a.starttime))[0];
+        return { name: g ? `${g.name} (${kindOf(g)} ${id})` : `Guest ${id}`, source: `Proxmox · ${last.store}`, lastSuccess: last.at, size: last.size || undefined, sizes: all.map(x => x.size).filter(Boolean).slice(-30),
+          ...(failed ? { lastRun: n(failed.starttime) * 1000, result: 'failed' as const, error: String(failed.status).slice(0, 160) } : {}), href };
+      });
+    }
+
     // ── one guest, by name or id; an answer that could be two is refused, never guessed
     async function find(q: string) {
       const all = (await load()).guests.filter(g => !g.template), s = q.trim().toLowerCase().replace(/^(?:vm|ct)\s*(?=\d+$)/, '');   // "VM 100" is 100
@@ -156,6 +175,7 @@ export default defineIntegration({
     const Power = z.object({ guest: z.string().min(1).max(80).describe('its name or numeric id'), action: z.enum(['start', 'shutdown', 'reboot']) });
 
     return {
+      backups,
       async recap() {
         return tally((await load()).guests.length, { id: 'proxmox.guests', theme: 'hardware', icon: 'cpu', kicker: 'Proxmox is running', unit: 'machines', stat: 'Virtual machines', line: 'Whole computers inside your computer.' });
       },

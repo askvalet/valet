@@ -292,6 +292,15 @@ export const Config = z.object({
   // where "tell me when" reminders go when you're not looking (ntfy, gotify, telegram, discord, slack, pushover, apprise,
   // webhook). insights: also push the assistant's shared-cause line.
   notify: z.object({ channels: z.array(Channel).default([]), insights: z.boolean().default(false) }).default({ channels: [], insights: false }),
+  // backup health: every job the integrations report, gathered on Valet's Backups card (valet.backups). overdue: how long
+  // a job may go without a success when its service doesn't say its schedule · expect: that per job, by name · every: how
+  // often it checks with nobody looking · notify: also push failures, overdue jobs and recoveries to notify.channels
+  backups: z.union([z.literal(false), z.object({
+    overdue: Every.default(26 * 36e5),
+    expect: z.record(z.string(), Every).default({}),
+    every: Every.default(15 * 6e4),
+    notify: z.boolean().default(true),
+  }).strict()]).default({ overdue: 26 * 36e5, expect: {}, every: 15 * 6e4, notify: true }),
   recap: z.boolean().default(true),             // the year in review
   welcome: z.boolean().default(false),          // the getting-started card (a fresh config turns it on)
   reload: z.boolean().default(true),            // watch config.yaml and apply edits live (a bad edit keeps the last good one)

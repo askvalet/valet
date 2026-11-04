@@ -4,6 +4,7 @@
 import './polyfill.ts';
 import { z } from 'zod';
 import { chatRoute } from '../../src/server/chat.ts';
+import { Backups, backupParts } from '../../src/server/backups.ts';
 import plugin, { page as demoPage } from '../integrations/homelab.mjs';
 import { reply, suggestions } from '../mock-model.mjs';
 
@@ -18,7 +19,12 @@ const image = (ref: string) => /^cover-/.test(ref) ? `/art/covers/${ref.slice(6)
 
 const integration = (plugin as any)({ z, defineIntegration: (i: unknown) => i });
 const ctx = { image, http: () => Promise.reject(new Error('no network in the demo')), session: () => ({ get: async () => '', reset() {} }) };
-const lab = integration.create(integration.config.parse({ art: '/art/cameras' }), ctx), instances = new Map([['lab', lab]]);
+const lab = integration.create(integration.config.parse({ art: '/art/cameras' }), ctx);
+// Valet's own Backups card and tool, gathered from the made-up homelab as the server would
+const backups = new Backups();
+backups.sources = () => [{ id: 'lab', name: integration.name, instance: lab }];
+const bk = backupParts(backups), valet = { widgets: { backups: bk.widget }, tools: { backups_status: bk.tool } };
+const instances = new Map<string, any>([['lab', lab], ['valet', valet]]);
 // anything that changes the house shows on the page straight away, as the server's refresh does
 for (const t of Object.values<any>(lab.tools ?? {})) if (t.access !== 'read') { const run = t.run; t.run = async (...args: unknown[]) => { const out = await run(...args); void refreshAll(); return out; }; }
 
@@ -56,13 +62,13 @@ type Listener = (type: string, data: string) => void;
 const listeners = new Set<Listener>(), known = new Map<string, any>();
 const tell = (type: string, data: unknown) => { for (const l of listeners) l(type, JSON.stringify(data)); };
 async function refresh(key: string) {
-  const w = lab.widgets[key.split('.')[1]]; if (!w) return;
+  const [inst, name] = key.split('.'), w = instances.get(inst)?.widgets[name]; if (!w) return;
   try { const s = { key, card: await w.fetch(), at: Date.now() }; known.set(key, s); tell('widget', s); } catch (e) { tell('widget', { key, error: (e as Error).message, at: Date.now() }); }
 }
 const refreshAll = () => Promise.all([...known.keys()].map(refresh));
 let started: Promise<void> | undefined;
 const start = () => started ??= snapshot('page').then((page: any) => {
-  for (const key of Object.keys(page.widgets)) { const w = lab.widgets[key.split('.')[1]]; if (!w) continue; known.set(key, { key, at: 0 }); void refresh(key); setInterval(() => { if (!document.hidden) void refresh(key); }, w.interval ?? 10_000); }
+  for (const key of Object.keys(page.widgets)) { const [inst, name] = key.split('.'), w = instances.get(inst)?.widgets[name]; if (!w) continue; known.set(key, { key, at: 0 }); void refresh(key); setInterval(() => { if (!document.hidden) void refresh(key); }, w.interval ?? 10_000); }
 });
 
 class Events {
@@ -89,6 +95,9 @@ async function answer(path: string, method: string, body: any, signal?: AbortSig
   if (route === 'recap') return json(await snapshot('recap'));
   if (route === 'brief') return json({ text: null });
   if (route === 'suggest') { const s = await lab.widgets.services.fetch(); return json({ list: suggestions(s.items.some((i: any) => i.name === 'Mealie' && !i.ok)).filter(q => !demoPage.speed || !/speed/.test(q)), wrong: [] }); }
+  // ⌘K: Valet's own look-only command, as the server lists and runs it
+  if (route === 'commands') return json({ commands: bk.commands.map((c, n) => ({ id: `valet:${n}`, say: c.say, label: c.label, service: 'Valet', kind: 'tool', access: 'read' })) });
+  if (route === 'command') return body?.id === 'valet:0' ? json({ tool: 'valet__backups_status', input: {}, card: (await bk.tool.run()).card }) : json({ error: 'no command matches that' }, 404);
   if (route === 'files') return json({ error: 'This demo keeps nothing, so it takes no files' }, 403);
   if (route === 'action') {
     const act = instances.get(a)?.actions?.[b]; if (!act) return json({ error: `no action ${a}.${b}` }, 404);
@@ -102,7 +111,7 @@ async function answer(path: string, method: string, body: any, signal?: AbortSig
   }
   if (route === 'chat') {
     const config = await snapshot('config');
-    chat ??= chatRoute(config, instances as any, new Map([['lab', { type: 'demo-homelab', name: integration.name, integration }]]), { acting: true, redact: s => s, model: model as any });
+    chat ??= chatRoute(config, instances as any, new Map<string, any>([['lab', { type: 'demo-homelab', name: integration.name, integration }], ['valet', { type: 'valet', name: 'Valet', integration: { type: 'valet', name: 'Valet' } }]]), { acting: true, redact: s => s, model: model as any });
     lab.onChat?.(); void refresh('lab.ai');
     return chat({ req: { json: async () => body, raw: { signal } }, get: () => 'you' });
   }

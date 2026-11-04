@@ -59,6 +59,19 @@ function Spark({ points, tone }: { points: number[]; tone?: Tone }) {
   );
 }
 
+/** A row's few recent values as one quiet line, the last one marked: enough to see a step, not to read a number. */
+function RowLine({ points, tone }: { points: number[]; tone?: Tone }) {
+  const w = 44, h = 14, max = Math.max(...points), min = Math.min(...points);
+  const xy = points.map((p, i) => [(i / (points.length - 1)) * (w - 3) + 1.5, h - 2 - ((p - min) / (max - min || 1)) * (h - 4)]);
+  const [x, y] = xy.at(-1)!;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className={cn('h-3.5 w-11 shrink-0 self-center', tone === 'warn' ? 'text-warn' : tone === 'bad' ? 'text-bad' : 'text-muted-foreground')} aria-hidden>
+      <path d={xy.map(([a, b], i) => `${i ? 'L' : 'M'}${a.toFixed(1)},${b.toFixed(1)}`).join('')} fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round" strokeLinecap="round" opacity=".7" />
+      <circle cx={x} cy={y} r="1.6" fill="currentColor" />
+    </svg>
+  );
+}
+
 const Bar = ({ pct, tone }: { pct: number; tone?: Tone }) => (
   <div role="progressbar" aria-valuenow={Math.round(pct * 100)} aria-valuemin={0} aria-valuemax={100} className="h-1 overflow-hidden rounded-full bg-foreground/10">
     <div className={cn('h-full rounded-full bg-foreground/50 transition-transform duration-(--dur-move) ease-out', toneBar[tone ?? 'neutral'])} style={{ transform: `translateX(${Math.max(1.5, Math.min(100, pct * 100)) - 100}%)` }} />
@@ -236,6 +249,7 @@ function Rows({ card, dense, run }: { card: ListCard; dense: boolean; run?: RunA
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-3">
               <div className={cn('min-w-0 flex-1 font-medium', dense ? 'text-[13px]' : 'text-sm', it.href && !dense ? 'line-clamp-2 leading-snug' : 'truncate')}>{it.title}</div>
+              {(it.trend?.length ?? 0) > 1 && <RowLine points={it.trend!} tone={it.tone} />}
               {it.meta && <div className="shrink-0 text-xs tabular text-muted-foreground">{it.meta}</div>}
               {it.dot && <span className={cn('dot size-1.5', it.dot === 'good' ? 'dot-good' : 'dot-bad')} style={it.dot === 'warn' ? { background: 'var(--warn)' } : undefined} title={it.dot === 'good' ? 'Healthy' : undefined} />}
               {it.href && <ArrowUpRight className="row-arrow size-3.5 shrink-0 text-muted-foreground" />}

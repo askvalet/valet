@@ -13,7 +13,7 @@
 // When a service needs more than this, write a full integration: docs/integrations.md.
 import { z } from 'zod';
 import { Every } from './config.ts';
-import { bounded, defineIntegration, fmt, type Context, type Instance, type Integration } from './core.ts';
+import { bounded, defineIntegration, fmt, type BackupJob, type Context, type Instance, type Integration } from './core.ts';
 import type { Card, ListItem, Summary, StatItem, StatusItem, RecapSlide } from '../shared/cards.ts';
 
 /** How it signs in. `bearer`, `token` and a `header` use `key:` from the config, `basic` uses `username:` and `password:`,
@@ -55,6 +55,9 @@ export interface ServiceDef<O = Record<string, never>> {
   headline?: (d: any, o: O) => Partial<Summary> | undefined;           // the tile; the first stat otherwise
   about?: string;               // what the assistant is told it's for; a sentence
   recap?: (d: any, o: O, range: { year: number; from: number; to: number }) => RecapSlide[];
+  /** Its backup jobs, for Valet's Backups card, from the same answers as the card plus any `backupGet` asks for. */
+  backups?: (d: any, o: O) => BackupJob[];
+  backupGet?: (d: any, o: O & { url: string }) => Record<string, Get>;   // calls only the backups need, made only when they're asked
   sample: Record<string, unknown>;                                     // an answer per `get`, as the real service sends it
   sampleOptions?: Record<string, unknown>;
   loginSample?: unknown;                                               // what signing in answers, for a `login` that reads it
@@ -151,6 +154,7 @@ export function service<O = Record<string, never>>(def: ServiceDef<O>): Integrat
           label: `Checked ${def.name}`, access: 'read', input: z.object({}), live: true,
           description: def.about ?? `What ${def.name} reports right now: ${labels(def, cfg)}.`,
           async run() { const card = toCard(await load()); return { data: card, card }; } } },
+        ...(def.backups ? { backups: async () => { const d = await load(); return def.backups!(def.backupGet ? { ...d, ...await fetchAll(def.backupGet(d, cfg)) } : d, cfg).map(j => ({ href, ...j })); } } : {}),
         ...(def.recap ? { recap: async (range: { year: number; from: number; to: number }) => def.recap!(await load(), cfg, range).map(s => s.show || s.wall || s.backdrop ? s : { logo: `/api/icon/${logo}`, ...s }) } : {}),
       };
     },

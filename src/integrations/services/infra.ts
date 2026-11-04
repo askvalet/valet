@@ -16,6 +16,12 @@ const alarm = (label: string, n: number) => ({ label, value: n, tone: n ? 'bad' 
 const of = (some = 0, all = 0) => `${some} / ${all}`;
 const sum = <T>(items: T[], pick: (i: T) => unknown) => items.reduce((n, i) => n + (Number(pick(i)) || 0), 0);
 const list = (v: unknown): any[] => Array.isArray(v) ? v : [];
+// backups: a time as ms, from seconds, ms, an ISO date or TrueNAS's { $date }
+const at = (v: any): number | undefined => { const t = v?.$date ?? v; const n = typeof t === 'number' ? (t < 1e11 ? t * 1000 : t) : t ? new Date(String(t)).getTime() : NaN; return Number.isFinite(n) && n > 0 ? n : undefined; };
+const bytes = (v: unknown) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : undefined; };
+// Duplicati's schedule: "1D", "12h", "1W"
+const repeat = (r: unknown) => { const m = /^(\d+)\s*([smhDWMY])$/.exec(String(r ?? '')); return m ? Number(m[1]) * { s: 1e3, m: 6e4, h: 36e5, D: 864e5, W: 6048e5, M: 2592e6, Y: 31536e6 }[m[2]]! : undefined; };
+const STORE = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;   // a datastore's name, before it goes into a path
 // fmt.duration stops at 100 days, and servers go longer
 const uptime = (s = 0) => s >= 86400 ? `${Math.floor(s / 86400)}d` : fmt.duration(s);
 const ago = (t?: string | number | null) => {
@@ -38,7 +44,18 @@ export default [
         meter('CPU', d.host?.data?.cpu, 1), meter('Memory', d.host?.data?.memory?.used, d.host?.data?.memory?.total)];
     },
     sample: { stores: { data: [{ store: 'main', total: 4000000000000, used: 1000000000000, avail: 3000000000000 }, { store: 'offsite', total: 1000000000000, used: 250000000000, avail: 750000000000 }] },
-      host: { data: { cpu: 0.12, memory: { used: 4294967296, total: 17179869184 } } }, failed: { data: [{ upid: 'UPID:pbs:1', status: 'error' }], total: 1 } },
+      host: { data: { cpu: 0.12, memory: { used: 4294967296, total: 17179869184 } } }, failed: { data: [{ upid: 'UPID:pbs:1', status: 'connection reset', worker_type: 'backup', worker_id: 'main:vm/101', starttime: 1793400000 }], total: 1 },
+      'groups:main': { data: [{ 'backup-type': 'vm', 'backup-id': '100', 'last-backup': 1793390000, 'backup-count': 14, comment: 'homeassistant' }, { 'backup-type': 'vm', 'backup-id': '101', 'last-backup': 1793300000, 'backup-count': 9 }] },
+      'groups:offsite': { data: [{ 'backup-type': 'ct', 'backup-id': '200', 'last-backup': 1793380000, 'backup-count': 30 }] } },
+    // each backup group (a VM, a container, a host) in each datastore, newest snapshot first; a failed task since then makes it failed
+    backupGet: (d, o) => Object.fromEntries(list(d.stores?.data).filter(s => STORE.test(String(s.store)) && (!o.datastore || s.store === o.datastore)).map(s => [`groups:${s.store}`, { path: `/api2/json/admin/datastore/${s.store}/groups`, optional: true }])),
+    backups: d => Object.entries(d).filter(([k]) => k.startsWith('groups:')).flatMap(([k, g]: [string, any]) => {
+      const store = k.slice(7), failed = list(d.failed?.data).filter(t => t.worker_type === 'backup');
+      return list(g?.data).map(x => {
+        const what = `${x['backup-type']}/${x['backup-id']}`, good = at(x['last-backup']), bad = failed.find(t => String(t.worker_id ?? '').endsWith(`:${what}`) && String(t.worker_id).startsWith(`${store}:`) && (at(t.starttime) ?? 0) > (good ?? 0));
+        return { name: x.comment ? `${x.comment} (${what})` : what, source: `Proxmox Backup Server · ${store}`, lastSuccess: good, ...(bad ? { lastRun: at(bad.starttime), result: 'failed' as const, error: String(bad.status ?? '').slice(0, 160) || undefined } : {}), size: bytes(x.size) };
+      });
+    }),
     expect: { Datastore: '25%', 'Failed today': 1, CPU: '12%', Memory: '25%' },
   }),
   service({
@@ -146,7 +163,24 @@ export default [
     },
     sample: { info: { hostname: 'nas', version: 'TrueNAS-SCALE-24.10.2', loadavg: [0.42, 0.5, 0.48], uptime_seconds: 864000.5 },
       alerts: [{ level: 'WARNING', dismissed: false }, { level: 'INFO', dismissed: true }],
-      pools: [{ name: 'tank', healthy: true, status: 'ONLINE', size: 8000000000000, allocated: 2000000000000, free: 6000000000000 }, { name: 'fast', healthy: true, status: 'ONLINE', size: 2000000000000, allocated: 500000000000, free: 1500000000000 }] },
+      pools: [{ name: 'tank', healthy: true, status: 'ONLINE', size: 8000000000000, allocated: 2000000000000, free: 6000000000000 }, { name: 'fast', healthy: true, status: 'ONLINE', size: 2000000000000, allocated: 500000000000, free: 1500000000000 }],
+      cloudsync: [{ id: 1, description: 'Photos to B2', enabled: true, job: { state: 'SUCCESS', time_started: { $date: 1793390000000 }, time_finished: { $date: 1793393600000 } } },
+        { id: 2, description: 'Documents to S3', enabled: true, job: { state: 'FAILED', time_finished: { $date: 1793395000000 }, error: 'Access denied' } }, { id: 3, description: 'Old', enabled: false }],
+      replication: [{ id: 1, name: 'tank to backup box', enabled: true, state: { state: 'FINISHED', datetime: { $date: 1793380000000 } } }] },
+    // cloud sync and replication tasks; switched-off ones aren't expected to run
+    backupGet: () => ({ cloudsync: { path: '/api/v2.0/cloudsync', optional: true }, replication: { path: '/api/v2.0/replication', optional: true } }),
+    backups: d => [
+      ...list(d.cloudsync).filter(t => t.enabled !== false).map(t => {
+        const j = t.job ?? {}, state = String(j.state ?? '');
+        return { name: t.description || `Cloud sync ${t.id}`, source: 'TrueNAS cloud sync', lastRun: at(j.time_finished ?? j.time_started),
+          ...(state === 'SUCCESS' ? { lastSuccess: at(j.time_finished), result: 'ok' as const } : state === 'RUNNING' ? { result: 'running' as const } : state === 'FAILED' || state === 'ABORTED' ? { result: 'failed' as const, error: j.error ? String(j.error) : undefined } : {}) };
+      }),
+      ...list(d.replication).filter(t => t.enabled !== false).map(t => {
+        const st = t.state ?? {}, state = String(st.state ?? ''), when = at(st.datetime);
+        return { name: t.name || `Replication ${t.id}`, source: 'TrueNAS replication', lastRun: when,
+          ...(state === 'FINISHED' ? { lastSuccess: when, result: 'ok' as const } : state === 'RUNNING' ? { result: 'running' as const } : state === 'ERROR' ? { result: 'failed' as const, error: st.error ? String(st.error) : undefined } : {}) };
+      }),
+    ],
     expect: { 'Pools healthy': '2 / 2', 'Pools used': '25%', Alerts: 1, Load: 0.42, Uptime: '10d' },
   }),
   service({
@@ -248,6 +282,10 @@ export default [
       { source: { host: 'nas', userName: 'root', path: '/data' }, lastSnapshot: { startTime: '2026-10-30T02:00:00Z', stats: { totalSize: 2147483648, errorCount: 0 } }, nextSnapshotTime: '2026-10-31T02:00:00Z' },
       { source: { host: 'nas', userName: 'root', path: '/home' }, lastSnapshot: { startTime: '2026-10-29T02:00:00Z', stats: { totalSize: 1073741824, errorCount: 2 } } },
       { source: { host: 'nas', userName: 'root', path: '/new' } }] } },
+    // a snapshot with errors still kept what it could: a warning, not a failure
+    backups: d => list(d.status?.sources).map(s => ({ name: [s.source?.host, s.source?.path].filter(Boolean).join(':') || 'Snapshot', source: 'Kopia',
+      lastSuccess: at(s.lastSnapshot?.endTime ?? s.lastSnapshot?.startTime), result: s.status === 'UPLOADING' ? 'running' as const : s.lastSnapshot?.stats?.errorCount ? 'warning' as const : s.lastSnapshot ? 'ok' as const : undefined,
+      size: bytes(s.lastSnapshot?.stats?.totalSize), next: at(s.nextSnapshotTime), every: Number(s.schedule?.intervalSeconds) > 0 ? Number(s.schedule.intervalSeconds) * 1000 : undefined })),
     expect: { Sources: 3, Size: '3.0 GB', Errors: 2 },
   }),
   service({
@@ -261,7 +299,18 @@ export default [
       return [{ label: 'Jobs', value: backups.length }, { label: 'Stored', value: fmt.bytes(sum(backups, b => b?.Backup?.Metadata?.TargetFilesSize)) }, { label: 'Last backup', value: ago(last) },
         { label: 'Running', value: d.state?.ActiveTask && d.progress?.BackupID ? 1 : 0 }, alarm('Errors', kind('Error')), { label: 'Warnings', value: kind('Warning'), tone: kind('Warning') ? 'warn' : 'good' }];
     },
-    sample: { backups: [{ Backup: { ID: '1', Metadata: { LastBackupFinished: '20261030T020000Z', TargetFilesSize: '2147483648' } }, Schedule: { Time: '2026-10-31T02:00:00Z' } },
+    backups: d => {
+      const stamp = (s = '') => at(String(s).replace(/^(\d{4})(\d\d)(\d\d)T(\d\d)(\d\d)(\d\d)Z$/, '$1-$2-$3T$4:$5:$6Z'));
+      const running = d.state?.ActiveTask && d.progress?.BackupID, errors = new Set(list(d.notifications).filter(n => n.Type === 'Error').map(n => String(n.BackupID)));
+      return list(d.backups).map(b => {
+        const m = b?.Backup?.Metadata ?? {}, id = String(b?.Backup?.ID ?? ''), good = stamp(m.LastBackupFinished ?? m.LastBackupDate), failedAt = stamp(m.LastErrorDate);
+        const failed = errors.has(id) || (failedAt != null && (good == null || failedAt > good));
+        return { name: b?.Backup?.Name || `Job ${id}`, source: 'Duplicati', lastSuccess: good, lastRun: failed ? failedAt ?? good : good,
+          result: running === id ? 'running' as const : failed ? 'failed' as const : good ? 'ok' as const : undefined, error: failed ? m.LastErrorMessage : undefined,
+          size: bytes(m.SourceFilesSize ?? m.TargetFilesSize), next: at(b?.Schedule?.Time), every: repeat(b?.Schedule?.Repeat) };
+      });
+    },
+    sample: { backups: [{ Backup: { ID: '1', Name: 'Photos', Metadata: { LastBackupFinished: '20261030T020000Z', TargetFilesSize: '2147483648' } }, Schedule: { Time: '2026-10-31T02:00:00Z', Repeat: '1D' } },
       { Backup: { ID: '2', Metadata: { TargetFilesSize: '1073741824' } } }],
       state: { ActiveTask: { Item1: 3, Item2: '2' } }, progress: { BackupID: '2', Phase: 'Backup_ProcessingFiles' },
       notifications: [{ BackupID: '1', Type: 'Error' }, { BackupID: '2', Type: 'Warning' }, { BackupID: '2', Type: 'Warning' }, { Type: 'Information' }] },

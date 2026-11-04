@@ -20,6 +20,7 @@ import { buildRecap, recapYear } from './recap.ts';
 import { troubles, Watcher } from './insight.ts';
 import { push, type Message } from './notify.ts';
 import { ownInstance } from './own.ts';
+import { Backups, news } from './backups.ts';
 import { Timeline } from './timeline.ts';
 import { loadWatches, Watches } from './watches.ts';
 import { loadRules, Rules } from './rules.ts';
@@ -50,6 +51,8 @@ export interface Site {
   watches: Watches;
   rules: Rules;
   push: (m: Message) => void;
+  backups: Backups;
+  stopBackups: () => void;
 }
 
 const EVERYTHING = ['start', 'end', 'down', 'up'] as const;
@@ -160,7 +163,23 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     activity.add({ who: e.who, via: 'page', what: `Undid: ${e.what}`, ok: true });
     return 'done';
   };
-  instances.set('valet', ownInstance({ timeline, activity, watches, rules, hub: () => hub, widgets: [...placed], history, recap: year => buildRecap(instances, recapYear(year == null ? undefined : String(year))), undo }));
+  // backup health: every integration that reports backups, gathered on Valet's own card, which is always watched when
+  // there's something to watch so its trouble reaches the summary and the insight like any other
+  const backups = previous?.backups ?? await new Backups().load(), bk = config.backups;
+  const sources = bk ? [...instances].filter(([id, i]) => typeof i.backups === 'function' && !['valet', 'pins', 'config'].includes(id)).map(([id, i]) => ({ id, name: meta.get(id)?.name ?? id, instance: i })) : [];
+  backups.sources = () => sources;
+  if (bk) backups.options = { overdue: bk.overdue, expect: bk.expect };
+  backups.tell = t => {
+    const m = news(t), text = redactNow(m.title), sub = m.text && redactNow(m.text);
+    const n: Notice = { key: 'valet.backups', text, sub, icon: 'shield', tone: m.tone, at: Date.now() };
+    recent.push(n); if (recent.length > 5) recent.shift();
+    for (const l of noticeListeners) l(n);
+    timeline.add('backup', sub ? `${text} (${sub})` : text, 'valet.backups');
+    if (bk && bk.notify) sendPush({ title: text, text: sub, urgent: m.tone === 'bad' });
+  };
+  if (sources.length) placed.add('valet.backups');
+
+  instances.set('valet', ownInstance({ timeline, activity, watches, rules, hub: () => hub, widgets: [...placed], history, backups: bk ? backups : undefined, recap: year => buildRecap(instances, recapYear(year == null ? undefined : String(year))), undo }));
   meta.set('valet', { type: 'valet', name: 'Valet', integration: { type: 'valet', name: 'Valet' } as Integration });
 
   const hub = new Hub(new Map([...instances].map(([id, i]) => [id, {
@@ -202,8 +221,10 @@ export async function buildSite(config: Config, registry: Record<string, Integra
       for (const text of leftOpen) if (!still.has(text)) timeline.add('cleared', text);
       leftOpen = [];
     }
-    for (const [id, text] of now) if (!open.has(id) && [...known].some(k => id.startsWith(`${k}:`))) timeline.add('problem', text);
-    for (const [id, text] of open) if (!now.has(id)) timeline.add('cleared', text);
+    // a backup's going wrong and coming right are logged by the backups themselves, with or without the card
+    const logged = (id: string) => !id.startsWith('valet.backups:');
+    for (const [id, text] of now) if (!open.has(id) && logged(id) && [...known].some(k => id.startsWith(`${k}:`))) timeline.add('problem', text);
+    for (const [id, text] of open) if (!now.has(id) && logged(id)) timeline.add('cleared', text);
     open = now; known = new Set(states.map(s => s.key));
     watcher?.see(states);
     rules.changed();
@@ -212,6 +233,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   if (history && config.history && config.history.background) hub.sampleInBackground(config.history.every * 60_000);
   watches.start(() => hub.snapshot(), key => void hub.refresh(key));
   rules.start(() => hub.snapshot(), key => void hub.refresh(key));
+  const stopBackups = bk ? backups.start(bk.every) : () => {};
 
   // a local wallpaper is served by Valet; a URL is handed to the browser as is, and paint is CSS
   const { appearance: a } = config;
@@ -227,6 +249,6 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   allowFonts(fontOrigins(a.font?.url));
 
   // the redactor knows every secret any config used, so a value from before a reload stays covered
-  return { config, instances, meta, placed, hub, history, acting: canAct(config), redact: redactor(usedSecrets), walls, cssVersion, recent, noticeListeners, problems, pins, ask, watcher, timeline, activity, watches, rules, push: sendPush };
+  return { config, instances, meta, placed, hub, history, acting: canAct(config), redact: redactor(usedSecrets), walls, cssVersion, recent, noticeListeners, problems, pins, ask, watcher, timeline, activity, watches, rules, push: sendPush, backups, stopBackups };
 }
 

@@ -36,6 +36,7 @@ export const ANSWERS = [
   [/\bhow (?:do|can|would) i\b.*\b(?:add|connect|support|build|make|write)\b|\b(?:valet|you) (?:doesn'?t|don'?t) (?:support|have)\b|\bnot supported\b/i, 'docs_search', {}, () => 'Two ways. If it has a JSON API, the `api` integration turns it into a card from YAML, with no code. Otherwise, one file in `data/integrations` adds a full integration in about ten lines. The Build an integration page in the docs has both.'],
   [/^(?=.*\bmealie\b).*\b(?:why|how'?s|how is|logs?|down|up|wrong|happened|crash\w*|stopped|broken|diagnose|check|status|ok|okay|working|running|memory)\b|\bwhy\b.*\b(?:it|that)\b.*\b(?:down|crash\w*|stopp?\w*|fail\w*)\b/i, 'container_logs', { name: 'mealie' }, logsSay],
   [/\bbazarr\b/i, 'service_status', {}, () => BAZARR],
+  [/\bbackups?\b|\bbacked up\b/i, 'backups_status', {}, backupsSay],
   [/\b(?:anything|everything|something|services?|homelab|lab)\b.*\b(?:down|wrong|broken|ok|okay|fine|healthy|working|up|problems?|issues?|status)\b|\bhealth check\b|\bwhat(?:'?s| is) (?:down|broken|wrong|not working|offline)\b/i, 'service_status', {}, d => { const all = d.services ?? [], bad = all.filter(s => !s.ok && !s.quiet), up = all.filter(s => s.ok).length, off = all.length - bad.length - up, rest = off ? `, and ${off} ${off > 1 ? 'are' : 'is'} off by choice` : ''; return bad.length ? `${bad.map(s => s.name).join(', ')} ${bad.length > 1 ? 'are' : 'is'} down; the other ${up} are fine${rest}.` : `${off ? `${up} of ${all.length}` : `All ${all.length}`} services are up${rest}.`; }],
   [/\b(?:downloads?|torrents?)\b|\b(?:when|how long)\b.*\b(?:finish|done)\b/i, 'downloads_status', {}, d => { const all = d.torrents ?? [], t = all.filter(x => !x.stalled), stuck = all.filter(x => x.stalled).map(x => ` ${x.name} is stalled at ${x.progress} with no peers.`).join(''); return t.length ? `${t.length} going at ${d.speed}. ${t[0].name} is at ${t[0].progress}${t[0].left ? ` with about ${t[0].left} left` : ''}.${stuck}` : 'Nothing is downloading right now.'; }],
   [/\b(?:playing|streaming|who'?s watching|who is watching|on plex)\b/i, 'plex_streams', {}, d => { const s = d.streams?.[0]; return s ? `${s.user} is watching ${s.title} on the ${s.device}, with ${s.left} left.` : 'Nobody is watching anything.'; }],
@@ -45,6 +46,13 @@ export const ANSWERS = [
   [/\b(?:overnight|last night|this morning)\b|\banything (?:happen|happened|new)\b|\bwhat happened\b/i, 'what_happened', {}, d => `Mostly quiet. ${d.summary}`],
 ];
 export const SCRIPT = [...ORDERS, ...ANSWERS];
+function backupsSay(d) {
+  const jobs = d.jobs ?? [], bad = jobs.filter(j => j.state === 'failed' || j.state === 'overdue'), odd = jobs.filter(j => j.sizeChange && !bad.includes(j)), fine = jobs.length - bad.length - odd.length;
+  const when = j => /\(([^)]+)\)/.exec(j.lastGood ?? '')?.[1] ?? 'a while ago';
+  const said = [...bad.map(j => `${j.job} (${j.source}) is ${j.state}: its last good backup was ${when(j)}, and it should run within ${j.expectedWithin}.`),
+    ...odd.map(j => `${j.job} worked, but it ${j.sizeChange.startsWith('-') ? 'shrank' : 'grew'} ${j.sizeChange.replace(/^[-+]/, '')}, so it's worth a look.`), fine ? `The other ${fine} are fine.` : ''];
+  return jobs.length ? (bad.length || odd.length ? said.join(' ').trim() : `All ${jobs.length} backups are fine.`) : 'Nothing here reports any backups yet.';
+}
 function vacuumSay(d) { return d.denied ? 'Okay, the vacuum stays where it is.' : `${d.status}. You can follow it on the floor plan on the Home tab.`; }
 
 // What it can't do, said plainly, rather than the nearest thing it can. TOPICS win over any answer; OTHERS only speak up
@@ -60,7 +68,7 @@ const OTHERS = [
   [/\bmemory\b/i, TOPICS[3][1]],
   [/\b(?:weather|forecast|rain|calendar|schedule|appointments?)\b/i, "so I can't look that up. On a real Valet, the assistant would ask the weather or calendar you've connected."],
 ];
-export const can = 'Here I can explain why Mealie is down, pause Pi-hole, add an internet speed card to this page, turn the lights on or off, suggest what to watch, sum up last night or check the downloads.';
+export const can = 'Here I can explain why Mealie is down, pause Pi-hole, add an internet speed card to this page, turn the lights on or off, suggest what to watch, sum up last night, check the backups or check the downloads.';
 export const FALLBACK = `${standIn}. ${can} On a real Valet this is your own model, local or hosted, or none at all.`;
 const noAnswer = `${standIn}, so I can't answer that one. On a real Valet, a real model would work it out from your own services.`;
 // The page lists "Why is Mealie down?" itself, live from the status cards, while the server keeps this list for up to ten

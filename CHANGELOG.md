@@ -5,6 +5,11 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- Backup health: one **Backups** card (`valet.backups`) with every backup job your services report, failed and overdue ones first, then the rest with when they last worked, their size and a small line of it run by run. A sudden drop or jump in size is flagged as worth a look. Overdue means no success within the job's schedule, `backups.expect`, or `backups.overdue` (26 hours). Going wrong and coming right are told once each, on the page, on the timeline and through `notify.channels`, checked every 15 minutes even with the page closed. Ask "are my backups ok?", or type **backups** in ⌘K.
+- Backrest, Kopia, Duplicati, Proxmox VE, Proxmox Backup Server, Home Assistant (its automatic backups), TrueNAS (cloud sync and replication) and Healthchecks (checks named for a backup) report their jobs to it. Integrations and plugins join with `backups()`, and a `service()` with `backups` and `backupGet`.
+
 ## [0.1.4] - 2026-11-04
 
 ### Security
