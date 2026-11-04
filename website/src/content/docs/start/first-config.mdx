@@ -103,7 +103,33 @@ appearance:
 
 <figure class="why"><img src="/why/glass-frosted-liquid.webp" alt="The same page in frosted glass on the left and liquid glass on the right: the liquid cards show more of the wallpaper's colour and have a lit edge" loading="lazy" /><figcaption>Frosted on the left, liquid on the right.</figcaption></figure>
 
-You can also try it in one browser first: open ⌘K and choose **Liquid glass**. In light, a card over a dark part of the wallpaper turns dark with light text so it stays readable. If your system asks for reduced transparency or high contrast, liquid glass goes solid.
+You can also try it in one browser first: open ⌘K and choose **Liquid glass**. In light, a card over a darker part of the wallpaper stays light and thickens its glass so the words still read. If your system asks for reduced transparency or high contrast, liquid glass goes solid.
+
+### Light and dark
+
+Without a wallpaper, Valet follows your device's light or dark mode, and the switch in the top bar changes it for that browser. Over a wallpaper it's dark glass, unless you ask for something else:
+
+```yaml
+appearance:
+  theme: system   # follow the device over a wallpaper too
+```
+
+| `theme` | Without a wallpaper | Over a wallpaper |
+|---|---|---|
+| `auto` (the default) | the device's, or the switch | dark glass |
+| `system` | the device's, or the switch | light glass in light mode, dark glass in dark mode, or the switch |
+| `light`, `dark` | always that, no switch | always that, no switch |
+
+With `system`, the page turns when the device does, so a phone that goes dark at sunset takes Valet with it. The switch remembers its choice in that browser only; switching back to what the device says follows the device again.
+
+The wallpaper, its `dim` and its `blur` can each differ by theme:
+
+```yaml
+appearance:
+  theme: system
+  wallpaper: { light: /app/data/day.jpg, dark: /app/data/night.jpg }
+  dim: { light: 0.15, dark: 0.35 }
+```
 
 The [configuration reference](/reference/configuration/#appearance) has the rest: colours, fonts, corners, density, your own CSS.
 

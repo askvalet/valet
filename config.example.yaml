@@ -10,7 +10,7 @@ location: Toronto, Canada          # gives the assistant local context
 # The look. Everything's optional; docs/configuration.md has the rest (fonts, shape, glass, hero, chat, nav, format…).
 # appearance:
 #   wallpaper: ./data/wallpaper.jpg  # a file, an image URL, a colour, a gradient, or a list with rotate: 30m
-#   theme: auto                      # or light, dark
+#   theme: auto                      # or system (follows the device over a wallpaper too), light, dark
 #   colors: { accent: "#0a84ff" }
 #   font: { family: Inter, url: "https://fonts.googleapis.com/css2?family=Inter:wght@400;600" }
 #   shape: { radius: 14 }            # 0 is sharp corners

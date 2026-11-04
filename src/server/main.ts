@@ -25,7 +25,7 @@ import { buildSite, type Site } from './site.ts';
 import { accessOf, rank } from './run.ts';
 import { registry } from '../integrations/index.ts';
 import { LABELS } from '../shared/labels.ts';
-import { cardLook, isPaint, listOf, lookOf } from '../shared/look.ts';
+import { cardLook, isBoth, isPaint, listOf, lookOf, type Both } from '../shared/look.ts';
 import { sandbox } from './sandbox.ts';
 import { allowed, has, pushAll, Subscription, subscribe, unsubscribe, vapidKeys } from './webpush.ts';
 import { paletteDocs } from './guide.ts';
@@ -207,7 +207,7 @@ app.get('/api/favicon/:host', async c => {
 });
 
 // ?v= the file's mtime: replacing a wallpaper changes the URL, so browsers never show a stale cached one
-const wallsOf = (w?: string | string[]) => listOf(w).map(v => {
+const wallsOf = (w?: string | string[] | Both<string | string[]>, light = false): { image?: string; paint?: string }[] => isBoth(w) ? wallsOf(light ? w.light : w.dark) : listOf(w).map(v => {
   if (isPaint(v)) return { paint: v };
   const n = site.walls.findIndex(x => x.path === v);
   return { image: n < 0 ? v : `/api/wallpaper/${n}?v=${site.walls[n].version}` };
@@ -235,13 +235,16 @@ app.get('/api/page', c => {
   const tz = c.req.query('tz');
   if (!zoneKnown && tz && validZone(tz)) { process.env.TZ = tz; zoneKnown = true; console.log(`time zone: ${tz} (from the browser; set timezone in config.yaml to fix it)`); }
   const look = { ...lookOf(config), theme: config.appearance.theme, css: site.cssVersion && `/api/custom.css?v=${site.cssVersion}`, font: fontOf(config) };
-  const appearance = { walls: wallsOf(config.appearance.wallpaper), tabWalls: Object.fromEntries(Object.entries(config.appearance.wallpapers).map(([t, w]) => [t, wallsOf(w)])), rotate: config.appearance.rotate, sizes: config.appearance.sizes, sounds: config.appearance.sounds };
+  // walls are dark's (or the only ones); light's come too when the config gives one for each theme
+  const { wallpaper, wallpapers } = config.appearance, both = [wallpaper, ...Object.values(wallpapers)].some(w => isBoth(w));
+  const set = (light = false) => ({ walls: wallsOf(wallpaper, light), tabWalls: Object.fromEntries(Object.entries(wallpapers).map(([t, w]) => [t, wallsOf(w, light)])) });
+  const appearance = { ...set(), light: both ? set(true) : undefined, rotate: config.appearance.rotate, sizes: config.appearance.sizes, sounds: config.appearance.sounds };
   const weather = config.weather && hub.widget(config.weather) ? config.weather : undefined;
   // a paired wall display learns how the page looks and the wall's own pages: no title, no assistant, nothing it could act
   // with, and no other card's name
   if (isWall(c)) return c.json(JSON.parse(site.redact(JSON.stringify({
     title: '', paired: true, canAct: false, sandbox: false, labels: { ...LABELS, ...config.labels }, format: config.format, look, weather,
-    appearance: { ...appearance, tabWalls: {} }, wall: wallOf(config), sections: [],
+    appearance: { ...appearance, tabWalls: {}, light: appearance.light && { walls: appearance.light.walls, tabWalls: {} } }, wall: wallOf(config), sections: [],
     widgets: Object.fromEntries([...wallWidgets(config), ...weather ? [weather] : []].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
   }))));
   const agent = config.assistant && chatAgent(config.assistant, site.acting);

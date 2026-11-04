@@ -174,6 +174,9 @@
 /* ── Glass: with a wallpaper, every surface is frosted glass over it (visionOS-style material). ──
    Translucent graphite + heavy blur, a hairline light edge and a soft shadow. Saturation stays near 1: boosted, it turns every
    surface the wallpaper's colour, and the chrome stops being quiet. Hooks onto shadcn's data-slot attributes, so components stay stock. */
+/* appearance.dim and blur given per theme: the one for the theme the page is in (a single value is set on the page and wins) */
+:root { --wall-dim: var(--wall-dim-light, .35); --wall-filter: var(--wall-filter-light, none); }
+:root.dark { --wall-dim: var(--wall-dim-dark, .35); --wall-filter: var(--wall-filter-dark, none); }
 .wallpaper { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: #0b0b0d; }
 .wallpaper img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.04); filter: var(--wall-filter, none); }
 .wall-paint { position: absolute; inset: 0; animation: fade-in-soft var(--dur-scene) var(--ease-out) backwards; }
@@ -215,7 +218,7 @@
    minifier otherwise keeps only the -webkit- form, which Chrome ignores. */
 :root { --bar-blur: blur(calc(40px * var(--frost, 1))) saturate(1.6); --bar-bg: rgb(255 255 255 / .75); }
 .has-wallpaper, .dark { --bar-blur: blur(calc(60px * var(--frost, 1))) saturate(1.1); --bar-bg: rgb(20 20 22 / .66); }
-/* the light material, when the config asks for light over a wallpaper: the same glass, tinted the other way */
+/* the light material, for light over a wallpaper (theme light, or system on a light device): the same glass, tinted the other way */
 .glass-light {
   --card-tint: #ffffff; --card-alpha: .62;
   --card: rgb(255 255 255 / .62);
@@ -276,8 +279,8 @@
   --muted-foreground: rgb(235 235 245 / .7);
   --accent: rgb(255 255 255 / .12); --sidebar-accent: rgb(255 255 255 / .12);
 }
-/* light glass, dark ink (appearance.theme: light over a wallpaper) */
-.glass-liquid.glass-light, .glass-liquid.glass-light [data-ink="dark"] {
+/* light glass, dark ink (light over a wallpaper: theme light, or system on a device in light mode) */
+.glass-liquid.glass-light {
   --card-tint: #ffffff; --card-alpha: .3;
   --card: rgb(255 255 255 / .3);
   --popover: rgb(255 255 255 / .72);
@@ -295,22 +298,19 @@
   --muted-foreground: rgb(60 60 67 / .8);
   --accent: rgb(255 255 255 / .5); --sidebar-accent: rgb(255 255 255 / .5);   /* a lighter layer of the glass, never a grey wash */
 }
-/* light mode over a dark part of the wallpaper (ink.ts says where): the same glass tinted dark, with light ink */
-.glass-liquid.glass-light [data-ink="light"] {
-  --card-tint: rgb(16 18 22); --card-alpha: .34;
-  --card: rgb(16 18 22 / .34);
-  --glass-blur: blur(calc(10px * var(--frost, 1))) saturate(1.7) brightness(.85);
-  --glass-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 .5px rgb(255 255 255 / .08), 0 0 0 .5px rgb(0 0 0 / .3), 0 6px 24px rgb(0 0 0 / .16);
-  --glass-lifted: var(--glass-shadow);
-  --glass-sheen: radial-gradient(140% 100% at 0 0, rgb(255 255 255 / .1), transparent 55%);
-  --glass-hover: rgb(40 42 48 / .4);
-  --foreground: #ededed; --card-foreground: #ededed; --muted-foreground: rgb(235 235 245 / .72);
-  --muted: rgb(255 255 255 / .08); --secondary: rgb(255 255 255 / .1); --accent: rgb(255 255 255 / .12); --border: rgb(255 255 255 / .1);
-  --glass-stroke: rgb(255 255 255 / .22);
-}
+/* light mode over a darker part of the wallpaper (ink.ts says where, in steps): still light glass with dark ink, only thicker,
+   so the words read without the card ever turning dark */
+.glass-liquid.glass-light [data-lift="1"] { --card-alpha: .46; --card: rgb(255 255 255 / .46); --glass-hover: rgb(255 255 255 / .56); }
+.glass-liquid.glass-light [data-lift="2"] { --card-alpha: .6; --card: rgb(255 255 255 / .6); --glass-hover: rgb(255 255 255 / .68);
+  --glass-blur: blur(calc(16px * var(--frost, 1))) saturate(1.6) brightness(1.08); }
+.glass-liquid.glass-light [data-lift="3"] { --card-alpha: .72; --card: rgb(255 255 255 / .72); --glass-hover: rgb(255 255 255 / .8);
+  --glass-blur: blur(calc(22px * var(--frost, 1))) saturate(1.5) brightness(1.1); }
+.glass-light:not(.glass-liquid) [data-lift="1"] { --card-alpha: .7; --card: rgb(255 255 255 / .7); }
+.glass-light:not(.glass-liquid) [data-lift="2"] { --card-alpha: .78; --card: rgb(255 255 255 / .78); }
+.glass-light:not(.glass-liquid) [data-lift="3"] { --card-alpha: .86; --card: rgb(255 255 255 / .86); }
 .glass-liquid.has-wallpaper :is([data-slot="card"], .glass):not(.card-look *, .chat-card *, .glass-pop *) { background-image: var(--glass-sheen); }
-/* an ink that changes glides, alongside the lift's own movement; :where keeps a tab change's fade in charge of opacity */
-:where(.glass-liquid.has-wallpaper) [data-slot="card"][data-ink] { transition: background-color var(--dur-move) var(--ease-out), color var(--dur-move) var(--ease-out), transform var(--dur-pop) var(--ease-out), box-shadow var(--dur-pop) var(--ease-out); }
+/* a tint that thickens glides, alongside the lift's own movement; :where keeps a tab change's fade in charge of opacity */
+:where(.glass-light.has-wallpaper) [data-slot="card"][data-judged] { transition: background-color var(--dur-move) var(--ease-out), color var(--dur-move) var(--ease-out), transform var(--dur-pop) var(--ease-out), box-shadow var(--dur-pop) var(--ease-out); }
 .glass-liquid.has-wallpaper .glass-bar { box-shadow: var(--glass-shadow); }
 .glass-liquid.has-wallpaper .glass-bar::before { background-image: var(--glass-sheen); }
 .glass-liquid.has-wallpaper .glass-round:not(.is-on) { box-shadow: var(--glass-shadow); border-color: transparent; background-image: var(--glass-sheen); }
@@ -327,8 +327,7 @@
 @media (prefers-reduced-transparency: reduce) {
   .glass-liquid.has-wallpaper { --card: rgb(20 20 24); --popover: rgb(20 20 24); --glass-sheet: rgb(20 20 24); --bar-bg: rgb(20 20 24); --glass-hover: rgb(34 34 40);
     --glass-blur: none; --glass-float: none; --glass-sheen: none; }
-  .glass-liquid.glass-light, .glass-liquid.glass-light [data-ink="dark"] { --card: #fff; --popover: #fff; --glass-sheet: #fff; --bar-bg: #fff; --glass-hover: #f4f4f6; }
-  .glass-liquid.glass-light [data-ink="light"] { --card: rgb(16 18 22); --glass-hover: rgb(30 32 38); }
+  .glass-liquid.glass-light, .glass-liquid.glass-light [data-lift] { --card: #fff; --popover: #fff; --glass-sheet: #fff; --bar-bg: #fff; --glass-hover: #f4f4f6; }
   .glass-liquid.has-wallpaper .toasts .undo-bar { background: rgb(20 20 24); }
 }
 @media (forced-colors: active) {

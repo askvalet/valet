@@ -136,7 +136,8 @@ test('setup: the look and how it comes across can change; files, access and mode
   const no = (path: (string | number)[], value: unknown) => assert.ok(refused([{ op: 'set', path, value }]), path.join('.'));
   yes(['appearance', 'theme'], 'dark'); yes(['appearance', 'wallpaper'], 'https://example.com/a.jpg'); yes(['appearance', 'wallpaper'], 'linear-gradient(#000, #111)');
   yes(['assistant', 'name'], 'Jeeves'); yes(['assistant', 'suggestions'], ['Hi']); yes(['hero', 'status'], false);
-  no(['appearance', 'wallpaper'], '/etc/passwd'); no(['appearance', 'wallpaper'], ['../.env']); no(['appearance', 'cssFile'], 'x.css'); no(['appearance'], { font: { file: 'x.woff2' } });
+  no(['appearance', 'wallpaper'], '/etc/passwd'); no(['appearance', 'wallpaper'], ['../.env']); no(['appearance', 'wallpaper'], { light: 'https://example.com/a.jpg', dark: '/etc/passwd' });
+  yes(['appearance', 'theme'], 'system'); yes(['appearance', 'wallpaper'], { light: '#eef', dark: 'https://example.com/a.jpg' }); no(['appearance', 'cssFile'], 'x.css'); no(['appearance'], { font: { file: 'x.woff2' } });
   for (const k of ['access', 'model', 'baseURL', 'apiKey', 'instructions', 'agent']) no(['assistant', k], 'x');
   no(['assistant'], { name: 'x' }); no(['notify'], {}); no(['sandbox'], true);
 });

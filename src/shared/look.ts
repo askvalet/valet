@@ -2,6 +2,10 @@
 // /api/page carries it and the browser only applies it, so nothing needs a rebuild and a config reload shows at once.
 // An option left out adds nothing, so the stylesheet's own value stands: an empty result is exactly the original look.
 
+/** one value for light and one for dark, as the config can give a wallpaper, its dim and its blur */
+export type Both<T> = { light: T; dark: T };
+export const isBoth = <T>(v: T | Both<T>): v is Both<T> => typeof v === 'object' && v != null && !Array.isArray(v) && 'light' in v && 'dark' in v;
+
 interface Look {
   appearance: {
     colors?: { accent?: string; good?: string; warn?: string; bad?: string; card?: string };
@@ -9,7 +13,7 @@ interface Look {
     shape?: { radius?: number; border?: number; borderColor?: string; shadow?: 'none' | 'soft' | 'deep' };
     glass?: { opacity?: number; blur?: number; material?: 'frosted' | 'liquid' };
     rim?: number;
-    dim: number; blur: number;
+    dim: number | Both<number>; blur: number | Both<number>;
     density: 'compact' | 'comfortable' | 'spacious';
     gap?: number; sectionGap?: number; maxWidth?: string; rowHeight?: number;
     motion: 'full' | 'reduced' | 'none';
@@ -63,8 +67,11 @@ export function lookOf({ appearance: a, chat, nav, menubar }: Look) {
   if (g?.material === 'liquid') classes.push('glass-liquid');
   if (a.rim) { set(a.rim, '--rim'); classes.push('has-rim'); }
 
-  if (a.dim !== .35) set(a.dim, '--wall-dim');
-  if (a.blur) set(`blur(${a.blur}px)`, '--wall-filter');
+  // one for each theme goes in two variables, and styles.css picks the one for the theme the page is in
+  if (isBoth(a.dim)) { set(a.dim.light, '--wall-dim-light'); set(a.dim.dark, '--wall-dim-dark'); }
+  else if (a.dim !== .35) set(a.dim, '--wall-dim');
+  if (isBoth(a.blur)) { set(`blur(${a.blur.light}px)`, '--wall-filter-light'); set(`blur(${a.blur.dark}px)`, '--wall-filter-dark'); }
+  else if (a.blur) set(`blur(${a.blur}px)`, '--wall-filter');
 
   if (a.density !== 'comfortable') set(a.density === 'compact' ? '.2rem' : '.3rem', '--spacing');
   if (a.gap != null) set(`${a.gap}px`, '--card-gap', '--tile-gap');
@@ -94,6 +101,8 @@ export function cardLook(w: { tint?: string; opacity?: number; blur?: number; ba
 /** a wallpaper that's paint rather than a picture: a colour or a gradient */
 export const isPaint = (v: string) => /^#[0-9a-f]{3,8}$|^[a-z]+$|^[a-z-]+\(/i.test(v);
 export const listOf = <T>(v?: T | T[]) => v == null ? [] : Array.isArray(v) ? v : [v];
+/** every wallpaper a config entry names, light and dark alike */
+export const wallsIn = (w?: string | string[] | Both<string | string[]>) => w == null ? [] : isBoth(w) ? [...listOf(w.light), ...listOf(w.dark)] : listOf(w);
 
 /** A tab's address: `#media` for Media. The server writes it too, for a notification that opens where it's about. */
 export function tabHash(key: string) {

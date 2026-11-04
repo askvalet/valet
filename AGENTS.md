@@ -88,6 +88,8 @@ https://askvalet.dev.
   so an empty result *is* the design, and `test/look.test.ts` holds that. A new visual option is a variable with a fallback
   in `styles.css`, never a value in a component. `format.ts` writes times, dates, numbers and `labels`: renderers call it
   instead of `toLocale…`, and new words the page writes go in `src/shared/labels.ts`.
+  Light or dark is decided in two places that must agree: `applyTheme`/`forcedBy` in `look.ts` and its ES5 twin in
+  `theme.js`, which reads the theme and whether there was a wallpaper from what `look.ts` last remembered.
 - **The wall is its own page** (`wall:`, `src/server/wall.ts`, `src/web/wall.tsx`): pages written like `layout`, drawn read-only (no
   `run`, no pointer on cards, no palette or chat) and scaled to fill the screen. `wallReads` is everything a screen paired with
   `wall.token` may hear; main.ts holds it to that on `/api/page`, `/api/events` and `/api/image`, and refuses it everywhere else.
@@ -120,8 +122,8 @@ https://askvalet.dev.
   popovers) is frostier than cards so it stays legible over content while scrolling.
 - **Liquid glass is a second material, not a second design** (`glass-liquid`, `appearance.glass.material` or ⌘K per browser).
   It only swaps the `--glass-*`, `--card`, `--bar-*` tokens and adds a sheen; a surface that wants glass uses the tokens and gets
-  both. `ink.ts` turns a card dark-tinted with light ink in light liquid glass over a dark patch of wallpaper (sampled once
-  per settle, never per frame). The spec's SVG rim lens was tried and left out: over a 10px blur it barely shows and it cost
+  both. `ink.ts` thickens a card's white tint in steps in light glass (liquid or frosted) over a darker patch of wallpaper (sampled
+  once per settle, never per frame). Light mode never turns a card dark: light means light glass everywhere. The spec's SVG rim lens was tried and left out: over a 10px blur it barely shows and it cost
   ~20% of scroll frames.
 - **The accent is rare.** In a chart one thing leads in the accent and the rest are neutral steps; a colour that isn't a
   status or the leader doesn't belong in the chrome. Posters, the house and photos carry the colour.

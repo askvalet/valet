@@ -111,12 +111,17 @@ export const McpServer = z.object({
 // One wallpaper, however it's written: a file (served by Valet), an image URL, a colour or a gradient
 const Wall = z.string().refine(v => !isPaint(v) || Color.safeParse(v).success || Gradient.safeParse(v).success, 'a file, an image URL, a colour or a gradient');
 const Walls = z.union([Wall, z.array(Wall).min(1)]);    // a list takes turns: see `rotate`
+// either one for both, or one for light and one for dark: the page wears the one for the theme it's in
+const Themed = z.union([Walls, z.object({ light: Walls, dark: Walls }).strict()]);
+// a number, or one for light and one for dark
+const PerTheme = (n: z.ZodNumber) => z.union([n, z.object({ light: n, dark: n }).strict()]);
 const Font = z.string().refine(v => /^https?:\/\//.test(v) ? URL.canParse(v) : /\.(woff2?|ttf|otf)$/i.test(v), 'a stylesheet or font URL, or a local .woff2, .woff, .ttf or .otf file');
 
 // Look and feel. Every option here becomes a CSS variable or a class on the page (src/shared/look.ts), so a change
 // shows up without a rebuild; left out, it sets nothing and the stylesheet's own value stands.
 export const Appearance = z.object({
-  theme: z.enum(['auto', 'light', 'dark']).default('auto'),   // auto: the system's, or dark glass over a wallpaper; the others also drop the switch
+  // auto: the device's, or dark glass over a wallpaper. system: the device's, wallpaper or not. light and dark also drop the switch.
+  theme: z.enum(['auto', 'system', 'light', 'dark']).default('auto'),
   colors: z.object({ accent: Color.optional(), good: Color.optional(), warn: Color.optional(), bad: Color.optional(), card: Color.optional() }).strict().optional(),
   font: z.object({
     family: Family.optional(),             // the UI's font, which must be installed or come from `url`
@@ -135,11 +140,11 @@ export const Appearance = z.object({
   // material: frosted (heavy blur, the original) or liquid (clearer glass with a lit rim, the colour coming through from behind);
   // each browser can try the other in ⌘K
   glass: z.object({ opacity: z.number().min(0).max(1).optional(), blur: z.number().min(0).max(80).optional(), material: z.enum(['frosted', 'liquid']).optional() }).strict().optional(),
-  wallpaper: Walls.optional(),             // local file path (served by Valet), image URL, colour or gradient; any of them turns cards to glass
-  wallpapers: z.record(z.string(), Walls).default({}),         // a different one per tab, by the tab's name
+  wallpaper: Themed.optional(),            // local file path (served by Valet), image URL, colour or gradient; any of them turns cards to glass
+  wallpapers: z.record(z.string(), Themed).default({}),        // a different one per tab, by the tab's name
   rotate: Every.optional(),                // how long each wallpaper in a list stays
-  dim: z.number().min(0).max(0.9).default(0.35),
-  blur: z.number().min(0).max(40).default(0),
+  dim: PerTheme(z.number().min(0).max(0.9)).default(0.35),
+  blur: PerTheme(z.number().min(0).max(40)).default(0),
   density: z.enum(['compact', 'comfortable', 'spacious']).default('comfortable'),   // scales all spacing at once
   gap: z.number().min(0).max(64).optional(),                   // px between cards
   sectionGap: z.number().min(0).max(120).optional(),           // px between sections

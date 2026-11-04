@@ -67,7 +67,7 @@ anything CSS calls a colour: `"#0a84ff"`, `rgb(10 132 255)`, `oklch(.7 .2 250)`,
 
 | Option | Default | |
 |---|---|---|
-| `theme` | `auto` | `auto` follows the system and the switch in the top bar, or dark glass over a wallpaper. `light` and `dark` hold it there, over a wallpaper too, and drop the switch |
+| `theme` | `auto` | `auto` follows the device and the switch in the top bar, or dark glass over a wallpaper. `system` follows the device over a wallpaper too: light glass when the phone or computer is in light mode, dark glass in dark mode, turning when the device does (at sunset, say). The switch in the top bar overrides it in that browser, and choosing what the device says goes back to following it. `light` and `dark` hold it there, over a wallpaper too, and drop the switch. The wall display is dark whatever this says, except with `system`, where it follows the screen |
 | `motion` | `full` | `reduced`: nothing moves or settles in. `none`: no animation at all, not even fades. A system's reduce-motion setting always counts |
 | `sounds` | `{ enabled: false, volume: 0.4 }` | quiet sounds, made in the browser with no files: a tap for a switch, two rising notes when something's done, a falling one for "not now" or a failure, a bell for a notice, a lift when you send a message, and a puff when something's taken off the page. `volume` is 0–1. Each browser can turn them on or off in ⌘K ("Turn sounds on"), which wins over this and is remembered there. Nothing plays until you've touched the page |
 | `density` | `comfortable` | `compact` or `spacious`: scales every margin, padding and control together |
@@ -116,13 +116,13 @@ offline, so it's the choice if you'd rather no browser talks to a font CDN.
 |---|---|---|
 | `glass.opacity` | `1`; `0.56` over a wallpaper | how much of the card's tint shows, 0–1 |
 | `glass.blur` | 36 | px behind cards; bars and popovers keep in proportion. `0` turns blur off everywhere, and floating sheets go nearly solid so they stay readable |
-| `glass.material` | `frosted` | `frosted` is the heavy blur. `liquid` is clearer glass: a lighter blur that keeps the wallpaper's colour, an edge lit from the top left and a soft shadow. In light, a card over a dark part of the wallpaper turns dark with light text. Each browser can try the other in ⌘K (**Liquid glass**, under This device). With reduced transparency or high contrast asked for, it goes solid |
+| `glass.material` | `frosted` | `frosted` is the heavy blur. `liquid` is clearer glass: a lighter blur that keeps the wallpaper's colour, an edge lit from the top left and a soft shadow. In light, a card over a darker part of the wallpaper keeps its light glass and dark text, with a thicker white tint so the words read (frosted glass does the same). Each browser can try the other in ⌘K (**Liquid glass**, under This device). With reduced transparency or high contrast asked for, it goes solid |
 | `rim` | none | a fixed bevel of light on the edge of cards, bars and the ask box, 0–1: bright along the top, dark down the sides. It shows on dark frosted glass only, so not without a wallpaper, in light, with `glass.material: liquid` (which lights its own edge) or with `glass.blur: 0` |
-| `wallpaper` | none | a file (a path Valet can read: it serves it), an image URL, a colour, or a gradient like `"linear-gradient(135deg, #0f2027, #2c5364)"`. Any of them turns cards to glass. A list takes turns |
+| `wallpaper` | none | a file (a path Valet can read: it serves it), an image URL, a colour, or a gradient like `"linear-gradient(135deg, #0f2027, #2c5364)"`. Any of them turns cards to glass. A list takes turns. `{ light: …, dark: … }` gives one for each theme (both, each of them any of the above) |
 | `rotate` | none | how long each one in a list stays: `10m`, `1h` |
-| `wallpapers` | `{}` | a different one per tab, by the tab's name: `{ Media: /data/film.jpg, Home: "#102030" }`. A value can be a list too. Other tabs and the overview use `wallpaper` |
-| `dim` | `0.35` | 0–0.9, darkens it (lightens it, with `theme: light`) |
-| `blur` | `0` | px, 0–40, blurs it |
+| `wallpapers` | `{}` | a different one per tab, by the tab's name: `{ Media: /data/film.jpg, Home: "#102030" }`. A value can be a list, or `{ light, dark }`, too. Other tabs and the overview use `wallpaper` |
+| `dim` | `0.35` | 0–0.9, darkens it (lightens it, in light). `{ light: 0.2, dark: 0.4 }` sets one for each theme |
+| `blur` | `0` | px, 0–40, blurs it. `{ light, dark }` works here too |
 
 `sizes` redefines the card sizes in layout sections. Those sections sit on a grid of 2 columns on a phone, 4 on a tablet
 and 6 on a wide screen, and a size can't overrun the last column:

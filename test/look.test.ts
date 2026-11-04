@@ -43,6 +43,20 @@ test('defaults: an old config keeps the old look, to the letter', () => {
   assert.equal(plain.favorites, undefined);
 });
 
+test('appearance.theme system, and a wallpaper, dim and blur for each theme', () => {
+  assert.equal(Config.parse({ appearance: { theme: 'system' } }).appearance.theme, 'system');
+  const both = Config.parse({ appearance: { wallpaper: { light: 'https://example.com/day.jpg', dark: ['a.jpg', '#000'] }, wallpapers: { Media: { light: '#fff', dark: '#000' }, Home: 'h.jpg' } } }).appearance;
+  assert.deepEqual(both.wallpaper, { light: 'https://example.com/day.jpg', dark: ['a.jpg', '#000'] });
+  assert.equal(both.wallpapers.Home, 'h.jpg');
+  // a plain one still means both, and one side alone isn't a wallpaper for each theme
+  assert.equal(Config.parse({ appearance: { wallpaper: 'w.jpg' } }).appearance.wallpaper, 'w.jpg');
+  refused({ appearance: { wallpaper: { light: 'w.jpg' } } }); refused({ appearance: { wallpaper: { light: 'w.jpg', dark: 'v.jpg', dusk: 'x.jpg' } } });
+  refused({ appearance: { wallpaper: { light: 'rgb(1 2 3); background: url(x)', dark: '#000' } } });
+  assert.deepEqual(look({ appearance: { dim: { light: .1, dark: .5 }, blur: { light: 0, dark: 8 } } }),
+    { vars: { '--wall-dim-light': '0.1', '--wall-dim-dark': '0.5', '--wall-filter-light': 'blur(0px)', '--wall-filter-dark': 'blur(8px)' }, classes: [] });
+  refused({ appearance: { dim: { light: .1 } } }); refused({ appearance: { dim: { light: .1, dark: 2 } } }); refused({ appearance: { blur: { light: -1, dark: 1 } } });
+});
+
 test('appearance.rim: strength from 0 to 1, nothing on the page unless asked for', () => {
   assert.equal(Config.parse({}).appearance.rim, undefined);
   assert.deepEqual(look({ appearance: { rim: 0 } }), { vars: {}, classes: [] });

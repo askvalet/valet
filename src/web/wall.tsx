@@ -8,7 +8,7 @@ import { clock, day, label, oneLine, sayHow, setFormat } from './format.ts';
 import { applyLook, applyTheme } from './look.ts';
 import { isEmpty, NowPlaying, Ring, Shaped, shapeOf, SummaryTile, TileSkeleton, Widget } from './cards.tsx';
 import { WeatherGlyph } from './home-cards.tsx';
-import { dress, useHeld, useLive, Walls, type Page, type Size } from './app.tsx';
+import { dress, useDark, useHeld, useLive, Walls, type Page, type Size } from './app.tsx';
 
 type Section = Page['sections'][number];
 type WallPage = Page['wall']['pages'][number];
@@ -156,9 +156,11 @@ export default function WallScreen() {
       setFormat(p.format, p.labels); applyLook(p.look); setPage(p);
     });
   }, [generation]);
-  const walls = page?.appearance.walls ?? [];
-  // dark glass over the wallpaper, or dark without one: a wall is read in a room, often a dim one
-  useEffect(() => { if (page) applyTheme('dark', walls.length > 0); }, [page, walls.length]);
+  const dark = useDark(), walls = (!dark && page?.appearance.light?.walls) || page?.appearance.walls || [];
+  // dark glass over the wallpaper, or dark without one: a wall is read in a room, often a dim one. theme: system asks for
+  // the screen's own light or dark instead, so a tablet that turns dark at sunset takes the wall with it.
+  const themeName = page?.look.theme === 'system' ? 'system' : 'dark';
+  useEffect(() => { if (page) applyTheme(themeName, walls.length > 0); }, [page, themeName, walls.length]);
   useEffect(() => { document.title = page?.title ? `${page.title} · ${label('wall')}` : label('wall'); }, [page?.title]);
   const wall = page?.wall;
   useAwake(!!wall?.awake);

@@ -13,7 +13,7 @@ import { SignIn, useMe } from './signin.tsx';
 import { suggest } from './suggest.ts';
 import { asView, type View } from '../shared/views.ts';
 import { clock, day, favorites, label, oneLine, sayHow, setFormat, stillTrue, tabHash, type Format } from './format.ts';
-import { applyLook, applyTheme, type Look } from './look.ts';
+import { applyLook, applyTheme, switchable, toggleTheme, type Look } from './look.ts';
 import { adaptInk } from './ink.ts';
 import type { Labels } from '../shared/labels.ts';
 import { ChatBeam } from './beam.tsx';
@@ -32,7 +32,7 @@ export type CardOverride = { title?: string; icon?: string; header?: boolean; vi
 
 export interface Page {
   title: string; greeting?: string; notice?: string; location?: string; canAct?: boolean; sandbox?: boolean;
-  appearance: { walls: Paper[]; tabWalls: Record<string, Paper[]>; rotate?: number; sizes: Partial<Record<Size, { cols?: number; rows?: number }>>; sounds?: Sounds };
+  appearance: { walls: Paper[]; tabWalls: Record<string, Paper[]>; light?: { walls: Paper[]; tabWalls: Record<string, Paper[]> }; rotate?: number; sizes: Partial<Record<Size, { cols?: number; rows?: number }>>; sounds?: Sounds };
   look: Look;
   hero: { greeting: boolean | string; status: boolean; search: boolean; review: boolean | 'end'; align: 'center' | 'left' | 'right'; scope?: string[] };
   chat: ChatUi & { open: 'center' | 'right' | 'left' | 'bottom' | 'page'; overview: boolean; placeholder?: string; suggestions: 'ai' | 'fixed' | 'off' };
@@ -87,15 +87,19 @@ function useClock() {
   return now;
 }
 
+/** Whether the page is dark right now, however it got there: the switch, the device turning at sunset, a tab's wallpaper. */
+export function useDark() {
+  const root = document.documentElement, [dark, setDark] = useState(() => root.classList.contains('dark'));
+  useEffect(() => {
+    const on = () => setDark(root.classList.contains('dark'));
+    const o = new MutationObserver(on); o.observe(root, { attributes: true, attributeFilter: ['class'] }); on();
+    return () => o.disconnect();
+  }, []);
+  return dark;
+}
+
 function useTheme() {
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
-  const toggle = () => {
-    const next = !dark;
-    document.documentElement.classList.toggle('dark', next);
-    try { localStorage.setItem('valet-theme', next ? 'dark' : 'light'); } catch { /* private mode */ }
-    setDark(next);
-  };
-  return { dark, toggle };
+  return { dark: useDark(), toggle: toggleTheme };
 }
 
 const greet = (h: number) => label(h < 5 ? 'goodNight' : h < 12 ? 'goodMorning' : h < 17 ? 'goodAfternoon' : 'goodEvening');
@@ -426,8 +430,10 @@ function Home({ account }: { account: boolean }) {
     const t = setInterval(get, 6 * 60_000);
     return () => clearInterval(t);
   }, [!!page?.assistant]);
-  // A wallpaper means glass over it: the dark material, so text stays legible on any image, unless the config says light.
-  const walls = (view !== 'all' && page?.appearance.tabWalls[view]) || page?.appearance.walls || [];
+  // A wallpaper means glass over it: dark glass, so text stays legible on any image, unless the config says light or system.
+  // A config can give one wallpaper for light and one for dark; both or neither, so whether there's one never turns on the theme.
+  const papers = (!theme.dark && page?.appearance.light) || page?.appearance;
+  const walls = (view !== 'all' && papers?.tabWalls[view]) || papers?.walls || [];
   const wall = walls.length > 0, themeName = page?.look.theme;
   useEffect(() => { if (themeName) applyTheme(themeName, wall); }, [themeName, wall]);
   useEffect(adaptInk, []);
@@ -705,7 +711,7 @@ function Home({ account }: { account: boolean }) {
           {topbar?.date !== false && <div className={cn('text-xs text-muted-foreground sm:block', topbar?.clock !== false && 'hidden')}>{day(now)}</div>}
           </ClockMonth>}
         </div>}
-        {!wall && topbar?.theme !== false && (page?.look.theme ?? 'auto') === 'auto' && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={() => { flipped.current = true; theme.toggle(); }}>{theme.dark ? <Sun key="sun" className={cn(flipped.current && 'spin-in')} /> : <Moon key="moon" className={cn(flipped.current && 'spin-in')} />}</RoundButton>}
+        {topbar?.theme !== false && switchable(page?.look.theme ?? 'auto', wall) && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={() => { flipped.current = true; theme.toggle(); }}>{theme.dark ? <Sun key="sun" className={cn(flipped.current && 'spin-in')} /> : <Moon key="moon" className={cn(flipped.current && 'spin-in')} />}</RoundButton>}
       </div>
 
       <main ref={pageEl} data-settling={settled ? undefined : ''} style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-28', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide && navSide === 'left' && (topbar?.position ?? 'right') === 'right' ? 'max-w-none md:pr-5!' : chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>

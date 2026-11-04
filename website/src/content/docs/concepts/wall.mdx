@@ -61,6 +61,8 @@ To keep one page on a screen, open `/wall?page=House`. Two screens can show two 
 
 From sunset to sunrise the wall dims, nearly to black, and comes back slowly in the morning. Sunset and sunrise come from the [weather](/integrations/weather/); without it, night is 21:00 to 07:00. Set your own times with `night: { from: "22:30", to: "06:45" }`, change how dark with `dim` (0 to 0.95), or turn it off with `night: false`. A touch lifts the dimming for a while.
 
+The wall is dark, a wallpaper or not, since it's often read in a dim room. With `appearance.theme: system` it follows the screen's own light or dark mode instead.
+
 If your system asks for reduced motion, or `appearance.motion` does, pages change without fading.
 
 ## Keeping the screen on
