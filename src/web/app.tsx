@@ -718,9 +718,9 @@ function Home({ account }: { account: boolean }) {
         {topbar?.theme !== false && switchable(page?.look.theme ?? 'auto', wall) && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={() => { flipped.current = true; theme.toggle(); }}>{theme.dark ? <Sun key="sun" className={cn(flipped.current && 'spin-in')} /> : <Moon key="moon" className={cn(flipped.current && 'spin-in')} />}</RoundButton>}
       </div>
 
-      <main ref={pageEl} data-settling={settled ? undefined : ''} style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && (h?.align === 'left' && !chatWide ? 'pt-10 xl:pt-2' : 'pt-10 xl:pt-28'), view === 'all' && h?.align === 'left' && 'xl:pt-2',   /* a hero at the left shares the top bar's row */ chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide && navSide === 'left' && (topbar?.position ?? 'right') === 'right' ? 'max-w-none md:pr-5!' : chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
+      <main ref={pageEl} data-settling={settled ? undefined : ''} style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && (h?.align === 'left' ? 'pt-10 xl:pt-2' : 'pt-10 xl:pt-28'), view === 'all' && h?.align === 'left' && 'xl:pt-2',   /* a hero at the left shares the top bar's row */ chatWide && (h?.align === 'left' ? 'pb-6!' : 'pb-6! xl:pt-24'), { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide && navSide === 'left' && (topbar?.position ?? 'right') === 'right' ? 'max-w-none md:pr-5!' : chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
         {/* with the greeting at the top left, each tab names itself in the same place, so every screen starts the same way */}
-        {view !== 'all' && h?.align === 'left' && !chatWide ? <header className="wall-text hidden pt-3 xl:block xl:min-h-[calc(112px-0.5rem-var(--section-gap))] xl:pt-5"><h1 className="hero-title text-metric-m leading-tight font-medium">{view}</h1></header>
+        {view !== 'all' && h?.align === 'left' ? <header className="wall-text hidden pt-3 xl:block xl:min-h-[calc(112px-0.5rem-var(--section-gap))] xl:pt-5"><h1 className="hero-title text-metric-m leading-tight font-medium">{view}</h1></header>
           : (view !== 'all' || !hello) && <h1 className="sr-only">{view === 'all' ? page?.title : view}</h1>}
         {!hasSide && hero}
         {/* an edit that didn't apply says so here, on every tab, until the next one that does */}
@@ -738,13 +738,13 @@ function Home({ account }: { account: boolean }) {
         )}
         {!phone && chatTab && view === chatTab && page?.assistant && (
           <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_200px]">
-          <div data-slot="card" className="h-[calc(100dvh-7.5rem)] min-h-[520px] overflow-hidden rounded-surface border bg-card shadow-card">
+          <div data-slot="card" className="h-[calc(100dvh-var(--chat-top,7.5rem))] min-h-[520px] overflow-hidden rounded-surface border bg-card shadow-card">
             <Suspense fallback={null}>
               <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} onAsk={ask} ui={ui} attach={page.canAct !== false && !page.sandbox} />
             </Suspense>
           </div>
           {/* the tab's numbers sit small beside the chat, which gets the room */}
-          {chatWide && <aside className="chat-aside no-scrollbar flex h-[calc(100dvh-7.5rem)] min-h-[520px] flex-col gap-3 overflow-y-auto">{sections.map(x => renderSection(x, true))}</aside>}
+          {chatWide && <aside className="chat-aside no-scrollbar flex h-[calc(100dvh-var(--chat-top,7.5rem))] min-h-[520px] flex-col gap-3 overflow-y-auto">{sections.map(x => renderSection(x, true))}</aside>}
           </div>
         )}
         {!chatWide && (() => {

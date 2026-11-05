@@ -879,3 +879,6 @@ main[data-settling] { visibility: hidden; }
 
 /* a section with no heading carries on the grid above it: the cards' own gap, not a section's */
 section + section[data-plain] { margin-top: calc(var(--card-gap) - var(--section-gap)); }
+
+/* the chat page under a tab name at the top left: the name and its gap come off the chat's height, so it still fits the screen */
+@media (min-width: 80rem) { main:has(> header .hero-title) { --chat-top: calc(112px + 1.5rem); } }
