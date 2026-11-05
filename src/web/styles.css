@@ -163,6 +163,7 @@
      closer. They follow density, as spacing does. */
   --spacing-inset: calc(var(--spacing) * 5);
   --spacing-inset-tight: calc(var(--spacing) * 4);
+  --pop-pad: calc(var(--spacing) * 3.5);   /* popovers sit closer than cards: a glance, not a page */
 }
 /* declared again wherever the ink is (.dark on a part of the page, the recap's race, the cameras' dock), since a variable that
    reads another is worked out where it's declared */

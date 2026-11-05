@@ -1517,7 +1517,7 @@ export function ClockMonth({ card, children }: { card?: CardT; children: ReactNo
   return (
     <div className="group/wx relative rounded-control text-right leading-tight" tabIndex={0}>
       {children}
-      <Popover group="wx" className={cn('right-[-14px]', events ? 'w-[680px]' : 'w-[340px]')}><div className={cn('p-(--spacing-inset) text-left', !events && 'cal-month-only')}><CalendarView card={events ? card : { type: 'calendar', events: [] }} large /></div></Popover>
+      <Popover group="wx" className={cn('right-[-14px]', events ? 'w-[680px]' : 'w-[340px]')}><div className={cn('p-(--pop-pad) text-left', !events && 'cal-month-only')}><CalendarView card={events ? card : { type: 'calendar', events: [] }} large /></div></Popover>
     </div>
   );
 }
@@ -1544,7 +1544,7 @@ function MiniRingView({ s }: { s: Summary }) {
         <div className="metric absolute inset-0 grid place-items-center text-[11px]">{n.length > 4 ? <Icon name={s.icon} className="size-icon-sm" /> : <Counter value={n} />}</div>
       </div>
       <div className="ring-label -mt-1 hidden truncate text-caption font-medium text-muted-foreground sm:block">{s.label}</div>
-      <Popover group="ring" className="right-1/2 w-[292px] translate-x-1/2">{s.every && (s.trend?.length ?? 0) > 7 ? <div className="p-(--spacing-inset)"><Chart card={trendOf(s)} pop /></div> : <SummaryTile s={s} />}</Popover>
+      <Popover group="ring" className="right-1/2 w-[292px] translate-x-1/2">{s.every && (s.trend?.length ?? 0) > 7 ? <div className="p-(--pop-pad)"><Chart card={trendOf(s)} pop /></div> : <SummaryTile s={s} />}</Popover>
     </div>
   );
 }
@@ -1580,7 +1580,7 @@ export function Forecast({ card }: { card: ForecastCard }) {
   const W = 400, H = 44, x = (i: number) => (i + .5) * (W / hours.length), y = (t: number) => 8 + (1 - (t - lo) / span) * (H - 16);
   const wet = hours.some(h => h.pop >= 10);
   return (
-    <div className="p-(--spacing-inset)">
+    <div className="p-(--pop-pad)">
       <div className="flex items-start justify-between">
         <div>
           <div className="metric text-metric-l leading-none"><Metric value={`${now.temp}°`} /></div>

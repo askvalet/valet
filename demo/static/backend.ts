@@ -7,7 +7,7 @@ import { chatRoute } from '../../src/server/chat.ts';
 import { Backups, backupParts } from '../../src/server/backups.ts';
 import { fmt } from '../../src/server/core.ts';
 import { findDocs, type DocIndex } from '../../src/shared/docs.ts';
-import plugin, { page as demoPage } from '../integrations/homelab.mjs';
+import plugin from '../integrations/homelab.mjs';
 import { reply, suggestions } from '../mock-model.mjs';
 
 const snapshot = (name: string) => realFetch(`/snapshot/${name}.json`).then(r => r.json());
@@ -84,19 +84,18 @@ class Events {
 }
 (window as any).EventSource = Events;
 
-// what a change from chat does to the page: the file a server would have reloaded, for this tab only
-const SPEED = { display: 'cards', place: 'main', overview: true, variant: 'full', header: true, heading: false, chat: false, widgets: ['lab.speed'], sizes: {}, looks: {} };
-const withChanges = (page: any) => demoPage.speed ? { ...page, widgets: { ...page.widgets, 'lab.speed': { title: 'Internet speed' } }, sections: [page.sections[0], SPEED, ...page.sections.slice(1)] } : page;
-demoPage.onChange = () => { if (demoPage.speed) { known.set('lab.speed', { key: 'lab.speed', at: 0 }); void refresh('lab.speed'); } else known.delete('lab.speed'); tell('reload', {}); };
-
 let chat: ((c: any) => Promise<Response>) | undefined, docs: Promise<DocIndex> | undefined;
 async function answer(path: string, method: string, body: any, signal?: AbortSignal | null): Promise<Response> {
   const [, , route, a, b] = path.split('?')[0].split('/');
   if (route === 'auth') return json({ mode: 'none', user: { name: 'you' } });
-  if (route === 'page') return json(withChanges(await snapshot('page')));
+  if (route === 'page') return json(await snapshot('page'));
   if (route === 'recap') return json(await snapshot('recap'));
   if (route === 'brief') return json({ text: null });
-  if (route === 'suggest') { const s = await lab.widgets.services.fetch(); return json({ list: suggestions(s.items.some((i: any) => i.name === 'Mealie' && !i.ok)).filter(q => !demoPage.speed || !/speed/.test(q)), wrong: [] }); }
+  if (route === 'suggest') {
+    // the speed card, once added from chat, is no longer worth suggesting
+    const s = await lab.widgets.services.fetch(), added = (await lab.widgets.speed.fetch()).series.length > 0;
+    return json({ list: suggestions(s.items.some((i: any) => i.name === 'Mealie' && !i.ok)).filter(q => !added || !/speed/.test(q)), wrong: [] });
+  }
   // ⌘K: the look-only commands (Valet's backups, the made-up calendar's meetings), as the server lists and runs them
   if (route === 'commands') return json({ commands: [...bk.commands.map((c, n) => ({ id: `valet:${n}`, say: c.say, label: c.label, service: 'Valet', kind: 'tool', access: 'read' })),
     ...(lab.commands ?? []).map((c: any, n: number) => ({ id: `lab:${n}`, say: c.say, label: c.label, service: integration.name, kind: 'tool', access: 'read' }))] });

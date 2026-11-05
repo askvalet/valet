@@ -82,8 +82,12 @@ export function Race({ race, span, now }: { race: RaceData; span?: string; now?:
   const bar = (v: number, top: number) => Math.max(v > 0 ? .012 : 0, v / Math.max(top, peak * .3));   // the leader fills the lane, but early on the bars have room to grow
   const when = (t: number) => steps[Math.ceil(t - 1e-6)];
 
+  // the name sits inside its bar; where the bar is shorter than the name, the amount waits past the name's end
+  const fit = useRef<number[]>([]);
+  useEffect(() => { const reset = () => { fit.current = []; }; addEventListener('resize', reset); return () => removeEventListener('resize', reset); }, []);
   const draw = (ms: number) => {
     const s = live.current, { value, place, top } = standing(items, s.t), ease = 1 - Math.exp(-ms / SLIDE), tall = rows.current[0]?.offsetHeight ?? 0;
+    if (!fit.current.length) fit.current = rows.current.map(row => { const line = row?.querySelector<HTMLElement>('.race-line'), name = row?.querySelector<HTMLElement>('.race-name'); return line?.offsetWidth ? ((name?.offsetWidth ?? 0) + 20) / line.offsetWidth : 0; });
     let moving = false;
     rows.current.forEach((row, n) => {
       if (!row) return;
@@ -92,7 +96,7 @@ export function Race({ race, span, now }: { race: RaceData; span?: string; now?:
       if (Math.abs(y - s.y[n]) > .3 || Math.abs(o - s.o[n]) > .01) moving = true; else { s.y[n] = y; s.o[n] = o; }
       row.style.transform = `translateY(${s.y[n].toFixed(2)}px)`; row.style.opacity = s.o[n].toFixed(3);
       (row.querySelector('.race-bar') as HTMLElement).style.transform = `translateX(${((p - 1) * 100).toFixed(2)}%)`;
-      (row.querySelector('.race-end') as HTMLElement).style.transform = `translateX(${(p * 100).toFixed(2)}%)`;
+      (row.querySelector('.race-end') as HTMLElement).style.transform = `translateX(${(Math.max(p, fit.current[n] ?? 0) * 100).toFixed(2)}%)`;
       const text = amount(value[n], unit), label = row.querySelector('.race-end span')!;
       if (label.textContent !== text) label.textContent = text;
       row.classList.toggle('is-lead', place[n] === 0);
@@ -159,9 +163,9 @@ export function Race({ race, span, now }: { race: RaceData; span?: string; now?:
             <div key={it.title} ref={el => { rows.current[n] = el; }} className={place === 0 ? 'race-row is-lead' : 'race-row'} data-tint={t ? '' : undefined} style={{ transform: `translateY(calc(var(--row) * ${place}))`, opacity: place < ROWS ? 1 : 0, ...hue(t) }}>
               {it.image ? <img className="race-art" src={it.image} alt="" decoding="async" onLoad={e => { const c = tintOf(e.currentTarget); if (c && !t) setTint(m => ({ ...m, [it.title]: c })); }} /> : <span className="race-art" />}
               <div className="race-lane">
-                <span className="race-name">{it.title}</span>
                 <div className="race-line">
                   <div className="race-track"><i className="race-bar" style={{ transform: `translateX(${(p - 1) * 100}%)` }}><b /></i></div>
+                  <span className="race-name">{it.title}</span>
                   <div className="race-end" style={{ transform: `translateX(${p * 100}%)` }}><span>{amount(rest.value[n], unit)}</span></div>
                 </div>
               </div>

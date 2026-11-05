@@ -4,7 +4,7 @@
 /* the race: rows slide past each other, a bar grows by sliding out of its lane. It's the page's large meter (styles.css):
    each bar takes its poster's hue at one lightness for all, so the board reads as a set, and the leader's is the strongest.
    Without a hue, the bars are the meters' neutral step and the leader the accent. */
-.race { --rank-r: 3px; --row: 54px; --bar: var(--meter-lg); --knob: 18px; --race-lead: var(--primary); --race-bar: var(--meter-rest); --race-track: var(--meter-track); min-width: 0; }
+.race { --rank-r: 6px; --row: 44px; --bar: 32px; --knob: 18px; --race-lead: var(--primary); --race-bar: var(--meter-rest); --race-track: var(--meter-track); min-width: 0; }
 /* a ranking, not progress: no track to fill, the others one quiet grey, only the leader in its poster's colour */
 .race-row[data-tint] { --race-lead: var(--tint-strong); }
 .race-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
@@ -14,7 +14,8 @@
 .race-row { position: absolute; inset: 0 0 auto; display: flex; align-items: center; gap: 12px; height: var(--row); }
 .race-art { flex: none; height: calc(var(--row) - 12px); aspect-ratio: 2 / 3; border-radius: var(--radius-thumb); object-fit: cover; background: var(--muted); box-shadow: 0 0 0 .5px color-mix(in oklab, var(--foreground) 14%, transparent), 0 2px 6px rgb(0 0 0 / .18); }
 .race-lane { flex: 1; min-width: 0; }
-.race-name { display: block; overflow: hidden; margin-bottom: 5px; font-size: var(--text-body); font-weight: 500; line-height: 16px; white-space: nowrap; text-overflow: ellipsis; }
+.race-name { position: absolute; left: 10px; top: 50%; translate: 0 -50%; font-size: var(--text-body); font-weight: 500; line-height: 16px; white-space: nowrap; pointer-events: none; }
+.race-row.is-lead[data-tint] .race-name { color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / .25); }
 .race-line { position: relative; height: var(--bar); margin-right: 58px; }
 .race-track { position: absolute; inset: 0; overflow: hidden; border-radius: var(--rank-r); }
 .race-bar { position: absolute; inset: 0; border-radius: var(--rank-r); background: var(--race-bar); }
@@ -44,7 +45,7 @@
 .race-months span { position: absolute; top: 0; translate: -50% 0; white-space: nowrap; }
 .race-months span:first-child { left: 0; translate: none; }
 .race-months span:last-child { right: 0; left: auto; translate: none; }
-@media (max-width: 480px) { .race { --row: 50px; } .race-head { margin-bottom: 12px; } .race-date { font-size: var(--text-metric-m); } }
+@media (max-width: 480px) { .race { --row: 40px; --bar: 28px; } .race-head { margin-bottom: 12px; } .race-date { font-size: var(--text-metric-m); } }
 
 /* the stream sits where the columns would, and shares their tip and axis */
 .stream { position: absolute; inset: 0; touch-action: pan-y; }

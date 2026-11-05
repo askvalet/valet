@@ -43,7 +43,7 @@ function Story({ a, when }: { a: Live; when?: ReturnType<typeof counted> }) {
   const title = <span className="block truncate text-item font-medium">{a.title}</span>;
   const pct = when ? when.pct : a.pct, trailing = when ? when.text : a.trailing;
   return (
-    <div className="flex items-center gap-3 p-(--spacing-inset)">
+    <div className="flex items-center gap-3 p-(--pop-pad)">
       {a.image ? <img src={a.image} alt="" className="h-[72px] w-12 shrink-0 rounded-thumb object-cover" /> : <span className={cn('grid size-11 shrink-0 place-items-center rounded-control bg-fill-2', a.link && 'self-start')}><Icon name={a.icon} className="size-icon-lg" /></span>}
       <div className="min-w-0 flex-1">
         {a.href ? <a href={a.href} target="_blank" rel="noreferrer" className="title-link">{title}</a> : title}
@@ -66,7 +66,7 @@ function Meeting({ a, when }: { a: Live; when?: ReturnType<typeof counted> }) {
   const extra = who.match(/\s*\+(\d+)$/), names = who.replace(/\s*\+\d+$/, '').split(/,\s*/).filter(Boolean), more = extra ? `+${extra[1]}` : undefined;
   const initials = (n: string) => n.split(/\s+/).map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
   return (
-    <div className="grid gap-2.5 p-(--spacing-inset)">
+    <div className="grid gap-2.5 p-(--pop-pad)">
       <div className="flex items-baseline justify-between gap-3">
         <span className="min-w-0 truncate text-title font-semibold">{a.title}</span>
         {status && <span className="shrink-0 text-body font-medium tabular" style={{ color: MEETING }}>{status}</span>}

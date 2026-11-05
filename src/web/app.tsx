@@ -181,8 +181,11 @@ export function Walls({ list, every }: { list: Paper[]; every?: number }) {
 }
 
 /** The wallpaper, fading up once it has decoded (at once if the browser already has it). */
+// one ref for its life: a fresh one each render touched the picture's class every second (the clock re-renders the page),
+// and Chrome redrew the glass over it in patches
+const showWall = (el: HTMLImageElement | null) => { if (el?.complete && el.naturalWidth && !el.classList.contains('is-on')) el.classList.add('is-on'); };
 function Wall({ src, style }: { src: string; style?: React.CSSProperties }) {
-  return <img src={src} alt="" style={style} ref={el => { if (el?.complete && el.naturalWidth) el.classList.add('is-on'); }} onLoad={e => e.currentTarget.classList.add('is-on')} onError={e => { e.currentTarget.style.display = 'none'; }} />;
+  return <img src={src} alt="" style={style} ref={showWall} onLoad={e => e.currentTarget.classList.add('is-on')} onError={e => { e.currentTarget.style.display = 'none'; }} />;
 }
 
 const arrived = new Set<string>();
