@@ -167,7 +167,7 @@ can still draw it another way with a widget's [`view`](configuration.md#layout).
 | `status` | services that are up or down | `group` sections them; `quiet` for things that sleep on purpose. `layout: wall` is one icon per app (by `group`, or the name up to its first `-` or `_`), with a count when it has several, its worst state on the dot and what's wrong on hover |
 | `media` | what's playing or downloading | full-bleed artwork; `tags`, progress, time left |
 | `shelf` | a row of artwork | `aspect` poster/square/wide; `stack: true` piles them up (documents, photos); `layout` is `row`, `spotlight`, `focus`, `coverflow`, `masonry`, `cards`, `desk`, `windows`, `tickets` or `week` |
-| `photos` | photos to look at | `style`: `flashback` crossfades, `mosaic` (or size large) tiles them, `album` is tall strips, and the one under the pointer slides open; `masonry` is a wall that scrolls sideways |
+| `photos` | photos to look at | `style`: `flashback` crossfades, `mosaic` (or size large) tiles them, `album` is a carousel of large photos, each at its own shape, the one you're on captioned and counted; `masonry` is a wall that scrolls sideways |
 | `ranked` | who or what comes top | the leader gets its artwork, the rest a bar |
 | `race` | titles overtaking each other, each bar in its poster's colour | `steps`, and each item's `points` as running totals (and an `image` for its poster) |
 | `heatmap` | a year of days | `from`, and a count per day in `days` |

@@ -98,7 +98,7 @@ layout:
     widgets:
       - { widget: lab.cameras, size: large, rows: 2 }
       - { widget: lab.thermostat, size: medium }
-      - { widget: lab.sky, size: medium }
+      - { widget: lab.weather, size: medium }   # Daylight's place here; Daylight stays on the overview
   - tab: Home
     heading: false
     columns: 2
@@ -114,15 +114,13 @@ layout:
     heading: false
     header: false
     overview: false
-    widgets:
-      - { widget: lab.weather, size: medium }
-      - { widget: lab.calendar, size: large }
+    columns: 1
+    widgets: [lab.calendar]   # the month and the day beside it, the full width
+  - columns: 2
+    widgets: [{ widget: lab.recent, view: focus }, lab.photos]   # side by side, half the width each
   - widgets:
-      - { widget: lab.recent, view: focus }
-  - widgets:
-      - { widget: lab.sky, size: medium }
-      - { widget: lab.photos, size: tall }
-      - { widget: lab.reading, size: medium }
+      - { widget: lab.sky, size: tall }
+      - { widget: lab.reading, size: tall }
       - { widget: lab.dns, size: small }
       - { widget: lab.drives, size: small }
       - { widget: lab.upcoming, size: wide }
@@ -133,13 +131,11 @@ layout:
     widgets:
       - { widget: lab.race, size: large }
       - { widget: lab.mostwatched, size: medium }
-      - { widget: lab.people, size: medium }
-      - { widget: lab.plays, size: large }
   - tab: Media
     overview: false
     heading: false
-    columns: 1
-    widgets: [lab.viewing]
+    columns: 2
+    widgets: [lab.plays, lab.viewing]   # side by side, half the width each
   - tab: Media
     overview: false
     heading: false

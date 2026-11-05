@@ -866,7 +866,7 @@ function Columns({ card }: { card: ChartCard }) {
   );
 }
 
-function Chart({ card }: { card: ChartCard }) {
+function Chart({ card, pop }: { card: ChartCard; pop?: boolean }) {
   if (card.style === 'bars' || card.style === 'stream') return <Columns card={card} />;
   const w = 300, h = 96, count = Math.max(...card.series.map(s => s.points.length), 0);
   // the scale fits the data, so a number that moves a little still shows its shape; a fixed max (a percentage) keeps zero
@@ -889,7 +889,7 @@ function Chart({ card }: { card: ChartCard }) {
   return (
     <div>
       <div className="mb-2 flex items-baseline gap-2">
-        <span className="metric text-metric-s leading-none">{at == null && card.headline ? card.headline : shown != null ? num(shown) : '–'}</span>
+        <span className={cn('metric', pop ? 'text-[22px]' : 'text-metric-s', 'leading-none')}>{at == null && card.headline ? card.headline : shown != null ? num(shown) : '–'}</span>
         <span className="min-w-0 truncate text-meta text-muted-foreground">
           {at != null ? when(at) : card.headline ? card.span : move != null && Math.abs(move) >= .005 ? <span className={cn('tabular', lead.tone === 'bad' ? 'text-bad' : '')}>{move > 0 ? '+' : ''}{Math.round(move * 1000) / 10}%{card.span ? ` over the ${card.span}` : ''}</span> : card.span}
         </span>
@@ -1530,8 +1530,8 @@ function MiniRingView({ s }: { s: Summary }) {
         </svg>
         <div className="metric absolute inset-0 grid place-items-center text-[11px]">{n.length > 4 ? <Icon name={s.icon} className="size-icon-sm" /> : <Counter value={n} />}</div>
       </div>
-      <div className="-mt-1 hidden max-w-[56px] truncate text-caption font-medium text-muted-foreground sm:block">{s.label}</div>
-      <Popover group="ring" className="right-1/2 w-[280px] translate-x-1/2">{s.every && (s.trend?.length ?? 0) > 7 ? <div className="p-(--spacing-inset)"><Chart card={trendOf(s)} /></div> : <SummaryTile s={s} />}</Popover>
+      <div className="ring-label -mt-1 hidden truncate text-caption font-medium text-muted-foreground sm:block">{s.label}</div>
+      <Popover group="ring" className="right-1/2 w-[292px] translate-x-1/2">{s.every && (s.trend?.length ?? 0) > 7 ? <div className="p-(--spacing-inset)"><Chart card={trendOf(s)} pop /></div> : <SummaryTile s={s} />}</Popover>
     </div>
   );
 }

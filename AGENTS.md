@@ -158,7 +158,8 @@ https://askvalet.dev.
   `data-blossom-slide`, the arrows are the only part that hears it move, and the slides sit in a `memo` so a live update doesn't
   redraw them. A view with its own edges (`deck-track`) sets `mask-image: none`. Not carousels, so not `Row`: tab and chip strips
   (camera pills, suggestion chips, the phone dock), timed slideshows that change in place (flashback, the recap, the wall), and
-  fixed layouts (album, mosaic, windows).
+  fixed layouts (mosaic, windows). The album is a `Row` (`album.tsx`): photos at their own shape, the first and last at the
+  inset so it starts full, the one nearest the middle lit and captioned (it marks it when the row comes to rest).
   `focus.tsx` is the `focus` view, `coverflow.tsx` the 3D cover flow: sizes come from a scroll-driven animation; `Pile`: the reading card;
   `ElasticSlider`: Radix's slider with give at the ends; `Counter`: every number that changes, still on first paint and
   faster than 1.5 s (`flap` makes it a departures board, for a countdown); `useRows` + `RowSlot`: a list whose rows come and go, never
@@ -218,7 +219,7 @@ literal; a new size or corner is a new token with a role, argued for here.
 - **Type** is eight steps: `text-caption` 11, `text-meta` 12, `text-body` 13, `text-item` 14 (a row's name), `text-title` 15,
   `text-metric-s` 20, `text-metric-m` 28, `text-metric-l` 44, as `var(--text-*)` in CSS. Leading inherits. Kept on purpose: inputs at
   16 (phones zoom into anything smaller), the wall's clock and big lines, the weather's big number, the recap's stage, SVG text that
-  scales with its drawing, the 3D models' labels, and labels inside a ring or a badge, which are sized to their shape. `cn` knows the
+  scales with its drawing, a ring popover's graph headline (22, as it always was: `Chart`'s `pop`), the 3D models' labels, and labels inside a ring or a badge, which are sized to their shape. `cn` knows the
   tokens (`lib/utils.ts`); without that, `text-meta text-muted-foreground` loses its size.
 - **Chip** (`components/ui/chip.tsx`): 32 high, `rounded-chip`, 13px; `tonal`, `outline` (a set you pick from), `selected` (the ink),
   `ghost`; `icon` and `dot` (a tone or a colour, which glows a little). A button by default, `as="a"` or `as="span"`. The cameras'
@@ -357,6 +358,10 @@ literal; a new size or corner is a new token with a role, argued for here.
 - **Two small libraries from libraries.dev are in on purpose**, pinned exactly: `thinking-orbs` (the chat's working states and the
   recap's loading) and `border-beam` (`chat.beam` and the approval card). All MIT, no dependencies, no network. Left out:
   `img-fx` needs three.js; `liquid-gooey`, `bot-avatars` and `voice-glow` have no job here yet.
+- **`cqh` reads 0 inside a size container that flex grows** (Chrome): the album sets its height (`--h`) from a ResizeObserver
+  instead. A container with a set height is fine.
+- **The top bar's rings are one slot each** (`.ring-row` in `styles.css`, 48px with labels): never size a ring by its label, or
+  the centres drift. The rule between live and system rings has negative margins so it takes no room.
 - **A carousel is `inline-block` with `max-inline-size: 100vw`** (Blossom's sheet) and `inline-size: auto` (ours), so a track whose
   content has a wide min-content (cover flow's 3D list) grows to the viewport and its middle drifts right: give it `inline-size: 100%`.
   A track that must be wider than its card (the cards stack, `--sw`, centred by negative margins) needs `max-width: none` too.

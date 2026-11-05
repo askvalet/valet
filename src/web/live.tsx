@@ -110,7 +110,7 @@ export function LiveRings({ live }: { live: Live[] }) {
           </div>
           {more && <span className="ring-more absolute -top-1 -right-2 rounded-full bg-primary px-1 text-[9px] leading-[14px] font-medium text-primary-foreground tabular" aria-hidden>{more}</span>}
         </div>
-        <div className="-mt-1 max-w-[56px] truncate max-sm:hidden! text-caption font-medium text-muted-foreground sm:block">{a.title}</div>
+        <div className="ring-label -mt-1 truncate max-sm:hidden! text-caption font-medium text-muted-foreground sm:block">{a.title}</div>
         <Popover group="ring" className="right-1/2 w-[300px] translate-x-1/2"><Story a={a} when={when} /></Popover>
       </div>
     );

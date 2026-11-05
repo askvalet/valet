@@ -207,33 +207,50 @@ export function Stream({ card, at, onAt }: { card: ChartCard; at: number | null;
 
 const CELL = 12, SIZE = 10;
 /** A year of days, a column a week: deeper for days with more in them, on steps cut from the days themselves so one huge
- *  night can't wash the rest out. */
+ *  night can't wash the rest out. Where a year in one line would make the days too small to read (half a page, a phone),
+ *  it folds into two lines, a half-year each, each with its months above it. */
 export function Heatmap({ card }: { card: HeatmapCard }) {
-  const [at, setAt] = useState<number | null>(null);
+  const [at, setAt] = useState<number | null>(null), box = useRef<HTMLDivElement>(null), [wide, setWide] = useState(0);
+  useLayoutEffect(() => {
+    const el = box.current; if (!el) return;
+    const fit = () => setWide(el.clientWidth);
+    fit(); const ro = new ResizeObserver(fit); ro.observe(el); return () => ro.disconnect();
+  }, []);
   const first = new Date(`${card.from}T00:00`), lead = (first.getDay() - firstDay() + 7) % 7, n = card.days.length, weeks = Math.ceil((n + lead) / 7);
+  // a line of the year needs about 13px a week to read; short of that, two lines of half as many weeks
+  const lines = wide && wide / weeks < 13 ? 2 : 1, per = Math.ceil(weeks / lines);
   const spot = (i: number) => [Math.floor((i + lead) / 7), (i + lead) % 7] as const, date = (i: number) => new Date(first.getFullYear(), first.getMonth(), first.getDate() + i);
   const busy = useMemo(() => card.days.filter(d => d > 0).sort((a, b) => a - b), [card.days]);
   const cut = [.25, .5, .8].map(q => busy[Math.floor(q * (busy.length - 1))] ?? 1), level = (d: number) => !d ? 0 : 1 + cut.filter(c => d > c).length;
-  const months = useMemo(() => { const out: { x: number; name: string }[] = []; for (let i = 0; i < n; i++) { const d = date(i); if (d.getDate() === 1) out.push({ x: spot(i)[0] / weeks, name: month(d, { short: true }) }); } return out.filter(m => m.x < .96); }, [card.from, n, lead]);
+  const months = useMemo(() => { const out: { col: number; name: string }[] = []; for (let i = 0; i < n; i++) { const d = date(i); if (d.getDate() === 1) out.push({ col: spot(i)[0], name: month(d, { short: true }) }); } return out; }, [card.from, n, lead]);
   const whole = card.days.reduce((a, b) => a + b, 0), most = Math.max(...card.days), word = card.unit ?? 'play', count = (v: number) => `${written(v)} ${word}${v === 1 ? '' : 's'}`;
-  const point = (e: React.PointerEvent<HTMLDivElement>) => {
-    const b = e.currentTarget.getBoundingClientRect(), c = Math.floor((e.clientX - b.left) / b.width * weeks), r = Math.floor((e.clientY - b.top) / b.height * 7), i = c * 7 + Math.max(0, Math.min(6, r)) - lead;
-    setAt(i >= 0 && i < n ? i : null);
+  const point = (line: number) => (e: React.PointerEvent<HTMLDivElement>) => {
+    const b = e.currentTarget.getBoundingClientRect(), c = line * per + Math.floor((e.clientX - b.left) / b.width * per), r = Math.floor((e.clientY - b.top) / b.height * 7), i = c * 7 + Math.max(0, Math.min(6, r)) - lead;
+    setAt(i >= 0 && i < n && c < (line + 1) * per ? i : null);
   };
-  const tip = at != null ? (spot(at)[0] + .5) / weeks : 0, best = card.days.indexOf(most);
+  const best = card.days.indexOf(most), atCol = at != null ? spot(at)[0] : -1;
   return (
-    <div className="heatmap">
+    <div ref={box} className="heatmap" data-lines={lines}>
       <div className="mb-3 flex items-baseline gap-2">
         <span className="metric text-metric-m leading-none"><Metric value={card.headline ?? count(whole)} /></span>
         {card.span && <span className="min-w-0 truncate text-meta text-muted-foreground">{card.span}</span>}
       </div>
-      <div className="heat-months" aria-hidden>{months.map(m => <span key={m.x} style={{ left: `${m.x * 100}%` }}>{m.name}</span>)}</div>
-      <div className="heat" role="img" aria-label={`${count(whole)}, most on ${dayOf(date(best))}`} onPointerMove={point} onPointerDown={point} onPointerLeave={() => setAt(null)}>
-        <svg viewBox={`0 0 ${weeks * CELL - (CELL - SIZE)} ${7 * CELL - (CELL - SIZE)}`} aria-hidden>
-          {card.days.map((d, i) => { const [c, r] = spot(i); return <rect key={i} x={c * CELL} y={r * CELL} width={SIZE} height={SIZE} rx={2} className={`heat-${level(d)}`} />; })}
-          {at != null && <rect x={spot(at)[0] * CELL - .5} y={spot(at)[1] * CELL - .5} width={SIZE + 1} height={SIZE + 1} rx={2.5} className="heat-at" />}
-        </svg>
-        {at != null && <div className="col-tip" style={{ left: `${tip * 100}%`, translate: `${-tip * 100}% 0` }}><b>{dayOf(date(at))}</b> · {count(card.days[at])}</div>}
+      <div className="heat-lines" role="img" aria-label={`${count(whole)}, most on ${dayOf(date(best))}`}>
+        {Array.from({ length: lines }, (_, line) => {
+          const from = line * per, cols = Math.min(per, weeks - from), tip = (atCol - from + .5) / per;
+          return (
+            <div key={line} className="heat-line">
+              <div className="heat-months" aria-hidden>{months.filter(m => m.col >= from && m.col < from + cols && (m.col - from) / per < .94).map(m => <span key={m.col} style={{ left: `${(m.col - from) / per * 100}%` }}>{m.name}</span>)}</div>
+              <div className="heat" onPointerMove={point(line)} onPointerDown={point(line)} onPointerLeave={() => setAt(null)}>
+                <svg viewBox={`0 0 ${per * CELL - (CELL - SIZE)} ${7 * CELL - (CELL - SIZE)}`} aria-hidden>
+                  {card.days.map((d, i) => { const [c, r] = spot(i); return c >= from && c < from + cols && <rect key={i} x={(c - from) * CELL} y={r * CELL} width={SIZE} height={SIZE} rx={2} className={`heat-${level(d)}`} />; })}
+                  {at != null && atCol >= from && atCol < from + cols && <rect x={(atCol - from) * CELL - .5} y={spot(at)[1] * CELL - .5} width={SIZE + 1} height={SIZE + 1} rx={2.5} className="heat-at" />}
+                </svg>
+                {at != null && atCol >= from && atCol < from + cols && <div className="col-tip" style={{ left: `${tip * 100}%`, translate: `${-tip * 100}% 0` }}><b>{dayOf(date(at))}</b> · {count(card.days[at])}</div>}
+              </div>
+            </div>
+          );
+        })}
       </div>
       <div className="mt-2 flex items-center justify-between gap-3 text-meta text-muted-foreground">
         <span className="min-w-0 truncate tabular">Most in a day {written(most)}</span>
