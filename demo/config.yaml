@@ -148,10 +148,10 @@ layout:
   - title: Media
     overview: false
     heading: false
-    columns: 3
+    columns: 2   # the race and the albums half each
     widgets:
-      - { widget: lab.race, size: large }
-      - { widget: lab.top, size: medium, view: coverflow }   # Navidrome's most played albums, as covers to flip through
+      - lab.race
+      - { widget: lab.top, view: coverflow }   # Navidrome's most played albums, as covers to flip through
   - tab: Media
     overview: false
     heading: false
