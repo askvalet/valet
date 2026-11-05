@@ -775,7 +775,7 @@ function Ranked({ card }: { card: RankedCard }) {
     <ol className="space-y-3">
       {card.items.slice(0, 5).map((it, i) => (
         <li key={i} className="flex min-w-0 items-center gap-3">
-          {it.image && <Art src={it.image} alt="" className="h-[42px] w-7 shrink-0 rounded-thumb object-cover" onLoaded={img => { const c = tintOf(img); if (c) setTint(m => m[it.title] ? m : { ...m, [it.title]: c }); }} />}
+          {it.image && <Art src={it.image} alt="" className={cn('h-[42px] shrink-0 rounded-thumb object-cover', card.aspect === 'square' ? 'w-[42px]' : 'w-7')} onLoaded={img => { const c = tintOf(img); if (c) setTint(m => m[it.title] ? m : { ...m, [it.title]: c }); }} />}
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-3"><span className="min-w-0 flex-1 truncate text-item font-medium">{it.title}</span>{it.value && <span className="shrink-0 text-meta tabular text-muted-foreground">{it.value}</span>}</div>
             <Meter rank pct={it.pct ?? (i ? 0 : 1)} rest={i > 0} hue={hue(tint[it.title] ?? null)} className="mt-1.5" />

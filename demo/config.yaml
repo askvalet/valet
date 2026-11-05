@@ -138,7 +138,7 @@ layout:
     columns: 3
     widgets:
       - { widget: lab.race, size: large }
-      - { widget: lab.requests, size: medium }   # what people asked for, as tickets: on its way, or waiting
+      - { widget: lab.top, size: medium, view: coverflow }   # Navidrome's most played albums, as covers to flip through
   - tab: Media
     overview: false
     heading: false

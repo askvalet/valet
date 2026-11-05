@@ -435,6 +435,11 @@ export default ({ z, defineIntegration, fmt: write }) => {
             const getting = downloads().find(t => t.title === title), there = { title, subtitle: String(ART.films[title].year), badge, tone, image: poster(title), href: poster(title) };
             return badge === 'Downloading' ? { ...there, note: getting && `${Math.floor(getting.pct * 100)}% there`, cta: { label: 'See progress', href: poster(title) } }
               : badge === 'Available' ? { ...there, cta: { label: 'Watch', href: poster(title) } } : { ...there, note: 'Missing S3', cta: { label: "Watch what's here", href: poster(title) } }; }) })),
+        // Navidrome's most played albums, shaped as the navidrome integration's `top`: square covers, plays, a bar against the
+        // most. Real albums whose covers are free to share (art/CREDITS.md); the play counts are made up
+        top: w('Most played', 3_600_000, () => { const most = Math.max(...ART.music.map(a => a.plays));
+          return { type: 'ranked', title: 'Most played', icon: 'play', source: { name: 'Navidrome', icon: '/api/icon/navidrome' }, aspect: 'square', empty: 'Nothing played yet',
+            items: ART.music.map(a => ({ title: a.title, subtitle: a.artist, value: `${a.plays} plays`, image: a.cover, pct: a.plays / most, href: a.cover })) }; }),
         games: w('Games', 3_600_000, () => ({ type: 'shelf', layout: 'coverflow', title: 'Games', icon: 'game', aspect: 'square', source: { name: 'RomM', icon: '/api/icon/romm' }, note: `${ART.games.length} games · ${new Set(ART.games.map(g => g.system)).size} systems`, items: ART.games.map(g => ({ title: g.title, subtitle: g.system, image: g.cover })) })),
         album: w('The long way round', 3_600_000, () => ({ type: 'photos', style: 'album', title: 'The long way round', icon: 'image', source: { name: 'Immich', icon: '/api/icon/immich' }, note: '1,204 photos · 9 places', items: TRIP.map(([n, title, subtitle]) => ({ image: ctx.image(`album${n}`), title, subtitle })) })),
         books: w('Books', 3_600_000, () => ({ type: 'shelf', layout: 'focus', title: 'Books', icon: 'book', aspect: 'poster', source: { name: 'Audiobookshelf', icon: '/api/icon/audiobookshelf' }, note: `${ART.library.length} in progress`, items: ART.library.map(b => ({ title: b.title, subtitle: b.author, image: b.cover })) })),

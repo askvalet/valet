@@ -89,7 +89,7 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
     range: z.tuple([finite, finite]).optional(), min: finite, max: finite, step: z.number().positive(), set: z.object({ action: z.string(), args: z.record(z.string(), z.unknown()).optional() }).strict().optional(),
     modes: z.array(z.object({ id: z.string(), label: z.string(), on: z.boolean().optional(), action: z.string(), args: z.record(z.string(), z.unknown()).optional(), hint: z.string().optional() }).strict()).optional(), note: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('embed'), src: z.string().url(), height: z.number(), scripts: z.boolean().optional() }).strict(),
-  z.object({ ...base, type: z.literal('ranked'), empty: z.string().optional(), items: z.array(z.object({ title: z.string(), subtitle: z.string().optional(), value: z.string().optional(), image: z.string().optional(), backdrop: z.string().optional(), pct: unit.optional(), href: z.string().optional() }).strict()) }).strict(),
+  z.object({ ...base, type: z.literal('ranked'), empty: z.string().optional(), aspect: z.enum(['poster', 'square']).optional(), items: z.array(z.object({ title: z.string(), subtitle: z.string().optional(), value: z.string().optional(), image: z.string().optional(), backdrop: z.string().optional(), pct: unit.optional(), href: z.string().optional() }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('code'), lines: z.array(z.string()), diff: z.boolean().optional() }).strict(),
   z.object({ ...base, type: z.literal('table'), columns: z.array(z.string()), rows: z.array(z.array(z.union([z.string(), z.number()]))) }).strict(),
   z.object({ ...base, type: z.literal('kv'), rows: z.array(z.tuple([z.string(), z.string()])) }).strict(),

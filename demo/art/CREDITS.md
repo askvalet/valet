@@ -26,7 +26,7 @@ The covers in `covers/` are resized copies, so the demo fetches nothing from out
 
 # Book covers
 
-Book covers come from Open Library (https://openlibrary.org), film art from TMDB (https://www.themoviedb.org), album art from Apple Music. The art belongs to the publishers.
+Book covers come from Open Library (https://openlibrary.org), film art from TMDB (https://www.themoviedb.org), album art in the year in review from Apple Music. The art belongs to the publishers.
 
 # Album
 
@@ -45,3 +45,18 @@ Book covers come from Open Library (https://openlibrary.org), film art from TMDB
 - `6.jpg` Shoyu ramen: https://commons.wikimedia.org/wiki/File:Shoyu_Ramen_with_Sushi_and_Tempura.jpg (CC0)
 - `7.jpg` Pad thai: https://commons.wikimedia.org/wiki/File:Pad_Thai_2018-04-19.jpg (CC0, Index Librorum Permissorum)
 - `8.jpg` Salmon and quinoa bowl: https://commons.wikimedia.org/wiki/File:Salmon_and_Quinoa_dish_(39791934733).jpg (CC BY 2.0, Ella Olsson)
+
+# Music
+
+Navidrome's most played albums. The covers are resized copies from Wikimedia Commons (in `covers/`, listed under `music` in art.json); the play counts are made up.
+
+- Open Goldberg Variations, Kimiko Ishizaka: https://commons.wikimedia.org/wiki/File:Cover_of_the_Open_Goldberg_Variations.jpg (CC0, Kimiko Ishizaka)
+- Wobble, Black Market Karma: https://commons.wikimedia.org/wiki/File:Black_Market_Karma_-_Wobble.jpg (CC0, Stanley Belton)
+- Out of It, Brad Sucks: https://commons.wikimedia.org/wiki/File:Out_of_It_front.png (CC BY-SA 3.0, Brad Sucks)
+- A Tramp Shining, Richard Harris: https://commons.wikimedia.org/wiki/File:A_Tramp_Shining.png (Public domain, Dunhill/ABC Records)
+- Do You Know Squarepusher, Squarepusher: https://commons.wikimedia.org/wiki/File:Do_you_know_squarepusher_cover.png (Public domain, Alexander Rutterford)
+- Pink, Boris: https://commons.wikimedia.org/wiki/File:BorisPinkorig.jpg (Public domain, Boris)
+- The Take Off and Landing of Everything, Elbow: https://commons.wikimedia.org/wiki/File:Elbow_TTOALOE.jpg (Public domain, Elbow)
+- Brat, Charli XCX: https://commons.wikimedia.org/wiki/File:Charli_XCX_-_Brat_(album_cover).png (Public domain, Asylum, Atlantic and Warner UK)
+- All Our Gods Have Abandoned Us, Architects: https://commons.wikimedia.org/wiki/File:Architects_-_All_Our_Gods_Have_Abandoned_Us_cover.jpg (Public domain, F. W. Dyson, A. S. Eddington and C. Davidson, the 1919 eclipse photo)
+- Third, Portishead: https://commons.wikimedia.org/wiki/File:Portishead_-_Third_cover.jpg (Public domain, Portishead)

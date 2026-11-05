@@ -43,6 +43,9 @@ test('anything with pictures can be any gallery', () => {
   assert.equal((asView(photos, 'focus') as any).layout, 'focus');
   assert.equal((asView(shelf, 'mosaic') as any).items.length, 2);                     // only what has a picture
   assert.equal((asView(shelf, 'row') as any).layout, undefined);
+  const albums: Card = { ...ranked, aspect: 'square' };
+  for (const view of ['row', 'coverflow', 'masonry'] as const) assert.equal((asView(albums, view) as any).aspect, 'square', `a ranked card's square covers stay square as ${view}`);
+  assert.equal((asView(ranked, 'row') as any).aspect, undefined);
 });
 
 test('a view that doesn\'t fit leaves the card alone; the same card gives the same object', () => {

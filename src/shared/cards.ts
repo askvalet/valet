@@ -272,7 +272,7 @@ export interface GroupCard extends Base { type: 'group'; cards: Card[]; layout?:
 
 /** Who or what comes top: the leader gets its artwork, the rest a bar. */
 export interface RankedItem { title: string; subtitle?: string; value?: string; image?: string; backdrop?: string; pct?: number; href?: string }
-export interface RankedCard extends Base { type: 'ranked'; items: RankedItem[]; empty?: string }
+export interface RankedCard extends Base { type: 'ranked'; items: RankedItem[]; empty?: string; /** square: album covers, kept square as rows and in any gallery; otherwise posters */ aspect?: 'poster' | 'square' }
 
 /** A page inside a card, sandboxed. Only addresses the iframe integration allowed can load. */
 export interface EmbedCard extends Base { type: 'embed'; src: string; height: number; scripts?: boolean }

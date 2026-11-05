@@ -97,8 +97,8 @@ export default defineIntegration({
       top: {
         title: 'Most played', interval: 3_600_000, card: 'ranked',
         async fetch() {
-          const rows = (await albums('frequent', 6)).filter(a => Number(a.playCount) > 0), most = Math.max(1, ...rows.map(a => Number(a.playCount)));
-          return { type: 'ranked' as const, title: 'Most played', icon: 'play', href: web, source, empty: 'Nothing played yet',
+          const rows = (await albums('frequent', 10)).filter(a => Number(a.playCount) > 0), most = Math.max(1, ...rows.map(a => Number(a.playCount)));
+          return { type: 'ranked' as const, title: 'Most played', icon: 'play', href: web, source, aspect: 'square' as const, empty: 'Nothing played yet',
             items: rows.map(a => ({ title: a.name, subtitle: artist(a), value: `${a.playCount} play${Number(a.playCount) === 1 ? '' : 's'}`, image: cover(a.coverArt ?? a.id), pct: Number(a.playCount) / most, href: albumLink(a.id) })) };
         },
       },

@@ -87,7 +87,7 @@ function gallery(card: Card, view: View): Card | undefined {
     return seen.length ? { ...base, type: 'photos', style: view, items: seen } : undefined;
   }
   const was = card.type === 'shelf' ? card : undefined, archived = card.type === 'article' ? card.archived : undefined;
-  const aspect = was?.aspect ?? (card.type === 'photos' || card.type === 'article' ? 'wide' : undefined);
+  const aspect = was?.aspect ?? (card.type === 'ranked' ? card.aspect : card.type === 'photos' || card.type === 'article' ? 'wide' : undefined);
   return { ...base, ...(archived && { archived }), ...was, type: 'shelf', layout: view === 'row' ? undefined : view as ShelfCard['layout'], aspect, items } as ShelfCard;
 }
 

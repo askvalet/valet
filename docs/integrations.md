@@ -168,7 +168,7 @@ can still draw it another way with a widget's [`view`](configuration.md#layout).
 | `media` | what's playing or downloading | full-bleed artwork; `tags`, progress, time left |
 | `shelf` | a row of artwork | `aspect` poster/square/wide; `stack: true` piles them up (documents, photos); `layout` is `row`, `spotlight`, `focus`, `coverflow`, `masonry`, `cards`, `desk`, `windows`, `tickets` or `week` |
 | `photos` | photos to look at | `style`: `flashback` crossfades, `mosaic` (or size large) tiles them, `album` is a carousel of large photos, each at its own shape, the one you're on captioned and counted; `masonry` is a wall that scrolls sideways |
-| `ranked` | who or what comes top | the leader gets its artwork, the rest a bar |
+| `ranked` | who or what comes top | the leader gets its artwork, the rest a bar; `aspect: square` keeps album covers square, as rows and in any gallery view |
 | `race` | titles overtaking each other, each bar in its poster's colour | `steps`, and each item's `points` as running totals (and an `image` for its poster) |
 | `heatmap` | a year of days | `from`, and a count per day in `days` |
 | `article` | one thing to read | the page behind it and a few lines; `more` is the pile to step through |

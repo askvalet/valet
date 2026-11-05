@@ -193,6 +193,8 @@ test('navidrome: every widget validates, now playing has its position, and reque
   const top: any = await n.widgets.top.fetch();
   assert.deepEqual(top.items.map((i: any) => i.value), ['40 plays', '10 plays'], 'an album never played is not "most played"');
   assert.equal(top.items[0].href, 'http://nd:4533/app/#/album/al2/show');
+  assert.equal(top.aspect, 'square', 'album covers stay square, as rows and in any gallery');
+  assert.ok(ctx.calls.some(c => c.url.includes('type=frequent') && c.url.includes('size=10')), 'enough albums for a gallery view');
   const again: any = await n.widgets.rediscover.fetch();
   assert.equal(again.items.length, 1);
   await n.widgets.rediscover.fetch();

@@ -355,5 +355,77 @@
       "licence": "CC BY 2.0",
       "author": "Ella Olsson from Stockholm, Sweden"
     }
+  ],
+  "music": [
+    {
+      "title": "Open Goldberg Variations",
+      "artist": "Kimiko Ishizaka",
+      "year": 2012,
+      "plays": 64,
+      "cover": "/api/image/lab?ref=cover-eb99a166c81c"
+    },
+    {
+      "title": "Brat",
+      "artist": "Charli XCX",
+      "year": 2024,
+      "plays": 52,
+      "cover": "/api/image/lab?ref=cover-54405b145e13"
+    },
+    {
+      "title": "Third",
+      "artist": "Portishead",
+      "year": 2008,
+      "plays": 41,
+      "cover": "/api/image/lab?ref=cover-e069f8d36b30"
+    },
+    {
+      "title": "Pink",
+      "artist": "Boris",
+      "year": 2005,
+      "plays": 36,
+      "cover": "/api/image/lab?ref=cover-3012758df2a4"
+    },
+    {
+      "title": "Out of It",
+      "artist": "Brad Sucks",
+      "year": 2012,
+      "plays": 31,
+      "cover": "/api/image/lab?ref=cover-54197e4d5563"
+    },
+    {
+      "title": "Do You Know Squarepusher",
+      "artist": "Squarepusher",
+      "year": 2002,
+      "plays": 27,
+      "cover": "/api/image/lab?ref=cover-a66eac7a6f2a"
+    },
+    {
+      "title": "Wobble",
+      "artist": "Black Market Karma",
+      "year": 2024,
+      "plays": 23,
+      "cover": "/api/image/lab?ref=cover-f4a6312c20fd"
+    },
+    {
+      "title": "The Take Off and Landing of Everything",
+      "artist": "Elbow",
+      "year": 2014,
+      "plays": 22,
+      "cover": "/api/image/lab?ref=cover-2b65dba24364"
+    },
+    {
+      "title": "A Tramp Shining",
+      "artist": "Richard Harris",
+      "year": 1968,
+      "plays": 19,
+      "cover": "/api/image/lab?ref=cover-925e4b400aa4"
+    },
+    {
+      "title": "All Our Gods Have Abandoned Us",
+      "artist": "Architects",
+      "year": 2016,
+      "plays": 15,
+      "cover": "/api/image/lab?ref=cover-6a1fb7a9cd99"
+    }
   ]
 }
