@@ -847,10 +847,8 @@ function Columns({ card }: { card: ChartCard }) {
   const sum = (s: ChartCard['series'][number]) => s.total ?? s.points.reduce((a, b) => a + b, 0), whole = tops.reduce((a, b) => a + b, 0), spot = at != null ? (at + .5) / n : 0;
   return (
     <div className="chart-body">
-      <div className="mb-3 flex items-baseline gap-2">
-        <span className="metric text-metric-m leading-none"><Metric value={card.headline ?? written(whole)} /></span>
-        <span className="min-w-0 truncate text-meta text-muted-foreground">{card.span}</span>
-      </div>
+      {/* the headline rides the title row's right end, as the race's and the year of days' do, so the columns start at the top */}
+      <HeadActions><span className="flex items-baseline gap-1.5 pr-2">{card.span && <span className="text-meta text-muted-foreground">{card.span}</span>}<span className="text-item font-medium tabular"><Metric value={card.headline ?? written(whole)} /></span></span></HeadActions>
       <div className="columns-chart" onPointerLeave={() => setAt(null)}>
         {card.style === 'stream' ? <Stream card={card} at={at} onAt={setAt} /> : tops.map((t, i) => (
           <div key={i} className={cn('col', at === i && 'is-at')} onPointerEnter={() => setAt(i)}>

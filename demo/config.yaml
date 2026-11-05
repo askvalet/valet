@@ -128,7 +128,7 @@ layout:
     columns: 1
     widgets: [lab.calendar]   # the month and the day beside it, the full width
   # the overview, under Services: the house, the desktop and the calendar a third each, then
-  # what's playing, downloading and new a third each, then Immich beside the reading pile and the tiles
+  # what's playing, On this day and the reading a third each, then downloads, what's new and the tiles
   - heading: false
     columns: { phone: 1, tablet: 2, desktop: 3, wide: 3 }
     widgets:
@@ -137,11 +137,11 @@ layout:
       - lab.calendar
   - heading: false
     columns: { phone: 1, tablet: 1, desktop: 3, wide: 3 }
-    widgets: [lab.streams, lab.downloads, { widget: lab.reading, view: cards }]
+    widgets: [lab.streams, lab.photos, { widget: lab.reading, view: row }]   # the reading pile as a plain row of pages that snap
   - heading: false
     columns: { phone: 2, tablet: 4, desktop: 6, wide: 6 }
     widgets:
-      - { widget: lab.photos, size: tall }
+      - { widget: lab.downloads, size: tall }
       - { widget: lab.recent, size: tall, view: focus }
       - { widget: lab.dns, size: small }
       - { widget: lab.uptime, size: small }
