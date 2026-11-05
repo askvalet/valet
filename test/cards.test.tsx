@@ -370,7 +370,7 @@ test('focus: one large in the middle, opening near the middle on something with 
   assert.equal(openAt(items), 1, 'the middle has no picture, so the nearest that has one');
   assert.equal(openAt(items.map(i => ({ ...i, image: '/a.jpg' }))), 2);
   const out = html({ type: 'shelf', layout: 'focus', title: 'Recent', aspect: 'poster', items });
-  assert.match(out, /class="focus is-poster"/); assert.match(out, /class="focus-track"/); assert.match(out, /blossom-carousel="true"/);
+  assert.match(out, /class="focus is-poster"/); assert.match(out, /class="carousel focus-track"/); assert.match(out, /blossom-carousel="true"/);
   assert.equal(out.match(/class="focus-slide"/g)?.length, 5);
   assert.match(out, /aria-label="Next in Recent"/); assert.match(out, /aria-label="T0, 2020"/);
   assert.doesNotMatch(out, /cover-/);
@@ -380,7 +380,7 @@ test('focus: one large in the middle, opening near the middle on something with 
 test('cover flow: its own 3D carousel, a real list in a Blossom scroller, with Prev and Next', () => {
   const items = Array.from({ length: 6 }, (_, i) => ({ title: `G${i}`, subtitle: 'SNES', image: `/g/${i}.jpg`, href: i % 2 ? `http://x/${i}` : undefined }));
   const out = html({ type: 'shelf', layout: 'coverflow', title: 'Games', aspect: 'square', items });
-  assert.match(out, /class="cover is-square"/); assert.match(out, /class="cover-track"/); assert.match(out, /blossom-carousel="true"/);
+  assert.match(out, /class="cover is-square"/); assert.match(out, /class="carousel cover-track"/); assert.match(out, /blossom-carousel="true"/);
   assert.match(out, /<ul class="cover-list">/); assert.equal(out.match(/class="cover-slide"/g)?.length, 6);
   assert.match(out, /aria-label="Previous in Games"/); assert.match(out, /aria-label="Next in Games"/);
   assert.match(out, /aria-label="G1, SNES"/); assert.match(out, /aria-roledescription="slide" aria-label="G0, SNES"/);
@@ -399,7 +399,7 @@ test('masonry: any pictures as a wall that scrolls sideways, shelf or photos', (
 
 test('cards: a stack to deal through; documents keep their sender and date, saved pages keep archive', () => {
   const docs = html({ type: 'shelf', layout: 'cards', title: 'Documents', aspect: 'poster', items: [{ title: 'Bill', subtitle: 'City Power · Sep 2', image: '/d.jpg', href: 'http://x/d', doc: { type: 'Invoice' } }, { title: 'Letter', subtitle: 'Bank · Sep 1' }] });
-  assert.match(docs, /class="deck-track"/); assert.equal(docs.match(/class="deck-slide"/g)?.length, 2);
+  assert.match(docs, /class="carousel deck-track"/); assert.equal(docs.match(/class="deck-slide"/g)?.length, 2);
   assert.match(docs, />Invoice</); assert.match(docs, /City Power · Sep 2/); assert.match(docs, /aria-label="Next in Documents"/);
   assert.doesNotMatch(docs, /Archive Bill/, 'nothing to archive without a way to run it');
   const saved = html({ type: 'shelf', layout: 'cards', title: 'Saved', aspect: 'wide', archived: '/archive', items: [{ id: 'a', title: 'A page', href: 'http://x/a' }] }, { run: true });

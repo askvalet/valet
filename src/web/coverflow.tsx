@@ -3,12 +3,11 @@
 // browser's own scrolling and snapping, thrown with momentum on a mouse. The turn comes from where each one sits, through a
 // CSS scroll-driven animation, so nothing is written per frame; a browser without it, or a page asked to hold still, shows
 // a plain row. The middle one's colours light the space behind it, and that's the only part that re-renders as it moves.
-import { BlossomCarousel } from '@blossom-carousel/react';
-import { memo, useId, useLayoutEffect, type MouseEvent, type ReactNode } from 'react';
+import { memo, useId, type MouseEvent, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import type { ShelfCard } from '../shared/cards.ts';
-import { centre, RowArrows } from './feel.tsx';
-import { Glow, oneByOne, openAt } from './focus.tsx';
+import { oneByOne, Row, RowArrows } from './feel.tsx';
+import { Glow, openAt } from './focus.tsx';
 import './coverflow.css';
 
 export function CoverFlow({ card, header }: { card: ShelfCard; header?: ReactNode }) {
@@ -27,10 +26,9 @@ export function CoverFlow({ card, header }: { card: ShelfCard; header?: ReactNod
 /** The covers themselves, which a live update bringing the same things back leaves alone. */
 const Covers = memo(function Covers({ id, card }: { id: string; card: ShelfCard }) {
   const items = card.items;
-  useLayoutEffect(() => { const r = document.getElementById(id); if (r) centre(r, openAt(items), 'instant'); }, [id]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const linked = items.some(it => it.href), { key, tap } = oneByOne(id);
+  const linked = items.some(it => it.href), { tap } = oneByOne(id);
   return (
-    <BlossomCarousel id={id} className="cover-track" role="group" aria-roledescription="carousel" aria-label={card.title} tabIndex={linked ? undefined : 0} onKeyDown={key}>
+    <Row id={id} one start={openAt(items)} className="cover-track" role="group" aria-roledescription="carousel" aria-label={card.title} tabIndex={linked ? undefined : 0}>
       <ul className="cover-list">
         {items.map((it, i) => {
           const Turn = it.href ? 'a' : 'div', name = `${it.title}${it.subtitle ? `, ${it.subtitle}` : ''}`;
@@ -47,6 +45,6 @@ const Covers = memo(function Covers({ id, card }: { id: string; card: ShelfCard 
           );
         })}
       </ul>
-    </BlossomCarousel>
+    </Row>
   );
 }, (a, b) => a.id === b.id && (a.card === b.card || (a.card.title === b.card.title && a.card.aspect === b.card.aspect && JSON.stringify(a.card.items) === JSON.stringify(b.card.items))));

@@ -2,10 +2,11 @@
 // snapshot refreshes about once a second if not, and both rest when the tab is hidden or the card has scrolled away. An
 // event opens as its own picture, never as the live view; a card that says `sample` plays recordings and never says LIVE.
 import { Expand, X } from 'lucide-react';
-import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react';
+import { memo, useCallback, useEffect, useId, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import type { Camera, CameraEvent, CamerasCard, Detection } from '../shared/cards.ts';
+import { Row, RowArrows } from './feel.tsx';
 import './cameras.css';
 
 type Box = [number, number, number, number];
@@ -147,18 +148,23 @@ function Pills({ cameras, at, pick, row }: { cameras: Camera[]; at: string; pick
   );
 }
 
-function Events({ events, cameras, open, at }: { events: CameraEvent[]; cameras: Camera[]; open: (e: CameraEvent) => void; at: CameraEvent | null }) {
+/** What they've noticed: a row like any other, which a live update bringing the same events back leaves alone. */
+const Events = memo(function Events({ events, cameras, open, at }: { events: CameraEvent[]; cameras: Camera[]; open: (e: CameraEvent) => void; at: CameraEvent | null }) {
+  const id = useId();
   return (
-    <div className="cam-events no-scrollbar">
-      {events.map((e, i) => (
-        <button key={e.id ?? `${e.camera}${e.at}${i}`} onClick={() => open(e)} aria-pressed={!!at && at.camera === e.camera && at.at === e.at} className="cam-event press">
-          {e.image && <img src={e.image} alt="" loading="lazy" />}
-          <span className="min-w-0"><b>{e.label}</b><small>{cameras.find(c => c.id === e.camera)?.name ?? e.camera} · {clockTime(e.at)}</small></span>
-        </button>
-      ))}
+    <div className="cam-events-bar">
+      <Row id={id} role="group" aria-roledescription="carousel" aria-label="Events" className="cam-events">
+        {events.map((e, i) => (
+          <button key={e.id ?? `${e.camera}${e.at}${i}`} data-blossom-slide onClick={() => open(e)} aria-pressed={!!at && at.camera === e.camera && at.at === e.at} className="cam-event press">
+            {e.image && <img src={e.image} alt="" draggable={false} loading="lazy" />}
+            <span className="min-w-0"><b>{e.label}</b><small>{cameras.find(c => c.id === e.camera)?.name ?? e.camera} · {clockTime(e.at)}</small></span>
+          </button>
+        ))}
+      </Row>
+      <RowArrows id={id} label="events" className="hidden sm:flex" />
     </div>
   );
-}
+}, (a, b) => a.open === b.open && a.at === b.at && JSON.stringify(a.events) === JSON.stringify(b.events) && a.cameras.map(c => c.id + c.name).join() === b.cameras.map(c => c.id + c.name).join());
 
 /** What a camera saw, as a picture of that moment: when, what, and the way to the camera as it is now. */
 export function EventStill({ event, cam, sample, live }: { event: CameraEvent; cam?: Camera; sample?: boolean; live: () => void }) {
@@ -206,6 +212,7 @@ export function Cameras({ card }: { card: CamerasCard }) {
   const [at, setAt] = useState(card.cameras[0]?.id ?? ''), [full, setFull] = useState(false), [still, setStill] = useState<CameraEvent | null>(null);
   const cam = card.cameras.find(c => c.id === at) ?? card.cameras[0], many = card.cameras.length > 1;
   const pick = (id: string) => { setAt(id); setStill(null); };
+  const openEvent = useCallback((e: CameraEvent) => { setAt(e.camera); setStill(e); }, []);
   if (!cam) return <p className="py-6 text-center text-sm text-muted-foreground">{card.empty ?? 'No cameras'}</p>;
   return (
     <div className="cam-card @container">
@@ -214,7 +221,7 @@ export function Cameras({ card }: { card: CamerasCard }) {
           : <Feed key={cam.id} cam={cam} refresh={card.refresh} on={!full} open={() => setFull(true)} sample={card.sample} />}
         {many && <Pills cameras={card.cameras} at={cam.id} pick={pick} />}
       </div>
-      {!!card.events?.length && <Events events={card.events} cameras={card.cameras} at={still} open={e => { setAt(e.camera); setStill(e); }} />}
+      {!!card.events?.length && <Events events={card.events} cameras={card.cameras} at={still} open={openEvent} />}
       {full && <Theatre card={card} at={cam.id} pick={pick} close={() => setFull(false)} />}
     </div>
   );

@@ -552,7 +552,7 @@
 @media (hover: hover) and (pointer: fine) { .article:hover .article-page { transform: translateY(min(0px, max(-60%, calc(-100% + 100cqh))));   /* down the page, and only if there's more of it */ transition-duration: 14s; transition-timing-function: linear; } }
 
 /* documents on a desk: hover picks a page up */
-.desk { display: flex; justify-content: space-between; gap: 0; padding: 20px 10px 6px; overflow-x: auto; scrollbar-width: none; }
+.desk { display: flex; justify-content: space-between; gap: 0; padding: 20px 10px 6px; }
 .desk-page { position: relative; flex: 1 1 0; max-width: 200px; min-width: 104px; margin-inline: 2px; padding-inline: 4px; transform: rotate(var(--tilt)); transition: transform var(--dur-move) var(--ease-out); }
 .desk-sheet { position: relative; display: block; aspect-ratio: 8.5 / 11; overflow: hidden; border-radius: 6px; background: #fbfaf6; box-shadow: 0 1px 1px rgb(0 0 0 / .3), 0 14px 26px -12px rgb(0 0 0 / .65); transition: box-shadow var(--dur-move) var(--ease-out); }
 .desk-stamp { position: absolute; right: 10px; bottom: 12px; rotate: -9deg; padding: 1px 8px; border: 1.5px solid currentColor; border-radius: 4px; color: #c2352b; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }

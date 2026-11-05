@@ -149,10 +149,14 @@ https://askvalet.dev.
   motion needs nothing, and hover or press movement scales by `--move`. `stage.css` and `pc-case.css` keep their own
   media rule because they ship with the exported model.
 - **Feel lives in `feel.tsx`** (rewritten from Arc UI's free MIT items; nothing is imported, and the Pro items are unlicensed
-  here). `Row` + `RowArrows` (same `id`): every row of artwork is a Blossom Carousel, a native scroller with CSS snapping, so
-  touch keeps the phone's momentum and vertical scroll and a mouse can throw it; slides carry `data-blossom-slide`, the
-  arrows are the only part that hears it move, and the slides sit in a `memo` so a live update doesn't redraw them.
-  `focus.tsx` is the `focus` view (`coverflow` is its old name): sizes come from a scroll-driven animation; `Pile`: the reading card;
+  here). `Row` + `RowArrows` (same `id`): every carousel is a `Row`, never `BlossomCarousel` or an `overflow-x` box of its own. It's a
+  Blossom Carousel, a native scroller with CSS snapping, so touch keeps the phone's momentum and vertical scroll and a mouse can throw
+  it; `one` makes it move one slide at a time (slides call `oneByOne(id).tap`) and `start` is where it opens. Slides carry
+  `data-blossom-slide`, the arrows are the only part that hears it move, and the slides sit in a `memo` so a live update doesn't
+  redraw them. A view with its own edges (`deck-track`) sets `mask-image: none`. Not carousels, so not `Row`: tab and chip strips
+  (camera pills, suggestion chips, the phone dock), timed slideshows that change in place (flashback, the recap, the wall), and
+  fixed layouts (album, mosaic, windows).
+  `focus.tsx` is the `focus` view, `coverflow.tsx` the 3D cover flow: sizes come from a scroll-driven animation; `Pile`: the reading card;
   `ElasticSlider`: Radix's slider with give at the ends; `Counter`: every number that changes, still on first paint and
   faster than 1.5 s (`flap` makes it a departures board, for a countdown); `useRows` + `RowSlot`: a list whose rows come and go, never
   on first paint or when the whole list is another list; `Tick`: draws itself only for what was seen unfinished; `toast(key, note)`: the page's stack, only for what piles up or a note whose place is out of view, with
