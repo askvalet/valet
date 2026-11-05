@@ -78,14 +78,15 @@ layout:
   - tab: Services
     heading: false
     overview: false
+    columns: { phone: 2, tablet: 6, desktop: 6 }   # six tracks from tablet up, so both blocks keep their shape at 900
     widgets:
-      - { widget: lab.dns, size: large }
+      # two blocks that end flush: Pi-hole beside drives over the server, then containers over updates beside backups
+      - { widget: lab.dns, size: large, rows: 2 }
       - { widget: lab.drives, size: medium }
-      - { widget: lab.containers, size: large }
-      - { widget: lab.updates, size: tall }
-      - { widget: lab.jobs, size: medium }
-      - { widget: valet.backups, size: medium }
       - { widget: lab.system, size: medium }
+      - { widget: lab.containers, size: large }
+      - { widget: valet.backups, size: medium, rows: 2 }
+      - { widget: lab.updates, size: large }
   - title: AI
     display: tiles
     overview: false

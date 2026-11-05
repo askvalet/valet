@@ -610,7 +610,7 @@ function Home({ account }: { account: boolean }) {
               : (
                 (() => {
                   const keys = sec.widgets.filter(key => state[key] ? !isEmpty(state[key].card) : !shapeOf(key)?.empty);
-                  const widget = (key: string, large = false, fill = false, dense = false) => {
+                  const widget = (key: string, large = false, fill: boolean | 'always' = false, dense = false) => {
                     const s = state[key], o = sec.looks?.[key], card = dress(asView(view === 'all' ? favorites(s?.card, sec.favorites) : s?.card, o?.view), o);
                     const body = <Shaped key={key} id={key} card={s?.card}><Widget large={large} fill={fill} card={card} kind={shapeOf(key)?.t} failed={s?.error} title={o?.title ?? page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={dense || sec.variant === 'minimal' || (phone && view === 'all')} headless={o?.header === false || (o?.header !== true && sec.header === false)}
                       status={s?.error ? <span className="truncate text-meta text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
@@ -630,7 +630,7 @@ function Home({ account }: { account: boolean }) {
                         const [cols, rows] = SPANS[size ?? 'medium'], own = sized[size ?? 'medium'];
                         const spans = (own || sec.grid) ? { gridColumn: `span min(${own?.cols ?? cols}, var(--tracks))`, gridRow: `span ${o?.rows ?? own?.rows ?? rows}` } : o?.rows ? { gridRow: `span ${o.rows}` } : undefined;
                         if ((size === 'small' || size === 'wide') && c?.summary) return <div key={key} className={cn('min-w-0', !spans?.gridColumn && span, o?.style && 'card-look')} style={{ ...spans, ...o?.style }}><SummaryTile s={c.summary} href={c.href} /></div>;
-                        return <div key={key} style={spans} className={cn('min-w-0', !spans?.gridColumn && (size === 'small' ? 'col-span-2' : span))}>{widget(key, size === 'large', true)}</div>;
+                        return <div key={key} style={spans} className={cn('min-w-0', !spans?.gridColumn && (size === 'small' ? 'col-span-2' : span))}>{widget(key, size === 'large', 'always')}</div>;
                       })}
                     </div>
                   );

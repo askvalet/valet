@@ -1373,8 +1373,9 @@ export function Shell({ className, tight, children, ...props }: React.ComponentP
  *  their own height and the row lines up their tops. Everything else fills the height its row gives it. */
 const KEEPS_HEIGHT = new Set<string>(['list', 'status', 'links', 'code', 'ranked', 'table', 'controls', 'kv', 'text']);
 
-function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, fill: stretch, kind, failed }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; fill?: boolean; kind?: string; failed?: string }) {
-  const fill = stretch && !(card && KEEPS_HEIGHT.has(card.type));
+function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, fill: stretch, kind, failed }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; fill?: boolean | 'always'; kind?: string; failed?: string }) {
+  // 'always': a bento places cards in blocks that end flush, so even a list takes its cell's height (its foot stays inside the glass)
+  const fill = stretch === 'always' || (!!stretch && !(card && KEEPS_HEIGHT.has(card.type)));
   const fade = useRef(card ? '' : 'fade-in-soft').current;   // up from its skeleton; a tab you come back to is already there
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   // a group is a set of cards, not a card: it has no glass of its own
