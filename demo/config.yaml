@@ -97,37 +97,40 @@ layout:
     overview: false
     chat: true
     widgets: [lab.ai]
+  # Home: the cameras half the width over two rows; beside them the thermostat and the weather, then the energy and the
+  # doors; then the house, the desktop and the pages being watched a third each; then the week's meals beside the daylight
   - title: Home
     icon: home
     heading: false
     overview: false
+    columns: { phone: 1, tablet: 2, desktop: 4, wide: 4 }
     widgets:
-      - { widget: lab.cameras, size: large, rows: 2 }
-      - { widget: lab.thermostat, size: medium }
-      - { widget: lab.weather, size: medium }
+      - { widget: lab.cameras, cols: 2, rows: 2 }
+      - lab.thermostat
+      - lab.weather
+      - lab.energy   # Home Assistant's energy sensors
+      - lab.doors    # Home Assistant: the lock, the garage door, the washer
   - tab: Home
     heading: false
     overview: false
-    columns: 2
-    header: false
-    widgets: [lab.home, lab.pc]
+    columns: { phone: 1, tablet: 2, desktop: 3, wide: 3 }
+    widgets:
+      - { widget: lab.home, header: false }
+      - { widget: lab.pc, header: false }
+      - lab.watching   # changedetection.io: prices and stock
   - tab: Home
     heading: false
     overview: false
-    columns: 1
-    widgets: [lab.mealie]   # this week's meals from Mealie, the full width under the house
+    columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }
+    widgets:
+      - { widget: lab.mealie, cols: 2 }   # this week's meals from Mealie
+      - lab.sky   # Home Assistant's sun times, as the sky over the day
   - title: Now
     heading: false
     tab: Media
     overview: false
     columns: 2
     widgets: [lab.streams, lab.downloads]
-  - tab: Home
-    heading: false
-    header: false
-    overview: false
-    columns: 1
-    widgets: [lab.calendar]   # the month and the day beside it, the full width
   # the overview, under Services: the house, the desktop and the calendar a third each, then
   # Pi-hole beside the drives, then what's playing over the downloads beside On this day, then the reading and what's new
   - heading: false
@@ -155,28 +158,31 @@ layout:
     heading: false
     columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }
     widgets:
-      # the race two thirds beside the albums; what's new beside the year of viewing; the games across the foot
+      # the race two thirds beside the albums; the year of viewing; the games beside what's new
       - { widget: lab.race, cols: 2 }
       - { widget: lab.top, view: coverflow }   # Navidrome's most played albums, as covers to flip through
-      - { widget: lab.recent, view: focus }
-      - { widget: lab.viewing, cols: 2 }
   - tab: Media
     overview: false
     heading: false
     columns: 1
-    widgets: [{ widget: lab.games, view: coverflow }]   # a showcase the full width
+    widgets: [lab.viewing]   # the year of viewing the full width
+  - tab: Media
+    overview: false
+    heading: false
+    columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }
+    widgets: [{ widget: lab.games, view: coverflow, cols: 2 }, { widget: lab.recent, view: focus }]   # the games as a showcase beside what's new
+  # Library: the album two thirds beside the books; the papers, the reading and Hacker News a third each; the feeds
+  # beside a week of listening
   - title: Library
     icon: file   # a sheet of paper in the nav
-    columns: 2
     overview: false
-    widgets: [lab.album, lab.books]   # side by side, half the width each
-  - title: Reading
-    tab: Library
-    overview: false
-    columns: 2
-    widgets: [lab.docs, { widget: lab.reading, view: cards }]   # two stacks of cards to deal through, half the width each
-  - tab: Library
     heading: false
-    overview: false
-    columns: 2
-    widgets: [lab.news, lab.feeds]
+    columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }
+    widgets:
+      - { widget: lab.album, cols: 2 }
+      - lab.books
+      - lab.docs
+      - { widget: lab.reading, view: cards }
+      - lab.news
+      - lab.feeds
+      - { widget: lab.listening, cols: 2 }   # Audiobookshelf: minutes a day
