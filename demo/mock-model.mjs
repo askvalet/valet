@@ -160,4 +160,4 @@ const server = createServer((req, res) => {
     res.end();
   });
 });
-if (process.argv[1]?.endsWith('mock-model.mjs')) { const port = Number(process.env.PORT) || 8080; server.listen(port, () => console.log(`scripted model on :${port}`)); }
+if (process.argv[1]?.endsWith('mock-model.mjs')) { const port = Number(process.env.MOCK_PORT) || 8080; server.listen(port, () => console.log(`scripted model on :${port}`)); }
