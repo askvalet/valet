@@ -58,33 +58,29 @@ function Story({ a, when }: { a: Live; when?: ReturnType<typeof counted> }) {
 /** A meeting: what and when on top, how close it is, then one big Join. The link's address is on the button's tooltip. */
 function Meeting({ a, when }: { a: Live; when?: ReturnType<typeof counted> }) {
   const [time, ...rest] = (a.subtitle ?? '').split(' · '), who = rest.join(' · ').replace(/^with /, '');
-  const live = !!when && when.text.startsWith('Now'), left = live ? when!.text.replace(/^Now · /, '') : '';
-  // people as initials, quiet and alike: "Alex Chen, Priya Shah +1" → AC, PS, +1
+  const live = !!when && when.text.startsWith('Now');
+  const status = live ? when!.text.replace(/ min left$/, 'm left') : when?.text.replace(/^in /, 'In ') ?? a.trailing;
+  // people as small initials beside their names, all on the time's line: "Alex Chen, Priya Shah +1" → AC, PS, +1
   const extra = who.match(/\s*\+(\d+)$/), names = who.replace(/\s*\+\d+$/, '').split(/,\s*/).filter(Boolean), more = extra ? `+${extra[1]}` : undefined;
   const initials = (n: string) => n.split(/\s+/).map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
   return (
-    <div className="grid gap-3 p-4">
-      <div className="flex items-baseline justify-between gap-3 text-[13px] tabular">
-        <span className="font-semibold" style={{ color: MEETING }}>{live ? 'Now' : when?.text.replace(/^in /, 'In ') ?? a.trailing}</span>
-        {time && <span className="text-muted-foreground">{time}</span>}
+    <div className="grid gap-2.5 p-3.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="min-w-0 truncate text-[16px] font-semibold">{a.title}</span>
+        {status && <span className="shrink-0 text-[13px] font-semibold tabular" style={{ color: MEETING }}>{status}</span>}
       </div>
-      <div className="-mt-1 text-[18px] leading-snug font-semibold text-balance">{a.title}</div>
-      {names.length > 0 && (
-        <div className="flex min-w-0 items-center gap-2.5">
-          <div className="flex shrink-0 -space-x-1">
+      <div className="-mt-1.5 flex min-w-0 items-center gap-2 text-[13px] text-muted-foreground">
+        {time && <span className="shrink-0 tabular">{time}</span>}
+        {names.length > 0 && <>
+          <span className="flex shrink-0 -space-x-0.5" aria-hidden>
             {[...names.slice(0, 3).map(initials), ...(more ? [more] : [])].map((t, i) => (
-              <span key={i} className="grid size-7 place-items-center rounded-full bg-[color-mix(in_srgb,var(--foreground)_14%,var(--popover))] text-[10px] font-semibold text-foreground/85 ring-2 ring-[var(--popover)]">{t}</span>
+              <span key={i} className="grid size-5 place-items-center rounded-full bg-[color-mix(in_srgb,var(--foreground)_14%,var(--popover))] text-[8.5px] font-semibold text-foreground/85 ring-[1.5px] ring-[var(--popover)]">{t}</span>
             ))}
-          </div>
-          <span className="line-clamp-2 min-w-0 text-[13px] leading-snug text-muted-foreground">{names.join(', ')}{more ? ` and ${more.slice(1)} more` : ''}</span>
-        </div>
-      )}
-      {live && when?.pct != null && (
-        <div className="grid gap-1.5">
-          <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10"><div className="h-full rounded-full transition-transform duration-(--dur-move) ease-out" style={{ background: MEETING, transform: `translateX(${Math.round(when.pct * 100) - 100}%)` }} /></div>
-          <span className="justify-self-end text-[12px] text-muted-foreground tabular">{left}</span>
-        </div>
-      )}
+          </span>
+          <span className="min-w-0 truncate">{names.join(', ')}{more ? ` ${more}` : ''}</span>
+        </>}
+      </div>
+      {live && when?.pct != null && <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10"><div className="h-full rounded-full transition-transform duration-(--dur-move) ease-out" style={{ background: MEETING, transform: `translateX(${Math.round(when.pct * 100) - 100}%)` }} /></div>}
       {(a.count ?? 0) > 1 && when && <div className="-mt-1 text-[12px] text-muted-foreground">{a.count! - 1} more at the same time</div>}
       <LinkButton link={{ ...a.link!, label: a.link!.note ? `Join ${a.link!.note}` : a.link!.label }} big />
     </div>

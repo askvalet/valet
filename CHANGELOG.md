@@ -17,7 +17,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 ### Changed
 
 - The context meter's hint past three quarters says Valet summarises the oldest messages by itself; a new chat is optional.
-- A meeting's popover is plainer: "In 4 min" or "Now" and the time on top, the title, who's in it as initials, a progress bar only while it's on, and one button that names the service ("Join Google Meet"). No icon tile.
+- A meeting's popover is plainer and compact: the title with "In 4 min" or "Now · 20m left" beside it, the time, small initials and names on one line, a progress bar only while it's on, and one button that names the service ("Join Google Meet"). No icon tile.
 - The race card has more presence: thicker rounded bars on a faint track, each in its poster's colour (the leader's the strongest; posters without much colour keep grey bars and the accent leader), larger posters and bolder names. Its timeline is a proper scrubber that fills as the year plays, with a clear play and pause button, and the arrow keys step a month at a time (Home and End jump to the ends).
 - The chat's header is one line: the assistant's name, then the model and its context meter, whose place is kept so nothing moves when the numbers arrive.
 - The context meter knows a local model's window by itself when its server's model list says it (`max_model_len`, `context_length`, as vLLM and llama.cpp do), so `assistant.contextWindow` is only needed when it doesn't.
