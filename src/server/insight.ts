@@ -3,7 +3,7 @@
 // asking; a single problem, or nothing wrong, never reaches it.
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { stateOf, type Card, type WidgetState } from '../shared/cards.ts';
+import { sameTrouble, stateOf, type Card, type WidgetState } from '../shared/cards.ts';
 import type { Ask } from './brain.ts';
 import { sandbox } from './sandbox.ts';
 
@@ -13,11 +13,11 @@ export interface Trouble { id: string; name: string; text: string }
 
 /** Everything that's actually wrong right now, by name. Things marked quiet (often off on purpose) don't count. */
 export function troubles(states: WidgetState[]): Trouble[] {
-  const out: Trouble[] = [];
+  const out: Trouble[] = [], known = sameTrouble(states);
   for (const s of states) {
     if (s.key === 'valet.activity') continue;   // a log: an action that failed earlier isn't something wrong now
     const c = s.card, title = clip(c?.title ?? s.key, 40);
-    if (s.error) out.push({ id: `${s.key}:error`, name: title, text: `${title} can't be reached: ${clip(s.error)}` });
+    if (s.error && !known(s)) out.push({ id: `${s.key}:error`, name: title, text: `${title} can't be reached: ${clip(s.error)}` });
     if (c?.type === 'status') for (const i of c.items) if (!i.ok && !i.quiet) out.push({ id: `${s.key}:${i.name}`, name: i.name, text: `${i.name} is ${stateOf(i) === 'degraded' ? 'unhealthy' : 'down'}${i.detail ? ` (${clip(i.detail, 60)})` : ''}` });
     if (c?.type === 'list') for (const i of c.items) if (i.tone === 'bad') out.push({ id: `${s.key}:${i.title}`, name: clip(i.title, 40), text: `${title}: ${clip(i.title, 60)} ${clip(i.meta ?? i.subtitle, 40)}` });
     if (c?.type === 'stats') for (const i of c.items) if (i.tone === 'bad') out.push({ id: `${s.key}:${i.label}`, name: i.label, text: `${title}: ${i.label} is ${i.value}${i.unit ?? ''}` });

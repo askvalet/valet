@@ -1,7 +1,7 @@
 // How the page writes times, dates, numbers and its own words, as `format:` and `labels:` say. A module rather than
 // React context, so a renderer swaps one call and needs nothing passed down; it's set before the page first draws, and
 // a config reload redraws every card anyway.
-import { stateOf, type Card, type StatusCard, type WidgetState } from '../shared/cards.ts';
+import { sameTrouble, stateOf, type Card, type StatusCard, type WidgetState } from '../shared/cards.ts';
 import { LABELS, type Labels } from '../shared/labels.ts';
 import * as w from '../shared/format.ts';
 
@@ -68,7 +68,7 @@ export function sayHow(states: WidgetState[]) {
   const stuck = getting.filter(g => /(^|\s)0 B\/s/.test(g.card.note ?? '') && !g.card.buttons?.some(b => /^resume/i.test(b.label)));
   const nStuck = stuck.reduce((n, g) => n + g.items.length, 0);
   if (nStuck) problems.push({ id: 'downloads', text: nStuck === 1 ? 'A download is stalled' : `${nStuck} downloads are stalled`, why: nStuck === 1 ? 'Why is my download stalled?' : 'Why are my downloads stalled?' });
-  const broken = states.filter(s => s.error);
+  const known = sameTrouble(states), broken = states.filter(s => s.error && !known(s));   // Mealie down and its meal plan stale is one thing
   if (broken.length) problems.push({ id: 'widgets', text: `${broken.length} widget${broken.length > 1 ? 's' : ''} can't reach ${broken.length > 1 ? 'their services' : 'its service'}`,
     why: broken.length === 1 ? `What's wrong with ${broken[0].card?.title ?? broken[0].key.split('.')[0]}?` : 'Why can\'t these widgets reach their services?' });
 

@@ -151,6 +151,12 @@ export type ServiceState = 'up' | 'degraded' | 'down' | 'off';
 export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string; group?: string; quiet?: boolean; state?: ServiceState }   // quiet: being down is expected, never an alert · state: up, up but unwell, down, or off by choice; left out, it follows from ok and quiet
 /** What a status item's dot should say. Anything counting "services running" should use this, not `ok` alone. */
 export const stateOf = (i: Pick<StatusItem, 'ok' | 'quiet' | 'state'>): ServiceState => i.state ?? (i.ok ? 'up' : i.quiet ? 'off' : 'down');
+/** A widget that can't reach a service the status cards already call down or unhealthy is that one problem, not a second:
+ *  it kept its last card, and that card's `source` names the service. */
+export function sameTrouble(states: { card?: Card; error?: string }[]) {
+  const wrong = new Set(states.flatMap(s => s.card?.type === 'status' ? s.card.items : []).filter(i => !i.ok && !i.quiet).map(i => i.name.toLowerCase()));
+  return (s: { card?: Card; error?: string }) => !!s.error && !!s.card?.source?.name && wrong.has(s.card.source.name.toLowerCase());
+}
 export interface StatusCard extends Base { type: 'status'; items: StatusItem[]; layout?: 'wall' }   // wall: a grid of icons, only trouble gets words
 
 export interface LinkItem { name: string; href: string; icon?: string; note?: string }

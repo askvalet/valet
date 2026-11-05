@@ -440,6 +440,23 @@ export default ({ z, defineIntegration, fmt: write }) => {
         books: w('Books', 3_600_000, () => ({ type: 'shelf', layout: 'focus', title: 'Books', icon: 'book', aspect: 'poster', source: { name: 'Audiobookshelf', icon: '/api/icon/audiobookshelf' }, note: `${ART.library.length} in progress`, items: ART.library.map(b => ({ title: b.title, subtitle: b.author, image: b.cover })) })),
         docs: w('Recent documents', 3_600_000, () => ({ type: 'shelf', layout: 'cards', title: 'Recent documents', icon: 'file', aspect: 'poster', source: { name: 'Paperless', icon: '/api/icon/paperless' }, items: PAPERS.map((p, i) => ({ title: p.title, subtitle: `${p.org} · ${p.date}`, image: paper(p), href: ctx.image(`doc${i}`), badge: p.badge, doc: { sender: p.org, date: p.date, type: p.total ? 'Invoice' : 'Letter' } })) })),
         saved: w('Recently saved', 3_600_000, () => ({ type: 'shelf', layout: 'cards', title: 'Recently saved', icon: 'bookmark', archived: ARCHIVE, aspect: 'wide', items: pile().map(p => ({ ...p, id: p.title, image: ctx.image(p.image ?? `page${ART.saved.indexOf(p)}`) })) })),
+        // Mealie's meal plan, shaped as the mealie integration's `week`. Mealie went down at 3:12 AM: the plan it sent before
+        // that is all there is, so every poll after the first times out and the page keeps the plan, marked stale, as Valet
+        // does for any service that stops answering. [weekday, meal, dish, photo in art/meals]; Friday is the calendar's pizza night
+        mealie: (() => {
+          const MENU = [[0, 'Breakfast', 'Pancakes', 3], [0, 'Dinner', 'Lasagna bolognese', 2], [1, 'Dinner', 'Beef green curry', 0], [2, 'Dinner', 'Salmon and quinoa bowl', 8],
+            [3, 'Dinner', 'Shrimp risotto', 1], [4, 'Dinner', 'Shoyu ramen', 6], [5, 'Dinner', 'Pizza margherita', 4], [6, 'Breakfast', 'Shakshuka', 5], [6, 'Dinner', 'Pad thai', 7]];
+          let sent = false;
+          return w('Meal plan', 3_000, () => {
+            if (sent && !mealieUp()) throw new Error('Mealie timed out');
+            sent = true;
+            const items = Array.from({ length: 7 }, (_, n) => new Date(now() + n * 864e5)).flatMap(d => MENU.filter(m => m[0] === d.getDay())
+              .map(([, meal, title, n]) => ({ id: `${dateOf(d)} ${meal}`, at: dateOf(d), title, subtitle: meal, image: ctx.image(`meal${n}`), href: ctx.image(`meal${n}`) })));
+            const tonight = items.find(i => i.at === dateOf(new Date(now())) && i.subtitle === 'Dinner');
+            return { type: 'shelf', layout: 'week', title: 'Meal plan', icon: 'calendar', aspect: 'wide', source: { name: 'Mealie', icon: '/api/icon/mealie' }, items,
+              summary: { label: 'Tonight', icon: 'book', value: tonight?.title ?? 'Nothing planned', sub: tonight && 'Dinner', image: tonight?.image } };
+          });
+        })(),
         news: w('Hacker News', 1_800_000, () => ({ type: 'list', layout: 'headlines', title: 'Hacker News', icon: 'news', source: { name: 'Hacker News', icon: '/api/icon/hacker-news' }, items: [['Show HN: I replaced my NAS with three old laptops', '412 points · 188 comments', '3h'], ['The surprising durability of cheap SSDs', '287 points · 96 comments', '6h'], ['Why self-hosted email is hard, in one diagram', '241 points · 140 comments', '9h'], ['A tiny DNS server in 500 lines', '198 points · 42 comments', '12h']].map(([title, subtitle, meta]) => ({ title, subtitle, meta })) })),
         feeds: w('Feeds', 1_800_000, () => ({ type: 'list', layout: 'headlines', title: 'Feeds', icon: 'rss', source: { name: 'RSS', icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23f26522'/%3E%3Ccircle cx='7' cy='17' r='2' fill='%23fff'/%3E%3Cpath d='M5 11a8 8 0 0 1 8 8M5 6a13 13 0 0 1 13 13' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E" }, items: [['This week in open-source home automation', 'The Example Times', '1h'], ['Quiet fans, ranked', 'Hardware Weekly', '4h'], ['Ten small scripts that run my house', 'Personal blog', '8h'], ['Solar panels and home servers: the numbers', 'Example Energy', '1d']].map(([title, subtitle, meta]) => ({ title, subtitle, meta })) })),
         releases: w('Releases', 3_600_000, () => ({ type: 'list', layout: 'chips', title: 'Releases', icon: 'tag', items: [['paperless', '4.0.0', 'Yesterday'], ['immich', 'v3.0.0', 'Oct 21'], ['home-assistant', '2026.10.4', 'Oct 18'], ['karakeep', '0.34.0', 'Oct 15']].map(([title, subtitle, meta]) => ({ title, subtitle, meta })) })),
@@ -465,8 +482,8 @@ export default ({ z, defineIntegration, fmt: write }) => {
           { say: ['next meeting', 'my next meeting', "what's my next meeting", 'when is my next meeting'], run: 'tool:calendar_next_meeting', input: {}, label: 'Next meeting' }],
         // the clips, with the byte ranges phones ask for. Nothing but the files named above can be reached
         image(ref, range) {
-          const still = /^cover-[0-9a-f]{12}$/.test(ref) ? `covers/${ref.slice(6)}.jpg` : /^album[0-8]$/.test(ref) ? `album/${ref[5]}.jpg` : ref === 'article' ? 'article.jpg' : /^photo[0-3]$/.test(ref) ? `photos/${ref[5]}.jpg` : /^page[0-4]$/.test(ref) ? `pages/${ref[4]}.jpg` : /^doc[0-7]$/.test(ref) ? `docs/${ref[3]}.jpg` : null;
-          if (still) return readFile(`${dir}/${still}`).then(b => new Response(b, { headers: { 'Content-Type': 'image/jpeg', ...(/^(covers|album)\//.test(still) && { 'Cache-Control': 'public, max-age=31536000, immutable' }) } }));
+          const still = /^cover-[0-9a-f]{12}$/.test(ref) ? `covers/${ref.slice(6)}.jpg` : /^album[0-8]$/.test(ref) ? `album/${ref[5]}.jpg` : ref === 'article' ? 'article.jpg' : /^photo[0-3]$/.test(ref) ? `photos/${ref[5]}.jpg` : /^page[0-4]$/.test(ref) ? `pages/${ref[4]}.jpg` : /^doc[0-7]$/.test(ref) ? `docs/${ref[3]}.jpg` : /^meal[0-8]$/.test(ref) ? `meals/${ref[4]}.jpg` : null;
+          if (still) return readFile(`${dir}/${still}`).then(b => new Response(b, { headers: { 'Content-Type': 'image/jpeg', ...(/^(covers|album|meals)\//.test(still) && { 'Cache-Control': 'public, max-age=31536000, immutable' }) } }));
           if (!CLIPS.has(ref)) throw new Error('bad image ref');
           const file = join(cfg.art, ref), size = statSync(file).size, [, a, b] = /^bytes=(\d+)-(\d*)/.exec(range ?? '') ?? [];
           const start = Number(a ?? 0), end = Math.min(b ? Number(b) : size - 1, size - 1), headers = { 'Content-Type': ref.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg', 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1) };

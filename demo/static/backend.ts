@@ -17,7 +17,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms)), between = (lo
 // where each picture lives on the site
 const image = (ref: string) => /^cover-/.test(ref) ? `/art/covers/${ref.slice(6)}.jpg` : /^album\d$/.test(ref) ? `/art/album/${ref[5]}.jpg`
   : ref === 'article' ? '/art/article.jpg' : /^photo\d$/.test(ref) ? `/art/photos/${ref[5]}.jpg` : /^page\d$/.test(ref) ? `/art/pages/${ref[4]}.jpg`
-  : /^doc\d$/.test(ref) ? `/art/docs/${ref[3]}.jpg` : `/art/cameras/${ref}`;
+  : /^doc\d$/.test(ref) ? `/art/docs/${ref[3]}.jpg` : /^meal\d$/.test(ref) ? `/art/meals/${ref[4]}.jpg` : `/art/cameras/${ref}`;
 
 const integration = (plugin as any)({ z, fmt, defineIntegration: (i: unknown) => i });
 const ctx = { image, http: () => Promise.reject(new Error('no network in the demo')), session: () => ({ get: async () => '', reset() {} }) };
@@ -65,7 +65,10 @@ const listeners = new Set<Listener>(), known = new Map<string, any>();
 const tell = (type: string, data: unknown) => { for (const l of listeners) l(type, JSON.stringify(data)); };
 async function refresh(key: string) {
   const [inst, name] = key.split('.'), w = instances.get(inst)?.widgets[name]; if (!w) return;
-  try { const s = { key, card: await w.fetch(), at: Date.now() }; known.set(key, s); tell('widget', s); } catch (e) { tell('widget', { key, error: (e as Error).message, at: Date.now() }); }
+  try { const s = { key, card: await w.fetch(), at: Date.now() }; known.set(key, s); tell('widget', s); } catch (e) {
+    // as the hub does: a widget that stops answering keeps the last card it had, which the page marks stale
+    const s = { key, error: (e as Error).message, at: Date.now(), card: known.get(key)?.card }; known.set(key, s); tell('widget', s);
+  }
 }
 const refreshAll = () => Promise.all([...known.keys()].map(refresh));
 let started: Promise<void> | undefined;

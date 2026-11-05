@@ -207,6 +207,10 @@ test('suggestions: trouble first, then what\'s live, then the configured ones', 
   assert.deepEqual(suggest({}, ['why is Plex down?', 'Why is Plex down?'], 12), ['Why is Plex down?']);
   const twice = { a: { key: 'a', at: 1, card: { type: 'status', items: [{ name: 'Mealie', ok: false }] } }, b: { key: 'b', at: 1, card: { type: 'status', items: [{ name: 'mealie', ok: false }] } } } as any;
   assert.deepEqual(suggest(twice, [], 12), ['Why is Mealie down?']);                       // one problem, however many cards show it
+  // its meal plan, stale because Mealie is down, is the same problem: no second chip, no second trouble
+  const stale = { ...twice, m: { key: 'm.week', at: 1, error: 'timed out', card: { type: 'shelf', title: 'Meal plan', source: { name: 'Mealie' }, items: [] } } } as any;
+  assert.deepEqual(suggest(stale, [], 12), ['Why is Mealie down?']);
+  assert.deepEqual(troubles([twice.a, stale.m]).map((t: any) => t.text), ['Mealie is down']);
   // the model's list replaces the guesses, but something newly down still comes first
   assert.deepEqual(suggest(state, ['Is anything down?'], 12, ['Which indexer is failing?']), ['Why is Radarr down?', 'Which indexer is failing?']);
 });

@@ -219,6 +219,10 @@ test('the status is one sentence, and says each thing once', () => {
   assert.equal(line([dl('↓ 9 MB/s')]), '2 downloads are on the way.');
   assert.equal(line([status('s.a', ok.slice(0, 2)), dl('↓ 9 MB/s')]), 'All 2 services are running and 2 downloads are on the way.');
   assert.equal(line([{ key: 'a.b', at: 0, error: 'x' }]), '1 widget can\'t reach its service.');
+  // a meal plan gone stale because Mealie is down is the one problem, not two; a widget whose service seems fine still counts
+  const stale = (name: string) => ({ key: 'm.week', at: 0, error: 'timed out', card: { type: 'shelf' as const, title: 'Meal plan', source: { name }, items: [] } });
+  assert.equal(line([status('s.a', [{ name: 'Mealie', ok: false }, { name: 'Plex', ok: true }]), stale('mealie')]), 'Everything\'s running except Mealie.');
+  assert.equal(line([status('s.a', [{ name: 'Mealie', ok: true }]), stale('Mealie')]), '1 widget can\'t reach its service and all 1 services are running.');
 });
 
 test('a chip goes when what it\'s about has come back, and only then', () => {

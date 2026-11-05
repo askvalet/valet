@@ -62,7 +62,7 @@ export default defineIntegration({
             return { type: 'stats', title: 'Mealie', icon: 'book', href: web, source, items, summary: { label: 'Mealie', icon: 'book', value: items[0].value, sub: 'Recipes' } };
           },
         },
-        // the week ahead, today first: one tile a meal, the day on it
+        // the week ahead, today first: one photo a meal, the day on it, landscape as food photos are
         week: {
           title: 'This week', interval: 900_000, card: 'shelf',
           async fetch() {
@@ -70,7 +70,7 @@ export default defineIntegration({
             const items: ShelfItem[] = plan.map(e => ({ id: String(e.id), at: e.date, title: e.recipe?.name ?? e.title ?? 'A meal', subtitle: cap(e.entryType),
               image: picture(e.recipe), href: e.recipe?.slug ? page(g, e.recipe.slug) : planner }));
             const today = plan.filter(e => e.date === ymd(new Date())), next = today.find(e => e.entryType === 'dinner') ?? today[0];
-            return { type: 'shelf', layout: 'week', title: 'This week', icon: 'calendar', href: planner, source, aspect: 'square', items, empty: 'Nothing planned this week',
+            return { type: 'shelf', layout: 'week', title: 'This week', icon: 'calendar', href: planner, source, aspect: 'wide', items, empty: 'Nothing planned this week',
               summary: { label: 'Tonight', icon: 'book', value: next ? next.recipe?.name ?? next.title ?? 'Planned' : 'Nothing planned', sub: next ? cap(next.entryType) : undefined, image: picture(next?.recipe) } };
           },
         },

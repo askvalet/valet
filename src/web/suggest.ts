@@ -1,7 +1,7 @@
 // What to offer as a question right now. The model writes these from the page when it can (`tailored`); until then, and
 // without one, they come from reading the cards. Either way anything that's just gone wrong comes first, because the
 // model's list can be a few minutes old.
-import { stateOf, type WidgetState } from '../shared/cards.ts';
+import { sameTrouble, stateOf, type WidgetState } from '../shared/cards.ts';
 import { spellings } from './format.ts';
 
 const capitals = (s: string) => s.replace(/\P{Lu}/gu, '').length;
@@ -14,10 +14,10 @@ const once = (list: string[]) => {
 
 export function suggest(state: Record<string, WidgetState>, configured: string[], hour = new Date().getHours(), tailored?: string[] | null) {
   const out: string[] = [];
-  const cards = Object.values(state), spelled = spellings(cards);
+  const cards = Object.values(state), spelled = spellings(cards), known = sameTrouble(cards);
   for (const s of cards) {
     if (s.card?.type === 'status') for (const i of s.card.items) if (!i.ok && !i.quiet) out.push(`Why is ${spelled.get(i.name.toLowerCase()) ?? i.name} ${stateOf(i) === 'degraded' ? 'unhealthy' : 'down'}?`);
-    if (s.error) out.push(`What's wrong with ${s.card?.title ?? s.key.split('.')[0]}?`);
+    if (s.error && !known(s)) out.push(`What's wrong with ${s.card?.title ?? s.key.split('.')[0]}?`);
   }
   if (tailored?.length) return once([...out, ...tailored]);
   for (const s of cards) {

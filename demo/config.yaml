@@ -108,6 +108,11 @@ layout:
     columns: 2
     header: false
     widgets: [lab.home, lab.pc]
+  - tab: Home
+    heading: false
+    overview: false
+    columns: 1
+    widgets: [lab.mealie]   # this week's meals from Mealie, the full width under the house
   - title: Now
     heading: false
     tab: Media

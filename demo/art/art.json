@@ -299,5 +299,61 @@
       "author": "刘慈欣",
       "cover": "/api/image/lab?ref=cover-7a2dd47f8911"
     }
+  ],
+  "meals": [
+    {
+      "title": "Beef green curry",
+      "credit": "https://commons.wikimedia.org/wiki/File:Beef_green_curry_-_Chiang_Mai_-_2017-07-08_(001).jpg",
+      "licence": "CC0",
+      "author": "Iudexvivorum"
+    },
+    {
+      "title": "Shrimp risotto",
+      "credit": "https://commons.wikimedia.org/wiki/File:Risotto_de_gambas,_restaurant_Danieli_(Vienne,_Autriche).jpg",
+      "licence": "CC0",
+      "author": "Benoît Prieur"
+    },
+    {
+      "title": "Lasagna bolognese",
+      "credit": "https://commons.wikimedia.org/wiki/File:Lasagna_Bolognese_(28840811363).jpg",
+      "licence": "CC BY 2.0",
+      "author": "HarshLight from San Jose, CA, USA"
+    },
+    {
+      "title": "Pancakes",
+      "credit": "https://commons.wikimedia.org/wiki/File:Slicing_Pancakes_with_Fork_374819.jpg",
+      "licence": "CC0",
+      "author": "Shared Food"
+    },
+    {
+      "title": "Pizza margherita",
+      "credit": "https://commons.wikimedia.org/wiki/File:Pizza_Margherita_(14703152728).jpg",
+      "licence": "CC BY 2.0",
+      "author": "jeffreyw"
+    },
+    {
+      "title": "Shakshuka",
+      "credit": "https://commons.wikimedia.org/wiki/File:Shakshuka_(Unsplash).jpg",
+      "licence": "CC0",
+      "author": "Jarosław Ceborski jarson"
+    },
+    {
+      "title": "Shoyu ramen",
+      "credit": "https://commons.wikimedia.org/wiki/File:Shoyu_Ramen_with_Sushi_and_Tempura.jpg",
+      "licence": "CC0",
+      "author": "Unknown"
+    },
+    {
+      "title": "Pad thai",
+      "credit": "https://commons.wikimedia.org/wiki/File:Pad_Thai_2018-04-19.jpg",
+      "licence": "CC0",
+      "author": "Index Librorum Permissorum"
+    },
+    {
+      "title": "Salmon and quinoa bowl",
+      "credit": "https://commons.wikimedia.org/wiki/File:Salmon_and_Quinoa_dish_(39791934733).jpg",
+      "licence": "CC BY 2.0",
+      "author": "Ella Olsson from Stockholm, Sweden"
+    }
   ]
 }
