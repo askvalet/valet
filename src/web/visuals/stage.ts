@@ -16,6 +16,7 @@ export interface Scene<D> {
   facesOf(pick: string, d: D): string[];           // the data ids whose faces belong to a pick
   focus(pick: string, d: D): Focus | undefined;    // where the camera flies for a pick
   limits?: { tilt: [number, number]; turn: [number, number] };
+  turned?(world: HTMLElement, tilt: number, turn: number): void;   // the camera turned: hide what now faces away (NaN: show it all)
 }
 export interface StageOptions { turn?: number; tilt?: number; draggable?: boolean; remember?: string; onPick?: (id: string | null) => void; onMove?: (moved: boolean) => void }
 /** Someone asked for less motion, in the system or in Valet's own settings: the camera then cuts instead of flying. */
@@ -31,7 +32,7 @@ export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOpt
   const world = document.createElement('div'); world.className = 'world boot';
   Object.assign(world.style, { width: W + 'px', height: H + 'px' });
   box.appendChild(world);
-  let data: D | null = null, shape = '', sel: string | null = null, dragged = false, boot: ReturnType<typeof setTimeout> | undefined;
+  let data: D | null = null, shape = '', last = '', sel: string | null = null, dragged = false, boot: ReturnType<typeof setTimeout> | undefined, settled: ReturnType<typeof setTimeout> | undefined;
   const home: Focus = [cx, cy, cz, 1];
   // fans and lights loop forever: off screen they rest
   const away = new IntersectionObserver(([e]) => box.classList.toggle('is-away', !e.isIntersecting));
@@ -63,6 +64,7 @@ export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOpt
   };
   const aim = (animate = true) => {
     const c = world.querySelector<HTMLElement>('.cam'); if (!c) return;
+    scene.turned?.(world, cam.rx, cam.ry);
     const target = frame(c);
     c.style.transition = animate && !stillness() ? 'transform .9s cubic-bezier(.2, .8, .2, 1)' : 'none';
     c.style.transform = target;
@@ -90,6 +92,7 @@ export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOpt
     if (!dragged) { dragged = true; box.setPointerCapture(e.pointerId); box.classList.add('dragging'); }
     cam.ry = Math.max(lim.turn[0], Math.min(lim.turn[1], start.ry + dx * .35));
     cam.rx = Math.max(lim.tilt[0], Math.min(lim.tilt[1], start.rx - dy * .25));
+    scene.turned?.(world, cam.rx, cam.ry);
     const c = world.querySelector<HTMLElement>('.cam');
     if (c) { c.style.transition = 'none'; c.style.transform = c.style.transform.replace(/rotateX\([^)]*\) rotateY\([^)]*\)/, `rotateX(${cam.rx}deg) rotateY(${cam.ry}deg)`); }
   };
@@ -133,6 +136,8 @@ export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOpt
   const api = {
     update(d: D) {
       data = d;
+      // a live update that changes nothing the model shows does nothing
+      const all = JSON.stringify(d); if (all === last) return; last = all;
       const s = scene.shape(d);
       if (s !== shape) { shape = s; scene.build(world, d); clearTimeout(boot); boot = setTimeout(() => world.classList.remove('boot'), 150); aim(false); dim(); }
       scene.paint(world, d);
@@ -144,11 +149,14 @@ export function createStage<D>(box: HTMLElement, scene: Scene<D>, opts: StageOpt
     },
     /** back to the configured angles, and forget the dragged-to view */
     reset() {
+      // the camera swings back through angles in between, so nothing is hidden until it's there
+      const swing = !stillness() && Math.abs(cam.ry - turn) > .5;
       cam.ry = turn; cam.rx = tilt; aim(); onMove?.(false);
+      if (swing) { scene.turned?.(world, NaN, NaN); clearTimeout(settled); settled = setTimeout(() => scene.turned?.(world, cam.rx, cam.ry), 950); }
       try { if (remember) localStorage.removeItem(`valet-view:${remember}`); } catch {}
     },
     destroy() {
-      clearTimeout(boot); ro.disconnect(); away.disconnect(); world.removeEventListener('click', onClick); world.removeEventListener('pointermove', hover); world.removeEventListener('pointerleave', leave);
+      clearTimeout(boot); clearTimeout(settled); ro.disconnect(); away.disconnect(); world.removeEventListener('click', onClick); world.removeEventListener('pointermove', hover); world.removeEventListener('pointerleave', leave);
       box.removeEventListener('pointerdown', down); box.removeEventListener('pointermove', move);
       box.removeEventListener('pointerup', up); box.removeEventListener('pointercancel', up);
       world.remove();

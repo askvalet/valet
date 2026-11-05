@@ -2,7 +2,7 @@
    everything but the chosen part; hovering lifts a part slightly. Each model adds its own scope class for its parts. */
 .stage .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; perspective: 1300px; perspective-origin: 50% 50%; }
 .stage .cam { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-style: preserve-3d; }
-.stage .f { position: absolute; transform-style: preserve-3d; }
+.stage .f { position: absolute; }
 .stage .f > i, .stage .f > b, .stage .f > span, .stage .f > div, .stage .f > svg, .stage .part > i { position: absolute; display: block; }
 .stage .f > svg { left: 0; top: 0; }
 
@@ -23,6 +23,10 @@
 .stage .world .f[data-part], .stage .world .f[data-of]:not([data-of=""]) { cursor: pointer; }
 .stage.draggable { cursor: grab; }
 .stage.dragging { cursor: grabbing; }
+/* Every face is its own compositor layer, so the faces are flat: what's drawn on a face (labels, glows, the dim overlay)
+   paints into the face's layer instead of becoming more layers. A face whose children stand off it in 3D opts back in.
+   Off screen the browser skips the whole model: no layers, no paint, nothing to redo while the page scrolls. */
+.stage { content-visibility: auto; }
 /* a model being built is simply there; only what changes later eases */
 .stage .world.boot * { transition: none !important; }
 .stage.is-away * { animation-play-state: paused !important; }

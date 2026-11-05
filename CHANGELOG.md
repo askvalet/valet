@@ -29,6 +29,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Scrolling past the house and the PC on a phone no longer stutters. The models look the same but ask far less of the browser: about 680 layers instead of 1,760 when both are on screen, none while they're off screen, and the house only draws the sides of furniture that face you. A live update that changes nothing the model shows no longer touches it.
 - The demo answers every question its page suggests, including "What's Spider-Man: Brand New Day about?", and a test keeps it that way.
 - No flash of light before dark glass over a wallpaper on load: the page remembers whether it had a wallpaper and decides its theme before the first paint.
 

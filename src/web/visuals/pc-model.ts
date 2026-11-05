@@ -103,6 +103,22 @@ const braid = (d: string, w: number, n = 1, gap = 0) => Array.from({ length: n }
   `<g transform="translate(${i * gap} ${i * gap * .35})"><path d="${d}" stroke="#08090a" stroke-width="${w + 2}"/><path d="${d}" stroke="#1c1e22" stroke-width="${w}"/>`
   + `<path d="${d}" stroke="#34373d" stroke-width="${w * .5}" stroke-dasharray="1.6 2.4" opacity=".75"/></g>`).join('');
 const svg = (paths: string) => `<svg width="${CW}" height="${CH}" viewBox="0 0 ${CW} ${CH}" style="overflow:visible"><g fill="none" stroke-linecap="round">${paths}</g></svg>`;
+type Run = [d: string, w: number, n?: number, gap?: number];
+/** Cables on a face only as big as they are: a face is a layer the browser holds, so a case-sized one for a cable is waste.
+ *  The box is the paths' points (a curve stays inside its control points) grown by the stroke, the strands and `pad`. */
+function cables(z: number, runs: Run[], cls = 'braids layer', pad = 4) {
+  let l = Infinity, t = Infinity, r = -Infinity, b = -Infinity;
+  for (const [d, w, n = 1, gap = 0] of runs) {
+    const v = d.match(/-?\d+(\.\d+)?/g)!.map(Number), grow = w / 2 + 1 + pad;
+    for (let i = 0; i < v.length; i += 2) {
+      l = Math.min(l, v[i] - grow); r = Math.max(r, v[i] + grow + (n - 1) * gap);
+      t = Math.min(t, v[i + 1] - grow); b = Math.max(b, v[i + 1] + grow + (n - 1) * gap * .35);
+    }
+  }
+  const W = Math.ceil(r - l), H = Math.ceil(b - t);
+  const e = mk(cls, `<svg width="${W}" height="${H}" viewBox="${l} ${t} ${W} ${H}" style="overflow:visible"><g fill="none" stroke-linecap="round">${runs.map(([d, w, n, gap]) => braid(d, w, n, gap)).join('')}</g></svg>`);
+  return at(e, l, t, W, H, z);
+}
 
 export function build(world: HTMLElement, d: ModelData) {
   world.innerHTML = '';
@@ -133,7 +149,7 @@ export function build(world: HTMLElement, d: ModelData) {
   const floorFront = mk('fanrow dark', Array.from({ length: nFloor }, (_, i) => `<i class="fanedge" style="left:${6 + i * 154}px"></i>`).join(''));
   for (const f of [floorTop, side(mk('fanpack rside'), 16, FY, 280, 34, 14), at(floorFront, 16, FY, FW, 34, 294)]) { f.dataset.of = 'floor'; add(f); }
   // their daisy-chained cable off the right end, back into the cable grommets
-  add(at(mk('braids layer', svg(braid(`M${16 + FW} ${FY + 18} C 520 ${FY + 10}, 540 ${FY - 40}, 520 ${FY - 120}`, 3.2, 2, 2))), 0, 0, CW, CH, 160)).dataset.of = 'floor';
+  add(cables(160, [[`M${16 + FW} ${FY + 18} C 520 ${FY + 10}, 540 ${FY - 40}, 520 ${FY - 120}`, 3.2, 2, 2]])).dataset.of = 'floor';
   }
   add(face(mk('ceiling'), CW, CD, `translateY(${-CH / 2}px) rotateX(90deg)`));
 
@@ -162,9 +178,9 @@ export function build(world: HTMLElement, d: ModelData) {
   }
 
   // 24-pin bundle out of the right edge of the board, looping back into the grommets
-  add(at(mk('braids layer', svg(braid('M326 126 C 352 128, 372 150, 368 196 S 344 236, 330 238', 4.2, 7, 2.6))), 0, 0, CW, CH, 10));
+  add(cables(10, [['M326 126 C 352 128, 372 150, 368 196 S 344 236, 330 238', 4.2, 7, 2.6]]));
   // CPU power up the top-left into the ceiling
-  add(at(mk('braids layer', svg(braid('M96 82 C 92 50, 60 30, 58 -4', 3.6, 5, 2.4))), 0, 0, CW, CH, 22));
+  add(cables(22, [['M96 82 C 92 50, 60 30, 58 -4', 3.6, 5, 2.4]]));
 
   if (B.cooler === 'air') {
     // an air cooler: a finned tower standing off the socket with a fan on its face
@@ -175,7 +191,7 @@ export function build(world: HTMLElement, d: ModelData) {
   block(add, 160, 146, 76, 80, 2, 48, 'pump', pump, 'pump');
 
   // the two radiator hoses: down out of the pump, a wide sweep right, then up to the radiator at the top right
-  if (nRad) add(at(mk('braids layer hose' /* pump */, svg(braid('M184 226 C 186 280, 250 292, 330 268 S 470 210, 478 64', 10) + braid('M206 226 C 210 270, 268 278, 340 252 S 456 196, 492 64', 10))), 0, 0, CW, CH, 40));
+  if (nRad) add(cables(40, [['M184 226 C 186 280, 250 292, 330 268 S 470 210, 478 64', 10], ['M206 226 C 210 270, 268 278, 340 252 S 456 196, 492 64', 10]], 'braids layer hose', 40));
   }
 
   // the GPU: a long slab across the lower slot, its name engraved, a lit badge and emblem on its edge
@@ -186,7 +202,7 @@ export function build(world: HTMLElement, d: ModelData) {
   add(side(mk('gpuend'), 40, 312, 170, 44)).dataset.of = 'gpu';
   add(at(gpu ? part('gpufront', 'gpu', edge) : unread('gpufront', edge), 40, 312, 404, 44, 170)).dataset.of = 'gpu';
   // its power cable: off the top, across and down to the floor
-  add(at(mk('braids layer', svg(braid('M300 312 C 330 300, 420 300, 470 340 S 500 470, 520 520', 3.4, 6, 2.2))), 0, 0, CW, CH, 150));
+  add(cables(150, [['M300 312 C 330 300, 420 300, 470 340 S 500 470, 520 520', 3.4, 6, 2.2]]));
   }
 
   // radiator up top; its fans hang beneath it, seen from below: lit rings and spinning blades

@@ -54,17 +54,31 @@ const flat = (e: HTMLElement, x: number, z: number, w: number, d: number, y = 0)
 const upX = (e: HTMLElement, x: number, z: number, w: number, h: number, y0 = 0) => face(e, w, h, `translate3d(${x + w / 2}px, ${-(y0 + h / 2)}px, ${z}px)`);
 /** an upright face along z */
 const upZ = (e: HTMLElement, x: number, z: number, d: number, h: number, y0 = 0) => face(e, d, h, `translate3d(${x}px, ${-(y0 + h / 2)}px, ${z + d / 2}px) rotateY(90deg)`);
-/** a box: top and the four sides */
+/** a box: top and the four sides, each side marked with the way it faces (see `turned`) */
 function box(add: (e: HTMLElement) => HTMLElement, x: number, z: number, w: number, d: number, h: number, cls: string, of?: string, y0 = 0) {
   const faces = [flat(mk(`${cls} top`), x, z, w, d, y0 + h), upX(mk(`${cls} side`), x, z, w, h, y0), upX(mk(`${cls} side`), x, z + d, w, h, y0),
     upZ(mk(`${cls} side end`), x, z, d, h, y0), upZ(mk(`${cls} side end`), x + w, z, d, h, y0)];
+  faces.slice(1).forEach((f, i) => f.dataset.n = SIDES[i]);
   for (const f of faces) { if (of) f.dataset.of = of; add(f); }
   return faces[0];
 }
+const SIDES = ['zn', 'zp', 'xn', 'xp'] as const, NORMAL = { zn: [0, -1], zp: [0, 1], xn: [-1, 0], xp: [1, 0] };
+/** Every face is a layer the phone has to hold and draw, and a solid box's far sides are always behind its near ones, so
+ *  sides that face away from the camera aren't drawn. Only clearly turned away: perspective shows a little round the edge.
+ *  A post keeps whichever of its two faces is turned more towards the camera. */
+export function turned(world: HTMLElement, _tilt: number, turn: number) {
+  const a = turn * Math.PI / 180;
+  for (const n of SIDES) { const [nx, nz] = NORMAL[n]; world.classList.toggle(`away-${n}`, -nx * Math.sin(a) + nz * Math.cos(a) < -.3); }
+  const along = Math.abs(Math.cos(a)) >= Math.abs(Math.sin(a)), any = !isNaN(a);
+  world.classList.toggle('away-px', any && along); world.classList.toggle('away-pz', any && !along);
+}
 
-/** A thin upright: two crossed faces, so legs, poles and cords read as round from any angle. */
+/** A thin upright: two crossed faces, so legs, poles and cords read as round from any angle. Only the one that faces
+ *  the camera more is drawn (`turned`); edge-on, the other would be a hairline anyway. */
 function post(add: (e: HTMLElement) => HTMLElement, x: number, z: number, h: number, cls: string, of: string, y0 = 0, t = 2) {
-  for (const f of [upX(mk(cls), x - t / 2, z, t, h, y0), upZ(mk(cls), x, z - t / 2, t, h, y0)]) { f.dataset.of = of; add(f); }
+  const faces = [upX(mk(cls), x - t / 2, z, t, h, y0), upZ(mk(cls), x, z - t / 2, t, h, y0)];
+  faces[0].dataset.n = 'pz'; faces[1].dataset.n = 'px';
+  for (const f of faces) { f.dataset.of = of; add(f); }
 }
 type Put = (u: number, v: number, w: number, d: number, h: number, mat: string, y0?: number) => void;
 type Leg = (u: number, v: number, h: number, mat?: string, y0?: number) => void;
@@ -213,7 +227,7 @@ export const homeScene: Scene<PlanData> = {
   scope: 'homex', size: [720, 430], center: [0, 0, 0],
   frame: '.slab',
   shape: d => JSON.stringify([d.rooms.map(r => [r.id, Math.round(r.x), Math.round(r.z), r.lights.map(l => [l.id, l.kind, l.at?.x])]), d.furniture.length, !!d.dock, !!d.robot]),
-  build, paint,
+  build, paint, turned,
   pickOf: id => id === 'robot' || id.startsWith('room:') ? id : null,
   facesOf: pick => [pick],
   focus: (pick, d) => {

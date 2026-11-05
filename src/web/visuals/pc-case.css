@@ -6,6 +6,8 @@
 @media (prefers-reduced-motion: reduce) { .pcx .lit { transition: none; } }
 
 /* The 3D case. Scoped under .pcx. Surfaces are matte black steel; light comes only from the parts that are lit. */
+/* a lit part's glows spill past its face and have to sort in 3D with what's round it, so these faces stay 3D (stage.css) */
+.pcx .part, .pcx .strip, .pcx .ramside { transform-style: preserve-3d; }
 
 /* case shell */
 .pcx .wall { background: linear-gradient(180deg, #121317, #0b0c0e 70%, #08090a); box-shadow: inset 0 0 120px rgba(0,0,0,.85); }
