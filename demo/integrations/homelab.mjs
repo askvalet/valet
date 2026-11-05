@@ -440,20 +440,17 @@ export default ({ z, defineIntegration, fmt: write }) => {
         books: w('Books', 3_600_000, () => ({ type: 'shelf', layout: 'focus', title: 'Books', icon: 'book', aspect: 'poster', source: { name: 'Audiobookshelf', icon: '/api/icon/audiobookshelf' }, note: `${ART.library.length} in progress`, items: ART.library.map(b => ({ title: b.title, subtitle: b.author, image: b.cover })) })),
         docs: w('Recent documents', 3_600_000, () => ({ type: 'shelf', layout: 'cards', title: 'Recent documents', icon: 'file', aspect: 'poster', source: { name: 'Paperless', icon: '/api/icon/paperless' }, items: PAPERS.map((p, i) => ({ title: p.title, subtitle: `${p.org} · ${p.date}`, image: paper(p), href: ctx.image(`doc${i}`), badge: p.badge, doc: { sender: p.org, date: p.date, type: p.total ? 'Invoice' : 'Letter' } })) })),
         saved: w('Recently saved', 3_600_000, () => ({ type: 'shelf', layout: 'cards', title: 'Recently saved', icon: 'bookmark', archived: ARCHIVE, aspect: 'wide', items: pile().map(p => ({ ...p, id: p.title, image: ctx.image(p.image ?? `page${ART.saved.indexOf(p)}`) })) })),
-        // Mealie's meal plan, shaped as the mealie integration's `week`. Mealie went down at 3:12 AM: the plan it sent before
-        // that is all there is, so every poll after the first times out and the page keeps the plan, marked stale, as Valet
-        // does for any service that stops answering. [weekday, meal, dish, photo in art/meals]; Friday is the calendar's pizza night
+        // Mealie's meal plan, shaped as the mealie integration's `week`: the week is planned, so it shows whole even while the
+        // service row says Mealie is down (the story's one problem). [weekday, meal, dish, photo in art/meals]; Friday is the
+        // calendar's pizza night
         mealie: (() => {
           const MENU = [[0, 'Breakfast', 'Pancakes', 3], [0, 'Dinner', 'Lasagna bolognese', 2], [1, 'Dinner', 'Beef green curry', 0], [2, 'Dinner', 'Salmon and quinoa bowl', 8],
             [3, 'Dinner', 'Shrimp risotto', 1], [4, 'Dinner', 'Shoyu ramen', 6], [5, 'Dinner', 'Pizza margherita', 4], [6, 'Breakfast', 'Shakshuka', 5], [6, 'Dinner', 'Pad thai', 7]];
-          let sent = false;
-          return w('Meal plan', 3_000, () => {
-            if (sent && !mealieUp()) throw new Error('Mealie timed out');
-            sent = true;
+          return w('Mealie', 600_000, () => {
             const items = Array.from({ length: 7 }, (_, n) => new Date(now() + n * 864e5)).flatMap(d => MENU.filter(m => m[0] === d.getDay())
               .map(([, meal, title, n]) => ({ id: `${dateOf(d)} ${meal}`, at: dateOf(d), title, subtitle: meal, image: ctx.image(`meal${n}`), href: ctx.image(`meal${n}`) })));
             const tonight = items.find(i => i.at === dateOf(new Date(now())) && i.subtitle === 'Dinner');
-            return { type: 'shelf', layout: 'week', title: 'Meal plan', icon: 'calendar', aspect: 'wide', source: { name: 'Mealie', icon: '/api/icon/mealie' }, items,
+            return { type: 'shelf', layout: 'week', title: 'Mealie', icon: 'calendar', aspect: 'wide', source: { name: 'Mealie', icon: '/api/icon/mealie' }, items,
               summary: { label: 'Tonight', icon: 'book', value: tonight?.title ?? 'Nothing planned', sub: tonight && 'Dinner', image: tonight?.image } };
           });
         })(),

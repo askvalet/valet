@@ -353,11 +353,8 @@ test('demo: nothing in it reaches out or carries a secret', () => {
 test('demo: every chip the page can offer gets a real answer, never "I can\'t"', async () => {
   // what the page suggests by itself from the cards (what's playing, downloads, anything down), plus the config's own
   const state: Record<string, any> = {};
-  // as the hub does: the meal plan, once Mealie stops answering, is its last card marked with the error
   const fresh = lab.create(lab.config.parse({}), { image: (r: string) => `/x/${r}` } as any);
   for (const [k, w] of Object.entries<any>(fresh.widgets)) state[`lab.${k}`] = { key: `lab.${k}`, card: await w.fetch() };
-  for (const [k, w] of Object.entries<any>(fresh.widgets)) await w.fetch().catch((e: Error) => { state[`lab.${k}`].error = e.message; });
-  assert.equal(state['lab.mealie'].error, 'Mealie timed out');
   const cfg = parse(readFileSync('demo/config.yaml', 'utf8'));
   const configured = [...(cfg.assistant?.suggestions ?? []), ...(cfg.chat?.followUps ?? cfg.assistant?.followUps ?? [])];
   const chips = new Set([...suggest(state, configured, 20), ...suggest(state, configured, 9), ...SUGGESTIONS, ...suggestions(true), ...suggestions(false)]);
