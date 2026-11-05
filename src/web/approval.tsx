@@ -69,8 +69,9 @@ export function Approval({ said, title, detail, icon, ready, answer, children, w
     <div ref={box} className="overflow-hidden rounded-surface border bg-card shadow-card">
       <div className="flex items-center gap-3.5 p-3.5">
         {said?.image ? <img src={said.image} alt="" className="h-[84px] w-14 shrink-0 rounded-poster object-cover shadow-md" />
-          : said?.logo && !broken ? <img src={said.logo} alt="" className="size-11 shrink-0 rounded-control object-contain" onError={() => setBroken(true)} />
-          : <span className="grid size-11 shrink-0 place-items-center rounded-control bg-fill-2"><Icon name={said?.icon ?? icon} className="size-icon-lg" /></span>}
+          // the icon shows at once; a service's logo covers it only once it has loaded, and a tool that names its own icon keeps it
+          : <span className="relative grid size-11 shrink-0 place-items-center rounded-control bg-fill-2"><Icon name={said?.icon ?? icon} className="size-icon-lg" />
+            {said?.logo && !said.icon && !broken && <img src={said.logo} alt="" className="absolute inset-0 size-11 rounded-control object-contain opacity-0 transition-opacity duration-(--dur-pop)" onLoad={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.parentElement?.classList.remove('bg-fill-2'); }} onError={() => setBroken(true)} />}</span>}
         <div className="min-w-0 flex-1">
           <div className="text-title leading-snug font-semibold text-pretty">{title}</div>
           {detail && <div className="mt-0.5 text-body leading-snug text-muted-foreground">{detail}</div>}

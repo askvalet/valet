@@ -638,8 +638,8 @@ function Home({ account }: { account: boolean }) {
                     </div>
                   );
                   if (sec.grid && !aside) return (
-                    <div className="cols grid gap-(--card-gap)" style={gridVars(sec.grid)}>
-                      {keys.map(k => { const c = sec.looks?.[k]?.cols; return <div key={k} className="min-w-0" style={c ? { gridColumn: `span min(${c}, var(--tracks))` } : undefined}>{widget(k, false, true)}</div>; })}
+                    <div className="cols grid grid-flow-row-dense gap-(--card-gap)" style={gridVars(sec.grid)}>
+                      {keys.map(k => { const c = sec.looks?.[k]?.cols, r = sec.looks?.[k]?.rows; return <div key={k} className="flex min-w-0 flex-col" style={{ ...(c && { gridColumn: `span min(${c}, var(--tracks))` }), ...(r && { gridRow: `span ${r}` }) }}>{widget(k, false, c || r ? 'always' : true)}</div>; })}
                     </div>
                   );
                   // a wide card (e.g. the 3D desktop) takes two thirds; the rest stack beside it

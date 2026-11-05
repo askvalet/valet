@@ -432,7 +432,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
   const nextUp = ui.followUps?.filter(f => !said.has(f)).slice(0, 3).join('\n');
   return (
     <Ui.Provider value={ui}><div className="relative flex h-full flex-col">
-      <header {...(sheet ? grab : {})} className={cn('relative z-20 flex items-center gap-2.5 px-5', sheet ? 'border-b ' : '', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'py-2.5')}>
+      <header {...(sheet ? grab : {})} className={cn('relative z-20 flex items-center gap-2.5 px-5', sheet ? 'border-b ' : '', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'pt-4 pb-3')}>
         {sheet && <span className="sheet-grip absolute top-[max(.4rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2" aria-hidden />}
         {ui.icon && <span className="icon-tile"><Icon name={ui.icon} /></span>}
         {/* one line: the name, then the model and its context meter beside it. The meter's place is kept from the start,

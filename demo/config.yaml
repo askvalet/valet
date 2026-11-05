@@ -88,9 +88,10 @@ layout:
       - { widget: lab.dns, size: large, rows: 2 }
       - { widget: lab.cpu, size: medium }
       - { widget: lab.memory, size: medium }
-      - { widget: valet.backups, size: medium, cols: 3 }
+      - { widget: valet.backups, size: medium, cols: 3, rows: 2 }
       - { widget: lab.containers, size: medium, cols: 3 }
-      - { widget: lab.drives, size: medium, cols: 2 }
+      - { widget: lab.drives, size: medium, cols: 2, rows: 2 }
+      - { widget: lab.traffic, size: medium, cols: 3 }   # under the containers: the network's day
   - title: AI
     display: tiles
     overview: false
@@ -128,7 +129,7 @@ layout:
     columns: 1
     widgets: [lab.calendar]   # the month and the day beside it, the full width
   # the overview, under Services: the house, the desktop and the calendar a third each, then
-  # what's playing, On this day and downloads a third each, then the reading, what's new and the tiles
+  # downloads beside Pi-hole, then what's playing beside On this day, each row level, then the reading and what's new
   - heading: false
     columns: { phone: 1, tablet: 2, desktop: 3, wide: 3 }
     widgets:
@@ -136,16 +137,15 @@ layout:
       - { widget: lab.pc, title: "Daniel's Desktop" }
       - lab.calendar
   - heading: false
-    columns: { phone: 1, tablet: 1, desktop: 3, wide: 3 }
-    widgets: [lab.streams, lab.photos, lab.downloads]
-  - heading: false
-    columns: { phone: 2, tablet: 4, desktop: 6, wide: 6 }
+    columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }   # what's playing over the downloads on the left, Pi-hole's day across the other two thirds
     widgets:
-      - { widget: lab.reading, size: tall, view: focus }   # the reading pile as Recently added is: one page large, its neighbours peeking
-      - { widget: lab.recent, size: tall, view: focus }
-      - { widget: lab.dns, size: small }
-      - { widget: lab.uptime, size: small }
-      - { widget: lab.upcoming, size: wide }
+      - { widget: lab.downloads, cols: 1 }
+      - { widget: lab.dns, cols: 2 }
+      - { widget: lab.streams, cols: 1 }
+      - { widget: lab.photos, cols: 2 }
+  - heading: false
+    columns: { phone: 1, tablet: 2, desktop: 2, wide: 2 }
+    widgets: [{ widget: lab.reading, view: focus }, { widget: lab.recent, view: focus }]
   - title: Media
     overview: false
     heading: false
