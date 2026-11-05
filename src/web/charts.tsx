@@ -7,6 +7,7 @@ import { type CSSProperties, type KeyboardEvent, useEffect, useLayoutEffect, use
 import { day as dayOf, duration, firstDay, month, num as written, withUnit } from './format.ts';
 import type { Card, ChartCard, HeatmapCard, Race as RaceData, RaceItem } from '../shared/cards.ts';
 import { Metric } from './metric.tsx';
+import { HeadActions } from './feel.tsx';
 
 /** True when a chart has nothing in it, so the card shouldn't take a slot on the page. */
 export const chartless = (card?: Card) => card?.type === 'race' ? card.steps.length < 2 || !card.items.length
@@ -74,7 +75,7 @@ export const hue = (t: Tint) => t ? { '--hue': t.h, '--sat': Math.min(1, Math.ma
 
 /** Titles overtaking each other. Everything that moves is written straight to the DOM from one rAF loop, which stops when the
  *  rows settle; the render itself is the final frame, so that's what shows with no script, no motion or no scroll. */
-export function Race({ race, span, now }: { race: RaceData; span?: string; now?: boolean }) {
+export function Race({ race, span, now, inCard }: { race: RaceData; span?: string; now?: boolean; inCard?: boolean }) {
   const { steps, items, unit } = race, end = steps.length - 1, key = `${steps.join()}|${items.map(i => `${i.title}${i.points[end]}`).join()}`, peak = useMemo(() => Math.max(...items.map(i => i.points[end] ?? 0), 1), [items, end]);
   const box = useRef<HTMLDivElement>(null), rows = useRef<(HTMLDivElement | null)[]>([]), date = useRef<HTMLSpanElement>(null), scrub = useRef<HTMLInputElement>(null);
   const live = useRef({ t: end, y: items.map(() => 0), o: items.map(() => 0), going: false, raf: 0, last: 0 }), [playing, setPlaying] = useState(false), [still, setStill] = useState(false);
@@ -152,10 +153,11 @@ export function Race({ race, span, now }: { race: RaceData; span?: string; now?:
   const says = items.filter((_, n) => rest.place[n] < ROWS).sort((a, b) => (b.points[end] ?? 0) - (a.points[end] ?? 0)).map(i => `${i.title} ${amount(i.points[end] ?? 0, unit)}`).join(', ');
   return (
     <div ref={box} className={playing ? 'race is-running' : 'race'}>
-      <div className="race-head">
+      {/* in a card the month and what's measured ride the title row's right end, so the bars start at the top */}
+      {inCard ? <HeadActions><span className="race-head is-in-head">{span && <span className="race-span">{span}</span>}<span ref={date} className="race-date">{steps[end]}</span></span></HeadActions> : <div className="race-head">
         <span ref={date} className="race-date metric">{steps[end]}</span>
         {span && <span className="race-span">{span}</span>}
-      </div>
+      </div>}
       <div className="race-field" role="img" aria-label={says} style={{ height: `calc(var(--row) * ${Math.min(ROWS, items.length)})` }}>
         {items.map((it, n) => {
           const place = rest.place[n], p = bar(rest.value[n], rest.top), t = tint[it.title];

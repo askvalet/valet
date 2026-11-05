@@ -10,6 +10,9 @@
 .race-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
 .race-date { font-size: var(--text-metric-m); line-height: 1; letter-spacing: -.01em; }
 .race-span { min-width: 0; overflow: hidden; font-size: var(--text-body); white-space: nowrap; text-overflow: ellipsis; color: var(--muted-foreground); }
+.race-head.is-in-head { margin: 0; padding-right: 8px; gap: 8px; align-items: baseline; }   /* the slot sits out for icon buttons; words come back to the inset */
+.race-head.is-in-head .race-date { font-size: var(--text-item); font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; }
+.race-head.is-in-head .race-span { font-size: var(--text-meta); }
 .race-field { position: relative; overflow: hidden; }
 .race-row { position: absolute; inset: 0 0 auto; display: flex; align-items: center; gap: 12px; height: var(--row); }
 .race-art { flex: none; height: calc(var(--row) - 12px); aspect-ratio: 2 / 3; border-radius: var(--radius-thumb); object-fit: cover; background: var(--muted); box-shadow: 0 0 0 .5px color-mix(in oklab, var(--foreground) 14%, transparent), 0 2px 6px rgb(0 0 0 / .18); }
