@@ -93,9 +93,15 @@ test('the image proxy passes pictures and video and nothing that can act as a pa
 });
 
 test('a hostile feed takes no longer than a normal one', () => {
+  // timed against a normal feed of the same size on the same machine, so a slow or busy one can't fail it: a parser that
+  // backtracks is thousands of times slower on these, not a few. A hiccup gets two more tries; backtracking never passes.
+  const item = '<item><title>Home server tips &amp; more</title><link>https://example.com/a</link><description><![CDATA[<p>Some <b>words</b> <img src="https://a/b.jpg"> here.</p>]]></description></item>';
+  const time = (feed: string) => { const t = performance.now(); parseFeed(feed); text(feed); return performance.now() - t; };
   for (const bomb of ['<'.repeat(4e6), '<![CDATA['.repeat(4e5), '<img '.repeat(8e5), '<item '.repeat(6e5), `<rss><channel><item><description><![CDATA[${'<'.repeat(3e6)}]]></description></item></channel></rss>`]) {
-    const t = Date.now(); parseFeed(bomb); text(bomb);
-    assert.ok(Date.now() - t < 1500, `${bomb.slice(0, 12)} took ${Date.now() - t} ms`);
+    const normal = `<rss><channel><title>T</title>${item.repeat(Math.ceil(bomb.length / item.length))}</channel></rss>`;
+    let took = 0, usual = 0;
+    for (let i = 0; i < 3 && (!i || took > 10 * usual); i++) { usual = time(normal); took = time(bomb); }
+    assert.ok(took < 10 * usual, `${bomb.slice(0, 12)} took ${took.toFixed(0)} ms, a normal feed that size ${usual.toFixed(0)} ms`);
   }
   assert.equal(text('a<b>c</b> d'), 'a c d');
   assert.equal(parseFeed('<rss><channel><item><title>T</title><description><![CDATA[<p><img class="x" src="https://a/b.jpg"> hi</p>]]></description></item></channel></rss>')[0].image, 'https://a/b.jpg');

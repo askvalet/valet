@@ -273,7 +273,7 @@ export const fmt = {
   /** "Tonight", "Tomorrow", "Fri", "Nov 4" (and "Yesterday") */
   relativeDay(iso: string | number | Date) {
     const d = new Date(iso), today = new Date(new Date().toDateString()).getTime();
-    const diff = Math.floor((new Date(d.toDateString()).getTime() - today) / 864e5);
+    const diff = Math.round((new Date(d.toDateString()).getTime() - today) / 864e5);   // round: a day with a clock change is 23 or 25 hours
     if (diff === -1) return 'Yesterday';
     if (diff === 0) return d.getHours() >= 17 ? 'Tonight' : 'Today';
     if (diff === 1) return 'Tomorrow';
