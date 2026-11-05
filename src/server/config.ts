@@ -74,6 +74,7 @@ const Section = z.object({
   widgets: z.array(z.union([z.string(), z.object({
     widget: z.string(), size: z.enum(CARD_SIZES).default('medium'), every: Every.optional(),
     rows: z.number().int().min(1).max(6).optional(),   // how many rows of its section it spans, so smaller cards can stack beside it
+    cols: z.number().int().min(1).max(8).optional(),   // how many of its section's columns it spans (never more than there are), e.g. a calendar across half a row of four
     view: z.enum(VIEWS).optional(),   // how to draw it: any chart for numbers, any gallery for pictures (src/shared/views.ts)
     title: z.string().optional(), icon: z.string().optional(), header: z.boolean().optional(),
     tint: Color.optional(), opacity: z.number().min(0).max(1).optional(), blur: z.number().min(0).max(80).optional(),

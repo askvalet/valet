@@ -1,7 +1,7 @@
 // The desktop card: the 3D model (pc-model.ts) above a panel. Nothing selected: presets, named, and the parts with their
 // numbers. A part selected: the camera flies to it, the rest dims, and the panel shows its numbers and lighting.
 import { ChevronLeft } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Chip } from '@/components/ui/chip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
@@ -84,14 +84,14 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
   const active = preset ?? data.presets?.find(p => p.active)?.id;
   const value = (id: string) => { const m = (id === 'fans' ? data.metrics?.[fanId] : data.metrics?.[id])?.[0]; return m ? withUnit(m.value, m.unit) : undefined; };
   const dotOf = (id: string) => { const z = shown.parts.find(p => p.id === lightId(id))?.zones[0]; return z && z.mode !== 'Off' ? hex(z.color) : undefined; };
-  const canAct = !!run && data.controls !== false, steady = useSteady(!!pick);
+  const canAct = !!run && data.controls !== false, steady = useSteady(!!pick), [more, setMore] = useState(false), FEW = 3;
   return (
     <div className="case"><div ref={steady.body} className="case-body" style={steady.style}>
       <div className="relative">
         <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-inset" aria-label="3D model of the PC. Select a part to see it and change its lighting; every part is also in the list below." role="img" />
       </div>
       {!pick ? (
-        <div key="all" className="space-y-2 animate-in fade-in duration-(--dur-pop)">
+        <div key="all" className="@container/parts space-y-2 animate-in fade-in duration-(--dur-pop)">
           {!!data.presets?.length && (
             <div role="group" aria-label="Lighting presets" className="flex flex-wrap gap-1">
               {data.presets.map(p => (
@@ -102,12 +102,14 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
               ))}
             </div>
           )}
+          {/* a narrow card shows three parts and a chip for the rest, so the card stays short */}
           <div className="flex flex-wrap gap-1.5">
-            {PICKS.map(p => (
-              <Chip key={p.id} variant="outline" onClick={() => choose(p.id)} dot={p.light ? dotOf(p.id) || 'off' : null}>
+            {PICKS.map((p, i) => (<Fragment key={p.id}>
+              {i === FEW && !more && <Chip variant="outline" onClick={() => /^#?home$/i.test(location.hash) ? setMore(true) : (location.hash = 'home')} className="hidden text-muted-foreground @max-md/parts:inline-flex">{PICKS.length - FEW} more</Chip>}
+              <Chip variant="outline" onClick={() => choose(p.id)} dot={p.light ? dotOf(p.id) || 'off' : null} className={cn(i >= FEW && !more && '@max-md/parts:hidden')}>
                 {SHORT[p.id] ?? p.name}{value(p.id) && <span className="tabular text-muted-foreground">{value(p.id)}</span>}
               </Chip>
-            ))}
+            </Fragment>))}
           </div>
           {data.controls === false ? <Cant>Lighting is read-only in this install.</Cant> : !run ? <Cant>View only: sign in to change this.</Cant> : note && <Said note={note} />}
         </div>

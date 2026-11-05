@@ -30,7 +30,7 @@ const RecapStory = lazy(() => import('./recap.tsx'));
 export type Size = 'small' | 'wide' | 'medium' | 'tall' | 'large';
 export type Paper = { image?: string; paint?: string };
 type Grid = { phone?: number; tablet?: number; desktop?: number; wide?: number };
-export type CardOverride = { title?: string; icon?: string; header?: boolean; view?: View; rows?: number; style?: Record<string, string> };
+export type CardOverride = { title?: string; icon?: string; header?: boolean; view?: View; rows?: number; cols?: number; style?: Record<string, string> };
 
 export interface Page {
   title: string; greeting?: string; notice?: string; location?: string; canAct?: boolean; sandbox?: boolean;
@@ -557,7 +557,7 @@ function Home({ account }: { account: boolean }) {
             {chips && (
               <div className="fade-x no-scrollbar mt-1.5 overflow-x-auto py-1">
                 {/* centred when it fits, scrolls from the start when it doesn't */}
-                <div className={cn('flex min-h-8 w-max min-w-full justify-center gap-1.5', h?.align === 'left' ? 'mr-auto' : h?.align === 'right' ? 'ml-auto' : 'mx-auto')}>
+                <div className={cn('flex min-h-8 w-max min-w-full gap-1.5', h?.align === 'left' ? 'justify-start' : h?.align === 'right' ? 'justify-end' : 'justify-center', h?.align === 'left' ? 'mr-auto' : h?.align === 'right' ? 'ml-auto' : 'mx-auto')}>
                   {shownChips.map(({ s, out }) => (
                     <Chip key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={out ? 'chip-out' : arrival(`chip:${s}`)} style={out ? { maxWidth: 320 } : undefined}>{s}</Chip>
                   ))}
@@ -631,7 +631,7 @@ function Home({ account }: { account: boolean }) {
                         const span = cn(size !== 'small' && 'col-span-2', size === 'tall' && 'row-span-2', size === 'large' && 'col-span-full @5xl/main:col-span-4');
                         // a size the config redefines, or a grid of its own, spans by number, never past the last column
                         const [cols, rows] = SPANS[size ?? 'medium'], own = sized[size ?? 'medium'];
-                        const spans = (own || sec.grid) ? { gridColumn: `span min(${own?.cols ?? cols}, var(--tracks))`, gridRow: `span ${o?.rows ?? own?.rows ?? rows}` } : o?.rows ? { gridRow: `span ${o.rows}` } : undefined;
+                        const spans = (own || sec.grid || o?.cols) ? { gridColumn: `span min(${o?.cols ?? own?.cols ?? cols}, var(--tracks, 6))`, gridRow: `span ${o?.rows ?? own?.rows ?? rows}` } : o?.rows ? { gridRow: `span ${o.rows}` } : undefined;
                         if ((size === 'small' || size === 'wide') && c?.summary) return <div key={key} className={cn('min-w-0', !spans?.gridColumn && span, o?.style && 'card-look')} style={{ ...spans, ...o?.style }}><SummaryTile s={c.summary} href={c.href} /></div>;
                         return <div key={key} style={spans} className={cn('min-w-0', !spans?.gridColumn && (size === 'small' ? 'col-span-2' : span))}>{widget(key, size === 'large', 'always')}</div>;
                       })}
@@ -639,7 +639,7 @@ function Home({ account }: { account: boolean }) {
                   );
                   if (sec.grid && !aside) return (
                     <div className="cols grid gap-(--card-gap)" style={gridVars(sec.grid)}>
-                      {keys.map(k => <div key={k} className="min-w-0">{widget(k, false, true)}</div>)}
+                      {keys.map(k => { const c = sec.looks?.[k]?.cols; return <div key={k} className="min-w-0" style={c ? { gridColumn: `span min(${c}, var(--tracks))` } : undefined}>{widget(k, false, true)}</div>; })}
                     </div>
                   );
                   // a wide card (e.g. the 3D desktop) takes two thirds; the rest stack beside it
@@ -718,7 +718,7 @@ function Home({ account }: { account: boolean }) {
         {topbar?.theme !== false && switchable(page?.look.theme ?? 'auto', wall) && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={() => { flipped.current = true; theme.toggle(); }}>{theme.dark ? <Sun key="sun" className={cn(flipped.current && 'spin-in')} /> : <Moon key="moon" className={cn(flipped.current && 'spin-in')} />}</RoundButton>}
       </div>
 
-      <main ref={pageEl} data-settling={settled ? undefined : ''} style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-28', chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide && navSide === 'left' && (topbar?.position ?? 'right') === 'right' ? 'max-w-none md:pr-5!' : chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
+      <main ref={pageEl} data-settling={settled ? undefined : ''} style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-28', view === 'all' && h?.align === 'left' && 'xl:pt-2',   /* a hero at the left shares the top bar's row */ chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide && navSide === 'left' && (topbar?.position ?? 'right') === 'right' ? 'max-w-none md:pr-5!' : chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
         {(view !== 'all' || !hello) && <h1 className="sr-only">{view === 'all' ? page?.title : view}</h1>}
         {!hasSide && hero}
         {/* an edit that didn't apply says so here, on every tab, until the next one that does */}

@@ -223,7 +223,7 @@ const fontOf = ({ appearance: { font } }: Config) => {
 const sectionsOf = (layout: Config['layout']) => layout.map(s => ({ title: s.title, icon: s.icon, columns: typeof s.columns === 'object' ? s.columns.desktop ?? s.columns.tablet ?? s.columns.phone : s.columns, grid: typeof s.columns === 'object' ? s.columns : undefined, gap: s.gap, tabColumns: s.tabColumns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat, favorites: s.favorites,
   widgets: s.widgets.map(w => w.widget).filter(k => site.hub.widget(k)),
   sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium').map(w => [w.widget, w.size])),
-  looks: Object.fromEntries(s.widgets.filter(w => 'title' in w || 'icon' in w || 'header' in w || 'view' in w || 'rows' in w || cardLook(w)).map(w => [w.widget, { title: w.title, icon: w.icon, header: w.header, view: w.view, rows: w.rows, style: cardLook(w) }])) }));
+  looks: Object.fromEntries(s.widgets.filter(w => 'title' in w || 'icon' in w || 'header' in w || 'view' in w || 'rows' in w || 'cols' in w || cardLook(w)).map(w => [w.widget, { title: w.title, icon: w.icon, header: w.header, view: w.view, rows: w.rows, cols: w.cols, style: cardLook(w) }])) }));
 /** The wall's settings and pages; never its token. No pages: the browser builds the default one from the cards it hears. */
 const wallOf = (config: Config) => {
   const { token: _, pages: __, layout: ___, ...wall } = config.wall;

@@ -2,7 +2,7 @@
 // rooms, the robot. A room selected: its lights, each with a switch, brightness and colour, and "clean this room". The
 // robot: its state, what its percentages mean, and its controls. Whatever is pressed answers in a line beside it.
 import { ChevronLeft, Pause, Play, Power, Sparkles, Zap, type LucideIcon } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Chip, ChipDot } from '@/components/ui/chip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -132,7 +132,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
   const mine = room && queue?.rooms.includes(room.id), roomAt = mine ? queue!.running ? 'running' : 'sent' : 'clean';
   const sentWord = (...commands: string[]) => !!sent && commands.includes(sent.command);
   const viewOnly = !canAct && <Cant>View only: sign in to change this.</Cant>;
-  const steady = useSteady(!!sel);
+  const steady = useSteady(!!sel), [more, setMore] = useState(false), FEW = 4;
   const back = <Chip variant="outline" icon={ChevronLeft} onClick={() => choose(null)} className="gap-1 text-muted-foreground hover:text-foreground">All rooms</Chip>;
   return (
     <div className="case"><div ref={steady.body} className="case-body" style={steady.style}>
@@ -140,7 +140,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
         <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-inset" role="img" aria-label="3D floor plan. Drag to look around; select a room or the robot. Every room is also in the list below." />
       </div>
       {!sel && (
-        <div key="all" className="space-y-2 animate-in fade-in duration-(--dur-pop)">
+        <div key="all" className="@container/rooms space-y-2 animate-in fade-in duration-(--dur-pop)">
           <div className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1.5">
             {note ? <Said note={note} /> : <>
               <Counter value={String(lit.length)} className="metric text-metric-s leading-none" />
@@ -148,19 +148,22 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
               <Pill icon={Power} disabled={!canAct || !lit.length} onClick={() => flip(lit, false, `Turned off ${plural(lit.length, 'light')}`)}>All off</Pill>
             </>}
             {r && (
-              <Chip onClick={() => choose('robot')} className="ml-auto" dot={r.error ? 'bad' : sent ? 'warn' : busy ? '#64d2ff' : 'good'}>
+              <Chip onClick={() => choose('robot')} className="ml-auto @max-md/rooms:ml-0 @max-md/rooms:w-full @max-md/rooms:[&>span:last-child]:ml-auto" dot={r.error ? 'bad' : sent ? 'warn' : busy ? '#64d2ff' : 'good'}>
                 <span>Vacuum · {sent ? 'Sent' : said(r)}</span>
                 {r.battery != null && <span className="tabular text-muted-foreground">{r.battery}%</span>}
               </Chip>
             )}
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {shown.rooms.filter(rm => rm.lights.length || r).map(rm => {
+          {/* rooms in even columns, each chip its column's width with the state at the far end: tidy when the card is narrow */}
+          <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
+            {shown.rooms.filter(rm => rm.lights.length || r).map((rm, i, all) => {
               const on = rm.lights.filter(l => l.on), clean = cleaning?.[rm.id], c = on[0]?.color ?? '#ffd8a8';
-              return (
-                <Chip key={rm.id} variant="outline" onClick={() => choose(`room:${rm.id}`)} dot={on.length ? c : 'off'}>
-                  {rm.name}<span className="text-muted-foreground">{clean ? (clean === 'queued' ? 'Queued' : 'Cleaning') : !rm.lights.length ? 'No lights' : on.length ? `${on.length}/${rm.lights.length}` : 'Off'}</span>
-                </Chip>
+              // a narrow card shows four rooms and a chip for the rest, so the card stays short
+              return (<Fragment key={rm.id}>
+                {i === FEW && !more && <Chip variant="outline" onClick={() => /^#?home$/i.test(location.hash) ? setMore(true) : (location.hash = 'home')} className="hidden w-full text-muted-foreground @max-md/rooms:inline-flex">{all.length - FEW} more rooms</Chip>}
+                <Chip variant="outline" onClick={() => choose(`room:${rm.id}`)} dot={on.length ? c : 'off'} className={cn('w-full min-w-0', i >= FEW && !more && '@max-md/rooms:hidden')}>
+                  <span className="min-w-0 truncate">{rm.name}</span><span className="ml-auto flex-none text-muted-foreground">{clean ? (clean === 'queued' ? 'Queued' : 'Cleaning') : !rm.lights.length ? 'No lights' : on.length ? `${on.length}/${rm.lights.length}` : 'Off'}</span>
+                </Chip></Fragment>
               );
             })}
           </div>

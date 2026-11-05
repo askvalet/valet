@@ -36,7 +36,7 @@ chat:
   beamColor: colorful
   beamStrength: 1
   followUps: [Why is Mealie down?, Pause Pi-hole, Turn off the living room lights, What should we watch tonight?, Anything happen overnight?, How are the downloads doing?]
-hero: { scope: [downloads, lights, what to watch], review: false }   # the year in review is still at #recap, just not offered
+hero: { scope: [downloads, lights, what to watch], review: false, align: left }   # the greeting at the top left, beside the top bar, for room   # the year in review is still at #recap, just not offered
 
 menubar: [lab.system]
 weather: lab.weather
@@ -105,6 +105,7 @@ layout:
       - { widget: lab.weather, size: medium }
   - tab: Home
     heading: false
+    overview: false
     columns: 2
     header: false
     widgets: [lab.home, lab.pc]
@@ -116,6 +117,7 @@ layout:
   - title: Now
     heading: false
     tab: Media
+    overview: false
     columns: 2
     widgets: [lab.streams, lab.downloads]
   - tab: Home
@@ -124,10 +126,21 @@ layout:
     overview: false
     columns: 1
     widgets: [lab.calendar]   # the month and the day beside it, the full width
-  - columns: 2
-    widgets: [{ widget: lab.recent, view: focus }, lab.photos]   # side by side, half the width each
-  - widgets:
-      - { widget: lab.calendar, size: tall }
+  # the overview, under Services: the house, the desktop and the calendar a third each, then
+  # what's playing, downloading and new a third each, then Immich beside the reading pile and the tiles
+  - heading: false
+    columns: { phone: 1, tablet: 2, desktop: 3, wide: 3 }
+    widgets:
+      - { widget: lab.home, title: Home Assistant }
+      - { widget: lab.pc, title: "Daniel's Desktop" }
+      - lab.calendar
+  - heading: false
+    columns: { phone: 1, tablet: 1, desktop: 3, wide: 3 }
+    widgets: [lab.streams, lab.downloads, { widget: lab.recent, view: focus }]
+  - heading: false
+    columns: { phone: 2, tablet: 4, desktop: 6, wide: 6 }
+    widgets:
+      - { widget: lab.photos, size: tall }
       - { widget: lab.reading, size: tall, view: cards }
       - { widget: lab.dns, size: small }
       - { widget: lab.drives, size: small }

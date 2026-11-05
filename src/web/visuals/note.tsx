@@ -70,7 +70,7 @@ export function useSteady(open: boolean) {
   }, [open]);
   useLayoutEffect(() => {
     const width = body.current?.offsetWidth ?? 0;
-    setHeight(open && width >= 480 && width < 880 ? rest.current : undefined);
+    setHeight(open && width >= 300 && width < 880 ? rest.current : undefined);   // narrow too: opening a part never moves the row
   }, [open]);
   useLayoutEffect(() => {
     const row = body.current?.firstElementChild as HTMLElement | null, model = row?.firstElementChild as HTMLElement | null;

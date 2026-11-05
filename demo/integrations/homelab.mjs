@@ -126,9 +126,11 @@ const WEEK = { 1: [['Daycare drop-off', 8, 30, 20, FAMILY], ['Team standup', 9, 
   3: [['Daycare drop-off', 8, 30, 20, FAMILY], ['Design review', 14, 0, 60, WORK], ['Daycare pick-up', 16, 45, 30, FAMILY]], 4: [['Daycare drop-off', 8, 30, 20, FAMILY], ['Planning', 11, 0, 45, WORK], ['Piano practice', 17, 30, 30, FAMILY]],
   5: [['Daycare drop-off', 8, 30, 20, FAMILY], ['Daycare pick-up', 16, 0, 30, FAMILY], ['Pizza night', 18, 0, 90, HOME]], 6: [['Swimming lessons', 10, 0, 45, FAMILY], ['Farmers market', 12, 0, 60, HOME]], 0: [['Groceries', 9, 30, 60, HOME], ['Meal prep', 16, 0, 90, HOME]] };
 const NOW_AND_THEN = [['Dentist', 15, 0, 45, FAMILY], ['Vet check-up', 10, 30, 30, HOME], ['Parent-teacher meeting', 17, 0, 30, FAMILY], ['Furnace service', 13, 0, 120, HOME], ['Dinner with the neighbours', 18, 30, 150, FAMILY], ['Haircut', 12, 30, 30, FAMILY], ['Quarterly review', 15, 30, 60, WORK], ['Book club', 19, 30, 90, HOME]];
-const SERVICES = [['Plex', 'Media', 'plex'], ['Tautulli', 'Media', 'tautulli'], ['Sonarr', 'Media', 'sonarr'], ['Radarr', 'Media', 'radarr'], ['Prowlarr', 'Media', 'prowlarr'], ['Bazarr', 'Media', 'bazarr'], ['qBittorrent', 'Media', 'qbittorrent'],
-  ['Home Assistant', 'Home', 'home-assistant'], ['Immich', 'Home', 'immich'], ['Paperless', 'Home', 'paperless'], ['Karakeep', 'Home', 'karakeep'], ['Mealie', 'Home', 'mealie'],
-  ['Pi-hole', 'Network', 'pi-hole'], ['Caddy', 'Network', 'caddy'], ['Uptime Kuma', 'Network', 'uptime-kuma']];
+const SERVICES = [['Plex', 'Media', 'plex'], ['Tautulli', 'Media', 'tautulli'], ['Sonarr', 'Media', 'sonarr'], ['Radarr', 'Media', 'radarr'], ['Lidarr', 'Media', 'lidarr'], ['Prowlarr', 'Media', 'prowlarr'], ['Bazarr', 'Media', 'bazarr'], ['qBittorrent', 'Media', 'qbittorrent'],
+  ['Navidrome', 'Media', 'navidrome'], ['Audiobookshelf', 'Media', 'audiobookshelf'], ['Komga', 'Media', 'komga'],
+  ['Home Assistant', 'Home', 'home-assistant'], ['Frigate', 'Home', 'frigate'], ['Immich', 'Home', 'immich'], ['Paperless', 'Home', 'paperless'], ['Karakeep', 'Home', 'karakeep'], ['Mealie', 'Home', 'mealie'],
+  ['Nextcloud', 'Home', 'nextcloud'], ['Vaultwarden', 'Home', 'vaultwarden'],
+  ['Pi-hole', 'Network', 'pi-hole'], ['Caddy', 'Network', 'caddy'], ['Tailscale', 'Network', 'tailscale'], ['Authentik', 'Network', 'authentik'], ['Uptime Kuma', 'Network', 'uptime-kuma'], ['Grafana', 'Network', 'grafana']];
 
 // [id, name, seconds, [[label, score, event thumbnail, logged every n loops, [t, x, y, w, h] traced over the clip]]]. Each clip
 // loops in step with the clock, so everyone sees the same moment and the boxes land on what's really there.

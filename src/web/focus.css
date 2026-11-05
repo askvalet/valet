@@ -2,6 +2,8 @@
    (container units), so a phone shows one with a sliver either side and a wide card shows a few. */
 .focus { --w: min(300px, 58cqw); --ratio: 1; --gap: clamp(10px, 2.4cqw, 26px); position: relative; isolation: isolate; container-type: inline-size; }
 .focus.is-poster { --w: min(236px, 48cqw); --ratio: 2 / 3; }
+/* on a desktop page the card sits in a row of others: a smaller poster keeps the row to the height its neighbours need */
+@container main (min-width: 64rem) { .focus.is-poster { --w: min(170px, 44cqw); } }
 .focus.is-wide { --w: min(520px, 78cqw); --ratio: 16 / 9; }
 
 .focus-track {
