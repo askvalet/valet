@@ -150,9 +150,10 @@ layout:
     columns: 2
     widgets: [{ widget: lab.games, view: coverflow }, lab.recent]   # side by side, half the width each
   - title: Library
-    columns: 1
+    icon: file   # a sheet of paper in the nav
+    columns: 2
     overview: false
-    widgets: [lab.album, lab.books]
+    widgets: [lab.album, lab.books]   # side by side, half the width each
   - title: Reading
     tab: Library
     overview: false
