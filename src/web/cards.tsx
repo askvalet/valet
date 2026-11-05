@@ -244,7 +244,7 @@ function Rows({ card, dense, run }: { card: ListCard; dense: boolean; run?: RunA
         {it.section && it.section !== rows[i - 1]?.item.section && <li className="pt-2.5 pb-1 text-meta font-medium text-muted-foreground first:pt-1">{it.section}</li>}
         <RowSlot as="li" state={card.log || state === 'out' ? state : undefined} on={on} dust={dust}><Row className={cn('flex min-w-0 items-center gap-3', dense ? 'py-1.5' : 'py-2.5', it.href && 'row-link -mx-2 cursor-pointer px-2 transition-colors hover:bg-accent')}
           onClick={it.href ? () => window.open(it.href, '_blank', 'noopener') : undefined} role={it.href ? 'link' : undefined}>
-          {it.image && <img src={it.image} alt="" loading="lazy" className={cn('shrink-0 rounded-md bg-muted object-cover', dense ? 'h-9 w-6' : 'h-12 w-8')} />}
+          {it.image && <img src={it.image} alt="" loading="lazy" className={cn('shrink-0 rounded-thumb bg-muted object-cover', dense ? 'h-9 w-6' : 'h-12 w-8')} />}
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-3">
               <div className={cn('min-w-0 flex-1 font-medium', dense ? 'text-body' : 'text-item', it.href && !dense ? 'line-clamp-2 leading-snug' : 'truncate')}>{it.title}</div>
@@ -443,9 +443,9 @@ function Article({ card, run }: { card: ArticleCard; run?: RunAction }) {
         {p.image && <img src={p.image} alt="" draggable={false} className="article-page" />}
         {link && <a href={link} target="_blank" rel="noreferrer" aria-label={p.headline} className="article-open" />}
         <div className="article-text">
-          <div className="flex items-center gap-1.5 text-meta font-medium text-white/70">{card.source?.icon && <img src={card.source.icon} alt="" className="size-3.5 object-contain" />}<span className="truncate">{[card.title, p.site].filter(Boolean).join(' · ')}</span>{n > 1 && <span className="ml-auto shrink-0 tabular">{i + 1} of {n}</span>}</div>
-          <div className="mt-1 line-clamp-2 text-metric-s leading-tight font-semibold tracking-tight text-pretty text-white">{p.headline}</div>
-          {p.blurb && <Clamp text={p.blurb} className="article-blurb mt-1.5 text-item leading-snug text-white/75" />}
+          <div className="article-meta flex items-center gap-1.5 text-meta font-medium">{card.source?.icon && <img src={card.source.icon} alt="" className="size-3.5 object-contain" />}<span className="truncate">{[card.title, p.site].filter(Boolean).join(' · ')}</span>{n > 1 && <span className="ml-auto shrink-0 tabular">{i + 1} of {n}</span>}</div>
+          <div className="mt-1 line-clamp-2 text-metric-s leading-tight font-semibold tracking-tight text-pretty">{p.headline}</div>
+          {p.blurb && <Clamp text={p.blurb} className="article-blurb mt-1.5 text-item leading-snug" />}
         </div>
       </div>
     );
@@ -494,12 +494,12 @@ function Art({ src, className, alt = '', style, onLoaded }: { src?: string; clas
 /** One stream as a cinematic tile: the backdrop is the card, details float over a soft scrim. */
 /** Which app a picture is from, in the corner of a full-bleed card. */
 const AppBadge = ({ of }: { of?: CardT['source'] }) => !of?.icon ? null : (
-  <span className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/45 py-1 pr-2.5 pl-1.5 text-caption font-medium text-white backdrop-blur-md"><img src={of.icon} alt="" className="size-4 object-contain" />{of.name}</span>
+  <span className="on-art absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/45 py-1 pr-2.5 pl-1.5 text-caption font-medium text-white backdrop-blur-md"><img src={of.icon} alt="" className="size-4 object-contain" />{of.name}</span>
 );
 
 export function NowPlaying({ m, compact, source }: { m: MediaItem; compact?: boolean; source?: CardT['source'] }) {
   return (
-    <div className={cn('@container/np relative isolate w-full overflow-hidden rounded-surface bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/0.55)]',
+    <div className={cn('art-card @container/np relative isolate w-full overflow-hidden rounded-surface bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/0.55)]',
       compact ? 'aspect-[16/9] min-h-[170px]' : 'h-full min-h-[210px] flex-1')}>
       <AppBadge of={source} />
       {m.backdrop
@@ -567,7 +567,7 @@ function Media({ card, compact, run }: { card: MediaCard; compact?: boolean; run
         return (
           <RowSlot key={key} state={state} dust={dust}><div className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden px-4 py-2.5">
             {m.pct != null && <span className={cn('meter-row', stall && 'is-warn')} style={{ transform: `translateX(${(Math.max(0, Math.min(1, m.pct)) * 100 - 100).toFixed(2)}%)` }} />}
-            {m.image ? <Art src={m.image} className="h-12 w-8 shrink-0 rounded-md object-cover" /> : <span className="grid h-12 w-8 shrink-0 place-items-center rounded-thumb bg-fill-2 text-muted-foreground"><Icon name={m.icon ?? 'film'} className="size-icon" /></span>}
+            {m.image ? <Art src={m.image} className="h-12 w-8 shrink-0 rounded-thumb object-cover" /> : <span className="grid h-12 w-8 shrink-0 place-items-center rounded-thumb bg-fill-2 text-muted-foreground"><Icon name={m.icon ?? 'film'} className="size-icon" /></span>}
             <div className="min-w-0 flex-1">
               <div className="truncate text-item font-medium">{m.title}</div>
               {stall ? <StallLine m={m} stall={stall} card={card} run={run} /> : <div className="truncate text-meta text-muted-foreground">{m.tags?.join(' · ') ?? m.subtitle}</div>}
@@ -602,7 +602,7 @@ function Stack({ card, header, onOpen }: { card: ShelfCard; header?: ReactNode; 
           const [r, x] = rest[i], depth = pile.length - 1 - i;
           return (
             <div key={i} className={cn('stack-page absolute top-2.5 left-3 h-[176px] origin-bottom-left overflow-hidden shadow-[0_10px_30px_-10px_rgb(0_0_0/.6),0_0_0_1px_rgb(0_0_0/.08)]',
-              photo ? 'aspect-square rounded-hero bg-muted ring-[3px] ring-white/90' : 'aspect-[3/4] rounded-poster bg-white')}
+              photo ? 'aspect-square rounded-poster bg-muted ring-[3px] ring-white/90' : 'aspect-[3/4] rounded-poster bg-white')}
               style={{ '--r': `${one ? -2 : r * .7}deg`, '--x': `${x + 10}px`, '--fan-x': `${depth ? (pile.length - 1 - depth) * 58 : (pile.length - 1) * 58}px`, '--fan-r': `${(i - (pile.length - 1)) * -2.5}deg`,
                 zIndex: i, filter: depth ? `brightness(${1 - depth * .06})` : undefined } as React.CSSProperties}>
               <Art src={it.image} alt="" className={cn('size-full object-cover', !photo && 'object-top')} />
@@ -651,7 +651,7 @@ function Spotlight({ card, header }: { card: ShelfCard; header?: ReactNode }) {
     <div>
       <div className="mb-3 flex items-center gap-2">{header}</div>
       <div className="grid gap-4 @4xl/main:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <Tile href={first.href} className="group relative block aspect-[16/9] overflow-hidden rounded-hero @4xl/main:aspect-auto @4xl/main:h-full bg-muted shadow-[0_18px_40px_-20px_rgb(0_0_0/.6)]">
+        <Tile href={first.href} className="art-card group relative block aspect-[16/9] overflow-hidden rounded-hero @4xl/main:aspect-auto @4xl/main:h-full bg-muted shadow-[0_18px_40px_-20px_rgb(0_0_0/.6)]">
           <Art src={first.backdrop ?? first.image} alt={first.title} className={cn('absolute inset-0 size-full object-cover transition-transform duration-(--dur-move) ease-out', first.href && 'group-hover:scale-[1.03]')} />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-4 text-white">
@@ -1040,7 +1040,7 @@ function Showcase({ card, run }: { card: ShowcaseCard; run?: RunAction }) {
     <div className="grid items-center gap-x-6 gap-y-4 @md/card:grid-cols-[minmax(0,1fr)_150px]">
       <div className="min-w-0">
         {V ? <Suspense fallback={<Skeleton className="aspect-square w-full rounded-inset" />}><V data={card.visual.data} /></Suspense>
-          : card.visual.src ? <img src={card.visual.src} alt="" className="w-full rounded-inset object-cover" /> : null}
+          : card.visual.src ? <img src={card.visual.src} alt="" className="w-full rounded-hero object-cover" /> : null}
       </div>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-4 @md/card:grid-cols-1 @md/card:gap-y-5">
         {card.items.map(s => (
@@ -1225,7 +1225,7 @@ function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?
   const cur = items[i], [lead, ...rest] = [cur.badge, cur.title, cur.subtitle].filter(Boolean);
   return (
     <a ref={box} href={cur.href} target="_blank" rel="noreferrer" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
-      className={cn(cur.href && 'lift', 'relative isolate block overflow-hidden rounded-surface bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/.55)]', fill ? 'h-full min-h-[280px]' : 'aspect-[4/3] max-h-[460px] w-full')}>
+      className={cn(cur.href && 'lift', 'art-card relative isolate block overflow-hidden rounded-surface bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/.55)]', fill ? 'h-full min-h-[280px]' : 'aspect-[4/3] max-h-[460px] w-full')}>
       {items.map((p, k) => (
         <Art key={k} src={p.image} alt={p.title ?? ''} className={cn('photo-slide absolute inset-0 -z-10 size-full object-cover', k === i && 'is-on')}
           style={bars[k] && { height: `${100 / (1 - bars[k][0] - bars[k][1])}%`, top: `${-100 * bars[k][0] / (1 - bars[k][0] - bars[k][1])}%` }}
@@ -1452,7 +1452,7 @@ function TileGraph({ points, gauge }: { points: number[]; gauge?: boolean }) {
 function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
   const art = !!s.image;
   const body = (
-    <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift', art && 'border-transparent text-white')} style={{ '--tint': s.color ?? 'color-mix(in oklab, var(--foreground) 55%, transparent)' } as React.CSSProperties}>
+    <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift', art && 'art-card border-transparent text-white')} style={{ '--tint': s.color ?? 'color-mix(in oklab, var(--foreground) 55%, transparent)' } as React.CSSProperties}>
       {art && <><Art src={s.image} className={cn('absolute inset-0 -z-10 size-full object-cover transition-transform duration-(--dur-move) ease-out', href && 'group-hover/tile:scale-[1.03]')} /><div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(0_0_0/.78),rgb(0_0_0/.42)_38%,transparent_72%)]" /></>}
       {!art && !s.marks && !s.waffle && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} gauge={s.ring != null} /></div>}
       <div className={cn('relative flex flex-1 flex-col p-4', art && '[text-shadow:0_1px_10px_rgb(0_0_0/.7)]')}>
@@ -1611,8 +1611,8 @@ export function Forecast({ card }: { card: ForecastCard }) {
         <div className="mt-2 grid items-end" style={{ gridTemplateColumns: `repeat(${hours.length}, minmax(0, 1fr))`, height: 46 }}>
           {hours.map((h, i) => (
             <div key={i} className="flex h-full flex-col items-center justify-end gap-1">
-              <div className="w-3 rounded-full bg-[#64d2ff]" style={{ height: `${Math.max(2, h.pop * .3)}px`, opacity: .25 + h.pop / 130 }} />
-              <div className={cn('text-caption tabular', h.pop >= 30 ? 'text-[#64d2ff]' : 'text-muted-foreground')}>{h.pop}%</div>
+              <div className="w-3 rounded-full bg-precip" style={{ height: `${Math.max(2, h.pop * .3)}px`, opacity: .25 + h.pop / 130 }} />
+              <div className={cn('text-caption tabular', h.pop >= 30 ? 'text-precip' : 'text-muted-foreground')}>{h.pop}%</div>
             </div>
           ))}
         </div>
