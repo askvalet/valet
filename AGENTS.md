@@ -116,7 +116,10 @@ https://askvalet.dev.
 
 ### Design
 - **Quiet chrome, rich content.** System tokens (`styles.css`): graphite neutrals, one accent (brass), green/orange/red only for
-  status, monochrome icons. Geist for text; tabular numerals for numbers.
+  status, monochrome icons. Two things keep a colour of their own, each a named token that turns with the theme: a meeting is
+  blue (`--meeting`: its ring, its countdown, the popover's big Join and the calendar's tinted Join chip, `.meeting-join` and
+  `.meeting-chip`), and rain is sky blue (`--precip`, the forecast's chance-of-rain bars). Never write the hex. Geist for text;
+  tabular numerals for numbers.
 - **Glass over a wallpaper.** With a wallpaper, every surface is frosted glass (`has-wallpaper`): translucent graphite,
   heavy blur, saturation near 1 so surfaces stay neutral, a hairline light edge. Floating chrome (top bars,
   popovers) is frostier than cards so it stays legible over content while scrolling.
@@ -198,8 +201,19 @@ literal; a new size or corner is a new token with a role, argued for here.
   `.dark`, `.rc-race` and the cameras' dock, and anything else that sets its own `--foreground` must do the same.
 - **Corners** by role, all multiples of `--radius` so `appearance.shape` moves them together: `rounded-surface` and `rounded-popover`
   20, `rounded-control` and `rounded-inset` (a code block, a 3D view, a picture inside a card) 12, `rounded-chip` 9, `rounded-tag` 6;
-  artwork by size: `rounded-thumb` (48px or less) 6, `rounded-poster` 12, `rounded-hero` 16. The plain steps (`sm` 9 … `3xl` 24) are
+  artwork by size: `rounded-thumb` (48px or less: list thumbnails, the race's and Most watched's posters, camera event stills) 6,
+  `rounded-poster` 12 (a poster, cover, photo or reading card in a row, stack or wall: focus, coverflow, masonry, cards), `rounded-hero`
+  16 (a picture that fills a card's width: spotlight, album strips, the photo mosaic, a camera). A picture that *is* the card (Now
+  playing, a flashback photo, From your reading) takes the card's own `rounded-surface`. The plain steps (`sm` 9 … `3xl` 24) are
   in order now; `sm` and `md` are the chip's and the control's.
+- **Artwork cards in light** (`.art-card`, `.article`, `.deck-card`): a dark picture beside white glass reads as a checkerboard, so in
+  light they take the glass's own lit edge (`--art-rim`, an overlay on `::before`) and its shadow (`--art-shadow`; liquid has its
+  own). The picture is never lightened; From your reading, a web page already, fades to white with dark words instead of to black.
+- **Service icons** (`icon-ink.ts`): every `/api/icon/…` image is read once into a 24px canvas and judged against each theme's
+  glass. If fewer than 12% of its pixels stand 1.6:1 apart from it (white on white glass, black on dark), it's marked: a
+  one-colour logo is turned to the ink (`invert`, as the icon set's other variant would be), a coloured one sits on a small plate
+  of the ink. Everywhere icons show (service list, Services, Updates, Containers, ⌘K, approvals); not on top of a picture
+  (`.on-art`, the recap). Container tiles sit on `--fill-1`.
 - **Type** is eight steps: `text-caption` 11, `text-meta` 12, `text-body` 13, `text-item` 14 (a row's name), `text-title` 15,
   `text-metric-s` 20, `text-metric-m` 28, `text-metric-l` 44, as `var(--text-*)` in CSS. Leading inherits. Kept on purpose: inputs at
   16 (phones zoom into anything smaller), the wall's clock and big lines, the weather's big number, the recap's stage, SVG text that

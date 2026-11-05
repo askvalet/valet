@@ -13,8 +13,8 @@ export type Live = Activity & { key: string; href?: string; source?: { name: str
 export type Notice = { key: string; text: string; sub?: string; icon?: string; image?: string; tone: 'good' | 'warn' | 'bad' | 'accent'; n: number };
 
 const TONE: Record<string, string> = { accent: 'var(--primary)', good: 'var(--good)', warn: 'var(--warn)', bad: 'var(--bad)' };
-// a meeting is blue, the colour people know a call by, wherever it shows (the ring, its bar, its Join)
-export const MEETING = '#0a84ff';
+// a meeting is blue, the colour people know a call by, wherever it shows (the ring, its bar, its Join; --meeting in styles.css)
+export const MEETING = 'var(--meeting)';
 const tint = (a: Live) => a.link ? MEETING : TONE[a.tone ?? ''] ?? (a.icon === 'play' ? 'var(--primary)' : a.icon === 'download' ? '#64d2ff' : 'var(--good)');
 
 /** Where a countdown is at `now`: the words, how far along, and the minutes for inside the ring. Over is null. */

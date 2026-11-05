@@ -9,7 +9,9 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* Graphite neutrals, so the content carries the colour. One accent, brass: the page's selection and
-   the one number that leads. Green, orange and red only for status, toned to sit inside the ramp.
+   the one number that leads. Green, orange and red only for status, toned to sit inside the ramp. Two things keep colours of
+   their own, named here so they're the same wherever they show: a meeting is blue (--meeting: its ring, its countdown, every
+   Join), and rain is sky blue (--precip: the forecast's chance-of-rain bars).
    The graphite ramp and the status tones are adapted from unslop by Damir Sokolovsky (github.com/heydamir/unslop, CC BY 4.0). */
 :root {
   --radius: 0.9rem;
@@ -32,6 +34,7 @@
   --input: rgb(0 0 0 / 0.12);
   --ring: #7d5f16;
   --good: #16a34a; --warn: #c97500; --bad: #dc2626;
+  --meeting: #0071e3; --precip: #1b95d0;   /* deeper in light, so they read as words on white glass */
   --sidebar: #f5f5f7;
   --sidebar-foreground: #1d1d1f;
   --sidebar-primary: #7d5f16;
@@ -65,6 +68,7 @@
   --input: rgb(255 255 255 / 0.12);
   --ring: #d9b56c;
   --good: #4cc38a; --warn: #f0a23c; --bad: #e5484d;
+  --meeting: #0a84ff; --precip: #64d2ff;
   --sidebar: #0f0f10;
   --sidebar-foreground: #ededed;
   --sidebar-primary: #d9b56c;
@@ -101,6 +105,8 @@
   --color-good: var(--good);
   --color-warn: var(--warn);
   --color-bad: var(--bad);
+  --color-meeting: var(--meeting);
+  --color-precip: var(--precip);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -597,6 +603,9 @@
 
 /* tiles: the graph fades out behind the number; numbers don't redraw themselves each time they're seen */
 .tile-graph { mask-image: linear-gradient(to right, transparent 22%, black 62%); }
+/* on the wall a tile is wide enough to show its detail ("20 of 64 GB") and is read from across the room, so the graph keeps to
+   the band between the name and the number instead of running behind either */
+.wd-body .tile-graph { bottom: 50px; height: calc(100% - 102px); min-height: 28px; }
 .twinkle { opacity: .5; }
 
 /* flashback photos crossfade and otherwise hold still */
@@ -605,11 +614,26 @@
 
 /* Arabic: a classical Naskh face where the system has one */
 
+/* Artwork cards: the picture is the card (Now playing, a photo, From your reading, a reading card, a poster tile). In dark they
+   sit among the glass as they are. In light they'd be dark slabs between white panes, a checkerboard, so they take the light
+   glass's own edge (a lit hairline over the picture) and its shadow, and read as one family with it. The picture stays as it is. */
+:root { --art-rim: inset 0 0 0 1px rgb(255 255 255 / .2), inset 0 1px 0 rgb(255 255 255 / .38);
+  --art-shadow: 0 0 0 .5px rgb(0 0 0 / .06), 0 18px 40px -22px rgb(0 0 0 / .3); }
+.glass-liquid.glass-light { --art-rim: inset 1.5px 1.5px 1px -1px rgb(255 255 255 / .7), inset -1.5px -1.5px 1px -1px rgb(255 255 255 / .4), inset 0 0 0 .5px rgb(255 255 255 / .3);
+  --art-shadow: 0 0 0 .5px rgb(0 0 0 / .06), 0 6px 24px rgb(0 0 0 / .08); }
+:root:not(.dark) :is(.art-card, .article, .deck-card) { box-shadow: var(--art-shadow); }
+:root:not(.dark) :is(.art-card, .article, .deck-card)::before { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; box-shadow: var(--art-rim); pointer-events: none; }
+
 /* the page behind a saved article: it reads top down, and scrolls by on hover */
-.article { position: relative; isolation: isolate; container-type: size; display: flex; align-items: flex-end; height: 100%; min-height: 240px; overflow: hidden; border-radius: var(--radius-hero); background: #fff; box-shadow: var(--shadow-card); }
+.article { position: relative; isolation: isolate; container-type: size; display: flex; align-items: flex-end; height: 100%; min-height: 240px; overflow: hidden; border-radius: var(--radius-surface); background: #fff; box-shadow: var(--shadow-card); }
 .article-page { position: absolute; inset: 0 0 auto; z-index: -2; width: 100%; min-height: 100%; object-fit: cover; object-position: top; transition: transform var(--dur-scene) var(--ease-out); }
 .article::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to top, rgb(10 10 16 / .96) 8%, rgb(10 10 16 / .82) 42%, rgb(10 10 16 / .12) 78%); }
-.article-text { min-width: 0; padding: 20px; }
+.article-text { min-width: 0; padding: 20px; color: #fff; }
+.article-meta { color: rgb(255 255 255 / .7); } .article-blurb { color: rgb(255 255 255 / .75); }
+/* in light the page fades to the light glass instead of to black, and the words take the ink: it's a web page, white already */
+:root:not(.dark) .article::after { background: linear-gradient(to top, rgb(255 255 255 / .97) 30%, rgb(255 255 255 / .9) 52%, rgb(255 255 255 / .1) 82%); }
+:root:not(.dark) .article-text { color: var(--foreground); }
+:root:not(.dark) .article-meta, :root:not(.dark) .article-blurb { color: var(--muted-foreground); }
 @media (hover: hover) and (pointer: fine) { .article:hover .article-page { transform: translateY(min(0px, max(-60%, calc(-100% + 100cqh))));   /* down the page, and only if there's more of it */ transition-duration: 14s; transition-timing-function: linear; } }
 
 /* documents on a desk: hover picks a page up */
@@ -748,6 +772,11 @@
 .chip-in { animation: desk-rise var(--dur-move) var(--ease-out) backwards; }
 .chip.is-warn { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 50%, transparent); }
 .wall-box { display: grid; place-items: center; width: 22px; height: 22px; color: var(--muted-foreground); }
+/* Service icons (icon-ink.ts): one that would vanish on this theme's glass, white on white or black on black, is turned to the
+   ink when it's one colour (as the icon set's other variant would be) or set on a small plate of the ink when it has colours of
+   its own. Not on top of a picture, where the picture is the background. */
+img[data-ink-light="invert"]:not(.dark *, .on-art *, .rc *), .dark img[data-ink-dark="invert"]:not(.on-art *, .rc *) { filter: invert(.92); }
+img[data-ink-light="plate"]:not(.dark *, .on-art *, .rc *), .dark img[data-ink-dark="plate"]:not(.on-art *, .rc *) { padding: 2px; border-radius: var(--radius-tag); background: var(--foreground); }
 
 /* requests: a poster and a line that says how far along it is */
 .ticket-line { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgb(0 0 0 / .45); }
@@ -812,6 +841,10 @@ main[data-settling] { visibility: hidden; }
 .wd-stage[data-view="out"] section :is([data-slot="card"], .wall-text, section > :not(:has([data-slot="card"]))) { opacity: 0; transition: opacity 600ms var(--ease-in-out); }
 .wd-stage[data-view="in"] section :is([data-slot="card"], .wall-text, section > :not(:has([data-slot="card"]))) { animation: wd-in 900ms var(--ease-out) backwards; }
 @keyframes wd-in { from { opacity: 0; translate: 0 8px; } }
-/* a meeting's Join: the one big blue button in its popover */
-.meeting-join { background: #0a84ff; }
-@media (hover: hover) and (pointer: fine) { .meeting-join:hover { background: #2a95ff; } }
+/* a meeting's Join: the one big blue button in its popover, and the same action as a blue-tinted chip in a list or the calendar */
+.meeting-join { background: var(--meeting); }
+.meeting-chip { background: color-mix(in oklab, var(--meeting) 14%, transparent); color: var(--meeting); }
+@media (hover: hover) and (pointer: fine) {
+  .meeting-join:hover { background: color-mix(in oklab, var(--meeting), #fff 14%); }
+  .meeting-chip:hover { background: color-mix(in oklab, var(--meeting) 22%, transparent); }
+}

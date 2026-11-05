@@ -8,7 +8,7 @@
 .masonry.is-poster { --col: calc(var(--row) * .8); }
 @container (max-width: 520px) { .masonry { --row: 96px; } }
 .masonry-tile {
-  position: relative; display: block; min-width: 0; overflow: hidden; border-radius: calc(var(--radius) * .6); color: #fff; text-decoration: none;
+  position: relative; display: block; min-width: 0; overflow: hidden; border-radius: var(--radius-poster); color: #fff; text-decoration: none;
   background: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 .masonry-tile:nth-child(3n + 2) { grid-column: span 2; }

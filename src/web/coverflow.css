@@ -13,7 +13,7 @@
 .cover-slide { position: relative; flex: none; width: var(--slot); scroll-snap-align: center; }
 .cover-turn { display: block; width: var(--w); color: inherit; text-decoration: none; outline: none; }
 .cover-card {
-  position: relative; display: block; width: 100%; aspect-ratio: 1 / var(--h); overflow: hidden; border-radius: calc(var(--radius) * .5);
+  position: relative; display: block; width: 100%; aspect-ratio: 1 / var(--h); overflow: hidden; border-radius: var(--radius-poster);
   background: color-mix(in srgb, var(--foreground) 8%, transparent);
   box-shadow: 0 30px 44px -26px rgb(0 0 0 / .75), inset 0 0 0 .5px rgb(255 255 255 / .12);
   -webkit-box-reflect: below 3px linear-gradient(transparent 76%, rgb(255 255 255 / .2));

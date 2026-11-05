@@ -54,7 +54,7 @@
 @container (min-width: 760px) { .has-pills > .cam-pills { flex-direction: column; overflow: hidden auto; margin: 0; padding: 0; gap: 9px; } }
 /* a chip (Chip's tonal and selected, components/ui/chip.tsx) with the camera's picture in it */
 .cam-pill { display: flex; flex: 1 0 auto; align-items: center; gap: 6px; height: 32px; min-width: 0; padding: 0 12px 0 4px; border-radius: var(--radius-chip); font-size: var(--text-body); text-align: left; color: var(--foreground); background: var(--fill-1); transition: background-color var(--dur-pop) var(--ease-out), color var(--dur-pop) var(--ease-out), transform var(--dur-press) var(--ease-out); }
-.cam-pill img { width: 24px; height: 24px; flex: none; border-radius: var(--radius-tag); object-fit: cover; background: #07080a; }
+.cam-pill img { width: 24px; height: 24px; flex: none; border-radius: var(--radius-thumb); object-fit: cover; background: #07080a; }
 @media (hover: hover) and (pointer: fine) { .cam-pill:not(.is-on):hover { background: var(--fill-2); } }
 .cam-pill.is-on { font-weight: 500; color: var(--card-tint); background: var(--foreground); }
 .cam-dock .cam-pill.is-on { color: #000; }

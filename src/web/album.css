@@ -1,5 +1,5 @@
 .album { container-type: inline-size; display: flex; gap: 6px; height: clamp(300px, 36vw, 460px); }
-.album-strip { position: relative; flex: 1 1 0; min-width: 0; padding: 0; overflow: hidden; border-radius: 14px; background: var(--muted); cursor: pointer; transition: flex-grow 520ms var(--ease-drawer); }
+.album-strip { position: relative; flex: 1 1 0; min-width: 0; padding: 0; overflow: hidden; border-radius: var(--radius-hero); background: var(--muted); cursor: pointer; transition: flex-grow 520ms var(--ease-drawer); }
 .album-strip.is-open { flex-grow: 7; }
 /* wider than any strip gets, and held at the centre, so opening reveals the picture rather than resizing it */
 .album-strip img { position: absolute; top: 0; left: 50%; width: max(100cqw, 760px); max-width: none; height: 100%; object-fit: cover; translate: -50% 0; user-select: none; }
