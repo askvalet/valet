@@ -344,8 +344,9 @@ test('demo: the sample content is what it says it is', async () => {
 
 test('demo: nothing in it reaches out or carries a secret', () => {
   const src = ['integrations/homelab.mjs', 'mock-model.mjs', 'config.yaml'].map(f => readFileSync(`demo/${f}`, 'utf8')).join('\n');
-  // the one address besides the model's: the made-up meeting's Join link, shown and never fetched
-  assert.doesNotMatch(src, /\bfetch\(['"`]|https?:\/\/(?!valet-demo-model|www\.w3\.org|meet\.google\.com\/vlt-qpzr-kmd')|ctx\.http|\$\{[A-Z_]+\}|192\.168\./);
+  // the addresses besides the model's: the made-up meeting's Join link, and each service's link on the reserved .example
+  // domain (it never resolves), shown and never fetched
+  assert.doesNotMatch(src, /\bfetch\(['"`]|https?:\/\/(?!valet-demo-model|www\.w3\.org|meet\.google\.com\/vlt-qpzr-kmd'|\$\{icon\}\.home\.example`)|ctx\.http|\$\{[A-Z_]+\}|192\.168\./);
   assert.match(readFileSync('demo/docker-compose.yml', 'utf8'), /sealed: \{ internal: true \}/);
   assert.match(readFileSync('demo/docker-compose.yml', 'utf8'), /172\.17\.0\.1:7580:8080/);
 });

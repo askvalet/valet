@@ -157,6 +157,25 @@ const sightings = () => CAMERAS.flatMap(([camera, name, loop, seen]) => seen.fla
   return [0, 1].map(n => ({ camera, name, label, score, image, at: (last - n * period) * 1000 }));
 })).sort((a, b) => b.at - a.at).slice(0, 10);
 
+// Hacker News and the feeds, as the Library tab shows them: made-up stories on real-looking sites. The two pictures are
+// from Wikimedia Commons (art/CREDITS.md).
+const HN = [
+  ['Show HN: I replaced my NAS with three old laptops', 'github.com', 412, 188, '3h'], ['The surprising durability of cheap SSDs', 'drivestats.example.org', 287, 96, '5h'],
+  ['Ask HN: What do you self-host that you can\'t live without?', 'news.ycombinator.com', 241, 312, '6h'], ['A tiny DNS server in 500 lines', 'codeberg.org', 198, 42, '8h'],
+  ['Fletcher\'s checksum', 'en.wikipedia.org', 176, 51, '9h'], ['Write-ahead logging, and why your database survives a power cut', 'sqlite.org', 154, 37, '11h'],
+  ['A plain text format for home inventories', 'gist.github.com', 131, 64, '12h'], ['Measuring idle power on forty mini PCs', 'arxiv.org', 118, 29, '14h'],
+  ['Why self-hosted email is hard, in one diagram', 'mailnotes.example.net', 97, 140, '17h'], ['The quietest homelab I have built', 'youtube.com', 88, 33, '20h'],
+];
+const FEEDS = [
+  ['This week in open-source home automation', 'The Example Times', 'times.example.com', '1h', 'Two thermostats that finally talk to each other, a dashboard release, and the little board that runs the lot.', 'feed0'],
+  ['Quiet fans, ranked', 'Hardware Weekly', 'hardwareweekly.example.net', '4h', 'Twelve 120 mm fans at the same airflow, measured from a metre away.'],
+  ['Ten small scripts that run my house', 'Field Notes', 'fieldnotes.example.org', '8h', 'None longer than a page.'],
+  ['Solar panels and home servers: the numbers', 'Example Energy', 'energy.example.com', '1d', 'A year of a roof feeding a rack: what it covered, and what it didn\'t.', 'feed1'],
+  ['Moving my photos off the cloud', 'Field Notes', 'fieldnotes.example.org', '1d'], ['ZFS scrubs, explained', 'Small Server', 'smallserver.example.net', '2d'],
+  ['Notes from a very quiet rack', 'Rackside', 'rackside.example.org', '2d'], ['Replacing a dead fan at 2 a.m.', 'Rackside', 'rackside.example.org', '3d'],
+  ['A year of running my own mail', 'Field Notes', 'fieldnotes.example.org', '4d'], ['On keeping old laptops alive', 'Small Server', 'smallserver.example.net', '5d'],
+];
+
 export default ({ z, defineIntegration, fmt: write }) => {
   fmt = write;
   return defineIntegration({
@@ -233,10 +252,11 @@ export default ({ z, defineIntegration, fmt: write }) => {
       const setClimate = ({ temperature, preset, power }) => { const c = climate(); put('thermostat', { preset: preset ?? c.preset, power: preset ? true : power ?? c.power, target: temperature ?? (preset ? SETBACKS[preset] : c.target), from: c.room, at: now() }); };
       const mealieUp = () => got('mealie', false);
       const paused = () => got('paused', false);
+      // each opens its app, as a real install's would; .example never resolves, so in the demo the link goes nowhere
       const services = () => SERVICES.map(([name, group, icon]) => {
-        const ok = name !== 'Mealie' || mealieUp();
-        if (name === SWITCHED_OFF[0]) return { name, group, icon: `/api/icon/${icon}`, ok: false, quiet: true, detail: 'stopped' };
-        return { name, group, icon: `/api/icon/${icon}`, ok, ms: ok ? 4 + hash(name + Math.floor(now() / 30_000)) % 30 : undefined, detail: ok ? undefined : 'timed out' };
+        const ok = name !== 'Mealie' || mealieUp(), href = `https://${icon}.home.example`;
+        if (name === SWITCHED_OFF[0]) return { name, group, icon: `/api/icon/${icon}`, href, ok: false, quiet: true, detail: 'stopped' };
+        return { name, group, icon: `/api/icon/${icon}`, href, ok, ms: ok ? 4 + hash(name + Math.floor(now() / 30_000)) % 30 : undefined, detail: ok ? undefined : 'timed out' };
       });
 
       const CYCLE = 42 * 60_000;
@@ -459,8 +479,9 @@ export default ({ z, defineIntegration, fmt: write }) => {
               summary: { label: 'Tonight', icon: 'book', value: tonight?.title ?? 'Nothing planned', sub: tonight && 'Dinner', image: tonight?.image } };
           });
         })(),
-        news: w('Hacker News', 1_800_000, () => ({ type: 'list', layout: 'headlines', title: 'Hacker News', icon: 'news', source: { name: 'Hacker News', icon: '/api/icon/hacker-news' }, items: [['Show HN: I replaced my NAS with three old laptops', '412 points · 188 comments', '3h'], ['The surprising durability of cheap SSDs', '287 points · 96 comments', '6h'], ['Why self-hosted email is hard, in one diagram', '241 points · 140 comments', '9h'], ['A tiny DNS server in 500 lines', '198 points · 42 comments', '12h']].map(([title, subtitle, meta]) => ({ title, subtitle, meta })) })),
-        feeds: w('Feeds', 1_800_000, () => ({ type: 'list', layout: 'headlines', title: 'Feeds', icon: 'rss', source: { name: 'RSS', icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23f26522'/%3E%3Ccircle cx='7' cy='17' r='2' fill='%23fff'/%3E%3Cpath d='M5 11a8 8 0 0 1 8 8M5 6a13 13 0 0 1 13 13' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E" }, items: [['This week in open-source home automation', 'The Example Times', '1h'], ['Quiet fans, ranked', 'Hardware Weekly', '4h'], ['Ten small scripts that run my house', 'Personal blog', '8h'], ['Solar panels and home servers: the numbers', 'Example Energy', '1d']].map(([title, subtitle, meta]) => ({ title, subtitle, meta })) })),
+        // a front page: the top story's numbers large, the rest a list with where each is from (and its favicon)
+        news: w('Hacker News', 1_800_000, () => ({ type: 'list', layout: 'headlines', title: 'Hacker News', icon: 'news', source: { name: 'Hacker News', icon: '/api/icon/hacker-news' }, items: HN.map(([title, site, points, comments, meta]) => ({ title, subtitle: site, site, detail: `${points} points · ${comments} comments`, meta, href: `https://${site}/` })) })),
+        feeds: w('Feeds', 1_800_000, () => ({ type: 'list', layout: 'headlines', title: 'Feeds', icon: 'rss', source: { name: 'RSS', icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23f26522'/%3E%3Ccircle cx='7' cy='17' r='2' fill='%23fff'/%3E%3Cpath d='M5 11a8 8 0 0 1 8 8M5 6a13 13 0 0 1 13 13' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E" }, items: FEEDS.map(([title, subtitle, site, meta, detail, image]) => ({ title, subtitle, site, meta, detail, href: `https://${site}/`, image: image && ctx.image(image) })) })),
         releases: w('Releases', 3_600_000, () => ({ type: 'list', layout: 'chips', title: 'Releases', icon: 'tag', items: [['paperless', '4.0.0', 'Yesterday'], ['immich', 'v3.0.0', 'Oct 21'], ['home-assistant', '2026.10.4', 'Oct 18'], ['karakeep', '0.34.0', 'Oct 15']].map(([title, subtitle, meta]) => ({ title, subtitle, meta })) })),
       };
       const pile = () => { const ids = got('archived', []); return [...ART.saved].reverse().filter(p => !ids.includes(p.title)); };
@@ -484,7 +505,7 @@ export default ({ z, defineIntegration, fmt: write }) => {
           { say: ['next meeting', 'my next meeting', "what's my next meeting", 'when is my next meeting'], run: 'tool:calendar_next_meeting', input: {}, label: 'Next meeting' }],
         // the clips, with the byte ranges phones ask for. Nothing but the files named above can be reached
         image(ref, range) {
-          const still = /^cover-[0-9a-f]{12}$/.test(ref) ? `covers/${ref.slice(6)}.jpg` : /^album[0-8]$/.test(ref) ? `album/${ref[5]}.jpg` : ref === 'article' ? 'article.jpg' : /^photo[0-3]$/.test(ref) ? `photos/${ref[5]}.jpg` : /^page[0-4]$/.test(ref) ? `pages/${ref[4]}.jpg` : /^doc[0-7]$/.test(ref) ? `docs/${ref[3]}.jpg` : /^meal[0-8]$/.test(ref) ? `meals/${ref[4]}.jpg` : null;
+          const still = /^cover-[0-9a-f]{12}$/.test(ref) ? `covers/${ref.slice(6)}.jpg` : /^album[0-8]$/.test(ref) ? `album/${ref[5]}.jpg` : ref === 'article' ? 'article.jpg' : ref === 'feed0' ? 'feeds/pi.jpg' : ref === 'feed1' ? 'feeds/solar.jpg' : /^photo[0-3]$/.test(ref) ? `photos/${ref[5]}.jpg` : /^page[0-4]$/.test(ref) ? `pages/${ref[4]}.jpg` : /^doc[0-7]$/.test(ref) ? `docs/${ref[3]}.jpg` : /^meal[0-8]$/.test(ref) ? `meals/${ref[4]}.jpg` : null;
           if (still) return readFile(`${dir}/${still}`).then(b => new Response(b, { headers: { 'Content-Type': 'image/jpeg', ...(/^(covers|album|meals)\//.test(still) && { 'Cache-Control': 'public, max-age=31536000, immutable' }) } }));
           if (!CLIPS.has(ref)) throw new Error('bad image ref');
           const file = join(cfg.art, ref), size = statSync(file).size, [, a, b] = /^bytes=(\d+)-(\d*)/.exec(range ?? '') ?? [];
