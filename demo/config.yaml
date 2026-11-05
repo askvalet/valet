@@ -97,8 +97,8 @@ layout:
     overview: false
     chat: true
     widgets: [lab.ai]
-  # Home: the cameras half the width over two rows; beside them the thermostat and the weather, then the energy and the
-  # doors; then the house, the desktop and the pages being watched a third each; then the week's meals beside the daylight
+  # Home: the cameras half the width over two rows; beside them the thermostat and the weather, then the doors and
+  # who's home; then the house, the desktop and the pages being watched a third each; then the week's meals beside the energy
   - title: Home
     icon: home
     heading: false
@@ -108,8 +108,8 @@ layout:
       - { widget: lab.cameras, cols: 2, rows: 2 }
       - lab.thermostat
       - lab.weather
-      - lab.energy   # Home Assistant's energy sensors
-      - lab.doors    # Home Assistant: the lock, the garage door, the washer
+      - lab.doors      # Home Assistant: the lock, the garage door, the washer
+      - lab.presence   # Home Assistant: who's home
   - tab: Home
     heading: false
     overview: false
@@ -124,7 +124,7 @@ layout:
     columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }
     widgets:
       - { widget: lab.mealie, cols: 2 }   # this week's meals from Mealie
-      - lab.sky   # Home Assistant's sun times, as the sky over the day
+      - lab.energy   # the last day's electricity: used and solar
   - title: Now
     heading: false
     tab: Media
@@ -158,31 +158,29 @@ layout:
     heading: false
     columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }
     widgets:
-      # the race two thirds beside the albums; the year of viewing; the games beside what's new
-      - { widget: lab.race, cols: 2 }
-      - { widget: lab.top, view: coverflow }   # Navidrome's most played albums, as covers to flip through
+      # the race a third beside the year of viewing; then the games and the albums half each
+      - lab.race
+      - { widget: lab.viewing, cols: 2 }
   - tab: Media
     overview: false
     heading: false
-    columns: 1
-    widgets: [lab.viewing]   # the year of viewing the full width
-  - tab: Media
-    overview: false
-    heading: false
-    columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }
-    widgets: [{ widget: lab.games, view: coverflow, cols: 2 }, { widget: lab.recent, view: focus }]   # the games as a showcase beside what's new
-  # Library: the album two thirds beside the books; the papers, the reading and Hacker News a third each; the feeds
-  # beside a week of listening
+    columns: 2
+    widgets: [{ widget: lab.games, view: coverflow }, { widget: lab.top, view: coverflow }]   # games beside Navidrome's most played albums
   - title: Library
     icon: file   # a sheet of paper in the nav
     overview: false
     heading: false
     columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }
     widgets:
-      - { widget: lab.album, cols: 2 }
-      - lab.books
+      - { widget: lab.news, rows: 2 }
+      - { widget: lab.feeds, rows: 2 }
       - lab.docs
       - { widget: lab.reading, view: cards }
-      - lab.news
-      - lab.feeds
-      - { widget: lab.listening, cols: 2 }   # Audiobookshelf: minutes a day
+  - tab: Library
+    overview: false
+    heading: false
+    columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }
+    widgets:
+      - { widget: lab.album, view: masonry, cols: 2, rows: 2 }   # the trip as a collage
+      - lab.books
+      - lab.listening   # Audiobookshelf: minutes a day
