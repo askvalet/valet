@@ -7,6 +7,7 @@ import type { Activity } from '../shared/cards.ts';
 import { Icon, Popover } from './cards.tsx';
 import { LinkButton } from './link-button.tsx';
 import { Meter } from './meter.tsx';
+import { duration } from './format.ts';
 
 export type Live = Activity & { key: string; href?: string; source?: { name: string; icon?: string } };
 export type Notice = { key: string; text: string; sub?: string; icon?: string; image?: string; tone: 'good' | 'warn' | 'bad' | 'accent'; n: number };
@@ -21,11 +22,11 @@ export function counted(c: NonNullable<Activity['countdown']>, now: number) {
   if (c.end != null && now >= c.end) return null;
   if (now < c.start) {
     const mins = Math.ceil((c.start - now) / 6e4);
-    return { text: mins <= 1 ? 'Starting now' : mins < 60 ? `in ${mins} min` : `in ${Math.round(mins / 60)} h`, inside: mins < 60 ? `${mins}m` : undefined,
+    return { text: mins <= 1 ? 'Starting now' : `in ${duration(mins * 6e4, { parts: mins < 60 ? 2 : 1 })}`, inside: mins < 60 ? `${mins}m` : undefined,
       pct: c.from != null && c.start > c.from ? Math.max(0, Math.min(1, (now - c.from) / (c.start - c.from))) : undefined };
   }
   const left = c.end != null ? Math.max(1, Math.ceil((c.end - now) / 6e4)) : undefined;
-  return { text: left ? `Now · ${left} min left` : 'Now', inside: undefined, pct: c.end != null && c.end > c.start ? (now - c.start) / (c.end - c.start) : undefined };
+  return { text: left ? `Now · ${duration(left * 6e4)} left` : 'Now', inside: undefined, pct: c.end != null && c.end > c.start ? (now - c.start) / (c.end - c.start) : undefined };
 }
 
 /** The clock a countdown needs, ticking only while one is shown. */
@@ -60,7 +61,7 @@ function Story({ a, when }: { a: Live; when?: ReturnType<typeof counted> }) {
 function Meeting({ a, when }: { a: Live; when?: ReturnType<typeof counted> }) {
   const [time, ...rest] = (a.subtitle ?? '').split(' · '), who = rest.join(' · ').replace(/^with /, '');
   const live = !!when && when.text.startsWith('Now');
-  const status = live ? when!.text.replace(/ min left$/, 'm left') : when?.text.replace(/^in /, 'In ') ?? a.trailing;
+  const status = live ? when!.text : when?.text.replace(/^in /, 'In ') ?? a.trailing;
   // people as small initials beside their names, all on the time's line: "Alex Chen, Priya Shah +1" → AC, PS, +1
   const extra = who.match(/\s*\+(\d+)$/), names = who.replace(/\s*\+\d+$/, '').split(/,\s*/).filter(Boolean), more = extra ? `+${extra[1]}` : undefined;
   const initials = (n: string) => n.split(/\s+/).map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();

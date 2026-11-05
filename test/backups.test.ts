@@ -5,6 +5,8 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { setHouse } from '../src/server/core.ts';
+setHouse({ locale: 'en-US' });   // what the server writes follows a language; these read like a US one wherever they run
 process.env.VALET_DATA = await mkdtemp(join(tmpdir(), 'valet-backups-'));
 const { Backups, backupParts, changeOf, judge, limitOf, news, BackupShape } = await import('../src/server/backups.ts');
 const { checkCard } = await import('../src/shared/cards.schema.ts');
@@ -52,7 +54,7 @@ test('backups: the card leads with trouble, says when the rest last worked, and 
   const { card } = await import('../src/server/backups.ts'), c = card(jobs, ['Proxmox']);
   assert.ok(checkCard(c).success);
   assert.deepEqual(c.items.map(i => i.title), ['Offsite', 'Docs', 'Photos', 'Proxmox']);
-  assert.equal(c.items[0].tone, 'bad'); assert.equal(c.items[0].meta, 'overdue'); assert.match(c.items[0].subtitle!, /Last good backup 3d ago, expected within 26h/);
+  assert.equal(c.items[0].tone, 'bad'); assert.equal(c.items[0].meta, 'overdue'); assert.match(c.items[0].subtitle!, /Last good backup 3d ago, expected within 1d 2h/);
   assert.equal(c.items[1].tone, 'warn'); assert.match(c.items[1].detail!, /Shrank from 18\.0 GB to 9\.0 GB/);
   assert.equal(c.items[2].meta, '2h ago'); assert.match(c.items[2].subtitle!, /Backrest Â· 400\.0 GB/); assert.equal(c.items[2].trend?.length, 3);
   assert.equal(c.items[3].meta, 'unknown');
@@ -94,7 +96,7 @@ test('backups: the tool reads only, hands the model plain facts, and offers a âŒ
   const p = backupParts(b);
   assert.equal(p.tool.access, 'read');
   const out = await p.tool.run() as any;
-  assert.equal(out.data.jobs[0].state, 'overdue'); assert.match(out.data.jobs[0].lastGood, /\(30h ago\)$/); assert.equal(out.data.summary, '1 needs a look (Nightly)');
+  assert.equal(out.data.jobs[0].state, 'overdue'); assert.match(out.data.jobs[0].lastGood, /\(1d ago\)$/); assert.equal(out.data.summary, '1 needs a look (Nightly)');
   assert.ok(checkCard(out.card).success);
   assert.ok(p.commands[0].say.includes('are my backups ok'));
 });

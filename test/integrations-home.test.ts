@@ -9,6 +9,8 @@ import komga from '../src/integrations/komga.ts';
 import mealie from '../src/integrations/mealie.ts';
 import miniflux from '../src/integrations/miniflux.ts';
 import tandoor from '../src/integrations/tandoor.ts';
+import { setHouse } from '../src/server/core.ts';
+setHouse({ locale: 'en-US' });   // what the server writes follows a language; these read like a US one wherever they run
 
 type Handler = (url: string, init: any) => unknown;
 function fake(handler: Handler): Context & { calls: string[] } {

@@ -1,7 +1,7 @@
 // Prowlarr and Bazarr: the plumbing behind downloads. Which indexers are failing (and until when they're paused), and
 // how many episodes and movies are still missing subtitles.
 import { z } from 'zod';
-import { defineIntegration, type Instance } from '../server/core.ts';
+import { defineIntegration, fmt, type Instance } from '../server/core.ts';
 
 export default defineIntegration({
   type: 'indexers',
@@ -26,7 +26,7 @@ export default defineIntegration({
       }
       return out;
     }
-    const until = (iso?: string) => iso ? `paused till ${new Date(iso).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })}` : 'failing';
+    const until = (iso?: string) => iso ? `paused till ${fmt.time(iso)}` : 'failing';
     const inst: Instance = {
       widgets: {
         health: {

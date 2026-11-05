@@ -163,13 +163,13 @@ export interface ChartCard extends Base {
   series: { name: string; points: number[]; tone?: Tone; total?: number }[];   // total: the service's own figure, when summing the points would disagree with the headline
   headline?: string;      // the big number, when the latest point isn't it ("31 plays")
   span?: string;          // e.g. "last 10 min"
-  window?: string;        // what the columns cover, under them: "last 24 h"
+  window?: string;        // what the columns cover, under them: "last 24 hours"
   from?: number;          // when the first point is (ms), so scrubbing can say when
   to?: number;            // when the last point is
   labels?: string[];      // or a name per point, for charts that aren't over time
   style?: 'line' | 'bars' | 'stream';   // bars: a column per point, the series stacked in order · stream: the same parts flowing around a centre line
   facts?: { label: string; value?: string }[];   // quiet chips under the chart: what the number is made of
-  factsNote?: string;     // what those chips are: "Most blocked · last 24 h"
+  factsNote?: string;     // what those chips are: "Most blocked · last 24 hours"
 }
 
 export interface CodeCard extends Base { type: 'code'; lines: string[]; diff?: boolean }   // logs, config: diff colours lines starting + and -

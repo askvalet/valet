@@ -402,7 +402,7 @@ function Home({ account }: { account: boolean }) {
   }, [chatOpen, phone]);
   const [draft, setDraft] = useState('');
 
-  useEffect(() => { fetch(`/api/page?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`).then(r => r.json()).then((p: Page) => { setFormat(p.format, p.labels); applyLook(p.look); setSounds(p.appearance.sounds); setPage(p); }); }, [generation]);
+  useEffect(() => { fetch(`/api/page?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}&lang=${encodeURIComponent(navigator.language)}`).then(r => r.json()).then((p: Page) => { setFormat(p.format, p.labels); applyLook(p.look); setSounds(p.appearance.sounds); setPage(p); }); }, [generation]);
   useEffect(() => { if (page) document.title = page.title; }, [page]);
   // what's wrong and what's merely going on; a stall has to last, because a torrent between peers reads 0 B/s for a moment
   const how = sayHow(Object.values(state)), stalled = useHeld(how.problems.some(p => p.id === 'downloads'), 20_000);

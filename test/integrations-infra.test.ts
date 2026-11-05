@@ -10,6 +10,8 @@ import speedtest from '../src/integrations/speedtesttracker.ts';
 import syncthing from '../src/integrations/syncthing.ts';
 import backrest from '../src/integrations/backrest.ts';
 import healthchecks from '../src/integrations/healthchecks.ts';
+import { setHouse } from '../src/server/core.ts';
+setHouse({ locale: 'en-US' });   // what the server writes follows a language; these read like a US one wherever they run
 
 type Handler = (url: string, init: any) => unknown;
 function fake(handler: Handler) {
@@ -109,7 +111,7 @@ test('proxmox: an id from the service that would bend the path is refused', asyn
 
 test('proxmox: guest status reads the guest right now', async () => {
   const r = await make(proxmox, PVE, pve()).tools!.guest_status.run({ guest: 'homeassist' });
-  valid(r.card); assert.equal((r.data as any).status, 'running'); assert.ok((r.card as any).rows.some((x: string[]) => x[0] === 'Uptime' && x[1] === '1d'));
+  valid(r.card); assert.equal((r.data as any).status, 'running'); assert.ok((r.card as any).rows.some((x: string[]) => x[0] === 'Uptime' && x[1] === '1d 1h'));
 });
 
 // ── Speedtest Tracker

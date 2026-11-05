@@ -18,6 +18,11 @@ import type { ForecastCard, ThermostatCard } from '../src/shared/cards.ts';
 import { counted, LiveRings } from '../src/web/live.tsx';
 import { SAMPLES } from '../src/web/samples.ts';
 import { chartless, Heatmap, Race, standing, Waffle } from '../src/web/charts.tsx';
+import { setFormat } from '../src/web/format.ts';
+import { LABELS } from '../src/shared/labels.ts';
+
+// times and dates follow the browser's language; the tests read like a US one wherever they run
+setFormat({ clock: 'auto', date: 'short', weekStart: 'auto', locale: 'en-US' }, LABELS);
 
 const TYPES = ['cameras', 'stats', 'list', 'media', 'shelf', 'status', 'links', 'chart', 'code', 'table', 'ranked', 'race', 'heatmap', 'controls', 'showcase', 'forecast', 'calendar', 'thermostat', 'photos', 'schedule', 'kv', 'text', 'group'];
 
@@ -76,7 +81,7 @@ test('drives read as readings: a coloured meter, no knob, and each number named'
 });
 
 test('columns: the axis says when, the legend trusts the service, and the chips say what they are', () => {
-  const from = Date.now() - 864e5, out = html({ type: 'chart', style: 'bars', headline: '14%', window: 'last 24 h', factsNote: 'Most blocked · last 24 h', facts: [{ label: 'x', value: '1' }], from, to: Date.now(),
+  const from = Date.now() - 864e5, out = html({ type: 'chart', style: 'bars', headline: '14%', window: 'last 24 hours', factsNote: 'Most blocked · last 24 hours', facts: [{ label: 'x', value: '1' }], from, to: Date.now(),
     series: [{ name: 'Blocked', points: [1, 2, 3], total: 140 }] });
   assert.match(out, /col-axis/); assert.match(out, />now</); assert.match(out, /Blocked 140/); assert.match(out, /last 24 h/); assert.match(out, /Most blocked/);
 });
@@ -92,7 +97,7 @@ test('now playing has no play button shape; a stalled download says so and what 
   const np = html({ type: 'media', items: [{ title: 'Film', state: 'paused', pct: .5 }] });
   assert.match(np, /np-state is-paused/); assert.doesNotMatch(np, /lucide-(play|pause)/);
   const dl = html({ type: 'media', href: 'http://q', source: { name: 'qBittorrent' }, items: [{ title: 'Film', state: 'buffering', icon: 'download', pct: .1, stall: { word: 'Stalled', since: Date.now() - 72e5, why: 'no peers' } }] });
-  assert.match(dl, /Stalled 2 h · no peers/); assert.match(dl, /Check in qBittorrent/);
+  assert.match(dl, /Stalled 2h · no peers/); assert.match(dl, /Check in qBittorrent/);
   assert.match(html({ type: 'media', items: [{ title: 'Film', state: 'buffering', icon: 'download', tags: ['Stalled'] }] }), /Stalled · nothing coming in/);   // an integration that says no more than its state
 });
 
@@ -139,8 +144,8 @@ test('calendar: an event lands on every day it touches, and no further', () => {
   assert.deepEqual([...days.keys()], ['2026-03-06', '2026-03-07', '2026-03-08', '2026-03-10', '2026-03-11', '2026-03-12', '2026-03-14']);   // the iCal end is exclusive
   assert.equal(span({ title: 'x', start: '2026-03-14' }), 'All day');
   assert.equal(span({ title: 'Trip', start: '2026-03-06', end: '2026-03-09' }), 'All day · until Mar 8');
-  assert.equal(span({ title: 'x', start: new Date(2026, 2, 1, 9).toISOString(), end: new Date(2026, 2, 1, 10, 30).toISOString() }), '9:00 – 10:30 AM');
-  assert.equal(span({ title: 'x', start: new Date(2026, 2, 1, 11).toISOString(), end: new Date(2026, 2, 1, 13).toISOString() }).replace(/\s/g, ' '), '11:00 AM – 1:00 PM');
+  assert.equal(span({ title: 'x', start: new Date(2026, 2, 1, 9).toISOString(), end: new Date(2026, 2, 1, 10, 30).toISOString() }), '9:00–10:30 AM');
+  assert.equal(span({ title: 'x', start: new Date(2026, 2, 1, 11).toISOString(), end: new Date(2026, 2, 1, 13).toISOString() }).replace(/\s/g, ' '), '11:00 AM–1:00 PM');
 });
 
 test('calendar: wide gets the month, and an all-day date stays on its day in any zone', () => {
@@ -182,9 +187,9 @@ test('live rings: a meeting counts itself down, says how many more, and Join nam
   const now = Date.now(), link = { label: 'Join', href: 'https://meet.google.com/abc-defg-hij', note: 'Google Meet' };
   const m = { key: 'cal', title: 'Standup', icon: 'video', countdown: { from: now - 6 * 6e4, start: now + 4 * 6e4 - 1000, end: now + 20 * 6e4 }, link, count: 2 };
   const out = renderToString(<LiveRings live={[m]} />);
-  assert.ok(out.includes('in 4 min') && out.includes('4m') && out.includes('+1') && out.includes('meet.google.com') && out.includes('href="https://meet.google.com/abc-defg-hij"'), out);
+  assert.ok(out.includes('in 4m') && out.includes('4m') && out.includes('+1') && out.includes('meet.google.com') && out.includes('href="https://meet.google.com/abc-defg-hij"'), out);
   assert.match(out, /target="_blank" rel="noopener noreferrer"/);
-  assert.match(renderToString(<LiveRings live={[{ ...m, countdown: { start: now - 6e4, end: now + 20 * 6e4 - 1000 } }]} />), /Now · 20 min left/);
+  assert.match(renderToString(<LiveRings live={[{ ...m, countdown: { start: now - 6e4, end: now + 20 * 6e4 - 1000 } }]} />), /Now · 20m left/);
   assert.equal(renderToString(<LiveRings live={[{ ...m, countdown: { start: now - 40 * 6e4, end: now - 6e4 } }]} />), '', 'over is gone, before the card says so');
   assert.equal(counted({ start: now + 30 * 6e4, from: now - 6e4 * 10 }, now)!.pct! < .3, true);
   // only https opens, whatever a card says
@@ -286,7 +291,7 @@ test('race: the board at any moment, overtakes included, and a final frame that 
   assert.deepEqual([mid.value[0], mid.value[1]], [10, 12]);
   assert.deepEqual(mid.place, [1, 0, 2]);
   const out = renderToString(<Race race={{ steps: ['Jan', 'Feb', 'Mar'], items, unit: 'h' }} span="Hours" />);
-  assert.match(out, /aria-label="B 20 h, A 10 h, C 1 h"/);
+  assert.match(out, /aria-label="B 20h, A 10h, C 1h"/);
   assert.match(out, />Mar</);
   assert.ok(chartless({ type: 'race', steps: [], items: [] }));
 });

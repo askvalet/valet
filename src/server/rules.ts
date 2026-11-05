@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { z } from 'zod';
 import { stateOf, type Card, type Confirm, type ListCard, type WidgetState } from '../shared/cards.ts';
-import type { Instance, Tool } from './core.ts';
+import { fmt, type Instance, type Tool } from './core.ts';
 import { rank, who } from './run.ts';
 import { sandbox } from './sandbox.ts';
 import { has, reading, running, titles } from './watches.ts';
@@ -334,7 +334,7 @@ export class Rules {
    *  ran, when a timed one runs next, and a dot when it's in trouble. */
   card(now = Date.now()): ListCard {
     const title = (w: string) => this.env.title(w);
-    const at = (t: number) => new Date(t).toDateString() === new Date(now).toDateString() ? new Date(t).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }) : new Date(t).toLocaleString('en', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+    const at = (t: number) => fmt.stamp(t, now);
     return { type: 'list', title: 'Rules', icon: 'pulse', empty: 'No rules yet. Ask the assistant: "when a download finishes, tell me"',
       items: this.list.map(r => {
         const no = r.paused ? undefined : blocked(r, this.env);

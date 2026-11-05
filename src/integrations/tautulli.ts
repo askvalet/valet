@@ -13,7 +13,7 @@ export function raceOf(rows: any[], image: (ref: string) => string): Race | unde
   const at = (h: any) => new Date(h.date * 1000), start = at(seen[0]), last = at(seen.at(-1)), monthly = new Set(seen.map(h => at(h).getMonth())).size >= 3;
   const dayNo = (d: Date) => Math.round(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 864e5);
   const stepOf = (d: Date) => monthly ? d.getMonth() - start.getMonth() : dayNo(d) - dayNo(start), n = stepOf(last) + 1;
-  const steps = Array.from({ length: n }, (_, i) => monthly ? new Date(start.getFullYear(), start.getMonth() + i).toLocaleDateString('en', { month: 'short' }) : new Date(start.getFullYear(), start.getMonth(), start.getDate() + i).toLocaleDateString('en', { month: 'short', day: 'numeric' }));
+  const steps = Array.from({ length: n }, (_, i) => monthly ? fmt.month(new Date(start.getFullYear(), start.getMonth() + i), { short: true }) : fmt.day(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i), { year: false })!);
   const titles = new Map<string, { title: string; thumb?: string; sums: number[] }>();
   for (const h of seen) {
     const title = h.media_type === 'episode' ? h.grandparent_title : h.title;
@@ -42,11 +42,11 @@ export default defineIntegration({
     };
     const poster = (s: any) => { const t = s.grandparent_thumb || s.parent_thumb || s.thumb; return t ? ctx.image(t) : undefined; };
     const backdrop = (s: any) => { const a = s.grandparent_art || s.art; return a ? ctx.image(a) : undefined; };
-    const left = (ms: number) => { const m = Math.max(0, Math.round(ms / 60000)); return m >= 60 ? `${Math.floor(m / 60)} hr ${m % 60} min left` : `${m} min left`; };
+    const left = (ms: number) => `${fmt.span(ms)} left`;
     const decision = (d: string) => d === 'direct play' ? 'Direct Play' : d === 'copy' ? 'Direct Stream' : d === 'transcode' ? 'Transcode' : d;
     const added = (t: number) => {
       const d = new Date(t * 1000), days = Math.floor((Date.now() - d.getTime()) / 864e5);
-      return days < 1 ? 'Today' : days < 2 ? 'Yesterday' : days < 7 ? d.toLocaleDateString(undefined, { weekday: 'long' }) : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return days < 1 ? 'Today' : days < 2 ? 'Yesterday' : days < 7 ? fmt.weekday(d, { long: true }) : fmt.day(d)!;
     };
     const title = (s: any) => s.media_type === 'episode' ? s.grandparent_title : s.title;
     const subtitle = (s: any) => s.media_type === 'episode'
@@ -59,7 +59,7 @@ export default defineIntegration({
       if (!rows.length) return [];
       const secs = seconds, total = rows.reduce((s, h) => s + secs(h), 0), hours = Math.round(total / 3600);
       const rank = (key: (h: any) => string) => { const m = new Map<string, { n: number; s: number; h: any }>(); for (const h of rows) { const k = key(h), e = m.get(k) ?? { n: 0, s: 0, h }; e.n++; e.s += secs(h); m.set(k, e); } return [...m].sort((a, b) => b[1].s - a[1].s); };
-      const hrs = (s: number) => s >= 3600 ? `${Math.round(s / 3600)} h` : `${Math.round(s / 60)} min`;
+      const hrs = (s: number) => fmt.span(s * 1000, { style: 'long', parts: 1 });
       const titles = rank(h => h.media_type === 'episode' ? h.grandparent_title : h.title), people = rank(h => h.friendly_name || h.user);
       const when = (o: Intl.DateTimeFormatOptions) => rows.map(h => new Date(h.date * 1000).toLocaleString('en', o));
       const most = (l: string[]) => [...l.reduce((m, x) => m.set(x, (m.get(x) ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])[0];

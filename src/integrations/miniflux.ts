@@ -3,7 +3,7 @@
 // Feed text is written by strangers: it's stripped to plain text without a regex, and handed to the model as data.
 import { z } from 'zod';
 import { Every } from '../server/config.ts';
-import { defineIntegration, keptHome } from '../server/core.ts';
+import { defineIntegration, keptHome, fmt } from '../server/core.ts';
 import { tally } from '../server/service.ts';
 import { decode, text } from '../server/xml.ts';
 import type { ArticlePick, ListItem } from '../shared/cards.ts';
@@ -11,10 +11,7 @@ import type { ArticlePick, ListItem } from '../shared/cards.ts';
 const Id = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const sum = (o: unknown) => Object.values((o ?? {}) as Record<string, number>).reduce((a, b) => a + (Number(b) || 0), 0);
 const host = (u?: string) => { try { return u ? new URL(u).hostname.replace(/^www\./, '') : undefined; } catch { return undefined; } };
-const ago = (iso?: string) => {
-  const m = iso ? Math.floor((Date.now() - Date.parse(iso)) / 6e4) : NaN;
-  return !Number.isFinite(m) ? undefined : m < 60 ? `${Math.max(1, m)}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`;
-};
+const ago = (iso?: string) => { const ms = iso ? Date.now() - Date.parse(iso) : NaN; return Number.isFinite(ms) ? fmt.span(Math.max(6e4, ms), { parts: 1 }) : undefined; };
 /** The first picture in an entry's HTML, found by walking it: `<img`, then its `src`. */
 function firstImage(html: string) {
   for (let at = html.indexOf('<img'); at >= 0 && at < 200_000; at = html.indexOf('<img', at + 4)) {

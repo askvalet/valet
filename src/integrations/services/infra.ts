@@ -22,11 +22,11 @@ const bytes = (v: unknown) => { const n = Number(v); return Number.isFinite(n) &
 // Duplicati's schedule: "1D", "12h", "1W"
 const repeat = (r: unknown) => { const m = /^(\d+)\s*([smhDWMY])$/.exec(String(r ?? '')); return m ? Number(m[1]) * { s: 1e3, m: 6e4, h: 36e5, D: 864e5, W: 6048e5, M: 2592e6, Y: 31536e6 }[m[2]]! : undefined; };
 const STORE = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;   // a datastore's name, before it goes into a path
-// fmt.duration stops at 100 days, and servers go longer
-const uptime = (s = 0) => s >= 86400 ? `${Math.floor(s / 86400)}d` : fmt.duration(s);
+// servers run longer than an ETA, so uptime is a span, not fmt.duration (which stops at 100 days)
+const uptime = (s = 0) => fmt.span(s * 1000);
 const ago = (t?: string | number | null) => {
-  const when = t == null || t === '' ? NaN : new Date(t).getTime(), s = (Date.now() - when) / 1000;
-  return Number.isNaN(when) ? 'Never' : s >= 0 && s < 8640000 ? `${fmt.duration(s)} ago` : fmt.day(when)!;
+  const when = t == null || t === '' ? NaN : new Date(t).getTime();
+  return Number.isNaN(when) ? 'Never' : fmt.ago(when);
 };
 const kw = (w = 0) => Math.round(w / 10) / 100;
 
@@ -427,7 +427,7 @@ export default [
         ...(speeds.length ? [{ label: 'Inference', value: Math.min(...speeds), unit: 'ms' }] : []), { label: 'Uptime', value: uptime(d.stats?.service?.uptime) }];
     },
     sample: { stats: { detection_fps: 3.4, cameras: { door: { camera_fps: 5 }, garden: { camera_fps: 5 } }, detectors: { coral: { inference_speed: 8.5 } }, service: { uptime: 90000, version: '0.15.1' } } },
-    expect: { Cameras: 2, Detections: 3.4, Inference: 8.5, Uptime: '1d' },
+    expect: { Cameras: 2, Detections: 3.4, Inference: 8.5, Uptime: '1d 1h' },
   })),
   service({
     type: 'homebridge', name: 'Homebridge', icon: 'home', auth: { login: '/api/auth/login', token: r => r.access_token },

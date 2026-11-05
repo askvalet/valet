@@ -30,9 +30,9 @@ export const BackupShape = z.object({
   sizes: z.array(Bytes).max(200).optional(), next: When.optional(), every: z.number().finite().positive().optional(), href: z.string().max(500).optional(),
 });
 
-export const ago = (t: number, now = Date.now()) => { const m = Math.floor((now - t) / 6e4); return m < 1 ? 'just now' : m < 60 ? `${m}m ago` : m < 2880 ? `${Math.floor(m / 60)}h ago` : m < 144000 ? `${Math.floor(m / 1440)}d ago` : fmt.day(t)!; };
-/** "26h", "8 days" */
-export const span = (ms: number) => ms < 48 * HOUR ? `${Math.round(ms / HOUR)}h` : `${Math.round(ms / 864e5)} days`;
+export const ago = (t: number, now = Date.now()) => fmt.ago(t, now);
+/** "1d 2h", "8d" */
+export const span = (ms: number) => fmt.span(ms);
 const soon = (t: number, now = Date.now()) => t - now < 864e5 && t > now ? fmt.time(t) : fmt.relativeDay(t);
 const BAD = new Set<Health>(['failed', 'overdue']);
 export const toneOf = (j: Job): Tone | undefined => BAD.has(j.health) ? 'bad' : j.health === 'never' || j.warning || j.change ? 'warn' : j.health === 'running' ? 'accent' : undefined;

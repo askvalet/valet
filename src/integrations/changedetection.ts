@@ -2,16 +2,13 @@
 // them, add one, check one now or remove one. A watch with trigger text only saves what it matches, so what's shown is
 // the last thing that counted, dated by "Changed", not necessarily the page right now.
 import { z } from 'zod';
-import { defineIntegration } from '../server/core.ts';
+import { defineIntegration, fmt } from '../server/core.ts';
 import { tally } from '../server/service.ts';
 import type { Tone } from '../shared/cards.ts';
 
 type Watch = { id: string; title?: string | null; page_title?: string | null; url: string; last_changed?: number; last_checked?: number; last_error?: string | false; viewed?: boolean };
 
-const ago = (s: number) => {
-  const m = Math.floor((Date.now() / 1000 - s) / 60);
-  return m < 1 ? 'just now' : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`;
-};
+const ago = (s: number) => fmt.ago(s * 1000);
 const when = (s?: number) => s ? new Date(s * 1000).toISOString() : undefined;
 const name = (w: Watch) => w.title || w.page_title || w.url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 60);
 const unseen = (w: Watch) => !!w.last_changed && !w.viewed;

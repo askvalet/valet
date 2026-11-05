@@ -134,6 +134,12 @@
 
 .tabular { font-variant-numeric: tabular-nums; }
 .metric { font-weight: 500; font-variant-numeric: tabular-nums; }
+/* a number's unit (Metric in metric.tsx): muted, a set fraction of the number, a thin space before a word and none before % */
+.metric-pair { white-space: nowrap; }
+.metric-unit { font-size: calc(var(--unit-ratio, .62) * 1em); font-weight: 500; letter-spacing: 0; color: var(--muted-foreground); }
+.metric-unit[data-size="l"] { --unit-ratio: .42; }
+.metric-unit[data-size="s"] { --unit-ratio: .8; }
+.metric-unit[data-word] { margin-left: .17em; }
 
 .dot { width: 6px; height: 6px; border-radius: 999px; flex: none; transition: background-color var(--dur-move) var(--ease-out), box-shadow var(--dur-move) var(--ease-out); }
 .dot-good { background: color-mix(in srgb, var(--good) 72%, transparent); }   /* what's fine stays quiet, so trouble reads at once */

@@ -78,7 +78,7 @@ export default [
     stats: d => [{ label: 'Songs (7 days)', value: d.songs?.[0]?.count ?? 0 }, { label: 'Listened (7 days)', value: fmt.duration((d.time?.[0]?.count ?? 0) / 1000) },
       { label: 'Artists (7 days)', value: d.artists?.[0]?.artists?.length ?? 0 }],
     sample: { songs: [{ count: 342 }], time: [{ count: 72_000_000 }], artists: [{ artists: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] }] },
-    expect: { 'Songs (7 days)': 342, 'Listened (7 days)': '20h 0m', 'Artists (7 days)': 3 },
+    expect: { 'Songs (7 days)': 342, 'Listened (7 days)': '20h', 'Artists (7 days)': 3 },
   }),
 
   // Books, comics and manga

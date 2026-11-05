@@ -7,6 +7,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { z } from 'zod';
+import { setHouse } from '../src/server/core.ts';
+setHouse({ locale: 'en-US' });   // what the server writes follows a language; these read like a US one wherever they run
 
 process.env.VALET_DATA = await mkdtemp(join(tmpdir(), 'valet-rules-'));
 const { Rules, actionFor, blocked, nextRun, triggered, trigger, ruleTools, holds } = await import('../src/server/rules.ts');

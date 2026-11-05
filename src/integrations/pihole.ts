@@ -38,10 +38,10 @@ export default defineIntegration({
       return {
         // a day of columns, the blocked share in red: how much of the day's chatter never left the house
         type: 'chart', style: 'bars', title: 'Pi-hole', icon: 'shield', ...(hist.length > 1 ? { from: hist[0].timestamp * 1000, to: hist.at(-1)!.timestamp * 1000 } : {}),
-        headline: pct(s.queries.percent_blocked), span: `of ${total.toLocaleString()} queries${s.clients?.active ? ` · ${s.clients.active} devices` : ''}`, window: 'last 24 h',
+        headline: pct(s.queries.percent_blocked), span: `of ${total.toLocaleString()} queries${s.clients?.active ? ` · ${s.clients.active} devices` : ''}`, window: 'last 24 hours',
         // the service's own totals, so the legend can't disagree with the headline over a part-filled column
         series: [{ name: 'Blocked', tone: 'bad', points: hist.map(x => x.blocked ?? 0), total: s.queries.blocked }, { name: 'Allowed', points: hist.map(x => Math.max(0, (x.total ?? 0) - (x.blocked ?? 0))), total: total - s.queries.blocked }],
-        facts: top.slice(0, 5).map(d => ({ label: d.domain, value: d.count.toLocaleString() })), factsNote: top.length ? 'Most blocked · last 24 h' : undefined,
+        facts: top.slice(0, 5).map(d => ({ label: d.domain, value: d.count.toLocaleString() })), factsNote: top.length ? 'Most blocked · last 24 hours' : undefined,
         banner: off ? { text: timer ? 'Blocking paused' : 'Blocking is off', until: timer ? Date.now() + timer * 1000 : undefined, tone: 'warn', button: { label: 'Resume', action: 'pause', args: { minutes: 0 } } } : undefined,
         buttons: off ? undefined : [{ label: 'Pause 5 min', action: 'pause', args: { minutes: 5 } }, { label: 'Pause 1 hour', action: 'pause', args: { minutes: 60 } }],
         summary: { label: 'Ads blocked', icon: 'shield', value: off ? 'Paused' : s.queries.blocked.toLocaleString(), tone: off ? 'warn' : 'good', ring: pct(s.queries.percent_blocked),

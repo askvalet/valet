@@ -33,6 +33,8 @@ import seerr from '../src/integrations/seerr.ts';
 import tautulli, { raceOf } from '../src/integrations/tautulli.ts';
 import { Activity, outcome, sentence } from '../src/server/activity.ts';
 import uptimekuma from '../src/integrations/uptimekuma.ts';
+import { setHouse } from '../src/server/core.ts';
+setHouse({ locale: 'en-US' });   // what the server writes follows a language; these read like a US one wherever they run
 
 type Handler = (url: string, init: RequestInit) => unknown;
 function fake(handler: Handler): Context & { calls: string[] } {
@@ -175,7 +177,7 @@ test('scrutiny: a failing drive is called out', async () => {
 test('scrutiny: age and temperature are told apart, and normal ends where hot begins', async () => {
   const s = make(scrutiny, { url: 'http://s', hotC: 50 }, fake(() => ({ data: { summary: { a: { device: { device_name: 'sda', device_status: 0 }, smart: { temp: 40, power_on_hours: 17520 } } } } })));
   const card: any = await s.widgets.drives.fetch(); valid(card);
-  assert.equal(card.items[0].subtitle, 'Powered on 2.0 years');
+  assert.equal(card.items[0].subtitle, 'Powered on 2 years');
   assert.deepEqual(card.items[0].band, [.125, .75]);
 });
 
@@ -192,7 +194,7 @@ test('pihole: paused says until when with one way out; totals match the headline
   const t0 = Date.now(), c: any = await p.widgets.stats.fetch(); valid(c);
   assert.equal(c.banner.text, 'Blocking paused'); assert.ok(c.banner.until >= t0 + 299_000 && c.banner.until <= Date.now() + 300_000);
   assert.deepEqual(c.banner.button.args, { minutes: 0 }); assert.equal(c.buttons, undefined);     // said once
-  assert.deepEqual(c.series.map((x: any) => x.total), [140, 860]); assert.equal(c.window, 'last 24 h'); assert.match(c.factsNote, /blocked/i);
+  assert.deepEqual(c.series.map((x: any) => x.total), [140, 860]); assert.equal(c.window, 'last 24 hours'); assert.match(c.factsNote, /blocked/i);
   assert.deepEqual(await p.actions!.pause.run({ minutes: 0 }), { done: 'Resumed ad blocking' });
   const on: any = await p.widgets.stats.fetch();
   assert.equal(on.banner, undefined); assert.equal(on.buttons.length, 2);
@@ -400,7 +402,7 @@ test('home assistant thermostat: a climate entity becomes a dial with its modes'
   assert.deepEqual([card.title, card.unit, card.state, card.mode, card.target, card.current, card.min, card.max, card.step], ['Hall', 'C', 'Idle', 'heat', 20, 19.5, 7, 30, .5]);
   assert.deepEqual(card.modes.map((m: any) => [m.id, !!m.on]), [['off', false], ['heat', true], ['home', true], ['sleep', false]]);
   assert.equal(card.modes.find((m: any) => m.id === 'home').args.preset_mode, 'none');   // pressing the active preset clears it
-  assert.equal(card.summary.value, '20.0°');
+  assert.equal(card.summary.value, '20.0°C');
   const picked: any = await thermostatHA(climate(), { modes: ['sleep', 'off', 'nope'], title: 'Upstairs' }).widgets.hall.fetch();
   assert.deepEqual([picked.title, picked.modes.map((m: any) => m.id)], ['Upstairs', ['sleep', 'off']]);
 });
@@ -424,7 +426,7 @@ test('home assistant thermostat: nothing broken without a target, and each state
 test('home assistant thermostat: Fahrenheit comes from Home Assistant, or the config, or the range', async () => {
   const f = { min_temp: 45, max_temp: 95, temperature: 68, current_temperature: 67, target_temp_step: undefined };
   const card: any = await thermostatHA(climate(f), {}, [], '°F').widgets.hall.fetch();
-  assert.deepEqual([card.unit, card.step, card.summary.value], ['F', 1, '68°']);
+  assert.deepEqual([card.unit, card.step, card.summary.value], ['F', 1, '68°F']);
   assert.equal(((await thermostatHA(climate(), { unit: 'F' }).widgets.hall.fetch()) as any).unit, 'F');
   const blind = make(homeassistant, { url: 'http://ha', token: 'x', thermostats: { hall: { entity: 'climate.hall' } } }, fake(url => { if (url.endsWith('/api/config')) throw new Error('no'); return [climate(f)]; }));
   assert.equal(((await blind.widgets.hall.fetch()) as any).unit, 'F');

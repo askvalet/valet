@@ -7,6 +7,8 @@ import { readFileSync } from 'node:fs';
 import { doc } from '../scripts/services-doc.ts';
 import { services } from '../src/integrations/services/index.ts';
 import { checkService } from '../src/server/service-check.ts';
+import { setHouse } from '../src/server/core.ts';
+setHouse({ locale: 'en-US' });   // what the server writes follows a language; these read like a US one wherever they run
 
 for (const s of services) test(`service ${s.def.name}`, async () => assert.deepEqual(await checkService(s), []));
 

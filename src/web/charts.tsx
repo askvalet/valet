@@ -4,9 +4,9 @@
 import './charts.css';
 import { Pause, Play } from 'lucide-react';
 import { type CSSProperties, type KeyboardEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { day as dayOf, firstDay, num as written } from './format.ts';
+import { day as dayOf, duration, firstDay, month, num as written, withUnit } from './format.ts';
 import type { Card, ChartCard, HeatmapCard, Race as RaceData, RaceItem } from '../shared/cards.ts';
-import { Counter } from './feel.tsx';
+import { Metric } from './metric.tsx';
 
 /** True when a chart has nothing in it, so the card shouldn't take a slot on the page. */
 export const chartless = (card?: Card) => card?.type === 'race' ? card.steps.length < 2 || !card.items.length
@@ -34,7 +34,7 @@ export function standing(items: RaceItem[], t: number) {
   order.slice(0, ROWS).forEach((n, r) => { place[n] = r; });
   return { value, place, top: value[order[0]] ?? 0 };
 }
-const amount = (v: number, unit?: string) => unit === 'h' ? (v < 1 ? `${written(Math.round(v * 60))} min` : `${v < 10 ? written(Math.round(v * 10) / 10) : written(Math.round(v))} h`) : `${written(Math.round(v))}${unit ? ` ${unit}` : ''}`;
+const amount = (v: number, unit?: string) => unit === 'h' ? (v * 36e5 < 3e4 ? '0h' : duration(v * 36e5)) : withUnit(written(Math.round(v)), unit);
 const shown = new Set<string>();   // each race runs once a visit: a tab you come back to is at rest
 
 export type Tint = { h: number; c: number } | null;
@@ -214,7 +214,7 @@ export function Heatmap({ card }: { card: HeatmapCard }) {
   const spot = (i: number) => [Math.floor((i + lead) / 7), (i + lead) % 7] as const, date = (i: number) => new Date(first.getFullYear(), first.getMonth(), first.getDate() + i);
   const busy = useMemo(() => card.days.filter(d => d > 0).sort((a, b) => a - b), [card.days]);
   const cut = [.25, .5, .8].map(q => busy[Math.floor(q * (busy.length - 1))] ?? 1), level = (d: number) => !d ? 0 : 1 + cut.filter(c => d > c).length;
-  const months = useMemo(() => { const out: { x: number; name: string }[] = []; for (let i = 0; i < n; i++) { const d = date(i); if (d.getDate() === 1) out.push({ x: spot(i)[0] / weeks, name: d.toLocaleDateString(undefined, { month: 'short' }) }); } return out.filter(m => m.x < .96); }, [card.from, n, lead]);
+  const months = useMemo(() => { const out: { x: number; name: string }[] = []; for (let i = 0; i < n; i++) { const d = date(i); if (d.getDate() === 1) out.push({ x: spot(i)[0] / weeks, name: month(d, { short: true }) }); } return out.filter(m => m.x < .96); }, [card.from, n, lead]);
   const whole = card.days.reduce((a, b) => a + b, 0), most = Math.max(...card.days), word = card.unit ?? 'play', count = (v: number) => `${written(v)} ${word}${v === 1 ? '' : 's'}`;
   const point = (e: React.PointerEvent<HTMLDivElement>) => {
     const b = e.currentTarget.getBoundingClientRect(), c = Math.floor((e.clientX - b.left) / b.width * weeks), r = Math.floor((e.clientY - b.top) / b.height * 7), i = c * 7 + Math.max(0, Math.min(6, r)) - lead;
@@ -224,7 +224,7 @@ export function Heatmap({ card }: { card: HeatmapCard }) {
   return (
     <div className="heatmap">
       <div className="mb-3 flex items-baseline gap-2">
-        <span className="metric text-[28px] leading-none"><Counter value={card.headline ?? count(whole)} /></span>
+        <span className="metric text-[28px] leading-none"><Metric value={card.headline ?? count(whole)} /></span>
         {card.span && <span className="min-w-0 truncate text-xs text-muted-foreground">{card.span}</span>}
       </div>
       <div className="heat-months" aria-hidden>{months.map(m => <span key={m.x} style={{ left: `${m.x * 100}%` }}>{m.name}</span>)}</div>
