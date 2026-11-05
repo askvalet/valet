@@ -167,7 +167,7 @@ can still draw it another way with a widget's [`view`](configuration.md#layout).
 | `shelf` | a row of artwork | `aspect` poster/square/wide; `stack: true` piles them up (documents, photos); `layout` is `row`, `spotlight`, `coverflow`, `desk`, `windows`, `tickets` or `week` |
 | `photos` | photos to look at | `style`: `flashback` crossfades, `mosaic` (or size large) tiles them, `album` is tall strips, and the one under the pointer slides open |
 | `ranked` | who or what comes top | the leader gets its artwork, the rest a bar |
-| `race` | titles overtaking each other | `steps`, and each item's `points` as running totals |
+| `race` | titles overtaking each other, each bar in its poster's colour | `steps`, and each item's `points` as running totals (and an `image` for its poster) |
 | `heatmap` | a year of days | `from`, and a count per day in `days` |
 | `article` | one thing to read | the page behind it and a few lines; `more` is the pile to step through |
 | `links` | bookmarks | `name`, `href`, `icon`, `note` |

@@ -12,6 +12,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- The race card has more presence: thicker rounded bars on a faint track, each in its poster's colour (the leader's the strongest; posters without much colour keep grey bars and the accent leader), larger posters and bolder names. Its timeline is a proper scrubber that fills as the year plays, with a clear play and pause button, and the arrow keys step a month at a time (Home and End jump to the ends).
+
 - The chat's header is one line: the assistant's name, then the model and its context meter, whose place is kept so nothing moves when the numbers arrive.
 - The context meter knows a local model's window by itself when its server's model list says it (`max_model_len`, `context_length`, as vLLM and llama.cpp do), so `assistant.contextWindow` is only needed when it doesn't.
 - In light mode, the selected tab is a dark pill with a white icon, like dark mode's white one, instead of the accent colour.
