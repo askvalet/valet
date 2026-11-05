@@ -4,7 +4,7 @@
 /* the race: rows slide past each other, a bar grows by sliding out of its lane. It's the page's large meter (styles.css):
    each bar takes its poster's hue at one lightness for all, so the board reads as a set, and the leader's is the strongest.
    Without a hue, the bars are the meters' neutral step and the leader the accent. */
-.race { --row: 54px; --bar: var(--meter-lg); --knob: 18px; --race-lead: var(--primary); --race-bar: var(--meter-rest); --race-track: var(--meter-track); min-width: 0; }
+.race { --rank-r: 3px; --row: 54px; --bar: var(--meter-lg); --knob: 18px; --race-lead: var(--primary); --race-bar: var(--meter-rest); --race-track: var(--meter-track); min-width: 0; }
 /* a ranking, not progress: no track to fill, the others one quiet grey, only the leader in its poster's colour */
 .race-row[data-tint] { --race-lead: var(--tint-strong); }
 .race-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
@@ -16,9 +16,9 @@
 .race-lane { flex: 1; min-width: 0; }
 .race-name { display: block; overflow: hidden; margin-bottom: 5px; font-size: var(--text-body); font-weight: 500; line-height: 16px; white-space: nowrap; text-overflow: ellipsis; }
 .race-line { position: relative; height: var(--bar); margin-right: 58px; }
-.race-track { position: absolute; inset: 0; overflow: hidden; border-radius: 99px; }
-.race-bar { position: absolute; inset: 0; border-radius: 99px; background: var(--race-bar); }
-.race-bar b { position: absolute; inset: 0; border-radius: 99px; background: var(--race-lead); opacity: 0; transition: opacity var(--dur-move) var(--ease-out); }
+.race-track { position: absolute; inset: 0; overflow: hidden; border-radius: var(--rank-r); }
+.race-bar { position: absolute; inset: 0; border-radius: var(--rank-r); background: var(--race-bar); }
+.race-bar b { position: absolute; inset: 0; border-radius: var(--rank-r); background: var(--race-lead); opacity: 0; transition: opacity var(--dur-move) var(--ease-out); }
 .race-row.is-lead .race-bar b { opacity: 1; }
 .race-end { position: absolute; inset: 0; pointer-events: none; }
 .is-running :is(.race-row, .race-bar, .race-end) { will-change: transform; }
