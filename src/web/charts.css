@@ -5,7 +5,8 @@
    each bar takes its poster's hue at one lightness for all, so the board reads as a set, and the leader's is the strongest.
    Without a hue, the bars are the meters' neutral step and the leader the accent. */
 .race { --row: 54px; --bar: var(--meter-lg); --knob: 18px; --race-lead: var(--primary); --race-bar: var(--meter-rest); --race-track: var(--meter-track); min-width: 0; }
-.race-row[data-tint] { --race-lead: var(--tint-strong); --race-bar: var(--tint-soft); }
+/* a ranking, not progress: no track to fill, the others one quiet grey, only the leader in its poster's colour */
+.race-row[data-tint] { --race-lead: var(--tint-strong); }
 .race-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
 .race-date { font-size: var(--text-metric-m); line-height: 1; letter-spacing: -.01em; }
 .race-span { min-width: 0; overflow: hidden; font-size: var(--text-body); white-space: nowrap; text-overflow: ellipsis; color: var(--muted-foreground); }
@@ -15,7 +16,7 @@
 .race-lane { flex: 1; min-width: 0; }
 .race-name { display: block; overflow: hidden; margin-bottom: 5px; font-size: var(--text-body); font-weight: 500; line-height: 16px; white-space: nowrap; text-overflow: ellipsis; }
 .race-line { position: relative; height: var(--bar); margin-right: 58px; }
-.race-track { position: absolute; inset: 0; overflow: hidden; border-radius: 99px; background: var(--race-track); }
+.race-track { position: absolute; inset: 0; overflow: hidden; border-radius: 99px; }
 .race-bar { position: absolute; inset: 0; border-radius: 99px; background: var(--race-bar); }
 .race-bar b { position: absolute; inset: 0; border-radius: 99px; background: var(--race-lead); opacity: 0; transition: opacity var(--dur-move) var(--ease-out); }
 .race-row.is-lead .race-bar b { opacity: 1; }

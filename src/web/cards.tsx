@@ -767,7 +767,7 @@ function dayWord(at?: string) {
 }
 const lineOf = (it: ShelfItem) => /partial/i.test(it.badge ?? '') ? 'part' : it.tone === 'good' ? 'done' : it.tone === 'accent' || /download|processing/i.test(it.badge ?? '') ? 'busy' : it.tone === 'bad' ? 'bad' : 'wait';
 
-/** A leaderboard: the winner in full colour, the rest measured against it. Like the race, each bar takes its poster's hue. */
+/** A leaderboard: the winner in its poster's colour, the rest a quiet grey measured against it, no track (a ranking, not progress). */
 function Ranked({ card }: { card: RankedCard }) {
   const [tint, setTint] = useState<Record<string, Tint>>({});
   if (!card.items.length) return <Empty icon={TrendingUp} text={card.empty ?? 'Nothing yet'} />;
@@ -778,7 +778,7 @@ function Ranked({ card }: { card: RankedCard }) {
           {it.image && <Art src={it.image} alt="" className="h-[42px] w-7 shrink-0 rounded-thumb object-cover" onLoaded={img => { const c = tintOf(img); if (c) setTint(m => m[it.title] ? m : { ...m, [it.title]: c }); }} />}
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-3"><span className="min-w-0 flex-1 truncate text-item font-medium">{it.title}</span>{it.value && <span className="shrink-0 text-meta tabular text-muted-foreground">{it.value}</span>}</div>
-            <Meter pct={it.pct ?? (i ? 0 : 1)} rest={i > 0} hue={hue(tint[it.title] ?? null)} className="mt-1.5" />
+            <Meter rank pct={it.pct ?? (i ? 0 : 1)} rest={i > 0} hue={hue(tint[it.title] ?? null)} className="mt-1.5" />
           </div>
         </li>
       ))}

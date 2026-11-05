@@ -75,6 +75,9 @@ layout:
     variant: minimal
     header: false
     widgets: [lab.services]
+  - tab: Services   # empty, so left out, until chat adds it ("Add an internet speed card"); undo takes it away
+    heading: false
+    widgets: [lab.speed]
   - tab: Services
     heading: false
     overview: false
@@ -99,11 +102,10 @@ layout:
     widgets:
       - { widget: lab.cameras, size: large, rows: 2 }
       - { widget: lab.thermostat, size: medium }
-      - { widget: lab.weather, size: medium }   # Daylight's place here; Daylight stays on the overview
+      - { widget: lab.weather, size: medium }
   - tab: Home
     heading: false
     columns: 2
-    tabColumns: 1
     header: false
     widgets: [lab.home, lab.pc]
   - title: Now

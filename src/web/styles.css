@@ -767,6 +767,8 @@
 .meter-sm { --meter-h: var(--meter-sm); } .meter-lg { --meter-h: var(--meter-lg); }
 .meter-fill { position: absolute; inset: 0; border-radius: inherit; background: var(--meter-c); transition: transform var(--dur-move) var(--ease-out); }
 .meter-rest { --meter-c: var(--meter-rest); }
+/* a ranking (most watched): how much, not how far along, so no track; the rest a quiet grey, only the leader tinted */
+.meter-rank { background: transparent; } .meter-rank.meter-rest[data-tint] { --meter-c: var(--meter-rest); }
 .meter-accent { --meter-c: var(--primary); } .meter-good { --meter-c: var(--good); } .meter-warn { --meter-c: var(--warn); } .meter-bad { --meter-c: var(--bad); }
 /* a poster's hue (--hue, --sat from charts.tsx's tintOf) at one lightness for the set, the leader strongest */
 :is(.meter, .race-row)[data-tint] { --tint-strong: oklch(var(--tint-lead) calc(.15 * var(--sat)) var(--hue)); --tint-soft: oklch(var(--tint-rest) calc(.07 * var(--sat)) var(--hue) / var(--tint-alpha)); }
