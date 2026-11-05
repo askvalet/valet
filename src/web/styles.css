@@ -326,13 +326,11 @@
    keeps the wallpaper's colour (saturate) and dims or lifts it rather than greying it (brightness); a rim lit from the top
    left, a bevel of soft bands just inside the edge so the pane reads as a thick slab, and a soft shadow. The bevel is drawn as
    gradients rather than glasswork's blurred inset shadows: those are repainted with every card that changes (a ring, a clock)
-   and cost a slow device's scroll a third of its frames. In Chromium the
-   rim also bends the scene behind it (lens.ts puts its filter in --glass-lens). The blur stays a few pixels: words stay
+   and cost a slow device's scroll a third of its frames. (Its rim lens, an SVG
+   displacement filter, was tried and left out: redrawn behind every card it made scrolling lag.) The blur stays a few pixels: words stay
    readable from the tint, which thickens where the wallpaper is busy or bright (ink.ts, [data-lift]), not from frosting the
    picture. What floats over content blurs more. Same surfaces, same variables: only the tokens change. Ink stays the page's
    own; blend modes would wash out the posters and photos the cards hold. Material after kubai087/glasswork (MIT). */
-@property --glass-lens { syntax: '*'; inherits: false; }
-@property --lens-on { syntax: '<number>'; inherits: false; initial-value: 0; }
 .glass-liquid.has-wallpaper {
   --card-tint: rgb(20 20 24); --card-alpha: .3;
   --card: rgb(20 20 24 / .3);
@@ -394,22 +392,15 @@
 .glass-liquid.has-wallpaper .glass-bar::before { background-image: var(--glass-bevel); }
 .glass-liquid.has-wallpaper .glass-round:not(.is-on) { box-shadow: var(--glass-shadow); border-color: transparent; background-image: var(--glass-bevel); }
 .glass-liquid.has-wallpaper :is([data-slot="popover-content"], [data-slot="select-content"], [data-slot="dialog-content"], [data-slot="sheet-content"]) {
-  backdrop-filter: var(--glass-float) var(--glass-lens,); background-image: var(--glass-bevel); box-shadow: var(--glass-lifted); }
-.glass-liquid.has-wallpaper .glass-pop { --pop-blur: var(--glass-float); backdrop-filter: var(--pop-blur) var(--glass-lens,); background-image: var(--glass-bevel); box-shadow: var(--glass-lifted); }
+  backdrop-filter: var(--glass-float); background-image: var(--glass-bevel); box-shadow: var(--glass-lifted); }
+.glass-liquid.has-wallpaper .glass-pop { --pop-blur: var(--glass-float); backdrop-filter: var(--pop-blur); background-image: var(--glass-bevel); box-shadow: var(--glass-lifted); }
 .glass-liquid.glass-light .glass-pop { --glass-sheet: rgb(255 255 255 / .72); }
 .glass-liquid.has-wallpaper :is([cmdk-item][data-selected="true"], [data-slot="select-item"][data-highlighted]) { box-shadow: inset 0 0 0 .5px var(--glass-stroke); }
-.glass-liquid.has-wallpaper .toasts .undo-bar { background: rgb(20 20 24 / .5) var(--glass-bevel); backdrop-filter: var(--glass-float) var(--glass-lens,); box-shadow: var(--glass-lifted); }
-/* the rim lens (lens.ts, Chromium only): which surfaces want one, and where it goes. The top bars' frost is on ::before,
-   which inherits theirs (--bar-lens). */
-.glass-liquid.has-wallpaper :is([data-slot="card"], .glass):not(.card-look *, .chat-card *, .glass-pop *, [data-slot="card"] *) {
-  --lens-on: 1; backdrop-filter: var(--glass-blur) var(--glass-lens,); }
-.glass-liquid.has-wallpaper :is(.glass-bar, .glass-round:not(.is-on), .glass-pop, .toasts .undo-bar, [data-slot="popover-content"], [data-slot="select-content"], [data-slot="dialog-content"], [data-slot="sheet-content"]) { --lens-on: 1; }
-.glass-liquid.has-wallpaper .glass-bar::before { backdrop-filter: var(--bar-blur) var(--bar-lens,); }
-.glass-liquid.has-wallpaper .glass-round:not(.is-on) { backdrop-filter: var(--glass-blur) var(--glass-lens,); }
-/* continuous corners where the lens draws (Chromium 139+; lens.ts reads the same shape into its map). WebKit keeps round
-   corners: on a phone it fails to draw a backdrop clipped to a superellipse. Capsules stay round, or their ends flatten. */
-.lens-glass.glass-liquid.has-wallpaper :is([data-slot="card"], .glass, .glass-pop, [data-slot="popover-content"], [data-slot="select-content"], [data-slot="dialog-content"], [data-slot="sheet-content"]) { corner-shape: superellipse(1.25); }
-.lens-glass.glass-liquid.has-wallpaper :is(.glass-bar, .glass-round, .rounded-full) { corner-shape: round; }
+.glass-liquid.has-wallpaper .toasts .undo-bar { background: rgb(20 20 24 / .5) var(--glass-bevel); backdrop-filter: var(--glass-float); box-shadow: var(--glass-lifted); }
+/* cards take their blur here, the glass inside them none */
+.glass-liquid.has-wallpaper :is([data-slot="card"], .glass):not(.card-look *, .chat-card *, .glass-pop *, [data-slot="card"] *) { backdrop-filter: var(--glass-blur); }
+.glass-liquid.has-wallpaper .glass-bar::before { backdrop-filter: var(--bar-blur); }
+.glass-liquid.has-wallpaper .glass-round:not(.is-on) { backdrop-filter: var(--glass-blur); }
 @media (hover: hover) and (pointer: fine) {
   .glass-liquid.has-wallpaper [data-slot="card"].lift:hover { background-color: var(--glass-hover); box-shadow: var(--glass-shadow); }
 }

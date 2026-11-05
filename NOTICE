@@ -7,8 +7,8 @@ Valet is MIT licensed (see LICENSE). Parts of it are adapted from the work below
 glasswork (https://github.com/kubai087/glasswork)
 -------------------------------------------------
 
-src/web/lens.ts is ported from glasswork's lens.js, and the liquid glass material in src/web/styles.css
-(its blur and tone, rim light and bevel) follows glasswork's glass.css.
+The liquid glass material in src/web/styles.css (its blur and tone, rim light and bevel) follows
+glasswork's glass.css.
 
 MIT License
 
