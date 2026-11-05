@@ -158,9 +158,9 @@ layout:
     heading: false
     columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }
     widgets:
-      # the race a third beside the year of viewing; then the games and the albums half each
-      - lab.race
-      - { widget: lab.viewing, cols: 2 }
+      # the race two thirds beside the year of viewing; then the games and the albums half each
+      - { widget: lab.race, cols: 2 }
+      - lab.viewing
   - tab: Media
     overview: false
     heading: false
@@ -181,6 +181,6 @@ layout:
     heading: false
     columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }
     widgets:
-      - { widget: lab.album, view: masonry, cols: 2, rows: 2 }   # the trip as a collage
       - lab.books
-      - lab.listening   # Audiobookshelf: minutes a day
+      - { widget: lab.album, view: masonry, cols: 2, rows: 2 }   # the trip as a collage, two thirds on the right
+      - lab.listening   # Audiobookshelf: minutes a day, under the books
