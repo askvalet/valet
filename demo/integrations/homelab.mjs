@@ -376,7 +376,7 @@ export default ({ z, defineIntegration, fmt: write }) => {
           return { type: 'chart', style: 'bars', title: 'Pi-hole', icon: 'shield', headline: pct, span: `of ${total.toLocaleString('en')} queries · 23 devices`, window: 'last 24 hours', factsNote: 'Most blocked · last 24 hours', from: now() - 864e5, to: now(),
             banner: off ? { text: 'Blocking paused', until, tone: 'warn', button: { label: 'Resume', action: 'pause', args: { minutes: 0 } } } : undefined,
             buttons: off ? undefined : [{ label: 'Pause 5 min', action: 'pause', args: { minutes: 5 } }, { label: 'Pause 1 hour', action: 'pause', args: { minutes: 60 } }],
-            series: [{ name: 'Blocked', tone: 'accent', points: blocks, total: blocked }, { name: 'Allowed', points: asked.map((v, i) => v - blocks[i]), total: total - blocked }],
+            series: [{ name: 'Blocked', tone: 'bad', points: blocks, total: blocked }, { name: 'Allowed', points: asked.map((v, i) => v - blocks[i]), total: total - blocked }],
             facts: OFFENDERS.map(([label, part]) => ({ label, value: Math.round(blocked * part).toLocaleString('en') })),
             summary: { label: 'Ads blocked', icon: 'shield', value: blocked.toLocaleString('en'), ring: pct, tone: 'good', sub: `${pct} of queries · 24 hours`, trend: blocks, pct: blocked / total, waffle: true } }; }),
         updates: w('Updates', 3_600_000, () => ({ type: 'list', layout: 'chips', title: 'Updates', icon: 'tag', limit: 13,
