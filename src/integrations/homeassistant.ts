@@ -8,6 +8,25 @@ import type { Control, ThermostatCard, ThermostatMode } from '../shared/cards.ts
 const PRESS = new Set(['scene', 'script', 'button', 'input_button', 'automation']);
 const TOGGLE = new Set(['light', 'switch', 'input_boolean', 'fan', 'media_player', 'climate', 'humidifier', 'siren', 'remote']);
 
+// a row's small picture: what HA's own mdi icon suggests, else the device class, else the domain
+const HINTS: [RegExp, string][] = [[/solar|sun|weather-sunny/, 'sun'], [/washing-machine|tumble-dryer|dishwasher/, 'washer'], [/garage/, 'garage'], [/lock-open/, 'unlock'], [/lock/, 'lock'],
+  [/door|gate/, 'door'], [/flash|lightning|bolt|transmission-tower|meter-electric/, 'bolt'], [/currency|cash|piggy/, 'coins'], [/water|drop/, 'droplets'], [/thermometer/, 'thermometer'], [/account|human|person/, 'user']];
+const CLASSES: Record<string, string> = { energy: 'bolt', power: 'bolt', monetary: 'coins', temperature: 'thermometer', humidity: 'droplets', moisture: 'droplets', battery: 'battery', garage: 'garage', door: 'door', gate: 'door' };
+const DOMAINS: Record<string, string> = { lock: 'lock', person: 'user', device_tracker: 'user', climate: 'thermometer' };
+export function iconOf(e: any): string | undefined {
+  const [domain] = String(e.entity_id).split('.'), a = e.attributes ?? {}, mdi = typeof a.icon === 'string' ? a.icon : '';
+  if (domain === 'lock' && e.state !== 'locked') return 'unlock';
+  return HINTS.find(([re]) => re.test(mdi))?.[1] ?? CLASSES[a.device_class] ?? DOMAINS[domain];
+}
+/** Locked, a closed garage and someone home read well; something left open or unlocked is worth a look. */
+export function toneOf(e: any): 'good' | 'warn' | 'bad' | undefined {
+  const [domain] = String(e.entity_id).split('.'), cls = e.attributes?.device_class;
+  if (domain === 'lock') return e.state === 'locked' ? 'good' : e.state === 'jammed' ? 'bad' : ['unlocked', 'open', 'opening'].includes(e.state) ? 'warn' : undefined;
+  if (domain === 'cover' && ['garage', 'door', 'gate'].includes(cls)) return e.state === 'closed' ? 'good' : ['open', 'opening', 'closing'].includes(e.state) ? 'warn' : undefined;
+  if (domain === 'person' || domain === 'device_tracker') return e.state === 'home' ? 'good' : undefined;
+  return undefined;
+}
+
 const rgb = (a: any) => Array.isArray(a?.rgb_color) ? `rgb(${a.rgb_color.join(',')})` : undefined;
 
 export default defineIntegration({
@@ -20,7 +39,7 @@ export default defineIntegration({
     // each entry becomes a homepage widget: `<instance>.<key>`
     // entities are ids, or { id, name } to rename one on the page
     cards: z.record(z.string(), z.object({ title: z.string(), icon: z.string().optional(),
-      entities: z.array(z.union([z.string(), z.object({ id: z.string(), name: z.string() })])) })).default({}),
+      entities: z.array(z.union([z.string(), z.object({ id: z.string(), name: z.string().optional(), icon: z.string().optional() })])) })).default({}),
     controllable: z.array(z.string()).default([]),   // extra entities the assistant may control (cards' entities always may)
     // each entry becomes a schedule widget `<instance>.<key>`: timestamp sensors (bin days, a timetable) as a day's
     // timeline with the next one counting down; within `soon` minutes it also shows as a live ring
@@ -68,7 +87,8 @@ export default defineIntegration({
     const call = (domain: string, service: string, data: Record<string, unknown>) =>
       ctx.http(`${base}/api/services/${domain}/${service}`, { method: 'POST', headers, body: JSON.stringify(data) });
     const ids = (c: (typeof cfg.cards)[string]) => c.entities.map(e => typeof e === 'string' ? e : e.id);
-    const names = new Map(Object.values(cfg.cards).flatMap(c => c.entities).flatMap(e => typeof e === 'string' ? [] : [[e.id, e.name] as const]));
+    const names = new Map(Object.values(cfg.cards).flatMap(c => c.entities).flatMap(e => typeof e === 'string' || !e.name ? [] : [[e.id, e.name] as const]));
+    const icons = new Map(Object.values(cfg.cards).flatMap(c => c.entities).flatMap(e => typeof e === 'string' || !e.icon ? [] : [[e.id, e.icon] as const]));
     const planEntities = Object.values(cfg.floorplans).flatMap(f => [...Object.values(f.rooms).flat(), ...(f.vacuum ? [f.vacuum] : [])]);
     const allowed = new Set([...Object.values(cfg.cards).flatMap(ids), ...cfg.controllable, ...planEntities, ...Object.values(cfg.thermostats).map(t => t.entity)]);
     // "L50 Ultra  L50 Ultra" → "L50 Ultra"; a configured name always wins
@@ -79,6 +99,9 @@ export default defineIntegration({
       if (!/^\d{4}-\d\d-\d\dT/.test(state) || Number.isNaN(Date.parse(state))) return state;
       return fmt.stamp(state);
     };
+    // a lock, a door or a person in HA's own lower-case words ("not_home") said as a person would ("Away")
+    const said = (e: any) => /^(lock|cover|person|device_tracker)\./.test(e.entity_id) && /^[a-z_]+$/.test(e.state)
+      ? e.state === 'not_home' ? 'Away' : e.state[0].toUpperCase() + e.state.slice(1).replace(/_/g, ' ') : readable(e.state);
     function control(e: any): Control {
       const [domain] = e.entity_id.split('.');
       const a = e.attributes ?? {};
@@ -97,7 +120,8 @@ export default defineIntegration({
         action: 'set', args: { entity_id: e.entity_id },
       };
       const n = Number(e.state);
-      return { id: e.entity_id, label, kind: 'value', value: Number.isFinite(n) && e.state !== '' ? withUnit(Math.round(n * 10) / 10, a.unit_of_measurement) : readable(e.state) };
+      const icon = icons.get(e.entity_id) ?? iconOf(e), tone = toneOf(e);
+      return { id: e.entity_id, label, kind: 'value', value: Number.isFinite(n) && e.state !== '' ? withUnit(Math.round(n * 10) / 10, a.unit_of_measurement) : said(e), ...(icon && { icon }), ...(tone && { tone }) };
     }
 
     const widgets: Record<string, Widget> = {};

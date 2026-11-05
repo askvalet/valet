@@ -8,7 +8,7 @@ import { renderToString } from 'react-dom/server';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { stateOf } from '../src/shared/cards.ts';
 import { checkCard } from '../src/shared/cards.schema.ts';
-import { MiniRing, SummaryTile, Widget } from '../src/web/cards.tsx';
+import { Headlines, lineColor, MiniRing, siteOf, SummaryTile, Widget } from '../src/web/cards.tsx';
 import { Counter, ElasticSlider, Flap, pose, RowSlot, rubber, Tick, useRows } from '../src/web/feel.tsx';
 import { byDay, CalendarView, headsUp, span, splitToday, Thermostat, WeatherCard } from '../src/web/home-cards.tsx';
 import HomeCase from '../src/web/visuals/home-case.tsx';
@@ -178,6 +178,43 @@ test('thermostat: read-only and targetless dials offer nothing to press and show
   assert.ok(none.includes('18.4') && !none.includes('th-knob') && !none.includes('Warmer'));
   assert.ok(renderToString(<Thermostat card={{ ...base, unit: 'F', step: 1, target: 68 }} />).includes('68'));
   assert.ok(!/undefined|NaN/.test(renderToString(<Thermostat card={base} />)));
+});
+
+test('thermostat: its colour says what it does, and quiets while it waits', () => {
+  const base = { type: 'thermostat', unit: 'C', min: 7, max: 30, step: .5, target: 20, current: 19 } as const;
+  const idle = renderToString(<Thermostat card={{ ...base, state: 'Idle', mode: 'heat' }} />), on = renderToString(<Thermostat card={{ ...base, state: 'Heating', mode: 'heat' }} />);
+  assert.ok(idle.includes('data-mode="heat"') && idle.includes('data-idle=""'));
+  assert.ok(!on.includes('data-idle'));
+  assert.ok(!renderToString(<Thermostat card={{ ...base, state: 'Idle', mode: 'off' }} />).includes('data-idle'), 'off is its own grey');
+});
+
+test('headlines: one column, each story marked by where it is from, then where and when', () => {
+  const html = renderToString(<Headlines card={{ type: 'list', layout: 'headlines', title: 'HN', items: [
+    { title: 'Show HN: a thing', subtitle: '412 points · 188 comments · lapnas.dev', meta: '3h' },
+    { title: 'Ask HN: what runs in your closet?', subtitle: '176 points · 311 comments', meta: '14h' },
+    { title: 'Pizza at home', subtitle: 'Personal blog', meta: '3h', image: '/pizza.jpg' },
+    { title: 'Linked', href: 'https://www.example.org/a', meta: '1d' },
+    ...Array.from({ length: 12 }, (_, i) => ({ title: `More ${i}` }))] }} />);
+  assert.ok(html.includes('data-letter="L"'), 'the domain in the subtitle gives the mark');
+  assert.ok(html.includes('data-letter="A"'), '"176 points" is not a name: the title gives it');
+  assert.ok(html.includes('src="/pizza.jpg"') && html.includes('/api/favicon/example.org'));
+  assert.ok(html.includes('412 points · 188 comments · lapnas.dev · 3h') && html.includes('example.org · 1d'));
+  assert.equal(html.match(/class="headline[ "]/g)?.length, 16, 'all of them drawn; a tall card shows what fits, any other eight (CSS)');
+  assert.equal(siteOf({ subtitle: 'The Example Times' }), undefined);
+  assert.equal(siteOf({ href: 'not a url', subtitle: '3 points · a.b.io' }), 'a.b.io');
+});
+
+test('charts: a line can bring its own colour, else the first is the tone and the rest are quiet', () => {
+  assert.equal(lineColor({ color: '#ffb340' }, 1), '#ffb340');
+  assert.equal(lineColor({ tone: 'good' }, 0), 'var(--good)');
+  assert.equal(lineColor({ tone: 'good' }, 1), 'var(--muted-foreground)');
+  assert.equal(checkCard({ type: 'chart', series: [{ name: 'a', points: [1], color: 'var(--precip)' }] }).success, true);
+  assert.equal(checkCard({ type: 'chart', series: [{ name: 'a', points: [1], color: 'red; background:url(x)' }] }).success, false);
+});
+
+test('controls: a row can carry an icon and a tone, and its value takes the colour', () => {
+  const html = renderToString(<TooltipProvider><Widget card={{ type: 'controls', title: 'House', items: [{ id: 'lock.f', label: 'Front door', kind: 'value', value: 'Locked', icon: 'lock', tone: 'good' }, { id: 's', label: 'Plain', kind: 'value', value: '3' }] }} /></TooltipProvider>);
+  assert.ok(html.includes('text-good') && html.includes('Locked') && html.includes('lucide-lock'));
 });
 
 test('schema: new cards reject what would break them', () => {

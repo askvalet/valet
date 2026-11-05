@@ -389,6 +389,31 @@ test('home assistant schedule: next time rolls to tomorrow, and shows as a live 
   assert.equal(later.activity, undefined);
 });
 
+test('home assistant cards: rows carry a small icon, and a lock, a garage door or a person says how things stand', async () => {
+  const states = [
+    { entity_id: 'lock.front', state: 'locked', attributes: { friendly_name: 'Front door' } },
+    { entity_id: 'lock.back', state: 'unlocked', attributes: { friendly_name: 'Back door' } },
+    { entity_id: 'cover.garage', state: 'open', attributes: { friendly_name: 'Garage', device_class: 'garage' } },
+    { entity_id: 'person.sam', state: 'not_home', attributes: { friendly_name: 'Sam' } },
+    { entity_id: 'person.kim', state: 'home', attributes: { friendly_name: 'Kim' } },
+    { entity_id: 'sensor.solar', state: '8.4', attributes: { unit_of_measurement: 'kWh', device_class: 'energy', icon: 'mdi:solar-power' } },
+    { entity_id: 'sensor.used', state: '9.7', attributes: { unit_of_measurement: 'kWh', device_class: 'energy' } },
+    { entity_id: 'sensor.washer', state: 'Finished', attributes: {} },
+    { entity_id: 'light.desk', state: 'on', attributes: {} },
+  ];
+  const ha = make(homeassistant, { url: 'http://ha', token: 'x', cards: { h: { title: 'House', entities: [...states.slice(0, 7).map(s => s.entity_id), { id: 'sensor.washer', icon: 'washer' }, 'light.desk'] } } }, fake(() => states));
+  const card: any = await ha.widgets.h.fetch();
+  valid(card);
+  const row = (id: string) => card.items.find((i: any) => i.id === id);
+  assert.deepEqual([row('lock.front').icon, row('lock.front').tone, row('lock.front').value], ['lock', 'good', 'Locked']);
+  assert.deepEqual([row('lock.back').icon, row('lock.back').tone], ['unlock', 'warn']);
+  assert.deepEqual([row('cover.garage').icon, row('cover.garage').tone, row('cover.garage').value], ['garage', 'warn', 'Open']);
+  assert.deepEqual([row('person.sam').value, row('person.sam').tone, row('person.kim').tone], ['Away', undefined, 'good']);
+  assert.deepEqual([row('sensor.solar').icon, row('sensor.used').icon, row('sensor.used').value], ['sun', 'bolt', '9.7 kWh']);
+  assert.deepEqual([row('sensor.washer').icon, row('sensor.washer').label, row('sensor.washer').value], ['washer', 'sensor.washer', 'Finished']);   // an icon alone, no name: the entity's own
+  assert.equal(row('light.desk').icon, undefined);   // a light keeps its colour swatch
+});
+
 const climate = (over: Record<string, unknown> = {}, state = 'heat') => ({ entity_id: 'climate.hall', state, attributes: { friendly_name: 'Hall', hvac_modes: ['off', 'heat'], preset_modes: ['none', 'home', 'sleep'], preset_mode: 'home',
   hvac_action: 'idle', temperature: 20, current_temperature: 19.5, min_temp: 7, max_temp: 30, target_temp_step: .5, ...over } });
 const thermostatHA = (entity: object, more: object = {}, seen: { url: string; body?: unknown }[] = [], unit = '°C') => make(homeassistant, { url: 'http://ha', token: 'x', thermostats: { hall: { entity: 'climate.hall', ...more } } }, fake((url, init) => {

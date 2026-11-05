@@ -49,7 +49,7 @@ const StatusItem = z.object({ name: z.string(), ok: z.boolean(), ms: z.number().
   icon: z.string().optional(), group: z.string().optional(), quiet: z.boolean().optional(), state: z.enum(['up', 'degraded', 'down', 'off']).optional() }).strict();
 const Control = z.object({ id: z.string(), label: z.string(), kind: z.enum(['toggle', 'slider', 'select', 'button', 'value']),
   value: z.union([z.boolean(), z.number(), z.string()]).optional(), options: z.array(z.string()).optional(), min: z.number().optional(), max: z.number().optional(),
-  step: z.number().optional(), color: z.string().optional(), action: z.string().optional(), sub: z.string().optional(), args: z.record(z.string(), z.unknown()).optional() }).strict();
+  step: z.number().optional(), color: z.string().optional(), action: z.string().optional(), sub: z.string().optional(), icon: z.string().optional(), tone: Tone.optional(), args: z.record(z.string(), z.unknown()).optional() }).strict();
 
 const Detection = z.object({ label: z.string(), score: unit.optional(), box: z.tuple([unit, unit, unit, unit]).optional(), path: z.array(z.tuple([z.number(), z.number(), z.number(), z.number(), z.number()])).optional() }).strict();
 const Camera = z.object({ id: z.string(), name: z.string(), image: z.string().optional(), video: z.string().optional(), poster: z.string().optional(), loop: z.number().positive().optional(),
@@ -65,7 +65,7 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
   z.object({ ...base, type: z.literal('status'), items: z.array(StatusItem), layout: z.literal('wall').optional() }).strict(),
   z.object({ ...base, type: z.literal('links'), items: z.array(z.object({ name: z.string(), href: z.string(), icon: z.string().optional(), note: z.string().optional() }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('chart'), unit: z.string().optional(), headline: z.string().optional(), max: z.number().optional(), span: z.string().optional(), window: z.string().optional(), factsNote: z.string().optional(), from: z.number().optional(), to: z.number().optional(), style: z.enum(['line', 'bars', 'stream']).optional(), facts: z.array(z.object({ label: z.string(), value: z.string().optional() }).strict()).optional(), labels: z.array(z.string()).optional(),
-    series: z.array(z.object({ name: z.string(), points: nums, tone: Tone.optional(), total: finite.optional() }).strict()) }).strict(),
+    series: z.array(z.object({ name: z.string(), points: nums, tone: Tone.optional(), total: finite.optional(), color: z.string().max(40).regex(/^(#[0-9a-f]{3,8}|var\(--[a-z0-9-]+\))$/i).optional() }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('race'), span: z.string().optional(), unit: z.string().optional(), steps: z.array(z.string()),
     items: z.array(z.object({ title: z.string(), image: z.string().optional(), points: nums }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('heatmap'), from: date, days: nums, unit: z.string().optional(), headline: z.string().optional(), span: z.string().optional() }).strict(),

@@ -163,7 +163,7 @@ can still draw it another way with a widget's [`view`](configuration.md#layout).
 | Card | For | Notes |
 |---|---|---|
 | `stats` | a few numbers, one leading | first item is the hero; `trend` draws a sparkline, `pct` a meter |
-| `list` | rows of things with a status | `pct` adds a progress bar; `tone` colours a row; `layout` is `temps`, `chips` or `headlines` |
+| `list` | rows of things with a status | `pct` adds a progress bar; `tone` colours a row; `layout` is `temps`, `chips` or `headlines` (one column of stories, each with a small mark: its `image`, the site's icon, else its first letter; then the title and `subtitle · meta`. A card made two rows tall shows as many as fit, any other eight) |
 | `status` | services that are up or down | `group` sections them; `quiet` for things that sleep on purpose. `layout: wall` is one icon per app (by `group`, or the name up to its first `-` or `_`), with a count when it has several, its worst state on the dot and what's wrong on hover |
 | `media` | what's playing or downloading | full-bleed artwork; `tags`, progress, time left |
 | `shelf` | a row of artwork | `aspect` poster/square/wide; `stack: true` piles them up (documents, photos); `layout` is `row`, `spotlight`, `focus`, `coverflow`, `masonry`, `cards`, `desk`, `windows`, `tickets` or `week` |
@@ -178,8 +178,8 @@ can still draw it another way with a widget's [`view`](configuration.md#layout).
 | `forecast` | weather | a large glyph and temperature, high/low, the next `days`; more room adds the hours and range bars |
 | `calendar` | an agenda and a month, or a week | `events` with ISO times, or plain dates for all day; browsing a month or a week happens in the browser, within `from`..`to`. Wide, it's the month beside the day; narrower and tall enough, a few days side by side with the hours down the side. `view` (`week` or `agenda`) holds it to one |
 | `thermostat` | a dial | `target`, `current`, `min`, `max`, `step`, `unit`; `set` names the action for a new target, `modes` the buttons |
-| `controls` | switches, sliders, choices | each control names an action of the same integration |
-| `chart` | a graph | `style` is `line`, `bars` or `stream` |
+| `controls` | switches, sliders, choices | each control names an action of the same integration; `icon` puts a small picture before a row and `tone` colours its value |
+| `chart` | a graph | `style` is `line`, `bars` or `stream`; a series' `color` (`#hex` or `var(--token)`) gives it a colour of its own, say yellow for solar, where otherwise only the first line is coloured |
 | `kv`, `text` | key–value rows, a sentence | |
 | `code` | logs or config | numbered lines, copy, and `diff: true` colours lines starting `+` and `-` |
 | `table` | rows and columns | `columns` and `rows`; numbers line up, and a tap on a heading sorts |

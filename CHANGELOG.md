@@ -7,6 +7,9 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- Home Assistant cards have icons and colour. Each row gets a small icon from what the entity is (a lock, a garage door, a person, energy, money, temperature), and the ones that say how things stand are coloured: locked, closed and at home in green, unlocked or left open in amber. `locked` and `not_home` read as Locked and Away. An entity in `cards` can be `{ id, icon }` to choose its icon.
+- A line chart's series can have a `color` of its own (`#hex` or `var(--token)`), so two lines that mean different things, like power used and solar, read apart.
+
 - The calendar has a week. A calendar card that's narrower than the month and day side by side but tall enough, like a third of the overview's row or a phone, shows a few days side by side with the hours down the side: only the hours in use, squeezed to the card so it never scrolls up and down, events as blocks in their calendar's colour, all-day ones in a strip on top, today shaded with a line at the time now. Swipe or use the arrows for more days; Today brings it back. A meeting has a small Join button on its block, and tapping any event shows its time, place, calendar and Join, over the week so nothing moves. `view: week` or `view: agenda` on the widget holds it to one.
 - `appearance.theme: system` follows the device over a wallpaper too: light glass when the phone or computer is in light mode, dark glass in dark mode, and the page turns when the device does (at sunset, say), without a reload. The light/dark switch in the top bar shows over a wallpaper then, and overrides it in that browser only; switching back to what the device says follows the device again. The wall display follows the screen with `system` and stays dark otherwise. `auto` is unchanged: dark glass over a wallpaper, as before.
 - A wallpaper for each theme: `appearance.wallpaper: { light: …, dark: … }` (and the same in `wallpapers`, per tab). `dim` and `blur` take `{ light, dark }` too. The plain forms work as they did.
@@ -19,6 +22,9 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- Hacker News and RSS headlines are one column to scan: a small mark for where each story is from (its picture, the site's icon, else its first letter), the title on up to two lines, then the points, comments, site or source and how long ago. A card made two rows tall fills its height with as many stories as fit, so nothing is left empty at the foot.
+- The thermostat's colour says what it's doing: warm orange for heat, blue for cool, teal for auto, a quieter shade while it's idle, grey when off. It used to be the page's accent colour for heat.
+- `view: masonry` on a photos card, like an Immich album, keeps each photo's own shape and caption in the collage.
 - A narrow calendar's day is its title: "Thursday 5 November" sits on the header line at the size of every card's title, with the arrows at the right where other cards keep theirs, so the cards in a row line up. Wide, the month and the day are title-sized on that line too. In the plain agenda the arrows step a day at a time.
 - Mealie's meal plan (`week`) shows its photos landscape, the way food is photographed.
 - Navidrome's Most played keeps album covers square: as a list, each row's cover is square instead of cut to a poster, and as any gallery view (`row`, `coverflow` and the rest) the covers stay square. It brings up to 10 albums, so a gallery has some to flip through; the list still shows the top five. A ranked card can say `aspect: square` for this.

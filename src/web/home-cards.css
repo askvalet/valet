@@ -46,9 +46,11 @@ html:not(.dark) .cal-sheet { background: rgb(252 252 253 / .97); box-shadow: ins
 @keyframes cal-sheet { from { opacity: 0; transform: translateY(8px); } }
 
 /* thermostat: one colour per mood, the same dial for all of them */
-.th { --th-a: var(--primary); --th-b: var(--primary); --th-soft: color-mix(in srgb, var(--primary) 18%, transparent); user-select: none; -webkit-user-select: none; }
-.th[data-mode="cool"] { --th-a: #a4dcff; --th-b: #4ba7ff; --th-soft: rgb(90 170 255 / .2); }
-.th[data-mode="auto"] { --th-a: #b5efd7; --th-b: #5cd6a7; --th-soft: rgb(100 220 170 / .18); }
+.th { --hue-a: #ffb38a; --hue-b: #ff6a3d; --th-a: var(--hue-a); --th-b: var(--hue-b); --th-soft: color-mix(in srgb, var(--hue-b) 20%, transparent); user-select: none; -webkit-user-select: none; }   /* heat: warm */
+.th[data-mode="cool"] { --hue-a: #a4dcff; --hue-b: #4ba7ff; }
+.th[data-mode="auto"] { --hue-a: #b5efd7; --hue-b: #5cd6a7; }
+/* set but not working right now (idle): the same colour, quieter */
+.th[data-idle] { --th-a: color-mix(in oklab, var(--hue-a) 60%, #a3a3ab); --th-b: color-mix(in oklab, var(--hue-b) 60%, #85858d); }
 .th[data-mode="off"] { --th-a: #9b9ba3; --th-b: #77777f; --th-soft: var(--fill-2); }
 .th-track { stroke: color-mix(in srgb, var(--foreground) 13%, transparent); }
 .th-ticks { stroke: var(--foreground); opacity: 0; transition: opacity var(--dur-pop) var(--ease-out); }

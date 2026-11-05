@@ -2,7 +2,7 @@
 // so a generated card looks exactly like the widget it came from.
 import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
   Activity, Archive, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Thermometer, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Play, Shield, Wifi,
-  Box, TriangleAlert, Video, type LucideIcon,
+  Box, TriangleAlert, Video, Lock, LockOpen, Warehouse, DoorClosed, Zap, Droplets, BatteryMedium, User, WashingMachine, Fan, Power, type LucideIcon,
 } from 'lucide-react';
 import { createContext, Fragment, lazy, memo, Suspense, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Cameras } from './cameras.tsx';
@@ -37,6 +37,7 @@ const ICONS: Record<string, LucideIcon> = {
   camera: Video, video: Video, cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
   search: Search, bulb: Lightbulb, home: House, shield: Shield, chat: MessageCircle, image: ImageIcon, clock: Clock, crescent: MoonIcon, game: Gamepad2, book: BookOpen, coins: Coins, text: Type,
   file: FileText, bookmark: Bookmark, rss: Rss, news: Newspaper, reddit: MessagesSquare, tag: Tag, chart: TrendingUp, calendar: Calendar, sun: Sun, moon: Moon, cloud: Cloud, 'cloud-sun': CloudSun, 'cloud-moon': CloudMoon, rain: CloudRain, snow: CloudSnow, fog: CloudFog, storm: CloudLightning, thermometer: Thermometer,
+  lock: Lock, unlock: LockOpen, garage: Warehouse, door: DoorClosed, bolt: Zap, droplets: Droplets, battery: BatteryMedium, user: User, washer: WashingMachine, fan: Fan, power: Power,
 };
 export function Icon({ name, className }: { name?: string; className?: string }) {
   if (!name) return null;
@@ -47,6 +48,8 @@ export function Icon({ name, className }: { name?: string; className?: string })
 
 const toneText: Record<Tone, string> = { neutral: '', good: 'text-good', warn: 'text-warn', bad: 'text-bad', accent: 'text-primary' };
 const toneVar = (t?: Tone) => (t && t !== 'neutral' && t !== 'accent' ? `var(--${t})` : 'var(--primary)');
+// a line chart's lines: the first in its tone, the rest quiet, unless a line brings a colour of its own
+export const lineColor = (s: { tone?: Tone; color?: string }, k: number) => s.color ?? (k ? 'var(--muted-foreground)' : toneVar(s.tone));
 
 // Cards in chat are dense: same content, about half the height (smaller numbers, tighter rows, a smaller header)
 const Dense = createContext(false);
@@ -159,20 +162,37 @@ function List({ card, run }: { card: ListCard; run?: RunAction }) {
   return <Rows card={card} dense={dense} run={run} />;
 }
 
-/** Stories as a grid of small cards, each anchored by where it's from, so the eye sorts by source before it reads. */
-function Headlines({ card }: { card: ListCard }) {
-  const host = (u?: string) => { try { return u ? new URL(u).hostname.replace(/^www\./, '') : undefined; } catch { return undefined; } };
+/** Where a story is from, for its mark: the link's own host, else a domain its subtitle names ("412 points · example.com"). */
+export const siteOf = (it: { href?: string; subtitle?: string }) => {
+  try { if (it.href) return new URL(it.href).hostname.replace(/^www\./, ''); } catch { /* not a full address */ }
+  return it.subtitle?.split(' · ').find(p => /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(p.trim()))?.trim();
+};
+/** Stories as one column to scan: a small mark for where each is from (its picture, the site's icon, else its first letter),
+ *  the title over two lines at most, then where and when. A tall card shows as many as fit and no empty foot; elsewhere, eight. */
+export function Headlines({ card }: { card: ListCard }) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = box.current; if (!el) return;
+    const fit = () => {
+      const rows = [...el.children] as HTMLElement[];
+      rows.forEach(r => r.removeAttribute('data-cut'));
+      const room = el.clientHeight;
+      for (const r of rows) if (r.offsetTop + r.offsetHeight > room + 1) r.setAttribute('data-cut', '');
+    };
+    fit();
+    const o = new ResizeObserver(fit); o.observe(el); return () => o.disconnect();
+  }, [card.items]);
   return (
-    <div className="headlines">
-      {card.items.slice(0, 8).map((it, i) => {
-        const h = host(it.href);
+    <div ref={box} className="headlines">
+      {card.items.slice(0, 30).map((it, i) => {
+        const h = it.href ? siteOf({ href: it.href }) : undefined, site = h ?? siteOf(it), letter = (site ?? [it.subtitle, it.title].find(t => /^\s*\p{L}/u.test(t ?? '')) ?? it.title).trim().charAt(0).toUpperCase();   // "176 points" isn't a name: the title's first letter
         return (
-          <a key={i} href={it.href} target="_blank" rel="noreferrer" className={cn('headline', !it.href && 'pointer-events-none')}>
+          <a key={it.id ?? i} href={it.href} target="_blank" rel="noreferrer" className={cn('headline', !it.href && 'pointer-events-none')}>
             {it.image ? <img src={it.image} alt="" loading="lazy" className="headline-art" />
-              : h && <span className="headline-mark"><img src={`/api/favicon/${h}`} alt="" loading="lazy" onError={e => { e.currentTarget.style.display = 'none'; }} /></span>}
-            <span className="min-w-0">
+              : <span className="headline-mark" data-letter={letter}>{h && <img src={`/api/favicon/${h}`} alt="" loading="lazy" onError={e => { e.currentTarget.remove(); }} />}</span>}
+            <span className="min-w-0 flex-1">
               <span className="line-clamp-2 text-item leading-snug font-medium">{it.title}</span>
-              <span className="mt-1 block truncate text-meta text-muted-foreground">{[h ?? it.subtitle, it.meta].filter(Boolean).join(' · ')}</span>
+              <span className="mt-0.5 block truncate text-meta text-muted-foreground">{[it.subtitle ?? site, it.meta].filter(Boolean).join(' · ')}</span>
             </span>
           </a>
         );
@@ -843,7 +863,7 @@ function Columns({ card }: { card: ChartCard }) {
   };
   const live = !card.labels?.length && card.to != null && Date.now() - card.to < 72e5;
   const ticks = n > 2 && (card.labels?.length || card.from != null) ? [0, (n - 1) >> 1, n - 1] : [];
-  const paint = (s: ChartCard['series'][number]) => card.style === 'stream' ? flow(card.series.indexOf(s)) : s.tone ? toneVar(s.tone) : 'color-mix(in oklab, var(--foreground) 24%, transparent)';
+  const paint = (s: ChartCard['series'][number]) => card.style === 'stream' ? flow(card.series.indexOf(s)) : s.color ?? (s.tone ? toneVar(s.tone) : undefined) ?? 'color-mix(in oklab, var(--foreground) 24%, transparent)';
   const sum = (s: ChartCard['series'][number]) => s.total ?? s.points.reduce((a, b) => a + b, 0), whole = tops.reduce((a, b) => a + b, 0), spot = at != null ? (at + .5) / n : 0;
   return (
     <div className="chart-body">
@@ -907,7 +927,7 @@ function Chart({ card, pop }: { card: ChartCard; pop?: boolean }) {
         <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="h-28 w-full" aria-hidden>
           {card.series.map((s, k) => {
             const pts = s.points.map((p, i) => [x(i, s.points.length), y(p)] as [number, number]), d = smooth(pts);
-            const color = k ? 'var(--muted-foreground)' : toneVar(s.tone);
+            const color = lineColor(s, k);
             return <g key={s.name}>{!k && <><defs><linearGradient id={wash} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity=".26" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs><path d={`${d}L${w},${h}L0,${h}Z`} fill={`url(#${wash})`} /></>}
               <path d={d} fill="none" stroke={color} strokeWidth="1.6" vectorEffect="non-scaling-stroke" /></g>;
           })}
@@ -915,14 +935,14 @@ function Chart({ card, pop }: { card: ChartCard; pop?: boolean }) {
         {at != null && lead && (
           <div className="pointer-events-none absolute inset-0" style={{ transform: `translateX(${spot}%)` }}>
             <span className="absolute inset-y-0 left-0 w-px bg-foreground/25" />
-            {card.series.map((s, k) => s.points[at] != null && <span key={s.name} className="absolute left-0 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-background" style={{ top: `${(y(s.points[at]) / h) * 100}%`, background: k ? 'var(--muted-foreground)' : toneVar(s.tone) }} />)}
+            {card.series.map((s, k) => s.points[at] != null && <span key={s.name} className="absolute left-0 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-background" style={{ top: `${(y(s.points[at]) / h) * 100}%`, background: lineColor(s, k) }} />)}
           </div>
         )}
       </div>
       {timed && <div className="col-axis"><span>{tick(card.from!)}</span><span>{tick((card.from! + card.to!) / 2)}</span><span>{Date.now() - card.to! < 72e5 ? 'now' : tick(card.to!)}</span></div>}
       {/* the legend row only when it has something in it: an empty one left a margin at the foot, uneven with the top */}
       {(card.series.length > 1 || (card.span && !card.headline)) && <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground">
-        {card.series.length > 1 && card.series.map((s, k) => <span key={s.name} className="tabular" style={k ? undefined : { color: toneVar(s.tone) }}>{s.name}{at != null && s.points[at] != null ? ` ${num(s.points[at])}` : card.headline ? '' : s.points.length ? ` ${num(s.points.at(-1)!)}` : ''}</span>)}
+        {card.series.length > 1 && card.series.map((s, k) => <span key={s.name} className="tabular" style={k && !s.color ? undefined : { color: lineColor(s, k) }}>{s.name}{at != null && s.points[at] != null ? ` ${num(s.points[at])}` : card.headline ? '' : s.points.length ? ` ${num(s.points.at(-1)!)}` : ''}</span>)}
         {card.span && !card.headline && <span className="ml-auto">{card.span}</span>}
       </div>}
     </div>
@@ -977,11 +997,12 @@ function Controls({ card, run }: { card: ControlsCard; run?: RunAction }) {
       {rows.map(({ key, item: c, state }) => (
         <RowSlot key={key} state={state === 'out' ? state : undefined} on={!!run} dust={dust}><div className="flex min-h-12 min-w-0 items-center gap-3 py-2">
           {c.color !== undefined && <span className="size-2.5 shrink-0 rounded-full ring-1 ring-border" style={{ background: c.color ?? 'var(--muted)' }} />}
+          {c.icon && <span className={cn('grid size-8 shrink-0 place-items-center rounded-full bg-foreground/[.06]', c.tone && c.tone !== 'neutral' ? toneText[c.tone] : 'text-muted-foreground')}><Icon name={c.icon} /></span>}
           <div className="min-w-0 flex-1">
             <div className="truncate text-item">{c.label}</div>
             {c.sub && <div className="truncate text-meta text-muted-foreground">{c.sub}</div>}
           </div>
-          {c.kind === 'value' && <span className="text-item tabular text-muted-foreground">{String(c.value ?? '–')}</span>}
+          {c.kind === 'value' && <span className={cn('text-item tabular', c.tone && c.tone !== 'neutral' ? toneText[c.tone] : 'text-muted-foreground')}>{String(c.value ?? '–')}</span>}
           {c.kind === 'toggle' && <Switch checked={!!c.value} disabled={!run} aria-label={c.label} onCheckedChange={v => { play('tap'); fire(c, { value: v }); }} />}
           {c.kind === 'slider' && (
             <Slider className="w-32" min={c.min ?? 0} max={c.max ?? 100} step={c.step ?? 1} defaultValue={[Number(c.value ?? 0)]} disabled={!run}

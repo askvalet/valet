@@ -474,8 +474,50 @@ export default ({ z, defineIntegration, fmt: write }) => {
               summary: { label: 'Tonight', icon: 'book', value: tonight?.title ?? 'Nothing planned', sub: tonight && 'Dinner', image: tonight?.image } };
           });
         })(),
-        news: w('Hacker News', 1_800_000, () => ({ type: 'list', layout: 'headlines', title: 'Hacker News', icon: 'news', source: { name: 'Hacker News', icon: '/api/icon/hacker-news' }, items: [['Show HN: I replaced my NAS with three old laptops', '412 points · 188 comments', '3h'], ['The surprising durability of cheap SSDs', '287 points · 96 comments', '6h'], ['Why self-hosted email is hard, in one diagram', '241 points · 140 comments', '9h'], ['A tiny DNS server in 500 lines', '198 points · 42 comments', '12h']].map(([title, subtitle, meta]) => ({ title, subtitle, meta })) })),
-        feeds: w('Feeds', 1_800_000, () => ({ type: 'list', layout: 'headlines', title: 'Feeds', icon: 'rss', source: { name: 'RSS', icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23f26522'/%3E%3Ccircle cx='7' cy='17' r='2' fill='%23fff'/%3E%3Cpath d='M5 11a8 8 0 0 1 8 8M5 6a13 13 0 0 1 13 13' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E" }, items: [['This week in open-source home automation', 'The Example Times', '1h'], ['Quiet fans, ranked', 'Hardware Weekly', '4h'], ['Ten small scripts that run my house', 'Personal blog', '8h'], ['Solar panels and home servers: the numbers', 'Example Energy', '1d']].map(([title, subtitle, meta]) => ({ title, subtitle, meta })) })),
+        // shaped as the hackernews integration's rows: points, comments and the story's site, then how long ago. The sites are made
+        // up and never linked, so each row's mark is its site's first letter
+        news: w('Hacker News', 1_800_000, () => ({ type: 'list', layout: 'headlines', title: 'Hacker News', icon: 'news', source: { name: 'Hacker News', icon: '/api/icon/hacker-news' }, items: [
+          ['Show HN: I replaced my NAS with three old laptops', 412, 188, 'lapnas.dev', '3h'], ['The surprising durability of cheap SSDs', 287, 96, 'storagereview.example', '6h'],
+          ['Why self-hosted email is hard, in one diagram', 241, 140, 'mailcraft.blog', '9h'], ['A tiny DNS server in 500 lines', 198, 42, 'github.com', '12h'],
+          ['Ask HN: What runs in your closet?', 176, 311, '', '14h'], ['Backups you never test are not backups', 163, 77, 'restic.blog', '16h'],
+          ['ZFS on a Raspberry Pi, a year later', 149, 58, 'pi-notes.org', '19h'], ['The quiet return of the home server', 132, 64, 'quietweb.net', '21h'],
+          ['How I label every cable in the rack', 118, 49, 'rackside.io', '22h'], ['A power meter for every outlet, cheaply', 104, 37, 'wattwise.dev', '23h']]
+          .map(([title, points, comments, site, meta]) => ({ title, subtitle: [`${points} points`, `${comments} comments`, site].filter(Boolean).join(' · '), meta })) })),
+        feeds: w('Feeds', 1_800_000, () => ({ type: 'list', layout: 'headlines', title: 'Feeds', icon: 'rss', source: { name: 'RSS', icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23f26522'/%3E%3Ccircle cx='7' cy='17' r='2' fill='%23fff'/%3E%3Cpath d='M5 11a8 8 0 0 1 8 8M5 6a13 13 0 0 1 13 13' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E" }, items: [
+          ['This week in open-source home automation', 'The Example Times', '1h'], ['Pizza at home, the long way round', 'Personal blog', '3h', 'meal4'], ['Quiet fans, ranked', 'Hardware Weekly', '4h'],
+          ['Ten small scripts that run my house', 'Personal blog', '8h'], ['A week of slow walks in the Dolomites', 'Example Travel', '20h', 'album1'], ['Solar panels and home servers: the numbers', 'Example Energy', '1d'],
+          ['A month with a heat pump', 'The Example Times', '1d'], ['Picking a UPS for a small rack', 'Hardware Weekly', '2d'], ['Notes on keeping a garden log', 'Personal blog', '2d'],
+          ['What the grid sees when you plug in a car', 'Example Energy', '3d']].map(([title, subtitle, meta, pic]) => ({ title, subtitle, meta, ...(pic && { image: ctx.image(pic) }) })) })),   // two with the post's own picture, as feeds often carry
+        // the house's electricity over the last day, an hour a point: what it drew and what the roof made. Valet has no
+        // energy integration, so it's this plugin's own chart card, as any plugin can draw
+        energy: w('Energy', 300_000, () => { const end = new Date(now()); end.setMinutes(0, 0, 0); const hours = Array.from({ length: 24 }, (_, i) => new Date(+end - (23 - i) * 36e5).getHours());
+          const used = hours.map(h => +(.28 + (h >= 6 && h < 9 ? .9 : 0) + (h >= 17 && h < 22 ? 1.3 : 0) + (h === 12 ? .4 : 0) + (hash(`e${h}`) % 10) / 40).toFixed(2));
+          const solar = hours.map(h => +Math.max(0, 1.7 * Math.sin((h - 7) / 10 * Math.PI)).toFixed(2)), u = sum(used), s = sum(solar), cost = (Math.max(0, u - s * .7) * .14).toFixed(2);
+          return { type: 'chart', style: 'line', title: 'Energy', icon: 'sun', unit: 'kWh', headline: `${u.toFixed(1)} kWh`, span: `used · ${s.toFixed(1)} kWh from solar · ` + '$' + cost, window: 'last 24 hours',
+            from: +end - 23 * 36e5, to: +end, series: [{ name: 'Used', color: 'var(--precip)', points: used }, { name: 'Solar', color: '#ffb340', points: solar }] }; }),
+        // Home Assistant's `cards:`, as the integration draws them: a lock, a garage door and the washer (given an icon in the
+        // config); then the people in the house. Each row's icon and colour come from the entity, as the real card's do
+        doors: w('Around the house', 30_000, () => ({ type: 'controls', title: 'Around the house', icon: 'home', items: [
+          { id: 'lock.front_door', label: 'Front door', kind: 'value', value: 'Locked', icon: 'lock', tone: 'good' },
+          { id: 'cover.garage_door', label: 'Garage door', kind: 'value', value: 'Closed', icon: 'garage', tone: 'good' },
+          { id: 'sensor.washer_status', label: 'Washer', kind: 'value', value: 'Finished', icon: 'washer' }] })),
+        presence: w("Who's home", 60_000, () => ({ type: 'controls', title: "Who's home", icon: 'home', items: [['daniel', 'Daniel', true], ['theo', 'Theo', true], ['alex', 'Alex', false]]
+          .map(([id, label, home]) => ({ id: `person.${id}`, label, kind: 'value', value: home ? 'Home' : 'Away', icon: 'user', ...(home && { tone: 'good' }) })) })),
+        // changedetection.io's watches, shaped as its `watches`: what changed first with a green dot, a short "store: stock"
+        // snapshot as rows of its own, anything else as a one-line preview. Made-up shops and prices
+        watching: w('Watching', 60_000, () => { const r = got('recheck', 0) > now() - 6e4, seen = m => r ? 'just now' : `${m}m ago`, at = h => fmt.ago(now() - h * 36e5, now());
+          const items = [
+            { id: 'w1', title: 'Raspberry Pi 5 · 16 GB', dot: 'good', subtitle: `Changed ${at(2)}`, meta: seen(4) }, { id: 'w1-0', title: 'North store', meta: 'In stock' }, { id: 'w1-1', title: 'Harbour Electronics', meta: 'Sold out' },
+            { id: 'w2', title: 'Dishwasher, 44 dBA', dot: 'good', subtitle: `Changed ${at(19)}`, detail: 'Was $949 · now $799 · sale ends Sunday', meta: seen(6) },
+            { id: 'w3', title: 'Town bin collection', subtitle: `Changed ${at(26 * 24)}`, detail: 'Green bin: Tuesdays until 25 November, then every other week', meta: seen(9) },
+            { id: 'w4', title: 'Furnace filter, MERV 13', subtitle: 'No changes yet', detail: '$34.99 · ships in 2 days', meta: seen(11) }];
+          return { type: 'list', title: 'Watching', icon: 'pulse', source: { name: 'changedetection.io', icon: '/api/icon/changedetection' }, items, buttons: [{ label: 'Check all now', action: 'recheck' }],
+            summary: { label: 'Watching', icon: 'pulse', value: '2 changed', tone: 'accent', sub: 'Raspberry Pi 5 · 16 GB' } }; }),
+        // Audiobookshelf's `week`: minutes listened each day, in bars
+        listening: w('Listening this week', 900_000, () => { const mins = [42, 18, 65, 0, 31, 88, 54], total = sum(mins) * 60, span = Array.from({ length: 7 }, (_, i) => now() - (6 - i) * 864e5);
+          return { type: 'chart', style: 'bars', title: 'Listening this week', icon: 'book', source: { name: 'Audiobookshelf', icon: '/api/icon/audiobookshelf' }, unit: 'min', headline: fmt.span(total * 1000), window: 'last 7 days',
+            labels: span.map(t => fmt.weekday(t)), from: span[0], to: span[6], series: [{ name: 'Listening', tone: 'accent', points: mins }],
+            summary: { label: 'Listened this week', icon: 'book', value: fmt.span(total * 1000), sub: `${fmt.span(mins[6] * 6e4)} today`, trend: mins } }; }),
         releases: w('Releases', 3_600_000, () => ({ type: 'list', layout: 'chips', title: 'Releases', icon: 'tag', items: [['paperless', '4.0.0', 'Yesterday'], ['immich', 'v3.0.0', 'Oct 21'], ['home-assistant', '2026.10.4', 'Oct 18'], ['karakeep', '0.34.0', 'Oct 15']].map(([title, subtitle, meta]) => ({ title, subtitle, meta })) })),
       };
       const pile = () => { const ids = got('archived', []); return [...ART.saved].reverse().filter(p => !ids.includes(p.title)); };
@@ -550,6 +592,7 @@ export default ({ z, defineIntegration, fmt: write }) => {
           unarchive: { description: 'Bring an archived link back', input: z.object({ id: z.string() }), run: async ({ id }) => { put('archived', got('archived', []).filter(x => x !== id)); return { done: 'Brought back a saved link' }; } },
           search: { description: 'Look for another copy of a stalled download', input: z.object({}), run: async () => { put('regrab', now() + 60_000); return { done: 'Searched for another copy of a stalled download' }; } },
           pause: { description: 'Pause or resume the pretend ad blocking', input: z.object({ minutes: z.number().int().min(0).max(1440).default(5) }), run: async ({ minutes }) => { put('dnsPause', minutes ? now() + minutes * 6e4 : 0); return { done: minutes ? `Paused ad blocking for ${minutes} min` : 'Resumed ad blocking' }; } },
+          recheck: { description: 'Check every watch now', input: z.object({}), run: async () => { put('recheck', now()); return { done: 'Checked every watch' }; } },
           vacuum: { description: 'Send the pretend vacuum', input: z.object({}).loose(), run: async args => { vacuum(args); return { done: `Told the vacuum: ${args.command === 'fan_speed' ? `suction ${args.fan_speed}` : args.command ?? 'clean'}` }; } },
         },
         tools: {

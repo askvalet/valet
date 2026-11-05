@@ -29,6 +29,13 @@ test('any numbers can be any chart, and what comes out is a valid card', () => {
   assert.deepEqual((asView(race, 'race') as any).items[0].points, [1, 5]);
 });
 
+test('photos as a collage stay photos, captions and all; a shelf as a collage is a shelf', () => {
+  const album: Card = { type: 'photos', style: 'album', title: 'Trip', note: '9 photos', items: [{ image: '/a.jpg', title: 'Lago di Braies', subtitle: 'Dolomites · June' }] };
+  const out: any = asView(album, 'masonry');
+  assert.deepEqual([out.type, out.style, out.note, out.items[0].subtitle], ['photos', 'masonry', '9 photos', 'Dolomites · June']);
+  assert.equal((asView({ type: 'shelf', title: 'S', items: [{ title: 'a', image: '/a.jpg' }] }, 'masonry') as any).layout, 'masonry');
+});
+
 test('a heatmap needs dates: without them the card stays as it was', () => {
   assert.equal(asView(ranked, 'heatmap'), ranked);
   assert.equal(asView(race, 'heatmap'), race);

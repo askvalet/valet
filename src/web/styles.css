@@ -803,13 +803,20 @@ img[data-ink-light="plate"]:not(.dark *, .on-art *, .rc *), .dark img[data-ink-d
 .ticket-line.is-busy::after { width: 100%; background: var(--primary); }
 .ticket-line.is-bad::after { width: 100%; background: var(--bad); }
 
-/* headlines: a grid of stories, where they're from first */
-.headlines { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 10px; }
-.headline { display: flex; gap: 12px; align-items: flex-start; min-width: 0; padding: 12px; border-radius: var(--radius-control); background: var(--fill-1); transition: background-color var(--dur-press) var(--ease-out); }
-.headline-mark { display: grid; flex: none; place-items: center; width: 16px; height: 20px; }
-.headline-mark img { width: 16px; height: 16px; border-radius: var(--radius-thumb); }
-.headline-art { flex: none; width: 54px; height: 54px; border-radius: var(--radius-poster); object-fit: cover; background: var(--muted); }
-@media (hover: hover) and (pointer: fine) { .headline:hover { background: var(--fill-2); } }
+/* headlines: one column of stories, where they're from first. A card made tall (two rows or more) fills its height with as
+   many as fit, spread evenly; any other shows eight. A row cut for room is gone, not half there */
+.headlines { position: relative; display: flex; flex-direction: column; min-width: 0; margin-inline: -8px; }
+.headlines > :nth-child(n+9) { display: none; }
+[data-tall] .headlines { flex: 1 1 0; min-height: 20rem; overflow: hidden; justify-content: space-between; }
+[data-tall] .headlines > :nth-child(n+9) { display: flex; }
+.headlines > [data-cut] { display: none !important; }
+.headline { position: relative; display: flex; gap: 12px; align-items: center; min-width: 0; padding: 9px 8px; border-radius: var(--radius-control); transition: background-color var(--dur-press) var(--ease-out); }
+.headline + .headline::before { content: ''; position: absolute; top: 0; left: 52px; right: 8px; border-top: 1px solid var(--border); }
+.headline-mark { position: relative; display: grid; flex: none; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-thumb); background: var(--fill-2); overflow: hidden; }
+.headline-mark::before { content: attr(data-letter); font-size: var(--text-meta); font-weight: 600; color: var(--muted-foreground); }
+.headline-mark img { position: absolute; inset: 0; margin: auto; width: 18px; height: 18px; border-radius: 4px; background: var(--fill-2); box-shadow: 0 0 0 7px var(--fill-2); }
+.headline-art { flex: none; width: 32px; height: 32px; border-radius: var(--radius-thumb); object-fit: cover; background: var(--muted); }
+@media (hover: hover) and (pointer: fine) { .headline:hover { background: var(--fill-1); } .headline:hover::before, .headline:hover + .headline::before { opacity: 0; } }
 
 /* the shell: a line that comes and goes opens and closes rather than jumping, and a chip on its way out gives its room back */
 .fold { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows var(--dur-move) var(--ease-out), opacity var(--dur-pop) var(--ease-out); }

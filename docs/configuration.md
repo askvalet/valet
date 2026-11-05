@@ -546,7 +546,7 @@ widgets:
 | `row` | a plain row of artwork | most shelves |
 | `focus` | the artwork large, one at a time, the ones either side peeking in smaller and dimmer | recently added (Plex through Tautulli, Jellyfin, Emby), continue reading and listening, new music, games |
 | `coverflow` | Cover Flow: the one in the middle faces you, the rest turn away either side in 3D, each with a reflection | nothing; pick it for a shelf of covers |
-| `masonry` | a wall of pictures three rows high, some larger, that scrolls sideways | Immich's On this day |
+| `masonry` | a wall of pictures three rows high, some larger, that scrolls sideways. Photos keep their own shapes and captions | Immich's On this day, an album |
 | `cards` | a stack of cards: the one in front square on, the next ones fanned out behind | Paperless documents, Karakeep's saved links |
 | `spotlight`, `desk`, `windows`, `tickets` | one large with a row beside it; documents on a desk; saved pages as small browser windows; what's coming as tickets | |
 | `mosaic`, `flashback`, `album` | photos as a mosaic, a slow crossfade, or an album: a carousel of large photos, the one you're on captioned | |
@@ -616,7 +616,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `clock` | `clocks` (`{ name, zone }`), `title` | `times` |
 | `glances` | `url`, `disks` (mounts, or `{ mount, name, sub }`), `network` (interface), `cpuSensor` (`CPU`) | `tiles`, `overview`, `disks` |
 | `healthchecks` | `url` (`https://healthchecks.io` or your own), `key` (the read-only key is enough to look; pausing needs the full one), `insecure` | `checks`, `status` |
-| `homeassistant` | `url`, `token`, `cards`, `schedules`, `floorplans`, `thermostats` (`{ entity, title, modes, unit }`), `controllable` (extra entities the assistant may control) | one per entry in `cards`, `schedules`, `floorplans`, `thermostats` |
+| `homeassistant` | `url`, `token`, `cards` (each `{ title, icon, entities }`; an entity is its id, or `{ id, name, icon }`), `schedules`, `floorplans`, `thermostats` (`{ entity, title, modes, unit }`), `controllable` (extra entities the assistant may control). A card's rows get a small icon from the entity (a lock, a garage door, a person, energy, money, temperature), and a lock that's locked, a garage door that's closed and someone at home read green, unlocked or open amber | one per entry in `cards`, `schedules`, `floorplans`, `thermostats` |
 | `http` | `targets` (`name`, `url`, `href`, `icon`, `group`, `quiet`, `expect`), `interval` (30000 ms) | `status` |
 | `iframe` | `url`, `title`, `height` (360), `scripts` (`true`) | `page` |
 | `immich` | `url`, `apiKey` | `memories` |

@@ -167,7 +167,7 @@ export interface ChartCard extends Base {
   type: 'chart';
   unit?: string;
   max?: number;
-  series: { name: string; points: number[]; tone?: Tone; total?: number }[];   // total: the service's own figure, when summing the points would disagree with the headline
+  series: { name: string; points: number[]; tone?: Tone; total?: number; color?: string }[];   // color: a line's own (#hex or var(--…)), when its meaning has one: solar yellow, power blue   // total: the service's own figure, when summing the points would disagree with the headline
   headline?: string;      // the big number, when the latest point isn't it ("31 plays")
   span?: string;          // e.g. "last 10 min"
   window?: string;        // what the columns cover, under them: "last 24 hours"
@@ -192,6 +192,8 @@ export interface Control {
   color?: string;         // swatch, e.g. a light's current colour
   action?: string;        // action name on the same integration instance (not needed for 'value')
   sub?: string;           // second line under the label, e.g. "Office · 80%"
+  icon?: string;          // a small picture before the label: lock, garage, bolt, user…
+  tone?: Tone;            // how the value reads: good (locked, home), warn (left open)…
   args?: Record<string, unknown>;
 }
 export interface ControlsCard extends Base { type: 'controls'; items: Control[] }

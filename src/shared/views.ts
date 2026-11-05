@@ -85,7 +85,8 @@ function pictures(card: Card): ShelfItem[] | undefined {
 function gallery(card: Card, view: View): Card | undefined {
   const items = pictures(card); if (!items?.length) return undefined;
   const base = shared(card);
-  if (view === 'mosaic' || view === 'flashback' || view === 'album') {
+  // photos keep their own shapes in a collage; anything else becomes a shelf of tiles
+  if (view === 'mosaic' || view === 'flashback' || view === 'album' || (view === 'masonry' && card.type === 'photos')) {
     const seen = items.flatMap(i => i.image ? [{ image: i.image, title: i.title || undefined, subtitle: i.subtitle, badge: i.badge, href: i.href }] : []);
     return seen.length ? { ...base, type: 'photos', style: view, items: seen } : undefined;
   }
