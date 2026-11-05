@@ -3,13 +3,11 @@
 // front. Every card is sticky in its own column of a Blossom carousel and a CSS scroll-driven animation turns, scales and
 // layers it by where its column is, so nothing is written per frame (only a mouse pulling past an end bends the stack, as
 // Blossom's example does). A browser without it, or a page asked to hold still, shows a plain row of the same cards.
-import { BlossomCarousel } from '@blossom-carousel/react';
 import { Archive, ArrowUpRight, FileText } from 'lucide-react';
 import { memo, useEffect, useId, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import type { ShelfItem } from '../shared/cards.ts';
-import { RowArrows, still } from './feel.tsx';
-import { oneByOne } from './focus.tsx';
+import { oneByOne, Row, RowArrows, still } from './feel.tsx';
 import './cardstack.css';
 
 export function CardStack({ items, title, header, aside, archive, leaving }: {
@@ -26,7 +24,7 @@ export function CardStack({ items, title, header, aside, archive, leaving }: {
 }
 
 const Deck = memo(function Deck({ id, items, title, archive, leaving }: { id: string; items: ShelfItem[]; title?: string; archive?: (id: string, el: Element | null) => void; leaving?: string[] }) {
-  const { key, tap } = oneByOne(id);
+  const { tap } = oneByOne(id);
   // a mouse pulling past either end bends the whole stack a little, as Blossom's example does; touch has its own overscroll
   useEffect(() => {
     const r = document.getElementById(id); if (!r) return;
@@ -39,7 +37,7 @@ const Deck = memo(function Deck({ id, items, title, archive, leaving }: { id: st
     return () => r.removeEventListener('overscroll', bend);
   }, [id]);
   return (
-    <BlossomCarousel id={id} className="deck-track" role="group" aria-roledescription="carousel" aria-label={title} tabIndex={items.some(it => it.href) ? undefined : 0} onKeyDown={key}>
+    <Row id={id} one className="deck-track" role="group" aria-roledescription="carousel" aria-label={title} tabIndex={items.some(it => it.href) ? undefined : 0}>
       {items.map((it, i) => {
         const line = [it.subtitle, it.badge && it.badge !== it.subtitle ? it.badge : undefined].filter(Boolean).join(' · ');
         return (
@@ -61,6 +59,6 @@ const Deck = memo(function Deck({ id, items, title, archive, leaving }: { id: st
           </div>
         );
       })}
-    </BlossomCarousel>
+    </Row>
   );
 }, (a, b) => a.id === b.id && a.title === b.title && a.archive === b.archive && (a.leaving ?? []).join() === (b.leaving ?? []).join() && (a.items === b.items || JSON.stringify(a.items) === JSON.stringify(b.items)));

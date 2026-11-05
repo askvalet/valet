@@ -3,7 +3,7 @@
 .masonry {
   --row: clamp(82px, 13cqw, 132px); --col: calc(var(--row) * 1.35);
   display: grid; grid-template-rows: repeat(3, var(--row)); grid-auto-columns: var(--col); grid-auto-flow: column dense; gap: 6px;
-  scroll-snap-type: x mandatory; scroll-padding-inline: 2px;
+  scroll-padding-inline: 2px;
 }
 .masonry.is-poster { --col: calc(var(--row) * .8); }
 @container (max-width: 520px) { .masonry { --row: 96px; } }

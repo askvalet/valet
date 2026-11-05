@@ -4,7 +4,7 @@
 // can be caught mid-flight and the reduced-motion rule in styles.css needs nothing more. Licence at the end of this file.
 import { BlossomCarousel, useBlossomNavigation } from '@blossom-carousel/react';
 import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentProps, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentProps, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
@@ -20,20 +20,23 @@ type Trail = { t: number; x: number }[];
 const speed = (trail: Trail) => { const end = trail.at(-1)!, from = trail.find(p => end.t - p.t < 90) ?? end; return end.t > from.t ? (end.x - from.x) / (end.t - from.t) * 1000 : 0; };
 
 /** How a carousel moves when asked: smoothly, unless this page has been asked to hold still or it was a key. */
-export const glide = (el?: Element | null, key = false): ScrollBehavior => key || still(el ?? document.documentElement) ? 'instant' : 'smooth';
+const glide = (el?: Element | null, key = false): ScrollBehavior => key || still(el ?? document.documentElement) ? 'instant' : 'smooth';
 
-/** A row of things (Blossom Carousel): a native scroller, so a finger keeps the phone's own momentum and the page keeps
- *  its vertical scroll, and on a mouse Blossom's drag engine lets it be thrown. Snapping is the stylesheet's. Keys page
- *  through it at once: nothing animates on a keyboard. Its arrows are `RowArrows` with the same `id`. */
-export function Row({ id, className, children, ...props }: ComponentProps<typeof BlossomCarousel> & { id: string }) {
+/** Every carousel on the page (Blossom Carousel): a native scroller, so a finger keeps the phone's own momentum and the page
+ *  keeps its vertical scroll, and on a mouse Blossom's drag engine lets it be thrown. Snapping is the stylesheet's, and so are
+ *  the edges that fade where there's more. Keys move at once: nothing animates on a keyboard. A row pages through a screenful;
+ *  with `one` there's one thing in the middle, and the keys move by one (its slides call `oneByOne(id).tap` on a click), and
+ *  `start` is the slide it opens on. Its arrows are `RowArrows` with the same `id`. */
+export function Row({ id, className, children, one, start, ...props }: ComponentProps<typeof BlossomCarousel> & { id: string; one?: boolean; start?: number }) {
+  useLayoutEffect(() => { const r = document.getElementById(id); if (r && start != null) centre(r, start, 'instant'); }, [id]);   // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <BlossomCarousel id={id} data-start="" className={cn('carousel', className)} {...props}
-      onKeyDown={e => {
+      onKeyDown={one ? oneByOne(id).key : e => {
         const r = e.currentTarget, dir = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0, to = e.key === 'Home' ? 0 : e.key === 'End' ? r.scrollWidth : null;
         // on a poster, the arrows (and Home and End) take the focus along, which brings it into view; on the row they page it
         const all = slidesOf(r), on = all.findIndex(s => s.contains(e.target as Node));
         if (on >= 0 && (dir || to != null)) {
-          const next = all[dir ? on + dir : to ? all.length - 1 : 0], f = next?.matches('a, button') ? next : next?.querySelector<HTMLElement>('a, button');
+          const next = all[dir ? on + dir : to ? all.length - 1 : 0], f = focusable(next);
           if (f) { e.preventDefault(); f.focus(); }
         }
         else if (dir) { e.preventDefault(); page(r, dir, 'instant'); }
@@ -43,23 +46,47 @@ export function Row({ id, className, children, ...props }: ComponentProps<typeof
     </BlossomCarousel>
   );
 }
+const focusable = (s?: HTMLElement) => s && (s.matches('a, button') ? s : s.querySelector<HTMLElement>('a, button'));
+
+/** How a carousel with one thing in the middle moves: the arrow keys and Home/End move by one and take the focus along, at
+ *  once because it's a key; a click on one at the side brings it to the middle, and the one in the middle opens. */
+export function oneByOne(id: string) {
+  const root = () => document.getElementById(id);
+  return {
+    key(e: KeyboardEvent<HTMLElement>) {
+      const r = root(); if (!r) return;
+      const all = slidesOf(r), on = all.findIndex(s => s.contains(document.activeElement));
+      const from = on >= 0 ? on : nearest(r), to = { ArrowLeft: from - 1, ArrowRight: from + 1, Home: 0, End: all.length - 1 }[e.key];
+      if (to == null) return;
+      e.preventDefault();
+      const i = Math.max(0, Math.min(all.length - 1, to));
+      centre(r, i, 'instant');
+      if (on >= 0) focusable(all[i])?.focus({ preventScroll: true });
+    },
+    tap(e: MouseEvent<HTMLElement>, i: number) {
+      const r = root();
+      if (r && nearest(r) !== i) { e.preventDefault(); centre(r, i, glide(r)); }
+    },
+  };
+}
+
 /** About a screenful on; snapping settles it on the nearest thing. */
 const page = (r: Element, dir: number, behavior: ScrollBehavior) => r.scrollBy({ left: dir * r.clientWidth * .85, behavior });
 
 /** The slide nearest the middle of a carousel, and how to bring one there, without moving the page around it. */
-export const nearest = (r: HTMLElement) => {
+const nearest = (r: HTMLElement) => {
   if (stacked(r)) return Math.round(r.scrollLeft / column(r));
   const mid = r.scrollLeft + r.clientWidth / 2; let best = 0, gap = Infinity;
   slidesOf(r).forEach((s, i) => { const d = Math.abs(s.offsetLeft + s.offsetWidth / 2 - mid); if (d < gap) { gap = d; best = i; } });
   return best;
 };
-export const centre = (r: HTMLElement, i: number, behavior: ScrollBehavior) => {
+const centre = (r: HTMLElement, i: number, behavior: ScrollBehavior) => {
   const all = slidesOf(r), at = Math.max(0, Math.min(all.length - 1, i)), s = all[at];
   if (stacked(r)) r.scrollTo({ left: at * column(r), behavior });
   else if (s) r.scrollTo({ left: s.offsetLeft + s.offsetWidth / 2 - r.clientWidth / 2, behavior });
 };
 /** The slides: its children, or the items of the list inside it (cover flow keeps its 3D in a list). */
-export const slidesOf = (r: HTMLElement) => [...r.querySelectorAll<HTMLElement>(':scope > [data-blossom-slide], :scope > ul > [data-blossom-slide]')];
+const slidesOf = (r: HTMLElement) => [...r.querySelectorAll<HTMLElement>(':scope > [data-blossom-slide], :scope > ul > [data-blossom-slide]')];
 /** A stack's cards are sticky, so where they sit says nothing: each has a column of the row's inner width, one after another. */
 const stacked = (r: HTMLElement) => { const s = slidesOf(r)[0]; return !!s && getComputedStyle(s).position === 'sticky'; };
 const column = (r: HTMLElement) => { const cs = getComputedStyle(r); return Math.max(1, r.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)); };

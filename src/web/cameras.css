@@ -59,9 +59,10 @@
 .dark .cam-pill.is-on, .has-wallpaper .cam-pill.is-on, .cam-dock .cam-pill.is-on { color: #000; background: #fff; }
 @container (min-width: 760px) { .has-pills > .cam-pills .cam-pill { flex: none; width: 100%; height: 48px; padding-inline: 7px 15px; gap: 10px; font-size: 14px; } .has-pills > .cam-pills .cam-pill img { width: 34px; height: 34px; } }
 
-/* what they've noticed: a slim strip that scrolls sideways and fades at the edge */
-.cam-events { display: flex; gap: 6px; overflow-x: auto; margin-inline: -4px; padding: 0 4px; mask-image: linear-gradient(to right, black calc(100% - 28px), transparent); }
-.cam-event { display: flex; flex: none; align-items: center; gap: 9px; height: 46px; padding: 0 14px 0 4px; border-radius: 12px; text-align: left; background: color-mix(in srgb, var(--foreground) 5%, transparent); transition: background-color var(--dur-pop) var(--ease-out), transform var(--dur-press) var(--ease-out); }
+/* what they've noticed: a slim row (a `Row`, so it fades at the edge where there's more), its arrows beside it on a larger screen */
+.cam-events-bar { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cam-events { display: flex; flex: 1; gap: 6px; min-width: 0; margin-inline: -4px; padding: 0 4px; scroll-padding-inline: 4px; }
+.cam-event { display: flex; flex: none; scroll-snap-align: start; align-items: center; gap: 9px; height: 46px; padding: 0 14px 0 4px; border-radius: 12px; text-align: left; background: color-mix(in srgb, var(--foreground) 5%, transparent); transition: background-color var(--dur-pop) var(--ease-out), transform var(--dur-press) var(--ease-out); }
 @media (hover: hover) and (pointer: fine) { .cam-event:hover { background: color-mix(in srgb, var(--foreground) 10%, transparent); } }
 .cam-event img { width: 60px; height: 38px; flex: none; border-radius: 9px; object-fit: cover; background: #000; }
 .cam-event b { display: block; font-size: 13px; font-weight: 550; line-height: 1.25; }

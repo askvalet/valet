@@ -5,8 +5,8 @@
 .focus.is-wide { --w: min(520px, 78cqw); --ratio: 16 / 9; }
 
 .focus-track {
-  position: relative; display: flex; align-items: flex-start; gap: var(--gap); inline-size: auto;
-  padding: 14px calc(50% - var(--w) / 2) 6px; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; outline: none;
+  display: flex; align-items: flex-start; gap: var(--gap);
+  padding: 14px calc(50% - var(--w) / 2) 6px; outline: none;
   mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
 }
 .focus-slide { flex: none; display: block; width: var(--w); scroll-snap-align: center; color: inherit; text-decoration: none; outline: none; view-timeline: --focus inline; }
@@ -25,7 +25,6 @@
 .focus-cap b { display: block; overflow: hidden; font-size: 15px; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
 .focus-cap small { display: block; overflow: hidden; margin-top: 1px; font-size: 12.5px; color: var(--muted-foreground); white-space: nowrap; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 .focus-slide:focus-visible .focus-art { outline: 2px solid var(--ring); outline-offset: 3px; }
-.focus-track:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
 
 /* Where each one sits sets its size: full in the middle, smaller and dimmer one away, smaller again two away, each drawn
    in towards the middle so the gaps between them stay even. Scroll-driven, so it follows a finger or a throw exactly and

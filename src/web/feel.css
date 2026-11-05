@@ -7,12 +7,11 @@
 @property --fade-start { syntax: "<length>"; inherits: false; initial-value: 0px; }
 @property --fade-end { syntax: "<length>"; inherits: false; initial-value: 0px; }
 .carousel {
-  position: relative; inline-size: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none;
+  position: relative; inline-size: auto; scroll-snap-type: x mandatory;
   --fade-start: 28px; --fade-end: 28px;
   mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
   transition: --fade-start var(--dur-pop) var(--ease-out), --fade-end var(--dur-pop) var(--ease-out);
 }
-.carousel::-webkit-scrollbar { display: none; }
 .carousel[data-start] { --fade-start: 0px; }
 .carousel[data-end] { --fade-end: 0px; }
 .desk.carousel { scroll-padding-left: 10px; }

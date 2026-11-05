@@ -133,6 +133,8 @@ test('the card: a pill per camera, the first one lit, nothing broken when there 
   const html = renderToString(<Cameras card={card} />);
   assert.match(html, /aria-selected="true"[^>]*>.*Front/);
   assert.match(html, /Person/);
+  assert.match(html, /blossom-carousel="true"[^>]*class="carousel cam-events"[^>]*aria-label="Events"/, 'the events are a Row like every carousel');
+  assert.match(html, /aria-label="Next in events"/);
   assert.match(renderToString(<Cameras card={{ type: 'cameras', cameras: [], empty: 'None yet' }} />), /None yet/);
 });
 
