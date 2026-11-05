@@ -174,7 +174,7 @@ function DayBars({ card }: { card: ForecastCard }) {
           <div className="font-semibold">{d.name}</div>
           <WeatherGlyph name={d.icon} size={26} />
           <div className="tabular text-right text-muted-foreground">{d.lo}°</div>
-          <div className="relative h-[5px] rounded-full bg-foreground/10"><div className="wx-range absolute inset-y-0 rounded-full" style={{ left: `${(d.lo - lo) / span * 100}%`, right: `${(hi - d.hi) / span * 100}%` }} /></div>
+          <div className="meter meter-sm"><div className="wx-range absolute inset-y-0 rounded-full" style={{ left: `${(d.lo - lo) / span * 100}%`, right: `${(hi - d.hi) / span * 100}%` }} /></div>
           <div className="tabular text-right font-semibold">{d.hi}°</div>
         </div>
       ))}

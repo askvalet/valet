@@ -16,6 +16,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- Every progress bar on the page is drawn the same way now, where there were a dozen styles: fully rounded on one faint track, in three thicknesses, and coloured by one rule (a status or the thing's own colour first, then the leader of a set in the accent and the rest grey). Most watched takes its posters' colours like the race beside it, Who's watching and the activity popovers have thicker bars, the race's timeline matches its bars, and downloads keep their row-wide fill with a clear edge. The year in review, drive temperatures, the forecast's ranges and a schedule's day line follow the same sizes and track, and the day line now shows in light mode too.
 - The context meter's hint past three quarters says Valet summarises the oldest messages by itself; a new chat is optional.
 - A meeting's popover is plainer: "In 4 min" or "Now" and the time on top, the title, who's in it as initials, a progress bar only while it's on, and one button that names the service ("Join Google Meet"). No icon tile.
 - The race card has more presence: thicker rounded bars on a faint track, each in its poster's colour (the leader's the strongest; posters without much colour keep grey bars and the accent leader), larger posters and bolder names. Its timeline is a proper scrubber that fills as the year plays, with a clear play and pause button, and the arrow keys step a month at a time (Home and End jump to the ends).

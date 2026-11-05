@@ -52,13 +52,15 @@
 .rc-line { font-size: clamp(17px, 2.2vw, 22px); line-height: 1.35; margin-top: 14px; max-width: 560px; color: rgb(255 255 255 / .86); text-wrap: pretty; }
 
 .rc-glass { margin-top: 22px; padding: 16px 18px; border-radius: 20px; background: rgb(34 34 40 / .5); border: 1px solid rgb(255 255 255 / .14); box-shadow: inset 0 1px 0 rgb(255 255 255 / .12); backdrop-filter: blur(36px) saturate(1.6); }
-.rc-track { position: relative; height: 10px; border-radius: 99px; background: rgb(255 255 255 / .16); overflow: hidden; }
+/* the stage's meters: the page's large and middle heights, white track as over any picture, the leader in the year's colour */
+.rc-track { position: relative; height: var(--meter-lg); border-radius: 99px; background: rgb(255 255 255 / .24); overflow: hidden; }
 .rc-track i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: var(--tint); transform-origin: left; animation: rc-grow 1100ms 350ms var(--ease-out) both; }
 @keyframes rc-grow { from { transform: scaleX(0); } }
 .rc-ends { display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; color: rgb(255 255 255 / .75); font-variant-numeric: tabular-nums; }
 .rc-rows { display: grid; gap: 12px; }
 .rc-rows > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; font-size: 15px; font-weight: 500; }
-.rc-rows .rc-track { grid-column: 1 / -1; height: 7px; }
+.rc-rows .rc-track { grid-column: 1 / -1; height: var(--meter-md); }
+.rc-rows .rc-track.rest i { background: rgb(255 255 255 / .3); }
 .rc-rows span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rc-rows em { font-style: normal; font-variant-numeric: tabular-nums; color: rgb(255 255 255 / .75); }
 .rc-week { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; align-items: end; height: 120px; }
@@ -74,7 +76,7 @@
 .rc-poster em { font-style: normal; font-size: 12px; color: rgb(255 255 255 / .7); }
 
 .rc-seg { position: absolute; top: 10px; left: 12px; right: 12px; display: flex; gap: 4px; z-index: 3; }
-.rc-seg span { flex: 1; height: 3px; border-radius: 3px; background: rgb(255 255 255 / .26); overflow: hidden; }
+.rc-seg span { flex: 1; height: var(--meter-sm); border-radius: 99px; background: rgb(255 255 255 / .24); overflow: hidden; }
 .rc-seg i { display: block; height: 100%; background: #fff; }
 .rc-seg i { transform-origin: left; }
 .rc-seg i.on { animation: rc-fill linear both; }
