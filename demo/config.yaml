@@ -129,7 +129,7 @@ layout:
     columns: 1
     widgets: [lab.calendar]   # the month and the day beside it, the full width
   # the overview, under Services: the house, the desktop and the calendar a third each, then
-  # what's playing over the downloads beside On this day, then Pi-hole beside the drives, then the reading and what's new
+  # Pi-hole beside the drives, then what's playing over the downloads beside On this day, then the reading and what's new
   - heading: false
     columns: { phone: 1, tablet: 2, desktop: 3, wide: 3 }
     widgets:
@@ -137,16 +137,16 @@ layout:
       - { widget: lab.pc, title: "Daniel's Desktop" }
       - lab.calendar
   - heading: false
-    columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }   # what's playing over the downloads on the left, Pi-hole's day across the other two thirds
-    widgets:
-      - { widget: lab.streams, cols: 1 }
-      - { widget: lab.photos, cols: 2, rows: 2 }   # On this day beside what's playing over the downloads
-      - { widget: lab.downloads, cols: 1 }
-  - heading: false
     columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }
     widgets:
       - { widget: lab.dns, cols: 2 }   # Pi-hole's day beside the drives
       - lab.drives
+  - heading: false
+    columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }   # what's playing over the downloads beside On this day
+    widgets:
+      - { widget: lab.streams, cols: 1 }
+      - { widget: lab.photos, cols: 2, rows: 2 }   # On this day beside what's playing over the downloads
+      - { widget: lab.downloads, cols: 1 }
   - heading: false
     columns: { phone: 1, tablet: 2, desktop: 2, wide: 2 }
     widgets: [{ widget: lab.reading, view: focus }, { widget: lab.recent, view: focus }]
