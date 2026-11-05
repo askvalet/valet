@@ -7,6 +7,7 @@ import { usedSecrets, type Config } from './config.ts';
 import { setFrames } from './security.ts';
 import { makeContext, type Instance, type Integration } from './core.ts';
 import { History } from './history.ts';
+import { fits, viewsFor } from '../shared/views.ts';
 import { Hub } from './hub.ts';
 import { noticesFor, type Notice } from './notices.ts';
 import { guardCards } from './plugins.ts';
@@ -98,6 +99,12 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   // the wall's own cards are polled too, while a wall is open; its typos name the wall
   const has = (key: string) => { const [inst, w] = key.split('.'); return inst === 'valet' || !!instances.get(inst)?.widgets[w]; };
   problems.push(...wallProblems(config, has));
+  // a view the widget's card can't take is ignored on the page; say so here, with the ones it can
+  const drawn = [...config.layout.flatMap(s => s.widgets.map(w => ({ ...w, where: 'layout' }))), ...wallPages(config).flatMap(p => p.layout.flatMap(s => s.widgets.map(w => ({ ...w, where: 'wall' }))))];
+  for (const { widget, view, where } of drawn) {
+    const [inst, w] = widget.split('.'), card = view && instances.get(inst)?.widgets[w]?.card;
+    if (card && !fits(view, card)) problems.push(`${where}: ${widget} can't be drawn as "${view}" (it's a ${card} card${viewsFor(card).length ? `; it can be ${viewsFor(card).join(', ')}` : ''})`);
+  }
   for (const key of wallWidgets(config)) placed.add(key);
   for (const n of config.live?.notify ?? []) if (!placed.has(n.widget)) problems.push(`live.notify: "${n.widget}" isn't placed on the page`);
   const tabs = new Set(config.layout.flatMap(s => s.tab ?? s.title ?? []));

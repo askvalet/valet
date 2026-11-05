@@ -1,0 +1,32 @@
+/* Masonry, after Blossom Carousel's example: three rows, every third tile two columns wide, the first, sixth and thirteenth two
+   rows tall, packed densely so nothing's left empty. Snaps to every fourth one. Sizes follow the box. */
+.masonry {
+  --row: clamp(82px, 13cqw, 132px); --col: calc(var(--row) * 1.35);
+  display: grid; grid-template-rows: repeat(3, var(--row)); grid-auto-columns: var(--col); grid-auto-flow: column dense; gap: 6px;
+  scroll-snap-type: x mandatory; scroll-padding-inline: 2px;
+}
+.masonry.is-poster { --col: calc(var(--row) * .8); }
+@container (max-width: 520px) { .masonry { --row: 96px; } }
+.masonry-tile {
+  position: relative; display: block; min-width: 0; overflow: hidden; border-radius: calc(var(--radius) * .6); color: #fff; text-decoration: none;
+  background: color-mix(in srgb, var(--foreground) 8%, transparent); outline: none;
+}
+.masonry-tile:nth-child(3n + 2) { grid-column: span 2; }
+.masonry-tile:nth-child(4n + 1) { scroll-snap-align: start; }
+.masonry-tile:nth-child(1), .masonry-tile:nth-child(6), .masonry-tile:nth-child(13) { grid-row: span 2; }
+.masonry-tile > img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.masonry-tile:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* the moment's words, quiet over the bottom of the picture: on the big ones always, on the rest when a mouse is over them */
+.masonry-cap {
+  position: absolute; inset: auto 0 0; display: flex; flex-direction: column; gap: 1px; padding: 18px 9px 7px; min-width: 0;
+  background: linear-gradient(to top, rgb(0 0 0 / .62), transparent); font-size: 11.5px; line-height: 1.25; pointer-events: none;
+}
+.masonry-cap > * { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.masonry-cap b { font-size: 12.5px; font-weight: 500; }
+.masonry-cap span { color: rgb(255 255 255 / .78); }
+.masonry-tile:not(:nth-child(1), :nth-child(6), :nth-child(13)) .masonry-cap { opacity: 0; transition: opacity var(--dur-pop) var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
+  .masonry-tile:hover .masonry-cap, .masonry-tile:focus-visible .masonry-cap { opacity: 1; }
+  .masonry-tile > img { transition: transform var(--dur-scene) var(--ease-out); }
+  .masonry-tile[href]:hover > img { transform: scale(calc(1 + .04 * var(--move))); transition-duration: var(--dur-pop); }
+}

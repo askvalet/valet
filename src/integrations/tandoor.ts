@@ -64,7 +64,7 @@ export default defineIntegration({
       },
       widgets: {
         status: {
-          title: 'Tandoor', interval: cfg.every ?? 300_000,
+          title: 'Tandoor', interval: cfg.every ?? 300_000, card: 'stats',
           async fetch() {
             const [s, k] = await Promise.all([space(), api<any>('keyword/?page_size=1')]);
             const items = [{ label: 'Recipes', value: s?.recipe_count ?? 0 }, { label: 'Keywords', value: k?.count ?? rows(k).length }, { label: 'Users', value: s?.user_count ?? 0 }].map(i => ({ ...i, value: Number(i.value).toLocaleString('en') }));
@@ -72,7 +72,7 @@ export default defineIntegration({
           },
         },
         week: {
-          title: 'This week', interval: 900_000,
+          title: 'This week', interval: 900_000, card: 'shelf',
           async fetch() {
             const plan = await week(), today = plan.filter(e => e.day === ymd(new Date())), next = today.at(-1);
             const items: ShelfItem[] = plan.map(e => ({ id: String(e.id), at: e.day, title: e.recipe?.name ?? e.title ?? 'A meal', subtitle: e.meal_type?.name ?? e.meal_type_name,
@@ -82,7 +82,7 @@ export default defineIntegration({
           },
         },
         today: {
-          title: 'Recipe of the day', interval: 3_600_000,
+          title: 'Recipe of the day', interval: 3_600_000, card: 'article',
           async fetch() {
             const pick = await ofTheDay();
             const more: ArticlePick[] = pick.map(r => ({ id: String(r.id), headline: r.name, blurb: r.description ? String(r.description).slice(0, 280) : undefined,
@@ -93,7 +93,7 @@ export default defineIntegration({
           },
         },
         recent: {
-          title: 'New recipes', interval: 900_000,
+          title: 'New recipes', interval: 900_000, card: 'shelf',
           async fetch() {
             const list = rows(await api<any>('recipe/?page_size=12&sort_order=-created_at'));
             return { type: 'shelf', title: 'New recipes', icon: 'book', href: web, source, aspect: 'square', items: list.map(tile), empty: 'No recipes yet',

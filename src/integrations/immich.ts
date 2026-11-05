@@ -1,6 +1,6 @@
 // Immich: your photos. Ask for "the beach in Portugal" or "photos of Mom last Christmas" and they come back as a photo
 // stack (smart search understands what's in a picture; people and dates narrow it). The homepage shows today's
-// memories ("on this day"), or a handful of random photos when there are none.
+// memories ("on this day") as a masonry wall, or a handful of random photos when there are none.
 import { z } from 'zod';
 import { defineIntegration, fmt, keptHome } from '../server/core.ts';
 import type { ShelfItem } from '../shared/cards.ts';
@@ -34,7 +34,7 @@ export default defineIntegration({
       },
       widgets: {
         memories: {
-          title: 'On this day', interval: 3_600_000,
+          title: 'On this day', interval: 3_600_000, card: 'photos',
           async fetch() {
             const today = new Date().toISOString().slice(0, 10);
             const mem = await api<any[]>(`memories?for=${today}`).catch(() => []);
@@ -51,7 +51,7 @@ export default defineIntegration({
               const any = pick.length ? pick : await api<any[]>('search/random', { method: 'POST', body: JSON.stringify({ size: 10, withExif: true }) });
               items = any.map(a => ({ image: ctx.image(a.id), badge: undefined as unknown as string, title: place(a), subtitle: day(a.localDateTime), href: `${web}/photos/${a.id}` }));
             }
-            return { type: 'photos', style: 'flashback', title: flashback ? 'On this day' : 'From your library', icon: 'image', href: web, source: { name: 'Immich', icon: '/api/icon/immich' }, items, empty: 'No photos yet',
+            return { type: 'photos', style: 'masonry', title: flashback ? 'On this day' : 'From your library', icon: 'image', href: web, source: { name: 'Immich', icon: '/api/icon/immich' }, items, empty: 'No photos yet',
               summary: { label: flashback ? 'On this day' : 'Photos', icon: 'image', value: flashback ? items[0].badge : `${items.length}`, sub: items[0]?.title ?? items[0]?.subtitle } };
           },
         },

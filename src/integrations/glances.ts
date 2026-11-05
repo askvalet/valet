@@ -54,7 +54,7 @@ export default defineIntegration({
     const widgets = {
         // headline tiles like a classic homelab dashboard: CPU, memory, GPU, network, then one per disk
         tiles: {
-          title: 'System', interval: 3000,
+          title: 'System', interval: 3000, card: 'stats',
           async fetch() {
             const [o, net, d] = await Promise.all([overview(), network(), disks()]);
             cpuName ??= await api('quicklook').then(q => String(q.cpu_name ?? '').replace(/ \d+-Core Processor$/, '').replace(/^AMD /, '')).catch(() => undefined);
@@ -85,7 +85,7 @@ export default defineIntegration({
         },
 
         overview: {
-          title: 'System', interval: 5000,
+          title: 'System', interval: 5000, card: 'stats',
           async fetch() {
             const o = await overview();
             cpuName ??= await api('quicklook').then(q => String(q.cpu_name ?? '').replace(/ \d+-Core Processor$/, '').replace(/^AMD /, '')).catch(() => undefined);
@@ -104,7 +104,7 @@ export default defineIntegration({
           },
         },
         disks: {
-          title: 'Storage', interval: 60_000,
+          title: 'Storage', interval: 60_000, card: 'list',
           async fetch() {
             const d = await disks();
             return { type: 'list', title: 'Storage', icon: 'disk', items: d.map(x => ({

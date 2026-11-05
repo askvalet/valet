@@ -145,7 +145,7 @@ layout:
     overview: false
     heading: false
     columns: 1
-    widgets: [lab.games, lab.recent]
+    widgets: [{ widget: lab.games, view: coverflow }, lab.recent]
   - title: Library
     columns: 1
     overview: false
@@ -154,7 +154,7 @@ layout:
     tab: Library
     overview: false
     widgets:
-      - { widget: lab.reading, size: large, rows: 2 }
+      - { widget: lab.reading, size: large, rows: 2, view: cards }   # the reading pile as a stack of cards to deal through
       - { widget: lab.news, size: medium, rows: 2 }
   - tab: Library
     heading: false

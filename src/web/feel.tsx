@@ -12,7 +12,7 @@ import { dissolve } from './dust.ts';
 import './feel.css';
 
 /** True when this page has been asked to hold still: the system's setting or appearance.motion, through the one --move. */
-const still = (el?: Element | null) => !!el && getComputedStyle(el).getPropertyValue('--move').trim() === '0';
+export const still = (el?: Element | null) => !!el && getComputedStyle(el).getPropertyValue('--move').trim() === '0';
 /** Past the end a thing still follows the finger, less and less, up to `limit` pixels. */
 export const rubber = (d: number, limit: number) => Math.sign(d) * (1 - 1 / (Math.abs(d) * .55 / limit + 1)) * limit;
 type Trail = { t: number; x: number }[];
@@ -48,15 +48,21 @@ const page = (r: Element, dir: number, behavior: ScrollBehavior) => r.scrollBy({
 
 /** The slide nearest the middle of a carousel, and how to bring one there, without moving the page around it. */
 export const nearest = (r: HTMLElement) => {
+  if (stacked(r)) return Math.round(r.scrollLeft / column(r));
   const mid = r.scrollLeft + r.clientWidth / 2; let best = 0, gap = Infinity;
   slidesOf(r).forEach((s, i) => { const d = Math.abs(s.offsetLeft + s.offsetWidth / 2 - mid); if (d < gap) { gap = d; best = i; } });
   return best;
 };
 export const centre = (r: HTMLElement, i: number, behavior: ScrollBehavior) => {
-  const all = slidesOf(r), s = all[Math.max(0, Math.min(all.length - 1, i))];
-  if (s) r.scrollTo({ left: s.offsetLeft + s.offsetWidth / 2 - r.clientWidth / 2, behavior });
+  const all = slidesOf(r), at = Math.max(0, Math.min(all.length - 1, i)), s = all[at];
+  if (stacked(r)) r.scrollTo({ left: at * column(r), behavior });
+  else if (s) r.scrollTo({ left: s.offsetLeft + s.offsetWidth / 2 - r.clientWidth / 2, behavior });
 };
-const slidesOf = (r: HTMLElement) => [...r.querySelectorAll<HTMLElement>(':scope > [data-blossom-slide]')];
+/** The slides: its children, or the items of the list inside it (cover flow keeps its 3D in a list). */
+export const slidesOf = (r: HTMLElement) => [...r.querySelectorAll<HTMLElement>(':scope > [data-blossom-slide], :scope > ul > [data-blossom-slide]')];
+/** A stack's cards are sticky, so where they sit says nothing: each has a column of the row's inner width, one after another. */
+const stacked = (r: HTMLElement) => { const s = slidesOf(r)[0]; return !!s && getComputedStyle(s).position === 'sticky'; };
+const column = (r: HTMLElement) => { const cs = getComputedStyle(r); return Math.max(1, r.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)); };
 
 /** Back and forward for a `Row` (or any Blossom carousel): a screenful at a time, or with `one`, the next slide to the
  *  middle. They dim at the ends and keep the keyboard's focus there (aria-disabled, not disabled), and they're only there

@@ -118,7 +118,7 @@ export default defineIntegration({
       },
       widgets: {
         status: {
-          title: 'Syncthing', interval: every,
+          title: 'Syncthing', interval: every, card: 'stats',
           async fetch() {
             const o = await overview(), peers = o.devices.map(d => o.connections.connections?.[d.deviceID] ?? {}), online = peers.filter(p => p.connected).length;
             return { type: 'stats', title: 'Syncthing', icon: 'disk', href, source, summary: { label: 'Syncthing', icon: 'disk', value: online, sub: 'Devices online' },

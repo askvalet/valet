@@ -91,7 +91,7 @@ export default defineIntegration({
       },
       widgets: {
         upcoming: {
-          title: 'Coming up', interval: 900_000,
+          title: 'Coming up', interval: 900_000, card: 'shelf',
           async fetch() {
             const list = await upcoming(cfg.days);
             const next = list.find(x => !x.have);

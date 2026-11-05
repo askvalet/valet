@@ -81,7 +81,7 @@ export default defineIntegration({
       },
       widgets: {
         status: {
-          title: 'Miniflux', interval: cfg.every ?? 60_000,
+          title: 'Miniflux', interval: cfg.every ?? 60_000, card: 'stats',
           async fetch() {
             const c = await api<any>('feeds/counters'), unread = sum(c?.unreads);
             return { type: 'stats', title: 'Miniflux', icon: 'rss', href: web, source, items: [{ label: 'Unread', value: unread.toLocaleString('en') }, { label: 'Read', value: sum(c?.reads).toLocaleString('en') }],
@@ -90,7 +90,7 @@ export default defineIntegration({
         },
         // the unread pile, newest first: read one and it leaves
         unread: {
-          title: 'Unread', interval: 300_000,
+          title: 'Unread', interval: 300_000, card: 'article',
           async fetch() {
             const r = await api<any>('entries?status=unread&order=published_at&direction=desc&limit=12');
             const more = ((r?.entries ?? []) as any[]).filter(e => Id.safeParse(e.id).success).map(pick), top = { type: 'article' as const, title: 'Unread', icon: 'rss', href: `${web}/unread`, archived: `${web}/history`, source, empty: 'All caught up' };
@@ -100,7 +100,7 @@ export default defineIntegration({
           },
         },
         feeds: {
-          title: 'Feeds', interval: 600_000,
+          title: 'Feeds', interval: 600_000, card: 'list',
           async fetch() {
             const [feeds, c] = await Promise.all([api<any[]>('feeds'), api<any>('feeds/counters')]);
             const unread = (id: number) => Number(c?.unreads?.[id] ?? 0);
@@ -113,7 +113,7 @@ export default defineIntegration({
           },
         },
         starred: {
-          title: 'Starred', interval: 900_000,
+          title: 'Starred', interval: 900_000, card: 'list',
           async fetch() {
             const list = await entries('starred=true&order=changed_at&direction=desc&limit=10');
             return { type: 'list', title: 'Starred', icon: 'rss', href: `${web}/starred`, source, items: list.map(row), empty: 'Nothing starred',

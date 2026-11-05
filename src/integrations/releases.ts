@@ -49,7 +49,7 @@ export default defineIntegration({
     return {
       widgets: {
         latest: {
-          title: 'Releases', interval: 1_800_000,
+          title: 'Releases', interval: 1_800_000, card: 'list',
           async fetch() {
             const list = (await releases()).slice(0, cfg.limit);
             return { type: 'list', layout: 'chips', title: 'Releases', icon: 'tag', items: list.map(row), empty: 'No releases yet',

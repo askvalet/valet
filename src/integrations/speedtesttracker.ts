@@ -73,7 +73,7 @@ export default defineIntegration({
     return {
       widgets: {
         status: {
-          title: 'Speedtest Tracker', interval: every,
+          title: 'Speedtest Tracker', interval: every, card: 'stats',
           async fetch() {
             const t = await latest(), items: StatItem[] = [{ label: 'Download', value: mbps(t?.down) }, { label: 'Upload', value: mbps(t?.up) }, { label: 'Ping', value: ms(t?.ping) }];
             return { type: 'stats', title: 'Speedtest Tracker', icon: 'chart', href, source, items, summary: { label: 'Speedtest Tracker', icon: 'chart', value: items[0].value, sub: 'Download' } };

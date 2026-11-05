@@ -22,7 +22,7 @@ export default defineIntegration({
       },
       widgets: {
         recent: {
-          title: 'Games', interval: 900_000,
+          title: 'Games', interval: 900_000, card: 'shelf',
           async fetch() {
             const [stats, roms] = await Promise.all([api<any>('stats'), api<any>('roms?limit=24&order_by=created_at&order_dir=desc')]);
             return { type: 'shelf', layout: 'focus', title: 'Games', icon: 'game', href: web, aspect: 'square', source: { name: 'RomM', icon: '/api/icon/romm' }, note: `${stats.ROMS} games · ${stats.PLATFORMS} systems`, items: (roms.items ?? []).map(tile),

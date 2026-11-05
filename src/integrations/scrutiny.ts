@@ -30,7 +30,7 @@ export default defineIntegration({
       },
       widgets: {
         drives: {
-          title: 'Drives', interval: 600_000,
+          title: 'Drives', interval: 600_000, card: 'list',
           async fetch() {
             const list = await drives(), bad = list.filter(d => d.failed), warm = list.filter(d => d.hot);
             const temps = list.flatMap(d => d.temp != null ? [d.temp] : []);

@@ -67,7 +67,7 @@ export default defineIntegration({
       },
       widgets: {
         requests: {
-          title: 'Requests', interval: 300_000,
+          title: 'Requests', interval: 300_000, card: 'shelf',
           async fetch() {
             const list = await requests(12);
             return { type: 'shelf', title: 'Requested', icon: 'film', href: `${web}/requests`, aspect: 'poster', layout: 'tickets', source: { name: 'Seerr', icon: '/api/icon/seerr' }, empty: 'No requests yet',

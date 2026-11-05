@@ -164,8 +164,8 @@ can still draw it another way with a widget's [`view`](configuration.md#layout).
 | `list` | rows of things with a status | `pct` adds a progress bar; `tone` colours a row; `layout` is `temps`, `chips` or `headlines` |
 | `status` | services that are up or down | `group` sections them; `quiet` for things that sleep on purpose. `layout: wall` is one icon per app (by `group`, or the name up to its first `-` or `_`), with a count when it has several, its worst state on the dot and what's wrong on hover |
 | `media` | what's playing or downloading | full-bleed artwork; `tags`, progress, time left |
-| `shelf` | a row of artwork | `aspect` poster/square/wide; `stack: true` piles them up (documents, photos); `layout` is `row`, `spotlight`, `focus`, `desk`, `windows`, `tickets` or `week` (`coverflow` still works and draws `focus`) |
-| `photos` | photos to look at | `style`: `flashback` crossfades, `mosaic` (or size large) tiles them, `album` is tall strips, and the one under the pointer slides open |
+| `shelf` | a row of artwork | `aspect` poster/square/wide; `stack: true` piles them up (documents, photos); `layout` is `row`, `spotlight`, `focus`, `coverflow`, `masonry`, `cards`, `desk`, `windows`, `tickets` or `week` |
+| `photos` | photos to look at | `style`: `flashback` crossfades, `mosaic` (or size large) tiles them, `album` is tall strips, and the one under the pointer slides open; `masonry` is a wall that scrolls sideways |
 | `ranked` | who or what comes top | the leader gets its artwork, the rest a bar |
 | `race` | titles overtaking each other | `steps`, and each item's `points` as running totals |
 | `heatmap` | a year of days | `from`, and a count per day in `days` |

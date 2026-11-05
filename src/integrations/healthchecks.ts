@@ -77,7 +77,7 @@ export default defineIntegration({
       backups,
       widgets: {
         status: {
-          title: 'Healthchecks', interval: every,
+          title: 'Healthchecks', interval: every, card: 'stats',
           async fetch() {
             const all = await checks(), count = (s: string) => all.filter(c => c.status === s).length;
             const items: StatItem[] = [{ label: 'Up', value: count('up') }, { label: 'Down', value: count('down'), tone: count('down') ? 'bad' : 'good' }, { label: 'Late', value: count('grace'), tone: count('grace') ? 'warn' : 'good' }, { label: 'Paused', value: count('paused') }];

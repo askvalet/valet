@@ -96,7 +96,7 @@ export default defineIntegration({
       backups: async () => (await plans()).map(job),
       widgets: {
         status: {
-          title: 'Backrest', interval: every,
+          title: 'Backrest', interval: every, card: 'stats',
           async fetch() {
             const all = await plans(), latest = (s: State) => all.filter(p => p.last?.state === s).length, alarm = (label: string, v: number): StatItem => ({ label, value: v, tone: v ? 'bad' : 'good' });
             const items: StatItem[] = [{ label: 'Plans', value: all.length }, { label: 'Latest fine', value: latest('ok') }, alarm('Latest failed', latest('failed')),

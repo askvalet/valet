@@ -74,7 +74,7 @@ export default defineIntegration({
 
     const widgets = {
       status: {
-        title: 'Audiobookshelf', interval: (() => { const r = Every.safeParse(cfg.every); return r.success ? r.data : 300_000; })(),
+        title: 'Audiobookshelf', interval: (() => { const r = Every.safeParse(cfg.every); return r.success ? r.data : 300_000; })(), card: 'stats',
         async fetch() {
           const [ls, going, w] = await Promise.all([libraries(), inProgress(25), week().catch(() => undefined)]);
           return { type: 'stats' as const, title: 'Audiobookshelf', icon: 'book', href: web, source,
@@ -84,7 +84,7 @@ export default defineIntegration({
         },
       },
       progress: {
-        title: 'Continue listening', interval: 300_000,
+        title: 'Continue listening', interval: 300_000, card: 'shelf',
         async fetch() {
           const items = (await inProgress()).map(shelf);
           return { type: 'shelf' as const, title: 'Continue listening', icon: 'book', href: web, source, aspect: 'square' as const, layout: 'focus' as const, items, empty: 'Nothing in progress',
@@ -93,7 +93,7 @@ export default defineIntegration({
         },
       },
       playing: {
-        title: 'Listening now', interval: 15_000,
+        title: 'Listening now', interval: 15_000, card: 'media',
         async fetch() {
           const now = await open(), items = now.map(toItem), first = items[0];
           return { type: 'media' as const, title: 'Listening now', icon: 'book', href: web, source, empty: 'Nobody listening', items,
@@ -102,7 +102,7 @@ export default defineIntegration({
         },
       },
       recent: {
-        title: 'New on the shelf', interval: 900_000,
+        title: 'New on the shelf', interval: 900_000, card: 'shelf',
         async fetch() {
           const ls = (await libraries()).filter(l => l.mediaType === 'book');
           const got = await Promise.all(ls.map(l => api<any>(`libraries/${encodeURIComponent(l.id)}/items?sort=addedAt&desc=1&limit=12&minified=1`).then(r => r?.results ?? [], () => [])));
@@ -113,7 +113,7 @@ export default defineIntegration({
         },
       },
       week: {
-        title: 'Listening this week', interval: 900_000,
+        title: 'Listening this week', interval: 900_000, card: 'chart',
         async fetch() {
           const w = await week(), mins = w.secs.map(s => Math.round(s / 60));
           return { type: 'chart' as const, style: 'bars' as const, title: 'Listening this week', icon: 'book', href: web, source, unit: 'min', headline: hours(w.total), window: 'last 7 days',

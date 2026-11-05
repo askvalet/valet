@@ -55,7 +55,7 @@ export default defineIntegration({
       },
       widgets: {
         status: {
-          title: 'Kavita', interval: cfg.every ?? 300_000,
+          title: 'Kavita', interval: cfg.every ?? 300_000, card: 'stats',
           async fetch() {
             const st = await api<any>('Stats/server/stats');   // an admin's numbers: other accounts get a refusal
             const items = [{ label: 'Series', value: st?.seriesCount ?? 0 }, { label: 'Files', value: st?.totalFiles ?? 0 }].map(i => ({ ...i, value: Number(i.value).toLocaleString('en') }));
@@ -64,7 +64,7 @@ export default defineIntegration({
         },
         // Kavita's on deck is what you've started and not finished, latest first
         reading: {
-          title: 'Continue reading', interval: 300_000,
+          title: 'Continue reading', interval: 300_000, card: 'shelf',
           async fetch() {
             const list = await reading(), first = list[0], pct = first ? progress(first) : undefined;
             return { type: 'shelf', layout: 'focus', title: 'Continue reading', icon: 'book', href: web, source, aspect: 'poster', items: list.map(tile), empty: 'Nothing in progress',
@@ -73,7 +73,7 @@ export default defineIntegration({
           },
         },
         recent: {
-          title: 'Recently added', interval: 900_000,
+          title: 'Recently added', interval: 900_000, card: 'shelf',
           async fetch() {
             const list = (await post<any[]>('Series/recently-added-v2?pageNumber=1&pageSize=12', {}) ?? []).filter(s => int(s.id));
             return { type: 'shelf', title: 'Recently added', icon: 'book', href: web, source, aspect: 'poster', items: list.map(tile), empty: 'Nothing added yet',

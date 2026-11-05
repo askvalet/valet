@@ -30,7 +30,7 @@ export default defineIntegration({
     const inst: Instance = {
       widgets: {
         health: {
-          title: 'Indexers', interval: 900_000,
+          title: 'Indexers', interval: 900_000, card: 'status',
           async fetch() {
             const s = await state(), bad = s.indexers?.filter(i => !i.ok) ?? [], missing = (s.subs?.episodes ?? 0) + (s.subs?.movies ?? 0);
             return {

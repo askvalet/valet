@@ -77,7 +77,7 @@ export default defineIntegration({
       },
       widgets: {
         status: {
-          title: 'changedetection.io', interval: 300_000,
+          title: 'changedetection.io', interval: 300_000, card: 'stats',
           async fetch() {
             const all = await watches(), changed = all.filter(unseen).length;
             return { type: 'stats', title: 'changedetection.io', icon: 'pulse', href: web, source,
@@ -86,7 +86,7 @@ export default defineIntegration({
           },
         },
         watches: {
-          title: 'Watching', interval: 60_000,
+          title: 'Watching', interval: 60_000, card: 'list',
           async fetch() {
             const all = await watches(), failing = all.filter(w => w.last_error), changed = all.filter(unseen);
             const order = [...all].sort((a, b) => rank(a) - rank(b) || (b.last_changed ?? 0) - (a.last_changed ?? 0)).slice(0, cfg.limit);

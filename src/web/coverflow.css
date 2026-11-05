@@ -1,0 +1,55 @@
+/* Cover flow, after Blossom Carousel's example. Sizes come from the box (container units). Plainly it's a row of covers
+   with a reflection; where scroll-driven animations work and nothing asked for less motion, the slots close up to half a
+   cover each and every cover turns and slides by where it sits, so the 3D costs nothing at rest. */
+.cover { --w: min(210px, 46cqw); --h: 1; --slot: var(--w); --gap: 18px; position: relative; isolation: isolate; container-type: inline-size; }
+.cover.is-poster { --w: min(184px, 40cqw); --h: 1.5; }
+.cover.is-wide { --w: min(340px, 64cqw); --h: .5625; }
+
+.cover-track {
+  position: relative; inline-size: auto; padding: calc(var(--w) * var(--h) * .12 + 8px) calc(50% - var(--slot) / 2) 4px;
+  scroll-snap-type: x mandatory; overscroll-behavior-x: contain; outline: none;
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.cover-track:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.cover-list { display: flex; gap: var(--gap); margin: 0; padding: 0; list-style: none; }
+.cover-slide { position: relative; flex: none; width: var(--slot); scroll-snap-align: center; }
+.cover-turn { display: block; width: var(--w); color: inherit; text-decoration: none; outline: none; }
+.cover-card {
+  position: relative; display: block; width: 100%; aspect-ratio: 1 / var(--h); overflow: hidden; border-radius: calc(var(--radius) * .5);
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  box-shadow: 0 30px 44px -26px rgb(0 0 0 / .75), inset 0 0 0 .5px rgb(255 255 255 / .12);
+  -webkit-box-reflect: below 3px linear-gradient(transparent 76%, rgb(255 255 255 / .2));
+}
+:root:not(.dark) .cover-card { -webkit-box-reflect: below 3px linear-gradient(transparent 78%, rgb(255 255 255 / .28)); }
+.cover-card > img:first-child { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.cover-mark { position: absolute; right: 7px; bottom: 7px; width: 22%; height: 22%; object-fit: contain; filter: drop-shadow(0 2px 6px rgb(0 0 0 / .7)); pointer-events: none; }
+.cover-card.is-blank { display: grid; place-items: end start; padding: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--foreground) 14%, transparent), color-mix(in srgb, var(--foreground) 5%, transparent)); }
+.cover-card.is-blank .cover-mark { inset: 10% 0 auto; width: 100%; height: 54%; }
+.cover-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 15px; font-weight: 500; line-height: 1.25; }
+/* the name sits below the reflection */
+.cover-cap { display: block; margin-top: calc(var(--w) * var(--h) * .24 + 6px); text-align: center; }
+.cover-cap b { display: block; overflow: hidden; font-size: 15px; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
+.cover-cap small { display: block; overflow: hidden; margin-top: 1px; font-size: 12.5px; color: var(--muted-foreground); white-space: nowrap; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.cover-turn:focus-visible .cover-card { outline: 2px solid var(--ring); outline-offset: 3px; }
+
+/* The 3D: half a cover's room each, the cover twice its slot and centred on it, so neighbours tuck behind the one in the
+   middle. The list keeps one 3D space (the scroller can't: overflow flattens), so depth decides what's in front. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    :root:not(.motion-none, .motion-reduced) .cover { --slot: calc(var(--w) / 2); --gap: 0px; }
+    :root:not(.motion-none, .motion-reduced) .cover-list { transform-style: preserve-3d; }
+    :root:not(.motion-none, .motion-reduced) .cover-slide {
+      height: calc(var(--w) * var(--h) * 1.24 + 70px); transform-style: preserve-3d;
+      view-timeline: --cover inline calc(50% - var(--w) * .7);
+    }
+    :root:not(.motion-none, .motion-reduced) .cover-turn {
+      position: absolute; top: 0; left: -50%; perspective: calc(var(--w) * 2.6); transform-style: preserve-3d;
+      animation: cover-slide linear both; animation-timeline: --cover; animation-range: contain;
+    }
+    :root:not(.motion-none, .motion-reduced) .cover-card { animation: cover-turn linear both; animation-timeline: --cover; animation-range: contain; }
+    :root:not(.motion-none, .motion-reduced) .cover-cap { animation: cover-cap linear both; animation-timeline: --cover; animation-range: contain; }
+    @keyframes cover-turn { 0% { transform: rotateY(-55deg); } 50% { transform: rotateY(0deg); } 100% { transform: rotateY(55deg); } }
+    @keyframes cover-slide { 0% { transform: translateX(30%); } 50% { transform: translateX(0) scale(1.12); } 100% { transform: translateX(-30%); } }
+    @keyframes cover-cap { 0%, 38% { opacity: 0; } 50% { opacity: 1; } 62%, 100% { opacity: 0; } }
+  }
+}

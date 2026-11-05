@@ -8,6 +8,9 @@ import { createContext, Fragment, lazy, memo, Suspense, useCallback, useContext,
 import { Cameras } from './cameras.tsx';
 import { Album } from './album.tsx';
 import { Focus } from './focus.tsx';
+import { CoverFlow } from './coverflow.tsx';
+import { Masonry } from './masonry.tsx';
+import { CardStack } from './cardstack.tsx';
 import { chartless, flow, Heatmap, Race, smooth, Stream, Waffle } from './charts.tsx';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -626,7 +629,10 @@ function Shelf({ card, header, small, run }: { card: ShelfCard; header?: ReactNo
   const [spread, setSpread] = useState(false);
   if (card.stack && !spread && card.items.length) return <Stack card={card} header={header} onOpen={() => setSpread(true)} />;
   if (!small && card.layout === 'spotlight' && card.items.length) return <Spotlight card={card} header={header} />;
-  if (!small && (card.layout === 'focus' || card.layout === 'coverflow') && card.items.length > 2) return <Focus card={card} header={header} />;
+  if (!small && card.layout === 'focus' && card.items.length > 2) return <Focus card={card} header={header} />;
+  if (!small && card.layout === 'coverflow' && card.items.length > 2) return <CoverFlow card={card} header={header} />;
+  if (card.layout === 'masonry' && card.items.some(it => it.image)) return <Masonry items={card.items} title={card.title} aspect={card.aspect} header={header} />;
+  if (!small && card.layout === 'cards' && card.items.length) return <Cards card={card} header={header} run={run} />;
   if (!small && card.layout === 'desk' && card.items.length) return <Desk card={card} header={header} />;
   if (!small && card.layout === 'windows' && card.items.length) return <Windows card={card} header={header} run={run} />;
   // what's coming and what's asked for wear the same shelf as what's new: one shape, three times
@@ -722,6 +728,17 @@ const DeskRow = memo(function DeskRow({ id, card }: { id: string; card: ShelfCar
     </Row>
   );
 }, (a, b) => a.id === b.id && (a.card === b.card || sameShelf(a.card, b.card)));
+
+/** A stack of cards to deal through (documents, saved pages). Archiving works as it does in the windows. */
+function Cards({ card, header, run }: { card: ShelfCard; header?: ReactNode; run?: RunAction }) {
+  const arch = useArchive(run, true), act = useRef(arch.archive);
+  act.current = arch.archive;
+  const archive = useCallback((id: string, el: Element | null) => act.current(id, el), []);
+  const items = card.items.filter(w => !w.id || !arch.gone.includes(w.id));
+  if (!items.length) return <div>{header && <div className="mb-3 flex items-center gap-2">{header}</div>}<Empty text={card.empty ?? 'Nothing here yet'} /></div>;
+  return <CardStack items={items} title={card.title} header={header} aside={run ? <SeeArchived href={card.archived} /> : undefined}
+    archive={run && items.some(i => i.id) ? archive : undefined} leaving={arch.leaving} />;
+}
 
 /** Saved pages as small browser windows, the page itself inside; hover and it scrolls by. */
 function Windows({ card, header, run }: { card: ShelfCard; header?: ReactNode; run?: RunAction }) {
@@ -1191,12 +1208,13 @@ function letterbox(img: HTMLImageElement): [number, number] | undefined {
 function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?: boolean; fill?: boolean; label?: string; status?: ReactNode }) {
   const items = card.items, [i, setI] = useState(0), [paused, setPaused] = useState(false), [bars, setBars] = useState<Record<number, [number, number]>>({}), [box, seen] = useOnScreen<HTMLAnchorElement>();
   useEffect(() => {
-    if (items.length < 2 || paused || !seen || card.style === 'album' || (large && card.style !== 'flashback')) return;
+    if (items.length < 2 || paused || !seen || card.style === 'album' || card.style === 'masonry' || (large && card.style !== 'flashback')) return;
     const t = setInterval(() => { if (!document.hidden) setI(n => (n + 1) % items.length); }, 7000);
     return () => clearInterval(t);
   }, [items.length, paused, seen, large, card.style]);
   if (!items.length) return <Empty text={card.empty ?? 'No photos'} />;
   if (card.style === 'album') return <Album card={card} />;
+  if (card.style === 'masonry') return <Masonry items={items.map(p => ({ ...p, title: p.title ?? '' }))} title={card.title} />;
   if (large || card.style === 'mosaic') {
     const [first, ...rest] = items;
     return (
@@ -1359,6 +1377,9 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
   if (card?.type === 'shelf') return <div className={cn(fade, 'min-w-0')}><Shelf card={card} small={compact} run={run} header={<BareHeader card={card} title={title} status={status} />} />{actions}</div>;
   // a flashback is all picture: its heading sits on the photo, so the card's edges line up with its neighbours
   if (card?.type === 'article') return <Article card={card} run={run} />;
+  if (card?.type === 'photos' && card.style === 'masonry' && card.items.length) return (
+    <div className={cn(fade, 'min-w-0')}><Masonry items={card.items.map(p => ({ ...p, title: p.title ?? '' }))} title={card.title} header={<BareHeader card={card} title={title} status={status} />} />{actions}</div>
+  );
   if (card?.type === 'photos' && card.items.length && !large && card.style !== 'mosaic' && card.style !== 'album') return (
     <div className={cn(fade, 'h-full min-w-0')}><Photos card={card} fill={fill} label={card.title ?? title} status={status} />{actions}</div>
   );
