@@ -29,6 +29,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- The demo answers every question its page suggests, including "What's Spider-Man: Brand New Day about?", and a test keeps it that way.
 - No flash of light before dark glass over a wallpaper on load: the page remembers whether it had a wallpaper and decides its theme before the first paint.
 
 ## [0.1.8] - 2026-11-04

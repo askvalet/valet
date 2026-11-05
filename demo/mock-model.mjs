@@ -31,7 +31,13 @@ export const ORDERS = [
   [new RegExp(String.raw`^(?:dock|stop) ${robot}$|^send ${robot} (?:home|back|to (?:the |its )?dock)$`, 'i'), 'run_vacuum', { command: 'dock' }, vacuumSay],
   [new RegExp(String.raw`^find ${robot}$`, 'i'), 'run_vacuum', { command: 'locate' }, vacuumSay],
 ];
+// The page offers "What's <title> about?" for what's playing (src/web/suggest.ts), so every title the demo plays has an answer
+export const ABOUT = {
+  'spider-man: brand new day': "Spider-Man: Brand New Day is Tom Holland's fourth Spider-Man film, picking up after No Way Home: Peter Parker starting over in a city that no longer remembers who he is.",
+};
+const aboutSay = said => { const t = /^what(?:'?s| is) (.+?) about\??$/i.exec(said.trim())?.[1]?.toLowerCase(); return t && ABOUT[t]; };
 export const ANSWERS = [
+  [/^what(?:'?s| is) .+ about\??$/i, null, {}, (d, said) => aboutSay(said) ?? `${standIn}, so it only knows what's playing right now. On a real Valet, the assistant would look the title up for you.`],
   [/\b(?:restart|reboot|revive)\b/i, null, {}, () => "Valet can't restart containers or services. It reads Docker through a read-only proxy on purpose, so a mistake, or a bad prompt, can't stop your stack. Restart it in Docker or Portainer."],
   [/\bhow (?:do|can|would) i\b.*\b(?:add|connect|support|build|make|write)\b|\b(?:valet|you) (?:doesn'?t|don'?t) (?:support|have)\b|\bnot supported\b/i, 'docs_search', {}, () => 'Two ways. If it has a JSON API, the `api` integration turns it into a card from YAML, with no code. Otherwise, one file in `data/integrations` adds a full integration in about ten lines. The Build an integration page in the docs has both.'],
   [/^(?=.*\bmealie\b).*\b(?:why|how'?s|how is|logs?|down|up|wrong|happened|crash\w*|stopped|broken|diagnose|check|status|ok|okay|working|running|memory)\b|\bwhy\b.*\b(?:it|that)\b.*\b(?:down|crash\w*|stopp?\w*|fail\w*)\b/i, 'container_logs', { name: 'mealie' }, logsSay],
@@ -113,7 +119,7 @@ export function reply(body) {
   const answer = rule ?? ANSWERS.find(([re]) => re.test(said));
   if (!answer) { const limit = OTHERS.find(([re]) => re.test(said)); return limit ? cant(limit[1]) : offScript(); }
   const [re, tool, input, say] = answer;
-  if (!tool) return { text: say({}) };
+  if (!tool) return { text: say({}, said) };
   if (last?.role === 'tool') {
     let data = {};
     try { data = JSON.parse(textOf(last.content)); } catch { data = /denied|not approved/i.test(textOf(last.content)) ? { denied: true } : {}; }

@@ -70,7 +70,10 @@ test('demo: the calendar is about today, and the thermostat answers then lapses 
   assert.deepEqual([off.state, off.target, off.set, off.modes[0].on], ['Off', undefined, undefined, true]);
   assert.ok(checkCard(off).success);
   Date.now = () => real() + 601_000;
-  try { assert.equal((await inst.widgets.thermostat.fetch()).target, before.target); } finally { Date.now = real; }
+  // back on the schedule: what an untouched house shows at that same moment (the schedule itself may have moved on, e.g. at 22:00)
+  const untouched = (plugin as any)({ z, defineIntegration }).create(lab.config.parse({}), { image: (r: string) => r } as any);
+  try { assert.equal((await inst.widgets.thermostat.fetch()).target, (await untouched.widgets.thermostat.fetch()).target); } finally { Date.now = real; }
+  void before;
 });
 
 test('demo: what the page offers works, and saying what happened uses the words a person would', async () => {
@@ -342,4 +345,18 @@ test('demo: nothing in it reaches out or carries a secret', () => {
   assert.doesNotMatch(src, /\bfetch\(['"`]|https?:\/\/(?!valet-demo-model|www\.w3\.org|meet\.google\.com\/vlt-qpzr-kmd')|ctx\.http|\$\{[A-Z_]+\}|192\.168\./);
   assert.match(readFileSync('demo/docker-compose.yml', 'utf8'), /sealed: \{ internal: true \}/);
   assert.match(readFileSync('demo/docker-compose.yml', 'utf8'), /172\.17\.0\.1:7580:8080/);
+});
+
+test('demo: every chip the page can offer gets a real answer, never "I can\'t"', async () => {
+  // what the page suggests by itself from the cards (what's playing, downloads, anything down), plus the config's own
+  const state: Record<string, any> = {};
+  for (const [k, w] of Object.entries<any>(inst.widgets)) state[`lab.${k}`] = { key: `lab.${k}`, card: await w.fetch() };
+  const cfg = parse(readFileSync('demo/config.yaml', 'utf8'));
+  const configured = [...(cfg.assistant?.suggestions ?? []), ...(cfg.chat?.followUps ?? cfg.assistant?.followUps ?? [])];
+  const chips = new Set([...suggest(state, configured, 20), ...suggest(state, configured, 9), ...SUGGESTIONS, ...suggestions(true), ...suggestions(false)]);
+  assert.ok([...chips].some(q => /^What's .+ about\?$/.test(q)), 'the page offers a "What\'s … about?" chip');
+  for (const q of chips) {
+    const r = ask(q);
+    assert.ok(r.call || (r.text && !r.text.startsWith('This demo only knows a few things')), `no answer for chip: ${q} → ${r.text?.slice(0, 80)}`);
+  }
 });
