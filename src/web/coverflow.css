@@ -1,7 +1,7 @@
 /* Cover flow, after Blossom Carousel's example. Sizes come from the box (container units). Plainly it's a row of covers
    with a reflection; where scroll-driven animations work and nothing asked for less motion, the slots close up to half a
    cover each and every cover turns and slides by where it sits, so the 3D costs nothing at rest. */
-.cover { --w: min(210px, 46cqw); --h: 1; --slot: var(--w); --gap: 18px; position: relative; isolation: isolate; container-type: inline-size; }
+.cover { --w: min(176px, 42cqw); --h: 1; --slot: var(--w); --gap: 18px; position: relative; isolation: isolate; container-type: inline-size; }
 .cover.is-poster { --w: min(184px, 40cqw); --h: 1.5; }
 .cover.is-wide { --w: min(340px, 64cqw); --h: .5625; }
 

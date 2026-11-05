@@ -1271,7 +1271,7 @@ export function CardBody({ card, run, columns, minimal, large, fill }: { card: C
     case 'shelf': return <Shelf card={card} small={dense} run={run} />;
     case 'chart': return <Chart card={card} />;
     case 'race': return <Race race={card} span={card.span} inCard />;
-    case 'heatmap': return <Heatmap card={card} />;
+    case 'heatmap': return <Heatmap card={card} inCard />;
     case 'code': return <Code card={card} />;
     case 'ranked': return <Ranked card={card} />;
     case 'table': return <Table card={card} />;

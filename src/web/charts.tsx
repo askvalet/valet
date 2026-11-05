@@ -215,7 +215,7 @@ const CELL = 12, SIZE = 10;
 /** A year of days, a column a week: deeper for days with more in them, on steps cut from the days themselves so one huge
  *  night can't wash the rest out. Where a year in one line would make the days too small to read (half a page, a phone),
  *  it folds into two lines, a half-year each, each with its months above it. */
-export function Heatmap({ card }: { card: HeatmapCard }) {
+export function Heatmap({ card, inCard }: { card: HeatmapCard; inCard?: boolean }) {
   const [at, setAt] = useState<number | null>(null), box = useRef<HTMLDivElement>(null), [wide, setWide] = useState(0);
   useLayoutEffect(() => {
     const el = box.current; if (!el) return;
@@ -237,10 +237,11 @@ export function Heatmap({ card }: { card: HeatmapCard }) {
   const best = card.days.indexOf(most), atCol = at != null ? spot(at)[0] : -1;
   return (
     <div ref={box} className="heatmap" data-lines={lines}>
-      <div className="mb-3 flex items-baseline gap-2">
+      {/* in a card the total rides the title row's right end, as the race's month does, so the squares start at the top */}
+      {inCard ? <HeadActions><span className="flex items-baseline gap-1.5 pr-2">{card.span && <span className="text-meta text-muted-foreground">{card.span}</span>}<span className="text-item font-medium tabular"><Metric value={card.headline ?? count(whole)} /></span></span></HeadActions> : <div className="mb-3 flex items-baseline gap-2">
         <span className="metric text-metric-m leading-none"><Metric value={card.headline ?? count(whole)} /></span>
         {card.span && <span className="min-w-0 truncate text-meta text-muted-foreground">{card.span}</span>}
-      </div>
+      </div>}
       <div className="heat-lines" role="img" aria-label={`${count(whole)}, most on ${dayOf(date(best))}`}>
         {Array.from({ length: lines }, (_, line) => {
           const from = line * per, cols = Math.min(per, weeks - from), tip = (atCol - from + .5) / per;
