@@ -922,10 +922,11 @@ function Chart({ card, pop }: { card: ChartCard; pop?: boolean }) {
         )}
       </div>
       {timed && <div className="col-axis"><span>{tick(card.from!)}</span><span>{tick((card.from! + card.to!) / 2)}</span><span>{Date.now() - card.to! < 72e5 ? 'now' : tick(card.to!)}</span></div>}
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground">
+      {/* the legend row only when it has something in it: an empty one left a margin at the foot, uneven with the top */}
+      {(card.series.length > 1 || (card.span && !card.headline)) && <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground">
         {card.series.length > 1 && card.series.map((s, k) => <span key={s.name} className="tabular" style={k ? undefined : { color: toneVar(s.tone) }}>{s.name}{at != null && s.points[at] != null ? ` ${num(s.points[at])}` : card.headline ? '' : s.points.length ? ` ${num(s.points.at(-1)!)}` : ''}</span>)}
         {card.span && !card.headline && <span className="ml-auto">{card.span}</span>}
-      </div>
+      </div>}
     </div>
   );
 }
