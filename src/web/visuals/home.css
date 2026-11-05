@@ -36,6 +36,10 @@
 .homex .cord { background: #3a3c42; }
 .homex .wallp { background: linear-gradient(180deg, color-mix(in srgb, #fff calc(16% + var(--lo, 0) * 8%), transparent), color-mix(in srgb, var(--lc, #fff) calc(4% + var(--lo, 0) * 22%), transparent)); }
 
+/* box sides turned away from the camera, and the edge-on face of each post (home-model.ts `turned`) */
+.homex .world.away-zn [data-n="zn"], .homex .world.away-zp [data-n="zp"], .homex .world.away-xn [data-n="xn"], .homex .world.away-xp [data-n="xp"],
+.homex .world.away-px [data-n="px"], .homex .world.away-pz [data-n="pz"] { display: none; }
+
 /* a lamp's light: a cone down to the floor and a pool where it lands */
 .homex .beam { pointer-events: none; opacity: calc(var(--lo, 0) * .3); clip-path: polygon(50% 0, 100% 100%, 0 100%); background: linear-gradient(180deg, var(--lc), transparent 92%); transition: opacity var(--dur-scene) var(--ease-out), --lc var(--dur-scene) var(--ease-out); }
 .homex .floor .spot { width: 190px; height: 190px; margin: -95px 0 0 -95px; border-radius: 50%; pointer-events: none; opacity: var(--lo, 0); background: radial-gradient(closest-side, color-mix(in srgb, var(--lc) 78%, transparent), color-mix(in srgb, var(--lc) 26%, transparent) 55%, transparent); transition: opacity var(--dur-scene) var(--ease-out), --lc var(--dur-scene) var(--ease-out); }
@@ -45,7 +49,7 @@
 .homex .dockled { border-radius: 2px; background: #30d158; box-shadow: 0 0 8px #30d158; }
 .homex .dockled[data-state="away"] { background: #ff9f0a; box-shadow: 0 0 8px #ff9f0a; }
 
-.homex .bot { width: 24px; height: 24px; left: -12px; top: -12px; transition: transform 1.2s ease; }
+.homex .bot { transform-style: preserve-3d; width: 24px; height: 24px; left: -12px; top: -12px; transition: transform 1.2s ease; }
 .homex .bot .disc { position: absolute; inset: 0; border-radius: 50%; }
 .homex .bot .d0 { background: #0b0c0e; transform: translateZ(0); }
 .homex .bot .d1 { background: #1b1c20; transform: translateZ(3px); }

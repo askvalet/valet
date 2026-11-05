@@ -45,6 +45,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 ### Fixed
 
 - Light mode's service icons no longer vanish: a white logo (Karakeep) is drawn in the page's ink, and a pale one with colours of its own (Uptime Kuma) sits on a small dark plate. The same goes the other way in dark mode for black logos (Miniflux, Tailscale, Vaultwarden). It works for your own icons too, in the service list, Services, Updates, Containers and ⌘K.
+- Scrolling past the house and the PC on a phone no longer stutters. The models look the same but ask far less of the browser: about 680 layers instead of 1,760 when both are on screen, none while they're off screen, and the house only draws the sides of furniture that face you. A live update that changes nothing the model shows no longer touches it.
 - The demo answers every question its page suggests, including "What's Spider-Man: Brand New Day about?", and a test keeps it that way.
 - No flash of light before dark glass over a wallpaper on load: the page remembers whether it had a wallpaper and decides its theme before the first paint.
 - On the day the clocks go forward or back, "Tomorrow" no longer shows as "Today" (or the day after as a weekday) on upcoming episodes, films and other dates.

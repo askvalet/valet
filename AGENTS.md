@@ -314,7 +314,12 @@ literal; a new size or corner is a new token with a role, argued for here.
 - **Unlayered CSS beats Tailwind utilities.** A `position: relative` in `styles.css` overrode a `fixed` utility. Keep
   layout in utilities; custom classes style surfaces only.
 - **Full-size layers in 3D** (cable SVGs the size of the case) cover everything behind them; exclude them from
-  per-face overlays.
+  per-face overlays. Better, don't make them: a cable's face is its own bounds (`cables()` in pc-model.ts).
+- **Every 3D face is a compositor layer** the phone holds and draws on every frame, so the count is the cost (the house
+  was 1,760 layers and stuttered on an iPhone). Faces are flat (`stage.css`), so what's drawn on them adds no layers;
+  only a face whose children must sort in 3D opts back into `preserve-3d` (the robot, the PC's lit parts). The house hides
+  box sides that face away and one face of each post (`turned`), and `.stage` has `content-visibility: auto` so a model
+  off screen costs nothing. Count layers (DevTools Layers, or CDP `LayerTree`) before and after adding geometry.
 - **TypeScript 7**: no `baseUrl` (paths are relative); Node's type stripping needs `erasableSyntaxOnly` (no parameter
   properties, no enums).
 - **Video through the image proxy needs ranges.** Phones won't play a video from a server that ignores `Range`; `image(ref, range)`
