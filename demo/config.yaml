@@ -81,15 +81,16 @@ layout:
   - tab: Services
     heading: false
     overview: false
-    columns: { phone: 2, tablet: 6, desktop: 6 }   # six tracks from tablet up, so both blocks keep their shape at 900
+    columns: { phone: 2, tablet: 8, desktop: 8 }   # eight tracks from tablet up
     widgets:
-      # two blocks that end flush: Pi-hole beside drives over the server, then containers over updates beside backups
+      # two blocks that end flush: updates, Pi-hole, then CPU over memory; then backups beside containers over the drives
+      - { widget: lab.updates, size: medium, rows: 2 }
       - { widget: lab.dns, size: large, rows: 2 }
-      - { widget: lab.drives, size: medium }
-      - { widget: lab.system, size: medium }
-      - { widget: lab.containers, size: large }
-      - { widget: valet.backups, size: medium, rows: 2 }
-      - { widget: lab.updates, size: large }
+      - { widget: lab.cpu, size: medium }
+      - { widget: lab.memory, size: medium }
+      - { widget: valet.backups, size: medium, rows: 2, cols: 3 }
+      - { widget: lab.containers, size: large, cols: 5 }
+      - { widget: lab.drives, size: large, cols: 5 }
   - title: AI
     display: tiles
     overview: false
@@ -136,14 +137,14 @@ layout:
       - lab.calendar
   - heading: false
     columns: { phone: 1, tablet: 1, desktop: 3, wide: 3 }
-    widgets: [lab.streams, lab.downloads, { widget: lab.recent, view: focus }]
+    widgets: [lab.streams, lab.downloads, { widget: lab.reading, view: cards }]
   - heading: false
     columns: { phone: 2, tablet: 4, desktop: 6, wide: 6 }
     widgets:
       - { widget: lab.photos, size: tall }
-      - { widget: lab.reading, size: tall, view: cards }
+      - { widget: lab.recent, size: tall, view: focus }
       - { widget: lab.dns, size: small }
-      - { widget: lab.drives, size: small }
+      - { widget: lab.uptime, size: small }
       - { widget: lab.upcoming, size: wide }
   - title: Media
     overview: false

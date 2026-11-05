@@ -19,6 +19,7 @@ export interface Summary {
   image?: string;         // artwork that fills the tile, with the text over it
   marks?: Mark[];         // one small bar per thing the tile counts, e.g. a bar for each drive
   waffle?: boolean;       // draw `pct` as ten rows of ten squares: "14 in every 100" where a share is the whole story
+  pie?: boolean;         // draw `pct` as a ring with the share in its middle; `color` colours the part
   every?: number;         // ms between `trend` points, so the graph can say when each one was
 }
 

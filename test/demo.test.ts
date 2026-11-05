@@ -215,7 +215,8 @@ test('demo: every figure agrees with every other, whenever you look', async () =
       assert.equal(dns.headline, `${Math.round(add(blocked) / total * 100)}%`);
       assert.equal(dns.headline, '14%');
       assert.equal(dns.summary.ring, dns.headline);
-      assert.ok(dns.summary.sub.startsWith(dns.headline));
+      assert.equal(`${Math.round(dns.summary.pct * 100)}%`, dns.headline);   // the pie's share is the headline's
+      assert.equal(dns.summary.sub, `of ${total.toLocaleString('en')} queries · 24 hours`);
       assert.ok(num(dns.facts[0].value) < add(blocked));
     }
   } finally { Date.now = real; }

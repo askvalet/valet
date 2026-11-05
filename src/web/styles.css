@@ -395,7 +395,10 @@
 .glass-liquid.has-wallpaper :is([data-slot="popover-content"], [data-slot="select-content"], [data-slot="dialog-content"], [data-slot="sheet-content"]) {
   backdrop-filter: var(--glass-float); background-image: var(--glass-bevel); box-shadow: var(--glass-lifted); }
 .glass-liquid.has-wallpaper .glass-pop { --pop-blur: var(--glass-float); backdrop-filter: var(--pop-blur); background-image: var(--glass-bevel); box-shadow: var(--glass-lifted); }
-.glass-liquid.glass-light .glass-pop { --glass-sheet: rgb(255 255 255 / .72); }
+/* a popover from the top bar floats over cards that are glass themselves and redraw every second (rings, clocks): a thin
+   sheet showed their edges through it and flickered as they redrew. Thick enough here that what's under it doesn't read. */
+.glass-liquid.has-wallpaper .glass-pop { --glass-sheet: rgb(20 20 24 / .88); }
+.glass-liquid.glass-light .glass-pop { --glass-sheet: rgb(255 255 255 / .9); }
 .glass-liquid.has-wallpaper :is([cmdk-item][data-selected="true"], [data-slot="select-item"][data-highlighted]) { box-shadow: inset 0 0 0 .5px var(--glass-stroke); }
 .glass-liquid.has-wallpaper .toasts .undo-bar { background: rgb(20 20 24 / .5) var(--glass-bevel); backdrop-filter: var(--glass-float); box-shadow: var(--glass-lifted); }
 /* cards take their blur here, the glass inside them none */

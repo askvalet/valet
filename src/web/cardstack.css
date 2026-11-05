@@ -1,7 +1,8 @@
 /* Cards, after Blossom Carousel's example. Plainly a row of cards; where scroll-driven animations work and nothing asked for
    less motion, each card is sticky in its own column the width of one card, so they all sit in one place, and where its
    column is turns it into the stack: square on in front, fanned out and smaller behind, the one leaving tucked under. */
-.deck { --cw: min(228px, 60cqw); --sw: calc(var(--cw) * 3.3); container-type: inline-size; }
+/* a third of a row takes a smaller card, so the row stays the height its neighbours need */
+.deck { --cw: clamp(160px, 70cqw - 130px, 228px); --sw: calc(var(--cw) * 3.3); container-type: inline-size; }
 .deck-track { display: flex; gap: 14px; padding: 6px 2px 10px; outline: none; mask-image: none; }   /* the stack has its own edges */
 .deck-slide { flex: none; width: var(--cw); aspect-ratio: 3 / 4; scroll-snap-align: center; scroll-snap-stop: always; }
 .deck-card {

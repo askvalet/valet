@@ -532,7 +532,7 @@ function Home({ account }: { account: boolean }) {
   // the hero: ask anything
   const line = cause || oneLine(trouble, how.parts);
   const hero = view === 'all' && (hello || h?.status !== false || boxed || pill || page?.notice) && (
-          <header className={cn('wall-text w-full max-w-[720px] pt-3 xl:pt-5', side)}>
+          <header className={cn('wall-text w-full max-w-[720px] pt-3 xl:pt-5', side, h?.align === 'left' && '-mb-4')}>
             {page?.notice && <p className="mb-2 text-meta text-muted-foreground">{page.notice}</p>}
             {hello && <h1 className="hero-title text-metric-m leading-tight font-medium">{hello}</h1>}
             {/* its line is held from the start, so its words arriving move nothing */}
@@ -718,8 +718,10 @@ function Home({ account }: { account: boolean }) {
         {topbar?.theme !== false && switchable(page?.look.theme ?? 'auto', wall) && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={() => { flipped.current = true; theme.toggle(); }}>{theme.dark ? <Sun key="sun" className={cn(flipped.current && 'spin-in')} /> : <Moon key="moon" className={cn(flipped.current && 'spin-in')} />}</RoundButton>}
       </div>
 
-      <main ref={pageEl} data-settling={settled ? undefined : ''} style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && 'pt-10 xl:pt-28', view === 'all' && h?.align === 'left' && 'xl:pt-2',   /* a hero at the left shares the top bar's row */ chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide && navSide === 'left' && (topbar?.position ?? 'right') === 'right' ? 'max-w-none md:pr-5!' : chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
-        {(view !== 'all' || !hello) && <h1 className="sr-only">{view === 'all' ? page?.title : view}</h1>}
+      <main ref={pageEl} data-settling={settled ? undefined : ''} style={railWidth ? { [navSide === 'left' ? 'paddingLeft' : 'paddingRight']: `calc(${railWidth}px + 2.5rem)` } : undefined} className={cn('@container/main mx-auto flex flex-col gap-(--section-gap) px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] xl:pt-20', view !== 'all' && (h?.align === 'left' && !chatWide ? 'pt-10 xl:pt-2' : 'pt-10 xl:pt-28'), view === 'all' && h?.align === 'left' && 'xl:pt-2',   /* a hero at the left shares the top bar's row */ chatWide && 'pb-6! xl:pt-24', { left: 'md:pr-8 md:pl-24 md:pb-16', right: 'md:pl-8 md:pr-24 md:pb-16', bottom: 'md:px-8 md:pb-28', top: 'md:px-8 md:pb-16 md:pt-[calc(10rem*var(--bar-zoom,1))] xl:pt-[calc(10rem*var(--bar-zoom,1))]' }[navSide], chatWide && navSide === 'left' && (topbar?.position ?? 'right') === 'right' ? 'max-w-none md:pr-5!' : chatWide || page?.sections.some(x => x.place === 'left' || x.place === 'right') ? 'max-w-[var(--page-max,1720px)]' : 'max-w-[var(--page-max,1320px)]')}>
+        {/* with the greeting at the top left, each tab names itself in the same place, so every screen starts the same way */}
+        {view !== 'all' && h?.align === 'left' && !chatWide ? <header className="wall-text hidden pt-3 xl:block xl:min-h-[calc(112px-0.5rem-var(--section-gap))] xl:pt-5"><h1 className="hero-title text-metric-m leading-tight font-medium">{view}</h1></header>
+          : (view !== 'all' || !hello) && <h1 className="sr-only">{view === 'all' ? page?.title : view}</h1>}
         {!hasSide && hero}
         {/* an edit that didn't apply says so here, on every tab, until the next one that does */}
         {page?.configError && <div role="alert" className="settle flex gap-3 rounded-surface border border-[color-mix(in_oklab,var(--warn)_45%,transparent)] bg-card px-5 py-4 shadow-card">

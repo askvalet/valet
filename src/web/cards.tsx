@@ -11,7 +11,7 @@ import { Focus } from './focus.tsx';
 import { CoverFlow } from './coverflow.tsx';
 import { Masonry } from './masonry.tsx';
 import { CardStack } from './cardstack.tsx';
-import { chartless, flow, Heatmap, hue, Race, smooth, Stream, tintOf, type Tint, Waffle } from './charts.tsx';
+import { chartless, flow, Heatmap, hue, Race, smooth, Pie, Stream, tintOf, type Tint, Waffle } from './charts.tsx';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { Card, CardContent } from '@/components/ui/card';
@@ -1414,8 +1414,8 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
 /** A bar for each thing a tile counts: it shows at a glance what a word like "Healthy" only tells you. */
 function TileMarks({ marks }: { marks: NonNullable<Summary['marks']> }) {
   return (
-    <div className="flex h-8 shrink-0 items-end gap-1" role="img" aria-label={marks.map(m => m.label).filter(Boolean).join(', ')}>
-      {marks.slice(0, 12).map((m, i) => <span key={i} title={m.label} className="w-[7px] rounded-full" style={{ height: `${28 + (m.pct ?? .5) * 72}%`, background: m.tone && m.tone !== 'neutral' ? toneVar(m.tone) : 'var(--tint)' }} />)}
+    <div className="flex h-full max-h-[110px] min-h-8 min-w-0 items-end justify-end gap-1 overflow-hidden" role="img" aria-label={marks.map(m => m.label).filter(Boolean).join(', ')}>
+      {marks.slice(0, 12).map((m, i) => <span key={i} title={m.label} className="w-[7px] rounded-full" style={{ height: `${20 + (m.pct ?? .5) * 80}%`, background: m.tone && m.tone !== 'neutral' ? toneVar(m.tone) : 'var(--tint)' }} />)}
     </div>
   );
 }
@@ -1449,7 +1449,7 @@ function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
   const body = (
     <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift')} style={{ '--tint': s.color ?? 'color-mix(in oklab, var(--foreground) 55%, transparent)' } as React.CSSProperties}>
       {art && <Art src={s.image} className={cn('absolute top-(--spacing-inset-tight) right-(--spacing-inset-tight) aspect-[2/3] h-[calc(100%-2*var(--spacing-inset-tight))] rounded-poster object-cover shadow-[0_8px_20px_-10px_rgb(0_0_0/.5)] transition-transform duration-(--dur-move) ease-out', href && 'group-hover/tile:scale-[1.03]')} />}
-      {!art && !s.marks && !s.waffle && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} gauge={s.ring != null} /></div>}
+      {!art && !s.marks && !s.waffle && !s.pie && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} gauge={s.ring != null} /></div>}
       <div className={cn('relative flex flex-1 flex-col p-(--spacing-inset-tight)', art && 'pr-[calc(var(--spacing-inset-tight)*2+4.5rem)]')}>
         <div className="flex items-center gap-2.5">
           {s.icon && isWeather(s.icon) && !art && <WeatherGlyph name={s.icon} size={38} className="-my-1 -ml-0.5" />}
@@ -1459,9 +1459,9 @@ function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
           </div>
           {s.tone === 'bad' && <span className="dot dot-bad ml-auto" />}
         </div>
-        <div className={cn('mt-auto flex min-w-0 justify-between gap-3 pt-3', s.marks || s.waffle ? 'items-end' : 'items-baseline')}>
-          <div className={cn('metric min-w-0 truncate text-metric-s leading-none', toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}><Metric value={s.value} /></div>
-          {s.marks?.length ? <TileMarks marks={s.marks} /> : s.waffle && s.pct != null ? <Waffle pct={s.pct} label={s.sub} /> : null}
+        <div className={cn('mt-auto flex min-w-0 justify-between gap-3 pt-3', s.marks || s.waffle || s.pie ? 'min-h-0 flex-1 items-end' : 'items-baseline')}>
+          <div className={cn('metric text-metric-s leading-none', s.marks || s.waffle || s.pie ? 'shrink-0' : 'min-w-0 truncate', toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}><Metric value={s.value} /></div>
+          {s.marks?.length ? <TileMarks marks={s.marks} /> : s.pie && s.pct != null ? <Pie pct={s.pct} color={s.color} label={s.sub} /> : s.waffle && s.pct != null ? <Waffle pct={s.pct} label={s.sub} /> : null}
           {s.detail && <div className="hidden min-w-0 truncate text-meta tabular text-muted-foreground @[200px]/tile:block">{s.detail}</div>}
         </div>
       </div>
@@ -1504,7 +1504,8 @@ export function Popover({ group, className, children }: { group: 'ring' | 'wx'; 
     ? 'group-hover/ring:opacity-100 group-hover/ring:translate-y-0 group-hover/ring:scale-100 group-focus-within/ring:opacity-100 group-focus-within/ring:translate-y-0 group-focus-within/ring:scale-100'
     : 'group-hover/wx:opacity-100 group-hover/wx:translate-y-0 group-hover/wx:scale-100 group-focus/wx:opacity-100 group-focus/wx:translate-y-0 group-focus/wx:scale-100';
   return (
-    <div className={cn('invisible absolute top-full z-30 pt-3 transition-[visibility] duration-(--dur-pop)', show, className,
+    // the weather's and the calendar's hang from their plate, so they open the same distance below the bar as a ring's
+    <div className={cn('invisible absolute top-full z-30 transition-[visibility] duration-(--dur-pop)', group === 'wx' ? 'pt-1.5' : 'pt-3', show, className,
       'max-lg:fixed max-lg:inset-x-3 max-lg:top-auto max-lg:bottom-24 max-lg:w-auto max-lg:translate-x-0 max-lg:pt-0')}>
       <div className={cn('glass-pop -translate-y-1 scale-95 opacity-0 transition-[opacity,translate,scale] duration-(--dur-pop) ease-out max-lg:origin-bottom', group === 'ring' ? 'origin-top' : 'origin-top-right', pop)}>{children}</div>
     </div>
@@ -1515,9 +1516,9 @@ export function Popover({ group, className, children }: { group: 'ring' | 'wx'; 
 export function ClockMonth({ card, children }: { card?: CardT; children: ReactNode }) {
   const events = card?.type === 'calendar';
   return (
-    <div className="group/wx relative rounded-control text-right leading-tight" tabIndex={0}>
+    <div className="group/wx rounded-control text-right leading-tight" tabIndex={0}>
       {children}
-      <Popover group="wx" className={cn('right-[-14px]', events ? 'w-[680px]' : 'w-[340px]')}><div className={cn('p-(--pop-pad) text-left', !events && 'cal-month-only')}><CalendarView card={events ? card : { type: 'calendar', events: [] }} large /></div></Popover>
+      <Popover group="wx" className={cn('right-0', events ? 'w-[680px]' : 'w-[340px]')}><div className={cn('p-(--pop-pad) text-left', !events && 'cal-month-only')}><CalendarView card={events ? card : { type: 'calendar', events: [] }} large /></div></Popover>
     </div>
   );
 }
@@ -1555,7 +1556,7 @@ export function WeatherRing({ card }: { card: ForecastCard }) {
   const r = 17, c = 2 * Math.PI * r, arc = c * 0.75, pct = Math.max(0, Math.min(1, s.pct ?? 0.5));
   const a = (135 + 270 * pct) * Math.PI / 180, mx = 21 + r * Math.cos(a), my = 21 + r * Math.sin(a);
   return (
-    <div className="group/wx relative flex items-center gap-2 rounded-control sm:gap-2.5" tabIndex={0} aria-label={`${s.value}, ${s.label}. ${s.detail}`}>
+    <div className="group/wx flex items-center gap-2 rounded-control sm:gap-2.5" tabIndex={0} aria-label={`${s.value}, ${s.label}. ${s.detail}`}>
       <div className="relative size-[clamp(26px,7.7vw,32px)] sm:size-[42px]">
         <svg viewBox="0 0 42 42" className="size-full" aria-hidden>
           <defs><linearGradient id="wx" x1="0" y1="1" x2="1" y2="1"><stop offset="0" stopColor="#64d2ff" /><stop offset=".55" stopColor="#ffd60a" /><stop offset="1" stopColor="#ff9f0a" /></linearGradient></defs>
@@ -1568,7 +1569,7 @@ export function WeatherRing({ card }: { card: ForecastCard }) {
         <div className="text-item font-medium tabular"><Counter value={s.value} /></div>
         <div className="hidden max-w-[90px] truncate text-meta text-muted-foreground sm:block">{s.label}</div>
       </div>
-      <Popover group="wx" className="right-[-8px] w-[440px]"><Forecast card={card} /></Popover>
+      <Popover group="wx" className="right-0 w-[440px]"><Forecast card={card} /></Popover>
     </div>
   );
 }

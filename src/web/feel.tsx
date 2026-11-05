@@ -30,7 +30,16 @@ const glide = (el?: Element | null, key = false): ScrollBehavior => key || still
  *  with `one` there's one thing in the middle, and the keys move by one (its slides call `oneByOne(id).tap` on a click), and
  *  `start` is the slide it opens on. Its arrows are `RowArrows` with the same `id`. */
 export function Row({ id, className, children, one, start, ...props }: ComponentProps<typeof BlossomCarousel> & { id: string; one?: boolean; start?: number }) {
-  useLayoutEffect(() => { const r = document.getElementById(id); if (r && start != null) centre(r, start, 'instant'); }, [id]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // it opens on `start`, and keeps to it while its size settles (a tab drawn hidden, covers sized from the box), until someone moves it
+  useLayoutEffect(() => {
+    const r = document.getElementById(id); if (!r || start == null) return;
+    centre(r, start, 'instant');
+    let moved = false; const mine = () => { moved = true; };
+    r.addEventListener('pointerdown', mine, { once: true }); r.addEventListener('wheel', mine, { once: true }); r.addEventListener('keydown', mine, { once: true });
+    const seen = new ResizeObserver(() => { if (!moved) centre(r, start, 'instant'); }); seen.observe(r);
+    const done = setTimeout(() => seen.disconnect(), 4000);
+    return () => { seen.disconnect(); clearTimeout(done); r.removeEventListener('pointerdown', mine); r.removeEventListener('wheel', mine); r.removeEventListener('keydown', mine); };
+  }, [id]);   // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <BlossomCarousel id={id} data-start="" className={cn('carousel', className)} {...props}
       onKeyDown={one ? oneByOne(id).key : e => {

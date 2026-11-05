@@ -267,6 +267,20 @@ export function Heatmap({ card, inCard }: { card: HeatmapCard; inCard?: boolean 
   );
 }
 
+/** A share as a ring: the part in its colour, the rest a quiet track, the share in the middle. */
+export function Pie({ pct, color, label }: { pct: number; color?: string; label?: string }) {
+  const p = Math.max(0, Math.min(1, pct)), r = 15.5, c = 2 * Math.PI * r;
+  return (
+    <div className="relative grid aspect-square h-full max-h-[116px] min-h-[64px] min-w-0 shrink place-items-center" role="img" aria-label={label ?? `${Math.round(p * 100)}%`} title={label}>
+      <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90" aria-hidden>
+        <circle cx="18" cy="18" r={r} fill="none" stroke="var(--fill-2)" strokeWidth="4.5" />
+        <circle cx="18" cy="18" r={r} fill="none" stroke={color ?? 'var(--primary)'} strokeWidth="4.5" strokeLinecap="round" strokeDasharray={`${Math.max(p * c - 1.5, .5)} ${c}`} />
+      </svg>
+      <span className="text-title font-medium tabular">{Math.round(p * 100)}%</span>
+    </div>
+  );
+}
+
 /** A share as a hundred squares. Anything above nothing shows at least one, and rounding never fills the grid early. */
 export function Waffle({ pct, label }: { pct: number; label?: string }) {
   const on = pct > 0 ? Math.max(1, Math.min(pct < 1 ? 99 : 100, Math.round(pct * 100))) : 0;
