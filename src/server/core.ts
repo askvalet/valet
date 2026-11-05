@@ -13,6 +13,8 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { z } from 'zod';
 import type { RecapSlide, Card, Confirm } from '../shared/cards.ts';
+import * as write from '../shared/format.ts';
+import type { Style } from '../shared/format.ts';
 
 export type Access = 'read' | 'write' | 'control';
 
@@ -264,22 +266,45 @@ export const LOGO: Record<string, string> = {
 };
 export const iconFor = (name: string) => { const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 64); return `/api/icon/${LOGO[slug.replace(/-/g, '')] ?? slug}`; };
 
-// Small formatting helpers integrations share, so numbers read the same everywhere.
+/** How the house writes times and dates: the config's `format:`, and where that says auto, the language of the first
+ *  browser to open the page (as with the time zone), so what the server writes reads like what the page writes. */
+export const house: Style = {};
+let heard: string | undefined, set: string | undefined;
+export function setHouse(f: Partial<Format> | undefined) {
+  house.clock = f?.clock ?? 'auto'; house.date = f?.date ?? 'short';
+  set = f?.locale && f.locale !== 'auto' ? f.locale : undefined; house.locale = set ?? heard;
+}
+/** A browser's language, heard once: it stands in for `format.locale: auto` until the config names one. */
+export function hearBrowser(lang?: string) {
+  if (heard || !lang) return false;
+  try { heard = Intl.getCanonicalLocales(lang)[0]; } catch { return false; }
+  if (!set) house.locale = heard;
+  return true;
+}
+
+// Small formatting helpers integrations share, so numbers read the same everywhere (and as the page writes them:
+// src/shared/format.ts says how).
 export const fmt = {
-  /** "Oct 29, 2024" */
-  day: (d?: string | number | Date) => d == null || d === '' ? undefined : new Date(d).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }),
-  /** "6:31 PM" */
-  time: (d: string | number | Date) => new Date(d).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }),
-  /** "Tonight", "Tomorrow", "Fri", "Nov 4" (and "Yesterday") */
-  relativeDay(iso: string | number | Date) {
-    const d = new Date(iso), today = new Date(new Date().toDateString()).getTime();
-    const diff = Math.round((new Date(d.toDateString()).getTime() - today) / 864e5);   // round: a day with a clock change is 23 or 25 hours
-    if (diff === -1) return 'Yesterday';
-    if (diff === 0) return d.getHours() >= 17 ? 'Tonight' : 'Today';
-    if (diff === 1) return 'Tomorrow';
-    if (diff > 1 && diff < 7) return d.toLocaleDateString('en', { weekday: 'short' });
-    return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
-  },
+  /** "29 Oct" / "Oct 29", with the year when it isn't this one */
+  day: (d?: string | number | Date, o: { year?: boolean } = {}) => d == null || d === '' || Number.isNaN(+new Date(d)) ? undefined : write.date(d, house, { bare: true, now: o.year === false ? +new Date(d) : undefined }),
+  /** "6:31 PM" / "18:31", here or in another time zone */
+  time: (d: string | number | Date, zone?: string) => write.time(d, { ...house, zone }),
+  /** an hour on its own, for a strip of them: "4 PM" / "16" */
+  hour: (d: string | number | Date, zone?: string) => write.hour(d, { ...house, zone }),
+  /** "Thu", or long "Thursday" */
+  weekday: (d: string | number | Date, o: { long?: boolean; zone?: string } = {}) => write.weekday(d, { ...house, zone: o.zone }, o.long),
+  /** "November", short "Nov", with the year "November 2025" */
+  month: (d: string | number | Date, o: { short?: boolean; year?: boolean; zone?: string } = {}) => write.month(d, { ...house, zone: o.zone }, o),
+  /** "8:25–8:50 AM" */
+  range: (a: string | number | Date, b: string | number | Date) => write.range(a, b, house),
+  /** "Tonight", "Tomorrow", "Fri", "4 Nov" (and "Yesterday") */
+  relativeDay: (d: string | number | Date) => write.relativeDay(d, house),
+  /** "8:25 AM" today, "Fri 8:25 AM" this week, "3 Nov 8:25 AM" */
+  stamp: (t: string | number | Date, now?: number) => write.stamp(t, house, now),
+  /** "5m ago", "just now" */
+  ago: (t: number | string | Date, now = Date.now()): string => now - +new Date(t) >= 100 * 864e5 ? fmt.day(t)! : write.ago(t, now),
+  /** a length of time in ms: "2h 37m", or { style: 'long' } "2 hr 37 min" */
+  span: (ms: number, o?: Parameters<typeof write.duration>[1]) => write.duration(ms, o),
   bytes(n: number, d = 1) {
     if (!Number.isFinite(n)) return '–';
     const u = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']; let i = 0;
@@ -289,10 +314,7 @@ export const fmt = {
   rate: (bps: number) => `${fmt.bytes(bps)}/s`,
   /** short speed for tight spaces: "912 KB/s", "1.5 MB/s" */
   speed: (bps: number) => bps < 1024 ** 2 ? `${Math.round(bps / 1024)} KB/s` : `${fmt.bytes(bps, 1)}/s`,
-  duration(s: number) {
-    if (!Number.isFinite(s) || s < 0 || s > 8640000) return '∞';
-    const d = Math.floor(s / 86400), h = Math.floor(s / 3600) % 24, m = Math.floor(s / 60) % 60;
-    return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : m ? `${m}m` : `${Math.round(s)}s`;
-  },
+  /** seconds, for an ETA: "3h 12m", and ∞ past 100 days (how qBittorrent and friends say "never") */
+  duration: (s: number) => !Number.isFinite(s) || s < 0 || s > 8640000 ? '∞' : write.duration(s * 1000),
   pct: (x: number) => `${Math.round(x * 100)}%`,
 };

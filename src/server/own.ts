@@ -6,16 +6,15 @@ import { outcome, sentence, type Activity } from './activity.ts';
 import { guideTools } from './guide.ts';
 import type { Hub } from './hub.ts';
 import type { History } from './history.ts';
-import type { Instance } from './core.ts';
+import { fmt, type Instance } from './core.ts';
 import type { Recap } from '../shared/cards.ts';
 import type { Timeline } from './timeline.ts';
 import type { Watches } from './watches.ts';
 import { ruleTools, type Rules } from './rules.ts';
 import { backupParts, type Backups } from './backups.ts';
 
-const when = (t: number) => new Date(t).toLocaleString('en', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 // today needs no day
-const stamp = (t: number) => new Date(t).toDateString() === new Date().toDateString() ? new Date(t).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }) : when(t);
+const stamp = (t: number) => fmt.stamp(t), when = stamp;
 
 export function ownInstance(o: { timeline: Timeline; activity: Activity; watches: Watches; rules: Rules; hub: () => Hub; widgets: string[]; history?: History; backups?: Backups; recap: (year?: number) => Promise<Recap>; undo: (id: number) => Promise<string> }): Instance {
   const log = () => {

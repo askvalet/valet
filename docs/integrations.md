@@ -139,8 +139,10 @@ service that shows the assistant at work.
 `as: 'text'` or `as: 'response'`; `insecure: true` accepts a self-signed certificate. `ctx.id` is the instance's name and
 `ctx.format` the config's `format:`. `ctx.log` prefixes output with the instance name. `ctx.session(login)` shares one sign-in between
 parallel requests (call `.get()` for the token, `.reset()` after a 401). `ctx.upload(id)` reads a file the person
-attached in chat. `fmt` (from `core.ts`) formats bytes, rates, speeds, durations, percentages, days (`fmt.day`,
-`fmt.relativeDay`: "Today", "Tomorrow", "Fri") and times consistently.
+attached in chat. `fmt` (from `core.ts`) formats bytes, rates, speeds, percentages, times (`fmt.time`, `fmt.range`:
+"8:25–8:50 AM", `fmt.stamp`: "Fri 8:25 AM"), days (`fmt.day`, `fmt.relativeDay`: "Today", "Tomorrow", "Fri") and
+lengths of time (`fmt.span(ms)`: "2h 37m", `{ style: 'long' }`: "2 hr 37 min"; `fmt.ago`: "5m ago") the way the page
+does, in the house's `format` and language, so never write these by hand (`src/shared/format.ts` says how).
 
 Icons in cards are names: `camera video cpu gpu memory wifi disk download pulse play film search bulb home shield chat image
 clock crescent game book coins text file bookmark rss news reddit tag chart calendar sun moon cloud cloud-sun cloud-moon
@@ -191,7 +193,7 @@ Any card can also carry:
   tile. `trend` draws a graph behind it and `color` (a hex colour) tints that graph; `pct` fills a ring, `waffle` draws it
   as ten rows of ten squares, `marks` is a row of small bars, and `image` fills the tile.
 - `activity`: set only while something is happening; it shows as a ring in the top bar. `countdown: { from, start, end }`
-  (ms) lets the page count it down itself: "in 4 min" filling from `from`, then "Now · 20 min left" until `end`, when the
+  (ms) lets the page count it down itself: "in 4m" filling from `from`, then "Now · 20m left" until `end`, when the
   ring goes. `link: { label, href, note }` puts a button in its story (an https link, opened in a new tab, its host shown).
   With a countdown, `count` shows as "+1" on the ring.
 - `buttons`: quick actions along the bottom (`{ label, action, args }`), run through the integration's `actions`.
@@ -203,8 +205,8 @@ Some cards and rows take a little more:
 | Field | On | What it does |
 |---|---|---|
 | `state` | `status` item | `up`, `degraded`, `down` or `off`, when `ok` and `quiet` can't say it. Anything that counts running services should use `stateOf`, not `ok` |
-| `window` | `chart` | what the columns cover, under them: "last 24 h" |
-| `factsNote` | `chart` | what the chips under it are: "Most blocked · last 24 h" |
+| `window` | `chart` | what the columns cover, under them: "last 24 hours" |
+| `factsNote` | `chart` | what the chips under it are: "Most blocked · last 24 hours" |
 | `series[].total` | `chart` | the service's own figure, when summing the points would disagree with the headline |
 | `limit` | `list`, `layout: chips` | how many chips show; "19 in all" opens the rest in place |
 | `band` | `list` item, `layout: temps` | the normal stretch of the track, `[low, high]`, each 0..1 |

@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import type { Camera, CameraEvent, CamerasCard, Detection } from '../shared/cards.ts';
 import { Row, RowArrows } from './feel.tsx';
+import { clock } from './format.ts';
 import './cameras.css';
 
 type Box = [number, number, number, number];
@@ -14,7 +15,7 @@ type Clock = MutableRefObject<() => number>;
 const seconds = () => Date.now() / 1000;
 const two = (n: number) => String(n).padStart(2, '0');
 const stamp = (d = new Date()) => `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
-const clockTime = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const clockTime = (ms: number) => clock(ms);
 
 /** Where a detection is at `t`. A path wraps around its loop, so it can start before the end and finish after the start. */
 export function boxAt(d: Detection, t: number, loop = 0): Box | null {

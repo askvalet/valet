@@ -20,10 +20,7 @@ export function pick(data: unknown, path: string): unknown {
 
 // a timestamp: ISO text, or a number of seconds or milliseconds since 1970
 const when = (v: unknown) => new Date(typeof v === 'number' && v < 1e11 ? v * 1000 : v as string);
-const ago = (v: unknown) => {
-  const m = Math.max(0, Math.round((Date.now() - when(v).getTime()) / 60_000));
-  return m < 1 ? 'now' : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`;
-};
+const ago = (v: unknown) => fmt.ago(when(v));
 const FORMATS: Record<string, (v: unknown, arg?: string) => unknown> = {
   bytes: v => fmt.bytes(Number(v)),
   rate: v => fmt.rate(Number(v)),

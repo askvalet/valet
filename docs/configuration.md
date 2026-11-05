@@ -188,13 +188,18 @@ A list of widget keys, or this, to say more about the bar:
 
 | Option | Default | |
 |---|---|---|
-| `clock` | `auto` | `12h`, `24h`; `auto` follows the browser |
+| `clock` | `auto` | `12h`, `24h`; `auto` follows the language (the browser's, or `locale`) |
 | `emby` | `url`, `key`, `user` (whose shelves; the first administrator by default) | the same as `jellyfin` |
-| `date` | `short` | `short` (Sat, Oct 31), `long` (Saturday, October 31), `numeric` (10/31/2026), `iso` (2026-10-31) |
-| `locale` | `auto` | a language tag like `en-GB` or `de-DE`: sets month names and how numbers are written (`1.234,5`) on what Valet formats itself. Values a service writes out in full stay as they are |
+| `date` | `short` | how a date reads in a card's small print: `short` (Sat, Oct 31), `long` (Saturday, October 31), `numeric` (10/31/2026), `iso` (2026-10-31). Headings (the calendar's day, the wall) are always in words. A year is added only when it isn't this one |
+| `locale` | `auto` | a language tag like `en-GB` or `de-DE`: sets month and day names, whether the clock is 12 or 24 hours under `auto`, and how numbers are written (`1.234,5`) on what Valet formats itself. `auto` follows the browser; what the server writes (a card's "next 8:25", "Tonight") follows the first browser to open the page, as the time zone does. Values a service writes out in full stay as they are |
 | `temperature` | `auto` | `c`, `f`: converts anything a service reports as `°C` or `°F` on any card, and is the default for the `weather` integration's `units`. `auto` leaves everything as reported |
 | `distance` | `auto` | `km`, `mi`: the same for distances |
 | `weekStart` | `auto` | `monday`, `sunday`, `saturday`: the first column of the calendar card's month and the year-of-days heatmap. `auto` follows the locale. Integrations read it as `ctx.format`, the page as `firstDay()` |
+
+Whatever the settings, Valet writes things one way: a time range is `8:25–8:50 AM` (an en dash, no spaces, AM/PM once);
+a length of time is short in rings, chips and lists (`2h 37m`, `50m`, `3d`, `5m ago`, `41m left`) and long in sentences
+(`Powered on 3 years`, `2 hr 37 min`); a number takes no space before `°` or `%` (`42°C`, `14%`) and one before a word
+(`58 GB`), and a temperature keeps its letter except in the weather, which writes `5°` like every forecast.
 
 ### `labels`
 

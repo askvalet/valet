@@ -20,13 +20,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn, useOnScreen } from '@/lib/utils';
+import { Metric } from './metric.tsx';
 import { Counter, DUST_HOLD, lean, Pile, Row, RowArrows, RowSlot, Tick, toast, useRows } from './feel.tsx';
 import { dissolve, justActed, useSettle } from './dust.ts';
 import { play } from './sound.ts';
 import { LinkButton } from './link-button.tsx';
 import { Meter } from './meter.tsx';
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
-import { clock as clockOf, day as dayOf, num as written } from './format.ts';
+import { clock as clockOf, day as dayOf, duration, highLow, num as written, stamp, withUnit } from './format.ts';
 import { stateOf } from '../shared/cards.ts';
 import type { ServiceState, Banner, Stall, ArticleCard, CodeCard, RankedCard, ShelfItem, StatusItem, TableCard, LinksCard, Card as CardT, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
@@ -123,7 +124,7 @@ function Stats({ card }: { card: StatsCard }) {
       <div className={cn('flex items-end', dense ? 'gap-4' : 'gap-5')}>
         <div className="min-w-0 shrink-0">
           <div className={cn('metric leading-[0.95]', dense ? 'text-[26px]' : 'text-[44px]', toneText[hero.tone ?? 'neutral'])}>
-            <Counter value={hero.value} />{hero.unit && <span className={cn('ml-1 font-medium tracking-normal text-muted-foreground', dense ? 'text-[13px]' : 'text-[18px]')}>{hero.unit}</span>}
+            <Metric value={hero.value} unit={hero.unit} size="l" />
           </div>
           <div className={cn('truncate text-muted-foreground', dense ? 'mt-1 text-meta' : 'mt-1.5 text-body')}>{[hero.label, hero.sub].filter(Boolean).join(' · ')}</div>
         </div>
@@ -137,7 +138,7 @@ function Stats({ card }: { card: StatsCard }) {
             <div key={f.label} className="min-w-0 px-3 first:pl-0 last:pr-0">
               <div className={cn('truncate text-muted-foreground', dense ? 'text-caption' : 'text-meta')}>{f.label}</div>
               <div className={cn('metric truncate', dense ? 'text-[14px]' : 'text-[17px]', toneText[f.tone ?? 'neutral'])}>
-                <Counter value={f.value} />{f.unit && <span className="ml-0.5 text-meta font-medium text-muted-foreground">{f.unit}</span>}
+                <Metric value={f.value} unit={f.unit} size="s" />
               </div>
             </div>
           ))}
@@ -190,7 +191,7 @@ function Temps({ card }: { card: ListCard }) {
           <div key={i} className="min-w-0">
             <div className="flex items-baseline justify-between gap-3 text-item">
               <span className="truncate font-medium">{it.title}</span>
-              <span className="shrink-0 tabular"><Counter value={it.meta ?? ''} className={cn('font-medium', toneText[it.tone ?? 'neutral'])} /> <span className="text-meta text-muted-foreground">now</span></span>
+              <span className="shrink-0 tabular"><Metric value={it.meta ?? ''} size="s" className={cn('font-medium', toneText[it.tone ?? 'neutral'])} /> <span className="text-meta text-muted-foreground">now</span></span>
             </div>
             <Meter scale pct={at} label={`${it.title} temperature`} valuetext={it.meta} className="mt-1.5" />
             {it.subtitle && <div className={cn('mt-1 truncate text-meta', it.tone === 'bad' ? 'text-bad' : 'text-muted-foreground')}>{it.subtitle}</div>}
@@ -534,7 +535,7 @@ export const isEmpty = (card?: CardT) => ((card?.type === 'media' || card?.type 
 
 /** A download getting nowhere, whether its integration says so or only its state does. */
 const stallOf = (m: MediaItem): Stall | undefined => m.stall ?? (m.icon === 'download' && m.state === 'buffering' ? { word: m.tags?.find(t => /stalled|finding/i.test(t)) ?? 'Stalled' } : undefined);
-const heldFor = (since: number) => { const m = Math.max(1, Math.round((Date.now() - since) / 60_000)); return m < 60 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} days`; };
+const heldFor = (since: number) => duration(Math.max(6e4, Date.now() - since), { parts: 1 });
 function StallLine({ m, stall, card, run }: { m: MediaItem; stall: Stall; card: MediaCard; run?: RunAction }) {
   const next = stall.next ?? (card.href ? { label: `Check in ${card.source?.name ?? 'the app'}`, href: card.href } : undefined), word = stall.word ?? 'Stalled';
   const says = [`${word}${stall.since ? ` ${heldFor(stall.since)}` : ''}`, stall.why ?? (/stalled/i.test(word) ? 'nothing coming in' : undefined)].filter(Boolean).join(' · ');
@@ -763,7 +764,7 @@ function dayWord(at?: string) {
   if (!at) return undefined;
   const d = new Date(`${at.slice(0, 10)}T00:00`), t = new Date(); t.setHours(0, 0, 0, 0);
   const n = Math.round((d.getTime() - t.getTime()) / 864e5);
-  return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : n < 0 ? 'Aired' : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
+  return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : n < 0 ? 'Aired' : dayOf(d);
 }
 const lineOf = (it: ShelfItem) => /partial/i.test(it.badge ?? '') ? 'part' : it.tone === 'good' ? 'done' : it.tone === 'accent' || /download|processing/i.test(it.badge ?? '') ? 'busy' : it.tone === 'bad' ? 'bad' : 'wait';
 
@@ -851,7 +852,7 @@ function Columns({ card }: { card: ChartCard }) {
   return (
     <div className="chart-body">
       <div className="mb-3 flex items-baseline gap-2">
-        <span className="metric text-[28px] leading-none"><Counter value={card.headline ?? written(whole)} /></span>
+        <span className="metric text-[28px] leading-none"><Metric value={card.headline ?? written(whole)} /></span>
         <span className="min-w-0 truncate text-meta text-muted-foreground">{card.span}</span>
       </div>
       <div className="columns-chart" onPointerLeave={() => setAt(null)}>
@@ -889,10 +890,10 @@ function Chart({ card }: { card: ChartCard }) {
   const x = (i: number, n: number) => (i / Math.max(1, n - 1)) * w, y = (p: number) => h - 3 - ((p - min) / (max - min || 1)) * (h - 8);
   const [at, setAt] = useState<number | null>(null);
   const unit = card.unit ?? '';
-  const num = (v: number) => `${Math.abs(v) >= 100 ? written(Math.round(v)) : Math.round(v * 10) / 10}${unit && !/^\s/.test(unit) && unit.length > 2 ? ` ${unit}` : unit}`;
+  const num = (v: number) => withUnit(Math.abs(v) >= 100 ? written(Math.round(v)) : written(Math.round(v * 10) / 10), unit);
   const lead = card.series[0], last = lead?.points.at(-1), first = lead?.points[0];
   const move = (first != null && last != null && first !== 0) ? (last - first) / Math.abs(first) : null;
-  const when = (i: number) => card.labels?.[i] ?? (card.from != null && card.to != null ? new Date(card.from + (i / Math.max(1, count - 1)) * (card.to - card.from)).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : null);
+  const when = (i: number) => card.labels?.[i] ?? (card.from != null && card.to != null ? stamp(card.from + (i / Math.max(1, count - 1)) * (card.to - card.from)) : null);
   const scrub = (e: React.PointerEvent<HTMLDivElement>) => {
     const box = e.currentTarget.getBoundingClientRect();
     setAt(Math.round(Math.max(0, Math.min(1, (e.clientX - box.left) / box.width)) * (count - 1)));
@@ -1046,7 +1047,7 @@ function Showcase({ card, run }: { card: ShowcaseCard; run?: RunAction }) {
           <div key={s.label} className="min-w-0">
             <dt className="text-meta text-muted-foreground">{s.label}</dt>
             <dd className={cn('metric mt-0.5 truncate text-[26px] leading-none', toneText[s.tone ?? 'neutral'])}>
-              <Counter value={s.value} />{s.unit && <span className="ml-0.5 text-[14px] font-medium text-muted-foreground">{s.unit}</span>}
+              <Metric value={s.value} unit={s.unit} />
             </dd>
             {s.sub && <div className="mt-1 truncate text-meta text-muted-foreground">{s.sub}</div>}
           </div>
@@ -1102,7 +1103,7 @@ function Sky({ card }: { card: ScheduleCard }) {
     <div className="flex flex-1 flex-col justify-between gap-2">
       <div className="flex items-end justify-between">
         <div><div className="metric text-[24px] leading-none">{next.name}</div><div className="mt-1.5 text-[13px] text-muted-foreground tabular">{clock(next.t)}</div></div>
-        <div className="text-right"><div className={cn('metric text-[22px] tabular leading-none', mins <= 15 && 'text-good')}><Counter flap value={mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`} /></div>
+        <div className="text-right"><div className={cn('metric text-[22px] tabular leading-none', mins <= 15 && 'text-good')}><Counter flap value={duration(Math.max(1, mins) * 6e4)} /></div>
           <div className="mt-1.5 text-meta text-muted-foreground">to go</div></div>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block max-h-[150px] w-full overflow-visible" aria-hidden>
@@ -1159,7 +1160,7 @@ function Schedule({ card }: { card: ScheduleCard }) {
         </div>
         <div className="text-right">
           <div className={cn('metric tabular leading-none', dense ? 'text-[18px]' : 'text-[22px]', mins <= 15 && 'text-good')}>
-            <Counter flap value={mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`} />
+            <Counter flap value={duration(Math.max(1, mins) * 6e4)} />
           </div>
           <div className="mt-1.5 text-meta text-muted-foreground">to go</div>
         </div>
@@ -1464,7 +1465,7 @@ function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
           {s.tone === 'bad' && <span className="dot dot-bad ml-auto" />}
         </div>
         <div className={cn('mt-auto flex min-w-0 justify-between gap-3 pt-3', s.marks || s.waffle ? 'items-end' : 'items-baseline')}>
-          <div className={cn('metric min-w-0 truncate text-[20px] leading-none @[200px]/tile:text-[22px]', !art && toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}><Counter value={s.value} /></div>
+          <div className={cn('metric min-w-0 truncate text-[20px] leading-none @[200px]/tile:text-[22px]', !art && toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}><Metric value={s.value} /></div>
           {s.marks?.length ? <TileMarks marks={s.marks} /> : s.waffle && s.pct != null ? <Waffle pct={s.pct} label={s.sub} /> : null}
           {s.detail && <div className="hidden min-w-0 truncate text-meta tabular text-muted-foreground @[200px]/tile:block">{s.detail}</div>}
         </div>
@@ -1587,9 +1588,9 @@ export function Forecast({ card }: { card: ForecastCard }) {
     <div className="p-5">
       <div className="flex items-start justify-between">
         <div>
-          <div className="metric text-[44px] leading-none"><Counter value={`${now.temp}°`} /></div>
+          <div className="metric text-[44px] leading-none"><Metric value={`${now.temp}°`} /></div>
           <div className="mt-1.5 text-item font-medium">{now.words}</div>
-          <div className="text-meta text-muted-foreground">Feels {now.feels}° · H {now.hi}° · L {now.lo}°</div>
+          <div className="text-meta text-muted-foreground">Feels {now.feels}° · {highLow(now.hi, now.lo)}</div>
         </div>
         <Icon name={now.icon} className="size-9 text-foreground/90" />
       </div>

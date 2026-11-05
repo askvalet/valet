@@ -6,6 +6,8 @@ import { Chip } from '@/components/ui/chip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Counter, ElasticSlider } from '../feel.tsx';
+import { Metric as Figure } from '../metric.tsx';
+import { withUnit } from '../format.ts';
 import { Cant, Said, Swatch, useNote, useSteady } from './note.tsx';
 import { createViewer, hex, PICKS, topFans, type Light, type Metric, type ModelData } from './pc-model.ts';
 
@@ -27,7 +29,7 @@ function MiniGauge({ m }: { m: Metric }) {
         <circle cx="16" cy="16" r={r} fill="none" stroke="currentColor" strokeOpacity=".14" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} />
         <circle cx="16" cy="16" r={r} fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${Math.max(.001, pct) * arc} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move)" />
       </svg>
-      <span className="leading-[1.3]"><span className="metric flex items-baseline gap-0.5 text-[13px]"><Counter value={String(m.value)} /><span className="text-[11px] font-medium text-muted-foreground">{m.unit}</span></span>
+      <span className="leading-[1.3]"><span className="metric flex items-baseline gap-0.5 text-[13px]"><Figure value={String(m.value)} unit={m.unit} size="s" /></span>
         <span className="block text-caption text-muted-foreground">{m.label}</span></span>
     </span>
   );
@@ -80,7 +82,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
   const zone = lp?.zones[0], off = zone?.mode === 'Off', effect = /rainbow|cycle/i.test(zone?.mode ?? '');
   const colourNow = off ? 'Off' : effect ? 'Set by the effect' : NAMES[hex(zone?.color)] ?? 'Custom';
   const active = preset ?? data.presets?.find(p => p.active)?.id;
-  const value = (id: string) => { const m = (id === 'fans' ? data.metrics?.[fanId] : data.metrics?.[id])?.[0]; return m ? `${m.value}${m.unit === '°C' ? '°' : ` ${m.unit}`}` : undefined; };
+  const value = (id: string) => { const m = (id === 'fans' ? data.metrics?.[fanId] : data.metrics?.[id])?.[0]; return m ? withUnit(m.value, m.unit) : undefined; };
   const dotOf = (id: string) => { const z = shown.parts.find(p => p.id === lightId(id))?.zones[0]; return z && z.mode !== 'Off' ? hex(z.color) : undefined; };
   const canAct = !!run && data.controls !== false, steady = useSteady(!!pick);
   return (

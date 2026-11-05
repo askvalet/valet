@@ -31,7 +31,7 @@ type Cfg = z.infer<typeof serverConfig>;
 
 const seconds = (every: unknown) => { const r = Every.safeParse(every); return r.success ? r.data : undefined; };
 const clamp = (x: number) => Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : undefined;
-const left = (ticks: number) => { const m = Math.max(0, Math.round(ticks / TICKS / 60)); return m >= 60 ? `${Math.floor(m / 60)} hr ${m % 60} min left` : `${m} min left`; };
+const left = (ticks: number) => `${fmt.span(ticks / TICKS * 1000)} left`;
 const method = (m?: string) => m === 'DirectPlay' ? 'Direct Play' : m === 'DirectStream' ? 'Direct Stream' : m === 'Transcode' ? 'Transcode' : undefined;
 const episode = (i: any) => i.ParentIndexNumber != null && i.IndexNumber != null ? `S${i.ParentIndexNumber} · E${i.IndexNumber}` : undefined;
 /** The name a person would say: the show for an episode, the album for a song. */
@@ -117,7 +117,7 @@ export function mediaServer(f: Flavour) {
               note: now.length > 1 ? `${now.length} streams` : undefined,
               summary: { label: f.name, icon: 'play', value: now.length ? `${now.length} stream${now.length > 1 ? 's' : ''}` : 'Idle', sub: now.length ? [...new Set(now.map(s => s.UserName))].join(', ') : 'Nothing playing', image: first?.image },
               activity: first && { title: first.title, subtitle: [first.user, first.device].filter(Boolean).join(' · '), image: first.image, icon: 'play', pct: first.pct,
-                trailing: first.state === 'paused' ? 'Paused' : first.remaining?.replace(' hr ', 'h ').replace(' min left', 'm left'), paused: first.state === 'paused', count: now.length > 1 ? now.length : undefined } };
+                trailing: first.state === 'paused' ? 'Paused' : first.remaining, paused: first.state === 'paused', count: now.length > 1 ? now.length : undefined } };
           },
         },
         resume: {

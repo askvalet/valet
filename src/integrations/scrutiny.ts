@@ -18,13 +18,13 @@ export default defineIntegration({
         return { name: dev.device_name, model: dev.model_name ?? dev.device_name, failed, hot, temp: smart.temp, hours: smart.power_on_hours, wwn: dev.wwn, capacity: dev.capacity as number | undefined };
       });
     }
-    const age = (h?: number) => h == null ? '' : h >= 8760 ? `Powered on ${(h / 8760).toFixed(1)} years` : `Powered on ${Math.round(h / 24)} days`;
+    const age = (h?: number) => h == null ? '' : `Powered on ${fmt.span(h * 36e5, { style: 'long', parts: 1 })}`;
     const along = (t: number) => Math.max(0, Math.min(1, (t - 20) / 40));   // the track runs from 20°C to 60°C
     return {
       async recap() {
         const list = await drives();
         if (!list.length) return [];
-        const total = list.reduce((s, d) => s + (d.capacity ?? 0), 0), bad = list.filter(d => d.failed).length, days = (h: number) => `${Math.round(h / 24).toLocaleString('en')} days`;
+        const total = list.reduce((s, d) => s + (d.capacity ?? 0), 0), bad = list.filter(d => d.failed).length, days = (h: number) => fmt.span(h * 36e5, { style: 'long', parts: 1 });
         return [{ id: 'drives', theme: 'hardware', icon: 'disk', kicker: 'Your data lives on', value: total ? fmt.bytes(total, 0) : String(list.length), unit: total ? undefined : 'drives', stat: 'Storage', score: 63, scope: 'Right now',
           line: `${list.length} drives, ${bad ? `${bad} of them failing` : 'all passing their health checks'}. How long each has been spinning:`, bars: list.map(d => ({ label: d.model, value: d.hours ?? 0, show: days(d.hours ?? 0) })) }];
       },

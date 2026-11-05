@@ -8,7 +8,7 @@ import type { MediaItem, ShelfItem } from '../shared/cards.ts';
 const ID = /^[\w-]{1,64}$/;                          // li_… on older servers, UUIDs on newer ones
 const clamp = (x: number) => Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : undefined;
 const local = (ms: number) => new Date(ms).toLocaleDateString('en-CA');   // YYYY-MM-DD in the server's own sense of a day
-const hours = (s: number) => s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.round(s / 60) % 60}m` : `${Math.round(s / 60)} min`;
+const hours = (s: number) => fmt.span(s * 1000);
 
 export default defineIntegration({
   type: 'audiobookshelf',
@@ -117,7 +117,7 @@ export default defineIntegration({
         async fetch() {
           const w = await week(), mins = w.secs.map(s => Math.round(s / 60));
           return { type: 'chart' as const, style: 'bars' as const, title: 'Listening this week', icon: 'book', href: web, source, unit: 'min', headline: hours(w.total), window: 'last 7 days',
-            labels: w.span.map(t => new Date(t).toLocaleDateString('en', { weekday: 'short' })), from: w.span[0], to: w.span[6], series: [{ name: 'Listening', tone: 'accent' as const, points: mins }],
+            labels: w.span.map(t => fmt.weekday(t)), from: w.span[0], to: w.span[6], series: [{ name: 'Listening', tone: 'accent' as const, points: mins }],
             summary: { label: 'Listened this week', icon: 'book', value: hours(w.total), sub: w.today ? `${hours(w.today)} today` : undefined, trend: mins } };
         },
       },

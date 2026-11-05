@@ -12,7 +12,7 @@ import { wallPages, wallReads, wallWidgets } from './wall.ts';
 import type { WidgetState } from '../shared/cards.ts';
 import { loadConfig, startConfig, validZone, type Config } from './config.ts';
 import { cleanCss, headers, hostGuard, served } from './security.ts';
-import { UPLOAD_DIR, LOGO } from './core.ts';
+import { UPLOAD_DIR, LOGO, hearBrowser } from './core.ts';
 import { parseSuggestions, scopeOf, statusLine, suggestPrompt, troubles } from './insight.ts';
 import { loadPins, newPin, pinnedCard, savePins } from './pins.ts';
 import { loadPlugins } from './plugins.ts';
@@ -234,6 +234,8 @@ app.get('/api/page', c => {
   const { config, instances, hub, placed } = site;
   const tz = c.req.query('tz');
   if (!zoneKnown && tz && validZone(tz)) { process.env.TZ = tz; zoneKnown = true; console.log(`time zone: ${tz} (from the browser; set timezone in config.yaml to fix it)`); }
+  const lang = c.req.query('lang');
+  if (config.format.locale === 'auto' && lang && lang.length < 36 && hearBrowser(lang)) console.log(`language: ${lang} (from the browser; set format.locale in config.yaml to fix it)`);
   const look = { ...lookOf(config), theme: config.appearance.theme, css: site.cssVersion && `/api/custom.css?v=${site.cssVersion}`, font: fontOf(config) };
   // walls are dark's (or the only ones); light's come too when the config gives one for each theme
   const { wallpaper, wallpapers } = config.appearance, both = [wallpaper, ...Object.values(wallpapers)].some(w => isBoth(w));

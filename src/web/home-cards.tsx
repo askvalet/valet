@@ -1,11 +1,11 @@
 // The cards that live in a house: weather, the family calendar and the thermostat. They draw their own frame edge to edge
 // (the glass comes from WidgetView), read their own size, and stretch to fill a bento row without leaving a gap.
-import { firstDay } from './format.ts';
+import { clock as clockOf, day as dayOf, duration, firstDay, highLow, withUnit, longDay as longDayOf, month as monthOf, range, weekday } from './format.ts';
 import { Armchair, ArrowUpDown, BedDouble, ChevronLeft, ChevronRight, Droplets, Fan, Flame, House, Leaf, Minus, Moon, Plane, Plus, Power, Snowflake, Sparkles, Zap, type LucideIcon } from 'lucide-react';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import type { CalendarCard, CalendarEvent, ForecastCard, ThermostatCard, ThermostatMode } from '../shared/cards.ts';
-import { Counter } from './feel.tsx';
+import { Metric } from './metric.tsx';
 import { LinkButton } from './link-button.tsx';
 import { Cant } from './visuals/note.tsx';
 import './home-cards.css';
@@ -129,7 +129,7 @@ function Hero({ card, s }: { card: ForecastCard; s: number }) {
         <div className="wx-temp tabular" style={{ fontSize: 82 * s }}>{now.temp}°</div>
       </div>
       <div className="mt-1 font-semibold tracking-tight" style={{ fontSize: 21 * s }}>{now.words}</div>
-      <Caps className="mt-1.5 text-muted-foreground">High {now.hi}° <span className="ml-1.5">Low {now.lo}°</span></Caps>
+      <Caps className="mt-1.5 text-muted-foreground">{highLow(now.hi, now.lo)}</Caps>
     </div>
   );
 }
@@ -206,19 +206,15 @@ const keyOf = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.
 const dated = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 const parse = (s: string) => { if (!dated(s)) return new Date(s); const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 const shift = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
-const nth = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
-const longDay = (d: Date) => `${d.toLocaleDateString('en', { weekday: 'long' })} ${nth(d.getDate())} ${d.toLocaleDateString('en', { month: 'long' })}`;
-const clock = (d: Date) => d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' });
+const longDay = (d: Date) => longDayOf(d), clock = (d: Date) => clockOf(d);
 
 // the calendar's own colour if it has one, or one of these, picked by name so a calendar keeps its colour
 const CAL = ['#5ac8fa', '#ff9f6b', '#bf8bff', '#5ee0a0', '#ff7eb3', '#ffd25f', '#7d9bff', '#4fd8d0'];
 const colorOf = (e: CalendarEvent) => e.color ?? CAL[[...(e.calendar ?? e.title)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % CAL.length];
 export const span = (e: CalendarEvent) => {
   const a = parse(e.start), b = e.end ? parse(e.end) : a;
-  if (dated(e.start)) return b > a ? `All day${+b - +a > 864e5 ? ` · until ${shift(b, -1).toLocaleDateString('en', { month: 'short', day: 'numeric' })}` : ''}` : 'All day';
-  if (+b <= +a) return clock(a);
-  const [x, y] = [clock(a), clock(b)];
-  return keyOf(a) !== keyOf(b) ? `${x} – ${b.toLocaleDateString('en', { weekday: 'short' })} ${y}` : `${x.slice(-2) === y.slice(-2) ? x.slice(0, -3) : x} – ${y}`;
+  if (dated(e.start)) return b > a ? `All day${+b - +a > 864e5 ? ` · until ${dayOf(shift(b, -1), { bare: true })}` : ''}` : 'All day';
+  return range(a, b);
 };
 
 /** Events by the day they touch: a trip of four days shows on all four. */
@@ -242,7 +238,7 @@ export function splitToday(list: CalendarEvent[], at = Date.now()) {
 const soon = (e: CalendarEvent, at = Date.now()) => {
   if (dated(e.start)) return '';
   const mins = Math.round((+parse(e.start) - at) / 6e4);
-  return mins <= 0 ? ' · Now' : mins < 60 ? ` · in ${mins} min` : mins < 360 ? ` · in ${Math.round(mins / 60)} h` : '';
+  return mins <= 0 ? ' · Now' : mins < 360 ? ` · in ${duration(mins * 6e4, { parts: mins < 60 ? 2 : 1 })}` : '';
 };
 
 function Agenda({ days, from, today, cap, empty }: { days: Map<string, CalendarEvent[]>; from: Date; today: Date; cap: number; empty: string }) {
@@ -257,7 +253,7 @@ function Agenda({ days, from, today, cap, empty }: { days: Map<string, CalendarE
   }
   const tag = (d: Date) => {
     const n = Math.round((+d - +today) / 864e5);
-    return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : n > 1 && n < 7 ? d.toLocaleDateString('en', { weekday: 'long' }) : d.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
+    return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : n > 1 && n < 7 ? weekday(d, true) : dayOf(d);
   };
   const row = (e: CalendarEvent, i: number, lead?: boolean) => {
     const over = !!e.end && !dated(e.end) && +parse(e.end) < now;
@@ -294,11 +290,11 @@ function Month({ year, month, days, today, picked, pick }: { year: number; month
   const first = new Date(year, month, 1), lead = (first.getDay() + 7 - firstDay()) % 7;   // six rows always, so the card never moves
   const cells = Array.from({ length: 42 }, (_, i) => new Date(year, month, 1 - lead + i)), now = keyOf(today);
   return (
-    <div role="grid" aria-label={first.toLocaleDateString('en', { month: 'long', year: 'numeric' })} className="grid min-h-[216px] flex-1 grid-cols-7 grid-rows-6">
+    <div role="grid" aria-label={monthOf(first, { year: true })} className="grid min-h-[216px] flex-1 grid-cols-7 grid-rows-6">
       {cells.map(d => {
         const k = keyOf(d), list = days.get(k) ?? [], out = d.getMonth() !== month, isToday = k === now, chosen = k === picked;
         return (
-          <button key={k} onClick={() => pick(d)} aria-pressed={chosen} aria-current={isToday ? 'date' : undefined} aria-label={`${d.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' })}, ${list.length ? `${list.length} event${list.length > 1 ? 's' : ''}` : 'nothing on'}`}
+          <button key={k} onClick={() => pick(d)} aria-pressed={chosen} aria-current={isToday ? 'date' : undefined} aria-label={`${longDay(d)}, ${list.length ? `${list.length} event${list.length > 1 ? 's' : ''}` : 'nothing on'}`}
             className="cal-day press relative grid min-h-0 place-items-center" data-out={out || undefined}>
             <span className={cn('cal-num tabular grid size-[28px] place-items-center rounded-full text-body', isToday ? 'bg-primary font-medium text-primary-foreground' : chosen && 'is-picked font-medium')}>{d.getDate()}</span>
             {!isToday && list.length > 0 && <span className="absolute bottom-[1px] flex gap-[2px]">{[...new Set(list.map(colorOf))].slice(0, 3).map(c => <i key={c} className="size-[3.5px] rounded-full" style={{ background: c }} />)}</span>}
@@ -336,7 +332,7 @@ export function CalendarView({ card, large, dense }: { card: CalendarCard; large
       {month && (
         <div className={cn('flex min-w-0 flex-col', two && 'w-[47%] shrink-0')}>
           <div className="mb-1 flex items-center justify-between">
-            <div className="text-item font-semibold tracking-tight">{new Date(y, m, 1).toLocaleDateString('en', { month: 'long', ...(y !== today.getFullYear() ? { year: 'numeric' } : {}) })}</div>
+            <div className="text-item font-semibold tracking-tight">{monthOf(new Date(y, m, 1), { year: y !== today.getFullYear() })}</div>
             <div className="-mr-1.5 flex">
               <button aria-label="Previous month" disabled={!!low && new Date(y, m, 1) <= low} onClick={() => go(-1)} className="press grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"><ChevronLeft className="size-icon-lg" /></button>
               <button aria-label="Next month" disabled={!!high && new Date(y, m + 1, 1) > high} onClick={() => go(1)} className="press grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"><ChevronRight className="size-icon-lg" /></button>
@@ -443,9 +439,9 @@ export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: R
           </svg>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pb-[8%] text-center">
             <div className={cn('font-medium', dense ? 'text-meta' : 'text-item', oops ? 'text-bad' : 'text-muted-foreground')}>{oops ? "Couldn't set it" : card.state}</div>
-            <div className={cn('wx-temp', dense ? 'text-[32px]' : 'text-[40px]')}>{big != null ? <Counter value={big.toFixed(value != null ? dp : 1)} /> : '–'}<span className={cn('ml-1 font-medium tracking-normal text-foreground/75', dense ? 'text-[13px]' : 'text-[15px]')}>°{unit}</span></div>
-            {value != null && room != null ? <div className={cn('mt-1 text-muted-foreground tabular', 'text-meta')}>Room {room.toFixed(Number.isInteger(room) ? 0 : 1)} °{unit}</div>
-              : card.range ? <div className="mt-1 text-item text-muted-foreground tabular">Set to {card.range[0]}–{card.range[1]} °{unit}</div> : null}
+            <div className={cn('wx-temp', dense ? 'text-[32px]' : 'text-[40px]')}>{big != null ? <Metric value={big.toFixed(value != null ? dp : 1)} unit={`°${unit}`} size="l" /> : <Metric value="–" unit={`°${unit}`} size="l" />}</div>
+            {value != null && room != null ? <div className={cn('mt-1 text-muted-foreground tabular', 'text-meta')}>Room {withUnit(room.toFixed(Number.isInteger(room) ? 0 : 1), `°${unit}`)}</div>
+              : card.range ? <div className="mt-1 text-item text-muted-foreground tabular">Set to {withUnit(`${card.range[0]}–${card.range[1]}`, `°${unit}`)}</div> : null}
           </div>
           {canSet && (
             <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 gap-2">

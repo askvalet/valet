@@ -176,6 +176,12 @@
 
 .tabular { font-variant-numeric: tabular-nums; }
 .metric { font-weight: 500; font-variant-numeric: tabular-nums; }
+/* a number's unit (Metric in metric.tsx): muted, a set fraction of the number, a thin space before a word and none before % */
+.metric-pair { white-space: nowrap; }
+.metric-unit { font-size: calc(var(--unit-ratio, .62) * 1em); font-weight: 500; letter-spacing: 0; color: var(--muted-foreground); }
+.metric-unit[data-size="l"] { --unit-ratio: .42; }
+.metric-unit[data-size="s"] { --unit-ratio: .8; }
+.metric-unit[data-word] { margin-left: .17em; }
 
 /* status dots: one size, 6px, beside a name; .dot-lg (8px) only in a legend, where the dot is the key. A dot can carry its own
    colour (style background) when it's a thing's colour rather than a status. */

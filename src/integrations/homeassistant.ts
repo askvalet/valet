@@ -1,7 +1,8 @@
 // Home Assistant (REST API, long-lived token): cards of chosen entities as live controls, and tools to look up any
 // entity and (with approval) control the ones you've put on the page or listed under `controllable`.
 import { z } from 'zod';
-import { defineIntegration, type BackupJob, type Command, type Instance, type Widget } from '../server/core.ts';
+import { withUnit } from '../shared/format.ts';
+import { defineIntegration, fmt, type BackupJob, type Command, type Instance, type Widget } from '../server/core.ts';
 import type { Control, ThermostatCard, ThermostatMode } from '../shared/cards.ts';
 
 const PRESS = new Set(['scene', 'script', 'button', 'input_button', 'automation']);
@@ -76,8 +77,7 @@ export default defineIntegration({
     // timestamp sensors report ISO times in UTC: show them as a person would say them, in the home's own time
     const readable = (state: string) => {
       if (!/^\d{4}-\d\d-\d\dT/.test(state) || Number.isNaN(Date.parse(state))) return state;
-      const at = new Date(state), time = at.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-      return at.toDateString() === new Date().toDateString() ? time : `${at.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`;
+      return fmt.stamp(state);
     };
     function control(e: any): Control {
       const [domain] = e.entity_id.split('.');
@@ -96,9 +96,8 @@ export default defineIntegration({
         sub: domain === 'light' && e.state === 'on' && a.brightness != null ? `${Math.round(a.brightness / 2.55)}%` : domain === 'media_player' && e.state !== 'off' ? (a.media_title ?? e.state) : undefined,
         action: 'set', args: { entity_id: e.entity_id },
       };
-      const unit = a.unit_of_measurement ? ` ${a.unit_of_measurement}` : '';
       const n = Number(e.state);
-      return { id: e.entity_id, label, kind: 'value', value: Number.isFinite(n) && e.state !== '' ? `${Math.round(n * 10) / 10}${unit}` : readable(e.state) };
+      return { id: e.entity_id, label, kind: 'value', value: Number.isFinite(n) && e.state !== '' ? withUnit(Math.round(n * 10) / 10, a.unit_of_measurement) : readable(e.state) };
     }
 
     const widgets: Record<string, Widget> = {};
@@ -125,9 +124,9 @@ export default defineIntegration({
           const now = Date.now();
           const nexts = items.filter(x => !x.muted).map(x => ({ ...x, t: Date.parse(x.at) <= now ? Date.parse(x.at) + 864e5 : Date.parse(x.at) })).sort((a, b) => a.t - b.t);
           const next = nexts[0], mins = next ? Math.round((next.t - now) / 60_000) : 0;
-          const left = mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`;
+          const left = fmt.span(mins * 6e4);
           return { type: 'schedule', title: sch.title, icon: sch.icon ?? 'clock', sunset: sch.sunset, items: items.map(({ name, at }) => ({ name, at })), muted: items.filter(x => x.muted).map(x => x.name),
-            summary: next && { label: sch.title, icon: sch.icon ?? 'clock', value: next.name, sub: new Date(next.t).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }), detail: `in ${left}` },
+            summary: next && { label: sch.title, icon: sch.icon ?? 'clock', value: next.name, sub: fmt.time(next.t), detail: `in ${left}` },
             activity: next && mins <= sch.soon ? { title: `${next.name} in ${left}`, subtitle: sch.title, icon: sch.icon ?? 'clock', tone: 'good', pct: 1 - mins / Math.max(1, sch.soon) } : undefined };
         },
       };
@@ -216,7 +215,7 @@ export default defineIntegration({
         ...presets.filter(p => p !== 'none').map(p => entry(p, worded(p), a.preset_mode === p, { preset_mode: a.preset_mode === p && presets.includes('none') ? 'none' : p })),
       ];
       const modes = t.modes ? t.modes.flatMap(m => all.filter(x => x.id === m)) : all;
-      const show = (n: number) => `${n.toFixed(step < 1 ? 1 : 0)}°`, shown = target ?? current;
+      const show = (n: number) => `${n.toFixed(step < 1 ? 1 : 0)}°${unit}`, shown = target ?? current;
       // Home Assistant's "auto" is a schedule by definition; a hold shows up as a preset on the thermostats that have one
       const note = away || e.state === 'off' ? undefined : /^(temp|temporary|hold_?temp|temporary_?hold)/i.test(a.preset_mode ?? '') ? 'Temporary hold' : /^(hold|perm)/i.test(a.preset_mode ?? '') ? 'Held until you change it' : e.state === 'auto' ? 'Following its schedule' : undefined;
       return { type: 'thermostat', title, icon: 'home', href: cfg.href, unit, state: away ? 'Unavailable' : worded(action ?? e.state), mode, current, target, range, min, max, step, note,
@@ -284,7 +283,7 @@ export default defineIntegration({
         if (!area || !runs) return [];                   // not every robot reports its lifetime totals
         const since = new Date(read('first_cleaning_date') ?? NaN), hours = Math.round(mins / 60), card: any = await this.widgets[key].fetch();
         return [{ id: 'home.vacuum', theme: 'home', icon: 'home', kicker: 'Your robot has vacuumed', value: Math.round(area).toLocaleString('en'), unit: 'm²', stat: 'Floor vacuumed', score: 88, facts: { vacuumHours: hours },
-          scope: Number.isNaN(+since) ? 'All time' : `Since ${since.toLocaleDateString('en', { month: 'short', year: 'numeric' })}`, visual: { kind: 'home', data: card.visual.data },
+          scope: Number.isNaN(+since) ? 'All time' : `Since ${fmt.month(since, { short: true, year: true })}`, visual: { kind: 'home', data: card.visual.data },
           line: `${runs.toLocaleString('en')} runs and ${hours.toLocaleString('en')} hours of work.` }];
       },
       widgets: widgets satisfies Instance['widgets'],

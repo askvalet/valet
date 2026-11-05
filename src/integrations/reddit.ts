@@ -1,10 +1,10 @@
 // Subreddits, through Reddit's public JSON (no key; a User-Agent is all it asks for). Posts from every listed sub,
 // sorted the way you'd see them there, with thumbnails where there are any.
 import { z } from 'zod';
-import { defineIntegration } from '../server/core.ts';
+import { defineIntegration, fmt } from '../server/core.ts';
 import type { ListItem, ShelfItem } from '../shared/cards.ts';
 
-const ago = (t: number) => { const m = Math.max(0, Math.round((Date.now() / 1000 - t) / 60)); return m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
+const ago = (t: number) => fmt.span(Date.now() - t * 1000, { parts: 1 });
 const k = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n);
 
 export default defineIntegration({

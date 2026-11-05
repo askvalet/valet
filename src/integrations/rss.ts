@@ -32,11 +32,7 @@ const firstImage = (html: string) => {
   return end < 0 ? undefined : html.slice(at, end).match(/\ssrc=["']([^"']+)/)?.[1];
 };
 
-const ago = (t?: number) => {
-  if (!t) return '';
-  const m = Math.max(0, Math.round((Date.now() - t) / 60_000));
-  return m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`;
-};
+const ago = (t?: number) => t ? fmt.span(Date.now() - t, { parts: 1 }) : '';
 
 export default defineIntegration({
   type: 'rss',

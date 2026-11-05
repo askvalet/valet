@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { ForecastCard, WidgetState } from '../shared/cards.ts';
 import { asView } from '../shared/views.ts';
-import { clock, day, label, oneLine, sayHow, setFormat } from './format.ts';
+import { clock, highLow, label, longDay, oneLine, sayHow, setFormat } from './format.ts';
 import { applyLook, applyTheme } from './look.ts';
 import { isEmpty, NowPlaying, Ring, Shaped, shapeOf, SummaryTile, TileSkeleton, Widget } from './cards.tsx';
 import { WeatherGlyph } from './home-cards.tsx';
@@ -77,7 +77,7 @@ function Head({ now, weather, line }: { now: Date; weather?: ForecastCard; line:
     <header className="wd-head wall-text flex items-end justify-between gap-8">
       <div className="min-w-0">
         <div className="wd-time metric leading-[.9]">{hm}{ampm && <span className="wd-ampm">{ampm.trim()}</span>}</div>
-        <div className="mt-3 truncate text-[30px] leading-tight text-foreground/90">{day(now)}</div>
+        <div className="mt-3 truncate text-[30px] leading-tight text-foreground/90">{longDay(now)}</div>
         {line && <div role="status" className="mt-1 line-clamp-2 text-[22px] leading-snug text-muted-foreground">{line}</div>}
       </div>
       {weather && (
@@ -86,7 +86,7 @@ function Head({ now, weather, line }: { now: Date; weather?: ForecastCard; line:
           <div>
             <div className="wd-temp metric leading-[.9]">{weather.now.temp}°</div>
             <div className="mt-2 text-[22px] leading-tight text-foreground/90">{weather.now.words}</div>
-            <div className="text-[18px] leading-tight text-muted-foreground tabular">H {weather.now.hi}° · L {weather.now.lo}°</div>
+            <div className="text-[18px] leading-tight text-muted-foreground tabular">{highLow(weather.now.hi, weather.now.lo)}</div>
           </div>
         </div>
       )}
@@ -152,7 +152,7 @@ export default function WallScreen() {
   const [page, setPage] = useState<Page | null>(null);
   const { state, generation } = useLive();
   useEffect(() => {
-    fetch(`/api/page?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`).then(r => r.json()).then((p: Page) => {
+    fetch(`/api/page?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}&lang=${encodeURIComponent(navigator.language)}`).then(r => r.json()).then((p: Page) => {
       setFormat(p.format, p.labels); applyLook(p.look); setPage(p);
     });
   }, [generation]);

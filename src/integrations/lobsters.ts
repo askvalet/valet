@@ -1,9 +1,9 @@
 // Lobsters: the hottest stories, or one tag's. Public JSON, no key.
 import { z } from 'zod';
-import { defineIntegration } from '../server/core.ts';
+import { defineIntegration, fmt } from '../server/core.ts';
 import type { ListItem } from '../shared/cards.ts';
 
-const ago = (t: string) => { const m = Math.max(0, Math.round((Date.now() - Date.parse(t)) / 60_000)); return m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
+const ago = (t: string) => fmt.span(Date.now() - Date.parse(t), { parts: 1 });
 
 export default defineIntegration({
   type: 'lobsters',

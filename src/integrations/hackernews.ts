@@ -1,9 +1,9 @@
 // Hacker News front page (or newest / best), through the Algolia API: one request, no key.
 import { z } from 'zod';
-import { defineIntegration, iconFor } from '../server/core.ts';
+import { defineIntegration, iconFor, fmt } from '../server/core.ts';
 import type { ListItem } from '../shared/cards.ts';
 
-const ago = (iso: string) => { const m = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60_000)); return m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
+const ago = (iso: string) => fmt.span(Date.now() - Date.parse(iso), { parts: 1 });
 const host = (u?: string) => { try { return u ? new URL(u).hostname.replace(/^www\./, '') : undefined; } catch { return undefined; } };
 
 export default defineIntegration({

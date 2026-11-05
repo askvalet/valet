@@ -1,6 +1,7 @@
 // Weather from Open-Meteo: free, no key. The ring shows where now sits between today's low and high.
 import { z } from 'zod';
-import { defineIntegration } from '../server/core.ts';
+import { defineIntegration, fmt } from '../server/core.ts';
+import { highLow } from '../shared/format.ts';
 
 // WMO weather codes → [words, icon]
 const CODES: [number, string, string][] = [
@@ -39,19 +40,19 @@ export default defineIntegration({
             const c = units === 'imperial' ? (t - 32) / 1.8 : t;
             const h = w.hourly;
             const hours = h.time.slice(1, 13).map((iso: string, i: number) => ({
-              time: new Date(iso).toLocaleTimeString('en', { hour: 'numeric', timeZone: w.timezone, ...(ctx.format?.clock === '24h' ? { hourCycle: 'h23' as const } : {}) }).replace(' ', '').toLowerCase(),
+              time: fmt.hour(new Date(iso), w.timezone),
               temp: Math.round(h.temperature_2m[i + 1]), icon: look(h.weather_code[i + 1], h.is_day[i + 1]).icon,
               pop: h.precipitation_probability[i + 1] ?? 0, mm: h.precipitation[i + 1] ?? 0,
             }));
             const d = w.daily, days = d.time.slice(1, 6).map((iso: string, i: number) => ({
-              name: new Date(`${iso}T12:00:00Z`).toLocaleDateString('en', { weekday: 'short', timeZone: 'UTC' }), icon: describe(d.weather_code[i + 1])[2],
+              name: fmt.weekday(`${iso}T12:00:00Z`, { zone: 'UTC' }), icon: describe(d.weather_code[i + 1])[2],
               hi: Math.round(d.temperature_2m_max[i + 1]), lo: Math.round(d.temperature_2m_min[i + 1]), pop: d.precipitation_probability_max?.[i + 1] ?? undefined,
             }));
             return { type: 'forecast', title: 'Weather', icon,
               now: { temp: Math.round(t), feels: Math.round(w.current.apparent_temperature), words, icon, hi: Math.round(hi), lo: Math.round(lo), precip: w.current.precipitation },
               hours, days, ...(sunOf(d) && { sun: sunOf(d) }),
               summary: { label: words, icon, value: `${Math.round(t)}°`,
-                detail: `H ${Math.round(hi)}° · L ${Math.round(lo)}° · feels ${Math.round(w.current.apparent_temperature)}°`,
+                detail: `${highLow(Math.round(hi), Math.round(lo))} · feels ${Math.round(w.current.apparent_temperature)}°`,
                 pct: hi > lo ? (t - lo) / (hi - lo) : 0.5,
                 tone: c < 0 ? 'accent' : c < 18 ? 'good' : c < 28 ? 'warn' : 'bad' } };
           },

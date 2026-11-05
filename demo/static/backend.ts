@@ -5,6 +5,7 @@ import './polyfill.ts';
 import { z } from 'zod';
 import { chatRoute } from '../../src/server/chat.ts';
 import { Backups, backupParts } from '../../src/server/backups.ts';
+import { fmt } from '../../src/server/core.ts';
 import { findDocs, type DocIndex } from '../../src/shared/docs.ts';
 import plugin, { page as demoPage } from '../integrations/homelab.mjs';
 import { reply, suggestions } from '../mock-model.mjs';
@@ -18,7 +19,7 @@ const image = (ref: string) => /^cover-/.test(ref) ? `/art/covers/${ref.slice(6)
   : ref === 'article' ? '/art/article.jpg' : /^photo\d$/.test(ref) ? `/art/photos/${ref[5]}.jpg` : /^page\d$/.test(ref) ? `/art/pages/${ref[4]}.jpg`
   : /^doc\d$/.test(ref) ? `/art/docs/${ref[3]}.jpg` : `/art/cameras/${ref}`;
 
-const integration = (plugin as any)({ z, defineIntegration: (i: unknown) => i });
+const integration = (plugin as any)({ z, fmt, defineIntegration: (i: unknown) => i });
 const ctx = { image, http: () => Promise.reject(new Error('no network in the demo')), session: () => ({ get: async () => '', reset() {} }) };
 const lab = integration.create(integration.config.parse({ art: '/art/cameras' }), ctx);
 // Valet's own Backups card and tool, gathered from the made-up homelab as the server would

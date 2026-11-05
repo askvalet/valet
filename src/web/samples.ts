@@ -23,7 +23,7 @@ export const SAMPLES: { name: string; card: Card }[] = [
   { name: 'list · a line per row', card: { type: 'list', title: 'Backups', icon: 'shield', items: [{ title: 'Documents', subtitle: 'Kopia · 9.2 GB', meta: '2h ago', dot: 'warn', tone: 'warn', detail: 'Shrank from 18.3 GB to 9.2 GB in one run: worth a look', trend: [18, 18.1, 18.3, 9.2], section: 'Needs a look' }, { title: 'Photos', subtitle: 'Backrest · 412 GB', meta: '7h ago', dot: 'good', trend: [398, 401, 405, 412], section: 'Fine' }] } },
   { name: 'list · sections', card: { type: 'list', title: 'Who\'s watching', note: 'Everyone', items: [{ title: 'Theo', subtitle: 'Dune', section: 'Watching now' }, { title: 'Theo', meta: '22h', pct: 1, section: 'Last 30 days' }] } },
   { name: 'list · long summary', card: { type: 'list', title: 'Saved', items: [{ title: 'A page', href: 'https://example.com', detail: 'A summary long enough to need more than two lines on any card, which is the point of this sample and of the tap that opens it.' }] } },
-  { name: 'chart · paused', card: { type: 'chart', style: 'bars', title: 'Pi-hole', headline: '14%', span: 'of 1,000 queries', window: 'last 24 h', factsNote: 'Most blocked · last 24 h', facts: [{ label: 'ads.example', value: '41' }], from: Date.now() - 864e5, to: Date.now(),
+  { name: 'chart · paused', card: { type: 'chart', style: 'bars', title: 'Pi-hole', headline: '14%', span: 'of 1,000 queries', window: 'last 24 hours', factsNote: 'Most blocked · last 24 hours', facts: [{ label: 'ads.example', value: '41' }], from: Date.now() - 864e5, to: Date.now(),
     banner: { text: 'Blocking paused', until: Date.now() + 3e5, tone: 'warn', button: { label: 'Resume', action: 'pause', args: { minutes: 0 } } },
     series: [{ name: 'Blocked', tone: 'bad', points: [1, 2, 3, 4], total: 140 }, { name: 'Allowed', points: [5, 6, 7, 8], total: 860 }] } },
   { name: 'media · stalled downloads', card: { type: 'media', title: 'Downloading', href: 'https://example.com', source: { name: 'qBittorrent' }, items: [{ title: 'Moving', pct: .4, state: 'playing', icon: 'download', tags: ['1080p'] }, { title: 'Stuck', pct: .1, state: 'buffering', icon: 'download', tags: ['Stalled'] },
@@ -46,7 +46,7 @@ export const SAMPLES: { name: string; card: Card }[] = [
   { name: 'list · empty', card: { type: 'list', title: 'Downloads', items: [], empty: 'Nothing downloading' } },
   { name: 'media', card: { type: 'media', title: 'Now playing', icon: 'play', items: [
     { title: 'A Film With a Rather Long Title', subtitle: '2019', image: img('p', 300, 450), backdrop: img('b', 1280, 720), pct: .42, state: 'playing',
-      user: 'someone', device: 'Living room TV', tags: ['4K', 'Direct', '40 Mbps'], remaining: '1 hr 2 min left' }] } },
+      user: 'someone', device: 'Living room TV', tags: ['4K', 'Direct', '40 Mbps'], remaining: '1h 2m left' }] } },
   { name: 'media · two', card: { type: 'media', title: 'Now playing', items: [
     { title: 'Show', subtitle: 'S01E02 · Pilot', image: img('s'), pct: .1, state: 'paused' }, { title: 'Album', subtitle: 'Artist', image: img('m'), pct: .8, icon: 'download' }] } },
   { name: 'shelf · poster', card: { type: 'shelf', title: 'Recently added', icon: 'film', aspect: 'poster', items: Array.from({ length: 9 }, (_, i) => ({ title: `Title ${i + 1}`, subtitle: `${2010 + i}`, image: img(`r${i}`, 300, 450), badge: i ? undefined : 'Today' })) } },
@@ -67,7 +67,7 @@ export const SAMPLES: { name: string; card: Card }[] = [
   { name: 'race', card: { type: 'race', title: 'The year so far', span: 'Hours watched', unit: 'h', steps: ['Jan', 'Feb', 'Mar', 'Apr'], items: [{ title: 'A Show', points: [2, 9, 14, 30] }, { title: 'A Film', points: [6, 8, 12, 12] }, { title: 'Another Show', points: [0, 4, 20, 24] }] } },
   { name: 'heatmap', card: { type: 'heatmap', title: 'Viewing', from: '2026-01-01', unit: 'play', span: 'last 12 months', days: wave(200).map(v => Math.round(v)) } },
   { name: 'chart · stream', card: { type: 'chart', style: 'stream', title: 'Plays', headline: '42 plays', span: 'last 30 days', labels: ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04'], series: [{ name: 'TV', tone: 'accent', points: [1, 4, 2, 6] }, { name: 'Movies', points: [0, 1, 3, 1] }] } },
-  { name: 'ranked', card: { type: 'ranked', title: 'Most watched', icon: 'film', source: { name: 'Plex', icon: '/api/icon/plex' }, items: [{ title: 'A Show', subtitle: '8 plays', value: '12 h', image: img('t1', 200, 300), backdrop: img('t2', 800, 400), pct: 1 }, { title: 'A Film', subtitle: '3 plays', value: '6 h', pct: .4 }, { title: 'Another', value: '2 h', pct: .15 }] } },
+  { name: 'ranked', card: { type: 'ranked', title: 'Most watched', icon: 'film', source: { name: 'Plex', icon: '/api/icon/plex' }, items: [{ title: 'A Show', subtitle: '8 plays', value: '12h', image: img('t1', 200, 300), backdrop: img('t2', 800, 400), pct: 1 }, { title: 'A Film', subtitle: '3 plays', value: '6h', pct: .4 }, { title: 'Another', value: '2h', pct: .15 }] } },
   { name: 'shelf · spotlight', card: { type: 'shelf', title: 'Recently added', icon: 'film', aspect: 'poster', layout: 'spotlight', items: Array.from({ length: 7 }, (_, i) => ({ title: `Title ${i + 1}`, subtitle: `${2010 + i}`, image: img(`s${i}`, 300, 450), backdrop: img(`sb${i}`, 1280, 720), badge: 'Today' })) } },
   { name: 'shelf · week', card: { type: 'shelf', title: 'Coming up', icon: 'film', aspect: 'poster', layout: 'week', items: ['Tonight', 'Tonight', 'Tomorrow', 'Fri', 'Nov 6'].map((badge, i) => ({ title: `Show ${i}`, subtitle: 'S1 · E2', image: img(`w${i}`, 200, 300), badge })) } },
   { name: 'shelf · tickets', card: { type: 'shelf', title: 'Requested', icon: 'film', aspect: 'poster', layout: 'tickets', items: [{ title: 'Arrival', subtitle: '2016', image: img('q1', 200, 300), badge: 'Available', tone: 'good' }, { title: 'Dune', subtitle: '2021', badge: 'Pending', tone: 'warn' }, { title: 'Alien', badge: 'Processing', tone: 'accent' }] } },
@@ -75,7 +75,7 @@ export const SAMPLES: { name: string; card: Card }[] = [
   { name: 'controls', card: { type: 'controls', title: 'Lights', icon: 'bulb', items: [
     { id: 'a', label: 'Office', kind: 'toggle', value: true, color: '#ffb46b', sub: '80%', action: 'set' }, { id: 'b', label: 'Scene', kind: 'button', value: 'Run', action: 'press' },
     { id: 'c', label: 'Mode', kind: 'select', value: 'Auto', options: ['Auto', 'Off'], action: 'choose' }, { id: 'd', label: 'Brightness', kind: 'slider', value: 40, min: 0, max: 100, action: 'set' },
-    { id: 'e', label: 'Temperature', kind: 'value', value: '21.5 °C' }] } },
+    { id: 'e', label: 'Temperature', kind: 'value', value: '21.5°C' }] } },
   { name: 'forecast', card: { type: 'forecast', title: 'Weather', icon: 'sun', now: { temp: 16, feels: 14, words: 'Partly cloudy', icon: 'cloud-sun', hi: 18, lo: 9 },
     hours: Array.from({ length: 12 }, (_, i) => ({ time: `${(i + 9) % 12 || 12}${i < 3 ? 'am' : 'pm'}`, temp: 10 + Math.round(6 * Math.sin(i / 4)), icon: i > 6 ? 'rain' : 'cloud', pop: i > 6 ? 60 : 5 })),
     summary: { label: 'Partly cloudy', icon: 'cloud-sun', value: '16°', pct: .7, tone: 'good' } } },

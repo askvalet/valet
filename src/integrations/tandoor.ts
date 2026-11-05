@@ -3,7 +3,7 @@
 // Works with Tandoor 1.5 and 2: lists come back plain in one and paged in the other, so both are read.
 import { z } from 'zod';
 import { Every } from '../server/config.ts';
-import { defineIntegration, keptHome } from '../server/core.ts';
+import { defineIntegration, fmt, keptHome } from '../server/core.ts';
 import { tally } from '../server/service.ts';
 import type { ArticlePick, ShelfItem } from '../shared/cards.ts';
 
@@ -134,7 +134,7 @@ export default defineIntegration({
             const plan = await week();
             return { data: plan.map(e => ({ date: e.day, meal: e.meal_type?.name, recipe: e.recipe?.name, id: e.recipe?.id, servings: e.servings, note: e.title || e.note || undefined })),
               card: { type: 'list', title: 'This week', icon: 'calendar', href: web, source, empty: 'Nothing planned this week',
-                items: plan.map(e => ({ id: String(e.id), title: e.recipe?.name ?? e.title ?? 'A meal', subtitle: e.meal_type?.name, meta: e.day === ymd(new Date()) ? 'Today' : new Date(`${e.day}T12:00:00`).toLocaleDateString('en', { weekday: 'short', day: 'numeric' }), image: picture(e.recipe) })) } };
+                items: plan.map(e => ({ id: String(e.id), title: e.recipe?.name ?? e.title ?? 'A meal', subtitle: e.meal_type?.name, meta: fmt.relativeDay(`${e.day}T12:00:00`), image: picture(e.recipe) })) } };
           },
         },
         shopping_add: {

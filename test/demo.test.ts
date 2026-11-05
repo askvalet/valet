@@ -6,14 +6,16 @@ import { test } from 'node:test';
 import { parse } from 'yaml';
 import { z } from 'zod';
 import { Config } from '../src/server/config.ts';
-import { defineIntegration } from '../src/server/core.ts';
+import { defineIntegration, fmt } from '../src/server/core.ts';
 import { checkCard } from '../src/shared/cards.schema.ts';
 import { Backups, backupParts } from '../src/server/backups.ts';
 import { suggest } from '../src/web/suggest.ts';
 import plugin from '../demo/integrations/homelab.mjs';
 import { can, FALLBACK, reply, SCRIPT, suggestions, SUGGESTIONS } from '../demo/mock-model.mjs';
+import { setHouse } from '../src/server/core.ts';
+setHouse({ locale: 'en-US' });   // what the server writes follows a language; these read like a US one wherever they run
 
-const lab = (plugin as any)({ z, defineIntegration });
+const lab = (plugin as any)({ z, fmt, defineIntegration });
 const inst = lab.create(lab.config.parse({}), { image: (r: string) => `/x/${r}` } as any);
 const tools = Object.keys(inst.tools).map(n => ({ function: { name: `lab__${n}` } }));
 const ask = (q: string, before: any[] = []) => reply({ tools, messages: [...before, { role: 'user', content: q }] });
@@ -71,7 +73,7 @@ test('demo: the calendar is about today, and the thermostat answers then lapses 
   assert.ok(checkCard(off).success);
   Date.now = () => real() + 601_000;
   // back on the schedule: what an untouched house shows at that same moment (the schedule itself may have moved on, e.g. at 22:00)
-  const untouched = (plugin as any)({ z, defineIntegration }).create(lab.config.parse({}), { image: (r: string) => r } as any);
+  const untouched = (plugin as any)({ z, fmt, defineIntegration }).create(lab.config.parse({}), { image: (r: string) => r } as any);
   try { assert.equal((await inst.widgets.thermostat.fetch()).target, (await untouched.widgets.thermostat.fetch()).target); } finally { Date.now = real; }
   void before;
 });
@@ -184,7 +186,7 @@ test('demo: the suggestions name what works, and go when they stop being true', 
   assert.equal(reply({ tools, messages: [{ role: 'user', content: 'suggest what the owner should ask' }] }).call, undefined);
 
   // the whole chain: the list the server kept from before the restart, read through what the page does with it
-  const house = (plugin as any)({ z, defineIntegration }).create(lab.config.parse({}), { image: (r: string) => r } as any), kept = suggestions(true);
+  const house = (plugin as any)({ z, fmt, defineIntegration }).create(lab.config.parse({}), { image: (r: string) => r } as any), kept = suggestions(true);
   const chips = async () => suggest({ 'lab.services': { key: 'lab.services', card: await house.widgets.services.fetch() } } as any, [], 12, kept).slice(0, 4);
   assert.equal((await chips())[0], 'Why is Mealie down?');
 });
@@ -207,7 +209,7 @@ test('demo: every figure agrees with every other, whenever you look', async () =
       assert.ok([...blocked, ...allowed].every(n => Number.isInteger(n) && n >= 0));
       const total = add(blocked) + add(allowed), shown = dns.span.match(/of ([\d,]+) queries/)![1];
       assert.equal(num(shown), total);
-      assert.equal(dns.window, 'last 24 h'); assert.equal(dns.series[0].total, add(blocked)); assert.equal(dns.series[1].total, add(allowed));
+      assert.equal(dns.window, 'last 24 hours'); assert.equal(dns.series[0].total, add(blocked)); assert.equal(dns.series[1].total, add(allowed));
       assert.equal(num(dns.summary.value), add(blocked));
       assert.equal(dns.headline, `${Math.round(add(blocked) / total * 100)}%`);
       assert.equal(dns.headline, '14%');

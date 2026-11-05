@@ -10,6 +10,7 @@ const hash = s => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>>
 const rng = seed => { let s = (hash(seed) % 2147483646) + 1; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
 const wave = (i, a, b) => a + (b - a) * (.5 + .32 * Math.sin(i / 3.1) + .18 * Math.sin(i / 1.3));
 const now = () => Date.now();
+let fmt;   // Valet's own way of writing times and lengths, from the toolkit
 const past = (n, a, b, step = 60_000) => Array.from({ length: n }, (_, i) => Math.round(wave(Math.floor(now() / step) - n + i, a, b) * 10) / 10);
 const PALETTES = [['#0b1033', '#5b3a8c', '#f2708a', '#ffc27a'], ['#04202b', '#0e5a6b', '#3fb6a8', '#f5e6a8'], ['#1a0b2e', '#7a2a6b', '#ff6f59', '#ffd166'],
   ['#0a1a12', '#1f5a44', '#7cc36a', '#f4f1bb'], ['#101827', '#2f4b8f', '#6ea8ff', '#e8f1ff'], ['#2a0f12', '#8a2b2b', '#ef8354', '#ffe0a3']];
@@ -90,7 +91,7 @@ const dnsDay = () => {
 };
 /** The year as running hours per title, a step a month, from January to this month (or all of last year, when this one's barely begun). */
 const yearRace = () => {
-  const d = new Date(now()), n = d.getMonth() >= 2 ? d.getMonth() + 1 : 12, name = i => new Date(d.getFullYear(), i).toLocaleDateString('en', { month: 'short' });
+  const d = new Date(now()), n = d.getMonth() >= 2 ? d.getMonth() + 1 : 12, name = i => fmt.month(new Date(d.getFullYear(), i), { short: true });
   const items = YEAR.map(([title, hours, plays, peak]) => {
     const recent = sum(WATCHED.find(w => w[0] === title)?.[3] ?? []), early = share(plays - recent, Array.from({ length: n - 1 }, (_, i) => .015 + Math.exp(-1 * ((i + .5) / (n - 1) - peak) ** 2 / .0225)));
     let run = 0;
@@ -159,7 +160,8 @@ const sightings = () => CAMERAS.flatMap(([camera, name, loop, seen]) => seen.fla
 // the one change to the page the demo can make from chat: the static demo watches this, as a server watches config.yaml
 export const page = { speed: false, onChange() {} };
 
-export default ({ z, defineIntegration }) => {
+export default ({ z, defineIntegration, fmt: write }) => {
+  fmt = write;
   return defineIntegration({
     type: 'demo-homelab',
     name: 'Made-up homelab',
@@ -177,10 +179,10 @@ export default ({ z, defineIntegration }) => {
         const dark = (icon, hour) => hour % 24 < 6.5 || hour % 24 > 19 ? { sun: 'moon', 'cloud-sun': 'cloud-moon' }[icon] ?? icon : icon, temp = tempAt(h), icon = dark(today.icon, h);
         const words = night && today.words === 'Sunny' ? 'Clear' : today.words;
         return { type: 'forecast', title: 'Weather', icon, now: { temp, feels: temp - 2, words, icon, hi: today.hi, lo: today.lo },
-          hours: Array.from({ length: 12 }, (_, i) => { const at = new Date(now() + (i + 1) * 36e5), hour = at.getHours(); return { time: at.toLocaleTimeString('en', { hour: 'numeric' }).replace(' ', '').toLowerCase(), temp: tempAt(hour), icon: dark(today.icon, hour), pop: today.pop }; }),
-          days: [1, 2, 3, 4, 5].map(n => { const s = skyOn(n); return { name: new Date(now() + n * 864e5).toLocaleDateString('en', { weekday: 'short' }), icon: s.icon, hi: s.hi, lo: s.lo, pop: s.pop }; }),
+          hours: Array.from({ length: 12 }, (_, i) => { const at = new Date(now() + (i + 1) * 36e5), hour = at.getHours(); return { time: fmt.hour(at), temp: tempAt(hour), icon: dark(today.icon, hour), pop: today.pop }; }),
+          days: [1, 2, 3, 4, 5].map(n => { const s = skyOn(n); return { name: fmt.weekday(now() + n * 864e5), icon: s.icon, hi: s.hi, lo: s.lo, pop: s.pop }; }),
           sun: { rise: '07:12', set: '18:02' },   // as the daylight card has them
-          summary: { label: words, icon, value: `${temp}°`, pct: today.hi > today.lo ? (temp - today.lo) / (today.hi - today.lo) : .5, tone: 'good', detail: `H ${today.hi}° · L ${today.lo}°` } };
+          summary: { label: words, icon, value: `${temp}°`, pct: today.hi > today.lo ? (temp - today.lo) / (today.hi - today.lo) : .5, tone: 'good', detail: `High ${today.hi}° · Low ${today.lo}°` } };
       };
       // an online meeting a few minutes after this visitor arrived, and one every forty minutes after, so the ring, its
       // countdown and Join are always there to see
@@ -192,8 +194,7 @@ export default ({ z, defineIntegration }) => {
         const start = MEET.first + k * MEET.every;
         return { ...MEETING, start, end: start + MEET.mins * 6e4 };
       };
-      const clockOf = t => new Date(t).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' });
-      const spanOf = m => { const a = clockOf(m.start), b = clockOf(m.end); return `${a.slice(-2) === b.slice(-2) ? a.slice(0, -3) : a}–${b}`; };
+      const spanOf = m => fmt.range(m.start, m.end);
       const meetingRing = () => {
         const m = meeting();
         if (now() < m.start - MEET.lead) return undefined;
@@ -213,9 +214,9 @@ export default ({ z, defineIntegration }) => {
         events.push({ title: m.title, start: new Date(m.start).toISOString(), end: new Date(m.end).toISOString(), calendar: WORK[0], color: WORK[1], join: { href: m.href, provider: m.provider } });
         events.sort((a, b) => a.start < b.start ? -1 : 1);
         const today = events.filter(e => e.start.length > 10 && new Date(e.start).toDateString() === d.toDateString()), next = events.find(e => e.start.length > 10 && new Date(e.end) > d);
-        const clock = iso => new Date(iso).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' });
+        const clock = iso => fmt.time(iso);
         return { type: 'calendar', title: 'Calendar', icon: 'calendar', events, from: dateOf(first), to: dateOf(last),
-          summary: { label: 'Calendar', icon: 'calendar', value: next?.title ?? 'Free', sub: next ? `${new Date(next.start).toDateString() === d.toDateString() ? 'Today' : new Date(next.start).toLocaleDateString('en', { weekday: 'long' })} · ${clock(next.start)}` : undefined, detail: today.length ? `${today.length} today` : undefined },
+          summary: { label: 'Calendar', icon: 'calendar', value: next?.title ?? 'Free', sub: next ? `${new Date(next.start).toDateString() === d.toDateString() ? 'Today' : fmt.weekday(next.start, { long: true })} · ${clock(next.start)}` : undefined, detail: today.length ? `${today.length} today` : undefined },
           activity: meetingRing() };
       };
       // the house at rest, or as a visitor left it; a changed target pulls the room towards it over a few minutes
@@ -230,7 +231,7 @@ export default ({ z, defineIntegration }) => {
         return { type: 'thermostat', title: 'Hallway', icon: 'home', unit: 'C', state, mode: power ? 'heat' : 'off', current: room, target: power ? target : undefined, min: 10, max: 30, step: .5, set: power ? { action: 'thermostat' } : undefined,
           modes: [{ id: 'off', label: power ? 'Turn off' : 'Turn on', on: !power, action: 'thermostat', args: { power: !power } }, ...[['home', 'Home'], ['sleep', 'Sleep', `${SETBACKS.sleep}°, a little cooler for going to bed`], ['night', 'Night', `${SETBACKS.night}°, the lowest setting through to morning`]].map(([id, label, hint]) => ({ id, label, hint, on: power && preset === id, action: 'thermostat', args: { preset: id } }))],
           note: got('thermostat', null) ? 'Temporary: back to the schedule in ten minutes' : 'Following its schedule',
-          summary: { label: 'Hallway', icon: 'thermometer', value: `${(power ? target : room).toFixed(1)}°`, sub: state, detail: power ? `${room.toFixed(1)}° now` : undefined, pct: (target - 10) / 20 } };
+          summary: { label: 'Hallway', icon: 'thermometer', value: `${(power ? target : room).toFixed(1)}°C`, sub: state, detail: power ? `${room.toFixed(1)}°C now` : undefined, pct: (target - 10) / 20 } };
       };
       const setClimate = ({ temperature, preset, power }) => { const c = climate(); put('thermostat', { preset: preset ?? c.preset, power: preset ? true : power ?? c.power, target: temperature ?? (preset ? SETBACKS[preset] : c.target), from: c.room, at: now() }); };
       const mealieUp = () => got('mealie', false);
@@ -342,8 +343,8 @@ export default ({ z, defineIntegration }) => {
 
       const day = (h, m = 0) => { const d = new Date(); d.setHours(h, m, 0, 0); return d.toISOString(); };
       const ymd = n => { const d = new Date(now() + n * 864e5); return [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(x => String(x).padStart(2, '0')).join('-'); };
-      const inDays = n => new Date(now() + n * 864e5).toLocaleDateString('en', { month: 'short', day: 'numeric' });
-      const drives = [['Backup 12 TB', 38, '3.1 years'], ['Media 8 TB', 41, '1.8 years'], ['System NVMe', 58, '244 days']], hottest = drives.reduce((a, b) => b[1] > a[1] ? b : a), HOT = 55;
+      const inDays = n => fmt.day(now() + n * 864e5);
+      const drives = [['Backup 12 TB', 38, 27150], ['Media 8 TB', 41, 15770], ['System NVMe', 58, 5856]], hottest = drives.reduce((a, b) => b[1] > a[1] ? b : a), HOT = 55;
       const lastMonth = () => ({ tv: share(playsOf('tv'), past(30, .2, 4, 864e5)), movies: share(playsOf('movie'), past(30, .1, 2, 7e7)) });
       const statusCard = (title, icon, items) => ({ type: 'status', title, icon, items });
       const containers = () => ['bazarr', 'caddy', 'home-assistant', 'immich', 'immich-postgres', 'immich-redis', 'karakeep', 'mealie', 'paperless', 'pi-hole', 'plex', 'prowlarr', 'qbittorrent', 'radarr', 'sonarr', 'tautulli', 'uptime-kuma']
@@ -366,13 +367,13 @@ export default ({ z, defineIntegration }) => {
           summary: { label: 'Services', icon: 'pulse', value: `${s.filter(x => x.ok).length}/${s.length}`, tone: bad.length ? 'bad' : 'good', sub: bad.length ? `${bad.map(b => b.name).join(', ')} down` : off ? `${off} off by choice` : 'All up' } }; }),
         uptime: w('Uptime', 60_000, () => ({ ...statusCard('Uptime', 'pulse', services().map(({ group, ...s }) => s)), note: '99.8% over 30 days' })),
         containers: w('Containers', 30_000, () => ({ ...statusCard('Containers', 'disk', containers()), layout: 'wall', source: { name: 'Docker', icon: '/api/icon/docker' } })),
-        drives: w('Drives', 300_000, () => ({ type: 'list', layout: 'temps', title: 'Drives', icon: 'disk', items: drives.map(([title, t, age]) => ({ title, subtitle: `Powered on ${age}`, meta: `${t}°C`, pct: (t - 20) / 40, tone: t >= HOT ? 'warn' : undefined })),
+        drives: w('Drives', 300_000, () => ({ type: 'list', layout: 'temps', title: 'Drives', icon: 'disk', items: drives.map(([title, t, age]) => ({ title, subtitle: `Powered on ${fmt.span(age * 36e5, { style: 'long', parts: 1 })}`, meta: `${t}°C`, pct: (t - 20) / 40, tone: t >= HOT ? 'warn' : undefined })),
           summary: { label: 'Drives', icon: 'disk', value: `${hottest[1]}°C`, sub: hottest[1] >= HOT ? `${hottest[0]} is running warm` : `All ${drives.length} healthy`, tone: hottest[1] >= HOT ? 'warn' : 'good', marks: drives.map(([title, t]) => ({ pct: (t - 20) / 40, label: `${title} · ${t}°C` })) } })),
         speed: w('Internet speed', 60_000, () => { const r = rng('speed'), down = Array.from({ length: 24 }, () => Math.round(880 + r() * 70)), up = down.map(() => Math.round(860 + r() * 60));
-          return { type: 'chart', style: 'line', title: 'Internet speed', icon: 'gauge', headline: `${down.at(-1)} Mb/s`, span: `↑ ${up.at(-1)} Mb/s · ${Math.round(4 + r() * 3)} ms`, window: 'last 24 h', from: now() - 864e5, to: now(),
+          return { type: 'chart', style: 'line', title: 'Internet speed', icon: 'gauge', headline: `${down.at(-1)} Mb/s`, span: `↑ ${up.at(-1)} Mb/s · ${Math.round(4 + r() * 3)} ms`, window: 'last 24 hours', from: now() - 864e5, to: now(),
             series: [{ name: 'Download', tone: 'accent', points: down }, { name: 'Upload', points: up }] }; }),
         dns: w('Pi-hole', 60_000, () => { const { asked, blocks, total, blocked } = dnsDay(), pct = `${Math.round(blocked / total * 100)}%`, until = got('dnsPause', 0), off = until > now();
-          return { type: 'chart', style: 'bars', title: 'Pi-hole', icon: 'shield', headline: pct, span: `of ${total.toLocaleString('en')} queries · 23 devices`, window: 'last 24 h', factsNote: 'Most blocked · last 24 h', from: now() - 864e5, to: now(),
+          return { type: 'chart', style: 'bars', title: 'Pi-hole', icon: 'shield', headline: pct, span: `of ${total.toLocaleString('en')} queries · 23 devices`, window: 'last 24 hours', factsNote: 'Most blocked · last 24 hours', from: now() - 864e5, to: now(),
             banner: off ? { text: 'Blocking paused', until, tone: 'warn', button: { label: 'Resume', action: 'pause', args: { minutes: 0 } } } : undefined,
             buttons: off ? undefined : [{ label: 'Pause 5 min', action: 'pause', args: { minutes: 5 } }, { label: 'Pause 1 hour', action: 'pause', args: { minutes: 60 } }],
             series: [{ name: 'Blocked', tone: 'accent', points: blocks, total: blocked }, { name: 'Allowed', points: asked.map((v, i) => v - blocks[i]), total: total - blocked }],
@@ -389,8 +390,8 @@ export default ({ z, defineIntegration }) => {
         pc: w('Desktop', 30_000, pcCard),
         home: w('Home', 1_000, homeCard),   // every second, so the robot glides rather than hops
         streams: w('Now playing', 10_000, () => { const s = stream(); return { type: 'media', title: 'Now playing', icon: 'play', source: { name: 'Plex', icon: '/api/icon/plex' }, note: '1 stream · 12 Mbps',
-          items: [{ title: s.title, subtitle: String(s.year), image: poster(s.title), backdrop: backdrop(s.title), pct: s.pct, state: 'playing', user: 'Theo', device: 'Living room TV', tags: ['1080p', 'Direct Play', '12 Mbps'], remaining: `${s.left} min left` }],
-          activity: { title: s.title, subtitle: 'Theo · Living room TV', image: poster(s.title), icon: 'play', pct: s.pct, trailing: `${s.left}m left` } }; }),
+          items: [{ title: s.title, subtitle: String(s.year), image: poster(s.title), backdrop: backdrop(s.title), pct: s.pct, state: 'playing', user: 'Theo', device: 'Living room TV', tags: ['1080p', 'Direct Play', '12 Mbps'], remaining: `${fmt.span(s.left * 6e4)} left` }],
+          activity: { title: s.title, subtitle: 'Theo · Living room TV', image: poster(s.title), icon: 'play', pct: s.pct, trailing: `${fmt.span(s.left * 6e4)} left` } }; }),
         downloads: w('Downloads', 5_000, () => { const d = downloads(), speed = d.reduce((a, t) => a + t.speed, 0), first = d[0], moving = d.filter(t => !t.stalled), stuck = d.length - moving.length;
           return { type: 'media', title: 'Downloading', icon: 'download', source: { name: 'qBittorrent', icon: '/api/icon/qbittorrent' }, note: d.length ? `${d.length} downloads · ↓ ${speed.toFixed(1)} MB/s` : undefined, empty: 'Paused for ten minutes',
             items: d.map(t => ({ title: t.title, subtitle: t.sub, image: poster(t.title), backdrop: backdrop(t.title), pct: t.pct, state: t.stalled ? 'buffering' : 'playing', icon: 'download', tags: ['1080p', t.stalled ? 'Stalled' : `${t.speed.toFixed(1)} MB/s`, `${t.left.toFixed(1)} GB left`], remaining: `${Math.floor(t.pct * 100)}%`,
@@ -527,7 +528,7 @@ export default ({ z, defineIntegration }) => {
           calendar_next_meeting: { label: 'Checked your meetings', live: true, access: 'read', input: z.object({}), description: "The person's next online meeting, or the one on now: when, who with, the service and its join link.",
             run: async () => { const m = meeting(), on = m.start <= now(), mins = Math.max(1, Math.ceil(((on ? m.end : m.start) - now()) / 6e4)), link = { label: 'Join', href: m.href, note: m.provider };
               return { open: m.href, data: { next: { title: m.title, start: new Date(m.start).toISOString(), end: new Date(m.end).toISOString(), provider: m.provider, join: m.href, with: m.people } },
-                card: { type: 'list', title: on ? 'On now' : 'Next meeting', icon: 'video', items: [{ title: m.title, subtitle: `${m.provider} · with ${m.people.slice(0, 2).join(', ')} +${m.people.length - 2}`, meta: on ? `Now · ${mins} min left` : `in ${mins} min · ${spanOf(m)}`, tone: on ? 'accent' : undefined, link }] } }; } },
+                card: { type: 'list', title: on ? 'On now' : 'Next meeting', icon: 'video', items: [{ title: m.title, subtitle: `${m.provider} · with ${m.people.slice(0, 2).join(', ')} +${m.people.length - 2}`, meta: on ? `Now · ${fmt.span(mins * 6e4)} left` : `in ${fmt.span(mins * 6e4)} · ${spanOf(m)}`, tone: on ? 'accent' : undefined, link }] } }; } },
           docs_search: { label: 'Searched the docs', access: 'read', input: z.object({}), description: "Valet's own docs.", run: async () => ({ data: { page: 'Build an integration' } }) },
           plex_stop_stream: { label: 'Stopped a stream', confirm: () => ({ title: `Stop Theo's ${FILMS[0]}?`, detail: "They'll see: Stopped by the server owner.", logo: '/api/icon/plex', verb: 'Stop', danger: true }),
             description: "Stop someone's Plex stream.", access: 'control', input: z.object({ who: z.string().default('Theo') }),
@@ -541,7 +542,7 @@ export default ({ z, defineIntegration }) => {
           plex_streams: { label: "Checked what's playing", live: true, access: 'read', input: z.object({}), description: 'Who is watching what.',
             run: async () => { const s = stream(); return { data: { streams: [{ user: 'Theo', title: s.title, device: 'living room TV', left: `${s.left} minutes` }] }, card: await widgets.streams.fetch() }; } },
           plex_stats: { label: "Checked what's popular", access: 'read', input: z.object({}), description: 'Most watched lately and what is new.', run: async () => ({ data: { top: WATCHED[0][0], unwatched: UNSEEN }, card: await widgets.mostwatched.fetch() }) },
-          drive_health: { label: 'Checked the drives', access: 'read', input: z.object({}), description: 'Disk health.', run: async () => ({ data: { drives, hottest: `the ${hottest[0].replace('System', 'system')} at ${hottest[1]}°C` }, card: await widgets.drives.fetch() }) },
+          drive_health: { label: 'Checked the drives', access: 'read', input: z.object({}), description: 'Disk health.', run: async () => ({ data: { drives: drives.map(([name, temp, hours]) => ({ name, temp: `${temp}°C`, poweredOn: fmt.span(hours * 36e5, { style: 'long', parts: 1 }) })), hottest: `the ${hottest[0].replace('System', 'system')} at ${hottest[1]}°C` }, card: await widgets.drives.fetch() }) },
           system_status: { label: 'Checked the server', access: 'read', input: z.object({}), description: 'CPU, memory and GPU.', run: async () => ({ data: { cpu: `${cpuLoad()}%`, memory: `${pctOf(memoryNow())}%`, gpu: `${gpuLoad()}%` }, card: { type: 'chart', title: 'CPU', unit: '%', span: 'last hour', from: now() - 36e5, to: now(), series: [{ name: 'CPU', points: [...past(59, 4, 20), cpuLoad()] }] } }) },
           set_lights: { label: 'Changed the lights', confirm: ({ room = 'Living Room', on = false }) => ({ title: `Turn ${on ? 'on' : 'off'} ${room === 'All' ? 'all the' : `the ${room.toLowerCase()}`} lights?`, logo: '/api/icon/home-assistant', verb: `Turn ${on ? 'on' : 'off'}` }), access: 'control', input: z.object({ room: z.string().default('Living Room'), on: z.boolean().default(false) }), description: 'Turn a room on or off, or All of them.',
             run: async ({ room, on }) => { for (const l of LIGHTS.filter(x => room === 'All' || x[0] === room)) put(lightId(l[0], l[1]), { on, level: on ? 75 : 0, color: light(l).color }); return { data: { done: true, room, on }, card: textCard(`${room === 'All' ? 'All the' : room} lights ${on ? 'on' : 'off'}.`) }; } },

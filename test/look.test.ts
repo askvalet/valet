@@ -174,7 +174,7 @@ test('the page writes times, numbers and its own words as it\'s told', () => {
   assert.equal(clock(t), '15:07'); assert.equal(day(t), '2026-10-31'); assert.equal(firstDay(), 1);
   assert.equal(num(1234.5), '1.234,5'); assert.equal(label('overview'), 'Accueil'); assert.equal(label('review', { year: 2026 }), 'Your 2026 in review');
   setFormat({ clock: '12h', date: 'long', weekStart: 'sunday', locale: 'en-US' }, LABELS);
-  assert.match(clock(t), /^3:07\sPM$/); assert.equal(day(t), 'Saturday, October 31'); assert.equal(firstDay(), 0);
+  assert.match(clock(t), /^3:07\sPM$/); assert.match(day(t), /^Saturday, October 31(, 2026)?$/); assert.equal(firstDay(), 0);   // the year shows once it isn't this one
   setFormat({ clock: 'auto', date: 'short', weekStart: 'auto', locale: 'auto' }, LABELS);
 });
 

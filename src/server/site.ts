@@ -5,7 +5,7 @@ import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { usedSecrets, type Config } from './config.ts';
 import { setFrames } from './security.ts';
-import { makeContext, type Instance, type Integration } from './core.ts';
+import { makeContext, setHouse, type Instance, type Integration } from './core.ts';
 import { History } from './history.ts';
 import { fits, viewsFor } from '../shared/views.ts';
 import { Hub } from './hub.ts';
@@ -115,6 +115,7 @@ export function check(config: Config, registry: Record<string, Integration>, fro
 }
 
 export async function buildSite(config: Config, registry: Record<string, Integration>, fromPlugins: Set<string>, opts: { path: string; rebuild: () => Promise<void> }, previous?: Site): Promise<Site> {
+  setHouse(config.format);
   const { problems, instances, meta, placed } = check(config, registry, fromPlugins);
   for (const p of problems) console.error(`config: ${p}`);
 

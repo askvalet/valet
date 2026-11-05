@@ -15,7 +15,7 @@ interface Pool { id: string; name: string; node: string; status: string; used: n
 // Names that go into a path: the service's own answer is checked too, since it's a stranger's text as far as a URL goes.
 const NODE = /^[A-Za-z0-9][A-Za-z0-9.-]{0,62}$/;
 const share = (used = 0, total = 0) => total > 0 ? Math.min(Math.max(used / total, 0), 1) : 0;
-const uptime = (s = 0) => s >= 86400 ? `${Math.floor(s / 86400)}d` : fmt.duration(s);
+const uptime = (s = 0) => fmt.span(s * 1000);
 const kindOf = (g: Pick<Guest, 'type'>) => g.type === 'qemu' ? 'VM' : 'CT';
 const label = (g: Guest) => `${g.name} (${kindOf(g)} ${g.vmid} on ${g.node})`;
 const n = (v: unknown) => Number(v) || 0;

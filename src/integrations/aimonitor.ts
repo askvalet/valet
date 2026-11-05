@@ -108,7 +108,7 @@ export default defineIntegration({
         const inRange = (days as any[]).filter(d => { const t = Date.parse(d.day); return t >= from && t < to; });
         const tokens = inRange.reduce((s, d) => s + (d.tokens ?? 0), 0), cost = inRange.reduce((s, d) => s + (d.cost ?? 0), 0);
         if (!tokens) return [];
-        return [{ id: 'ai.tokens', theme: 'ai', icon: 'gpu', bars: inRange.slice(-14).map(d => ({ label: String(new Date(d.day).getUTCDate()), value: d.tokens ?? 0 })), stat: 'AI tokens', kicker: 'Your own AI wrote', value: tokens >= 1e6 ? (tokens / 1e6).toFixed(1) : tokens.toLocaleString('en'), unit: tokens >= 1e6 ? 'million tokens' : 'tokens', score: 58, scope: `Since ${new Date(inRange[0].day).toLocaleDateString('en', { month: 'short', day: 'numeric' })}`,
+        return [{ id: 'ai.tokens', theme: 'ai', icon: 'gpu', bars: inRange.slice(-14).map(d => ({ label: String(new Date(d.day).getUTCDate()), value: d.tokens ?? 0 })), stat: 'AI tokens', kicker: 'Your own AI wrote', value: tokens >= 1e6 ? (tokens / 1e6).toFixed(1) : tokens.toLocaleString('en'), unit: tokens >= 1e6 ? 'million tokens' : 'tokens', score: 58, scope: `Since ${fmt.day(inRange[0].day)}`,
           line: `Ran on your own GPU, in your own house, for ${cost >= 1 ? `$${cost.toFixed(2)}` : `${Math.max(1, Math.round(cost * 100))}¢`} of electricity.` }];
       },
       widgets,

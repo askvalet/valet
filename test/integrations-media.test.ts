@@ -9,6 +9,8 @@ import audiobookshelf from '../src/integrations/audiobookshelf.ts';
 import emby from '../src/integrations/emby.ts';
 import jellyfin from '../src/integrations/jellyfin.ts';
 import navidrome from '../src/integrations/navidrome.ts';
+import { setHouse } from '../src/server/core.ts';
+setHouse({ locale: 'en-US' });   // what the server writes follows a language; these read like a US one wherever they run
 
 type Handler = (url: string, init: any) => unknown;
 function fake(handler: Handler): Context & { calls: { url: string; init: any }[] } {
@@ -78,7 +80,7 @@ test('jellyfin: continue watching and recently added are the first administrator
   const resume: any = await j.widgets.resume.fetch();
   assert.ok(ctx.calls.some(c => c.url === `http://jf:8096/UserItems/Resume?userId=${ADMIN}&Limit=12&MediaTypes=Video&Fields=PrimaryImageAspectRatio&EnableUserData=true`));
   assert.equal(resume.items[0].badge, '25%');
-  assert.equal(resume.items[0].note, '38 min left');
+  assert.equal(resume.items[0].note, '38m left');
   assert.equal(resume.items[0].href, 'http://jf:8096/web/#/details?id=e1e1');
   const recent: any = await j.widgets.recent.fetch();
   assert.equal(recent.items[0].image, '/img/f2f2/Primary/p2');
@@ -184,7 +186,7 @@ test('navidrome: every widget validates, now playing has its position, and reque
   assert.deepEqual(status.items.map((i: any) => [i.label, i.value]), [['Playing now', 1], ['Songs', '18,422']]);
   const now: any = await n.widgets.playing.fetch();
   assert.equal(now.items[0].pct, .25);
-  assert.equal(now.items[0].remaining, '2m left');
+  assert.equal(now.items[0].remaining, '3m left');
   assert.equal(now.items[0].image, '/img/mf-s1_0');
   assert.equal(now.items[0].device, 'Kitchen');
   assert.equal(now.activity.title, 'Tidewater');
@@ -241,7 +243,7 @@ test('audiobookshelf: every widget validates, books in progress carry how far al
   const ctx = fake(abs()), a = make(audiobookshelf, { url: 'http://abs:13378', key: 'k' }, ctx);
   await allValid(a);
   const going: any = await a.widgets.progress.fetch();
-  assert.deepEqual(going.items.map((i: any) => [i.title, i.subtitle, i.badge, i.note]), [['A Long Walk', 'B. Author', '40%', '6h 0m left'], ['Episode 12', 'Example Radio', '50%', '30 min left']]);
+  assert.deepEqual(going.items.map((i: any) => [i.title, i.subtitle, i.badge, i.note]), [['A Long Walk', 'B. Author', '40%', '6h left'], ['Episode 12', 'Example Radio', '50%', '30m left']]);
   assert.equal(going.items[1].image, `/img/${PODCAST}`);
   assert.equal(going.items[0].href, `http://abs:13378/item/${BOOK}`);
   const now: any = await a.widgets.playing.fetch();
@@ -250,13 +252,13 @@ test('audiobookshelf: every widget validates, books in progress carry how far al
   assert.equal(now.items[0].device, 'Firefox on Linux');
   assert.equal(now.activity.title, 'A Long Walk');
   const week: any = await a.widgets.week.fetch();
-  assert.equal(week.headline, '2h 0m');
+  assert.equal(week.headline, '2h');
   assert.deepEqual(week.series[0].points.slice(-2), [90, 30]);
   const recent: any = await a.widgets.recent.fetch();
   assert.equal(recent.items[0].title, 'The Lamplighter');
   assert.ok(!ctx.calls.some(c => c.url.includes('lib_pods/items')), 'new books, from book libraries');
   const status: any = await a.widgets.status.fetch();
-  assert.deepEqual(status.items.map((i: any) => [i.label, i.value]), [['In progress', 2], ['This week', '2h 0m'], ['Libraries', 2]]);
+  assert.deepEqual(status.items.map((i: any) => [i.label, i.value]), [['In progress', 2], ['This week', '2h'], ['Libraries', 2]]);
   assert.ok(ctx.calls.every(c => c.init.headers.Authorization === 'Bearer k'));
 });
 
@@ -276,7 +278,7 @@ test('audiobookshelf: what\'s playing needs an admin key and says so; covers onl
   const s = make(audiobookshelf, { url: 'http://abs:13378', key: 'k' }, fake(abs()));
   assert.equal(s.tools!.audiobooks_search.find, 'query');
   const found: any = await s.tools!.audiobooks_search.run({ query: 'walk', limit: 8 });
-  assert.deepEqual(found.data[0], { title: 'A Long Walk', by: 'B. Author', narrator: 'C. Voice', series: 'Walks', podcast: undefined, length: '10h 0m' });
+  assert.deepEqual(found.data[0], { title: 'A Long Walk', by: 'B. Author', narrator: 'C. Voice', series: 'Walks', podcast: undefined, length: '10h' });
   valid(found.card);
   valid((await s.tools!.audiobooks_week.run({})).card);
   for (const t of Object.values(s.tools!)) assert.equal(t.access, 'read');

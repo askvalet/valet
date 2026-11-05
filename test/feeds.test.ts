@@ -4,6 +4,8 @@ import { test } from 'node:test';
 import { child, elements, text } from '../src/server/xml.ts';
 import { parseFeed } from '../src/integrations/rss.ts';
 import { parseICS } from '../src/integrations/calendar.ts';
+import { setHouse } from '../src/server/core.ts';
+setHouse({ locale: 'en-US' });   // what the server writes follows a language; these read like a US one wherever they run
 
 test('xml: elements, nesting, self-closing tags, attributes, entities and CDATA', () => {
   const xml = `<a><b x="1">one</b><b y='2'/><b>two<b>inner</b>tail</b></a>`;

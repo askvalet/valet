@@ -3,6 +3,7 @@
 // a config reload redraws every card anyway.
 import { stateOf, type Card, type StatusCard, type WidgetState } from '../shared/cards.ts';
 import { LABELS, type Labels } from '../shared/labels.ts';
+import * as w from '../shared/format.ts';
 
 export interface Format { clock: 'auto' | '12h' | '24h'; date: 'short' | 'long' | 'numeric' | 'iso'; weekStart: 'auto' | 'monday' | 'sunday' | 'saturday'; locale: string }
 let format: Format = { clock: 'auto', date: 'short', weekStart: 'auto', locale: 'auto' }, words: Labels = LABELS;
@@ -12,18 +13,22 @@ const locale = () => format.locale === 'auto' ? undefined : format.locale;
 export const label = (key: keyof Labels, fill: Record<string, string | number> = {}) => words[key].replace(/\{(\w+)\}/g, (m, k) => String(fill[k] ?? m));
 export const num = (n: number, o?: Intl.NumberFormatOptions) => n.toLocaleString(locale(), o);
 
-const hours: Record<string, Intl.DateTimeFormatOptions> = { '12h': { hour12: true }, '24h': { hour: '2-digit', hourCycle: 'h23' } };
-export const clock = (t: Date | number) => new Date(t).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit', ...hours[format.clock] });
-
-const dates: Record<string, Intl.DateTimeFormatOptions> = {
-  short: { weekday: 'short', month: 'short', day: 'numeric' }, long: { weekday: 'long', month: 'long', day: 'numeric' },
-  numeric: { year: 'numeric', month: '2-digit', day: '2-digit' },
-};
-export const day = (t: Date | number) => {
-  const d = new Date(t);
-  if (format.date !== 'iso') return d.toLocaleDateString(locale(), dates[format.date]);
-  return [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(n => String(n).padStart(2, '0')).join('-');
-};
+// Every time and date the page writes goes through these, so `format:` and the browser's language reach all of them.
+const style = () => ({ clock: format.clock, date: format.date, locale: format.locale });
+export const clock = (t: Date | number | string) => w.time(t, style());
+export const hourOf = (t: Date | number | string) => w.hour(t, style());
+export const weekday = (t: Date | number | string, long = false) => w.weekday(t, style(), long);
+export const month = (t: Date | number | string, o?: { short?: boolean; year?: boolean }) => w.month(t, style(), o);
+/** a date for meta and chips, as `format.date` says: "Thu 5 Nov" */
+export const day = (t: Date | number | string, o?: { bare?: boolean }) => w.date(t, style(), o);
+/** a date for a heading, always in words: "Thursday 5 November" */
+export const longDay = (t: Date | number | string) => w.date(t, style(), { as: 'heading' });
+/** "8:25–8:50 AM" */
+export const range = (a: Date | number | string, b: Date | number | string) => w.range(a, b, style());
+/** "8:25 AM" today, "Fri 8:25 AM" this week */
+export const stamp = (t: Date | number | string, now?: number) => w.stamp(t, style(), now);
+export const relativeDay = (t: Date | number | string, now?: number) => w.relativeDay(t, style(), now);
+export { duration, ago, withUnit, splitUnit, highLow } from '../shared/format.ts';
 
 /** The first column of a week, 0 for Sunday: for anything that draws one. */
 export function firstDay() {

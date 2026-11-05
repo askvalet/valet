@@ -2,7 +2,7 @@
 // added lately. The assistant can search recipes, read one (ingredients and steps) and put things on a shopping list.
 import { z } from 'zod';
 import { Every } from '../server/config.ts';
-import { defineIntegration, keptHome } from '../server/core.ts';
+import { defineIntegration, fmt, keptHome } from '../server/core.ts';
 import type { ArticlePick, ShelfItem } from '../shared/cards.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -131,7 +131,7 @@ export default defineIntegration({
             const plan = await week();
             return { data: plan.map(e => ({ date: e.date, meal: e.entryType, recipe: e.recipe?.name, slug: e.recipe?.slug, note: e.title || e.text || undefined })),
               card: { type: 'list', title: 'This week', icon: 'calendar', href: planner, source, empty: 'Nothing planned this week',
-                items: plan.map(e => ({ id: String(e.id), title: e.recipe?.name ?? e.title ?? 'A meal', subtitle: cap(e.entryType), meta: e.date === ymd(new Date()) ? 'Today' : new Date(`${e.date}T12:00:00`).toLocaleDateString('en', { weekday: 'short', day: 'numeric' }), image: picture(e.recipe) })) } };
+                items: plan.map(e => ({ id: String(e.id), title: e.recipe?.name ?? e.title ?? 'A meal', subtitle: cap(e.entryType), meta: fmt.relativeDay(`${e.date}T12:00:00`), image: picture(e.recipe) })) } };
           },
         },
         shopping_add: {

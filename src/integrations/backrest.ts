@@ -15,7 +15,7 @@ const n = (v: unknown) => Number(v) || 0;   // int64s arrive as strings
 const PLAN = /^[A-Za-z0-9_.-]{1,100}$/;      // Backrest's own rule for an id
 // enums arrive by name; a very old server might send the number
 const STATE: Record<string, State> = { STATUS_SUCCESS: 'ok', 3: 'ok', STATUS_WARNING: 'warning', 7: 'warning', STATUS_ERROR: 'failed', 4: 'failed', STATUS_INPROGRESS: 'running', 2: 'running', STATUS_PENDING: 'running', 1: 'running', STATUS_SYSTEM_CANCELLED: 'cancelled', 5: 'cancelled', STATUS_USER_CANCELLED: 'cancelled', 6: 'cancelled' };
-const ago = (t: number) => { const m = Math.floor((Date.now() - t) / 6e4); return m < 1 ? 'just now' : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.floor(m / 60)}h ago` : m < 144000 ? `${Math.floor(m / 1440)}d ago` : fmt.day(t)!; };
+const ago = (t: number) => fmt.ago(t);
 const next = (t: number) => t - Date.now() < 864e5 ? `next ${fmt.time(t)}` : `next ${fmt.relativeDay(t)}`;
 const tone = (p: Plan): Tone | undefined => p.last?.state === 'failed' ? 'bad' : p.last?.state === 'warning' || p.overdue ? 'warn' : p.last?.state === 'running' ? 'accent' : undefined;
 const rank = (p: Plan) => ({ bad: 0, warn: 1, accent: 2 } as Record<string, number>)[tone(p) ?? ''] ?? 3;
