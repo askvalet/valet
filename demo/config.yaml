@@ -138,7 +138,7 @@ layout:
     columns: 3
     widgets:
       - { widget: lab.race, size: large }
-      - { widget: lab.mostwatched, size: medium }
+      - { widget: lab.requests, size: medium }   # what people asked for, as tickets: on its way, or waiting
   - tab: Media
     overview: false
     heading: false
