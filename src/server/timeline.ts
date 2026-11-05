@@ -1,9 +1,10 @@
 // What happened and when, kept for a couple of weeks in data/timeline.json: things starting and ending, services going
 // down and coming back, problems appearing and clearing, what was changed. It's what lets the assistant answer "what
 // happened last night" rather than only "what's happening now".
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { sandbox } from './sandbox.ts';
+import { replaceFile } from './write.ts';
 
 export interface Event { at: number; kind: string; widget?: string; text: string }
 const FILE = () => resolve(process.env.VALET_DATA ?? 'data', 'timeline.json');
@@ -24,8 +25,7 @@ export class Timeline {
   }
   async save() {
     if (sandbox.on) return;
-    await mkdir(dirname(FILE()), { recursive: true });
-    await writeFile(`${FILE()}.tmp`, JSON.stringify(this.events)); await rename(`${FILE()}.tmp`, FILE());
+    await replaceFile(FILE(), JSON.stringify(this.events));
   }
   since(ms: number) { const from = Date.now() - ms; return this.events.filter(e => e.at >= from); }
   /** Problems logged and never cleared. A restart forgets what's open, so the next run has to settle these. */

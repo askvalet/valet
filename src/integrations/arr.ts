@@ -8,7 +8,7 @@ import type { ShelfItem } from '../shared/cards.ts';
 const ymd = (iso?: string) => { const d = new Date(iso ?? ''); return isNaN(+d) ? undefined : [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(n => String(n).padStart(2, '0')).join('-'); };
 const when = (iso: string) => {
   const d = new Date(iso), now = new Date(), day = 864e5;
-  const diff = Math.floor((new Date(d.toDateString()).getTime() - new Date(now.toDateString()).getTime()) / day);
+  const diff = Math.round((new Date(d.toDateString()).getTime() - new Date(now.toDateString()).getTime()) / day);   // round: a day with a clock change is 23 or 25 hours
   if (diff < 0) return diff === -1 ? 'Yesterday' : d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
   if (diff === 0) return d.getHours() >= 17 ? 'Tonight' : 'Today';
   if (diff === 1) return 'Tomorrow';

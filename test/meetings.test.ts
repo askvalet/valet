@@ -150,7 +150,7 @@ test('calendar: two at once, the one on now leads and the ring says how many', a
   assert.equal(out.open, 'https://meet.google.com/abc-defg-hij');
   assert.deepEqual([out.data.next.title, out.data.next.provider, out.data.later[0].provider], ['Design review', 'Google Meet', 'Zoom']);
   assert.match(out.card.items[0].meta, /^Now · \d+ min left/);
-  const upcoming: any = await cal.tools!.calendar_upcoming.run({ days: 1 });
+  const upcoming: any = await cal.tools!.calendar_upcoming.run({ days: 2 });   // the other meeting may start after midnight
   assert.equal(upcoming.data.find((e: any) => e.title === 'Vendor sync').join, 'https://acme.zoom.us/j/555');
 });
 

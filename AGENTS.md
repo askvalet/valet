@@ -208,6 +208,11 @@ https://askvalet.dev.
   approval too.
 - `npm run test:live` checks every widget in your `config.yaml` against your real services. `/#gallery` shows the whole
   library, including the live rings.
+- **Tests don't wait on the clock.** No sleeping for something to happen: wait for the event itself (the lab counts
+  Valet's own "config: reloaded" lines and reads the port it says it took), or call the function that would run.
+  Dates are calendar days (`setDate`), never "now + 24 h", which isn't tomorrow on a day the clocks change or late at
+  night. Before calling a time-related test done, run the suite with the clock moved (`test/lab/clock.mjs` says how):
+  near midnight, Dec 31, a DST change (in `TZ=America/Toronto`), and under load (several copies at once, `taskset -c 0`).
 - Integration tests use made-up data only. Never commit recorded responses from real services (they carry personal data).
 
 - A new option goes in the schema with a comment and default, in `config.example.yaml` if it's common, and in

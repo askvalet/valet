@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import { createServer as createHttp } from 'node:http';
-import { connect, createServer } from 'node:net';
+import { connect } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, describe, test } from 'node:test';
@@ -29,10 +29,9 @@ async function routes() {
   return [...src.matchAll(/\bapp\.(get|post|put|patch|delete|all)\('([^']+)'/g)].map(m => ({ method: m[1].toUpperCase(), path: m[2] }));
 }
 const fill = (p: string) => p.replace(/:n\?/, '').replace(/:\w+/g, 'x');
-const freePort = () => new Promise<number>(ok => { const s = createServer().listen(0, '127.0.0.1', () => { const { port } = s.address() as any; s.close(() => ok(port)); }); });
 
 async function boot(auth: Record<string, unknown>, extra = '', access = '{ config: control }', env: Record<string, string> = {}) {
-  const dir = await mkdtemp(join(tmpdir(), 'valet-exposure-')), port = await freePort(), file = join(dir, 'config.yaml');
+  const dir = await mkdtemp(join(tmpdir(), 'valet-exposure-')), file = join(dir, 'config.yaml');
   await writeFile(file, `title: ${TITLE}
 auth: ${JSON.stringify(auth)}
 assistant: { model: none, baseURL: "http://127.0.0.1:9/v1", access: ${access} }
@@ -42,14 +41,15 @@ ${extra}layout:
   - widgets: [probe.data]
 `);
   let log = '';
-  const proc = spawn('node', ['dist/server.js'], { env: { ...process.env, VALET_CONFIG: file, VALET_DATA: dir, PORT: String(port), HOST: '127.0.0.1', PROBE_KEY: SECRET, ...env } });
+  const proc = spawn('node', ['dist/server.js'], { env: { ...process.env, VALET_CONFIG: file, VALET_DATA: dir, PORT: '0', HOST: '127.0.0.1', PROBE_KEY: SECRET, ...env } });
   proc.stdout!.on('data', d => { log += d; }); proc.stderr!.on('data', d => { log += d; });
-  const base = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 100; i++) {
-    if (await fetch(`${base}/healthz`).then(r => r.ok, () => false)) return { proc, base, port, log: () => log, dir };
-    await new Promise(r => setTimeout(r, 100));
-  }
-  throw new Error(`didn't start:\n${log}`);
+  // Valet takes a port of its own choosing and says which: no other process can take it between here and there
+  const port = await new Promise<number>((ok, no) => {
+    const said = () => { const m = log.match(/^valet on http:\/\/127\.0\.0\.1:(\d+)/m); if (m) ok(Number(m[1])); };
+    proc.stdout!.on('data', said); proc.on('exit', () => no(new Error(`didn't start:\n${log}`)));
+    setTimeout(() => no(new Error(`didn't start in a minute:\n${log}`)), 60_000).unref();
+  });
+  return { proc, base: `http://127.0.0.1:${port}`, port, log: () => log, dir };
 }
 /** A request exactly as written: fetch would tidy the path before it left. */
 const raw = (port: number, path: string) => new Promise<string>((ok, no) => {

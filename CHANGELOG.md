@@ -33,6 +33,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 - The demo answers every question its page suggests, including "What's Spider-Man: Brand New Day about?", and a test keeps it that way.
 - No flash of light before dark glass over a wallpaper on load: the page remembers whether it had a wallpaper and decides its theme before the first paint.
+- On the day the clocks go forward or back, "Tomorrow" no longer shows as "Today" (or the day after as a weekday) on upcoming episodes, films and other dates.
+- Two saves of the rules at once could leave rules.json half-written for a moment, and a config reload right then would start with no rules. Saves of the rules and the timeline now go one at a time.
 
 ## [0.1.8] - 2026-11-04
 

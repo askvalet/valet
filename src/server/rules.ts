@@ -3,14 +3,15 @@
 // rule may do is held in code here, and checked again every time it runs: one integration tool, at a level
 // `assistant.access` still grants, with input that still passes the tool's own check, on a page that may act.
 import { randomBytes } from 'node:crypto';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { z } from 'zod';
 import { stateOf, type Card, type Confirm, type ListCard, type WidgetState } from '../shared/cards.ts';
 import type { Instance, Tool } from './core.ts';
 import { rank, who } from './run.ts';
 import { sandbox } from './sandbox.ts';
 import { has, reading, running, titles } from './watches.ts';
+import { replaceFile } from './write.ts';
 
 const widget = z.string().max(80).describe('widget key, e.g. downloads.active');
 const name = z.string().max(80).optional();
@@ -63,11 +64,7 @@ export interface Step { id: string; name: string; t: Tool; args: unknown }
 
 const FILE = () => resolve(process.env.VALET_DATA ?? 'data', 'rules.json');
 export const loadRules = (): Promise<Rule[]> => readFile(FILE(), 'utf8').then(JSON.parse).catch(() => []);
-async function save(list: Rule[]) {
-  if (sandbox.on) return;
-  await mkdir(dirname(FILE()), { recursive: true });
-  await writeFile(`${FILE()}.tmp`, JSON.stringify(list, null, 2), { mode: 0o600 }); await rename(`${FILE()}.tmp`, FILE());
-}
+const save = (list: Rule[]) => sandbox.on ? Promise.resolve() : replaceFile(FILE(), JSON.stringify(list, null, 2), 0o600);
 
 /** The one tool a rule may run, checked as it stands now. An error says why not, in words. */
 export function actionFor(tool: string, input: unknown, env: Pick<RuleEnv, 'instances' | 'access'>): Step | { error: string } {

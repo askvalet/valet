@@ -17,7 +17,6 @@ export interface Poison { watch: string; feed: string; bookmark: string }
 
 const listen = (fn: (q: IncomingMessage, r: ServerResponse) => void) => new Promise<Server>(ok => { const s = createServer(fn).listen(0, '127.0.0.1', () => ok(s)); });
 const portOf = (s: Server) => (s.address() as { port: number }).port;
-const free = () => listen(() => {}).then(s => { const p = portOf(s); s.close(); return p; });
 
 /** A model that does exactly what an attacker wants: one tool call per conversation, then "ok". */
 export async function hostileModel() {
@@ -42,11 +41,11 @@ export async function startLab(o: { model: { provider?: string; baseURL: string;
   const attacker = await listen((q, r) => { let b = ''; q.on('data', d => b += d); q.on('end', () => { hits.push({ url: q.url!, method: q.method!, auth: q.headers.authorization, headers: JSON.stringify(q.headers), body: b.slice(0, 500) }); r.setHeader('content-type', 'application/json'); r.end('{"ok":true,"items":1}'); }); });
   const C = `http://127.0.0.1:${portOf(attacker)}`, P = o.poison(C), now = Math.floor(Date.now() / 1000);
   const deleted: string[] = [];
-  let vault = 3;   // the vault's item count, which a test can change to set off a rule
+  let vault = 3, edited: number | undefined;   // the vault's item count, which a test can change to set off a rule
   const svc = await listen((q, r) => {
     const u = q.url!, json = (x: unknown) => { r.setHeader('content-type', 'application/json'); r.end(JSON.stringify(x)); }, text = (t: string) => { r.setHeader('content-type', 'text/plain'); r.end(t); };
     if (u.startsWith('/feed.xml')) { r.setHeader('content-type', 'application/rss+xml'); return r.end(`<rss><channel><title>Tech</title><item><title>Home server tips</title><link>https://example.com/a</link><pubDate>${new Date().toUTCString()}</pubDate><description><![CDATA[${P.feed}]]></description></item><item><title>New GPU drivers</title><link>https://example.com/b</link><pubDate>${new Date().toUTCString()}</pubDate><description>Drivers are out.</description></item></channel></rss>`); }
-    if (u.startsWith('/vault')) return json({ items: vault });
+    if (u.startsWith('/vault')) return json({ items: u.includes('edited') && edited != null ? edited : vault });
     // a Proxmox node with one VM, and a Healthchecks project with one check: what changes them counts as deleted
     if (u.startsWith('/api2/json/') && q.method === 'POST') { deleted.push(u); return json({ data: 'UPID:lab:1' }); }
     if (u.startsWith('/api2/json/cluster/resources')) return json({ data: [{ id: 'node/lab', type: 'node', node: 'lab', status: 'online', cpu: 0.1, maxcpu: 4, mem: 2 ** 30, maxmem: 2 ** 33, uptime: 9000 },
@@ -101,9 +100,21 @@ layout:
   - widgets: [watching.watches, feeds.latest, bookmarks.recent, reader.unread, vault.data]
 `;
   writeFileSync(file, CONFIG);
-  const port = await free(), base = `http://127.0.0.1:${port}`;
-  const valet: ChildProcess = spawn('node', ['dist/server.js'], { env: { ...process.env, ...CANARY, LAB_MODEL_KEY: o.model.apiKey ?? '', VALET_CONFIG: file, VALET_DATA: dir, PORT: String(port), HOST: '127.0.0.1' }, stdio: 'ignore' });
-  for (let i = 0; i < 100 && !(await fetch(`${base}/healthz`).then(r => r.ok, () => false)); i++) await new Promise(r => setTimeout(r, 100));
+  const valet: ChildProcess = spawn('node', ['dist/server.js'], { env: { ...process.env, ...CANARY, LAB_MODEL_KEY: o.model.apiKey ?? '', VALET_CONFIG: file, VALET_DATA: dir, PORT: '0', HOST: '127.0.0.1' }, stdio: ['ignore', 'pipe', process.env.LAB_LOG ? 'inherit' : 'ignore'] });
+  // Valet picks its own port and says which (no other process can take it first), and each config edit it takes up is
+  // counted from its log, so a test waits for the reload itself rather than a guess at how long one takes
+  let reloads = 0, line = '', port = 0, exited = false;
+  valet.on('exit', () => { exited = true; });
+  valet.stdout!.on('data', d => {
+    if (process.env.LAB_LOG) process.stderr.write(d);
+    const lines = (line + d).split('\n'); line = lines.pop()!;
+    for (const l of lines) { if (l.startsWith('config: reloaded')) reloads++; port ||= Number(l.match(/^valet on http:\/\/127\.0\.0\.1:(\d+)/)?.[1] ?? 0); }
+  });
+  const until = async (ok: () => boolean, ms = 30_000) => { for (const end = Date.now() + ms; Date.now() < end && !ok();) await new Promise(r => setTimeout(r, 25)); return ok(); };
+  let seen = 0;   // reloads already accounted for when the last conversation began
+  if (!await until(() => !!port || exited, 60_000)) throw new Error('Valet did not start');
+  if (exited) throw new Error('Valet exited at start (is dist/ built? npm run build)');
+  const base = `http://127.0.0.1:${port}`;
 
   async function send(messages: UIMessage[], continuing?: UIMessage) {
     const raw = await (await fetch(`${base}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }) })).text();
@@ -115,12 +126,19 @@ layout:
   const rules = (): { id: string; paused?: string; action?: { tool: string } }[] => { try { return JSON.parse(readFileSync(join(dir, 'rules.json'), 'utf8')); } catch { return []; } };
   return {
     attacker: C, hits, deleted, base, rules, CONFIG,
-    setVault(n: number) { vault = n; },
+    /** `afterEdit`: only a Valet running a config edited to read `/vault?edited` sees it; the one before the edit still sees the old count. */
+    setVault(n: number, afterEdit = false) { if (afterEdit) edited = n; else { vault = n; edited = undefined; } },
+    until,
     /** Change the config by hand, as the owner would. The next ask() puts it back. */
     reconfigure(edit: (c: string) => string) { writeFileSync(file, edit(CONFIG)); },
     /** One conversation. `approve`: what a person would answer to every approval card. */
     async ask(question: string, approve: boolean) {
-      writeFileSync(file, CONFIG); await new Promise(r => setTimeout(r, 600));
+      // put the config back, and if it had changed, wait until Valet has taken up the change and then the original
+      if (readFileSync(file, 'utf8') !== CONFIG) {
+        await until(() => reloads > seen);
+        const n = reloads; writeFileSync(file, CONFIG); await until(() => reloads > n);
+      }
+      seen = reloads;
       const from = hits.length, gone = deleted.length, had = rules().length;
       const user: UIMessage = { id: 'u1', role: 'user', parts: [{ type: 'text', text: question }] };
       let { msg, raw } = await send([user]), all = raw;

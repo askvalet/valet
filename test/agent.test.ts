@@ -3,12 +3,15 @@ import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { chmod, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { createServer } from 'node:net';
 import { delimiter, join } from 'node:path';
 import { after, before, test } from 'node:test';
 
 const python = spawnSync('python3', ['--version']).status === 0;
 const dir = await mkdtemp(join(tmpdir(), 'valet-agent-')), log = join(dir, 'calls');
-const TOKEN = 'a-token-that-is-long-enough-to-use', PORT = 17576 + Math.floor(Math.random() * 400), base = `http://127.0.0.1:${PORT}`;
+const TOKEN = 'a-token-that-is-long-enough-to-use';
+// a port the system says is free, rather than a random guess another run could share
+const PORT = await new Promise<number>(ok => { const s = createServer().listen(0, '127.0.0.1', () => { const { port } = s.address() as any; s.close(() => ok(port)); }); }), base = `http://127.0.0.1:${PORT}`;
 let agent: ReturnType<typeof spawn> | undefined;
 
 before(async () => {
@@ -18,7 +21,8 @@ before(async () => {
   await writeFile(join(dir, 'journalctl'), `#!/bin/sh\necho "$@" >> ${log}\nprintf '%s\\n' 'Oct 30 ok fine' 'Oct 30 ERROR out of memory'\n`);
   await chmod(join(dir, 'systemctl'), 0o755); await chmod(join(dir, 'journalctl'), 0o755);
   agent = spawn('python3', ['agent/valet-agent.py'], { stdio: 'ignore', env: { ...process.env, PATH: `${dir}${delimiter}${process.env.PATH}`, VALET_AGENT_TOKEN: TOKEN, VALET_AGENT_UNITS: 'radarr,user:ninfer', VALET_AGENT_BIND: `127.0.0.1:${PORT}` } });
-  for (let i = 0; i < 50; i++) { if (await fetch(`${base}/health`).then(r => r.ok, () => false)) return; await new Promise(r => setTimeout(r, 100)); }
+  let gone = false; agent.on('exit', () => { gone = true; });
+  for (let i = 0; i < 300 && !gone; i++) { if (await fetch(`${base}/health`).then(r => r.ok, () => false)) return; await new Promise(r => setTimeout(r, 100)); }
   throw new Error('agent did not start');
 });
 after(() => { agent?.kill(); });
@@ -56,7 +60,7 @@ test('agent: it only reads', { skip: !python }, async () => {
 });
 
 test('agent: won\'t start without a real token or a list of services', { skip: !python }, () => {
-  const run = (env: object) => spawnSync('python3', ['agent/valet-agent.py'], { env: { ...process.env, VALET_AGENT_BIND: '127.0.0.1:0', ...env }, timeout: 3000 }).status;
+  const run = (env: object) => spawnSync('python3', ['agent/valet-agent.py'], { env: { ...process.env, VALET_AGENT_BIND: '127.0.0.1:0', ...env }, timeout: 30_000 }).status;   // a cap: a busy machine can take seconds to start Python
   assert.equal(run({ VALET_AGENT_TOKEN: 'short', VALET_AGENT_UNITS: 'radarr' }), 1);
   assert.equal(run({ VALET_AGENT_TOKEN: TOKEN, VALET_AGENT_UNITS: '' }), 1);
   assert.equal(run({ VALET_AGENT_TOKEN: TOKEN, VALET_AGENT_UNITS: 'radarr;reboot' }), 1);

@@ -123,27 +123,31 @@ describe('a hostile model, reading', () => {
   });
 });
 
-const until = async (ok: () => boolean, ms = 10_000) => { for (const end = Date.now() + ms; Date.now() < end && !ok();) await new Promise(r => setTimeout(r, 200)); return ok(); };
+const { until } = lab;
+const ACCESS = 'access: {default: control, config: control}';
 
 describe('a standing instruction, once approved', () => {
   test('it runs by itself with no model, and its card named the trigger and the action in their own words', async () => {
     lab.setVault(9);
+    const gone = lab.deleted.length;   // what earlier tests deleted
     const r = await run('valet__rule_add', rule('watching__watch_remove', { id: W1 }), true);
     assert.equal(r.rulesAdded, 1);
     assert.equal(r.asked[0].card?.title, 'When "Items" on Vault is above 5, stop watching this page?');
     assert.match(r.asked[0].card?.detail ?? '', /Router firmware.*tells you "Approve this: it only reads".*without asking again/);
-    assert.ok(await until(() => lab.deleted.length > 0), 'the rule should have run');
+    assert.ok(await until(() => lab.deleted.length > gone), 'the rule should have run');
     const id = lab.rules()[0].id;
     await run('valet__rule_remove', { id }, true);
     assert.deepEqual(lab.rules(), []);
   });
   test('with its integration\'s access lowered since, it doesn\'t run, and it pauses and says why', async () => {
+    // over 20, which no earlier count reached: a card Valet still holds from before can't set it off
     lab.setVault(3);
-    const r = await run('valet__rule_add', rule('watching__watch_remove', { id: W1 }), true);
+    const r = await run('valet__rule_add', rule('watching__watch_remove', { id: W1 }, { when: { widget: 'vault.data', on: 'above', name: 'Items', value: 20 } }), true);
     assert.equal(r.rulesAdded, 1);
     const gone = lab.deleted.length;
-    lab.setVault(9);
-    lab.reconfigure(c => c.replace('access: {default: control, config: control}', 'access: {default: control, config: control, watching: read}'));
+    // and it goes over only for the edited config: the Valet from before the edit, whose access still allowed it, never sees it
+    lab.setVault(25, true);
+    lab.reconfigure(c => c.replace(ACCESS, `${ACCESS.slice(0, -1)}, watching: read}`).replace('/vault"', '/vault?edited"'));
     assert.ok(await until(() => !!lab.rules()[0]?.paused), 'the rule should have paused');
     assert.match(lab.rules()[0].paused!, /watching read/);
     assert.equal(lab.deleted.length, gone);

@@ -51,6 +51,8 @@ function fake(handler: Handler): Context & { calls: string[] } {
 }
 const make = <C>(i: { config: any; create(c: C, ctx: Context): Instance }, cfg: unknown, ctx: Context) => i.create(i.config.parse(cfg), ctx);
 const headersFor = async () => { const a = new Hono(); a.use(securityHeaders); a.get('/', c => c.text('ok')); return (await a.request('/')).headers.get('content-security-policy') ?? ''; };
+// noon, `days` calendar days from today: "now + 24 h" isn't tomorrow on a day the clocks change, nor late in the evening
+const noonIn = (days: number) => { const d = new Date(); d.setDate(d.getDate() + days); d.setHours(12, 0, 0, 0); return d.getTime(); };
 const valid = (card: unknown) => { const r = checkCard(card); assert.ok(r.success, r.success ? '' : JSON.stringify(r.error.issues.slice(0, 3))); };
 
 test('config: widgets take a size, plain names default to medium', () => {
@@ -353,7 +355,7 @@ test('docker: states tell a sick container from a stopped one and a finished job
 });
 
 test('arr: episodes and movies come out in date order with friendly days', async () => {
-  const soon = (d: number) => new Date(Date.now() + d * 864e5).toISOString();
+  const soon = (d: number) => new Date(noonIn(d)).toISOString();
   const a = make(arr, { sonarr: { url: 'http://s', apiKey: 'k' }, radarr: { url: 'http://r', apiKey: 'k' } }, fake(url => url.startsWith('http://s')
     ? [{ airDateUtc: soon(3), seasonNumber: 1, episodeNumber: 2, title: 'Two', hasFile: false, series: { title: 'Show', images: [{ coverType: 'fanart', remoteUrl: 'https://artworks.thetvdb.com/banners/fanart/original/1.jpg' }] } }]
     : [{ title: 'Film', year: 2026, digitalRelease: soon(1), hasFile: false, images: [{ coverType: 'poster', remoteUrl: 'https://image.tmdb.org/t/p/original/x.jpg' }, { coverType: 'fanart', remoteUrl: 'https://image.tmdb.org/t/p/original/y.jpg' }] }]));
@@ -604,7 +606,8 @@ test('toolkit: session helper signs in once for parallel callers and again after
   await assert.rejects(f.get());
   fail = false;
   assert.equal(await f.get(), 'ok');   // a failed sign-in isn't cached
-  assert.equal(fmt.relativeDay(Date.now() + 864e5), 'Tomorrow');
+  assert.equal(fmt.relativeDay(noonIn(1)), 'Tomorrow');
+  assert.equal(fmt.relativeDay(noonIn(-1)), 'Yesterday');
 });
 
 test('home assistant: buttons only do what cards offer, never an arbitrary service', async () => {
