@@ -8,6 +8,8 @@ export const LABELS = {
   thinking: 'Thinking', writing: 'Writing', thought: 'Thought', thoughtFor: 'Thought for {n}s', steps: '{n} steps', worked: 'Worked for {n}s',
   allow: 'Allow', notNow: 'Not now',
   wall: 'Wall display', paused: 'Paused',
-  context: '{used} of {total} tokens', contextUsed: '{used} tokens so far', contextFull: 'Long chats get slower and lose track of how they started.', newChat: 'Start a new chat',
+  context: '{used} of {total} tokens', contextUsed: '{used} tokens so far', contextFull: 'Long chats get slower and lose track of how they started.',
+  contextAuto: 'When it fills up, the oldest messages are summarised to make room. A new chat starts clean and answers faster.', newChat: 'Start a new chat',
+  compacted: 'Earlier messages summarised to make room', compactedOut: 'Earlier messages left out to make room',
 };
 export type Labels = typeof LABELS;

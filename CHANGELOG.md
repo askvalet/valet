@@ -9,9 +9,11 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 - `appearance.theme: system` follows the device over a wallpaper too: light glass when the phone or computer is in light mode, dark glass in dark mode, and the page turns when the device does (at sunset, say), without a reload. The light/dark switch in the top bar shows over a wallpaper then, and overrides it in that browser only; switching back to what the device says follows the device again. The wall display follows the screen with `system` and stays dark otherwise. `auto` is unchanged: dark glass over a wallpaper, as before.
 - A wallpaper for each theme: `appearance.wallpaper: { light: …, dark: … }` (and the same in `wallpapers`, per tab). `dim` and `blur` take `{ light, dark }` too. The plain forms work as they did.
+- Long chats compact themselves instead of breaking. When the model's window is known, what's sent stays under about 70% of it: the oldest turns become a short summary (one tool-less call, cached for the next turns), the latest question always goes whole, and a quiet line in the chat says "Earlier messages summarised to make room". The page keeps the whole conversation. Within one answer, earlier lookups' results shrink when they pile up, and a request the model's server rejects as too long is sent once more cut right down, then answered in plain words instead of an error. `assistant.compact: false` turns it off.
 
 ### Changed
 
+- The context meter's hint past three quarters says Valet summarises the oldest messages by itself; a new chat is optional.
 - The chat's header is one line: the assistant's name, then the model and its context meter, whose place is kept so nothing moves when the numbers arrive.
 - The context meter knows a local model's window by itself when its server's model list says it (`max_model_len`, `context_length`, as vLLM and llama.cpp do), so `assistant.contextWindow` is only needed when it doesn't.
 - In light mode, the selected tab is a dark pill with a white icon, like dark mode's white one, instead of the accent colour.

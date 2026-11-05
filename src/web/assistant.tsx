@@ -1,7 +1,7 @@
 // The assistant panel. Loaded on first use. Text streams in; tool results arrive as cards from the same catalog the
 // homepage uses; anything that changes something waits for an explicit Approve.
 import { Chat, useChat } from '@ai-sdk/react';
-import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses, type UIMessage } from 'ai';
 import {
   Activity, ArrowDown, ArrowUp, Bookmark, Check, ChevronDown, ChevronRight, Copy, CornerDownRight, FileText, Lightbulb, Loader2, Paperclip, RotateCcw,
   Pin, Search, Square, X, Zap,
@@ -300,10 +300,24 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
   );
 });
 
+const compactedOf = (m?: UIMessage) => (m?.role === 'assistant' ? (m.metadata as { compacted?: string } | undefined)?.compacted : undefined);
+/** Where the divider goes: before a question whose answer was compacted, or before an answer with no question above it. */
+const compactedAt = (ms: UIMessage[], i: number) =>
+  ms[i].role === 'user' ? compactedOf(ms[i + 1]) : ms[i - 1]?.role === 'user' ? undefined : compactedOf(ms[i]);
+
+/** A quiet rule across the chat where older messages stopped going to the model as they were. */
+function Compacted({ kind }: { kind: string }) {
+  return (
+    <div className="chat-compacted flex items-center gap-3 text-[12px] text-muted-foreground" role="note">
+      <span className="h-px flex-1 bg-current opacity-20" /><span className="shrink-0">{label(kind === 'summary' ? 'compacted' : 'compactedOut')}</span><span className="h-px flex-1 bg-current opacity-20" />
+    </div>
+  );
+}
+
 /** How full the model's context is, from what the last step really used: a small ring beside its name, and the numbers on
  *  hover or a tap. Near full it says what that means and offers a fresh start. Unknown until the first answer, and then only
  *  what's used if the window isn't known. */
-function ContextMeter({ used, total, fresh }: { used: number; total?: number; fresh: () => void }) {
+function ContextMeter({ used, total, auto, fresh }: { used: number; total?: number; auto?: boolean; fresh: () => void }) {
   const pct = total ? Math.min(1, used / total) : 0, full = pct >= .75, r = 2.75, c = 2 * Math.PI * r;   // a pie, not an arc: an arc this small reads as a spinner
   const words = total ? label('context', { used: num(used, { notation: 'compact', maximumFractionDigits: 1 }), total: num(total, { notation: 'compact', maximumFractionDigits: 1 }) }) : label('contextUsed', { used: num(used, { notation: 'compact', maximumFractionDigits: 1 }) });
   return (
@@ -316,7 +330,7 @@ function ContextMeter({ used, total, fresh }: { used: number; total?: number; fr
       <span className="ctx-pop glass-pop">
         <span className="block text-[13px] font-medium text-foreground tabular">{words}</span>
         {total && <span className="block text-[12px] text-muted-foreground tabular">{num(pct, { style: 'percent' })}</span>}
-        {full && <><span className="mt-1.5 block text-[12px] leading-snug text-muted-foreground">{label('contextFull')}</span>
+        {full && <><span className="mt-1.5 block text-[12px] leading-snug text-muted-foreground">{label(auto ? 'contextAuto' : 'contextFull')}</span>
           <button type="button" onClick={fresh} className="press mt-2 rounded-sm bg-white/10 px-2.5 py-1 text-[12px] text-foreground hover:bg-white/15">{label('newChat')}</button></>}
       </span>
     </span>
@@ -348,7 +362,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
     },
   };
   const { messages, sendMessage, status, addToolApprovalResponse, error, stop, regenerate, setMessages } = useChat({ chat, experimental_throttle: 60 });
-  const context = (messages.findLast(m => m.role === 'assistant' && (m.metadata as any)?.context)?.metadata as { context?: { used: number; window?: number } } | undefined)?.context;
+  const context = (messages.findLast(m => m.role === 'assistant' && (m.metadata as any)?.context)?.metadata as { context?: { used: number; window?: number; auto?: boolean } } | undefined)?.context;
   // how long each answer took, measured from the question to the last word
   const started = useRef(0);
   const [took, setTook] = useState<Record<string, number>>({});
@@ -431,7 +445,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
           {/* the model and its meter as one inline group: the group sits on the name's baseline, the meter centred on the model's line */}
           <span className="inline-flex min-w-0 items-center gap-1.5 text-xs leading-4 text-muted-foreground">
             {model && <span className="min-w-0 truncate">{model}</span>}
-            {!external && <span className="relative size-3.5 shrink-0 [&>.ctx]:absolute [&>.ctx]:top-1/2 [&>.ctx]:left-1/2 [&>.ctx]:-translate-x-1/2 [&>.ctx]:-translate-y-1/2">{context && <ContextMeter used={context.used} total={context.window} fresh={() => { stop(); setMessages([]); setTook({}); }} />}</span>}
+            {!external && <span className="relative size-3.5 shrink-0 [&>.ctx]:absolute [&>.ctx]:top-1/2 [&>.ctx]:left-1/2 [&>.ctx]:-translate-x-1/2 [&>.ctx]:-translate-y-1/2">{context && <ContextMeter used={context.used} total={context.window} auto={context.auto} fresh={() => { stop(); setMessages([]); setTook({}); }} />}</span>}
           </span>
         </div>
         {sheet && <button onClick={onClose} onPointerDown={e => e.stopPropagation()} aria-label="Close" className="press grid size-9 place-items-center rounded-full bg-white/[.08]"><ChevronDown className="size-[18px]" /></button>}
@@ -452,7 +466,12 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
           </div>
         )}
         {messages.map((m, mi) => (
+          <Fragment key={m.id}>
+          {/* what the model was sent got smaller here; the page still has all of it, above. The answer carries the flag, and
+              the rule goes above the question it answered */}
+          {compactedAt(messages, mi) && <Compacted kind={compactedAt(messages, mi)!} />}
           <MessageRow key={m.id} m={m} isLast={mi === messages.length - 1} next={mi === messages.length - 1 ? nextUp : undefined} busy={busy} tookMs={took[m.id]} fresh={mi >= messages.length - 4} since={started.current} tools={tools} act={act} />
+          </Fragment>
         ))}
         {status === 'submitted' && messages.at(-1)?.role === 'user' && <Pending since={started.current || Date.now()} />}
         {error && (

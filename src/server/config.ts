@@ -30,6 +30,8 @@ export const AssistantConfig = z.object({
   maxSteps: z.number().int().min(1).max(20).default(6),
   // how many tokens the model can hold, for the chat's context meter; known Claude models fill it in, others show what's used
   contextWindow: z.number().int().min(1000).max(10_000_000).optional(),
+  // near a known window, summarise the oldest part of a long chat for the model (the page keeps all of it); false sends the last 24 messages
+  compact: z.boolean().default(true),
   // hand the chat to another agent (Hermes, say): anything with an OpenAI-compatible API. It runs its own tools, so
   // Valet's access levels and approvals don't apply to it, and a read-only page stays on Valet's own assistant.
   agent: z.object({ name: z.string(), baseURL: z.string().url(), apiKey: z.string().optional(), model: z.string() }).strict().optional(),
