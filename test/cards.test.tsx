@@ -12,7 +12,7 @@ import { MiniRing, SummaryTile, Widget } from '../src/web/cards.tsx';
 import { Counter, ElasticSlider, Flap, pose, RowSlot, rubber, Tick, useRows } from '../src/web/feel.tsx';
 import { byDay, CalendarView, headsUp, span, splitToday, Thermostat, WeatherCard } from '../src/web/home-cards.tsx';
 import HomeCase from '../src/web/visuals/home-case.tsx';
-import { batteryNote, heard, near, restoreGroups, restoreOf, unsettled, wearNote, type PlanData, type PlanLight } from '../src/web/visuals/home-model.ts';
+import { batteryNote, heard, near, restoreGroups, restoreOf, unsettled, walls, wearNote, type PlanData, type PlanLight } from '../src/web/visuals/home-model.ts';
 import PcCase, { type PcCaseData } from '../src/web/visuals/pc-case.tsx';
 import type { ForecastCard, ThermostatCard } from '../src/shared/cards.ts';
 import { counted, LiveRings } from '../src/web/live.tsx';
@@ -256,6 +256,17 @@ test('home: undo puts each light back as it was, in as few calls as it can', () 
   assert.deepEqual(restoreOf(lamp({ dims: false, canColor: false, canTemp: false })), { on: true });
   const groups = restoreGroups([lamp({ id: 'a' }), lamp({ id: 'b' }), lamp({ id: 'c', on: false })]);
   assert.deepEqual(groups.map(g => g.lights.map(l => l.id)), [['a', 'b'], ['c']]);
+});
+
+test('home: a wall two rooms share is drawn once, for the smaller room', () => {
+  const room = (id: number, x: number, z: number, w: number, d: number) => ({ id, name: `R${id}`, floor: 'wood' as const, x, z, w, d, lights: [] });
+  const big = room(1, 0, 0, 100, 50), small = room(2, 100, 0, 40, 50), rank = new Map([[1, 0], [2, .6]]);
+  const ws = walls([big, small], rank);
+  assert.equal(ws.length, 7, 'four walls each, less the shared one');
+  assert.deepEqual(ws.filter(w => w.along === 'z' && w.at === 100), [{ along: 'z', at: 100, a: 0, b: 50, room: 2 }]);
+  // a long hallway wall that two rooms sit along is cut where they meet, so each stretch takes its own room's light
+  const hall = room(3, 0, 50, 140, 20), r3 = new Map([[3, 0], [1, .6], [2, 1.2]]);
+  assert.deepEqual(walls([big, small, hall], r3).filter(w => w.along === 'x' && w.at === 50).map(w => [w.a, w.b, w.room]), [[0, 100, 1], [100, 140, 2]]);
 });
 
 test('home: a change stands until the lights agree with it', () => {

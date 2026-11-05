@@ -80,48 +80,80 @@ function post(add: (e: HTMLElement) => HTMLElement, x: number, z: number, h: num
   faces[0].dataset.n = 'pz'; faces[1].dataset.n = 'px';
   for (const f of faces) { f.dataset.of = of; add(f); }
 }
-type Put = (u: number, v: number, w: number, d: number, h: number, mat: string, y0?: number) => void;
-type Leg = (u: number, v: number, h: number, mat?: string, y0?: number) => void;
+/** A surface something can be drawn on: a box's top face and where it sits in the plan. */
+type Top = { el: HTMLElement; x: number; z: number };
+interface Kit {
+  /** a box from the floor (or y0) up h; a thin one (a tabletop, a rug) is only its top */
+  put(u: number, v: number, w: number, d: number, h: number, mat: string, y0?: number): Top;
+  /** drawn flat on a top: cushions, a duvet, a basin. It paints into that face, so it costs no layer of its own */
+  decal(on: Top, u: number, v: number, w: number, d: number, mat: string): void;
+  /** one upright sheet from (u0, v0) to (u1, v1): a screen, a chair's back, a table's end, a row of books */
+  pane(u0: number, v0: number, u1: number, v1: number, h: number, mat: string, y0?: number): void;
+  leg(u: number, v: number, h: number, mat?: string, y0?: number): void;
+}
 
 // How each piece is made, in its own space: U across, V front to back, with its back along V = 0. Everything that
-// faces a room (a sofa's seat, a bed's foot) faces +V, so `angle` turns the piece as a whole.
-const legs = (U: number, V: number, h: number, leg: Leg, mat = 'metal') => { for (const [u, v] of [[2, 2], [U - 2, 2], [2, V - 2], [U - 2, V - 2]]) leg(u, v, h, mat); };
-const PIECES: [RegExp, (U: number, V: number, put: Put, leg: Leg) => void][] = [
-  [/bedside|night/i, (U, V, put) => { put(0, 0, U, V, 9, 'walnut'); put(1, V - 1, U - 2, .5, 3, 'wood', 4); }],
-  [/bed/i, (U, V, put) => {
-    const inset = 2, head = 5;
-    put(0, 0, U, 3, 17, 'walnut'); put(0, 3, U, V - 3, 4, 'walnut');
-    put(inset, 3, U - inset * 2, V - 4, 4, 'linen', 4);
-    put(inset, 3 + V * .28, U - inset * 2, V * .72 - 4, 1.5, 'duvet', 8);
-    const pw = (U - inset * 2 - 4) / 2;
-    put(inset + 1, head, pw, V * .17, 2, 'pillow', 8); put(inset + 3 + pw, head, pw, V * .17, 2, 'pillow', 8);
+// faces a room (a sofa's seat, a bed's foot) faces +V, so `angle` turns the piece as a whole. Every box and sheet is a
+// layer the phone holds, so a piece is a few solid shapes and the small things on it are drawn on its top.
+const ends = (U: number, V: number, h: number, k: Kit, mat = 'walnut') => { k.pane(2, 2, 2, V - 2, h, mat); k.pane(U - 2, 2, U - 2, V - 2, h, mat); };
+const PIECES: [RegExp, (U: number, V: number, k: Kit) => void][] = [
+  [/bedside|night/i, (U, V, k) => { k.put(0, 0, U, V, 9, 'walnut'); }],
+  [/bed/i, (U, V, k) => {
+    const inset = 2, head = 5, pw = (U - inset * 2 - 4) / 2;
+    k.put(0, 0, U, 3, 17, 'walnut');
+    const m = k.put(0, 3, U, V - 3, 8, 'bedding');
+    k.decal(m, inset, 3 + V * .28, U - inset * 2, V * .72 - 4, 'duvet');
+    k.decal(m, inset + 1, head, pw, V * .17, 'pillow'); k.decal(m, inset + 3 + pw, head, pw, V * .17, 'pillow');
   }],
-  [/sofa|couch/i, (U, V, put) => {
-    const arm = Math.min(9, U * .1), back = V * .26;
-    put(0, 0, U, V, 4, 'fabric'); put(0, 0, U, back, 15, 'fabric', 4); put(0, 0, arm, V, 8, 'fabric', 4); put(U - arm, 0, arm, V, 8, 'fabric', 4);
-    const n = U > 90 ? 3 : U > 50 ? 2 : 1, cw = (U - arm * 2) / n;
-    for (let i = 0; i < n; i++) { put(arm + i * cw + .5, back, cw - 1, V - back - 1, 4, 'cushion', 4); put(arm + i * cw + 2, back - 1, cw - 4, 5, 8, 'cushion', 8); }
+  [/sofa|couch/i, (U, V, k) => {
+    const arm = Math.min(9, U * .1), back = V * .26, n = U > 90 ? 3 : U > 50 ? 2 : 1, cw = (U - arm * 2) / n;
+    k.put(0, 0, U, back, 19, 'fabric'); k.put(0, back, arm, V - back, 12, 'fabric'); k.put(U - arm, back, arm, V - back, 12, 'fabric');
+    const seat = k.put(arm, back, U - arm * 2, V - back, 8, 'fabric');
+    for (let i = 0; i < n; i++) k.decal(seat, arm + i * cw + .5, back + .5, cw - 1, V - back - 1, 'cushion');
   }],
-  [/desk/i, (U, V, put, leg) => {
-    put(0, 0, U, V, 2, 'wood', 15); legs(U, V, 15, leg);
-    put(U / 2 - 15, 3, 30, 1.5, 15, 'screen', 21); put(U / 2 - 2, 4, 4, 3, 4, 'black', 17); put(U / 2 - 12, V * .55, 24, 7, .6, 'black', 17);
+  [/desk/i, (U, V, k) => {
+    const top = k.put(0, 0, U, V, 2, 'wood', 15); ends(U, V, 15, k, 'metal');
+    k.pane(U / 2 - 15, 3.5, U / 2 + 15, 3.5, 15, 'screen', 21); k.decal(top, U / 2 - 12, V * .55, 24, 7, 'black');
   }],
-  [/tv/i, (U, V, put) => { put(0, 0, U, V, 9, 'walnut'); put(U * .1, V / 2 - .75, U * .8, 1.5, 26, 'screen', 11); put(U / 2 - 6, V / 2 - 3, 12, 6, 2, 'black', 9); }],
-  [/rug|carpet/i, (U, V, put) => put(0, 0, U, V, .4, 'rug')],
-  [/plant/i, (U, V, put, leg) => { const m = Math.min(U, V); put(U / 2 - m * .3, V / 2 - m * .3, m * .6, m * .6, 10, 'clay'); leg(U / 2, V / 2, 10, 'leaf', 10);
-    for (const [y, k] of [[17, 1], [23, .75], [29, .45]]) put(U / 2 - m * k / 2, V / 2 - m * k / 2, m * k, m * k, 5, 'leaf', y); }],
-  [/stool/i, (U, V, put, leg) => { put(0, 0, U, V, 2, 'fabric', 15); leg(U / 2, V / 2, 15); }],
-  [/chair/i, (U, V, put, leg) => { put(0, 0, U, V, 2.5, 'fabric', 10); put(0, 0, U, 2.5, 13, 'fabric', 12); legs(U, V, 10, leg, 'walnut'); }],
-  [/toilet/i, (U, V, put) => { put(1, 0, U - 2, V * .3, 15, 'porcelain'); put(2, V * .3, U - 4, V * .7, 8, 'porcelain'); }],
-  [/sink|basin/i, (U, V, put) => { put(0, 0, U, V, 13, 'white'); put(U * .2, V * .2, U * .6, V * .6, .6, 'metal', 13); }],
-  [/bath|tub|shower/i, (U, V, put) => { put(0, 0, U, V, 9, 'porcelain'); put(4, 4, U - 8, V - 8, .5, 'water', 9); }],
-  [/fridge/i, (U, V, put) => { put(0, 0, U, V, 34, 'metal'); put(0, V - 1, U, 1, 1, 'black', 21); }],
-  [/wardrobe|closet/i, (U, V, put) => { put(0, 0, U, V, 32, 'wood'); put(U / 2 - .4, V - .5, .8, .8, 30, 'black', 1); }],
-  [/shelf|bookcase/i, (U, V, put) => { put(0, 0, U, V, 24, 'walnut'); [.08, .3, .55, .72].forEach((k, i) => put(U * k, V - 1, U * .14, 1.2, 8 + i * 2, i % 2 ? 'cushion' : 'clay', 4 + i * 5)); }],
-  [/washer|dryer/i, (U, V, put) => { put(0, 0, U, V, 16, 'white'); put(U * .25, V - .5, U * .5, 1, 9, 'black', 3); }],
-  [/island|counter/i, (U, V, put) => { put(0, 0, U, V, 14, 'walnut'); put(-1, -1, U + 2, V + 2, 2, 'white', 14); }],
-  [/dining|table/i, (U, V, put, leg) => { put(0, 0, U, V, 2, 'wood', 13); legs(U, V, 13, leg, 'walnut'); }],
+  [/tv/i, (U, V, k) => { k.put(0, 0, U, V, 9, 'walnut'); k.pane(U * .1, V / 2, U * .9, V / 2, 26, 'screen', 11); }],
+  [/rug|carpet/i, (U, V, k) => { k.put(0, 0, U, V, .4, 'rug'); }],
+  [/plant/i, (U, V, k) => { const m = Math.min(U, V);
+    k.put(U / 2 - m * .3, V / 2 - m * .3, m * .6, m * .6, 10, 'clay');
+    const leaf = k.put(U / 2 - m * .45, V / 2 - m * .45, m * .9, m * .9, 14, 'leaf', 12); k.decal(leaf, U / 2 - m * .25, V / 2 - m * .25, m * .5, m * .5, 'sprout'); }],
+  [/stool/i, (U, V, k) => { k.put(0, 0, U, V, 2, 'fabric', 15); k.leg(U / 2, V / 2, 15); }],
+  [/chair/i, (U, V, k) => { k.put(0, 0, U, V, 2.5, 'fabric', 10); k.pane(0, 1.25, U, 1.25, 25, 'fabric'); k.pane(1, V - 1.5, U - 1, V - 1.5, 10, 'walnut'); }],
+  [/toilet/i, (U, V, k) => { k.put(1, 0, U - 2, V * .3, 15, 'porcelain'); k.put(2, V * .3, U - 4, V * .7, 8, 'porcelain'); }],
+  [/sink|basin/i, (U, V, k) => { const t = k.put(0, 0, U, V, 13, 'white'); k.decal(t, U * .2, V * .2, U * .6, V * .6, 'metal'); }],
+  [/bath|tub|shower/i, (U, V, k) => { const t = k.put(0, 0, U, V, 9, 'porcelain'); k.decal(t, 4, 4, U - 8, V - 8, 'water'); }],
+  [/fridge/i, (U, V, k) => { k.put(0, 0, U, V, 34, 'metal'); }],
+  [/wardrobe|closet/i, (U, V, k) => { k.put(0, 0, U, V, 32, 'wood'); }],
+  [/shelf|bookcase/i, (U, V, k) => { k.put(0, 0, U, V, 24, 'walnut'); k.pane(U * .06, V + .3, U * .86, V + .3, 14, 'books', 4); }],
+  [/washer|dryer/i, (U, V, k) => { k.put(0, 0, U, V, 16, 'white'); k.pane(U * .22, V + .3, U * .78, V + .3, U * .56, 'porthole', 2); }],
+  [/island|counter/i, (U, V, k) => { k.put(0, 0, U, V, 15, 'counter'); }],
+  [/dining|table/i, (U, V, k) => { k.put(0, 0, U, V, 2, 'wood', 13); ends(U, V, 13, k); }],
 ];
+
+/** The rooms' outlines as wall stretches, each drawn once: where rooms meet, the smaller room (higher rank) owns it. */
+export function walls(rooms: PlanRoom[], rank: Map<number, number>) {
+  const lines = new Map<string, { along: 'x' | 'z'; at: number; spans: [number, number, number][] }>();
+  const edge = (along: 'x' | 'z', at: number, a: number, b: number, room: number) => {
+    const k = `${along}${Math.round(at * 10)}`, l = lines.get(k) ?? { along, at, spans: [] };
+    l.spans.push([a, b, room]); lines.set(k, l);
+  };
+  for (const r of rooms) { edge('x', r.z, r.x, r.x + r.w, r.id); edge('x', r.z + r.d, r.x, r.x + r.w, r.id); edge('z', r.x, r.z, r.z + r.d, r.id); edge('z', r.x + r.w, r.z, r.z + r.d, r.id); }
+  const out: { along: 'x' | 'z'; at: number; a: number; b: number; room: number }[] = [];
+  for (const { along, at, spans } of lines.values()) {
+    const cuts = [...new Set(spans.flatMap(([a, b]) => [a, b]))].sort((a, b) => a - b);
+    for (let i = 1; i < cuts.length; i++) {
+      const a = cuts[i - 1], b = cuts[i], m = (a + b) / 2;
+      const owners = spans.filter(([s, e]) => s < m && m < e); if (!owners.length) continue;
+      const room = owners.reduce((x, y) => (rank.get(y[2]) ?? 0) > (rank.get(x[2]) ?? 0) ? y : x)[2], prev = out.at(-1);
+      if (prev && prev.along === along && prev.at === at && prev.room === room && Math.abs(prev.b - a) < .01) prev.b = b;
+      else out.push({ along, at, a, b, room });
+    }
+  }
+  return out;
+}
 
 export function build(world: HTMLElement, d: PlanData) {
   world.innerHTML = '';
@@ -148,32 +180,48 @@ export function build(world: HTMLElement, d: PlanData) {
     const spots = lights.map(({ l, x, z }) => `<i class="spot light" data-light="${l.id.replace(/"/g, '')}" style="left:${(x - r.x) / r.w * 100}%;top:${(z - r.z) / r.d * 100}%"></i>`).join('');
     const fl = add(flat(mk(`floor ${r.floor}`, `<i class="pool light"></i>${spots}<span class="label"><b>${r.name.replace(/</g, '')}</b><em></em></span>`), r.x, r.z, r.w, r.d, rank.get(r.id)));
     fl.dataset.of = of; fl.dataset.room = String(r.id);
-    // low glass walls round the room
-    for (const w of [upX(mk('wallp'), r.x, r.z, r.w, WALL), upX(mk('wallp'), r.x, r.z + r.d, r.w, WALL), upZ(mk('wallp'), r.x, r.z, r.d, WALL), upZ(mk('wallp'), r.x + r.w, r.z, r.d, WALL)]) {
-      w.dataset.of = of; add(w);
-    }
     for (const { l, x, z, kind } of lights) {
       if (kind === 'strip') continue;                      // a strip is only the glow on the floor and the wall behind it
       const y = kind === 'lamp' ? 26 : kind === 'pendant' ? 30 : WALL + 12, tag = (e: HTMLElement) => { e.dataset.of = of; e.dataset.light = l.id; return add(e); };
-      // a cone of light from the bulb to the floor, two crossed sheets of it
-      tag(upX(mk('beam light'), x - 34, z, 68, y)); tag(upZ(mk('beam light'), x, z - 34, 68, y));
+      // a cone of light from the bulb to the floor: two crossed sheets, of which only the one facing the camera is drawn
+      const beams = [tag(upX(mk('beam light'), x - 34, z, 68, y)), tag(upZ(mk('beam light'), x, z - 34, 68, y))];
+      beams[0].dataset.n = 'pz'; beams[1].dataset.n = 'px';
       if (kind === 'lamp') { post(add, x, z, y - 4, 'pole', of); box(add, x - 6, z - 6, 12, 12, 8, 'furn shade', of, y - 2); }
-      if (kind === 'pendant') { post(add, x, z, 26, 'cord', of, y + 3, .8); box(add, x - 5, z - 5, 10, 10, 3, 'furn brass', of, y + 1); }
+      if (kind === 'pendant') post(add, x, z, 26, 'cord', of, y + 3, .8);
       tag(flat(mk('orb', '<i class="core light"></i><i class="halo light"></i>'), x - 7, z - 7, 14, 14, y));
     }
   }
+  // low glass walls round the rooms. Neighbours share a wall, so each stretch is drawn once, for the smaller room.
+  for (const w of walls(d.rooms, rank)) { const e = add(w.along === 'x' ? upX(mk('wallp'), w.a, w.at, w.b - w.a, WALL) : upZ(mk('wallp'), w.at, w.a, w.b - w.a, WALL)); e.dataset.of = `room:${w.room}`; }
   for (const f of d.furniture) {
     // the piece in its own space, turned about its centre by the map's angle (quarter turns)
     const q = ((Math.round(f.angle / 90) % 4) + 4) % 4, U = f.w, V = f.d, cx = f.x + U / 2, cz = f.z + V / 2, of = `room:${f.room}`;
     const spin = (u: number, v: number) => { const a = u - U / 2, b = v - V / 2; return [[a, b], [-b, a], [-a, -b], [b, -a]][q]; };
-    const put: Put = (u, v, w, dd, h, mat, y0 = 0) => {
+    const rect = (u: number, v: number, w: number, dd: number) => {
       const [a, b] = spin(u, v), [c, e] = spin(u + w, v + dd);
-      const x = cx + Math.min(a, c), z = cz + Math.min(b, e), W = Math.abs(c - a), D = Math.abs(e - b);
-      if (h > 1) return box(add, x, z, W, D, h, `furn ${mat}`, of, y0);
-      const top = add(flat(mk(`furn ${mat} top`), x, z, W, D, y0 + h)); top.dataset.of = of;   // a rug needs no sides
+      return { x: cx + Math.min(a, c), z: cz + Math.min(b, e), W: Math.abs(c - a), D: Math.abs(e - b) };
     };
-    const leg: Leg = (u, v, h, mat = 'metal', y0 = 0) => { const [a, b] = spin(u, v); post(add, cx + a, cz + b, h, `furn ${mat}`, of, y0); };
-    (PIECES.find(([re]) => re.test(f.type))?.[1] ?? ((W, D, p) => p(0, 0, W, D, 12, 'walnut')))(U, V, put, leg);
+    const k: Kit = {
+      put(u, v, w, dd, h, mat, y0 = 0) {
+        const { x, z, W, D } = rect(u, v, w, dd);
+        if (h > 2.5) return { el: box(add, x, z, W, D, h, `furn ${mat}`, of, y0), x, z };
+        const el = add(flat(mk(`furn ${mat} top`), x, z, W, D, y0 + h)); el.dataset.of = of;   // a tabletop or a rug: its edge would be a hairline
+        return { el, x, z };
+      },
+      decal(on, u, v, w, dd, mat) {
+        const { x, z, W, D } = rect(u, v, w, dd), i = document.createElement('i');
+        i.className = `dc ${mat}`; Object.assign(i.style, { left: x - on.x + 'px', top: z - on.z + 'px', width: W + 'px', height: D + 'px' });
+        on.el.appendChild(i);
+      },
+      pane(u0, v0, u1, v1, h, mat, y0 = 0) {
+        const [a, b] = spin(u0, v0), [c, e] = spin(u1, v1);
+        const el = Math.abs(b - e) < .01 ? upX(mk(`furn ${mat} side`), cx + Math.min(a, c), cz + b, Math.abs(c - a), h, y0)
+          : upZ(mk(`furn ${mat} side end`), cx + a, cz + Math.min(b, e), Math.abs(e - b), h, y0);
+        el.dataset.of = of; add(el);
+      },
+      leg(u, v, h, mat = 'metal', y0 = 0) { const [a, b] = spin(u, v); post(add, cx + a, cz + b, h, `furn ${mat}`, of, y0); },
+    };
+    (PIECES.find(([re]) => re.test(f.type))?.[1] ?? ((W, D, kit) => { kit.put(0, 0, W, D, 12, 'walnut'); }))(U, V, k);
   }
   if (d.dock) {
     const k = d.dock;
