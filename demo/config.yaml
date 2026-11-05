@@ -135,8 +135,8 @@ layout:
   - tab: Media
     overview: false
     heading: false
-    columns: 2
-    widgets: [lab.plays, lab.viewing]   # side by side, half the width each
+    columns: 1
+    widgets: [lab.viewing]   # the year of viewing, the full width
   - tab: Media
     overview: false
     heading: false

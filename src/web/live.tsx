@@ -74,9 +74,9 @@ function Meeting({ a, when }: { a: Live; when?: ReturnType<typeof counted> }) {
       <div className="-mt-1.5 flex min-w-0 items-center gap-2 text-body text-muted-foreground">
         {time && <span className="shrink-0 tabular">{time}</span>}
         {names.length > 0 && <>
-          <span className="flex shrink-0 -space-x-0.5" aria-hidden>
+          <span className="flex shrink-0 gap-0.5" aria-hidden>
             {[...names.slice(0, 3).map(initials), ...(more ? [more] : [])].map((t, i) => (
-              <span key={i} className="grid size-5 place-items-center rounded-full bg-[color-mix(in_srgb,var(--foreground)_14%,var(--popover))] text-[8.5px] font-medium text-foreground/85 ring-[1.5px] ring-[var(--popover)]">{t}</span>
+              <span key={i} className="grid size-5 place-items-center rounded-full bg-[color-mix(in_srgb,var(--foreground)_14%,var(--popover))] text-[8.5px] font-medium text-foreground/85">{t}</span>
             ))}
           </span>
           <span className="min-w-0 truncate">{names.join(', ')}{more ? ` ${more}` : ''}</span>

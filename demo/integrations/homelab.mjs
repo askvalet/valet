@@ -66,7 +66,7 @@ const PAPERS = [
 ];
 const FILMS = ['Spider-Man: Brand New Day', 'The Bear', 'Arrival', 'Interstellar', 'Blade Runner 2049', 'Severance', 'Spirited Away', 'Andor', 'Shōgun', 'The Grand Budapest Hotel'];
 // What's new on the shelf, newest first, and what the calendar has next: [days away, title, badge, what it is]
-const SHELF = ['Severance', 'Blade Runner 2049', 'Spirited Away', 'The Grand Budapest Hotel', 'Andor', 'The Bear', 'Arrival', 'Interstellar', 'Dune: Part Two', 'Shōgun', 'Oppenheimer', 'Spider-Man: Brand New Day'];
+const SHELF = ['Severance', 'Blade Runner 2049', 'Spirited Away', 'The Grand Budapest Hotel', 'Andor', 'Interstellar', 'Arrival', 'The Bear', 'Dune: Part Two', 'Shōgun', 'Oppenheimer', 'Spider-Man: Brand New Day'];
 const episode = 'New episode', NEXT = ['Shōgun', 3];
 const CALENDAR = [[0, 'Severance', 'Ready'], [0, 'Arrival', 'Ready', 'Film · 4K release'], [1, 'The Bear'], [NEXT[1], NEXT[0]], [6, 'Severance'], [8, 'The Bear'], [10, 'Shōgun'], [10, 'Severance'], [13, 'Dune: Part Two', undefined, 'Film · 4K release']];
 // Everything watched in the last 30 days: [title, kind, hours a play, plays by each viewer]. Plays, Most watched and Who's
@@ -366,7 +366,7 @@ export default ({ z, defineIntegration, fmt: write }) => {
         services: w('Services', 15_000, () => { const s = services(), bad = s.filter(x => !x.ok && !x.quiet), off = s.filter(x => x.quiet).length; return { ...statusCard('Services', 'pulse', s),
           summary: { label: 'Services', icon: 'pulse', value: `${s.filter(x => x.ok).length}/${s.length}`, tone: bad.length ? 'bad' : 'good', sub: bad.length ? `${bad.map(b => b.name).join(', ')} down` : off ? `${off} off by choice` : 'All up' } }; }),
         uptime: w('Uptime', 60_000, () => ({ ...statusCard('Uptime', 'pulse', services().map(({ group, ...s }) => s)), note: '99.8% over 30 days' })),
-        containers: w('Containers', 30_000, () => ({ ...statusCard('Containers', 'disk', containers()), layout: 'wall', source: { name: 'Docker', icon: '/api/icon/docker' } })),
+        containers: w('Containers', 30_000, () => ({ ...statusCard('Containers', 'disk', containers()), layout: 'wall' })),
         drives: w('Drives', 300_000, () => ({ type: 'list', layout: 'temps', title: 'Drives', icon: 'disk', items: drives.map(([title, t, age]) => ({ title, subtitle: `Powered on ${fmt.span(age * 36e5, { style: 'long', parts: 1 })}`, meta: `${t}°C`, pct: (t - 20) / 40, tone: t >= HOT ? 'warn' : undefined })),
           summary: { label: 'Drives', icon: 'disk', value: `${hottest[1]}°C`, sub: hottest[1] >= HOT ? `${hottest[0]} is running warm` : `All ${drives.length} healthy`, tone: hottest[1] >= HOT ? 'warn' : 'good', marks: drives.map(([title, t]) => ({ pct: (t - 20) / 40, label: `${title} · ${t}°C` })) } })),
         speed: w('Internet speed', 60_000, () => { const r = rng('speed'), down = Array.from({ length: 24 }, () => Math.round(880 + r() * 70)), up = down.map(() => Math.round(860 + r() * 60));
@@ -523,8 +523,8 @@ export default ({ z, defineIntegration, fmt: write }) => {
             run: async () => ({ data: { services: services().map(({ name, ok, quiet, detail }) => ({ name, ok, quiet, detail })) }, card: await widgets.services.fetch() }) },
           container_logs: { label: 'Read the logs', access: 'read', input: z.object({ name: z.string().default('mealie') }), description: 'Recent logs of a container.',
             run: async () => ({ data: { lines: LOGS, up: mealieUp() }, card: { type: 'code', title: 'mealie logs', lines: LOGS } }) },
-          add_speed_card: { label: 'Changed the config', confirm: () => ({ title: 'Add an Internet speed card?', detail: 'It goes under Services, and you can undo it', logo: '/api/icon/demo-homelab', verb: 'Add' }), access: 'control', input: z.object({}), description: 'Add an internet speed card to the page.', run: async () => { page.speed = true; page.onChange(); return { data: { added: true } }; } },
-          undo_config: { label: 'Undid the last config change', confirm: () => ({ title: 'Undo the last config change?', logo: '/api/icon/demo-homelab', verb: 'Undo' }), access: 'control', input: z.object({}), description: 'Put the page back as it was.', run: async () => { const had = page.speed; page.speed = false; page.onChange(); return { data: { undone: had } }; } },
+          add_speed_card: { label: 'Changed the config', confirm: () => ({ title: 'Add an Internet speed card?', detail: 'It goes under Services, and you can undo it', icon: 'wifi', verb: 'Add' }), access: 'control', input: z.object({}), description: 'Add an internet speed card to the page.', run: async () => { page.speed = true; page.onChange(); return { data: { added: true } }; } },
+          undo_config: { label: 'Undid the last config change', confirm: () => ({ title: 'Undo the last config change?', icon: 'clock', verb: 'Undo' }), access: 'control', input: z.object({}), description: 'Put the page back as it was.', run: async () => { const had = page.speed; page.speed = false; page.onChange(); return { data: { undone: had } }; } },
           calendar_next_meeting: { label: 'Checked your meetings', live: true, access: 'read', input: z.object({}), description: "The person's next online meeting, or the one on now: when, who with, the service and its join link.",
             run: async () => { const m = meeting(), on = m.start <= now(), mins = Math.max(1, Math.ceil(((on ? m.end : m.start) - now()) / 6e4)), link = { label: 'Join', href: m.href, note: m.provider };
               return { open: m.href, data: { next: { title: m.title, start: new Date(m.start).toISOString(), end: new Date(m.end).toISOString(), provider: m.provider, join: m.href, with: m.people } },

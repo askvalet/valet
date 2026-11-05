@@ -329,8 +329,19 @@ function Wall({ items }: { items: StatusItem[] }) {
   const worst = (g: StatusItem[]): ServiceState => { const st = g.map(s => stateOf(s)); return st.includes('down') ? 'down' : st.includes('degraded') ? 'degraded' : st.every(x => x === 'off') ? 'off' : 'up'; };
   const rank = { down: 0, degraded: 1, up: 2, off: 3 };
   const tiles = [...apps].map(([k, g]) => ({ k, g, st: worst(g), lead: g.find(i => i.name.toLowerCase() === k) ?? g[0] })).sort((a, b) => rank[a.st] - rank[b.st]);
+  // as many tiles a row as fit, evened out so every row is full where a count divides them: 15 is one row of 15, or 3 of 5, never 14 and 1
+  const [el, setEl] = useState<HTMLDivElement | null>(null), [cols, setCols] = useState(0);
+  useEffect(() => {
+    if (!el) return;
+    const fit = () => {
+      const n = tiles.length, most = Math.max(1, Math.floor((el.clientWidth + 8) / (40 + 8)));
+      let c = most; while (c > Math.ceil(most / 2) && n % c) c--;   // a count that divides them, if one is near
+      setCols(n % c ? Math.ceil(n / Math.ceil(n / most)) : c);
+    };
+    fit(); const ro = new ResizeObserver(fit); ro.observe(el); return () => ro.disconnect();
+  }, [el, tiles.length]);
   return (
-    <div className="wall">
+    <div ref={setEl} className="wall" style={cols ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 96px))` } : undefined}>
       {tiles.map(({ k, g, st, lead }) => (
         <Tile key={k} href={lead.href} title={g.map(s => stateTip(s)).join('\n')} className={cn('wall-tile', `is-${st}`)}>
           <Glyph src={lead.icon} />
