@@ -245,6 +245,9 @@ const soon = (e: CalendarEvent, at = Date.now()) => {
 function Agenda({ days, from, today, cap, empty }: { days: Map<string, CalendarEvent[]>; from: Date; today: Date; cap: number; empty: string }) {
   const groups: { day: Date; list: CalendarEvent[]; earlier: CalendarEvent[] }[] = [];
   const [open, setOpen] = useState(false), now = Date.now(), todayKey = keyOf(today);
+  // opening the earlier ones keeps the list the height it had and scrolls inside it: growing pushed the whole row down
+  const box = useRef<HTMLDivElement>(null), [held, setHeld] = useState<number | null>(null);
+  const toggle = () => { if (!open) setHeld(box.current?.offsetHeight ?? null); else setHeld(null); setOpen(o => !o); };
   let left = cap;
   const keys = [...days.keys()].filter(k => k >= keyOf(from)).sort();
   for (const k of keys) {
@@ -268,7 +271,7 @@ function Agenda({ days, from, today, cap, empty }: { days: Map<string, CalendarE
   };
   if (!groups.length) return <Empty icon={CalendarDays} text={empty} />;
   return (
-    <div className="space-y-4">
+    <div ref={box} className={cn('space-y-4', held != null && 'overflow-y-auto overscroll-contain')} style={held != null ? { height: held, maskImage: 'linear-gradient(#000 calc(100% - 28px), transparent)' } : undefined}>
       {groups.map(g => {
         const isToday = keyOf(g.day) === todayKey;
         return (
@@ -276,7 +279,7 @@ function Agenda({ days, from, today, cap, empty }: { days: Map<string, CalendarE
             <Caps className="mb-2 text-muted-foreground">{tag(g.day)}</Caps>
             {g.list.length > 0 ? <ul className="space-y-2.5">{g.list.map((e, i) => row(e, i, isToday && i === 0))}</ul> : <p className="text-body leading-[1.35] text-muted-foreground">Nothing else today</p>}
             {g.earlier.length > 0 && <>
-              <button onClick={() => setOpen(o => !o)} aria-expanded={open} className="press mt-1.5 flex h-8 items-center gap-1 text-body text-muted-foreground hover:text-foreground">
+              <button onClick={toggle} aria-expanded={open} className="press mt-1.5 flex h-8 items-center gap-1 text-body text-muted-foreground hover:text-foreground">
                 <ChevronRight className={cn('size-icon flex-none transition-transform', open && 'rotate-90')} />{g.earlier.length} earlier today</button>
               {open && <ul className="mt-1 space-y-2.5 opacity-70">{g.earlier.map((e, i) => row(e, i))}</ul>}
             </>}
