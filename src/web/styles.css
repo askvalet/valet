@@ -799,13 +799,29 @@ img[data-ink-light="plate"]:not(.dark *, .on-art *, .rc *), .dark img[data-ink-d
 .ticket-line.is-busy::after { width: 100%; background: var(--primary); }
 .ticket-line.is-bad::after { width: 100%; background: var(--bad); }
 
-/* headlines: a grid of stories, where they're from first */
-.headlines { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 10px; }
-.headline { display: flex; gap: 12px; align-items: flex-start; min-width: 0; padding: 12px; border-radius: var(--radius-control); background: var(--fill-1); transition: background-color var(--dur-press) var(--ease-out); }
-.headline-mark { display: grid; flex: none; place-items: center; width: 16px; height: 20px; }
-.headline-mark img { width: 16px; height: 16px; border-radius: var(--radius-thumb); }
-.headline-art { flex: none; width: 54px; height: 54px; border-radius: var(--radius-poster); object-fit: cover; background: var(--muted); }
-@media (hover: hover) and (pointer: fine) { .headline:hover { background: var(--fill-2); } }
+/* headlines: a front page. The first story large, the rest a list that takes whatever height the card has (the list is
+   laid over its box, so the rows that fit are counted rather than pushing the card taller). Rows and the lead reach a
+   little past the card's inset, so their text lines up with the title and the hover fill has room. */
+.front { display: flex; flex: 1; flex-direction: column; gap: 6px; min-height: 0; }
+.front-lead { display: flex; gap: 14px; align-items: flex-start; margin: -8px -8px 0; padding: 8px; border-radius: var(--radius-control); }
+.front-art { flex: none; width: clamp(96px, 34%, 184px); aspect-ratio: 4 / 3; border-radius: var(--radius-poster); object-fit: cover; background: var(--fill-1); }
+.front-title { display: -webkit-box; margin-top: 4px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; font-size: var(--text-title); font-weight: 600; line-height: 1.3; text-wrap: pretty; }
+@container card (min-width: 460px) { .front-title { font-size: var(--text-metric-s); line-height: 1.22; letter-spacing: -.01em; } }
+.front-facts { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; margin-top: 8px; }
+.front-facts .metric { font-weight: 500; line-height: 1; }
+.front-from { display: flex; gap: 6px; align-items: center; min-width: 0; font-size: var(--text-meta); line-height: 16px; color: var(--muted-foreground); }
+.front-mark { display: grid; flex: none; place-items: center; width: 14px; height: 14px; overflow: hidden; border-radius: var(--radius-tag); background: var(--fill-2); font-size: 9px; font-weight: 600; line-height: 1; color: var(--muted-foreground); }
+.front-mark:has(img) { background: none; }
+.front-mark img { width: 14px; height: 14px; }
+/* on dark glass a site's own mark is often black: it sits on a small light plate there, as a browser's tab strip does */
+.dark .front-mark:has(img) { background: rgb(255 255 255 / .9); }
+.dark .front-mark img { width: 11px; height: 11px; }
+.front-more { position: relative; flex: 1; border-top: 1px solid var(--border); }
+.front-list { position: absolute; inset: 4px -8px 0; display: grid; grid-auto-rows: max-content; align-content: start; overflow: hidden; }
+.front-row { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border-radius: var(--radius-control); }
+.front-row, .front-lead { transition: background-color var(--dur-press) var(--ease-out); }
+@media (hover: hover) and (pointer: fine) { :is(.front-row, .front-lead):hover { background: var(--fill-1); } }
+:is(.front-row, .front-lead):active { background: var(--fill-2); }
 
 /* the shell: a line that comes and goes opens and closes rather than jumping, and a chip on its way out gives its room back */
 .fold { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows var(--dur-move) var(--ease-out), opacity var(--dur-pop) var(--ease-out); }

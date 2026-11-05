@@ -209,6 +209,7 @@ Some cards and rows take a little more:
 | `factsNote` | `chart` | what the chips under it are: "Most blocked · last 24 hours" |
 | `series[].total` | `chart` | the service's own figure, when summing the points would disagree with the headline |
 | `limit` | `list`, `layout: chips` | how many chips show; "19 in all" opens the rest in place |
+| `site` | `list` item, `layout: headlines` | the story's own site, a host name such as `github.com`, for its favicon; the link may go to a discussion instead. With `layout: headlines` the first story leads, larger, with its `image`, or the numbers in `detail` ("412 points · 188 comments"), or `detail` as a summary; `subtitle` says where it's from and `meta` when |
 | `band` | `list` item, `layout: temps` | the normal stretch of the track, `[low, high]`, each 0..1 |
 | `section` | `list` item | a quiet heading wherever it changes: "Watching now" above "Last 30 days" |
 | `link` | `list` item | a small button on the row that opens an https link in a new tab: `{ label: 'Join', href, note }` |

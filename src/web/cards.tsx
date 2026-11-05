@@ -4,7 +4,7 @@ import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calend
   Activity, Archive, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Thermometer, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Play, Shield, Wifi,
   Box, TriangleAlert, Video, type LucideIcon,
 } from 'lucide-react';
-import { createContext, Fragment, lazy, memo, Suspense, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { createContext, Fragment, lazy, memo, Suspense, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Cameras } from './cameras.tsx';
 import { Album } from './album.tsx';
 import { Focus } from './focus.tsx';
@@ -30,7 +30,7 @@ import { Empty } from './empty.tsx';
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
 import { clock as clockOf, day as dayOf, duration, highLow, num as written, stamp, withUnit } from './format.ts';
 import { stateOf } from '../shared/cards.ts';
-import type { ServiceState, Banner, Stall, ArticleCard, CodeCard, RankedCard, ShelfItem, StatusItem, TableCard, LinksCard, Card as CardT, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
+import type { ServiceState, Banner, Stall, ArticleCard, CodeCard, RankedCard, ShelfItem, StatusItem, TableCard, LinksCard, Card as CardT, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, ListItem, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
 // Icon names cards may use (docs/integrations.md lists them; keep the two in step). Anything else: a URL or a path.
 const ICONS: Record<string, LucideIcon> = {
@@ -159,25 +159,85 @@ function List({ card, run }: { card: ListCard; run?: RunAction }) {
   return <Rows card={card} dense={dense} run={run} />;
 }
 
-/** Stories as a grid of small cards, each anchored by where it's from, so the eye sorts by source before it reads. */
+/** A front page: the top story large, with its picture or its numbers, and the rest as a tight list under it, one line of
+ *  title and one of where it's from, as many as the card's height holds. Beside another card it fills the row, so the two
+ *  end level; alone it shows four under the first. */
 function Headlines({ card }: { card: ListCard }) {
-  const host = (u?: string) => { try { return u ? new URL(u).hostname.replace(/^www\./, '') : undefined; } catch { return undefined; } };
+  const [lead, ...rest] = card.items, box = useRef<HTMLDivElement>(null), [fit, setFit] = useState({ n: FRONT_ROWS, min: 0 });
+  useLayoutEffect(() => {
+    const el = box.current, list = el?.firstElementChild as HTMLElement | null;
+    if (!el || !list) return;
+    const measure = () => {
+      const row = list.firstElementChild?.getBoundingClientRect().height, gap = parseFloat(getComputedStyle(list).rowGap) || 0;
+      if (!row) return;
+      const n = Math.max(1, Math.floor((list.clientHeight + gap + .5) / (row + gap))), min = Math.ceil(el.offsetHeight - el.clientHeight + list.offsetTop + FRONT_ROWS * row + (FRONT_ROWS - 1) * gap);   // its rule too
+      setFit(f => f.n === n && f.min === min ? f : { n, min });
+    };
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, [rest.length > 0]);
   return (
-    <div className="headlines">
-      {card.items.slice(0, 8).map((it, i) => {
-        const h = host(it.href);
-        return (
-          <a key={i} href={it.href} target="_blank" rel="noreferrer" className={cn('headline', !it.href && 'pointer-events-none')}>
-            {it.image ? <img src={it.image} alt="" loading="lazy" className="headline-art" />
-              : h && <span className="headline-mark"><img src={`/api/favicon/${h}`} alt="" loading="lazy" onError={e => { e.currentTarget.style.display = 'none'; }} /></span>}
-            <span className="min-w-0">
-              <span className="line-clamp-2 text-item leading-snug font-medium">{it.title}</span>
-              <span className="mt-1 block truncate text-meta text-muted-foreground">{[h ?? it.subtitle, it.meta].filter(Boolean).join(' · ')}</span>
-            </span>
-          </a>
-        );
-      })}
+    <div className="front">
+      <Lead it={lead} />
+      {rest.length > 0 && (
+        <div ref={box} className="front-more" style={fit.min ? { minHeight: fit.min } : undefined}>
+          <ol className="front-list">
+            {rest.slice(0, fit.n).map((it, i) => (
+              <li key={it.id ?? `${i}:${it.title}`} className="min-w-0">
+                <a href={it.href} target="_blank" rel="noreferrer" className={cn('front-row', !it.href && 'pointer-events-none')}>
+                  <span className="block truncate text-item font-medium">{it.title}</span>
+                  <From it={it} facts />
+                </a>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
+  );
+}
+const FRONT_ROWS = 4;   // under the first story when the card keeps its own height
+/** The site a story is on, for its favicon: what the integration says, else its link's */
+const siteOf = (it: ListItem) => {
+  const own = it.site?.toLowerCase().replace(/^www\./, '');
+  if (own && /^[a-z0-9.-]{1,253}$/.test(own)) return own;
+  try { return it.href ? new URL(it.href).hostname.replace(/^www\./, '') : undefined; } catch { return undefined; }
+};
+/** "412 points · 188 comments" as numbers with their words, or null when the detail is words (a summary) */
+const factsOf = (detail?: string) => {
+  const parts = detail?.split(' · ').map(p => /^(\d[\d.,]*\s?[kKM]?)\s+([^\d\s][^·]{0,24})$/.exec(p.trim()));
+  return parts?.length && parts.length <= 3 && parts.every(Boolean) ? parts.map(m => ({ n: m![1], what: m![2] })) : null;
+};
+/** Where a story is from, its favicon (or the name's first letter where there's none), and when; a row adds its first number */
+function From({ it, facts }: { it: ListItem; facts?: boolean }) {
+  const site = siteOf(it), name = it.subtitle ?? site, [failed, setFailed] = useState(false), first = facts ? factsOf(it.detail)?.[0] : undefined;
+  return (
+    <span className="front-from">
+      <span className="front-mark" aria-hidden>
+        {site && !failed ? <img src={`/api/favicon/${site}`} alt="" loading="lazy" onError={() => setFailed(true)} /> : (name ?? '·').trim().charAt(0).toUpperCase()}
+      </span>
+      <span className="truncate">{[name, first && `${first.n} ${first.what}`, it.meta].filter(Boolean).join(' · ')}</span>
+    </span>
+  );
+}
+/** The first story: larger, its picture beside it if it has one, and its numbers (or its summary) under the title */
+function Lead({ it }: { it: ListItem }) {
+  const facts = factsOf(it.detail), [art, setArt] = useState(!!it.image);
+  return (
+    <a href={it.href} target="_blank" rel="noreferrer" className={cn('front-lead', !it.href && 'pointer-events-none')}>
+      {it.image && art && <img src={it.image} alt="" loading="lazy" className="front-art" onError={() => setArt(false)} />}
+      <span className="flex min-w-0 flex-col">
+        <From it={it} />
+        <span className="front-title">{it.title}</span>
+        {facts ? (
+          <span className="front-facts">
+            {facts.map(f => <span key={f.what}><span className="metric text-metric-s tabular">{f.n}</span> <span className="text-meta text-muted-foreground">{f.what}</span></span>)}
+          </span>
+        ) : it.detail && <span className="mt-1.5 line-clamp-2 text-body leading-snug text-muted-foreground">{it.detail}</span>}
+      </span>
+    </a>
   );
 }
 
@@ -1387,7 +1447,8 @@ const KEEPS_HEIGHT = new Set<string>(['list', 'status', 'links', 'code', 'ranked
 
 function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, fill: stretch, kind, failed }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; fill?: boolean | 'always'; kind?: string; failed?: string }) {
   // 'always': a bento places cards in blocks that end flush, so even a list takes its cell's height (its foot stays inside the glass)
-  const fill = stretch === 'always' || (!!stretch && !(card && KEEPS_HEIGHT.has(card.type)));
+  // headlines are the exception: a front page shows more stories in the height its row gives it
+  const fill = stretch === 'always' || (!!stretch && !(card && KEEPS_HEIGHT.has(card.type) && !(card.type === 'list' && card.layout === 'headlines' && !compact)));
   const fade = useRef(card ? '' : 'fade-in-soft').current;   // up from its skeleton; a tab you come back to is already there
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   // a group is a set of cards, not a card: it has no glass of its own

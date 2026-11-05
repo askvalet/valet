@@ -42,6 +42,12 @@ The widget on the page and the assistant's answer are the same object, drawn by 
 
 The [card gallery](/cards/) shows every type, with its fields.
 
+## Headlines
+
+A `list` with `layout: 'headlines'` is a front page, as Hacker News and Feeds use it. The first story leads, larger. Beside it goes its `image`, if it has one. Under its title go the numbers in its `detail`, such as "412 points · 188 comments", or `detail` itself as a two-line summary. The rest follow as a tight list: one line of title, then a quiet line with `subtitle` (where it's from), its favicon and `meta` (when). The favicon comes from `site`, a host name such as `github.com`, or else the story's link. A site with no favicon gets its first letter.
+
+Beside another card, the list takes the row's height and shows as many stories as fit, so the two end level. Alone, it shows four under the first. In chat it's a plain list.
+
 ## Tone
 
 A value can carry a tone: `good`, `warn`, `bad`, `accent` or `neutral`. Green, orange and red appear only for status.

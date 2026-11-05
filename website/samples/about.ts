@@ -190,7 +190,7 @@ export const ABOUT: Record<string, string> = {
 // One or two sentences for each card type, for the top of its page.
 export const CARD_ABOUT: Record<string, string> = {
   stats: 'A few numbers, one leading. The first item is the hero: `trend` draws a sparkline behind it, and `pct` a meter.',
-  list: 'Rows of things, each with an optional status, progress bar or link. Layouts turn it into chips, readings or a grid of headlines.',
+  list: 'Rows of things, each with an optional status, progress bar or link. Layouts turn it into chips, readings or a front page of headlines: the top story large, with its picture or its numbers, and the rest as a list that fills the card.',
   status: 'Services that are up or down, with a dot each. `group` puts them in sections, and the wall layout is a grid of icons where only trouble gets words.',
   media: 'What\'s playing or downloading, with artwork, progress and tags. A download getting nowhere says so in words.',
   shelf: 'A row of artwork, like a shelf in a TV app. Layouts turn it into a spotlight, a week, tickets, a desk of documents, windows, a focus carousel, a cover flow, a masonry wall or a stack of cards.',

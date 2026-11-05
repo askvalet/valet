@@ -23,13 +23,16 @@ export default defineIntegration({
         discussion: `https://news.ycombinator.com/item?id=${h.objectID}` }));
     }
     const row = (s: Story): ListItem => ({ title: s.title, subtitle: [`${s.points} points`, `${s.comments} comments`, host(s.url)].filter(Boolean).join(' · '), meta: ago(s.at), href: cfg.comments ? s.discussion : s.url ?? s.discussion });
+    // on the page's front page: where it's from (and that site's favicon), then its numbers, which the first story shows large
+    const story = (s: Story): ListItem => ({ title: s.title, subtitle: host(s.url) ?? 'news.ycombinator.com', site: host(s.url) ?? 'news.ycombinator.com',
+      detail: `${s.points} points · ${s.comments} comments`, meta: ago(s.at), href: cfg.comments ? s.discussion : s.url ?? s.discussion });
     return {
       widgets: {
         stories: {
           title: 'Hacker News', interval: 600_000, card: 'list',
           async fetch() {
             const list = await stories(cfg.limit);
-            return { type: 'list', layout: 'headlines', title: 'Hacker News', icon: 'news', source: { name: 'Hacker News', icon: iconFor('hacker-news') }, href: 'https://hn.algolia.com', items: list.map(row), empty: 'Nothing on the front page',
+            return { type: 'list', layout: 'headlines', title: 'Hacker News', icon: 'news', source: { name: 'Hacker News', icon: iconFor('hacker-news') }, href: 'https://hn.algolia.com', items: list.map(story), empty: 'Nothing on the front page',
               summary: list[0] ? { label: 'Hacker News', icon: 'news', value: list[0].title, sub: `${list[0].points} points` } : undefined };
           },
         },
