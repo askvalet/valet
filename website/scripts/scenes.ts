@@ -17,12 +17,13 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
   cpSync(resolve(repo, 'demo/icons'), resolve(data, 'icons'), { recursive: true });
   const modelPort = await freePort(7730), port = await freePort(7760);
   // the demo's own model and config, on free ports, with the public host names taken out
-  writeFileSync(resolve(dir, 'model.mjs'), readFileSync(resolve(repo, 'demo/mock-model.mjs'), 'utf8').replace(/if \(process\.argv\[1\].*server\.listen\(8080[^\n]*/, `server.listen(${modelPort}, '127.0.0.1');`));
+  // the script starts itself when run as mock-model.mjs, on MOCK_PORT
+  writeFileSync(resolve(dir, 'mock-model.mjs'), readFileSync(resolve(repo, 'demo/mock-model.mjs'), 'utf8'));
   writeFileSync(resolve(dir, 'config.yaml'), readFileSync(resolve(repo, 'demo/config.yaml'), 'utf8')
     .replace(/^allowedHosts:.*$/m, 'allowedHosts: []').replace(/^notice:.*$/m, '').replace('http://valet-demo-model:8080/v1', `http://127.0.0.1:${modelPort}/v1`)
     .replace('/demo/wallpaper.jpg', resolve(repo, 'demo/wallpaper.jpg')).replace('type: demo-homelab', `type: demo-homelab\n    art: ${resolve(repo, 'demo/art/cameras')}`));
   const start = (args: string[], env = {}) => { const p = spawn('node', args, { cwd: repo, stdio: 'ignore', env: { PATH: process.env.PATH, HOME: process.env.HOME, TZ: 'America/Toronto', ...env } }); stop.push(() => { p.kill('SIGTERM'); }); return p; };
-  start([resolve(dir, 'model.mjs')]);
+  start([resolve(dir, 'mock-model.mjs')], { MOCK_PORT: String(modelPort) });
   start(['dist/server.js'], { PORT: String(port), HOST: '127.0.0.1', VALET_CONFIG: resolve(dir, 'config.yaml'), VALET_DATA: data, NODE_ENV: 'production' });
   const url = `http://127.0.0.1:${port}/`;
   for (let i = 0; ; i++) { try { if ((await fetch(`${url}healthz`)).ok) break; } catch { /* starting */ } if (i > 100) throw new Error('the demo did not start'); await sleep(200); }
