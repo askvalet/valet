@@ -614,6 +614,7 @@
 .cols { --tracks: var(--cols-phone, 1); grid-template-columns: repeat(var(--tracks), minmax(0, 1fr)); }
 @container main (min-width: 42rem) { .cols { --tracks: var(--cols-tablet, var(--cols-phone, 2)); } }
 @container main (min-width: 64rem) { .cols { --tracks: var(--cols-desktop, var(--cols-tablet, var(--cols-phone, 3))); } }
+@container main (min-width: 110rem) { .cols { --tracks: var(--cols-wide, var(--cols-desktop, var(--cols-tablet, var(--cols-phone, 3)))); } }
 /* one card's own surface: its tint over its picture, its own frost */
 .card-look [data-slot="card"] { background-color: transparent; background-image: linear-gradient(var(--card), var(--card)), var(--card-image, none); background-size: cover; background-position: center; backdrop-filter: var(--glass-blur); }
 

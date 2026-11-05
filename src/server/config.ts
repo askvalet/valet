@@ -62,7 +62,7 @@ const Length = z.union([z.number().min(0).max(4000), z.string().regex(/^\d+(\.\d
 const Family = z.string().regex(/^[\w\s,"'-]+$/, 'a font name, like Inter, or a list: "Inter, sans-serif"');
 const Scale = z.number().min(.6).max(2);       // relative to the usual size: 1.2 is a fifth bigger
 const CARD_SIZES = ['small', 'wide', 'medium', 'tall', 'large'] as const;
-const Columns = z.number().int().min(1).max(6);
+const Columns = z.number().int().min(1).max(8);
 
 const Section = z.object({
   title: z.string().optional(),
@@ -80,8 +80,8 @@ const Section = z.object({
     background: z.string().regex(/^(https:\/\/|\/api\/)[^\s"'()<>\\]+$/, 'an image URL: https://… or /api/icon/name').optional(),
   }).strict()]))
     .transform(ws => ws.map(w => typeof w === 'string' ? { widget: w, size: 'medium' as const } : w)),
-  // a number (from tablet width up), or per screen: { phone: 1, tablet: 2, desktop: 3 }
-  columns: z.union([z.number().int().min(1).max(4), z.object({ phone: Columns.optional(), tablet: Columns.optional(), desktop: Columns.optional() }).strict()]).optional(),
+  // a number (from tablet width up), or per screen: { phone: 1, tablet: 2, desktop: 3, wide: 4 } (wide: a page past 1760px)
+  columns: z.union([z.number().int().min(1).max(4), z.object({ phone: Columns.optional(), tablet: Columns.optional(), desktop: Columns.optional(), wide: Columns.optional() }).strict()]).optional(),
   gap: z.number().min(0).max(64).optional(),   // px between its cards
   // tiles: headline tiles with live graphs · rings: the same as ring gauges coloured by health · cards: full cards
   // media: every item of the section's media cards (streams, downloads…) as artwork tiles in one grid

@@ -29,7 +29,7 @@ const RecapStory = lazy(() => import('./recap.tsx'));
 
 export type Size = 'small' | 'wide' | 'medium' | 'tall' | 'large';
 export type Paper = { image?: string; paint?: string };
-type Grid = { phone?: number; tablet?: number; desktop?: number };
+type Grid = { phone?: number; tablet?: number; desktop?: number; wide?: number };
 export type CardOverride = { title?: string; icon?: string; header?: boolean; view?: View; rows?: number; style?: Record<string, string> };
 
 export interface Page {
@@ -329,7 +329,7 @@ export function dress(card?: CardData, o?: CardOverride) {
 // tabs: sections sharing a `tab` (or title) open together
 const tabOf = (s: Page['sections'][number], i: number) => s.tab ?? s.title ?? `#${i}`;
 const hashNow = () => { try { return decodeURIComponent(location.hash); } catch { return location.hash; } };
-const gridVars = (g: Grid) => ({ '--cols-phone': g.phone, '--cols-tablet': g.tablet, '--cols-desktop': g.desktop }) as React.CSSProperties;
+const gridVars = (g: Grid) => ({ '--cols-phone': g.phone, '--cols-tablet': g.tablet, '--cols-desktop': g.desktop, '--cols-wide': g.wide }) as React.CSSProperties;
 const SPANS: Record<Size, [number, number]> = { small: [1, 1], wide: [2, 1], medium: [2, 1], tall: [2, 2], large: [4, 1] };
 
 function Home({ account }: { account: boolean }) {
@@ -625,7 +625,7 @@ function Home({ account }: { account: boolean }) {
                   // headline tile, wide takes two, medium is the card at two, tall is that over two rows, large four. A calendar needs
                   // the room for its month, so wide means large for it.
                   if (sec.sizes && Object.keys(sec.sizes).length && !aside) return (
-                    <div className={cn('bento grid grid-flow-row-dense gap-(--card-gap)', sec.grid ? 'cols' : 'grid-cols-2 @2xl/main:grid-cols-4 @5xl/main:grid-cols-6')} style={sec.grid && gridVars(sec.grid)}>
+                    <div className={cn('bento grid grid-flow-row-dense gap-(--card-gap)', sec.grid ? 'cols' : 'grid-cols-2 @2xl/main:grid-cols-4 @5xl/main:grid-cols-6 @[110rem]/main:grid-cols-8')} style={sec.grid && gridVars(sec.grid)}>
                       {keys.map((key, j) => {
                         const o = sec.looks?.[key], c = dress(state[key]?.card, o), size = c?.type === 'calendar' && sec.sizes![key] === 'wide' ? 'large' : sec.sizes![key];
                         const span = cn(size !== 'small' && 'col-span-2', size === 'tall' && 'row-span-2', size === 'large' && 'col-span-full @5xl/main:col-span-4');
