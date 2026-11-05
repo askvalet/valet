@@ -141,7 +141,7 @@ layout:
   - heading: false
     columns: { phone: 2, tablet: 4, desktop: 6, wide: 6 }
     widgets:
-      - { widget: lab.reading, size: tall, view: row }   # the reading pile as a plain row of pages that snap
+      - { widget: lab.reading, size: tall, view: focus }   # the reading pile as Recently added is: one page large, its neighbours peeking
       - { widget: lab.recent, size: tall, view: focus }
       - { widget: lab.dns, size: small }
       - { widget: lab.uptime, size: small }
