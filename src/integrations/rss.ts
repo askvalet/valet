@@ -1,7 +1,6 @@
 // Feeds: RSS and Atom, which covers blogs, YouTube channels (https://www.youtube.com/feeds/videos.xml?channel_id=…),
 // podcasts, GitHub releases pages and most news sites. One list (or shelf of thumbnails) across every feed, newest
 // first, and a tool for the assistant to read headlines.
-import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { defineIntegration, fmt } from '../server/core.ts';
 import { child, elements, text } from '../server/xml.ts';
@@ -34,21 +33,6 @@ const firstImage = (html: string) => {
 };
 
 const ago = (t?: number) => t ? fmt.span(Date.now() - t, { parts: 1 }) : '';
-const host = (u?: string) => { try { return u ? new URL(u).hostname.replace(/^www\./, '') : undefined; } catch { return undefined; } };
-
-/** Whether a picture's address is out on the web, so the proxy may fetch it: never this machine, the network it sits
- *  on or a name only that network knows. A feed is written by someone else, and its pictures shouldn't reach in. */
-export function onTheWeb(href: string) {
-  let u: URL;
-  try { u = new URL(href); } catch { return false; }
-  const h = u.hostname.toLowerCase();
-  if (!/^https?:$/.test(u.protocol) || u.username || u.password || (u.port && !['80', '443'].includes(u.port))) return false;
-  if (h.startsWith('[') || !h.includes('.') || /\.(local|lan|home|internal|localhost|localdomain|arpa)$/.test(h)) return false;   // IPv6, one-word names, local names
-  const ip = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(h)?.slice(1).map(Number);
-  if (ip) { const [a, b] = ip; return !(a === 0 || a === 10 || a === 127 || a >= 224 || (a === 100 && b >= 64 && b < 128) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b < 32) || (a === 192 && b === 168)); }
-  return !/^\d+$/.test(h.split('.').pop()!);   // an address written some other way, like 0x7f.1
-}
-const refOf = (href: string) => createHash('sha256').update(href).digest('hex').slice(0, 24);
 
 export default defineIntegration({
   type: 'rss',
@@ -63,7 +47,6 @@ export default defineIntegration({
   }),
   create(cfg, ctx) {
     let cache: { at: number; entries: Entry[] } | undefined;
-    let shown: Map<string, string>[] = [new Map(), new Map()];
     async function entries() {
       if (cache && Date.now() - cache.at < cfg.every * 1000) return cache.entries;
       const all = await Promise.all(cfg.feeds.map(async f => {
@@ -72,16 +55,10 @@ export default defineIntegration({
       }));
       const list = all.flat().sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
       cache = { at: Date.now(), entries: list };
-      // the pictures the proxy may fetch: only ones a feed named, by a ref made from the address. The last fetch's stay
-      // too, for a page still showing them.
-      shown = [new Map(list.flatMap(e => e.image && onTheWeb(e.image) ? [[refOf(e.image), e.image] as const] : [])), shown[0]];
       return list;
     }
-    const picture = (e: Entry) => e.image && onTheWeb(e.image) ? ctx.image(refOf(e.image)) : undefined;
     const row = (e: Entry): ListItem => ({ title: e.title, subtitle: e.source, meta: ago(e.at), href: e.href });
-    // on the page: the article's site for its favicon, and its picture and summary for when it's the one on top
-    const story = (e: Entry): ListItem => ({ ...row(e), site: host(e.href), image: picture(e), detail: e.summary });
-    const tile = (e: Entry): ShelfItem => ({ title: e.title, subtitle: e.source, image: picture(e), href: e.href, badge: ago(e.at) || undefined });
+    const tile = (e: Entry): ShelfItem => ({ title: e.title, subtitle: e.source, image: e.image, href: e.href, badge: ago(e.at) || undefined });
     return {
       widgets: {
         latest: {
@@ -92,7 +69,7 @@ export default defineIntegration({
             const summary = first ? { label: cfg.title, icon: 'rss', value: first.title, sub: `${first.source} · ${ago(first.at)}` } : undefined;
             return cfg.style === 'shelf'
               ? { type: 'shelf', title: cfg.title, icon: 'rss', aspect: 'wide', items: list.map(tile), empty: 'Nothing new', summary }
-              : { type: 'list', layout: 'headlines', title: cfg.title, icon: 'rss', source: { name: 'RSS', icon: RSS_MARK }, items: list.map(story), empty: 'Nothing new', summary };
+              : { type: 'list', layout: 'headlines', title: cfg.title, icon: 'rss', source: { name: 'RSS', icon: RSS_MARK }, items: list.map(row), empty: 'Nothing new', summary };
           },
         },
       },
@@ -111,22 +88,6 @@ export default defineIntegration({
               card: { type: 'list', title: q ? `Feeds · “${query}”` : cfg.title, icon: 'rss', items: list.map(row), empty: 'Nothing matches' } };
           },
         },
-      },
-      // a picture a feed named, fetched by Valet so the browser never calls the feed's server. Redirects are followed
-      // only while they stay out on the web.
-      async image(ref) {
-        if (!/^[0-9a-f]{24}$/.test(ref)) throw new Error('bad image ref');
-        let href = shown[0].get(ref) ?? shown[1]?.get(ref);
-        if (!href) throw new Error('no picture');
-        for (let hop = 0; hop < 4; hop++) {
-          if (!onTheWeb(href)) throw new Error('not on the web');
-          const res: Response = await fetch(href, { redirect: 'manual', headers: { 'User-Agent': 'Valet (feed reader)', Accept: 'image/*' }, signal: AbortSignal.timeout(10_000) });
-          const to: string | null | false = res.status >= 300 && res.status < 400 && res.headers.get('location');
-          if (!to) return res;
-          await res.body?.cancel();
-          href = new URL(to, href).href;
-        }
-        throw new Error('too many redirects');
       },
     };
   },

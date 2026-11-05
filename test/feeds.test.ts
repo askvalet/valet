@@ -2,9 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { child, elements, text } from '../src/server/xml.ts';
-import rss, { onTheWeb, parseFeed } from '../src/integrations/rss.ts';
-import hackernews from '../src/integrations/hackernews.ts';
-import { checkCard } from '../src/shared/cards.schema.ts';
+import { parseFeed } from '../src/integrations/rss.ts';
 import { parseICS } from '../src/integrations/calendar.ts';
 import { setHouse } from '../src/server/core.ts';
 setHouse({ locale: 'en-US' });   // what the server writes follows a language; these read like a US one wherever they run
@@ -65,56 +63,4 @@ test('calendar: colours come from the event, then the feed, and nothing unsafe g
 test('calendar: a daily event started years ago still reaches the months being browsed', () => {
   const ics = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'SUMMARY:Pills', 'DTSTART:20100101T090000', 'RRULE:FREQ=DAILY', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
   assert.equal(parseICS(ics, new Date(2026, 5, 1).getTime(), new Date(2026, 5, 3, 23).getTime()).length, 3);
-});
-
-// ── the front page (layout: headlines): where each story is from, its numbers or summary, and its picture through the proxy
-const fakeCtx = (answer: (url: string) => unknown) => ({ id: 'f', log() {}, image: (r: string) => `/api/image/f?ref=${r}`, session: () => ({ get: async () => '', reset() {} }), upload: async () => ({}),
-  async http(url: string) { return answer(url); } }) as any;
-
-test('hackernews: each story says its site (for the favicon) and its numbers, and the tool card is as it was', async () => {
-  const at = new Date(Date.now() - 3 * 3600e3).toISOString();
-  const hits = [{ objectID: '1', title: 'Show HN: a thing', url: 'https://www.github.com/x/y', points: 412, num_comments: 188, created_at: at }, { objectID: '2', title: 'Ask HN: anything?', points: 9, num_comments: 4, created_at: at }];
-  const hn = hackernews.create(hackernews.config.parse({}), fakeCtx(() => ({ hits })));
-  const card: any = await hn.widgets.stories.fetch();
-  assert.ok(checkCard(card).success);
-  assert.equal(card.layout, 'headlines');
-  assert.deepEqual([card.items[0].subtitle, card.items[0].site, card.items[0].detail, card.items[0].meta], ['github.com', 'github.com', '412 points · 188 comments', '3h']);
-  assert.equal(card.items[0].href, 'https://news.ycombinator.com/item?id=1');
-  assert.deepEqual([card.items[1].subtitle, card.items[1].site], ['news.ycombinator.com', 'news.ycombinator.com']);   // Ask HN has no link of its own
-  const tool: any = await hn.tools!.hn_stories.run({ limit: 2 });
-  assert.equal(tool.card.items[0].subtitle, '412 points · 188 comments · github.com');
-});
-
-test('rss: the page gets each story\'s site, summary and picture, and the picture only ever through the proxy', async () => {
-  const xml = `<rss xmlns:media="http://search.yahoo.com/mrss/"><channel><title>A Blog</title>
-    <item><title>With a picture</title><link>https://www.blog.example/1</link><pubDate>${new Date().toUTCString()}</pubDate><description>Short summary.</description><media:thumbnail url="https://cdn.example/p.jpg"/></item>
-    <item><title>Reaching in</title><link>https://blog.example/2</link><media:thumbnail url="http://192.168.1.1/admin.png"/></item></channel></rss>`;
-  const feeds = rss.create(rss.config.parse({ feeds: ['https://blog.example/feed'] }), fakeCtx(() => xml));
-  const card: any = await feeds.widgets.latest.fetch();
-  assert.ok(checkCard(card).success);
-  const [one, two] = card.items;
-  assert.deepEqual([one.subtitle, one.site, one.detail], ['A Blog', 'blog.example', 'Short summary.']);
-  assert.match(one.image, /^\/api\/image\/f\?ref=[0-9a-f]{24}$/);
-  assert.equal(two.image, undefined);   // a picture on the feed's own network is never offered
-  const ref = one.image.split('ref=')[1];
-  const real = globalThis.fetch, asked: string[] = [];
-  globalThis.fetch = (async (url: any) => { asked.push(String(url)); return String(url).includes('cdn.example/p.jpg') ? new Response('img', { headers: { 'content-type': 'image/jpeg' } }) : new Response(null, { status: 302, headers: { location: 'http://127.0.0.1/secret.png' } }); }) as any;
-  try {
-    assert.equal((await feeds.image!(ref)).status, 200);
-    assert.deepEqual(asked, ['https://cdn.example/p.jpg']);
-    for (const bad of ['../x', 'abc', ref.toUpperCase(), `${ref}0`]) await assert.rejects(async () => feeds.image!(bad), /bad image ref/);
-    await assert.rejects(async () => feeds.image!('0'.repeat(24)), /no picture/);   // only pictures a feed named
-  } finally { globalThis.fetch = real; }
-  // a redirect into the house is refused
-  const moved = `<rss><channel><title>B</title><item><title>t</title><link>https://b.example/</link><media:thumbnail url="https://cdn.example/moved.jpg"/></item></channel></rss>`;
-  const other = rss.create(rss.config.parse({ feeds: ['https://b.example/feed'] }), fakeCtx(() => moved));
-  const r2 = ((await other.widgets.latest.fetch()) as any).items[0].image.split('ref=')[1];
-  globalThis.fetch = (async () => new Response(null, { status: 302, headers: { location: 'http://127.0.0.1/secret.png' } })) as any;
-  try { await assert.rejects(async () => other.image!(r2), /not on the web/); } finally { globalThis.fetch = real; }
-});
-
-test('rss: what counts as out on the web', () => {
-  for (const ok of ['https://cdn.example.com/a.jpg', 'http://img.site.org:80/x.png', 'https://8.8.8.8/x.png']) assert.ok(onTheWeb(ok), ok);
-  for (const no of ['http://localhost/x', 'http://nas/x.png', 'http://nas.local/x', 'http://router.lan/x', 'http://10.0.0.2/x', 'http://172.20.1.1/x', 'http://192.168.1.1/x', 'http://127.0.0.1/x', 'http://169.254.169.254/latest',
-    'http://100.100.1.1/x', 'http://[::1]/x', 'http://0x7f.0.0.1/x', 'https://u:p@cdn.example/x', 'https://cdn.example:8443/x', 'ftp://cdn.example/x', 'file:///etc/passwd', 'not a url']) assert.ok(!onTheWeb(no), no);
 });

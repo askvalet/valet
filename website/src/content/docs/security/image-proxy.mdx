@@ -35,7 +35,7 @@ A handler can send `Cache-Control: no-store` for a picture that changes, like a 
 
 ## What it doesn't cover
 
-- Cards from integrations can also use plain `https:` images. The CSP allows them. Those are fetched by your browser from wherever they live, which tells that server your address. Feeds don't do this: their pictures come through the proxy. Its refs are pictures a feed named, and it fetches only addresses out on the web, never a private address, `localhost` or a local name, and it follows redirects only while they stay out there.
+- Cards from integrations can also use plain `https:` images. The CSP allows them, for things like feed thumbnails. Those are fetched by your browser from wherever they live, which tells that server your address.
 - With sign-in off, anyone who can reach Valet can load these pictures. That's true of the whole page.
 - `/api/icon/` is open with no sign-in, because the sign-in screen uses it, and `/api/favicon/` needs a session. They fetch from a public CDN and a public favicon service once, then keep the file. They take a checked slug or hostname, and that's all. Icons you put in `data/icons/` win. If you don't want that, keep Valet behind your own network or proxy.
 

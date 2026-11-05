@@ -16,7 +16,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms)), between = (lo
 
 // where each picture lives on the site
 const image = (ref: string) => /^cover-/.test(ref) ? `/art/covers/${ref.slice(6)}.jpg` : /^album\d$/.test(ref) ? `/art/album/${ref[5]}.jpg`
-  : ref === 'article' ? '/art/article.jpg' : ref === 'feed0' ? '/art/feeds/pi.jpg' : ref === 'feed1' ? '/art/feeds/solar.jpg' : /^photo\d$/.test(ref) ? `/art/photos/${ref[5]}.jpg` : /^page\d$/.test(ref) ? `/art/pages/${ref[4]}.jpg`
+  : ref === 'article' ? '/art/article.jpg' : /^photo\d$/.test(ref) ? `/art/photos/${ref[5]}.jpg` : /^page\d$/.test(ref) ? `/art/pages/${ref[4]}.jpg`
   : /^doc\d$/.test(ref) ? `/art/docs/${ref[3]}.jpg` : /^meal\d$/.test(ref) ? `/art/meals/${ref[4]}.jpg` : `/art/cameras/${ref}`;
 
 const integration = (plugin as any)({ z, fmt, defineIntegration: (i: unknown) => i });

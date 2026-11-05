@@ -115,7 +115,6 @@ export interface ListItem {
   pct?: number;           // 0..1 progress bar
   tone?: Tone;
   image?: string;
-  site?: string;          // headlines: the story's own site, a host name such as "github.com", for its favicon (href may be a discussion)
   badge?: string;         // a small mark on a chip: "Major", "Read first"
   band?: [number, number];   // temps: the normal stretch of the track, 0..1 at each end
   section?: string;       // rows: a quiet heading wherever this changes, e.g. "Today" above "Earlier"
@@ -123,7 +122,7 @@ export interface ListItem {
   buttons?: { label: string; action: string; args?: Record<string, unknown> }[];   // rows: quiet actions on this row alone, e.g. Pause and Remove
   link?: Link;            // a small button on the row, e.g. Join a meeting
 }
-export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; limit?: number; log?: boolean; layout?: 'temps' | 'chips' | 'headlines' }   // headlines: a front page, the first story large (its picture, or its numbers from detail) over a tight list that fills the card; subtitle says where it's from, meta when · temps: a reading per row (pct along the track, meta the number) · chips: pills, an icon by name · limit: chips show this many, "19 in all" opens the rest in place
+export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; limit?: number; log?: boolean; layout?: 'temps' | 'chips' | 'headlines' }   // headlines: a grid of stories, each anchored by its site's favicon · temps: a reading per row (pct along the track, meta the number) · chips: pills, an icon by name · limit: chips show this many, "19 in all" opens the rest in place
 
 export interface MediaItem {
   title: string;

@@ -7,13 +7,6 @@ Resized copies from Wikimedia Commons.
 - Torres del Paine Patagonia: https://commons.wikimedia.org/wiki/File:Cuernos_del_Paine_in_Torres_del_Paine_National_Park.jpg (CC BY-SA 2.0)
 - Moraine Lake Banff: https://commons.wikimedia.org/wiki/File:Moraine_Lake_17092005.jpg (Public domain)
 
-# Feed pictures
-
-`feeds/`: resized copies from Wikimedia Commons, for the made-up stories in the demo's Feeds card.
-
-- Raspberry Pi 4: https://commons.wikimedia.org/wiki/File:Raspberry_Pi_4_Model_B_-_Side.jpg by Laserlicht (CC BY-SA 4.0)
-- Solar panels: https://commons.wikimedia.org/wiki/File:Solar_panels_on_house_roof.jpg by Gray Watson (CC BY-SA 3.0)
-
 # Saved page previews
 
 Screenshots of the pages linked in art.json, shown small as link previews. Wikipedia text is CC BY-SA 4.0.
