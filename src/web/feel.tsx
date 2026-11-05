@@ -94,7 +94,11 @@ const nearest = (r: HTMLElement) => {
 const centre = (r: HTMLElement, i: number, behavior: ScrollBehavior) => {
   const all = slidesOf(r), at = Math.max(0, Math.min(all.length - 1, i)), s = all[at];
   if (stacked(r)) r.scrollTo({ left: at * column(r), behavior });
-  else if (s) r.scrollTo({ left: s.offsetLeft + s.offsetWidth / 2 - r.clientWidth / 2, behavior });
+  else if (s) {
+    // its place in the row, through any list between (cover flow keeps its slides in one, which carries the row's padding)
+    let x = s.offsetLeft; for (let e = s.offsetParent as HTMLElement | null; e && e !== r && r.contains(e); e = e.offsetParent as HTMLElement | null) x += e.offsetLeft;
+    r.scrollTo({ left: x + s.offsetWidth / 2 - r.clientWidth / 2, behavior });
+  }
 };
 /** The slides: its children, or the items of the list inside it (cover flow keeps its 3D in a list). */
 const slidesOf = (r: HTMLElement) => [...r.querySelectorAll<HTMLElement>(':scope > [data-blossom-slide], :scope > ul > [data-blossom-slide]')];

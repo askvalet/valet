@@ -129,7 +129,7 @@ layout:
     columns: 1
     widgets: [lab.calendar]   # the month and the day beside it, the full width
   # the overview, under Services: the house, the desktop and the calendar a third each, then
-  # downloads beside Pi-hole, then what's playing beside On this day, each row level, then the reading and what's new
+  # what's playing over the downloads beside On this day, then Pi-hole beside the drives, then the reading and what's new
   - heading: false
     columns: { phone: 1, tablet: 2, desktop: 3, wide: 3 }
     widgets:
@@ -139,30 +139,32 @@ layout:
   - heading: false
     columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }   # what's playing over the downloads on the left, Pi-hole's day across the other two thirds
     widgets:
-      - { widget: lab.downloads, cols: 1 }
-      - { widget: lab.dns, cols: 2 }
       - { widget: lab.streams, cols: 1 }
-      - { widget: lab.photos, cols: 2 }
+      - { widget: lab.photos, cols: 2, rows: 2 }   # On this day beside what's playing over the downloads
+      - { widget: lab.downloads, cols: 1 }
+  - heading: false
+    columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }
+    widgets:
+      - { widget: lab.dns, cols: 2 }   # Pi-hole's day beside the drives
+      - lab.drives
   - heading: false
     columns: { phone: 1, tablet: 2, desktop: 2, wide: 2 }
     widgets: [{ widget: lab.reading, view: focus }, { widget: lab.recent, view: focus }]
   - title: Media
     overview: false
     heading: false
-    columns: 2   # the race and the albums half each
+    columns: { phone: 1, tablet: 3, desktop: 3, wide: 3 }
     widgets:
-      - lab.race
+      # the race two thirds beside the albums; what's new beside the year of viewing; the games across the foot
+      - { widget: lab.race, cols: 2 }
       - { widget: lab.top, view: coverflow }   # Navidrome's most played albums, as covers to flip through
+      - { widget: lab.recent, view: focus }
+      - { widget: lab.viewing, cols: 2 }
   - tab: Media
     overview: false
     heading: false
     columns: 1
-    widgets: [lab.viewing]   # the year of viewing, the full width
-  - tab: Media
-    overview: false
-    heading: false
-    columns: 2
-    widgets: [{ widget: lab.games, view: coverflow }, lab.recent]   # side by side, half the width each
+    widgets: [{ widget: lab.games, view: coverflow }]   # a showcase the full width
   - title: Library
     icon: file   # a sheet of paper in the nav
     columns: 2

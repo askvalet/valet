@@ -457,7 +457,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
           <div className={cn('text-center', !sheet && 'pt-10')}>
             <div className="text-title font-semibold tracking-tight">{label('chatTitle')}</div>
             <div className="mx-auto mt-6 flex max-w-[560px] flex-wrap justify-center gap-1.5">
-              {suggestions.slice(0, ui.review ? 3 : 4).map(s => <Chip key={s} onClick={() => onAsk(s)}><span className="truncate">{s}</span></Chip>)}
+              {suggestions.slice(0, 3).map(s => <Chip key={s} onClick={() => onAsk(s)}><span className="truncate">{s}</span></Chip>)}
               {ui.review && <Chip as="a" href="#recap"><span className="truncate">{ui.review}</span></Chip>}
             </div>
           </div>
@@ -503,14 +503,14 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
         <ChatBeam ui={ui} busy={busy}>
         <div className={cn('composer flex items-end gap-2 rounded-surface border bg-card px-3 py-2 shadow-card', over && 'ring-2 ring-primary/60')}>
           <input ref={filePicker} type="file" multiple hidden onChange={e => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
- {canAttach && <button type="button" onClick={() => filePicker.current?.click()} aria-label="Attach a file" className={cn('press grid shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-fill-2 hover:text-foreground', sheet ? 'mb-0.5 size-8' : 'mb-1 size-7')}><Paperclip className="size-icon" /></button>}
+ {canAttach && <button type="button" onClick={() => filePicker.current?.click()} aria-label="Attach a file" className={cn('press grid shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-fill-2 hover:text-foreground', sheet ? 'mb-[3px] size-8' : 'mb-1 size-7')}><Paperclip className="size-icon" /></button>}
           <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={label(sheet || external || !canAttach ? 'message' : 'messageHint', { name })} aria-label="Message"
             onKeyDown={e => { if (e.key === 'Enter' && (ui.send === 'enter' ? !e.shiftKey : e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
             onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
             className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-[16px] leading-[22px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-title" autoFocus={!sheet} />
           {busy
-            ? <Button type="button" size="icon" variant="secondary" className="relative mb-0.5 size-8 overflow-hidden rounded-sm" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" />{sent > 0 && <ArrowUp key={sent} className="send-lift absolute inset-0 m-auto" aria-hidden />}</Button>
-            : <Button type="submit" size="icon" className="mb-0.5 size-8 rounded-sm bg-foreground text-(--card-tint) hover:bg-foreground/90 disabled:bg-foreground/20 disabled:text-foreground disabled:opacity-100" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
+            ? <Button type="button" size="icon" variant="secondary" className="relative mb-[3px] size-8 overflow-hidden rounded-sm" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" />{sent > 0 && <ArrowUp key={sent} className="send-lift absolute inset-0 m-auto" aria-hidden />}</Button>
+            : <Button type="submit" size="icon" className="mb-[3px] size-8 rounded-sm bg-foreground text-(--card-tint) hover:bg-foreground/90 disabled:bg-foreground/20 disabled:text-foreground disabled:opacity-100" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
         </div>
         </ChatBeam>
       </form>
