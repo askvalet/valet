@@ -80,6 +80,8 @@ export const SUGGESTIONS = ['Add an internet speed card', 'What should we watch 
 export const suggestions = down => down ? SUGGESTIONS : ['What took Mealie down?', ...SUGGESTIONS.slice(0, 3)];
 
 const textOf = c => typeof c === 'string' ? c : Array.isArray(c) ? c.map(p => p.text ?? '').join(' ') : '';
+// what the person typed, without the note Valet puts in front of it when earlier turns were summarised or left out
+const own = c => Array.isArray(c) ? c.filter(p => !(p.type === 'text' && p.text?.startsWith('[Valet: '))) : c;
 const hasFile = c => /\[attached: /.test(textOf(c)) || (Array.isArray(c) && c.some(p => p.type && p.type !== 'text'));
 /** What the page reported as wrong: the words after the heading, so a mention elsewhere on the page doesn't count. */
 const sick = text => /bazarr is unhealthy/i.test(/Wrong right now:\n([\s\S]*?)(?:\n\n|$)/.exec(text)?.[1] ?? '');
@@ -93,8 +95,10 @@ export function reply(body) {
   const msgs = body.messages ?? [], all = msgs.map(m => textOf(m.content)).join('\n'), system = msgs.filter(m => m.role === 'system' || m.role === 'developer').map(m => textOf(m.content)).join('\n');
   if (/suggest what the owner/.test(system)) return { text: suggestions(mealieDown(all)).join('\n') };
   if (/one short line/.test(system)) return { text: mealieDown(all) ? (sick(all) ? 'Mealie is down and Bazarr is unhealthy' : 'Mealie is down, everything else is fine') : sick(all) ? 'Bazarr is unhealthy, the rest is quiet' : 'All quiet, everything is up' };
+  // Valet folding the start of a long chat into a summary: a made-up one that only counts, so nothing typed comes back
+  if (/You summarise the start of a conversation/.test(system)) { const n = (all.match(/^Person: /gm) ?? []).length; return { text: `The person asked ${n === 1 ? 'one question' : `${n} questions`} about their homelab, and each was answered from the page's tools. Nothing was changed.` }; }
   if (/explain what's on a homelab dashboard/.test(system)) return { text: /Asked about:[^\n]*bazarr/i.test(all) ? BAZARR : /Asked about:[^\n]*(?:mealie|services|containers|uptime)/i.test(all) && /"ok":false/.test(all) ? 'Mealie ran out of memory at 3:12 AM and hit its 256 MB limit. Give it more memory in its compose file and restart it there.' : `${standIn}, so I can't explain this one. On a real Valet, the assistant would read this card's numbers and say what's behind them.` };
-  const last = msgs.at(-1), at = msgs.findLastIndex(m => m.role === 'user'), user = msgs[at]?.content, offered = /Want me to pause it\?\s*$/.test(textOf(msgs.slice(0, Math.max(at, 0)).findLast(m => m.role === 'assistant')?.content));
+  const last = msgs.at(-1), at = msgs.findLastIndex(m => m.role === 'user'), user = own(msgs[at]?.content), offered = /Want me to pause it\?\s*$/.test(textOf(msgs.slice(0, Math.max(at, 0)).findLast(m => m.role === 'assistant')?.content));
   const said = YES.test(plain(textOf(user))) && offered ? 'pause pi-hole' : plain(textOf(user));
   const told = msgs.slice(0, Math.max(at, 0)).some(m => m.role === 'assistant' && textOf(m.content).includes(can));
   const cant = why => ({ text: `${standIn}, ${why}${told ? '' : ` ${can}`}` });
@@ -132,6 +136,12 @@ const server = createServer((req, res) => {
     // about a token for every four characters, so the chat's context meter fills as it would with a real model
     const given = Math.round(JSON.stringify([body.messages, body.tools]).length / 4), said = Math.round(JSON.stringify(r.text ?? r.call ?? '').length / 4);
     const usage = { prompt_tokens: given, completion_tokens: said, total_tokens: given + said };
+    // MOCK_CONTEXT=n plays a small model: past n tokens it refuses as an OpenAI-compatible server would
+    if (Number(process.env.MOCK_CONTEXT) && given > Number(process.env.MOCK_CONTEXT)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: { message: `This model's maximum context length is ${process.env.MOCK_CONTEXT} tokens. However, you requested ${given} tokens.`, type: 'invalid_request_error', code: 'context_length_exceeded' } }));
+      return;
+    }
     const toolCall = r.call && { id: `call_${Date.now()}`, type: 'function', function: { name: r.call.name, arguments: r.call.args } };
     if (!body.stream) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -150,4 +160,4 @@ const server = createServer((req, res) => {
     res.end();
   });
 });
-if (process.argv[1]?.endsWith('mock-model.mjs')) server.listen(8080, () => console.log('scripted model on :8080'));
+if (process.argv[1]?.endsWith('mock-model.mjs')) { const port = Number(process.env.PORT) || 8080; server.listen(port, () => console.log(`scripted model on :${port}`)); }

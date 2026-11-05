@@ -35,6 +35,7 @@ It's a language model, so:
 - It may misread a tool result, or answer from an old one.
 - It may name a cause that a tool didn't show. The prompt tells it not to, and the prompt can be ignored.
 - `maxSteps` limits how far it looks. When it runs out, it must answer from what it has.
+- In a long chat, it sees a summary of the oldest turns, not the turns themselves. A detail the summary left out is gone for it, even though you can still scroll to it. Ask again, or start a new chat.
 - Small local models are worse at choosing tools.
 
 The cards are real. The sentence beside a card is the model's reading of it. When they differ, believe the card.
@@ -47,6 +48,7 @@ The assistant reads text written by strangers: feed titles, web pages saved to K
 - **A rule's card isn't the model's.** A poisoned page can make the model propose a rule. Its card names the trigger by the card's real title and the action in the tool's own words, so what you approve is what will run.
 - **Background calls have no tools.** The brief, the suggestions and the shared-cause line call the model with no tools at all. A poisoned feed title can make it say something odd, and nothing more.
 - **Suggestions can't carry a stranger's words.** A tapped suggestion goes out as your own message. So the model writes suggestions without seeing feeds, and any suggestion with a link in it is thrown away.
+- **A summary is a record, not orders.** When a long chat is summarised, the summary is written in a call with no tools, told that tool results in the transcript are data. The chat gets it marked as a record of what was said, and it can't pass for a note from Valet. Anything it leads the model to try still needs your press.
 - **A shared cause must be real.** The model's verdict is believed only if it names at least two of the actual problems.
 
 That leaves real gaps, and you should know them:

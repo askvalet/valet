@@ -1,9 +1,10 @@
 // The assistant: one streaming endpoint. It gets a tool for every integration tool its access level allows; write
 // tools (adding things) and control tools always ask the person first. The model sees each tool's compact `data`; the person sees its card.
 import {
-  convertToModelMessages, createUIMessageStreamResponse, isStepCount, streamText, tool, toUIMessageStream,
+  asSchema, convertToModelMessages, createUIMessageStreamResponse, isStepCount, streamText, tool, toUIMessageStream, wrapLanguageModel,
   type LanguageModel, type ToolSet, type UIMessage,
 } from 'ai';
+import { TARGET, TOO_LONG_ANSWER, calibrate, fit, retryShorter, size, squeezeSteps, summariser, tokensOf, tooLong } from './compact.ts';
 import { splitThink } from '../shared/think.ts';
 import { randomBytes } from 'node:crypto';
 import type { Context as HonoContext } from 'hono';
@@ -16,26 +17,10 @@ import { chatAgent, contextWindow, makeAgentModel, makeModel } from './model.ts'
 import { checkCard } from '../shared/cards.schema.ts';
 import { accessOf as granted, asker, rank, runTool as run, who } from './run.ts';
 
+export { trimHistory } from './compact.ts';
+
 // Approvals are signed when they're asked for and checked when they come back, so a request can't just claim one.
 const APPROVALS = randomBytes(32);
-
-/** What goes back to the model: reasoning left in old replies comes out, and tool results from earlier turns shrink to a
- *  preview. It keeps the thread of the conversation; a question about old logs can look again. Without this a chat's
- *  prompt grows by a whole set of logs each turn and every answer gets slower. */
-export function trimHistory(messages: UIMessage[], keep = 6, limit = 1200) {
-  return messages.map((m, i) => {
-    if (m.role !== 'assistant') return m;
-    const old = i < messages.length - keep;
-    return { ...m, parts: m.parts.map((p: any) => {
-      if (p.type === 'text') return { ...p, text: splitThink(p.text).said };
-      if (old && p.output?.data !== undefined) {
-        const text = JSON.stringify(p.output.data);
-        if (text.length > limit) return { ...p, output: { data: { earlierResult: `${text.slice(0, limit)}…`, note: 'shortened; call the tool again for all of it' } } };
-      }
-      return p;
-    }) };
-  });
-}
 
 export function chatRoute(config: Config, instances: Map<string, Instance>, meta: Map<string, { type: string; name: string; integration: Integration }>,
   safety: { acting: boolean; redact: (s: string) => string; activity?: Activity; model?: LanguageModel } = { acting: true, redact: s => s }) {
@@ -197,9 +182,6 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       const result = streamText({ model: makeAgentModel(other), abortSignal: c.req.raw.signal, messages: await convertToModelMessages(plain) });
       return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream }) });
     }
-    // the model gets the last 24 messages: enough context for a conversation, bounded cost for a long one
-    // and without any reasoning that leaked into earlier replies
-    const messages = trimHistory(all_.slice(-24));
     const m = await mcp();
     // MCP results pass through the redactor too (their headers can hold keys)
     const mcp_ = Object.fromEntries(Object.entries(m.tools).map(([k, t]: [string, any]) => [k, { ...t, execute: async (...args: any[]) => {
@@ -212,24 +194,49 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       return out;
     } }]));
     const all = { ...tools, ...mcp_ }, approvals = { ...approval, ...m.approval };
+    const prompt = system(m.catalog);
+    // what's sent is sized against the window: the system prompt and tools are fixed, the history gets the rest of the
+    // target, and what doesn't fit is summarised (or, without a window, the last 24 messages go as they always have)
+    const window = await contextWindow(a), auto = a.compact && !!window;
+    const chars = (x: unknown) => size(x), tokens = (n: number) => tokensOf(n, a.model);
+    const fixed = size(prompt) + (await Promise.all(Object.entries(all).map(async ([k, t]: [string, any]) =>
+      k.length + size(t.description ?? '') + size(await Promise.resolve(asSchema(t.inputSchema).jsonSchema).catch(() => ({})))))).reduce((x, y) => x + y, 0);
+    const budget = auto ? Math.max(0, Math.floor(window! * TARGET) - tokens(fixed)) : undefined;
+    const fitted = await fit(all_, { budget, cost: msg => tokens(chars(msg)),
+      summarise: summariser(model, { redact: safety.redact, signal: c.req.raw.signal, chars: window ? Math.floor(window * .4 * 3) : undefined }) });
+    const messages = fitted.messages, sent = fixed + chars(messages);
+    let squeezed = false;   // the provider said it was too long, and it went again cut right down
+    const lastStep = `${prompt}\n\nYou have no more lookups. Answer now in plain words from what you already found. If it doesn't settle the question, say what you checked and that you can't tell. Do not write tool calls.`;
     const result = streamText({
-      model,
+      model: wrapLanguageModel({ model: model as Parameters<typeof wrapLanguageModel>[0]['model'], middleware: retryShorter(() => { squeezed = true; }) }),
       abortSignal: c.req.raw.signal,   // Stop (or closing the chat) ends generation and any tools still running
-      system: system(m.catalog),
+      system: prompt,
       messages: await convertToModelMessages(messages, { tools: all }),
       tools: all,
       toolApproval: approvals,
       experimental_toolApprovalSecret: APPROVALS,
       stopWhen: isStepCount(a.maxSteps),
-      // the last step is for answering: a model still looking things up when its steps run out would otherwise say nothing
-      prepareStep: ({ stepNumber }) => stepNumber >= a.maxSteps - 1 ? { toolChoice: 'none' as const, system: `${system(m.catalog)}\n\nYou have no more lookups. Answer now in plain words from what you already found. If it doesn't settle the question, say what you checked and that you can't tell. Do not write tool calls.` } : undefined,
+      prepareStep: ({ stepNumber, messages: now }) => {
+        // a turn whose tool results pile up: earlier steps' results shrink before the next step, so one turn can't fill the window
+        const smaller = auto && stepNumber > 0 ? squeezeSteps(now, budget!, tokens) : undefined;
+        // the last step is for answering: a model still looking things up when its steps run out would otherwise say nothing
+        const last = stepNumber >= a.maxSteps - 1 ? { toolChoice: 'none' as const, system: lastStep } : {};
+        return smaller || stepNumber >= a.maxSteps - 1 ? { ...last, ...(smaller ? { messages: smaller } : {}) } : undefined;
+      },
     });
+    // how full the model's context is after each step, for the meter beside its name: what it was given, and what it said.
+    // The first step's real count also teaches the estimate how many characters make a token for this model.
+    let first = true;
+    const messageMetadata = ({ part }: { part: { type: string; usage?: { inputTokens?: number; outputTokens?: number } } }) => {
+      if (part.type === 'start' && fitted.compacted) return { compacted: fitted.compacted };
+      if (part.type !== 'finish-step') return undefined;
+      if (first && !squeezed) calibrate(a.model, sent, part.usage?.inputTokens);
+      first = false;
+      const shown = squeezed ? { compacted: 'dropped' } : {};
+      return part.usage?.inputTokens ? { ...shown, context: { used: part.usage.inputTokens + (part.usage.outputTokens ?? 0), window, ...(auto ? { auto } : {}) } } : squeezed ? shown : undefined;
+    };
     // a tool that throws past runTool (a failed input check, say): the log and the page should both say what happened
-    // how full the model's context is after each step, for the meter beside its name: what it was given, and what it said
-    const window = await contextWindow(a);
-    const messageMetadata = ({ part }: { part: { type: string; usage?: { inputTokens?: number; outputTokens?: number } } }) =>
-      part.type === 'finish-step' && part.usage?.inputTokens ? { context: { used: part.usage.inputTokens + (part.usage.outputTokens ?? 0), window } } : undefined;
-    const failed = (e: unknown) => { const m = safety.redact((e as Error)?.message ?? String(e)); console.error(`assistant: ${m}`); return m; };
+    const failed = (e: unknown) => { if (tooLong(e)) return TOO_LONG_ANSWER; const m = safety.redact((e as Error)?.message ?? String(e)); console.error(`assistant: ${m}`); return m; };
     return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream, tools: all, onError: failed, messageMetadata } as Parameters<typeof toUIMessageStream>[0]) });
   });
 }

@@ -234,6 +234,9 @@ services and the assistant write is theirs, and the status sentence is built fro
 | `context` | {used} of {total} tokens |
 | `contextUsed` | {used} tokens so far |
 | `contextFull` | Long chats get slower and lose track of how they started. |
+| `contextAuto` | When it fills up, the oldest messages are summarised to make room. A new chat starts clean and answers faster. |
+| `compacted` | Earlier messages summarised to make room |
+| `compactedOut` | Earlier messages left out to make room |
 | `newChat` | Start a new chat |
 
 ### A full example
@@ -324,6 +327,7 @@ layout:
 | `access` | `{ default: read }` | per integration (by its id): `none`, `read`, `write` (adds things, like saving a link) or `control` (changes or removes things). Both ask you every time. `config: control` lets it edit this file: see below. `valet` (Valet's own tools) defaults to `control`; `write` keeps reminders and turns rules off |
 | `maxSteps` | `6` | tool calls per answer, 1–20 |
 | `contextWindow` | known Claude models | how many tokens the model can hold, for the meter beside its name in the chat. Claude models fill it in (a million from Opus and Sonnet 4.6 and Haiku 5 on, 200k before); for anything else Valet reads it from the server's `/models` list (`max_model_len`, `context_length` and the like) when the server says, and otherwise set it from your server's context length (Ollama's `num_ctx`, say), or the meter shows only what's used |
+| `compact` | `true` | keep long chats inside the model's window. When the window is known, what's sent stays under about 70% of it, and the oldest turns become a short summary (one call with no tools, cached); the page keeps the whole chat. If the summary fails or the window isn't known, the last 24 messages go. `false` always sends the last 24 |
 | `agent` | none | hand the chat to another agent: `{ name, baseURL, apiKey, model }`, anything OpenAI-compatible (Hermes Agent's API server, say). Remove it to go back. It runs its own tools, so access levels and approvals don't apply; it gets only the conversation, answers are plain text, and a read-only page stays on Valet's assistant. The brief and shared causes stay on `model` |
 | `suggestions` | four examples | questions offered until the model has written its own, or if `background.suggest` is off |
 | `background` | `{ watch: true, brief: true, suggest: true, perDay: 100 }` | what it does unasked. `watch`: when two or more things break, say what they share, if the data shows it. `brief`: a short summary, shown when you hover the status sentence and rewritten every half hour while the page is in use. `suggest`: write the suggested questions from what's on the page, every half hour or when something changes (`suggestions` is the fallback). `perDay` caps the model calls all three make in a day. None of them get tools |

@@ -12,9 +12,11 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 - Three more views for anything with pictures, chosen per widget with `view`. `coverflow` is Cover Flow again, rebuilt: the one in the middle faces you and the rest turn away in 3D, with reflections. `masonry` is a wall of pictures three rows high that you throw sideways; Immich's On this day uses it. `cards` is a stack of cards to deal through; Paperless's recent documents (each with its first page, title, sender and date) and Karakeep's saved links use it, and a saved link keeps its Archive button. All three follow the browser's own scrolling, with nothing redrawn as they move, have Previous and Next buttons and the arrow keys, and are a plain row when you ask for reduced motion.
 - A reading pile (Karakeep's From your reading) can take any gallery view, and archiving still works from it.
 - `config check` names a `view` a widget's card can't take, and the views it can.
+- Long chats compact themselves instead of breaking. When the model's window is known, what's sent stays under about 70% of it: the oldest turns become a short summary (one tool-less call, cached for the next turns), the latest question always goes whole, and a quiet line in the chat says "Earlier messages summarised to make room". The page keeps the whole conversation. Within one answer, earlier lookups' results shrink when they pile up, and a request the model's server rejects as too long is sent once more cut right down, then answered in plain words instead of an error. `assistant.compact: false` turns it off.
 
 ### Changed
 
+- The context meter's hint past three quarters says Valet summarises the oldest messages by itself; a new chat is optional.
 - A meeting's popover is plainer: "In 4 min" or "Now" and the time on top, the title, who's in it as initials, a progress bar only while it's on, and one button that names the service ("Join Google Meet"). No icon tile.
 - The chat's header is one line: the assistant's name, then the model and its context meter, whose place is kept so nothing moves when the numbers arrive.
 - The context meter knows a local model's window by itself when its server's model list says it (`max_model_len`, `context_length`, as vLLM and llama.cpp do), so `assistant.contextWindow` is only needed when it doesn't.
