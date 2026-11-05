@@ -230,8 +230,23 @@ test('calendar: what is next leads, all-day follows, and what is over steps asid
   const { ahead, earlier } = splitToday(list, at);
   assert.deepEqual(ahead.map(e => e.title), ['Now', 'Later', 'Holiday']);
   assert.deepEqual(earlier.map(e => e.title), ['Over', 'Point']);
-  const d = new Date(), html = renderToString(<CalendarView card={{ type: 'calendar', events: [{ title: 'Gone', start: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0).toISOString(), end: new Date(Date.now() - 1000).toISOString() }, { title: 'Soon', start: new Date(Date.now() + 864e5 * 2).toISOString() }] }} />);
+  const d = new Date(), html = renderToString(<CalendarView card={{ type: 'calendar', events: [{ title: 'Gone', start: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0).toISOString(), end: new Date(Date.now() - 1000).toISOString() }, { title: 'Soon', start: new Date(Date.now() + 864e5 * 2).toISOString() }], view: 'agenda' }} />);
   assert.ok(html.includes('earlier today') && !html.includes('Gone'), 'collapsed until asked');
+});
+
+test('calendar: narrow, it is a week: days side by side, a meeting keeps its Join, and the agenda can be asked for instead', () => {
+  const d = new Date(), at = (h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, h, m).toISOString();
+  const card = { type: 'calendar' as const, events: [{ title: 'Standup', start: at(9, 30), end: at(10), join: { href: 'https://meet.google.com/abc-defg-hij', provider: 'Google Meet' } },
+    { title: 'Swim', start: at(17), end: at(18) }, { title: 'Bad link', start: at(12), end: at(13), join: { href: 'javascript:alert(1)', provider: 'x' } }] };
+  const html = renderToString(<CalendarView card={card} />);
+  assert.ok(html.includes('cal-week') && html.includes('data-mode="week"'), 'the week, at an everyday size');
+  assert.ok(html.includes('Standup') && html.includes('Swim'));
+  assert.ok(html.includes('href="https://meet.google.com/abc-defg-hij"') && html.includes('Join Standup on Google Meet'), 'a meeting has its Join');
+  assert.ok(!html.includes('javascript:'), 'only https opens');
+  const agenda = renderToString(<CalendarView card={{ ...card, view: 'agenda' }} />);
+  assert.ok(!agenda.includes('cal-week') && agenda.includes('Tomorrow'));
+  assert.ok(!renderToString(<CalendarView card={card} large />).includes('cal-week'), 'wide keeps the month and the day');
+  assert.ok(!renderToString(<CalendarView card={card} dense />).includes('cal-week'), 'a small card keeps the list');
 });
 
 test('thermostat: the dial names both numbers, explains the pair people mix up, and owns up to being read-only', () => {

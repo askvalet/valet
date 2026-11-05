@@ -240,8 +240,9 @@ export interface CalendarEvent {
   location?: string;
   join?: { href: string; provider: string };   // an online meeting: its https link and the service, e.g. Google Meet
 }
-/** An agenda beside a month you can browse. `from` and `to` are the dates the events cover, so browsing stops there. */
-export interface CalendarCard extends Base { type: 'calendar'; events: CalendarEvent[]; from?: string; to?: string; empty?: string }
+/** An agenda beside a month you can browse, or a week of days side by side when the card is narrow and tall enough.
+ *  `from` and `to` are the dates the events cover, so browsing stops there. `view` holds it to one: the week, or the agenda. */
+export interface CalendarCard extends Base { type: 'calendar'; events: CalendarEvent[]; from?: string; to?: string; empty?: string; view?: 'week' | 'agenda' }
 
 /** A thermostat's mode button. Set `on` for the active one; pressing runs `action` with `args`. */
 export interface ThermostatMode { id: string; label: string; on?: boolean; action: string; args?: Record<string, unknown>; hint?: string }   // hint: what it does, in one line

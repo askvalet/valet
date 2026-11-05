@@ -1,7 +1,7 @@
 // The cards that live in a house: weather, the family calendar and the thermostat. They draw their own frame edge to edge
 // (the glass comes from WidgetView), read their own size, and stretch to fill a bento row without leaving a gap.
-import { clock as clockOf, day as dayOf, duration, firstDay, highLow, withUnit, longDay as longDayOf, month as monthOf, range, weekday } from './format.ts';
-import { Armchair, ArrowUpDown, BedDouble, CalendarDays, ChevronLeft, ChevronRight, Droplets, Fan, Flame, House, Leaf, Minus, Moon, Plane, Plus, Power, Snowflake, Sparkles, Thermometer, Zap, type LucideIcon } from 'lucide-react';
+import { clock as clockOf, day as dayOf, duration, firstDay, highLow, hourOf, withUnit, longDay as longDayOf, month as monthOf, range, weekday } from './format.ts';
+import { Armchair, ArrowUpDown, BedDouble, CalendarDays, ChevronLeft, ChevronRight, Droplets, Fan, Flame, House, Leaf, Minus, Moon, Plane, Plus, Power, Snowflake, Sparkles, Thermometer, Video, X, Zap, type LucideIcon } from 'lucide-react';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import type { CalendarCard, CalendarEvent, ForecastCard, ThermostatCard, ThermostatMode } from '../shared/cards.ts';
@@ -9,6 +9,7 @@ import { Metric } from './metric.tsx';
 import { LinkButton } from './link-button.tsx';
 import { Cant } from './visuals/note.tsx';
 import { Empty } from './empty.tsx';
+import { HeadActions, headButton, Row, RowArrows, still } from './feel.tsx';
 import './home-cards.css';
 
 type Run = (action: string, args?: Record<string, unknown>) => Promise<void>;
@@ -309,6 +310,183 @@ function Month({ year, month, days, today, picked, pick }: { year: number; month
   );
 }
 
+/** The card's header row for the day it's on: the date where a card's title sits, and Today and the arrows at the right,
+ *  so a narrow calendar lines up with the cards beside it. */
+function DayHead({ title, away, home, arrows }: { title: string; away: boolean; home: () => void; arrows: ReactNode }) {
+  return (
+    <HeadActions>
+      <div className="cal-head flex min-w-0 flex-1 items-center gap-1">
+        <div className="min-w-0 flex-1 truncate text-title leading-snug font-semibold" aria-live="polite">{title}</div>
+        {away && <button onClick={home} className="press mr-1 shrink-0 text-body font-medium text-primary">Today</button>}
+        {arrows}
+      </div>
+    </HeadActions>
+  );
+}
+
+/** "9", "14", or "9a" on a 12-hour clock: a gutter has room for little more. */
+const hourLabel = (hr: number) => hourOf(new Date(2000, 0, 1, hr)).replace(/^0(?=\d)/, '').replace(/\s?([AP])\.?M\.?$/i, (_, a: string) => a.toLowerCase());
+const https = (href: string) => { try { return new URL(href).protocol === 'https:'; } catch { return false; } };
+const HOUR = 36e5, DAY_HEAD = 40, CHIP = 20;
+type Block = { e: CalendarEvent; top: number; len: number; lane: number; lanes: number };
+
+/** A day's timed events as blocks between `lo` and `hi` (hours), side by side where they overlap. */
+function blocksOf(list: CalendarEvent[], d: Date, lo: number, hi: number): Block[] {
+  const start = +d, end = +shift(d, 1), span = (hi - lo) * HOUR;
+  const segs = list.filter(e => !dated(e.start)).map(e => {
+    const a = Math.max(+parse(e.start), start), b = Math.min(e.end ? +parse(e.end) : a + 18e5, end);
+    return { e, a, b: Math.max(b, a + 15 * 6e4) };
+  }).sort((x, y) => x.a - y.a || y.b - x.b);
+  const out: Block[] = [];
+  for (let i = 0; i < segs.length;) {
+    // a cluster: everything that overlaps something before it, laid out in lanes
+    let j = i, until = segs[i].b; const lanes: number[] = [], group: Block[] = [];
+    while (j < segs.length && (j === i || segs[j].a < until)) {
+      const s = segs[j], lane = lanes.findIndex(t => t <= s.a), at = lane < 0 ? lanes.length : lane;
+      lanes[at] = s.b; until = Math.max(until, s.b);
+      group.push({ e: s.e, top: (s.a - start - lo * HOUR) / span, len: (s.b - s.a) / span, lane: at, lanes: 0 });
+      j++;
+    }
+    for (const g of group) g.lanes = lanes.length;
+    out.push(...group); i = j;
+  }
+  return out;
+}
+
+/** What an event is, tapped: the agenda's row with room for where and which calendar, and its Join. Over the week, never
+ *  beside it, so nothing moves. */
+function EventSheet({ e, close }: { e: CalendarEvent; close: () => void }) {
+  const box = useRef<HTMLDivElement>(null), over = !!e.end && !dated(e.end) && +parse(e.end) < Date.now();
+  useEffect(() => {
+    const key = (k: globalThis.KeyboardEvent) => { if (k.key === 'Escape') close(); };
+    const down = (p: globalThis.PointerEvent) => { const t = p.target as Element; if (!box.current?.contains(t) && !t.closest?.('.cal-ev')) close(); };
+    addEventListener('keydown', key); addEventListener('pointerdown', down);
+    return () => { removeEventListener('keydown', key); removeEventListener('pointerdown', down); };
+  }, [close]);
+  return (
+    <div ref={box} role="dialog" aria-label={e.title} className="cal-sheet absolute inset-x-0 bottom-0 z-20 flex items-stretch gap-2.5 p-3">
+      <span className="w-[3.5px] shrink-0 rounded-full" style={{ background: colorOf(e) }} />
+      <div className="min-w-0 flex-1 py-px">
+        <div className="text-item leading-[1.3] font-medium">{e.title}</div>
+        <div className="truncate text-body leading-[1.35] text-muted-foreground tabular">{dayOf(parse(e.start))} · {span(e)}</div>
+        {(e.location || e.calendar || e.join) && <div className="truncate text-meta leading-[1.4] text-muted-foreground">{[e.join?.provider, e.location && e.location !== e.join?.href ? e.location : undefined, e.calendar].filter(Boolean).join(' · ')}</div>}
+      </div>
+      <div className="flex shrink-0 flex-col items-end justify-between gap-2">
+        <button onClick={close} aria-label="Close" className="press -m-1 grid size-7 place-items-center rounded-full text-muted-foreground hover:text-foreground"><X className="size-icon" /></button>
+        {e.join && !over && <LinkButton link={{ label: 'Join', href: e.join.href, note: e.join.provider }} />}
+      </div>
+    </div>
+  );
+}
+
+/** A few days side by side, the hours down the side: what's on, and where the gaps are. It scrolls a day at a time and opens
+ *  on today; the hours are only the ones in use, squeezed to the card's height so it never scrolls up and down. */
+function Week({ days, today, low, high, w }: { days: Map<string, CalendarEvent[]>; today: Date; low: Date | null; high: Date | null; w: number }) {
+  const id = `cal-week-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  const list = useMemo(() => {
+    const a = low && +low > +shift(today, -7) ? low : shift(today, -7), b = high && +high < +shift(today, 34) ? high : shift(today, 34), out: Date[] = [];
+    for (let d = a; +d <= +b; d = shift(d, 1)) out.push(d);
+    return out.length ? out : [today];
+  }, [today, low, high]);
+  const n = w ? Math.max(2, Math.min(7, Math.floor((w - 30) / 95))) : 3;
+  // the hours worth showing: 8 to 8 at least, wider for whatever's on in these weeks; the same while scrolling, so nothing jumps
+  const { lo, hi, rows } = useMemo(() => {
+    let lo = 8, hi = 20, rows = 0;
+    for (const d of list) {
+      const all = days.get(keyOf(d)) ?? [], start = +d, end = +shift(d, 1);
+      rows = Math.max(rows, all.filter(e => dated(e.start)).length);
+      for (const e of all) {
+        if (dated(e.start)) continue;
+        const a = Math.max(+parse(e.start), start), b = Math.min(e.end ? +parse(e.end) : a + 18e5, end);
+        lo = Math.min(lo, Math.floor((a - start) / HOUR)); hi = Math.max(hi, Math.ceil((b - start) / HOUR));
+      }
+    }
+    return { lo: Math.max(0, lo), hi: Math.min(24, hi), rows: Math.min(2, rows) };
+  }, [days, list]);
+  const [gutter, { h: gh }] = useBox<HTMLDivElement>(), per = gh / (hi - lo);
+  const step = per >= 24 ? 1 : per >= 12 ? 2 : 3;
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 60_000); return () => clearInterval(t); }, []);
+  const [sel, setSel] = useState<CalendarEvent | null>(null), close = useMemo(() => () => setSel(null), []);
+  // which day is at the left: the header says it, and Today comes back once it's out of view
+  const todayAt = Math.max(0, list.findIndex(d => +d === +today)), [at, setAt] = useState(todayAt);
+  const row = useRef<HTMLElement | null>(null);
+  const colW = () => (row.current?.clientWidth ?? 1) / n;
+  // the day at the left stays there as the card's size changes, a tab drawn hidden included (it's 0 wide until it shows)
+  const held = useRef(at), fitted = useRef(0); held.current = at;
+  useLayoutEffect(() => {
+    const r = row.current = document.getElementById(id); if (!r) return;
+    const fit = () => { fitted.current = r.clientWidth; if (r.clientWidth) r.scrollTo({ left: held.current * r.clientWidth / n, behavior: 'instant' }); };
+    fit(); const ro = new ResizeObserver(fit); ro.observe(r);
+    return () => ro.disconnect();
+  }, [n]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // heard beside Blossom's own listener, not instead of it: its arrows and edge fades need the scroll too
+  useEffect(() => {
+    const r = row.current; if (!r) return;
+    // a scroll from a size that hasn't been fitted yet is the browser keeping its old offset, not someone moving it
+    const seen = () => { if (r.clientWidth && r.clientWidth === fitted.current) setAt(Math.round(r.scrollLeft / colW())); };
+    r.addEventListener('scroll', seen, { passive: true }); return () => r.removeEventListener('scroll', seen);
+  }, [n]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const home = () => row.current?.scrollTo({ left: todayAt * colW(), behavior: still(row.current) ? 'instant' : 'smooth' });
+  const left = list[Math.min(at, list.length - 1)], right = list[Math.min(at + n - 1, list.length - 1)];
+  const inView = todayAt >= at && todayAt < at + n;
+  const title = inView ? longDay(today) : left.getMonth() === right.getMonth() ? monthOf(left, { year: left.getFullYear() !== today.getFullYear() }) : `${monthOf(left, { short: true })} – ${monthOf(right, { short: true, year: right.getFullYear() !== today.getFullYear() })}`;
+  const strip = rows ? rows * CHIP + 6 : 0, hours = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+  const nowAt = (now - +today) / HOUR;
+
+  return (
+    <div className="relative flex min-h-[300px] min-w-0 flex-1 flex-col" style={{ minHeight: Math.max(300, Math.min(480, DAY_HEAD + strip + (hi - lo) * 26)) }}>
+      <DayHead title={title} away={!inView} home={home} arrows={<RowArrows id={id} label="the week" />} />
+      <div className="relative flex min-h-0 flex-1">
+        {/* the hours, outside the scroll, so they stay put */}
+        <div className="flex w-[30px] shrink-0 flex-col" aria-hidden>
+          <div style={{ height: DAY_HEAD + strip }} />
+          <div ref={gutter} className="relative min-h-0 flex-1">
+            {gh > 0 && hours.map((hr, i) => i > 0 && i < hours.length - 1 && (hr - lo) % step === 0 &&
+              <span key={hr} className="absolute right-1.5 -translate-y-1/2 text-caption leading-none text-muted-foreground tabular" style={{ top: `${(i / (hi - lo)) * 100}%` }}>{hourLabel(hr)}</span>)}
+          </div>
+        </div>
+        <Row id={id} className="cal-week min-w-0 flex-1" style={{ '--n': n, '--hours': hi - lo } as CSSProperties}>
+          {list.map(d => {
+            const k = keyOf(d), all = days.get(k) ?? [], isToday = +d === +today, allDay = all.filter(e => dated(e.start)), blocks = blocksOf(all, d, lo, hi);
+            const shown = allDay.length > rows ? allDay.slice(0, rows - 1) : allDay;
+            return (
+              <div key={k} data-blossom-slide="" className={cn('cal-col flex shrink-0 flex-col', isToday && 'is-today')} role="group" aria-label={`${longDay(d)}, ${all.length ? `${all.length} event${all.length > 1 ? 's' : ''}` : 'nothing on'}`}>
+                <div className="flex flex-col items-center justify-center gap-0.5" style={{ height: DAY_HEAD }}>
+                  <span className={cn('text-caption leading-none font-medium', isToday ? 'text-foreground' : 'text-muted-foreground')}>{weekday(d)}</span>
+                  <span className={cn('tabular grid h-[22px] min-w-[22px] place-items-center rounded-full px-1 text-body leading-none font-medium', isToday && 'bg-primary text-primary-foreground')}>{d.getDate()}</span>
+                </div>
+                {rows > 0 && <div className="flex flex-col gap-[2px] px-[2px]" style={{ height: strip }}>
+                  {shown.map((e, i) => <button key={i} onClick={() => setSel(e)} className="cal-ev cal-chip press truncate rounded-tag px-1.5 text-left text-caption font-medium" style={{ '--c': colorOf(e), height: CHIP - 2 } as CSSProperties} aria-label={`${e.title}, ${span(e)}`}>{e.title}</button>)}
+                  {allDay.length > rows && <button onClick={() => setSel(allDay[rows - 1])} className="cal-ev press truncate rounded-tag px-1.5 text-left text-caption text-muted-foreground" style={{ height: CHIP - 2 }}>+{allDay.length - rows + 1} more</button>}
+                </div>}
+                <div className="cal-body relative min-h-0 flex-1">
+                  {blocks.map((b, i) => {
+                    const px = b.len * gh, past = !!b.e.end && +parse(b.e.end) < now, c = colorOf(b.e), join = b.e.join && !past && https(b.e.join.href), jz = Math.round(Math.max(13, Math.min(18, px - 2)));
+                    return (
+                      <div key={i} className={cn('cal-ev absolute', past && 'opacity-50')} style={{ '--c': c, top: `${b.top * 100}%`, height: `max(${b.len * 100}%, 14px)`, left: `calc(${(b.lane / b.lanes) * 100}% + 2px)`, width: `calc(${100 / b.lanes}% - 3px)` } as CSSProperties}>
+                        <button onClick={() => setSel(s => s === b.e ? null : b.e)} aria-label={`${b.e.title}, ${span(b.e)}${b.e.join ? `, ${b.e.join.provider}` : ''}`} aria-expanded={sel === b.e}
+                          className={cn('cal-block press flex size-full min-w-0 flex-col overflow-hidden rounded-tag text-left', px >= 26 ? 'px-1.5 py-1' : 'px-1.5 py-0', join && 'pr-5')}>
+                          <span className={cn('min-w-0 text-caption leading-[13px] font-medium', px >= 40 ? 'line-clamp-2' : 'truncate')}>{b.e.title}</span>
+                          {px >= (b.lanes > 1 ? 52 : 34) && <span className="truncate text-caption leading-[13px] opacity-75 tabular">{clock(parse(b.e.start))}</span>}
+                        </button>
+                        {join && <a href={b.e.join!.href} target="_blank" rel="noopener noreferrer" aria-label={`Join ${b.e.title} on ${b.e.join!.provider}`} title={`Join · ${b.e.join!.provider}`}
+                          className="cal-join press absolute top-px right-[2px] grid place-items-center rounded-tag" style={{ width: jz, height: jz }}><Video style={{ width: jz - 6, height: jz - 6 }} aria-hidden /></a>}
+                      </div>
+                    );
+                  })}
+                  {isToday && nowAt > lo && nowAt < hi && <div className="cal-now pointer-events-none absolute inset-x-0" style={{ top: `${((nowAt - lo) / (hi - lo)) * 100}%` }} aria-hidden />}
+                </div>
+              </div>
+            );
+          })}
+        </Row>
+        {sel && <EventSheet key={`${sel.title}${sel.start}`} e={sel} close={close} />}
+      </div>
+    </div>
+  );
+}
+
 export function CalendarView({ card, large, dense }: { card: CalendarCard; large?: boolean; dense?: boolean }) {
   const [ref, { w, h }] = useBox<HTMLDivElement>();
   const [today, setToday] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); });
@@ -316,42 +494,53 @@ export function CalendarView({ card, large, dense }: { card: CalendarCard; large
   const [picked, setPicked] = useState<Date | null>(null), [view, setView] = useState<{ y: number; m: number; dir?: number } | null>(null);
   const days = useMemo(() => byDay(card.events), [card.events]);
   const day = picked ?? today, y = view?.y ?? today.getFullYear(), m = view?.m ?? today.getMonth(), key = keyOf(day);
-  const two = w ? w >= 540 : !!large, month = !dense && (two || large || h >= 620);
-  const low = card.from ? parse(card.from) : null, high = card.to ? parse(card.to) : null;
+  const two = w ? w >= 540 : !!large;
+  // narrow and tall enough: the week, unless the config holds it to the agenda. It's at least 300 high, so once shown it stays
+  const week = !two && !dense && card.view !== 'agenda' && (!w || w >= 240) && (card.view === 'week' || !h || h >= 280);
+  const month = !dense && !week && (two || large || h >= 620);
+  const low = useMemo(() => card.from ? parse(card.from) : null, [card.from]), high = useMemo(() => card.to ? parse(card.to) : null, [card.to]);
   const go = (n: number) => { const d = new Date(y, m + n, 1); setView({ y: d.getFullYear(), m: d.getMonth(), dir: n }); };
   const pick = (d: Date) => { const same = keyOf(d) === keyOf(today); setPicked(same ? null : d); if (d.getMonth() !== m || d.getFullYear() !== y) setView({ y: d.getFullYear(), m: d.getMonth(), dir: +d > +new Date(y, m, 1) ? 1 : -1 }); };
   const home = () => { setPicked(null); setView(null); };
   const chosen = days.get(key) ?? [], away = !!picked || y !== today.getFullYear() || m !== today.getMonth();
   const list = <Agenda days={days} from={day} today={today} cap={two ? 14 : dense ? 4 : 6} empty={picked ? 'Nothing on from here' : card.empty ?? 'Nothing coming up'} />;
+  const arrow = (dir: number, label: string, I: LucideIcon, off: boolean) => <button type="button" aria-label={label} aria-disabled={off} onClick={() => !off && pick(shift(day, dir))} className={cn(headButton, off && 'opacity-30')}><I className="size-icon" /></button>;
   return (
-    <div ref={ref} className={cn('cal relative flex h-full min-w-0 flex-1', two ? 'flex-row-reverse gap-7' : 'flex-col gap-5')}>
-      {/* side by side, the month is on the left and the day on the right, so an event's Join sits at the card's right edge */}
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="mb-3 flex items-baseline justify-between gap-2">
-          <div className="truncate text-metric-s font-medium">{longDay(day)}</div>
-          {away && !dense && <button onClick={home} className="press shrink-0 text-body font-medium text-primary">Today</button>}
-        </div>
-        {/* side by side the month sets the height, and the agenda scrolls in whatever's left: it can't stretch the row */}
-        {two ? <div className="cal-scroll relative min-h-0 flex-1"><div className="absolute inset-0 overflow-y-auto pb-3">{list}</div></div> : list}
-      </div>
-      {month && (
-        <div className={cn('flex min-w-0 flex-col', two && 'w-[47%] shrink-0')}>
-          <div className="mb-1 flex items-center justify-between">
-            <div className="text-item font-semibold tracking-tight">{monthOf(new Date(y, m, 1), { year: y !== today.getFullYear() })}</div>
-            <div className="-mr-1.5 flex">
-              <button aria-label="Previous month" disabled={!!low && new Date(y, m, 1) <= low} onClick={() => go(-1)} className="press grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"><ChevronLeft className="size-icon-lg" /></button>
-              <button aria-label="Next month" disabled={!!high && new Date(y, m + 1, 1) > high} onClick={() => go(1)} className="press grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"><ChevronRight className="size-icon-lg" /></button>
+    <div ref={ref} className={cn('cal relative flex h-full min-w-0 flex-1', two ? 'flex-row-reverse gap-7' : 'flex-col gap-5')} data-mode={week ? 'week' : two ? 'month' : 'agenda'}>
+      {week ? <Week days={days} today={today} low={low} high={high} w={w} /> : <>
+        {/* side by side, the month is on the left and the day on the right, so an event's Join sits at the card's right edge */}
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          {two || dense ? (
+            <div className={cn('flex items-center justify-between gap-2', two ? 'mb-4 h-7' : 'mb-3')}>
+              <div className={cn('truncate font-semibold', two ? 'text-title leading-snug' : 'text-metric-s font-medium')}>{longDay(day)}</div>
+              {away && !dense && <button onClick={home} className="press shrink-0 text-body font-medium text-primary">Today</button>}
             </div>
-          </div>
-          <div className="mb-1 grid grid-cols-7 text-center text-caption font-medium text-muted-foreground" aria-hidden>{Array.from({ length: 7 }, (_, i) => 'SMTWTFS'[(firstDay() + i) % 7]).map((l, i) => <div key={i}>{l}</div>)}</div>
-          <div key={`${y}-${m}`} className={cn('flex min-h-0 flex-1 flex-col', view?.dir && 'cal-page')} style={{ '--from': `${(view?.dir ?? 0) * 10}px` } as CSSProperties}><Month year={y} month={m} days={days} today={today} picked={key} pick={pick} /></div>
-          {/* two quiet lines for the chosen day; always this tall, so choosing a day doesn't move anything */}
-          <ul className="mt-2 h-[38px] space-y-0.5 overflow-hidden text-meta leading-[18px]">
-            {chosen.slice(0, 2).map((e, i) => <li key={i} className="flex min-w-0 items-center gap-1.5"><i className="dot" style={{ background: colorOf(e) }} /><span className="truncate font-medium">{e.title}</span><span className="ml-auto shrink-0 tabular text-muted-foreground">{i === 1 && chosen.length > 2 ? `+${chosen.length - 2} more` : dated(e.start) ? 'All day' : clock(parse(e.start))}</span></li>)}
-            {!chosen.length && <li className="text-muted-foreground">Nothing on</li>}
-          </ul>
+          ) : (
+            // narrow, the day is the card's title: on the header's line, with the arrows where every card keeps its actions
+            <DayHead title={longDay(day)} away={!!picked} home={home} arrows={<div className="flex gap-0.5">{arrow(-1, 'Previous day', ChevronLeft, !!low && +shift(day, -1) < +low)}{arrow(1, 'Next day', ChevronRight, !!high && +shift(day, 1) > +high)}</div>} />
+          )}
+          {/* side by side the month sets the height, and the agenda scrolls in whatever's left: it can't stretch the row */}
+          {two ? <div className="cal-scroll relative min-h-0 flex-1"><div className="absolute inset-0 overflow-y-auto pb-3">{list}</div></div> : list}
         </div>
-      )}
+        {month && (
+          <div className={cn('flex min-w-0 flex-col', two && 'w-[47%] shrink-0')}>
+            <div className="mb-2 flex h-7 items-center justify-between">
+              <div className="text-title leading-snug font-semibold">{monthOf(new Date(y, m, 1), { year: y !== today.getFullYear() })}</div>
+              <div className="-mr-1.5 flex">
+                <button aria-label="Previous month" disabled={!!low && new Date(y, m, 1) <= low} onClick={() => go(-1)} className="press grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"><ChevronLeft className="size-icon-lg" /></button>
+                <button aria-label="Next month" disabled={!!high && new Date(y, m + 1, 1) > high} onClick={() => go(1)} className="press grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"><ChevronRight className="size-icon-lg" /></button>
+              </div>
+            </div>
+            <div className="mb-1 grid grid-cols-7 text-center text-caption font-medium text-muted-foreground" aria-hidden>{Array.from({ length: 7 }, (_, i) => 'SMTWTFS'[(firstDay() + i) % 7]).map((l, i) => <div key={i}>{l}</div>)}</div>
+            <div key={`${y}-${m}`} className={cn('flex min-h-0 flex-1 flex-col', view?.dir && 'cal-page')} style={{ '--from': `${(view?.dir ?? 0) * 10}px` } as CSSProperties}><Month year={y} month={m} days={days} today={today} picked={key} pick={pick} /></div>
+            {/* two quiet lines for the chosen day; always this tall, so choosing a day doesn't move anything */}
+            <ul className="mt-2 h-[38px] space-y-0.5 overflow-hidden text-meta leading-[18px]">
+              {chosen.slice(0, 2).map((e, i) => <li key={i} className="flex min-w-0 items-center gap-1.5"><i className="dot" style={{ background: colorOf(e) }} /><span className="truncate font-medium">{e.title}</span><span className="ml-auto shrink-0 tabular text-muted-foreground">{i === 1 && chosen.length > 2 ? `+${chosen.length - 2} more` : dated(e.start) ? 'All day' : clock(parse(e.start))}</span></li>)}
+              {!chosen.length && <li className="text-muted-foreground">Nothing on</li>}
+            </ul>
+          </div>
+        )}
+      </>}
     </div>
   );
 }

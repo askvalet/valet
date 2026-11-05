@@ -82,7 +82,7 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
   z.object({ ...base, type: z.literal('schedule'), sunset: z.string().optional(), muted: z.array(z.string()).optional(),
     items: z.array(z.object({ name: z.string(), at: z.string().refine(s => !Number.isNaN(Date.parse(s)), 'not a date') }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('article'), ...pick, more: z.array(z.object(pick).strict()).optional(), empty: z.string().optional(), archived: z.string().optional() }),
-  z.object({ ...base, type: z.literal('calendar'), from: date.optional(), to: date.optional(), empty: z.string().optional(),
+  z.object({ ...base, type: z.literal('calendar'), from: date.optional(), to: date.optional(), empty: z.string().optional(), view: z.enum(['week', 'agenda']).optional(),
     events: z.array(z.object({ title: z.string(), start: when, end: when.optional(), calendar: z.string().optional(), location: z.string().optional(),
       color: z.string().regex(/^(#[0-9a-f]{3,8}|[a-z]{3,30})$/i, 'not a colour').optional(), join: z.object({ href: https, provider: z.string() }).strict().optional() }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('thermostat'), unit: z.enum(['C', 'F']), state: z.string(), mode: z.enum(['heat', 'cool', 'auto', 'off']).optional(), current: finite.optional(), target: finite.optional(),

@@ -176,7 +176,7 @@ can still draw it another way with a widget's [`view`](configuration.md#layout).
 | `cameras` | live cameras | a big view, a pill per camera, `events` as a strip; each camera has an `image` (refreshed every `refresh` seconds, 1 by default) or a `video`, and `detections` draw a box that flashes as it lands. Goes full screen on a tap |
 | `schedule` | a day's times | next one counts down live; `muted` times show but are never "next" |
 | `forecast` | weather | a large glyph and temperature, high/low, the next `days`; more room adds the hours and range bars |
-| `calendar` | an agenda and a month | `events` with ISO times, or plain dates for all day; browsing a month happens in the browser, within `from`..`to` |
+| `calendar` | an agenda and a month, or a week | `events` with ISO times, or plain dates for all day; browsing a month or a week happens in the browser, within `from`..`to`. Wide, it's the month beside the day; narrower and tall enough, a few days side by side with the hours down the side. `view` (`week` or `agenda`) holds it to one |
 | `thermostat` | a dial | `target`, `current`, `min`, `max`, `step`, `unit`; `set` names the action for a new target, `modes` the buttons |
 | `controls` | switches, sliders, choices | each control names an action of the same integration |
 | `chart` | a graph | `style` is `line`, `bars` or `stream` |

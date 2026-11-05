@@ -23,6 +23,28 @@
 .is-picked { background: var(--fill-2); }
 @media (hover: hover) { .cal-day:hover .cal-num:not(.bg-primary):not(.is-picked) { background: color-mix(in srgb, var(--foreground) 9%, transparent); } }
 
+/* a narrow calendar's day sits where a card's title does, its arrows at the right */
+.card-actions:has(> .cal-head) { flex: 1 1 auto; min-width: 0; }
+
+/* the week: days side by side, scrolled a day at a time, with the hours as faint lines behind */
+.cal-week { display: flex; --fade-start: 14px; --fade-end: 14px; overscroll-behavior-x: contain; scrollbar-width: none; }
+.cal-week::-webkit-scrollbar { display: none; }
+.cal-week[data-start] { --fade-start: 0px; }
+.cal-week[data-end] { --fade-end: 0px; }
+.cal-col { width: calc(100% / var(--n, 3)); scroll-snap-align: start; box-shadow: inset 1px 0 var(--fill-1); }
+.cal-col.is-today { background: color-mix(in oklab, var(--foreground) 3.5%, transparent); }
+.cal-body { background-image: linear-gradient(to bottom, var(--fill-1) 1px, transparent 1px); background-size: 100% calc(100% / var(--hours, 12)); }
+.cal-block, .cal-chip { background: color-mix(in srgb, var(--c) 24%, transparent); color: var(--foreground); transition: background-color var(--dur-press) var(--ease-out), transform var(--dur-press) var(--ease-out); }
+.cal-block { box-shadow: inset 2.5px 0 var(--c); }
+.cal-ev > .cal-block[aria-expanded="true"] { background: color-mix(in srgb, var(--c) 40%, transparent); }
+@media (hover: hover) { .cal-block:hover, .cal-chip:hover { background: color-mix(in srgb, var(--c) 34%, transparent); } }
+.cal-join { color: #fff; background: var(--meeting); }
+.cal-now { height: 1.5px; margin-top: -.75px; background: var(--primary); }
+.cal-now::before { content: ""; position: absolute; left: -3px; top: -2.75px; width: 7px; height: 7px; border-radius: 50%; background: var(--primary); }
+.cal-sheet { border-radius: var(--radius-inset); background: rgb(28 28 32 / .97); box-shadow: inset 0 0 0 1px var(--fill-2), 0 12px 32px -12px rgb(0 0 0 / .5); animation: cal-sheet var(--dur-pop) var(--ease-out) backwards; }
+html:not(.dark) .cal-sheet { background: rgb(252 252 253 / .97); box-shadow: inset 0 0 0 1px var(--fill-2), 0 12px 32px -14px rgb(0 0 0 / .25); }
+@keyframes cal-sheet { from { opacity: 0; transform: translateY(8px); } }
+
 /* thermostat: one colour per mood, the same dial for all of them */
 .th { --th-a: var(--primary); --th-b: var(--primary); --th-soft: color-mix(in srgb, var(--primary) 18%, transparent); user-select: none; -webkit-user-select: none; }
 .th[data-mode="cool"] { --th-a: #a4dcff; --th-b: #4ba7ff; --th-soft: rgb(90 170 255 / .2); }

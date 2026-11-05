@@ -539,6 +539,7 @@ widgets:
 |---|---|
 | Charts: `line`, `bars`, `stream`, `race`, `heatmap`, `ranked`, `pie` | anything with numbers: a chart, race, heatmap or ranked card, or a stats card with a pie |
 | Galleries: `row`, `spotlight`, `focus`, `coverflow`, `masonry`, `cards`, `desk`, `windows`, `tickets`, `mosaic`, `flashback`, `album` | anything with pictures: a shelf, photos, ranked, race or media card, or a reading pile (an article card) |
+| Calendar: `week`, `agenda` | a calendar card. On its own it picks by its size: the month beside the day when it's wide, a week of days side by side when it's narrower and tall enough, the day's list when it's small. `week` always shows the week; `agenda` never does |
 
 | Gallery | What it looks like | Used by default for |
 |---|---|---|
@@ -656,7 +657,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `docker` | `url` (a read-only socket proxy, never the raw socket), `hide` (names to leave out, e.g. containers that are meant to stay stopped), `sources` (container → GitHub `owner/repo` for release notes, when its image doesn't say), `github` (a token, past 60 requests an hour) | `containers`, `updates` |
 | `host` | `url` (the Valet agent), `token`, `title`, `quiet` (services often off on purpose) | `services` |
 | `api` | `url`, `headers`, `method`, `body`, `every` (60s), `title`, `icon`, `href`, `about`, and one of `stats`, `list`, `rows`, `status` (see below) | `data` |
-| `calendar` | `calendars` (iCal URLs, or `{ url, name, color }`), `days` (14), `limit` (10), `title`, `months` (6, how far ahead the month browses), `meetings` (see below) | `upcoming`, `agenda` (place it `wide` or `large` for the month beside it) |
+| `calendar` | `calendars` (iCal URLs, or `{ url, name, color }`), `days` (14), `limit` (10), `title`, `months` (6, how far ahead the month browses), `meetings` (see below) | `upcoming`, `agenda` (place it `wide` or `large` for the month beside it; narrower and tall enough, it's a week you scroll sideways: `view: week` or `view: agenda` holds it to one) |
 | `links` | (from the top-level `links:` block) | one per group |
 
 ### Online meetings: `calendar.meetings`

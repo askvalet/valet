@@ -61,3 +61,14 @@ test('a widget takes a view in the config, and only a real one', () => {
   assert.equal(Config.parse({ layout: [{ widgets: [{ widget: 'plex.top', view: 'focus' }] }] }).layout[0].widgets[0].view, 'focus');
   assert.throws(() => Config.parse({ layout: [{ widgets: [{ widget: 'plex.top', view: 'sideways' }] }] }));
 });
+
+test('a calendar can be held to its week or its agenda, and only a calendar', () => {
+  const cal: Card = { type: 'calendar', events: [{ title: 'Swim', start: '2026-11-07T10:00:00Z', end: '2026-11-07T10:45:00Z' }] };
+  assert.equal((asView(cal, 'week') as any).view, 'week');
+  assert.equal((asView(cal, 'agenda') as any).view, 'agenda');
+  CardSchema.parse(asView(cal, 'week'));
+  assert.equal(asView(cal, 'bars'), cal, 'a chart view leaves a calendar alone');
+  assert.equal(fits('week', 'calendar'), true);
+  assert.equal(fits('week', 'shelf'), false);
+  assert.deepEqual(viewsFor('calendar'), ['week', 'agenda']);
+});

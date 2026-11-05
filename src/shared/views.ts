@@ -1,16 +1,19 @@
 // A card's data and the way it's drawn are separate choices. Numbers can be any chart, things with pictures can be any
 // gallery: a widget's `view` in the config picks one, and what can't honestly become that view stays as it was.
-import type { Card, ChartCard, HeatmapCard, RaceCard, RankedCard, ShelfCard, ShelfItem } from './cards.ts';
+import type { CalendarCard, Card, ChartCard, HeatmapCard, RaceCard, RankedCard, ShelfCard, ShelfItem } from './cards.ts';
 
 export const CHART_VIEWS = ['line', 'bars', 'stream', 'race', 'heatmap', 'ranked', 'pie'] as const;
 export const GALLERY_VIEWS = ['row', 'spotlight', 'focus', 'coverflow', 'masonry', 'cards', 'desk', 'windows', 'tickets', 'mosaic', 'flashback', 'album'] as const;
-export const VIEWS = [...CHART_VIEWS, ...GALLERY_VIEWS] as const;
+/** A calendar's own: a week of days side by side with the hours down the side, or the agenda (with the month when wide). */
+export const CALENDAR_VIEWS = ['week', 'agenda'] as const;
+export const VIEWS = [...CHART_VIEWS, ...GALLERY_VIEWS, ...CALENDAR_VIEWS] as const;
 export type View = (typeof VIEWS)[number];
 
 /** Which cards can honestly become which views: numbers into charts, pictures into galleries. */
 const CHARTABLE: readonly Card['type'][] = ['chart', 'race', 'heatmap', 'ranked', 'stats'];
 const PICTURED: readonly Card['type'][] = ['shelf', 'photos', 'ranked', 'race', 'media', 'article'];
-export const fits = (view: View, type: Card['type']) => ((CHART_VIEWS as readonly string[]).includes(view) ? CHARTABLE : PICTURED).includes(type);
+export const fits = (view: View, type: Card['type']) => (CALENDAR_VIEWS as readonly string[]).includes(view) ? type === 'calendar'
+  : ((CHART_VIEWS as readonly string[]).includes(view) ? CHARTABLE : PICTURED).includes(type);
 /** The views a kind of card can take, for a config problem to suggest. */
 export const viewsFor = (type: Card['type']) => VIEWS.filter(v => fits(v, type));
 
@@ -97,7 +100,8 @@ export function asView<C extends Card | undefined>(card: C, view?: View): C | Ca
   if (!card || !view) return card;
   const hit = drawn.get(card); if (hit?.view === view) return hit.out;
   const n = (CHART_VIEWS as readonly string[]).includes(view) ? numbers(card) : undefined;
-  const out = (n ? chart(card, n, view) : (GALLERY_VIEWS as readonly string[]).includes(view) ? gallery(card, view) : undefined) ?? card;
+  const out = card.type === 'calendar' ? ((CALENDAR_VIEWS as readonly string[]).includes(view) ? { ...card, view: view as CalendarCard['view'] } : card)
+    : (n ? chart(card, n, view) : (GALLERY_VIEWS as readonly string[]).includes(view) ? gallery(card, view) : undefined) ?? card;
   drawn.set(card, { view, out });
   return out;
 }
