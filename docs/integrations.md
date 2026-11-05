@@ -191,7 +191,7 @@ Any card can also carry:
 
 - `summary` (or `summaries`): its headline, shown when the widget is placed with `size: small`, in the menubar, or as a
   tile. `trend` draws a graph behind it and `color` (a hex colour) tints that graph; `pct` fills a ring, `waffle` draws it
-  as ten rows of ten squares, `marks` is a row of small bars, and `image` fills the tile.
+  as ten rows of ten squares, `pie` as a ring with the share in its middle (in `color`), `marks` is a row of small bars, and `image` fills the tile.
 - `activity`: set only while something is happening; it shows as a ring in the top bar. `countdown: { from, start, end }`
   (ms) lets the page count it down itself: "in 4m" filling from `from`, then "Now · 20m left" until `end`, when the
   ring goes. `link: { label, href, note }` puts a button in its story (an https link, opened in a new tab, its host shown).

@@ -30,7 +30,10 @@ if (only && existsSync(manifestFile)) Object.assign(manifest, JSON.parse(readFil
 const fileOf = (id: string) => `${id.replace(/[^a-zA-Z0-9/_.-]+/g, '-')}.webp`;
 
 async function capture(page: Page, cdp: any, id: string, box: { x: number; y: number; width: number; height: number }) {
-  const r = await cdp.send('Page.captureScreenshot', { format: 'webp', quality: 82, captureBeyondViewport: true, clip: { ...box, scale: 2 } });
+  // beyond the viewport only when the card is taller than it: that capture lays the page out again, and a row that scrolls
+  // sideways (a calendar's week) loses its place
+  const view = page.viewportSize() ?? { width: 1400, height: 1000 }, beyond = box.x + box.width > view.width || box.y + box.height > view.height;
+  const r = await cdp.send('Page.captureScreenshot', { format: 'webp', quality: 82, captureBeyondViewport: beyond, clip: { ...box, scale: 2 } });
   const file = fileOf(id), bytes = Buffer.from(r.data, 'base64'), to = resolve(out, file);
   mkdirSync(dirname(to), { recursive: true });
   writeFileSync(to, bytes);

@@ -36,7 +36,7 @@ Instead of opening five different tabs to work out what's going on, just open Va
 It shows what's happening across all your services, and you can act on it right there. Instead of just being a page with
 links and a status dot, Valet is meant to be powerful and actionable.
 
-<p align="center"><img src="docs/images/front-door.webp" alt="Valet's main screen: a one-line summary of what's wrong and what's playing, an ask box, every service's status, a 3D floor plan and the PC" width="620"></p>
+<p align="center"><img src="docs/images/front-door.webp" alt="Valet's main screen: the greeting at the top left with a one-line summary of what's wrong and what's playing, an ask box, every service's status, then the 3D house, the PC and a week of the calendar side by side" width="620"></p>
 
 <br>
 
@@ -67,7 +67,7 @@ Open `/wall` on a tablet or a spare monitor for a page made to be read from acro
 pick exactly which cards it shows, several pages can take turns, and it dims at night. Nothing on it can be pressed, and
 chat never shows.
 
-<p align="center"><img src="docs/images/wall-services.webp" alt="The wall display: a large clock, the date and the weather, with every service's status below" width="620"><br><img src="docs/images/wall-house.webp" alt="The wall display's House page: the cameras, the thermostat and the daylight" width="620"><br><sub>Two wall pages taking turns: the services, then the house.</sub></p>
+<p align="center"><img src="docs/images/wall-services.webp" alt="The wall display: a large clock, the date and the weather, with every service's status below" width="620"><br><img src="docs/images/wall-house.webp" alt="The wall display's House page: the cameras with their latest events, the hallway thermostat and the daylight" width="620"><br><sub>Two wall pages taking turns: the services, then the house.</sub></p>
 
 <br>
 

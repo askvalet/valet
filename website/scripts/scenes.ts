@@ -62,15 +62,15 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
     await quiet(page, 4000);
     await shot(page, cdp, 'scene/overview');
     const full = await page.evaluate(() => document.documentElement.scrollHeight);
-    await shot(page, cdp, 'scene/overview-full', { x: 0, y: 0, width: 1440, height: full }, 0);
+    // a viewport the page's height, not a capture beyond it: rows that scroll sideways (the calendar's week) keep their place
+    if (wanted('scene/overview-full')) { await page.setViewportSize({ width: 1440, height: full }); await quiet(page, 1500); await shot(page, cdp, 'scene/overview-full'); await page.setViewportSize({ width: 1440, height: 900 }); await quiet(page, 800); }
+    // the calendar a third of the overview's row wide: the week, with the meeting's Join on its block
+    const week = await page.locator('main .cal-week').first().evaluate((e: Element) => { const c = e.closest('[data-slot="card"]') ?? e; const r = c.getBoundingClientRect(); return { x: r.x + scrollX, y: r.y + scrollY, width: r.width, height: r.height }; }).catch(() => null);
+    if (week) await shot(page, cdp, 'scene/calendar-week', week); else problems.push('scene/calendar-week: not found');
 
-    for (const t of ['Services', 'AI', 'Media', 'Library']) { await tab(page, t); await shot(page, cdp, `scene/tab-${t.toLowerCase()}`); }
+    for (const t of ['Services', 'AI', 'Media', 'Library']) { await tab(page, t); if (t === 'Media') await sleep(6500); /* the race plays its year once (7s): shoot its resting frame */ await shot(page, cdp, `scene/tab-${t.toLowerCase()}`); }
     await tab(page, 'Home');
     await shot(page, cdp, 'scene/tab-home');
-    // the calendar's agenda, with the meeting's Join button
-    const agenda = await page.locator('main .cal').last().evaluate((e: Element) => { const c = e.closest('[data-slot="card"]') ?? e; const r = c.getBoundingClientRect(); return { x: r.x + scrollX, y: r.y + scrollY, width: r.width, height: r.height }; }).catch(() => null);
-    if (agenda) await shot(page, cdp, 'scene/meeting-agenda', agenda); else problems.push('scene/meeting-agenda: not found');
-    await page.evaluate(() => scrollTo(0, 0));
     const cardAt = (sel: string, n = 0) => page.locator(sel).nth(n).evaluate((e: Element) => { const c = e.closest('[data-slot="card"]') ?? e; const r = c.getBoundingClientRect(); return { x: r.x + scrollX, y: r.y + scrollY, width: r.width, height: r.height }; }).catch(() => null);
     const cams = await cardAt('.cam-pill');
     if (cams) await shot(page, cdp, 'scene/cameras', cams);

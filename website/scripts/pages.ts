@@ -1,6 +1,6 @@
 // Writes the pages that come from the code: one per integration, one per card type, the configuration reference, the
 // sidebar. Run after `npm run shots`. Nothing here is typed by hand, so nothing here can fall out of step.
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stringify } from 'yaml';
@@ -77,7 +77,7 @@ for (const it of catalog.integrations) writeFileSync(join(docs, 'integrations', 
 
 // the home page's pictures are the README's: copied in, so they live in the repo once
 const why = resolve(root, 'public/why'); mkdirSync(why, { recursive: true });
-for (const f of ['front-door.webp', 'ask-chat.gif', 'ask-for-a-card.gif', 'home-3d.gif', 'config-live.gif', 'live.gif']) copyFileSync(join(repo, 'docs/images', f), join(why, f));
+for (const f of readdirSync(join(repo, 'docs/images')).filter(f => /\.(webp|gif|png)$/.test(f))) copyFileSync(join(repo, 'docs/images', f), join(why, f));
 
 // the icons on the index, small: the same dashboard-icons Valet shows
 const iconDir = resolve(root, 'public/shots/icons'); mkdirSync(iconDir, { recursive: true });

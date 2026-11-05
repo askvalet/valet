@@ -36,7 +36,7 @@ Here's one card at each size. Sizes that would only add empty space are left out
 
 ## The grid
 
-A section with any size other than medium becomes a bento: 2 columns on a phone, 4 on a tablet, 6 on a wide screen. Rows end flush. A row is as tall as its tallest card, unless you set `appearance.rowHeight`.
+A section with any size other than medium becomes a bento: 2 columns on a phone, 4 on a tablet, 6 on a computer, and 8 on a page wider than 1760px. Rows end flush. A row is as tall as its tallest card, unless you set `appearance.rowHeight`.
 
 Sizes apply only in that grid. A section with `place: left` or `right` ignores them.
 
@@ -56,13 +56,16 @@ appearance:
   rowHeight: 180     # px, the least a row takes
 ```
 
-A size can't overrun the last column. A section can also set its own grid with `columns: { phone: 2, tablet: 4, desktop: 6 }`.
+A size can't overrun the last column. A section can also set its own grid with `columns: { phone: 2, tablet: 4, desktop: 6, wide: 8 }`, up to 8 on each screen. `wide` is a page wider than 1760px; left out, it keeps the `desktop` count.
 
-One widget can also take its own number of rows, 1 to 6, so smaller cards stack beside it:
+One widget can also take its own number of rows, 1 to 6, so smaller cards stack beside it, and its own number of columns, 1 to 8:
 
 ```yaml
 - { widget: plex.top, size: tall, rows: 3 }
+- { widget: family.agenda, cols: 2 }   # two of the section's columns
 ```
+
+`cols` never reaches past the last column, so a card set to 2 in a grid of 3 is two thirds of the row on a computer and the whole row on a phone with one column.
 
 ## Density
 

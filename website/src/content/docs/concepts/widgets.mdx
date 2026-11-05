@@ -37,6 +37,7 @@ layout:
 | `every` | How often it refreshes while someone's looking: seconds, or `30s`, `5m`, `1h`. |
 | `view` | How it's drawn, whatever the data. See [views](#views). |
 | `rows` | How many rows it spans, 1 to 6, so smaller cards can stack beside it. |
+| `cols` | How many of the section's columns it spans, 1 to 8, never more than there are. It needs a grid: a section with sizes, or with `columns` per screen. See [sizes](/concepts/sizes/#changing-what-a-size-means). |
 | `title`, `icon` | Its name and icon. On a tile, its label and icon. |
 | `header` | `false` drops its title bar. `true` keeps it in a section that drops them. |
 | `tint`, `opacity`, `blur` | Its surface: a colour, how much of it shows, and the blur behind it. |
@@ -67,7 +68,7 @@ layout:
 | `row` | a plain row of artwork | most shelves |
 | `focus` | the artwork large, one at a time, the ones either side peeking in smaller and dimmer | recently added (Plex through Tautulli, Jellyfin, Emby), continue reading and listening, new music, games |
 | `coverflow` | Cover Flow: the one in the middle faces you, the rest turn away either side in 3D, each with a reflection | nothing; pick it for a shelf of covers |
-| `masonry` | a wall of pictures three rows high, some larger, that scrolls sideways | Immich's On this day |
+| `masonry` | a wall of pictures three rows high, some larger, that scrolls sideways. Photos keep their own shapes and captions | Immich's On this day |
 | `cards` | a stack of cards: the one in front square on, the next ones fanned out behind | Paperless documents, Karakeep's saved links |
 | `spotlight`, `desk`, `windows`, `tickets` | one large with a row beside it; documents on a desk; saved pages as small browser windows; what's coming as tickets | |
 | `mosaic`, `flashback`, `album` | photos as a mosaic, a slow crossfade, or an album: a carousel of large photos, the one you're on captioned | |

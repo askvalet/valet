@@ -123,7 +123,7 @@ export interface ListItem {
   buttons?: { label: string; action: string; args?: Record<string, unknown> }[];   // rows: quiet actions on this row alone, e.g. Pause and Remove
   link?: Link;            // a small button on the row, e.g. Join a meeting
 }
-export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; limit?: number; log?: boolean; layout?: 'temps' | 'chips' | 'headlines' }   // headlines: a grid of stories, each anchored by its site's favicon · temps: a reading per row (pct along the track, meta the number) · chips: pills, an icon by name · limit: chips show this many, "19 in all" opens the rest in place
+export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; limit?: number; log?: boolean; layout?: 'temps' | 'chips' | 'headlines' }   // headlines: one column of stories, each with a small mark (its image, the site's icon, else its first letter), the title on up to two lines, then subtitle · meta · temps: a reading per row (pct along the track, meta the number) · chips: pills, an icon by name · limit: chips show this many, "19 in all" opens the rest in place
 
 export interface MediaItem {
   title: string;
@@ -244,7 +244,7 @@ export interface CalendarEvent {
 }
 /** An agenda beside a month you can browse, or a week of days side by side when the card is narrow and tall enough.
  *  `from` and `to` are the dates the events cover, so browsing stops there. `view` holds it to one: the week, or the agenda. */
-export interface CalendarCard extends Base { type: 'calendar'; events: CalendarEvent[]; from?: string; to?: string; empty?: string; view?: 'week' | 'agenda' }
+export interface CalendarCard extends Base { type: 'calendar'; events: CalendarEvent[]; from?: string; to?: string; empty?: string; view?: 'week' | 'agenda' }   // view: week (days side by side, the hours down the side) or agenda (the day's list, with the month when wide); left out, it picks by its size
 
 /** A thermostat's mode button. Set `on` for the active one; pressing runs `action` with `args`. */
 export interface ThermostatMode { id: string; label: string; on?: boolean; action: string; args?: Record<string, unknown>; hint?: string }   // hint: what it does, in one line

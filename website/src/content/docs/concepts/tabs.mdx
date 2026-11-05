@@ -6,9 +6,9 @@ sidebar:
 ---
 import Shot from '~/components/Shot.astro';
 
-A section with a `title` or a `tab` gets a button in the rail. The overview shows every section that doesn't opt out, and each tab shows its own. Changing tab is a quick fade, unless `appearance.motion` or your system says not to.
+A section with a `title` or a `tab` gets a button in the rail. The overview shows every section that doesn't opt out, and each tab shows its own. Changing tab is a quick fade, unless `appearance.motion` or your system says not to. With `hero.align: left`, each tab shows its name at the top left, where the overview has its greeting.
 
-<Shot id="scene/tab-services" full alt="The services tab: a DNS chart, drives, containers and updates." />
+<Shot id="scene/tab-services" full alt="The Services tab, its name at the top left: every service's status, then updates, a day of Pi-hole, CPU and memory, and backups, containers and drives below." />
 
 ## Overview or tab
 
@@ -41,7 +41,7 @@ layout:
 
 Hiding the extra heading with `heading: false` is common here.
 
-<Shot id="scene/tab-home" full alt="The home tab: cameras and a thermostat." />
+<Shot id="scene/tab-home" full alt="The Home tab: the cameras half the width beside the thermostat, the weather, the doors and who's home, then the 3D house, the desktop and changedetection's watches a third each." />
 
 ## Order and icons
 
@@ -69,7 +69,7 @@ nav:
   widgets: [gpu.usage]
 ```
 
-<Shot id="scene/tab-ai" full alt="The AI tab with the assistant alongside tiles." />
+<Shot id="scene/tab-ai" full alt="The AI tab: the assistant full page, with the GPU's tiles beside it." />
 
 ## A wallpaper per tab
 

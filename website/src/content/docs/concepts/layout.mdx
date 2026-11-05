@@ -38,12 +38,28 @@ Tiles and rings need a card with a `summary` or `summaries`.
 With no other instructions, Valet picks an arrangement from what's in the section:
 
 - **Any widget has a size other than medium.** A [bento grid](/concepts/sizes/) of 2, 4 or 6 columns. Rows end flush.
-- **`columns` is set.** That many cards per row, from tablet width up. A number is 1 to 4. For per-screen control, use an object, up to 6: `{ phone: 1, tablet: 2, desktop: 3 }`.
+- **`columns` is set.** That many cards per row, from tablet width up. A number is 1 to 4. For per-screen control, use an object, up to 8: `{ phone: 1, tablet: 2, desktop: 3, wide: 4 }`. `wide` is a page wider than 1760px, and keeps the `desktop` count when you leave it out. In that grid, a widget's own `cols` and `rows` span more than one column or row.
 - **A card marks itself wide.** It takes two thirds, and the rest stack beside it, unless `columns` is set.
 - **More than three cards.** They pack into columns, with compact rows.
 - **Otherwise.** They share a row and a height.
 
 `gap` sets the pixels between a section's cards. `tabColumns` sets different columns on the section's own tab.
+
+A section without a heading carries on the grid above it, with the cards' gap between them rather than a section's. That lets you build a dense page from rows of different shapes:
+
+```yaml
+- heading: false
+  columns: { phone: 1, tablet: 3, desktop: 3 }
+  widgets:
+    - { widget: dns.stats, cols: 2 }      # two thirds
+    - drives.drives                        # a third
+- heading: false
+  columns: { phone: 1, tablet: 3, desktop: 3 }
+  widgets:
+    - plex.streams
+    - { widget: photos.memories, cols: 2, rows: 2 }   # two thirds, two rows tall
+    - downloads.active                     # under what's playing
+```
 
 ## Density and titles
 
@@ -84,6 +100,8 @@ The top of the overview: the title, a status line, the ask box. `hero:` controls
 greeting: Sam
 hero: { greeting: "Welcome back, {name}", align: left, review: false }
 ```
+
+`align: left` puts the greeting at the top left, level with the top bar, which leaves more of the screen for cards. Each tab then shows its own name in the same place, so every screen starts the same way.
 
 The title is "Sam's homelab" until you say otherwise. `hero.greeting` replaces it: `{name}` is your `greeting`, and `{greeting}` is the time of day, as in `"{greeting}, {name}"`.
 
@@ -129,9 +147,9 @@ A calendar knows an online meeting by its link: Google Meet, Zoom, Microsoft Tea
 
 A minute before, Valet sends a reminder with the meeting's name and time to your [notification channels](/recipes/#notifications) and to every device that turned on notifications in ⌘K. Tapping it on the device opens the meeting. Each reminder is sent once, even across a restart.
 
-The calendar's rows show the service and a small Join button (in the week, a meeting has a small camera button, and tapping any event shows its time, place and Join), ⌘K has **join meeting** and **next meeting**, and you can ask the assistant "what's my next meeting?".
+In the agenda, a meeting's row shows the service and a small Join button. In the week, a meeting has a small Join button on its block, and tapping any event shows its time, place, calendar and Join over the week. ⌘K has **join meeting** and **next meeting**, and you can ask the assistant "what's my next meeting?".
 
-<Shot id="scene/meeting-agenda" label="The agenda" alt="The calendar card's agenda, with the next meeting's time, its service and a Join button." />
+<Shot id="scene/calendar-week" label="The week" alt="The calendar card a third of a row wide: three days side by side with the hours down the side, today shaded with a line at the time now, events as blocks in their calendar's colour, and a meeting's block with its Join button." />
 
 ```yaml
 integrations:
@@ -153,7 +171,7 @@ Plain commands come first, and need no model: "pause downloads", "lights off", "
 
 Valet's own docs come last, under a **Docs** heading: type "wallpaper" or "backups" and the pages and sections about it are there, and an integration's name, like "sonarr", offers its page beside the service. "docs" or "help" alone offers the main pages. Valet searches the copy of the docs it ships, so this works offline; picking one opens it on askvalet.dev in a new tab.
 
-<Shot id="scene/palette" full alt="The command palette over a blurred page, with actions and suggested questions." />
+<Shot id="scene/palette" full alt="The command palette over a blurred page: quick actions first, such as pausing Pi-hole, then services to open." />
 
 ```yaml
 search: duckduckgo   # also google, kagi, brave, startpage, searxng, or a URL with {q}

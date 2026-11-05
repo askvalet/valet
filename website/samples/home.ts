@@ -22,6 +22,9 @@ const states = (extra: ReturnType<typeof entity>[] = []) => [
   entity('media_player.living_room', 'playing', { friendly_name: 'Living room TV', media_title: 'The Long Tide' }), entity('light.porch', 'unavailable', { friendly_name: 'Porch' }),
   entity('vacuum.robot', 'docked', { friendly_name: 'Robot', status: 'charging', battery_level: 88, fan_speed: 'Standard', fan_speed_list: ['Quiet', 'Standard', 'Strong'], main_brush_left: 62, side_brush_left: 41, filter_left: 18, error: 'No error' }),
   entity('camera.robot_map', 'idle', mapAttributes),
+  entity('lock.front_door', 'locked', { friendly_name: 'Front door' }), entity('cover.garage', 'open', { friendly_name: 'Garage', device_class: 'garage' }),
+  entity('person.sam', 'home', { friendly_name: 'Sam' }), entity('person.alex', 'not_home', { friendly_name: 'Alex' }),
+  entity('sensor.energy_today', '9.4', { friendly_name: 'Energy today', unit_of_measurement: 'kWh', device_class: 'energy' }), entity('sensor.washer', 'Rinsing', { friendly_name: 'Washer' }),
   entity('sensor.first_bus', clock(5, 31)), entity('sensor.sunrise', clock(6, 50)), entity('sensor.midday_bus', clock(12, 3)), entity('sensor.school_bus', clock(15, 31)), entity('sensor.sunset', clock(17, 14)), entity('sensor.last_bus', clock(18, 34)),
   climate({}), ...extra,
 ];
@@ -71,6 +74,7 @@ export const home: Record<string, Fixture> = {
       cards: {
         lights: { title: 'Lights', icon: 'bulb', entities: ['light.living_room', 'light.kitchen', 'light.bedroom', 'light.office', { id: 'light.porch', name: 'Porch' }, 'scene.movie_night'] },
         house: { title: 'House', icon: 'home', entities: ['sensor.outdoor', 'sensor.humidity', 'select.heating_mode', 'switch.coffee', 'media_player.living_room', 'vacuum.robot'] },
+        doors: { title: 'Around the house', icon: 'lock', entities: ['lock.front_door', 'cover.garage', 'person.sam', 'person.alex', 'sensor.energy_today', { id: 'sensor.washer', icon: 'washer' }] },
       },
       schedules: { buses: { title: 'Bus times', icon: 'clock', soon: 15, entities: [{ id: 'sensor.first_bus', name: 'First bus' }, { id: 'sensor.sunrise', name: 'Sunrise', muted: true }, { id: 'sensor.midday_bus', name: 'Midday bus' }, { id: 'sensor.school_bus', name: 'School bus' }, { id: 'sensor.sunset', name: 'Sunset' }, { id: 'sensor.last_bus', name: 'Last bus' }] } },
       thermostats: { hallway: { entity: 'climate.hallway', title: 'Hallway' } },

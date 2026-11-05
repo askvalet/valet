@@ -124,8 +124,8 @@ offline, so it's the choice if you'd rather no browser talks to a font CDN.
 | `dim` | `0.35` | 0–0.9, darkens it (lightens it, in light). `{ light: 0.2, dark: 0.4 }` sets one for each theme |
 | `blur` | `0` | px, 0–40, blurs it. `{ light, dark }` works here too |
 
-`sizes` redefines the card sizes in layout sections. Those sections sit on a grid of 2 columns on a phone, 4 on a tablet
-and 6 on a wide screen, and a size can't overrun the last column:
+`sizes` redefines the card sizes in layout sections. Those sections sit on a grid of 2 columns on a phone, 4 on a tablet,
+6 on a computer and 8 on a page wider than 1760px, and a size can't overrun the last column:
 
 | Size | Columns | Rows | |
 |---|---|---|---|
@@ -134,6 +134,8 @@ and 6 on a wide screen, and a size can't overrun the last column:
 | `medium` | 2 | 1 | the card |
 | `tall` | 2 | 2 | the card over two rows |
 | `large` | 4 (all of them below 6) | 1 | the card with more room |
+
+A widget's own `cols` and `rows` (in [`layout`](#layout)) win over its size.
 
 ```yaml
 appearance:
@@ -159,7 +161,7 @@ The top of the overview.
 | `status` | `true` | one sentence under it, two things at most: "All 30 services are running and Sam is watching Dune." or "Everything's running except Mealie." What needs someone comes first, and services off by choice aren't counted. If the assistant finds what several problems share, that's the sentence. Hover it for the assistant's brief |
 | `search` | `true` | the ask box, or the search box without an assistant |
 | `review` | `true` | the year in review link, on its own line under the suggested questions. It can be dismissed for the visit. `end` adds a card closing the overview as well as the link; `false` is neither. `recap: false` turns off the review itself |
-| `align` | `center` | `left`, `right` |
+| `align` | `center` | `left`, `right`. `left` puts the greeting at the top left, level with the top bar, and each tab then shows its own name there too |
 | `scope` | none | what the ask box names instead of "anything": `true` works it out from your integrations ("Ask about downloads, lights, what to watch…"), a list of up to 6 says it yourself. `chat.placeholder` wins over it |
 
 ### `nav`
@@ -299,12 +301,13 @@ labels: { overview: Everything, goodMorning: Morning }
 layout:
   - title: Lately
     gap: 24
-    columns: { phone: 2, tablet: 4, desktop: 6 }
+    columns: { phone: 2, tablet: 4, desktop: 6, wide: 8 }
     widgets:
       - { widget: plex.recent, size: tall, title: New on Plex, icon: film, header: false }
       - { widget: dns.stats, size: small, tint: "#0a7d4f", opacity: 0.8, blur: 12 }
       - { widget: drives.health, size: wide, background: "https://example.com/rack.jpg" }
       - { widget: plex.top, size: tall, view: focus, rows: 3 }
+      - { widget: family.agenda, cols: 3, view: week }
 ```
 
 ## `auth`
@@ -499,7 +502,7 @@ A list of sections; each is a tab in the rail. Sections appear in this order, to
 | `tabColumns` | same as `columns` | columns on the section's own tab, when you want more room there than on the overview |
 | `widgets` | required | `instance.widget`, or an entry with its own settings: below |
 | `display` | `cards` | `cards`, `tiles`, `rings` or `media` |
-| `columns` | auto | cards per row, 1 to 4, from tablet width up (in a sidebar: the list's columns); or per screen, up to 6: `{ phone: 1, tablet: 2, desktop: 3 }` |
+| `columns` | auto | cards per row, 1 to 4, from tablet width up (in a sidebar: the list's columns); or per screen, up to 8: `{ phone: 1, tablet: 2, desktop: 3, wide: 4 }`. `wide` is a page wider than 1760px, and falls back to `desktop` |
 | `gap` | `appearance.gap` | px between its cards |
 | `place` | `main` | `left` or `right` makes it a sidebar |
 | `variant` | `full` | `minimal`: tighter rows, just the essentials |
@@ -520,6 +523,7 @@ A widget entry takes these, all optional but `widget`:
 | `every` | the widget's own | how often it refreshes: seconds, or `30s`, `5m`, `1h` |
 | `view` | the widget's own | how it's drawn, whatever the data: below |
 | `rows` | the size's own | how many rows it spans, 1 to 6, so smaller cards can stack beside it |
+| `cols` | the size's own | how many of the section's columns it spans, 1 to 8, never more than there are: a calendar across two of three, say. It needs a grid: a section with sizes or with `columns` per screen |
 | `title`, `icon` | the card's | its name and icon; on a tile, its label and icon |
 | `header` | the section's | `false` drops its title bar, `true` keeps it in a section that drops them |
 | `tint` | `colors.card` | a colour for its surface |
@@ -626,14 +630,14 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `karakeep` | `url`, `apiKey` | `recent`, `digest`, `reading` |
 | `kavita` | `url`, `username` and `password`, or `key` (an auth key) | `reading` (what you're in the middle of), `recent`, `status` |
 | `komga` | `url`, `username` and `password`, or `key` (an API key, Komga 1.20+) | `reading` (in progress, with how far along), `ondeck` (next in a series you've started), `recent`, `status` |
-| `mealie` | `url`, `key`, `version` (`2`; `1` before households) | `week` (the meal plan from today), `today` (a recipe of the day), `recent`, `status` |
+| `mealie` | `url`, `key`, `version` (`2`; `1` before households) | `week` (the meal plan from today, its photos landscape), `today` (a recipe of the day), `recent`, `status` |
 | `miniflux` | `url`, `key` | `unread` (a pile to step through; archiving marks read), `feeds` (unread per feed), `starred`, `status` |
 | `lobsters` | `tags`, `sort` (`hottest`, `newest`), `limit` (8) | `stories` |
 | `minecraft` | `host`, `port` (25565), `title` | `status` |
-| `navidrome` | `url`, `username`, `password` | `status`, `playing`, `recent` (recently played), `added` (new music), `top` (most played), `rediscover` |
+| `navidrome` | `url`, `username`, `password` | `status`, `playing`, `recent` (recently played), `added` (new music), `top` (most played: up to 10 albums with square covers, as a list or any gallery `view`), `rediscover` |
 | `ollama` | `url` | `models` |
 | `paperless` | `url`, `token` | `recent` |
-| `pihole` | `url`, `password` (an app password) | `stats` |
+| `pihole` | `url`, `password` (an app password) | `stats` (the last 24 hours as columns, the blocked share in red; as a tile, the ads blocked with the share as a pie) |
 | `proxmox` | `url`, `key` (an API token, `user@realm!tokenid=secret`), `insecure` (Proxmox's certificate is self-signed), `node` (only this one), `vmid` (the status card shows just this guest) | `guests`, `storage`, `status` |
 | `qbittorrent` | `url`, `username`, `password`, `arr` (Sonarr/Radarr `{ type, url, apiKey }` for titles and posters) | `active` |
 | `repository` | `repos` (`owner/name`), `token`, `title` | `repos` |
@@ -649,8 +653,8 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `twitch` | `clientId`, `clientSecret`, `channels`, `limit` (8) | `channels`, `games` |
 | `uptimekuma` | `url`, `username` (empty with an API key), `password` (or the key), `certWarnDays` (14) | `monitors` |
 | `weather` | `latitude`, `longitude`, `units` (from `format.temperature`, else `metric`), `interval` (600000 ms) | `now` |
-| `rss` | `feeds` (URLs, or `{ url, name }`; YouTube channels via `youtube.com/feeds/videos.xml?channel_id=…`), `limit` (12), `style` (`list` or `shelf` for thumbnails), `title`, `every` (900 s) | `latest` |
-| `hackernews` | `sort` (`top`, `new`, `best`), `limit` (10), `comments` (rows open the discussion) | `stories` |
+| `rss` | `feeds` (URLs, or `{ url, name }`; YouTube channels via `youtube.com/feeds/videos.xml?channel_id=…`), `limit` (12), `style` (`list` or `shelf` for thumbnails), `title`, `every` (900 s) | `latest` (a list is one column of headlines: each story's mark, its title, then the source and how long ago) |
+| `hackernews` | `sort` (`top`, `new`, `best`), `limit` (10), `comments` (rows open the discussion) | `stories` (one column of headlines; made two rows tall, it fills with as many as fit) |
 | `reddit` | `subreddits`, `sort` (`hot`), `limit` (10), `style` (`list` or `shelf`) | `posts` |
 | `releases` | `repos` (`owner/name`), `token` (optional, raises GitHub's rate limit), `limit`, `prereleases` | `latest` |
 | `markets` | `symbols` (`AAPL`, `BTC-USD`, `^GSPC`, `EURUSD=X`, or `{ symbol, name }`), `range` (`1d`), `title` | `quotes` |
