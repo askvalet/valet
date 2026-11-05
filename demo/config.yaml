@@ -120,8 +120,8 @@ layout:
   - columns: 2
     widgets: [{ widget: lab.recent, view: focus }, lab.photos]   # side by side, half the width each
   - widgets:
-      - { widget: lab.sky, size: tall }
-      - { widget: lab.reading, size: tall }
+      - { widget: lab.calendar, size: tall }
+      - { widget: lab.reading, size: tall, view: cards }
       - { widget: lab.dns, size: small }
       - { widget: lab.drives, size: small }
       - { widget: lab.upcoming, size: wide }

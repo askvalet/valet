@@ -41,8 +41,8 @@
 .cam-live.is-sample { letter-spacing: .02em; }
 .cam-live.is-sample i { background: none; box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / .85); }
 .cam-past { padding: .4em .7em; border-radius: var(--radius-tag); letter-spacing: .02em; background: rgb(18 18 22 / .6); }
-/* every rounded thing on a camera is one family: the bar, the tabs and the events are controls, and what sits 4px inside
-   them (the button, the thumbnails) is that corner less 4, so the curves run parallel */
+/* every rounded thing on a camera is one family: the bar, the tabs and the events are controls, and what sits inside
+   them (the button, the thumbnails) is that corner less its inset, so the curves run parallel */
 .cam-still-bar { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 4px 4px 12px; border-radius: var(--radius-control); color: #fff; font-size: var(--text-body); line-height: 1.35; background: rgb(18 18 22 / .62); backdrop-filter: blur(14px) saturate(1.6); }
 .cam-still-bar b { font-weight: 500; }
 .cam-to-live { flex: none; height: 32px; padding: 0 12px; border-radius: calc(var(--radius-control) - 4px); font-size: var(--text-body); font-weight: 500; color: #000; background: #fff; }
@@ -66,8 +66,8 @@
 .cam-pills { display: flex; gap: 5px; min-width: 0; overflow-x: auto; margin-inline: -4px; padding: 2px 4px; scroll-padding-inline: 4px; }
 @container (min-width: 760px) { .has-pills > .cam-pills { flex-direction: column; overflow: hidden auto; margin: 0; padding: 0; gap: 9px; } }
 /* a chip (Chip's tonal and selected, components/ui/chip.tsx) with the camera's picture in it */
-.cam-pill { display: flex; flex: 1 0 auto; align-items: center; gap: 6px; height: 32px; min-width: 0; padding: 0 12px 0 4px; border-radius: var(--radius-control); font-size: var(--text-body); text-align: left; color: var(--foreground); background: var(--fill-1); transition: background-color var(--dur-pop) var(--ease-out), color var(--dur-pop) var(--ease-out), transform var(--dur-press) var(--ease-out); }
-.cam-pill img { width: 24px; height: 24px; flex: none; border-radius: calc(var(--radius-control) - 4px); object-fit: cover; background: #07080a; }
+.cam-pill { display: flex; flex: 1 0 auto; align-items: center; gap: 10px; height: 36px; min-width: 0; padding: 0 14px 0 6px; border-radius: var(--radius-control); font-size: var(--text-body); text-align: left; color: var(--foreground); background: var(--fill-1); transition: background-color var(--dur-pop) var(--ease-out), color var(--dur-pop) var(--ease-out), transform var(--dur-press) var(--ease-out); }
+.cam-pill img { width: 24px; height: 24px; flex: none; border-radius: calc(var(--radius-control) - 6px); object-fit: cover; background: #07080a; }
 @media (hover: hover) and (pointer: fine) { .cam-pill:not(.is-on):hover { background: var(--fill-2); } }
 .cam-pill.is-on { font-weight: 500; color: var(--card-tint); background: var(--foreground); }
 .cam-dock .cam-pill.is-on { color: #000; }
@@ -76,9 +76,9 @@
 /* what they've noticed: a slim row (a `Row`, so it fades at the edge where there's more), its arrows beside it on a larger screen */
 .cam-events-bar { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .cam-events { display: flex; flex: 1; gap: 6px; min-width: 0; margin-inline: -4px; padding: 0 4px; scroll-padding-inline: 4px; }
-.cam-event { display: flex; flex: none; scroll-snap-align: start; align-items: center; gap: 9px; height: 46px; padding: 0 14px 0 4px; border-radius: var(--radius-control); text-align: left; background: color-mix(in srgb, var(--foreground) 5%, transparent); transition: background-color var(--dur-pop) var(--ease-out), transform var(--dur-press) var(--ease-out); }
+.cam-event { display: flex; flex: none; scroll-snap-align: start; align-items: center; gap: 12px; height: 50px; padding: 0 16px 0 6px; border-radius: var(--radius-control); text-align: left; background: color-mix(in srgb, var(--foreground) 5%, transparent); transition: background-color var(--dur-pop) var(--ease-out), transform var(--dur-press) var(--ease-out); }
 @media (hover: hover) and (pointer: fine) { .cam-event:hover { background: color-mix(in srgb, var(--foreground) 10%, transparent); } }
-.cam-event img { width: 60px; height: 38px; flex: none; border-radius: calc(var(--radius-control) - 4px); object-fit: cover; background: #000; }
+.cam-event img { width: 60px; height: 38px; flex: none; border-radius: calc(var(--radius-control) - 6px); object-fit: cover; background: #000; }
 .cam-event b { display: block; font-size: var(--text-body); font-weight: 500; line-height: 1.25; }
 .cam-event small { display: block; font-size: var(--text-caption); line-height: 1.3; color: var(--muted-foreground); white-space: nowrap; font-variant-numeric: tabular-nums; }
 
