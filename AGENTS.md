@@ -128,8 +128,8 @@ https://askvalet.dev.
 - **The accent is rare.** In a chart one thing leads in the accent and the rest are neutral steps; a colour that isn't a
   status or the leader doesn't belong in the chrome. Posters, the house and photos carry the colour.
 - **The title says whose homelab it is, not hello.** `hero.greeting: "{greeting}, {name}"` brings the time of day back.
-- **One weight of emphasis.** `font-semibold` is mapped to 500 in `@theme` and `tracking-tight` to 0, so hierarchy comes from size
-  and colour. Corners follow `--radius` (controls `* .6`, tags `* .4`); only things that hold no words stay round.
+- **Three weights.** 400 for words, 500 (`font-medium`) for emphasis and numbers, 600 (`font-semibold`) for titles only; `tracking-tight`
+  is 0. Corners follow `--radius` through the role tokens below; only things that hold no words stay round.
 - **One bar** (`.meter` in `styles.css`, `Meter` in `meter.tsx`). Every bar that shows how far or how much is a meter: fully
   round, `--meter-sm/md/lg` (4/8/12 px: over a picture / lists and popovers / the race and the recap), one `--meter-track`, a fill
   that slides by `translateX`. Its colour, in order: a tone or the thing's own (`color`, a poster's `hue` from `tintOf`), else a
@@ -186,6 +186,37 @@ https://askvalet.dev.
 - **Pointer on everything clickable** (global rule in `styles.css`); hover gives a slight lift, never a jump.
 - **3D models are faithful to the real thing.** Model from photos of the user's hardware, keep proportions honest, and
   light parts in the colours they really are. If a state can't be read, draw what the hardware ships as and say so.
+
+### Design tokens
+
+The parts every card is built from (`styles.css`'s `@theme static` block; `test/tokens.test.ts` holds the list). Use a token, never a
+literal; a new size or corner is a new token with a role, argued for here.
+
+- **Fills** are the ink at a strength: `--fill-1` (7%, a chip or a control at rest), `--fill-2` (12%, hovered), `--fill-3` (18%, pressed,
+  chosen), as `bg-fill-1` etc. in TSX. They turn with the theme, so never write `bg-white/[.07]` or `rgb(255 255 255 / .07)` for a
+  surface; white stays only on top of pictures. The utilities resolve where they're used; the CSS variables are declared again on
+  `.dark`, `.rc-race` and the cameras' dock, and anything else that sets its own `--foreground` must do the same.
+- **Corners** by role, all multiples of `--radius` so `appearance.shape` moves them together: `rounded-surface` and `rounded-popover`
+  20, `rounded-control` and `rounded-inset` (a code block, a 3D view, a picture inside a card) 12, `rounded-chip` 9, `rounded-tag` 6;
+  artwork by size: `rounded-thumb` (48px or less) 6, `rounded-poster` 12, `rounded-hero` 16. The plain steps (`sm` 9 … `3xl` 24) are
+  in order now; `sm` and `md` are the chip's and the control's.
+- **Type** is eight steps: `text-caption` 11, `text-meta` 12, `text-body` 13, `text-item` 14 (a row's name), `text-title` 15,
+  `text-metric-s` 20, `text-metric-m` 28, `text-metric-l` 44, as `var(--text-*)` in CSS. Leading inherits. Kept on purpose: inputs at
+  16 (phones zoom into anything smaller), the wall's clock and big lines, the weather's big number, the recap's stage, SVG text that
+  scales with its drawing, the 3D models' labels, and labels inside a ring or a badge, which are sized to their shape. `cn` knows the
+  tokens (`lib/utils.ts`); without that, `text-meta text-muted-foreground` loses its size.
+- **Chip** (`components/ui/chip.tsx`): 32 high, `rounded-chip`, 13px; `tonal`, `outline` (a set you pick from), `selected` (the ink),
+  `ghost`; `icon` and `dot` (a tone or a colour, which glows a little). A button by default, `as="a"` or `as="span"`. The cameras'
+  tabs are the same chip in CSS, with a picture.
+- **Button** (`components/ui/button.tsx`, `buttonVariants` for a link): `sm` 28 with the chip's corner, `default` 36 and `lg` 44 with
+  the control's; `ghost`, `tonal` (the default), `solid` (the ink), and `default` for the rare accent one. A meeting's big blue Join is
+  `solid lg` plus `.meeting-join`.
+- **Dots**: `.dot` (6px) beside a name, `.dot-lg` (8px) only in a legend; `ChipDot` for a thing's own colour. Calendar day marks
+  under a date are marks, not dots.
+- **Focus**: one `:focus-visible` rule in the base layer (2px `--ring`, offset 2). Don't write `outline-none` unless something else
+  shows focus there (a field's border, a composer's glow); a thing clipped by its container sets `outline-offset: -2px`.
+- **Icons**: `size-icon-sm` 14 beside words, `size-icon` 16 in a control, `size-icon-lg` 18 in the navigation. Fixed pixels, so
+  density doesn't shrink them.
 
 ## Working on it
 

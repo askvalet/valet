@@ -47,3 +47,16 @@ Each browser can also turn them on or off in ⌘K: type "sound". That choice is 
 ## Less motion
 
 `appearance.motion: reduced` or your system's reduce-motion setting keeps fades and drops the rest: something you take off fades out, with no dust. `motion: none` drops the fades too. Sounds don't depend on motion; use the ⌘K switch.
+
+## One set of parts
+
+The page is built from a small set of parts, so the same thing looks the same wherever it is:
+
+- **Chips** are 32 pixels high with the same corner and size of words, whether they pick a room, a part of the desktop, a camera or a suggestion. The one that's on is filled with the ink.
+- **Buttons** come in two heights, 28 for a card's quick actions and 36 for a form, and are quiet, tonal or solid. A meeting's Join in its popover is the one wide blue button.
+- **Text** uses eight sizes: small notes, the line under a name, the body, a row's name, a card's title, and three for numbers. Card titles are a step bolder than the rest.
+- **Corners** follow `appearance.shape`'s radius by role: cards and popovers, then controls, then chips; pictures by their size.
+- **Status dots** are one size; legends use a slightly larger one.
+- **Focus** is one ring in the accent around whatever the keyboard is on.
+- Fills under chips and buttons are the theme's own ink, faint, so they read in light and dark alike.
+
