@@ -83,14 +83,14 @@ layout:
     overview: false
     columns: { phone: 2, tablet: 8, desktop: 8 }   # eight tracks from tablet up
     widgets:
-      # two blocks that end flush: updates, Pi-hole, then CPU over memory; then backups beside containers over the drives
+      # updates, Pi-hole, then CPU over memory; then backups, containers and the drives side by side
       - { widget: lab.updates, size: medium, rows: 2 }
       - { widget: lab.dns, size: large, rows: 2 }
       - { widget: lab.cpu, size: medium }
       - { widget: lab.memory, size: medium }
-      - { widget: valet.backups, size: medium, rows: 2, cols: 3 }
-      - { widget: lab.containers, size: large, cols: 5 }
-      - { widget: lab.drives, size: large, cols: 5 }
+      - { widget: valet.backups, size: medium, cols: 3 }
+      - { widget: lab.containers, size: medium, cols: 3 }
+      - { widget: lab.drives, size: medium, cols: 2 }
   - title: AI
     display: tiles
     overview: false
@@ -128,7 +128,7 @@ layout:
     columns: 1
     widgets: [lab.calendar]   # the month and the day beside it, the full width
   # the overview, under Services: the house, the desktop and the calendar a third each, then
-  # what's playing, On this day and the reading a third each, then downloads, what's new and the tiles
+  # what's playing, On this day and downloads a third each, then the reading, what's new and the tiles
   - heading: false
     columns: { phone: 1, tablet: 2, desktop: 3, wide: 3 }
     widgets:
@@ -137,11 +137,11 @@ layout:
       - lab.calendar
   - heading: false
     columns: { phone: 1, tablet: 1, desktop: 3, wide: 3 }
-    widgets: [lab.streams, lab.photos, { widget: lab.reading, view: row }]   # the reading pile as a plain row of pages that snap
+    widgets: [lab.streams, lab.photos, lab.downloads]
   - heading: false
     columns: { phone: 2, tablet: 4, desktop: 6, wide: 6 }
     widgets:
-      - { widget: lab.downloads, size: tall }
+      - { widget: lab.reading, size: tall, view: row }   # the reading pile as a plain row of pages that snap
       - { widget: lab.recent, size: tall, view: focus }
       - { widget: lab.dns, size: small }
       - { widget: lab.uptime, size: small }
