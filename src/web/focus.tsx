@@ -4,10 +4,10 @@
 // animation on the compositor, so nothing is written per frame; a browser without it, or a page asked to hold still,
 // shows a plain row. The one in the middle tints a soft glow behind the row, and that's the only part that re-renders.
 import { useBlossomNavigation } from '@blossom-carousel/react';
-import { memo, useEffect, useId, useState, type MouseEvent, type ReactNode } from 'react';
+import { memo, useEffect, useId, useState, type MouseEvent } from 'react';
 import { cn } from '@/lib/utils';
 import type { ShelfCard, ShelfItem } from '../shared/cards.ts';
-import { lean, oneByOne, Row, RowArrows } from './feel.tsx';
+import { HeadActions, lean, oneByOne, Row, RowArrows } from './feel.tsx';
 import './focus.css';
 
 /** Where it opens: near the middle, on something with artwork, so there's something either side. */
@@ -16,12 +16,12 @@ export const openAt = (items: ShelfItem[]) => {
   return items.map((it, i) => ({ i, off: Math.abs(i - mid) })).filter(x => items[x.i].image).sort((a, b) => a.off - b.off)[0]?.i ?? mid;
 };
 
-export function Focus({ card, header }: { card: ShelfCard; header?: ReactNode }) {
+export function Focus({ card }: { card: ShelfCard }) {
   const id = useId();
   return (
     <div className="min-w-0">
-      <div className="mb-3 flex items-center gap-2">{header}<RowArrows id={id} one label={card.title} className="ml-auto" /></div>
-      <div className={cn('focus', card.aspect && `is-${card.aspect}`)}>
+      <HeadActions><RowArrows id={id} one label={card.title} /></HeadActions>
+      <div className={cn('focus', card.aspect && `is-${card.aspect}`, 'bleed')}>
         <Glow id={id} items={card.items} />
         <Slides id={id} card={card} />
       </div>

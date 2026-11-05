@@ -1,19 +1,19 @@
 // Masonry (`view: masonry`), after Blossom Carousel's example: pictures in a wall three rows high, some twice as wide or twice
 // as tall, packed with CSS grid's dense flow, that you throw sideways and that snaps to every fourth one. Plain CSS on a
 // `Row`, so it scrolls, drags and pages with the keys like any other row, and the tiles sit in a `memo`.
-import { memo, useId, type ReactNode } from 'react';
+import { memo, useId } from 'react';
 import { cn } from '@/lib/utils';
 import type { ShelfItem } from '../shared/cards.ts';
-import { Row, RowArrows } from './feel.tsx';
+import { HeadActions, Row, RowArrows } from './feel.tsx';
 import './masonry.css';
 
 type Tile = Pick<ShelfItem, 'title' | 'subtitle' | 'image' | 'badge' | 'href'>;
 
-export function Masonry({ items, title, aspect, header }: { items: Tile[]; title?: string; aspect?: 'poster' | 'square' | 'wide'; header?: ReactNode }) {
+export function Masonry({ items, title, aspect }: { items: Tile[]; title?: string; aspect?: 'poster' | 'square' | 'wide' }) {
   const id = useId(), shown = items.filter(it => it.image);
   return (
-    <div className="min-w-0">
-      <div className="mb-3 flex items-center gap-2">{header}<RowArrows id={id} label={title} className="ml-auto" /></div>
+    <div className="bleed min-w-0">
+      <HeadActions><RowArrows id={id} label={title} /></HeadActions>
       <Wall id={id} items={shown} title={title} aspect={aspect} />
     </div>
   );

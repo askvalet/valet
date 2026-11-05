@@ -19,7 +19,7 @@ import { applyLook, applyTheme, switchable, toggleTheme, type Look } from './loo
 import { adaptInk } from './ink.ts';
 import type { Labels } from '../shared/labels.ts';
 import { ChatBeam } from './beam.tsx';
-import { ClockMonth, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, shapeOf, TileSkeleton, WeatherRing, Ring, SummaryTile, Widget } from './cards.tsx';
+import { ClockMonth, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, shapeOf, TileSkeleton, WeatherRing, Ring, Shell, SummaryTile, Widget } from './cards.tsx';
 
 // The assistant (and the AI SDK client) loads only when someone asks something.
 const Assistant = lazy(() => import('./assistant.tsx'));
@@ -582,7 +582,7 @@ function Home({ account }: { account: boolean }) {
               ? (
                 <div className={cn('grid gap-(--card-gap)', sec.grid && 'cols')} style={sec.grid ? gridVars(sec.grid) : { gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${sec.columns ? Math.floor(1200 / sec.columns) - 40 : 420}px), 1fr))` }}>
                   {mediaOf(sec.widgets).map(({ m, href, k }) => (
-                    <a key={k} href={href} target="_blank" rel="noreferrer" className="block min-w-0 transition-[translate] duration-(--dur-pop) hover:-translate-y-0.5"><NowPlaying m={m} compact /></a>
+                    <Shell key={k}><a href={href} target="_blank" rel="noreferrer" className="block px-(--pad)"><NowPlaying m={m} compact /></a></Shell>
                   ))}
                 </div>
               )

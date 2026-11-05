@@ -110,8 +110,8 @@ https://askvalet.dev.
 - **What a card holds and how it's drawn are separate** (`src/shared/views.ts`). A widget's `view` turns numbers into any chart
   and pictures into any gallery, and what can't honestly become that view stays as it was. `asView` gives the same object for the
   same card, so memoised renderers stay still.
-- **The house's cards measure themselves** (`src/web/home-cards.tsx`: `forecast`, `calendar`, `thermostat`). They're glass
-  edge to edge with no header, pick their layout from their own box rather than a size name, and must never set a row's
+- **The house's cards measure themselves** (`src/web/home-cards.tsx`: `forecast`, `calendar`, `thermostat`). They're cards
+  like any other (the one shell; weather and the calendar keep their title for a screen reader), pick their layout from their own box rather than a size name, and must never set a row's
   height by how much they have to show: anything that can grow scrolls inside or spreads out, so a bento row ends flush.
 
 ### Design
@@ -203,8 +203,9 @@ literal; a new size or corner is a new token with a role, argued for here.
   20, `rounded-control` and `rounded-inset` (a code block, a 3D view, a picture inside a card) 12, `rounded-chip` 9, `rounded-tag` 6;
   artwork by size: `rounded-thumb` (48px or less: list thumbnails, the race's and Most watched's posters, camera event stills) 6,
   `rounded-poster` 12 (a poster, cover, photo or reading card in a row, stack or wall: focus, coverflow, masonry, cards), `rounded-hero`
-  16 (a picture that fills a card's width: spotlight, album strips, the photo mosaic, a camera). A picture that *is* the card (Now
-  playing, a flashback photo, From your reading) takes the card's own `rounded-surface`. The plain steps (`sm` 9 … `3xl` 24) are
+  16 (a picture that fills a card's width: spotlight, album strips, the photo mosaic, a camera, and the inner panels: Now playing,
+  a flashback photo, From your reading's pages, Daylight's sky). No picture is a card: it's a panel inside one, at the inset,
+  with `rounded-hero` (the surface's 20 less a little, so the corners read as nested; 20 less the 20 inset would be square). The plain steps (`sm` 9 … `3xl` 24) are
   in order now; `sm` and `md` are the chip's and the control's.
 - **Artwork cards in light** (`.art-card`, `.article`, `.deck-card`): a dark picture beside white glass reads as a checkerboard, so in
   light they take the glass's own lit edge (`--art-rim`, an overlay on `::before`) and its shadow (`--art-shadow`; liquid has its
@@ -233,15 +234,28 @@ literal; a new size or corner is a new token with a role, argued for here.
   density doesn't shrink them.
 - **Insets**: `--spacing-inset` (20 at normal density) between a card's edge and everything in it, `--spacing-inset-tight` (16) for a
   tile and a card in chat. `.card-pad` on a card sets `--pad` to the one it uses; its header, content and anything that runs edge to
-  edge (`-mx-(--pad)`, as Downloading's rows do) read `--pad`, never `px-5`.
-- **CardHeader** (`cards.tsx`): the one title row: the source's icon, the title (`text-title`, semibold, a link when the card has
-  `href`), a status, the card's `note` pushed right. Inside the glass for every card. Outside it, at the same inset, only for artwork
-  that runs edge to edge, and `outside()` is the one place that says which: a single stream's poster, shelves and their views, and
-  photos (a flashback carries its title on the photo). A row of downloads is a list, so it's inside, like Hacker News. `hidden` keeps
+  edge (`-mx-(--pad)`, as Downloading's rows do, or `.bleed` for a carousel) read `--pad`, never `px-5`. A card with no visible
+  title (weather, the calendar, a `header: false` section) starts its content at the same inset, so a row's tops line up.
+- **One shell** (`Shell` in `cards.tsx`): every widget is drawn in the same card, whatever it shows: the same glass, corner
+  (`rounded-surface`), rim, shadow and inset (`--pad`, 20; 16 in chat). There is no other mode: nothing sits on the wallpaper,
+  no title sits above a card, and no card brings its own material. Posters, focus, cover flow, masonry, the cards stack, an
+  album, photos, Now playing and shelves are content inside the inset; a picture that should feel full is an inner panel
+  (`rounded-hero`). A special background is content too: Daylight's sky is a panel behind its arc, the weather's sky only a faint
+  tint of the same glass. Every carousel runs to the card's edges and scrolls under the inset (`.bleed`), its first thing lined
+  up with the content and its edges fading where there's more; nothing else bleeds. Only the wall's full-screen staging and the
+  recap keep their own; a card on the wall is the same shell (a media section's streams too). A `group` is a set of shells, not
+  a card. One gap between cards and tiles alike (`--card-gap`; `--tile-gap` is the same). `test/cards.test.tsx` checks every
+  sample renders in the shell with its title as the first row.
+- **CardHeader** (`cards.tsx`): the one title row, the shell's first row, 28 high in every card: the source's icon, the title
+  (`text-title`, semibold, a link when the card has `href`), a status, then at the far right the card's `note` and its actions.
+  A body puts its actions there with `HeadActions` (`feel.tsx`; a portal into the header's slot, hidden in place until it
+  exists): a carousel's Previous and Next, "See archived", the reading pile's tools, the documents' Desk/List. Header actions are
+  one look, `headButton` (Button `ghost` `icon-sm`), never floating over a picture or the wallpaper. `hidden` keeps
   an `sr-only` heading where the card says what it is without one: the weather and the calendar always (their big line is the sky and
   the day, in `text-metric-s`, not a title), and any card in a `header: false` section, on the overview and its tab alike (Services'
   group labels and the house and desktop models say what they are). The thermostat shows its title: it names the room. One title
-  size everywhere; a compact place takes padding away, never title size.
+  size everywhere; a compact place takes padding away, never title size. A card whose title is hidden but that has actions
+  still gets the row, with only the actions in it.
 - **Empty** (`empty.tsx`): `<Empty icon text action? height?/>` for anything empty, unavailable or failed: an icon and a line, centred,
   inside the card's normal frame (header and all), `height` about what the card is when full (a list 160, Now playing 150, cameras
   240, a thermostat 280); in chat it's at most 96. No card draws its own empty box.

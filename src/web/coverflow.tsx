@@ -3,19 +3,19 @@
 // browser's own scrolling and snapping, thrown with momentum on a mouse. The turn comes from where each one sits, through a
 // CSS scroll-driven animation, so nothing is written per frame; a browser without it, or a page asked to hold still, shows
 // a plain row. The middle one's colours light the space behind it, and that's the only part that re-renders as it moves.
-import { memo, useId, type MouseEvent, type ReactNode } from 'react';
+import { memo, useId, type MouseEvent } from 'react';
 import { cn } from '@/lib/utils';
 import type { ShelfCard } from '../shared/cards.ts';
-import { oneByOne, Row, RowArrows } from './feel.tsx';
+import { HeadActions, oneByOne, Row, RowArrows } from './feel.tsx';
 import { Glow, openAt } from './focus.tsx';
 import './coverflow.css';
 
-export function CoverFlow({ card, header }: { card: ShelfCard; header?: ReactNode }) {
+export function CoverFlow({ card }: { card: ShelfCard }) {
   const id = useId();
   return (
     <div className="min-w-0">
-      <div className="mb-3 flex items-center gap-2">{header}<RowArrows id={id} one label={card.title} className="ml-auto" /></div>
-      <div className={cn('cover', card.aspect && `is-${card.aspect}`)}>
+      <HeadActions><RowArrows id={id} one label={card.title} /></HeadActions>
+      <div className={cn('cover', card.aspect && `is-${card.aspect}`, 'bleed')}>
         <Glow id={id} items={card.items} />
         <Covers id={id} card={card} />
       </div>

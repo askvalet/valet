@@ -1,13 +1,14 @@
 /* The house's cards: weather, calendar, thermostat. Colours are theirs alone; everything else comes from the tokens. */
 .wx-temp { font-weight: 500; letter-spacing: -.03em; line-height: 1; }
 
-/* a breath of sky behind the weather: blue by default, warmer in sun, indigo at night */
+/* a breath of sky in the weather's glass (a tint of the one card, not a card of its own): blue by default, warmer in sun,
+   indigo at night */
 .wx-card { --sky: 96 150 240; }
 .wx-card[data-sky="clear"] { --sky: 86 164 255; }
 .wx-card[data-sky="night"] { --sky: 96 92 214; }
 .wx-card[data-sky="wet"] { --sky: 92 124 186; }
-.wx-card::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background: radial-gradient(130% 90% at 30% 0%, rgb(var(--sky) / .24), transparent 70%), linear-gradient(180deg, rgb(var(--sky) / .08), rgb(var(--sky) / .14)); }
+.wx-card::before { content: ""; position: absolute; inset: calc(-1 * var(--pad, 0px)); z-index: -1; pointer-events: none;
+  background: radial-gradient(130% 80% at 30% 0%, rgb(var(--sky) / .12), transparent 70%); }
 .wx-range { background: linear-gradient(90deg, #6cc4ff, #ffc65c 70%, #ff9f5a); }
 
 /* calendar */

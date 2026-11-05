@@ -4,8 +4,10 @@
 // can be caught mid-flight and the reduced-motion rule in styles.css needs nothing more. Licence at the end of this file.
 import { BlossomCarousel, useBlossomNavigation } from '@blossom-carousel/react';
 import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentProps, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentProps, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
+import { buttonVariants } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { dissolve } from './dust.ts';
@@ -91,6 +93,19 @@ const slidesOf = (r: HTMLElement) => [...r.querySelectorAll<HTMLElement>(':scope
 const stacked = (r: HTMLElement) => { const s = slidesOf(r)[0]; return !!s && getComputedStyle(s).position === 'sticky'; };
 const column = (r: HTMLElement) => { const cs = getComputedStyle(r); return Math.max(1, r.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)); };
 
+/** Where a card's header keeps its actions: the shell's header row leaves a place at its far right, and anything a card's
+ *  body puts in `HeadActions` (a carousel's arrows, "See archived", a reading pile's tools) is drawn there, so every card's
+ *  actions sit in the same row at the same height. `undefined` is no shell: then they're a row of their own. */
+export const HeadSlot = createContext<HTMLElement | null | undefined>(undefined);
+export function HeadActions({ children }: { children: ReactNode }) {
+  const slot = useContext(HeadSlot);
+  if (slot === undefined) return <div className="mb-3 flex items-center justify-end gap-0.5">{children}</div>;
+  // until the header's place exists (the first render, or a page rendered on the server) they wait, unseen, where they are
+  return slot ? createPortal(children, slot) : <div hidden>{children}</div>;
+}
+/** The one look for an action in a header: a small ghost icon button (Button's `ghost`, `icon-sm`). */
+export const headButton = buttonVariants({ variant: 'ghost', size: 'icon-sm', className: 'shelf-arrow' });
+
 /** Back and forward for a `Row` (or any Blossom carousel): a screenful at a time, or with `one`, the next slide to the
  *  middle. They dim at the ends and keep the keyboard's focus there (aria-disabled, not disabled), and they're only there
  *  when the row overflows. This is the only part that hears the row move, and only when an end is reached or left, so the
@@ -104,14 +119,14 @@ export function RowArrows({ id, className, label, one }: { id: string; className
     r.toggleAttribute('data-start', !canPrev); r.toggleAttribute('data-end', !canNext);
   }, [id, known, canPrev, canNext]);
   const arrow = (dir: number, shut: boolean, name: string, I: LucideIcon) => (
-    <button type="button" aria-controls={id} aria-label={label ? `${name} in ${label}` : name} aria-disabled={shut} className="shelf-arrow"
+    <button type="button" aria-controls={id} aria-label={label ? `${name} in ${label}` : name} aria-disabled={shut} className={headButton}
       onClick={e => {
         const r = document.getElementById(id); if (!r || shut) return;
         const how = glide(r, e.detail === 0);   // a click from the keyboard jumps
         if (one) centre(r, nearest(r) + dir, how); else page(r, dir, how);
-      }}><I className="size-4" /></button>
+      }}><I className="size-icon" /></button>
   );
-  return <div className={cn('flex gap-1.5', !(canPrev || canNext) && 'invisible', className)}>{arrow(-1, !canPrev, 'Previous', ChevronLeft)}{arrow(1, !canNext, 'Next', ChevronRight)}</div>;
+  return <div className={cn('flex gap-0.5', !(canPrev || canNext) && 'invisible', className)}>{arrow(-1, !canPrev, 'Previous', ChevronLeft)}{arrow(1, !canNext, 'Next', ChevronRight)}</div>;
 }
 
 /** A poster under the pointer leans a little away from it, the picture sliding inside its frame, so it reads as a thing

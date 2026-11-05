@@ -21,7 +21,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn, useOnScreen } from '@/lib/utils';
 import { Metric } from './metric.tsx';
-import { Counter, DUST_HOLD, lean, Pile, Row, RowArrows, RowSlot, Tick, toast, useRows } from './feel.tsx';
+import { Counter, DUST_HOLD, HeadActions, headButton, HeadSlot, lean, Pile, Row, RowArrows, RowSlot, Tick, toast, useRows } from './feel.tsx';
 import { dissolve, justActed, useSettle } from './dust.ts';
 import { play } from './sound.ts';
 import { LinkButton } from './link-button.tsx';
@@ -429,18 +429,13 @@ function UndoBar({ a }: { a: ReturnType<typeof useArchive> }) {
 }
 const SeeArchived = ({ href, className }: { href?: string; className?: string }) => href ? <a href={href} target="_blank" rel="noreferrer" className={cn('title-link text-meta text-muted-foreground', className)}>See archived</a> : null;
 
-/** The reading pile: each thing saved with the page itself filling the card, the next ones showing behind it. Flick through
- *  it, or use the controls, which stay put while the cards change. Hover and the page scrolls by, as if you'd started reading. */
-function Article({ card, run, title }: { card: ArticleCard; run?: RunAction; title?: string }) {
+/** The reading pile: each thing saved with the page itself filling a panel inside the card, the next ones showing behind
+ *  it. Flick through it, or use the controls in the card's header, which stay put while the pages change. Hover and the
+ *  page scrolls by, as if you'd started reading. */
+function Article({ card, run }: { card: ArticleCard; run?: RunAction }) {
   const [at, setAt] = useState(0), arch = useArchive(run);
   const pile = (card.more?.length ? card.more : [card]).filter(a => !a.id || !arch.gone.includes(a.id)), now = Math.min(at, pile.length - 1), a = pile[now];
-  if (!a?.headline) return (
-    <Card className="card-pad relative h-full gap-0 py-(--pad) shadow-card">
-      <CardHeader card={card} title={title} />
-      <Empty icon={BookOpen} text={card.empty ?? 'Nothing saved to read'} height={200} />
-      <div className="article-corner"><UndoBar a={arch} /></div>
-    </Card>
-  );
+  if (!a?.headline) return <><Empty icon={BookOpen} text={card.empty ?? 'Nothing saved to read'} height={200} />{(arch.last || arch.slip) && <HeadActions><UndoBar a={arch} /></HeadActions>}</>;
   const n = pile.length, top = a.link ?? card.href;
   const face = (i: number) => {
     const p = pile[i], link = p.link ?? card.href;
@@ -449,24 +444,23 @@ function Article({ card, run, title }: { card: ArticleCard; run?: RunAction; tit
         {p.image && <img src={p.image} alt="" draggable={false} className="article-page" />}
         {link && <a href={link} target="_blank" rel="noreferrer" aria-label={p.headline} className="article-open" />}
         <div className="article-text">
-          <div className="article-meta flex items-center gap-1.5 text-meta font-medium">{card.source?.icon && <img src={card.source.icon} alt="" className="size-3.5 object-contain" />}<span className="truncate">{[card.title, p.site].filter(Boolean).join(' · ')}</span>{n > 1 && <span className="ml-auto shrink-0 tabular">{i + 1} of {n}</span>}</div>
+          {(p.site || n > 1) && <div className="article-meta flex items-center gap-1.5 text-meta font-medium"><span className="truncate">{p.site}</span>{n > 1 && <span className="ml-auto shrink-0 tabular">{i + 1} of {n}</span>}</div>}
           <div className="mt-1 line-clamp-2 text-metric-s leading-tight font-semibold tracking-tight text-pretty">{p.headline}</div>
           {p.blurb && <Clamp text={p.blurb} className="article-blurb mt-1.5 text-item leading-snug" />}
         </div>
       </div>
     );
   };
-  return (
-    <Pile count={n} at={now} go={setAt} id={i => pile[i].id ?? pile[i].headline ?? String(i)} card={face} label={card.title ?? 'Reading'} status={n > 1 ? `${now + 1} of ${n}: ${a.headline}` : undefined} over={<>
-      {arch.last || arch.slip ? <div className="article-corner"><UndoBar a={arch} /></div> : card.archived && run ? <div className="article-corner"><SeeArchived href={card.archived} className="article-chip" /></div> : null}
-      {n > 1 || (run && a.id) ? <div className="article-tools">
-        {n > 1 && <button type="button" aria-label="Previous" title="Previous" aria-disabled={now === 0} onClick={() => { if (now > 0) setAt(now - 1); }}><ChevronLeft className="size-icon" /></button>}
-        {run && a.id && <button type="button" aria-label="Archive" title="Archive" onClick={e => arch.archive(a.id!, e.currentTarget.closest('.pile')?.querySelector('.pile-card[data-at="0"] .article'))}><Archive className="size-icon" /></button>}
-        {top && <a href={top} target="_blank" rel="noreferrer" aria-label="Open" title="Open"><ArrowUpRight className="size-icon" /></a>}
-        {n > 1 && <button type="button" aria-label="Next" title="Next" aria-disabled={now === n - 1} onClick={() => { if (now < n - 1) setAt(now + 1); }}><ChevronRight className="size-icon" /></button>}
-      </div> : null}
-    </>} />
-  );
+  return <>
+    <HeadActions>
+      {arch.last || arch.slip ? <UndoBar a={arch} /> : card.archived && run ? <SeeArchived href={card.archived} className="mr-2 @max-md/card:hidden" /> : null}
+      {n > 1 && <button type="button" className={headButton} aria-label="Previous" title="Previous" aria-disabled={now === 0} onClick={() => { if (now > 0) setAt(now - 1); }}><ChevronLeft className="size-icon" /></button>}
+      {run && a.id && <button type="button" className={headButton} aria-label="Archive" title="Archive" onClick={e => arch.archive(a.id!, e.currentTarget.closest('[data-slot="card"]')?.querySelector('.pile-card[data-at="0"] .article'))}><Archive className="size-icon" /></button>}
+      {top && <a href={top} target="_blank" rel="noreferrer" className={headButton} aria-label="Open" title="Open"><ArrowUpRight className="size-icon" /></a>}
+      {n > 1 && <button type="button" className={headButton} aria-label="Next" title="Next" aria-disabled={now === n - 1} onClick={() => { if (now < n - 1) setAt(now + 1); }}><ChevronRight className="size-icon" /></button>}
+    </HeadActions>
+    <Pile count={n} at={now} go={setAt} id={i => pile[i].id ?? pile[i].headline ?? String(i)} card={face} label={card.title ?? 'Reading'} status={n > 1 ? `${now + 1} of ${n}: ${a.headline}` : undefined} />
+  </>;
 }
 
 /** Bookmarks: icon, name, a quiet note; in two columns when there's room. */
@@ -498,16 +492,10 @@ function Art({ src, className, alt = '', style, onLoaded }: { src?: string; clas
 }
 
 /** One stream as a cinematic tile: the backdrop is the card, details float over a soft scrim. */
-/** Which app a picture is from, in the corner of a full-bleed card. */
-const AppBadge = ({ of }: { of?: CardT['source'] }) => !of?.icon ? null : (
-  <span className="on-art absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/45 py-1 pr-2.5 pl-1.5 text-caption font-medium text-white backdrop-blur-md"><img src={of.icon} alt="" className="size-4 object-contain" />{of.name}</span>
-);
-
-export function NowPlaying({ m, compact, source }: { m: MediaItem; compact?: boolean; source?: CardT['source'] }) {
+export function NowPlaying({ m, compact }: { m: MediaItem; compact?: boolean }) {
   return (
-    <div className={cn('art-card @container/np relative isolate w-full overflow-hidden rounded-surface bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/0.55)]',
+    <div className={cn('art-card @container/np relative isolate w-full overflow-hidden rounded-hero bg-neutral-900 text-white',
       compact ? 'aspect-[16/9] min-h-[170px]' : 'h-full min-h-[210px] flex-1')}>
-      <AppBadge of={source} />
       {m.backdrop
         ? <Art src={m.backdrop} className="absolute inset-0 -z-10 size-full object-cover" />
         : <Art src={m.image} className="absolute inset-0 -z-10 size-full scale-125 object-cover blur-2xl saturate-150" />}
@@ -560,7 +548,7 @@ const mediaRows = (card: MediaCard) => card.items.length > 2 || (card.items.leng
 function Media({ card, run }: { card: MediaCard; run?: RunAction }) {
   const dust = justActed(), rows = useRows(card.items, m => m.title, true, dust ? DUST_HOLD : undefined);
   if (!card.items.length) return <Empty icon={Film} text={card.empty ?? 'Nothing playing'} height={150} />;
-  if (card.items.length === 1 && !stallOf(card.items[0])) return <NowPlaying m={card.items[0]} source={card.source} />;
+  if (card.items.length === 1 && !stallOf(card.items[0])) return <NowPlaying m={card.items[0]} />;
   // rows run edge to edge inside their card, so a row's progress fills the whole row
   if (mediaRows(card)) return (
     <div className="media-rows -mx-(--pad) divide-y divide-border border-t">
@@ -582,7 +570,7 @@ function Media({ card, run }: { card: MediaCard; run?: RunAction }) {
   );
   return (
     <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))' }}>
-      {card.items.map((m, i) => <NowPlaying key={i} m={m} compact source={card.source} />)}
+      {card.items.map((m, i) => <NowPlaying key={i} m={m} compact />)}
     </div>
   );
 }
@@ -590,14 +578,13 @@ function Media({ card, run }: { card: MediaCard; run?: RunAction }) {
 /** A row of artwork, like the Apple TV app: snap-scrolling, no borders, arrows to page through on desktop. */
 /** A pile of pages, like an iMessage photo stack: slightly rotated, the top one in front. Hover fans them out; a
  *  click opens the full row. One page is just that page, held up a little. */
-function Stack({ card, header, onOpen }: { card: ShelfCard; header?: ReactNode; onOpen: () => void }) {
+function Stack({ card, onOpen }: { card: ShelfCard; onOpen: () => void }) {
   const pile = card.items.slice(0, 4), more = card.items.length - pile.length;
   const one = card.items.length === 1, top = card.items[0], photo = card.aspect === 'square';
   const rest = [[-7, -10], [6, 8], [-3, -4], [0, 0]].slice(4 - pile.length);   // [rotate°, x px] from back to front
   const open = one ? () => top.href && window.open(top.href, '_blank', 'noopener') : onOpen;
   return (
     <div>
-      {header && <div className="mb-3 flex items-center gap-2">{header}</div>}
       <button onClick={open} aria-label={one ? `Open ${top.title}` : `Show all ${card.items.length}`}
         className="group/stack relative block h-[196px] w-full">
         {pile.slice().reverse().map((it, i) => {
@@ -621,39 +608,38 @@ function Stack({ card, header, onOpen }: { card: ShelfCard; header?: ReactNode; 
   );
 }
 
-function Shelf({ card, header, small, run }: { card: ShelfCard; header?: ReactNode; small?: boolean; run?: RunAction }) {
+function Shelf({ card, small, run }: { card: ShelfCard; small?: boolean; run?: RunAction }) {
   const [spread, setSpread] = useState(false);
-  if (card.stack && !spread && card.items.length) return <Stack card={card} header={header} onOpen={() => setSpread(true)} />;
-  if (!small && card.layout === 'spotlight' && card.items.length) return <Spotlight card={card} header={header} />;
-  if (!small && card.layout === 'focus' && card.items.length > 2) return <Focus card={card} header={header} />;
-  if (!small && card.layout === 'coverflow' && card.items.length > 2) return <CoverFlow card={card} header={header} />;
-  if (card.layout === 'masonry' && card.items.some(it => it.image)) return <Masonry items={card.items} title={card.title} aspect={card.aspect} header={header} />;
-  if (!small && card.layout === 'cards' && card.items.length) return <Cards card={card} header={header} run={run} />;
-  if (!small && card.layout === 'desk' && card.items.length) return <Desk card={card} header={header} />;
-  if (!small && card.layout === 'windows' && card.items.length) return <Windows card={card} header={header} run={run} />;
+  if (card.stack && !spread && card.items.length) return <Stack card={card} onOpen={() => setSpread(true)} />;
+  if (!small && card.layout === 'spotlight' && card.items.length) return <Spotlight card={card} />;
+  if (!small && card.layout === 'focus' && card.items.length > 2) return <Focus card={card} />;
+  if (!small && card.layout === 'coverflow' && card.items.length > 2) return <CoverFlow card={card} />;
+  if (card.layout === 'masonry' && card.items.some(it => it.image)) return <Masonry items={card.items} title={card.title} aspect={card.aspect} />;
+  if (!small && card.layout === 'cards' && card.items.length) return <Cards card={card} run={run} />;
+  if (!small && card.layout === 'desk' && card.items.length) return <Desk card={card} />;
+  if (!small && card.layout === 'windows' && card.items.length) return <Windows card={card} run={run} />;
   // what's coming and what's asked for wear the same shelf as what's new: one shape, three times
   if (card.layout === 'week') {
     // several episodes of one show on one day are one poster
     const seen = new Map<string, ShelfItem & { n: number }>();
     for (const i of card.items) { const k = `${i.title}|${i.at ?? i.badge}`, had = seen.get(k); if (had) had.n++; else seen.set(k, { ...i, n: 1 }); }
     const items = [...seen.values()].map(({ n, ...i }) => ({ ...i, subtitle: n > 1 ? `${n} episodes` : i.subtitle, badge: i.badge === 'Ready' ? 'Ready' : dayWord(i.at) ?? i.badge }));
-    return <ShelfRow card={{ ...card, items }} header={header} small={small} />;
+    return <ShelfRow card={{ ...card, items }} small={small} />;
   }
-  if (card.layout === 'tickets') return <ShelfRow card={card} header={header} small={small} lines />;
-  return <div className={card.stack ? 'stack-open' : undefined}><ShelfRow card={card} header={header} small={small} /></div>;
+  if (card.layout === 'tickets') return <ShelfRow card={card} small={small} lines />;
+  return <div className={card.stack ? 'stack-open' : undefined}><ShelfRow card={card} small={small} /></div>;
 }
 
 const Tile = ({ href, className, children, style, title }: { href?: string; className?: string; children: ReactNode; style?: React.CSSProperties; title?: string }) =>
   href ? <a href={href} target="_blank" rel="noreferrer" className={className} style={style} title={title}>{children}</a> : <div className={className} style={style} title={title}>{children}</div>;
 
 /** The newest thing, large, with the rest running beside it. */
-function Spotlight({ card, header }: { card: ShelfCard; header?: ReactNode }) {
+function Spotlight({ card }: { card: ShelfCard }) {
   const [first, ...rest] = card.items;
   return (
     <div>
-      <div className="mb-3 flex items-center gap-2">{header}</div>
       <div className="grid gap-4 @4xl/main:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <Tile href={first.href} className="art-card group relative block aspect-[16/9] overflow-hidden rounded-hero @4xl/main:aspect-auto @4xl/main:h-full bg-muted shadow-[0_18px_40px_-20px_rgb(0_0_0/.6)]">
+        <Tile href={first.href} className="art-card group relative block aspect-[16/9] overflow-hidden rounded-hero @4xl/main:aspect-auto @4xl/main:h-full bg-muted">
           <Art src={first.backdrop ?? first.image} alt={first.title} className={cn('absolute inset-0 size-full object-cover transition-transform duration-(--dur-move) ease-out', first.href && 'group-hover:scale-[1.03]')} />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-4 text-white">
@@ -693,20 +679,19 @@ function DocList({ items }: { items: ShelfItem[] }) {
 }
 
 /** Documents as paper: real pages dealt onto a desk. Hover picks one up; the toggle lays them out as a list. */
-function Desk({ card, header }: { card: ShelfCard; header?: ReactNode }) {
+function Desk({ card }: { card: ShelfCard }) {
   const [list, setList] = useState(() => { try { return localStorage.getItem(VIEW) === 'list'; } catch { return false; } });
   const pick = (v: boolean) => { setList(v); try { localStorage.setItem(VIEW, v ? 'list' : 'desk'); } catch { /* private mode */ } };
   const id = useId();   // the desk has room on a large screen; on a small one it's a row to throw, without losing the tilt
   return (
     <div>
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">{header}</div>
-        {!list && <RowArrows id={id} label={card.title} className="ml-auto hidden sm:flex" />}
-        <div className="seg" role="group" aria-label="View documents as">
+      <HeadActions>
+        {!list && <RowArrows id={id} label={card.title} className="hidden sm:flex" />}
+        <div className="seg ml-1.5" role="group" aria-label="View documents as">
           {[false, true].map(v => <button key={String(v)} type="button" aria-pressed={list === v} onClick={() => pick(v)}>{v ? 'List' : 'Desk'}</button>)}
         </div>
-      </div>
-      {list ? <DocList items={card.items} /> : <DeskRow id={id} card={card} />}
+      </HeadActions>
+      {list ? <DocList items={card.items} /> : <div className="bleed"><DeskRow id={id} card={card} /></div>}
     </div>
   );
 }
@@ -726,24 +711,24 @@ const DeskRow = memo(function DeskRow({ id, card }: { id: string; card: ShelfCar
 }, (a, b) => a.id === b.id && (a.card === b.card || sameShelf(a.card, b.card)));
 
 /** A stack of cards to deal through (documents, saved pages). Archiving works as it does in the windows. */
-function Cards({ card, header, run }: { card: ShelfCard; header?: ReactNode; run?: RunAction }) {
+function Cards({ card, run }: { card: ShelfCard; run?: RunAction }) {
   const arch = useArchive(run, true), act = useRef(arch.archive);
   act.current = arch.archive;
   const archive = useCallback((id: string, el: Element | null) => act.current(id, el), []);
   const items = card.items.filter(w => !w.id || !arch.gone.includes(w.id));
-  if (!items.length) return <div>{header && <div className="mb-3 flex items-center gap-2">{header}</div>}<Empty icon={FileText} text={card.empty ?? 'Nothing here yet'} /></div>;
-  return <CardStack items={items} title={card.title} header={header} aside={run ? <SeeArchived href={card.archived} /> : undefined}
+  if (!items.length) return <Empty icon={FileText} text={card.empty ?? 'Nothing here yet'} />;
+  return <CardStack items={items} title={card.title} aside={run ? <SeeArchived href={card.archived} /> : undefined}
     archive={run && items.some(i => i.id) ? archive : undefined} leaving={arch.leaving} />;
 }
 
 /** Saved pages as small browser windows, the page itself inside; hover and it scrolls by. */
-function Windows({ card, header, run }: { card: ShelfCard; header?: ReactNode; run?: RunAction }) {
+function Windows({ card, run }: { card: ShelfCard; run?: RunAction }) {
   const arch = useArchive(run, true), shown = card.items.filter(w => !w.id || !arch.gone.includes(w.id)).slice(0, 9);
   const grid = useSettle<HTMLDivElement>(shown.map(w => w.id ?? w.title).join('\n'));
   const site = (s?: string) => s && /^[\w-]+(\.[\w-]+)+$/.test(s) ? s : undefined;
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between gap-3"><div className="min-w-0">{header}</div>{run && <SeeArchived href={card.archived} className="shrink-0" />}</div>
+      {run && card.archived && <HeadActions><SeeArchived href={card.archived} className="shrink-0" /></HeadActions>}
       <div ref={grid} className="windows">
         {shown.map((w, i) => (
           <a key={w.id ?? i} data-key={w.id ?? w.title} href={w.href} target="_blank" rel="noreferrer" className={cn('window relative', w.id && arch.leaving.includes(w.id) && 'gone')}>
@@ -789,15 +774,12 @@ function Ranked({ card }: { card: RankedCard }) {
   );
 }
 
-function ShelfRow({ card, header, small, beside, lines }: { card: ShelfCard; header?: ReactNode; small?: boolean; beside?: boolean; lines?: boolean }) {
+function ShelfRow({ card, small, beside, lines }: { card: ShelfCard; small?: boolean; beside?: boolean; lines?: boolean }) {
   const id = useId();
   return (
     <div className={cn(beside && 'relative min-w-0')}>
-      <div className={cn('flex items-center gap-2', beside ? 'absolute -top-10 right-0 @max-4xl/main:hidden' : !!(header || card.items.length > (small ? 4 : 6)) && 'mb-3')}>
-        {header}
-        {card.items.length > 0 && <RowArrows id={id} label={card.title} className="ml-auto hidden sm:flex" />}
-      </div>
-      {card.items.length === 0 ? <Empty icon={Film} text={card.empty ?? 'Nothing here yet'} height={196} /> : <Shelved id={id} card={card} small={small} lines={lines} />}
+      {card.items.length > 0 && <HeadActions><RowArrows id={id} label={card.title} className={cn('hidden sm:flex', beside && '@max-4xl/main:hidden')} /></HeadActions>}
+      {card.items.length === 0 ? <Empty icon={Film} text={card.empty ?? 'Nothing here yet'} height={196} /> : <div className={cn(!beside && 'bleed')}><Shelved id={id} card={card} small={small} lines={lines} /></div>}
     </div>
   );
 }
@@ -808,7 +790,7 @@ const Shelved = memo(function Shelved({ id, card, small, lines }: { id: string; 
   const width = small ? (card.aspect === 'wide' ? 'w-[180px]' : 'w-[92px]') : card.aspect === 'wide' ? 'w-[240px] @3xl/main:w-[280px]' : 'w-[128px] @3xl/main:w-[150px]';
   return (
     <Row id={id} role="group" aria-roledescription="carousel" aria-label={card.title} tabIndex={card.items.some(it => it.cta?.href ?? it.href) ? undefined : 0}
-      className="-mx-2 -my-3 flex scroll-px-2 gap-4 px-2 py-3">
+      className="shelf-row -my-3 flex gap-4 py-3">
       {card.items.map((it, i) => {
         const href = it.cta?.href ?? it.href;
         const inner = (
@@ -1063,8 +1045,8 @@ function Showcase({ card, run }: { card: ShowcaseCard; run?: RunAction }) {
 /** Which of a schedule's times marks sunset: the card can name it, and otherwise it's the one called that. */
 const sunsetOf = (card: ScheduleCard) => card.sunset ? new RegExp(`^${card.sunset.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') : /sunset/i;
 
-/** The card's backdrop is the sky outside right now: dawn, day, golden hour, dusk or a night with stars. It needs a
- *  sunrise and a sunset in the times; any other schedule stays plain. */
+/** The sky panel's backdrop is the sky outside right now: dawn, day, golden hour, dusk or a night with stars. It needs a
+ *  sunrise and a sunset in the times; any other schedule stays plain. It's a panel inside the card, not the card's glass. */
 function SkyWash({ card }: { card: ScheduleCard }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 60_000); return () => clearInterval(t); }, []);
@@ -1076,7 +1058,7 @@ function SkyWash({ card }: { card: ScheduleCard }) {
   const night = now < rise - 50 * min || now > set + 50 * min;
   return (
     <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
-      <div className="absolute inset-0 opacity-30" style={{ background: `radial-gradient(120% 90% at 50% 112%, ${sky[0]}, ${sky[1]} 52%, transparent 82%)` }} />
+      <div className="absolute inset-0 opacity-45" style={{ background: `radial-gradient(120% 90% at 50% 112%, ${sky[0]}, ${sky[1]} 52%, transparent 82%)` }} />
       {night && [[8, 12], [17, 34], [26, 9], [38, 22], [49, 7], [61, 30], [72, 12], [83, 26], [92, 8], [13, 56], [88, 52]].map(([x, y], i) => <span key={i} className="twinkle absolute size-[2px] rounded-full bg-white" style={{ left: `${x}%`, top: `${y}%` }} />)}
     </div>
   );
@@ -1108,6 +1090,8 @@ function Sky({ card }: { card: ScheduleCard }) {
         <div className="text-right"><div className={cn('metric text-metric-s tabular leading-none', mins <= 15 && 'text-good')}><Counter flap value={duration(Math.max(1, mins) * 6e4)} /></div>
           <div className="mt-1.5 text-meta text-muted-foreground">to go</div></div>
       </div>
+      <div className="relative isolate overflow-hidden rounded-hero bg-fill-1 px-6 pt-9 pb-2">
+      <SkyWash card={card} />
       <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block max-h-[150px] w-full overflow-visible" aria-hidden>
         <defs>
           <linearGradient id="sky-path" x1="0" x2="1"><stop offset="0" stopColor="#5e5ce6" /><stop offset=".25" stopColor="#ffb46b" /><stop offset=".5" stopColor="#ffd60a" /><stop offset=".75" stopColor="#ff9f0a" /><stop offset="1" stopColor="#5e5ce6" /></linearGradient>
@@ -1131,6 +1115,7 @@ function Sky({ card }: { card: ScheduleCard }) {
         <circle cx={sun.x} cy={sun.y} r="22" fill="url(#sky-sun)" />
         <circle cx={sun.x} cy={sun.y} r="6.5" fill={sun.up ? '#ffe680' : '#e8edff'} />
       </svg>
+      </div>
     </div>
   );
 }
@@ -1201,7 +1186,7 @@ function letterbox(img: HTMLImageElement): [number, number] | undefined {
 
 /** Flashback: one photo at a time, filling the card, crossfading slowly with a gentle drift; the moment's caption
  *  ("3 years ago · Lisbon") sits over the bottom. Mosaic: one large photo and four small ones. Hover pauses. */
-function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?: boolean; fill?: boolean; label?: string; status?: ReactNode }) {
+function Photos({ card, large, fill }: { card: PhotosCard; large?: boolean; fill?: boolean }) {
   const items = card.items, [i, setI] = useState(0), [paused, setPaused] = useState(false), [bars, setBars] = useState<Record<number, [number, number]>>({}), [box, seen] = useOnScreen<HTMLAnchorElement>();
   useEffect(() => {
     if (items.length < 2 || paused || !seen || card.style === 'album' || card.style === 'masonry' || (large && card.style !== 'flashback')) return;
@@ -1227,16 +1212,14 @@ function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?
   const cur = items[i], [lead, ...rest] = [cur.badge, cur.title, cur.subtitle].filter(Boolean);
   return (
     <a ref={box} href={cur.href} target="_blank" rel="noreferrer" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
-      className={cn(cur.href && 'lift', 'art-card relative isolate block overflow-hidden rounded-surface bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/.55)]', fill ? 'h-full min-h-[280px]' : 'aspect-[4/3] max-h-[460px] w-full')}>
+      className={cn(cur.href && 'lift', 'art-card relative isolate block w-full overflow-hidden rounded-hero bg-neutral-900 text-white', fill ? 'h-full min-h-[220px] flex-1' : 'aspect-[4/3] max-h-[460px]')}>
       {items.map((p, k) => (
         <Art key={k} src={p.image} alt={p.title ?? ''} className={cn('photo-slide absolute inset-0 -z-10 size-full object-cover', k === i && 'is-on')}
           style={bars[k] && { height: `${100 / (1 - bars[k][0] - bars[k][1])}%`, top: `${-100 * bars[k][0] / (1 - bars[k][0] - bars[k][1])}%` }}
           onLoaded={img => { const b = letterbox(img); if (b) setBars(s => ({ ...s, [k]: b })); }} />
       ))}
-      <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_top,rgb(0_0_0/.72),rgb(0_0_0/.08)_38%,transparent_60%,rgb(0_0_0/.5))]" />
-      <AppBadge of={card.source} />
-      {label && <div className="absolute inset-x-0 top-0 flex items-center gap-2 p-5 text-title font-semibold [text-shadow:0_1px_8px_rgb(0_0_0/.45)]"><span className="min-w-0 truncate">{label}</span>{status}</div>}
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-5">
+      <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_top,rgb(0_0_0/.72),rgb(0_0_0/.08)_38%,transparent_60%)]" />
+      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
         <div key={i} className="min-w-0 tick">
           {lead && <div className="truncate text-metric-s font-semibold tracking-tight">{lead}</div>}
           {rest.length > 0 && <div className="truncate text-body text-white/75">{rest.join(' · ')}</div>}
@@ -1254,22 +1237,24 @@ function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?
 /** The sky arc on the page; the plain timeline where space is tight. */
 function Times({ card }: { card: ScheduleCard }) { return useContext(Dense) ? <Schedule card={card} /> : <Sky card={card} />; }
 
-export function CardBody({ card, run, columns, minimal, large }: { card: CardT; run?: RunAction; columns?: number; minimal?: boolean; large?: boolean }): ReactNode {
+export function CardBody({ card, run, columns, minimal, large, fill }: { card: CardT; run?: RunAction; columns?: number; minimal?: boolean; large?: boolean; fill?: boolean }): ReactNode {
+  const dense = useContext(Dense);
   switch (card.type) {
     case 'cameras': return <Cameras card={card} />;
     case 'showcase': return <Showcase card={card} run={run} />;
-    case 'photos': return <Photos card={card} large={large} />;
+    case 'photos': return <Photos card={card} large={large} fill={fill} />;
+    case 'article': return <Article card={card} run={run} />;
     case 'schedule': return <Times card={card} />;
     case 'embed': return <iframe src={card.src} title={card.title ?? 'Embedded page'} loading="lazy" referrerPolicy="no-referrer" sandbox={card.scripts ? 'allow-scripts allow-same-origin allow-forms' : ''} className="w-full rounded-inset border-0 bg-fill-1" style={{ height: card.height }} />;
-    case 'forecast': return <WeatherCard card={card} dense />;
-    case 'calendar': return <CalendarView card={card} dense />;
-    case 'thermostat': return <Thermostat card={card} run={run} dense />;
+    case 'forecast': return <WeatherCard card={card} dense={dense} />;
+    case 'calendar': return <CalendarView card={card} large={large} dense={dense} />;
+    case 'thermostat': return <Thermostat card={card} run={run} dense={dense} />;
     case 'stats': return <Stats card={card} />;
     case 'list': return <List card={card} run={run} />;
     case 'status': return <Status card={card} columns={columns} minimal={minimal} />;
     case 'links': return <Links card={card} />;
     case 'media': return <Media card={card} run={run} />;
-    case 'shelf': return <Shelf card={card} />;
+    case 'shelf': return <Shelf card={card} small={dense} run={run} />;
     case 'chart': return <Chart card={card} />;
     case 'race': return <Race race={card} span={card.span} />;
     case 'heatmap': return <Heatmap card={card} />;
@@ -1287,29 +1272,27 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
   }
 }
 
-/** Every card's title row: the service's icon, the title (a link to the app when there is one), a live status and the
- *  header's note. The same inset inside the glass and above it (`outside`, for artwork that runs edge to edge), so titles
- *  line up down a column. `hidden` keeps the title for a screen reader where the card says what it is without one. */
-export function CardHeader({ card, title, status, hidden, className }: { card?: CardT; title?: string; status?: ReactNode; hidden?: boolean; className?: string }) {
+/** Every card's title row, inside the glass at the card's inset: the service's icon, the title (a link to the app when
+ *  there is one), a live status, and at the far right the header's note and the card's actions (`slot`, filled through
+ *  `HeadActions`: a carousel's arrows, "See archived"). One height everywhere. `hidden` keeps the title for a screen reader
+ *  where the card says what it is without one; its actions, if it has any, still get the row. */
+export function CardHeader({ card, title, status, hidden, className, slot }: { card?: CardT; title?: string; status?: ReactNode; hidden?: boolean; className?: string; slot?: (el: HTMLElement | null) => void }) {
   const t = card?.title ?? title;
-  if (!t) return status ? <div className={cn('card-head', className)}>{status}</div> : null;
-  if (hidden) return <><h3 className="sr-only">{t}</h3>{status && <div className="absolute top-3 right-4 z-10">{status}</div>}</>;
+  const end = (note?: ReactNode) => <div className="card-head-end">{note}<div ref={slot} className="card-actions" /></div>;
+  if (!t || hidden) return <>
+    {t && <h3 className="sr-only">{t}</h3>}
+    {status && <div className="absolute top-(--pad) right-(--pad) z-10">{status}</div>}
+    {slot && <div data-slot="card-header" className={cn('card-head is-bare', className)}>{end()}</div>}
+  </>;
   return (
     <div data-slot="card-header" className={cn('card-head', className)}>
       {card?.source?.icon && <img src={card.source.icon} alt="" className="size-icon-lg flex-none rounded-thumb object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />}
       <h3 className="min-w-0 truncate text-title leading-snug font-semibold">{card?.href ? <a href={card.href} target="_blank" rel="noreferrer" className="title-link">{t}</a> : t}</h3>
       {status}
-      {card?.note && <span className="ml-auto min-w-0 shrink truncate pl-2 text-meta tabular text-muted-foreground">{card.note}</span>}
+      {end(card?.note && <span className="min-w-0 shrink truncate text-meta tabular text-muted-foreground">{card.note}</span>)}
     </div>
   );
 }
-
-/** Which cards are their artwork: a poster, a shelf, a photo, a view of covers. Their title sits above, outside the glass;
- *  every other card has it inside. A row of downloads is a list, so it's a card like any list. */
-const outside = (card?: CardT) => !!card && (
-  (card.type === 'media' && card.items.length > 0 && !mediaRows(card)) ||
-  (card.type === 'shelf' && card.items.length > 0) ||
-  (card.type === 'photos' && card.items.length > 0));
 
 /** A state someone chose and shouldn't forget, with the way out beside it. It lapses by itself at `until`. */
 function BannerLine({ b, run }: { b: Banner; run?: RunAction }) {
@@ -1378,51 +1361,31 @@ export const TileSkeleton = () => (
   <Card className="relative h-[136px] gap-0 py-0 shadow-card"><div className="flex h-full flex-col justify-between p-(--spacing-inset-tight)"><Skeleton className="h-3.5 w-2/3" /><Skeleton className="h-7 w-1/2" /></div></Card>
 );
 
+/** The one card every widget is drawn in: the same glass, corner, rim, shadow and inset (`--pad`), whatever it shows. Its
+ *  header row is the first thing in it; artwork, a sky or a reading pile is content inside the inset. */
+export function Shell({ className, tight, children, ...props }: React.ComponentProps<typeof Card> & { tight?: boolean }) {
+  return <Card {...props} className={cn('@container/card card-pad relative isolate min-w-0 gap-4 overflow-hidden py-(--pad) shadow-card', tight && 'is-tight gap-2.5 shadow-none', className)}>{children}</Card>;
+}
+
 function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, fill, kind, failed }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; fill?: boolean; kind?: string; failed?: string }) {
   const fade = useRef(card ? '' : 'fade-in-soft').current;   // up from its skeleton; a tab you come back to is already there
-  const actions = card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null;
-  const header = (className?: string) => <CardHeader card={card} title={title} status={status} hidden={headless} className={className} />;
-  // artwork-led cards sit directly on the page, their title above them (`outside`)
-  if (card?.type === 'shelf' && outside(card)) return <div className={cn(fade, 'min-w-0')}><Shelf card={card} small={compact} run={run} header={header()} />{actions}</div>;
-  // the reading pile is all page: its heading sits on the picture, so the card's edges line up with its neighbours
-  if (card?.type === 'article') return <Article card={card} run={run} title={title} />;
-  if (card?.type === 'photos' && outside(card) && card.style === 'masonry') return (
-    <div className={cn(fade, 'min-w-0')}><Masonry items={card.items.map(p => ({ ...p, title: p.title ?? '' }))} title={card.title} header={header()} />{actions}</div>
-  );
-  // a flashback carries its title on the photo
-  if (card?.type === 'photos' && outside(card) && !large && card.style !== 'mosaic' && card.style !== 'album') return (
-    <div className={cn(fade, 'h-full min-w-0')}><Photos card={card} fill={fill} label={headless ? undefined : card.title ?? title} status={status} />{actions}</div>
-  );
-  if (card?.type === 'photos' && outside(card)) return (
-    <div className={cn(fade, 'min-w-0 space-y-3')}>{header()}<Photos card={card} large={large} />{actions}</div>
-  );
-  if (card?.type === 'media' && outside(card)) return (
-    <div className={cn(fade, 'flex min-w-0 flex-col gap-3', fill && 'h-full')}>{header()}<Media card={card} run={run} />{actions}</div>
-  );
-  // the house's cards are glass edge to edge: weather and the calendar lead with their own big line (the sky, the day), so
-  // their title is for a screen reader; the thermostat's says which room. In chat they're ordinary cards, below.
-  if (!compact && (card?.type === 'forecast' || card?.type === 'calendar' || card?.type === 'thermostat')) {
-    const named = card.type === 'thermostat' && !headless;
-    return (
-      <Card className={cn(fade, 'card-pad relative isolate min-w-0 gap-0 overflow-hidden py-0 shadow-card', fill && 'h-full')}>
-        <CardHeader card={card} title={title} status={status} hidden={!named} className="pt-(--pad)" />
-        {card.type === 'forecast' ? <WeatherCard card={card} /> : card.type === 'calendar' ? <CalendarView card={card} large={large} /> : <Thermostat card={card} run={run} titled={named} />}
-      </Card>
-    );
-  }
-  const bare = card?.type === 'group';
-  const scene = !compact && card ? card.type === 'schedule' ? <SkyWash card={card} /> : null : null;
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  // a group is a set of cards, not a card: it has no glass of its own
+  if (card?.type === 'group') return <div className={cn('min-w-0', fill && 'h-full')}><CardBody card={card} run={run} /></div>;
+  // weather and the calendar lead with their own big line (the sky, the day), so their title is for a screen reader
+  const quiet = headless || (!compact && (card?.type === 'forecast' || card?.type === 'calendar'));
   return (
     <Dense.Provider value={!!compact}>
-    <Card className={cn('@container/card card-pad relative min-w-0 overflow-hidden shadow-card', compact ? 'is-tight gap-2.5 shadow-none' : 'gap-4', bare ? 'border-0 bg-transparent py-0 shadow-none' : 'py-(--pad)', fill && 'h-full', scene && 'relative isolate overflow-hidden')}>
-      {scene}
-      {!bare && header()}
-      <CardContent className={cn(bare ? 'p-0' : 'px-(--pad)', fill && 'flex flex-1 flex-col')}>
+    <HeadSlot.Provider value={slot}>
+    <Shell tight={compact} className={cn(fill && 'h-full')}>
+      <CardHeader card={card} title={title} status={status} hidden={quiet} slot={setSlot} />
+      <CardContent className={cn('flex min-w-0 flex-col px-(--pad)', fill && 'flex-1')}>
         {card?.banner && <BannerLine b={card.banner} run={run} />}
-        {card ? <div className={cn(fade, fill && 'flex flex-1 flex-col')}><CardBody card={card} run={run} large={large} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /></div> : <CardSkeleton kind={kind} />}
+        {card ? <div className={cn(fade, 'flex min-w-0 flex-1 flex-col')}><CardBody card={card} run={run} large={large} fill={fill} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /></div> : <CardSkeleton kind={kind} />}
         {card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null}
       </CardContent>
-    </Card>
+    </Shell>
+    </HeadSlot.Provider>
     </Dense.Provider>
   );
 }
@@ -1458,25 +1421,26 @@ function TileGraph({ points, gauge }: { points: number[]; gauge?: boolean }) {
   );
 }
 
-/** Headline tile for the overview's top row: label and context up top, the value at the bottom. What's behind them
- *  depends on what the tile knows: artwork, a live graph, or a bar for each thing it counts. */
+/** Headline tile for the overview's top row: label and context up top, the value at the bottom. Beside or behind them,
+ *  what the tile knows: its artwork (a poster inside the tile, at its inset), a live graph, or a bar for each thing it counts.
+ *  The tile is always the same glass. */
 function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
   const art = !!s.image;
   const body = (
-    <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift', art && 'art-card border-transparent text-white')} style={{ '--tint': s.color ?? 'color-mix(in oklab, var(--foreground) 55%, transparent)' } as React.CSSProperties}>
-      {art && <><Art src={s.image} className={cn('absolute inset-0 -z-10 size-full object-cover transition-transform duration-(--dur-move) ease-out', href && 'group-hover/tile:scale-[1.03]')} /><div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(0_0_0/.78),rgb(0_0_0/.42)_38%,transparent_72%)]" /></>}
+    <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift')} style={{ '--tint': s.color ?? 'color-mix(in oklab, var(--foreground) 55%, transparent)' } as React.CSSProperties}>
+      {art && <Art src={s.image} className={cn('absolute top-(--spacing-inset-tight) right-(--spacing-inset-tight) aspect-[2/3] h-[calc(100%-2*var(--spacing-inset-tight))] rounded-poster object-cover shadow-[0_8px_20px_-10px_rgb(0_0_0/.5)] transition-transform duration-(--dur-move) ease-out', href && 'group-hover/tile:scale-[1.03]')} />}
       {!art && !s.marks && !s.waffle && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} gauge={s.ring != null} /></div>}
-      <div className={cn('relative flex flex-1 flex-col p-(--spacing-inset-tight)', art && '[text-shadow:0_1px_10px_rgb(0_0_0/.7)]')}>
+      <div className={cn('relative flex flex-1 flex-col p-(--spacing-inset-tight)', art && 'pr-[calc(var(--spacing-inset-tight)*2+4.5rem)]')}>
         <div className="flex items-center gap-2.5">
           {s.icon && isWeather(s.icon) && !art && <WeatherGlyph name={s.icon} size={38} className="-my-1 -ml-0.5" />}
           <div className="min-w-0">
             <div className="truncate text-title leading-tight font-semibold">{s.label}</div>
-            {s.sub && <div className={cn('truncate text-body leading-tight', art ? 'text-white/75' : 'text-muted-foreground')}>{s.sub}</div>}
+            {s.sub && <div className="truncate text-body leading-tight text-muted-foreground">{s.sub}</div>}
           </div>
           {s.tone === 'bad' && <span className="dot dot-bad ml-auto" />}
         </div>
         <div className={cn('mt-auto flex min-w-0 justify-between gap-3 pt-3', s.marks || s.waffle ? 'items-end' : 'items-baseline')}>
-          <div className={cn('metric min-w-0 truncate text-metric-s leading-none', !art && toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}><Metric value={s.value} /></div>
+          <div className={cn('metric min-w-0 truncate text-metric-s leading-none', toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}><Metric value={s.value} /></div>
           {s.marks?.length ? <TileMarks marks={s.marks} /> : s.waffle && s.pct != null ? <Waffle pct={s.pct} label={s.sub} /> : null}
           {s.detail && <div className="hidden min-w-0 truncate text-meta tabular text-muted-foreground @[200px]/tile:block">{s.detail}</div>}
         </div>

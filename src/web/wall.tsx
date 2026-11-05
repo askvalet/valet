@@ -6,7 +6,7 @@ import type { ForecastCard, WidgetState } from '../shared/cards.ts';
 import { asView } from '../shared/views.ts';
 import { clock, highLow, label, longDay, oneLine, sayHow, setFormat } from './format.ts';
 import { applyLook, applyTheme } from './look.ts';
-import { isEmpty, NowPlaying, Ring, Shaped, shapeOf, SummaryTile, TileSkeleton, Widget } from './cards.tsx';
+import { isEmpty, NowPlaying, Ring, Shell, Shaped, shapeOf, SummaryTile, TileSkeleton, Widget } from './cards.tsx';
 import { WeatherGlyph } from './home-cards.tsx';
 import { dress, useDark, useHeld, useLive, Walls, type Page, type Size } from './app.tsx';
 
@@ -103,7 +103,7 @@ function WallSection({ sec, state, titles }: { sec: Section; state: Record<strin
     if (!items.length) return null;
     return <section className="space-y-3" style={style}>{heading}
       <div className="grid gap-(--card-gap)" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${sec.columns ? Math.floor(1200 / sec.columns) - 40 : 420}px), 1fr))` }}>
-        {items.map(({ m, k }) => <div key={k} className="min-w-0"><NowPlaying m={m} compact /></div>)}
+        {items.map(({ m, k }) => <Shell key={k}><div className="px-(--pad)"><NowPlaying m={m} compact /></div></Shell>)}
       </div></section>;
   }
   if (sec.display === 'rings') return (

@@ -45,7 +45,7 @@
   --sidebar-ring: #7d5f16;
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px -4px rgb(0 0 0 / 0.06);
   --card-tint: #ffffff; --card-alpha: 1;
-  --card-gap: calc(var(--spacing) * 4); --tile-gap: calc(var(--spacing) * 3); --section-gap: calc(var(--spacing) * 8);
+  --card-gap: calc(var(--spacing) * 4); --tile-gap: var(--card-gap); --section-gap: calc(var(--spacing) * 8);
 }
 
 .dark {
@@ -422,7 +422,7 @@
 }
 /* press feedback: a slight give under the finger */
 .press, [data-slot="button"], .glass-round, .chat-icon { transition-property: transform, color, background-color, opacity, box-shadow; transition-duration: var(--dur-press); transition-timing-function: var(--ease-out); }
-:is(.press, [data-slot="button"], button.glass-round, .chat-icon, .seg button, .shelf-arrow, .window-archive, .article-tools button, .article-tools a, .undo-bar button):active:not(:disabled, [aria-disabled="true"]) { transform: scale(calc(1 - .03 * var(--move))); }
+:is(.press, [data-slot="button"], button.glass-round, .chat-icon, .seg button, .shelf-arrow, .window-archive, .undo-bar button):active:not(:disabled, [aria-disabled="true"]) { transform: scale(calc(1 - .03 * var(--move))); }
 
 /* chat: a message arrives, cards settle in, words fade up out of a slight blur as they stream */
 .chat-in { animation: chat-in var(--dur-move) var(--ease-out) backwards; transform-origin: bottom right; }
@@ -500,12 +500,23 @@
 .chat-peek { max-width: 560px; }
 .chat-card [data-slot="card"], .chat-card .glass { backdrop-filter: none !important; background: var(--fill-1); box-shadow: none; }
 /* the numbers beside the chat, small */
-.chat-aside .grid { grid-template-columns: 1fr !important; gap: .5rem; }
-/* every card's frame: one inset (--pad) for its header and its content, tighter in chat. A header outside the glass (over
-   artwork that runs edge to edge) keeps the same inset, so titles line up down a column whatever their card is. */
+.chat-aside .grid { grid-template-columns: 1fr !important; }
+/* every widget is one card (`Shell`): one glass, one inset (--pad) for its header and its content, tighter in chat. The
+   header row is the same height in every card, with the note and the actions at its far right, so headers line up across a
+   row and nothing sits above a card or on the wallpaper. */
 .card-pad { --pad: var(--spacing-inset); }
 .card-pad.is-tight { --pad: var(--spacing-inset-tight); }
-.card-head { display: flex; min-width: 0; align-items: center; gap: .5rem; padding-inline: var(--pad, var(--spacing-inset)); }
+.card-head { display: flex; min-width: 0; min-height: 28px; align-items: center; gap: .5rem; padding-inline: var(--pad, var(--spacing-inset)); }
+.card-head-end { display: flex; min-width: 0; flex: 1 1 auto; align-items: center; justify-content: flex-end; gap: .75rem; }
+.card-actions { display: flex; flex: none; align-items: center; gap: 2px; margin-right: -4px; }   /* a ghost button's own room, so its glyph meets the inset */
+.card-actions:empty { display: none; }
+.card-head.is-bare:has(.card-actions:empty) { display: none; }   /* no title shown and nothing to do: the content starts at the inset */
+.card-actions .undo-bar { padding-block: 2px; box-shadow: none; animation: none; }
+/* a carousel inside a card runs to the card's edges and scrolls under its inset, its first thing lined up with the content
+   and its edges fading where there's more; everything else stays inside the inset */
+.bleed { margin-inline: calc(-1 * var(--pad, 0px)); }
+.shelf-row { margin-inline: -8px; padding-inline: 8px; scroll-padding-inline: 8px; }
+.bleed > .shelf-row, .bleed > .masonry, .bleed > .desk { margin-inline: 0; padding-inline: var(--pad); scroll-padding-inline: var(--pad); }
 /* nothing to show: the same card, a quiet middle, at the height it has when full */
 .empty { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; min-height: var(--empty-h, 160px); padding-block: .75rem; text-align: center; }
 .card-pad:not(:has(.card-buttons)) .media-rows:last-child { margin-bottom: calc(-1 * var(--pad)); }   /* rows run to the card's foot */
@@ -625,7 +636,7 @@
 :root:not(.dark) :is(.art-card, .article, .deck-card)::before { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; box-shadow: var(--art-rim); pointer-events: none; }
 
 /* the page behind a saved article: it reads top down, and scrolls by on hover */
-.article { position: relative; isolation: isolate; container-type: size; display: flex; align-items: flex-end; height: 100%; min-height: 240px; overflow: hidden; border-radius: var(--radius-surface); background: #fff; box-shadow: var(--shadow-card); }
+.article { position: relative; isolation: isolate; container-type: size; display: flex; align-items: flex-end; height: 100%; min-height: 240px; overflow: hidden; border-radius: var(--radius-hero); background: #fff; }
 .article-page { position: absolute; inset: 0 0 auto; z-index: -2; width: 100%; min-height: 100%; object-fit: cover; object-position: top; transition: transform var(--dur-scene) var(--ease-out); }
 .article::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to top, rgb(10 10 16 / .96) 8%, rgb(10 10 16 / .82) 42%, rgb(10 10 16 / .12) 78%); }
 .article-text { min-width: 0; padding: 20px; color: #fff; }
@@ -662,20 +673,9 @@
 }
 
 .glass-light .glass-pop { --glass-sheet: rgb(255 255 255 / .96); }
-/* the reading card's controls: on hover, always on touch */
-.article-tools { position: absolute; top: 10px; right: 10px; z-index: 3; display: flex; gap: 2px; padding: 4px; border-radius: var(--radius-control); color: #fff; background: rgb(0 0 0 / .62); backdrop-filter: blur(14px); opacity: 0; translate: 0 -4px; transition: opacity var(--dur-pop) var(--ease-out), translate var(--dur-pop) var(--ease-out); }
-.article-tools button, .article-tools a { display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--radius-tag); transition: background-color var(--dur-press) var(--ease-out), transform var(--dur-press) var(--ease-out); }
-.article-tools button[aria-disabled="true"] { opacity: .35; cursor: default; }
-.pile:focus-within .article-tools { opacity: 1; translate: 0; }
-@media (hover: hover) and (pointer: fine) {
-  .pile:hover .article-tools { opacity: 1; translate: 0; }
-  .article-tools button:hover, .article-tools a:hover { background: rgb(255 255 255 / .16); }
-}
 .article-open { position: absolute; inset: 0; z-index: 2; }
 .article-text { position: relative; z-index: 3; pointer-events: none; }
 .article-blurb { pointer-events: auto; max-height: 11lh; overflow-y: auto; scrollbar-width: none; }
-.article-corner { position: absolute; top: 10px; left: 10px; z-index: 3; }
-.article-chip { display: block; padding: 4px 8px; border-radius: var(--radius-tag); color: #fff; background: rgb(0 0 0 / .55); backdrop-filter: blur(14px); }
 /* the moment after archiving: it says so, offers the way back, and goes by itself. The same pill carries the page's notes (feel.tsx) */
 .undo-bar { display: inline-flex; align-items: center; gap: 10px; padding: 6px 8px 6px 12px; border-radius: var(--radius-control); font-size: var(--text-body); color: #fff; background: rgb(20 20 22 / .86); backdrop-filter: blur(14px); box-shadow: 0 10px 28px -10px rgb(0 0 0 / .6); animation: desk-rise var(--dur-pop) var(--ease-out) backwards; }
 .undo-bar:not(:has(button)) { padding-right: 12px; }
@@ -709,7 +709,7 @@
   .window-archive:hover { color: var(--foreground); background: var(--fill-2); }
 }
 .window.gone { opacity: 0; transform: scale(.94); transition: opacity var(--dur-pop) var(--ease-out), transform var(--dur-pop) var(--ease-out); }
-@media (hover: none) { .article-tools { opacity: 1; translate: 0; } .window-archive { opacity: 1; } }
+@media (hover: none) { .window-archive { opacity: 1; } }
 
 /* a card's title is its link */
 .title-link { transition: opacity var(--dur-press) var(--ease-out); }
@@ -728,9 +728,7 @@
 .card-banner.is-bad { background: color-mix(in srgb, var(--bad) 16%, transparent); }
 .np-state { flex: none; width: 6px; height: 6px; border-radius: 50%; background: #fff; }
 .np-state.is-paused { background: transparent; box-shadow: inset 0 0 0 1.5px #fff; }
-.shelf-arrow { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: var(--muted-foreground); background: var(--secondary); transition: color var(--dur-press) var(--ease-out), opacity var(--dur-press) var(--ease-out), transform var(--dur-press) var(--ease-out); }
-@media (hover: hover) and (pointer: fine) { .shelf-arrow:hover { color: var(--foreground); } }
-.shelf-arrow[aria-disabled="true"] { color: var(--muted-foreground); opacity: .35; cursor: default; }
+.shelf-arrow[aria-disabled="true"] { color: var(--muted-foreground); background: transparent; opacity: .35; cursor: default; }
 .fact { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 8px; border-radius: var(--radius-tag); font-size: var(--text-meta); color: var(--muted-foreground); background: var(--fill-1); }
 .fact b { font-weight: 500; color: var(--foreground); font-variant-numeric: tabular-nums; }
 /* the wall: icons, and only trouble gets a word */

@@ -7,18 +7,18 @@ import { Archive, ArrowUpRight, FileText } from 'lucide-react';
 import { memo, useEffect, useId, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import type { ShelfItem } from '../shared/cards.ts';
-import { oneByOne, Row, RowArrows, still } from './feel.tsx';
+import { HeadActions, oneByOne, Row, RowArrows, still } from './feel.tsx';
 import './cardstack.css';
 
-export function CardStack({ items, title, header, aside, archive, leaving }: {
-  items: ShelfItem[]; title?: string; header?: ReactNode; aside?: ReactNode;
+export function CardStack({ items, title, aside, archive, leaving }: {
+  items: ShelfItem[]; title?: string; aside?: ReactNode;
   archive?: (id: string, el: Element | null) => void; leaving?: string[];
 }) {
   const id = useId();
   return (
     <div className="min-w-0">
-      <div className="mb-3 flex items-center gap-2">{header}<span className="ml-auto flex items-center gap-3">{aside}<RowArrows id={id} one label={title} /></span></div>
-      <div className="deck"><Deck id={id} items={items} title={title} archive={archive} leaving={leaving} /></div>
+      <HeadActions>{aside}<RowArrows id={id} one label={title} /></HeadActions>
+      <div className="deck bleed"><Deck id={id} items={items} title={title} archive={archive} leaving={leaving} /></div>
     </div>
   );
 }

@@ -51,6 +51,19 @@ for (const { name, card } of SAMPLES) {
   }
 }
 
+// one shell (AGENTS.md, "Design tokens"): every widget is the same card, its title inside the glass, nothing on the wallpaper
+test('every card type renders in the one card, with its header inside', () => {
+  for (const { name, card } of SAMPLES) {
+    if (card.type === 'group') continue;   // a set of cards, each its own shell
+    for (const compact of [false, true]) {
+      const out = renderToString(<TooltipProvider><Widget card={card} compact={compact} run={async () => {}} /></TooltipProvider>).replace(/^(<link [^>]*>)+/, '');
+      assert.match(out, /^<div data-slot="card" class="[^"]*card-pad[^"]*py-\(--pad\)/, `${name} isn't in the shell`);
+      assert.doesNotMatch(out, /rounded-surface[^"]*bg-neutral-900/, `${name} brings its own card material`);
+      if (card.title && !['forecast', 'calendar'].includes(card.type)) assert.match(out, /^<div data-slot="card"[^>]*><div data-slot="card-header" class="card-head"/, `${name}'s title isn't the card's first row`);
+    }
+  }
+});
+
 const html = (card: any, o: { run?: boolean; compact?: boolean } = {}) => renderToString(<TooltipProvider><Widget card={card} compact={o.compact} run={o.run ? async () => {} : undefined} /></TooltipProvider>).replaceAll('<!-- -->', '');
 
 test('status: a state follows from ok and quiet unless it says, and off is hollow', () => {
@@ -375,7 +388,7 @@ test('focus: one large in the middle, opening near the middle on something with 
   assert.equal(openAt(items), 1, 'the middle has no picture, so the nearest that has one');
   assert.equal(openAt(items.map(i => ({ ...i, image: '/a.jpg' }))), 2);
   const out = html({ type: 'shelf', layout: 'focus', title: 'Recent', aspect: 'poster', items });
-  assert.match(out, /class="focus is-poster"/); assert.match(out, /class="carousel focus-track"/); assert.match(out, /blossom-carousel="true"/);
+  assert.match(out, /class="focus is-poster bleed"/); assert.match(out, /class="carousel focus-track"/); assert.match(out, /blossom-carousel="true"/);
   assert.equal(out.match(/class="focus-slide"/g)?.length, 5);
   assert.match(out, /aria-label="Next in Recent"/); assert.match(out, /aria-label="T0, 2020"/);
   assert.doesNotMatch(out, /cover-/);
@@ -385,7 +398,7 @@ test('focus: one large in the middle, opening near the middle on something with 
 test('cover flow: its own 3D carousel, a real list in a Blossom scroller, with Prev and Next', () => {
   const items = Array.from({ length: 6 }, (_, i) => ({ title: `G${i}`, subtitle: 'SNES', image: `/g/${i}.jpg`, href: i % 2 ? `http://x/${i}` : undefined }));
   const out = html({ type: 'shelf', layout: 'coverflow', title: 'Games', aspect: 'square', items });
-  assert.match(out, /class="cover is-square"/); assert.match(out, /class="carousel cover-track"/); assert.match(out, /blossom-carousel="true"/);
+  assert.match(out, /class="cover is-square bleed"/); assert.match(out, /class="carousel cover-track"/); assert.match(out, /blossom-carousel="true"/);
   assert.match(out, /<ul class="cover-list">/); assert.equal(out.match(/class="cover-slide"/g)?.length, 6);
   assert.match(out, /aria-label="Previous in Games"/); assert.match(out, /aria-label="Next in Games"/);
   assert.match(out, /aria-label="G1, SNES"/); assert.match(out, /aria-roledescription="slide" aria-label="G0, SNES"/);

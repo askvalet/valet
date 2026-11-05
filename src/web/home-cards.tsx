@@ -187,7 +187,7 @@ export function WeatherCard({ card, dense }: { card: ForecastCard; dense?: boole
   const [ref, { w, h }] = useBox<HTMLDivElement>();
   const wide = w >= 600 && !!card.days?.length, tall = !wide && h >= 540, s = dense ? .62 : w && w < 310 ? .78 : tall ? 1.14 : 1;
   return (
-    <div ref={ref} className={cn('wx-card relative isolate flex h-full min-w-0 flex-1', wide ? 'items-center gap-7 px-7 py-6' : 'flex-col', !wide && (dense ? 'gap-3 p-1' : 'gap-5 px-5 pt-6 pb-5'))} data-sky={skyOf(card.now.icon)}>
+    <div ref={ref} className={cn('wx-card relative isolate flex h-full min-w-0 flex-1', wide ? 'items-center gap-7 px-2' : 'flex-col', !wide && (dense ? 'gap-3 p-1' : 'gap-5 pt-1'))} data-sky={skyOf(card.now.icon)}>
       {wide ? <>
         <div className="w-[40%] shrink-0"><Hero card={card} s={w >= 720 ? 1 : .86} /></div>
         <div className="min-w-0 flex-1 space-y-4"><HeadsUp card={card} className="text-left" /><HourStrip card={card} n={w >= 720 ? 7 : 6} /><DayBars card={card} /></div>
@@ -321,7 +321,7 @@ export function CalendarView({ card, large, dense }: { card: CalendarCard; large
   const chosen = days.get(key) ?? [], away = !!picked || y !== today.getFullYear() || m !== today.getMonth();
   const list = <Agenda days={days} from={day} today={today} cap={two ? 14 : dense ? 4 : 6} empty={picked ? 'Nothing on from here' : card.empty ?? 'Nothing coming up'} />;
   return (
-    <div ref={ref} className={cn('cal relative flex h-full min-w-0 flex-1', two ? 'gap-7' : 'flex-col gap-5', !dense && 'p-(--pad)')}>
+    <div ref={ref} className={cn('cal relative flex h-full min-w-0 flex-1', two ? 'gap-7' : 'flex-col gap-5')}>
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="mb-3 flex items-baseline justify-between gap-2">
           <div className="truncate text-metric-s font-medium">{longDay(day)}</div>
@@ -371,7 +371,7 @@ function ModeButton({ m, on, press, disabled }: { m: ThermostatMode; on: boolean
   return <button onClick={press} disabled={disabled} aria-pressed={on} title={m.label} className={cn('th-mode press flex h-11 min-w-0 flex-1 flex-col items-center justify-center rounded-control px-1', on && 'is-on')}>{I && <I className="size-icon-lg flex-none" />}<span className="max-w-full truncate text-caption leading-[1.3] font-medium">{m.label}</span></button>;
 }
 
-export function Thermostat({ card, run, dense, titled }: { card: ThermostatCard; run?: Run; dense?: boolean; titled?: boolean }) {
+export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: Run; dense?: boolean }) {
   const { min, max, step, unit } = card, grad = useId().replace(/[^a-zA-Z0-9]/g, ''), canSet = !!run && !!card.set && card.target != null;
   const [draft, setDraft] = useState<number | null>(null), [live, setLive] = useState<number | null>(null), [flip, setFlip] = useState<string | null>(null), [oops, setOops] = useState(false);
   const value = draft ?? card.target, drag = useRef<{ off: number; last: number } | null>(null), box = useRef<HTMLDivElement>(null), hit = useRef<SVGPathElement>(null);
@@ -422,9 +422,9 @@ export function Thermostat({ card, run, dense, titled }: { card: ThermostatCard;
   const [mx, my] = room != null ? at(pctOf(room)) : [0, 0], rise = value != null && room != null && card.mode !== 'off';
   const pressMode = (m: ThermostatMode) => { setFlip(m.id); hold(); run?.(m.action, m.args).catch(fail); };
   // nothing to read and nothing to set: say so in the card's frame instead of an empty dial
-  if (card.state === 'Unavailable' || (card.current == null && card.target == null && !card.range)) return <Empty icon={Thermometer} text="Not reporting right now" height={dense ? 96 : 280} className={cn(!dense && 'p-(--pad)')} />;
+  if (card.state === 'Unavailable' || (card.current == null && card.target == null && !card.range)) return <Empty icon={Thermometer} text="Not reporting right now" height={dense ? 96 : 280} />;
   return (
-    <div className={cn('th flex h-full min-w-0 flex-1 flex-col items-center gap-3', !dense && 'p-(--pad)', titled && 'pt-3')} data-mode={card.mode ?? 'heat'}>
+    <div className={cn('th flex h-full min-w-0 flex-1 flex-col items-center gap-3')} data-mode={card.mode ?? 'heat'}>
       <div className="flex w-full min-h-0 flex-1 items-center justify-center">
         <div ref={box} className={cn('relative aspect-square w-full', live != null && 'is-drag', dense ? 'max-w-[180px]' : 'max-w-[216px]')}>
           <svg viewBox="0 0 320 320" className="absolute inset-0 size-full overflow-visible" aria-hidden={!canSet}>
