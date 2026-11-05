@@ -2,7 +2,7 @@
 // so a generated card looks exactly like the widget it came from.
 import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
   Activity, Archive, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Thermometer, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Play, Shield, Wifi,
-  Box, Video, type LucideIcon,
+  Box, TriangleAlert, Video, type LucideIcon,
 } from 'lucide-react';
 import { createContext, Fragment, lazy, memo, Suspense, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Cameras } from './cameras.tsx';
@@ -14,7 +14,7 @@ import { CardStack } from './cardstack.tsx';
 import { chartless, flow, Heatmap, hue, Race, smooth, Stream, tintOf, type Tint, Waffle } from './charts.tsx';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
@@ -26,6 +26,7 @@ import { dissolve, justActed, useSettle } from './dust.ts';
 import { play } from './sound.ts';
 import { LinkButton } from './link-button.tsx';
 import { Meter } from './meter.tsx';
+import { Empty } from './empty.tsx';
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
 import { clock as clockOf, day as dayOf, duration, highLow, num as written, stamp, withUnit } from './format.ts';
 import { stateOf } from '../shared/cards.ts';
@@ -123,7 +124,7 @@ function Stats({ card }: { card: StatsCard }) {
       {behind && <div style={{ color: 'var(--primary)' }}><TileGraph points={trend!} gauge /></div>}
       <div className={cn('flex items-end', dense ? 'gap-4' : 'gap-5')}>
         <div className="min-w-0 shrink-0">
-          <div className={cn('metric leading-[0.95]', dense ? 'text-[26px]' : 'text-[44px]', toneText[hero.tone ?? 'neutral'])}>
+          <div className={cn('metric leading-[0.95]', dense ? 'text-metric-m' : 'text-metric-l', toneText[hero.tone ?? 'neutral'])}>
             <Metric value={hero.value} unit={hero.unit} size="l" />
           </div>
           <div className={cn('truncate text-muted-foreground', dense ? 'mt-1 text-meta' : 'mt-1.5 text-body')}>{[hero.label, hero.sub].filter(Boolean).join(' · ')}</div>
@@ -148,12 +149,11 @@ function Stats({ card }: { card: StatsCard }) {
   );
 }
 
-const Empty = ({ text }: { text: string }) => <p className="py-6 text-center text-item text-muted-foreground">{text}</p>;
 
 function List({ card, run }: { card: ListCard; run?: RunAction }) {
   const dense = useContext(Dense);
   if (!card.items.length) return <Empty text={card.empty ?? 'Nothing here'} />;
-  if (card.layout === 'temps' && !dense) return <Temps card={card} />;
+  if (card.layout === 'temps') return <Temps card={card} />;   // a reading is the same in chat: the number says it's now
   if (card.layout === 'chips' && !dense) return <Chips card={card} />;
   if (card.layout === 'headlines' && !dense) return <Headlines card={card} />;
   return <Rows card={card} dense={dense} run={run} />;
@@ -431,10 +431,16 @@ const SeeArchived = ({ href, className }: { href?: string; className?: string })
 
 /** The reading pile: each thing saved with the page itself filling the card, the next ones showing behind it. Flick through
  *  it, or use the controls, which stay put while the cards change. Hover and the page scrolls by, as if you'd started reading. */
-function Article({ card, run }: { card: ArticleCard; run?: RunAction }) {
+function Article({ card, run, title }: { card: ArticleCard; run?: RunAction; title?: string }) {
   const [at, setAt] = useState(0), arch = useArchive(run);
   const pile = (card.more?.length ? card.more : [card]).filter(a => !a.id || !arch.gone.includes(a.id)), now = Math.min(at, pile.length - 1), a = pile[now];
-  if (!a?.headline) return <div className="relative grid h-full min-h-[200px] place-items-center rounded-surface bg-card text-item text-muted-foreground shadow-card">{card.empty ?? 'Nothing saved to read'}<div className="article-corner"><UndoBar a={arch} /></div></div>;
+  if (!a?.headline) return (
+    <Card className="card-pad relative h-full gap-0 py-(--pad) shadow-card">
+      <CardHeader card={card} title={title} />
+      <Empty icon={BookOpen} text={card.empty ?? 'Nothing saved to read'} height={200} />
+      <div className="article-corner"><UndoBar a={arch} /></div>
+    </Card>
+  );
   const n = pile.length, top = a.link ?? card.href;
   const face = (i: number) => {
     const p = pile[i], link = p.link ?? card.href;
@@ -548,24 +554,20 @@ function StallLine({ m, stall, card, run }: { m: MediaItem; stall: Stall; card: 
   );
 }
 
-function Media({ card, compact, run }: { card: MediaCard; compact?: boolean; run?: RunAction }) {
+/** Banners suit something to watch; a pile of downloads, or three of anything, reads better as rows, and rows are a list. */
+const mediaRows = (card: MediaCard) => card.items.length > 2 || (card.items.length > 0 && card.items.every(m => m.icon === 'download'));
+
+function Media({ card, run }: { card: MediaCard; run?: RunAction }) {
   const dust = justActed(), rows = useRows(card.items, m => m.title, true, dust ? DUST_HOLD : undefined);
-  // in chat, an empty answer is one quiet line, not a big empty frame
-  if (!card.items.length) return compact
-    ? <div className="flex items-center gap-2 rounded-control bg-card px-3 py-2 text-body text-muted-foreground"><Film className="size-icon" />{card.empty ?? 'Nothing playing'}</div>
-    : (
-    <div className="grid min-h-[180px] place-items-center rounded-surface bg-card text-center shadow-card">
-      <div><Film className="mx-auto mb-2 size-icon-lg text-muted-foreground" /><div className="text-item text-muted-foreground">{card.empty ?? 'Nothing playing'}</div></div>
-    </div>
-  );
+  if (!card.items.length) return <Empty icon={Film} text={card.empty ?? 'Nothing playing'} height={150} />;
   if (card.items.length === 1 && !stallOf(card.items[0])) return <NowPlaying m={card.items[0]} source={card.source} />;
-  // banners suit something to watch; a pile of downloads, or three of anything, reads better as rows
-  if (card.items.length > 2 || card.items.every(m => m.icon === 'download')) return (
-    <Card className="flex-1 gap-0 divide-y divide-border overflow-hidden py-0 shadow-card">
+  // rows run edge to edge inside their card, so a row's progress fills the whole row
+  if (mediaRows(card)) return (
+    <div className="media-rows -mx-(--pad) divide-y divide-border border-t">
       {rows.map(({ key, item: m, state }) => {
         const stall = stallOf(m);
         return (
-          <RowSlot key={key} state={state} dust={dust}><div className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden px-4 py-2.5">
+          <RowSlot key={key} state={state} dust={dust}><div className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden px-(--pad) py-2.5">
             {m.pct != null && <span className={cn('meter-row', stall && 'is-warn')} style={{ transform: `translateX(${(Math.max(0, Math.min(1, m.pct)) * 100 - 100).toFixed(2)}%)` }} />}
             {m.image ? <Art src={m.image} className="h-12 w-8 shrink-0 rounded-md object-cover" /> : <span className="grid h-12 w-8 shrink-0 place-items-center rounded-thumb bg-fill-2 text-muted-foreground"><Icon name={m.icon ?? 'film'} className="size-icon" /></span>}
             <div className="min-w-0 flex-1">
@@ -576,7 +578,7 @@ function Media({ card, compact, run }: { card: MediaCard; compact?: boolean; run
           </div></RowSlot>
         );
       })}
-    </Card>
+    </div>
   );
   return (
     <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))' }}>
@@ -729,7 +731,7 @@ function Cards({ card, header, run }: { card: ShelfCard; header?: ReactNode; run
   act.current = arch.archive;
   const archive = useCallback((id: string, el: Element | null) => act.current(id, el), []);
   const items = card.items.filter(w => !w.id || !arch.gone.includes(w.id));
-  if (!items.length) return <div>{header && <div className="mb-3 flex items-center gap-2">{header}</div>}<Empty text={card.empty ?? 'Nothing here yet'} /></div>;
+  if (!items.length) return <div>{header && <div className="mb-3 flex items-center gap-2">{header}</div>}<Empty icon={FileText} text={card.empty ?? 'Nothing here yet'} /></div>;
   return <CardStack items={items} title={card.title} header={header} aside={run ? <SeeArchived href={card.archived} /> : undefined}
     archive={run && items.some(i => i.id) ? archive : undefined} leaving={arch.leaving} />;
 }
@@ -771,7 +773,7 @@ const lineOf = (it: ShelfItem) => /partial/i.test(it.badge ?? '') ? 'part' : it.
 /** A leaderboard: the winner in full colour, the rest measured against it. Like the race, each bar takes its poster's hue. */
 function Ranked({ card }: { card: RankedCard }) {
   const [tint, setTint] = useState<Record<string, Tint>>({});
-  if (!card.items.length) return <Empty text={card.empty ?? 'Nothing yet'} />;
+  if (!card.items.length) return <Empty icon={TrendingUp} text={card.empty ?? 'Nothing yet'} />;
   return (
     <ol className="space-y-3">
       {card.items.slice(0, 5).map((it, i) => (
@@ -795,7 +797,7 @@ function ShelfRow({ card, header, small, beside, lines }: { card: ShelfCard; hea
         {header}
         {card.items.length > 0 && <RowArrows id={id} label={card.title} className="ml-auto hidden sm:flex" />}
       </div>
-      {card.items.length === 0 ? <Empty text={card.empty ?? 'Nothing here yet'} /> : <Shelved id={id} card={card} small={small} lines={lines} />}
+      {card.items.length === 0 ? <Empty icon={Film} text={card.empty ?? 'Nothing here yet'} height={196} /> : <Shelved id={id} card={card} small={small} lines={lines} />}
     </div>
   );
 }
@@ -852,7 +854,7 @@ function Columns({ card }: { card: ChartCard }) {
   return (
     <div className="chart-body">
       <div className="mb-3 flex items-baseline gap-2">
-        <span className="metric text-[28px] leading-none"><Metric value={card.headline ?? written(whole)} /></span>
+        <span className="metric text-metric-m leading-none"><Metric value={card.headline ?? written(whole)} /></span>
         <span className="min-w-0 truncate text-meta text-muted-foreground">{card.span}</span>
       </div>
       <div className="columns-chart" onPointerLeave={() => setAt(null)}>
@@ -904,7 +906,7 @@ function Chart({ card }: { card: ChartCard }) {
   return (
     <div>
       <div className="mb-2 flex items-baseline gap-2">
-        <span className="metric text-[22px] leading-none">{at == null && card.headline ? card.headline : shown != null ? num(shown) : '–'}</span>
+        <span className="metric text-metric-s leading-none">{at == null && card.headline ? card.headline : shown != null ? num(shown) : '–'}</span>
         <span className="min-w-0 truncate text-meta text-muted-foreground">
           {at != null ? when(at) : card.headline ? card.span : move != null && Math.abs(move) >= .005 ? <span className={cn('tabular', lead.tone === 'bad' ? 'text-bad' : '')}>{move > 0 ? '+' : ''}{Math.round(move * 1000) / 10}%{card.span ? ` over the ${card.span}` : ''}</span> : card.span}
         </span>
@@ -1027,7 +1029,7 @@ function PluginVisual({ kind, data, run }: { kind: string; data: unknown; run?: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind]);
   useEffect(() => { inst.current?.update?.(data); }, [data]);
-  return error ? <Empty text={error} /> : <div ref={box} className="min-w-0" />;
+  return error ? <Empty icon={TriangleAlert} text={error} /> : <div ref={box} className="min-w-0" />;
 }
 
 /** The visual on the left, its numbers stacked on the right: big values, quiet labels, nothing else. */
@@ -1046,7 +1048,7 @@ function Showcase({ card, run }: { card: ShowcaseCard; run?: RunAction }) {
         {card.items.map(s => (
           <div key={s.label} className="min-w-0">
             <dt className="text-meta text-muted-foreground">{s.label}</dt>
-            <dd className={cn('metric mt-0.5 truncate text-[26px] leading-none', toneText[s.tone ?? 'neutral'])}>
+            <dd className={cn('metric mt-0.5 truncate text-metric-m leading-none', toneText[s.tone ?? 'neutral'])}>
               <Metric value={s.value} unit={s.unit} />
             </dd>
             {s.sub && <div className="mt-1 truncate text-meta text-muted-foreground">{s.sub}</div>}
@@ -1102,8 +1104,8 @@ function Sky({ card }: { card: ScheduleCard }) {
   return (
     <div className="flex flex-1 flex-col justify-between gap-2">
       <div className="flex items-end justify-between">
-        <div><div className="metric text-[24px] leading-none">{next.name}</div><div className="mt-1.5 text-[13px] text-muted-foreground tabular">{clock(next.t)}</div></div>
-        <div className="text-right"><div className={cn('metric text-[22px] tabular leading-none', mins <= 15 && 'text-good')}><Counter flap value={duration(Math.max(1, mins) * 6e4)} /></div>
+        <div><div className="metric text-metric-s leading-none">{next.name}</div><div className="mt-1.5 text-body text-muted-foreground tabular">{clock(next.t)}</div></div>
+        <div className="text-right"><div className={cn('metric text-metric-s tabular leading-none', mins <= 15 && 'text-good')}><Counter flap value={duration(Math.max(1, mins) * 6e4)} /></div>
           <div className="mt-1.5 text-meta text-muted-foreground">to go</div></div>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block max-h-[150px] w-full overflow-visible" aria-hidden>
@@ -1139,7 +1141,7 @@ function Schedule({ card }: { card: ScheduleCard }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 15_000); return () => clearInterval(t); }, []);
   const items = card.items.map(x => ({ ...x, t: Date.parse(x.at), muted: card.muted?.includes(x.name) }));
-  if (!items.length) return <Empty text="No times" />;
+  if (!items.length) return <Empty icon={Clock} text="No times" />;
   const roll = items.filter(x => !x.muted).map(x => ({ ...x, t: x.t <= now ? x.t + 864e5 : x.t })).sort((a, b) => a.t - b.t);
   const next = roll[0], mins = Math.max(0, Math.round((next.t - now) / 60_000));
   const clock = clockOf;
@@ -1155,11 +1157,11 @@ function Schedule({ card }: { card: ScheduleCard }) {
     <div className={cn(dense ? 'space-y-3' : 'space-y-5')}>
       <div className="flex items-end justify-between gap-4">
         <div className="min-w-0">
-          <div className={cn('metric leading-none', dense ? 'text-[24px]' : 'text-[34px]')}>{next.name}</div>
+          <div className={cn('metric leading-none', dense ? 'text-metric-s' : 'text-metric-m')}>{next.name}</div>
           <div className="mt-1.5 text-body text-muted-foreground tabular">{clock(next.t)}</div>
         </div>
         <div className="text-right">
-          <div className={cn('metric tabular leading-none', dense ? 'text-[18px]' : 'text-[22px]', mins <= 15 && 'text-good')}>
+          <div className={cn('metric tabular leading-none', 'text-metric-s', mins <= 15 && 'text-good')}>
             <Counter flap value={duration(Math.max(1, mins) * 6e4)} />
           </div>
           <div className="mt-1.5 text-meta text-muted-foreground">to go</div>
@@ -1206,7 +1208,7 @@ function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?
     const t = setInterval(() => { if (!document.hidden) setI(n => (n + 1) % items.length); }, 7000);
     return () => clearInterval(t);
   }, [items.length, paused, seen, large, card.style]);
-  if (!items.length) return <Empty text={card.empty ?? 'No photos'} />;
+  if (!items.length) return <Empty icon={ImageIcon} text={card.empty ?? 'No photos'} height={240} />;
   if (card.style === 'album') return <Album card={card} />;
   if (card.style === 'masonry') return <Masonry items={items.map(p => ({ ...p, title: p.title ?? '' }))} title={card.title} />;
   if (large || card.style === 'mosaic') {
@@ -1285,17 +1287,29 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
   }
 }
 
-/** A card in its frame: title, icon, header note, "open app" link. */
-function BareHeader({ card, title, status }: { card?: CardT; title?: string; status?: ReactNode }) {
+/** Every card's title row: the service's icon, the title (a link to the app when there is one), a live status and the
+ *  header's note. The same inset inside the glass and above it (`outside`, for artwork that runs edge to edge), so titles
+ *  line up down a column. `hidden` keeps the title for a screen reader where the card says what it is without one. */
+export function CardHeader({ card, title, status, hidden, className }: { card?: CardT; title?: string; status?: ReactNode; hidden?: boolean; className?: string }) {
+  const t = card?.title ?? title;
+  if (!t) return status ? <div className={cn('card-head', className)}>{status}</div> : null;
+  if (hidden) return <><h3 className="sr-only">{t}</h3>{status && <div className="absolute top-3 right-4 z-10">{status}</div>}</>;
   return (
-    <div className="flex min-w-0 items-center gap-2">
+    <div data-slot="card-header" className={cn('card-head', className)}>
       {card?.source?.icon && <img src={card.source.icon} alt="" className="size-icon-lg flex-none rounded-thumb object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />}
-      <h3 className="truncate text-title font-semibold tracking-tight">{card?.href ? <a href={card.href} target="_blank" rel="noreferrer" className="title-link">{card?.title ?? title}</a> : card?.title ?? title}</h3>
+      <h3 className="min-w-0 truncate text-title leading-snug font-semibold">{card?.href ? <a href={card.href} target="_blank" rel="noreferrer" className="title-link">{t}</a> : t}</h3>
       {status}
-      {card?.note && <span className="truncate text-meta tabular text-muted-foreground">{card.note}</span>}
+      {card?.note && <span className="ml-auto min-w-0 shrink truncate pl-2 text-meta tabular text-muted-foreground">{card.note}</span>}
     </div>
   );
 }
+
+/** Which cards are their artwork: a poster, a shelf, a photo, a view of covers. Their title sits above, outside the glass;
+ *  every other card has it inside. A row of downloads is a list, so it's a card like any list. */
+const outside = (card?: CardT) => !!card && (
+  (card.type === 'media' && card.items.length > 0 && !mediaRows(card)) ||
+  (card.type === 'shelf' && card.items.length > 0) ||
+  (card.type === 'photos' && card.items.length > 0));
 
 /** A state someone chose and shouldn't forget, with the way out beside it. It lapses by itself at `until`. */
 function BannerLine({ b, run }: { b: Banner; run?: RunAction }) {
@@ -1315,7 +1329,7 @@ function BannerLine({ b, run }: { b: Banner; run?: RunAction }) {
 function CardButtons({ buttons, run }: { buttons: NonNullable<CardT['buttons']>; run: RunAction }) {
   const [busy, setBusy] = useState<string | null>(null), [done, setDone] = useState<string | null>(null), box = useRef<HTMLDivElement>(null);
   return (
-    <div ref={box} className="mt-3.5 flex flex-wrap gap-1.5">
+    <div ref={box} className="card-buttons mt-3.5 flex flex-wrap gap-1.5">
       {buttons.map(b => (
         <Button key={b.label} disabled={!!busy} onClick={async () => {
           setBusy(b.label);
@@ -1361,52 +1375,49 @@ function CardSkeleton({ kind }: { kind?: string }) {
   return <div className="space-y-3"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-4 w-3/5" /></div>;
 }
 export const TileSkeleton = () => (
-  <Card className="relative h-[136px] gap-0 py-0 shadow-card"><div className="flex h-full flex-col justify-between p-4"><Skeleton className="h-3.5 w-2/3" /><Skeleton className="h-7 w-1/2" /></div></Card>
+  <Card className="relative h-[136px] gap-0 py-0 shadow-card"><div className="flex h-full flex-col justify-between p-(--spacing-inset-tight)"><Skeleton className="h-3.5 w-2/3" /><Skeleton className="h-7 w-1/2" /></div></Card>
 );
 
 function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, fill, kind, failed }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; fill?: boolean; kind?: string; failed?: string }) {
   const fade = useRef(card ? '' : 'fade-in-soft').current;   // up from its skeleton; a tab you come back to is already there
-  // artwork-led cards sit directly on the page, without a card frame
   const actions = card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null;
-  if (card?.type === 'shelf') return <div className={cn(fade, 'min-w-0')}><Shelf card={card} small={compact} run={run} header={<BareHeader card={card} title={title} status={status} />} />{actions}</div>;
-  // a flashback is all picture: its heading sits on the photo, so the card's edges line up with its neighbours
-  if (card?.type === 'article') return <Article card={card} run={run} />;
-  if (card?.type === 'photos' && card.style === 'masonry' && card.items.length) return (
-    <div className={cn(fade, 'min-w-0')}><Masonry items={card.items.map(p => ({ ...p, title: p.title ?? '' }))} title={card.title} header={<BareHeader card={card} title={title} status={status} />} />{actions}</div>
+  const header = (className?: string) => <CardHeader card={card} title={title} status={status} hidden={headless} className={className} />;
+  // artwork-led cards sit directly on the page, their title above them (`outside`)
+  if (card?.type === 'shelf' && outside(card)) return <div className={cn(fade, 'min-w-0')}><Shelf card={card} small={compact} run={run} header={header()} />{actions}</div>;
+  // the reading pile is all page: its heading sits on the picture, so the card's edges line up with its neighbours
+  if (card?.type === 'article') return <Article card={card} run={run} title={title} />;
+  if (card?.type === 'photos' && outside(card) && card.style === 'masonry') return (
+    <div className={cn(fade, 'min-w-0')}><Masonry items={card.items.map(p => ({ ...p, title: p.title ?? '' }))} title={card.title} header={header()} />{actions}</div>
   );
-  if (card?.type === 'photos' && card.items.length && !large && card.style !== 'mosaic' && card.style !== 'album') return (
-    <div className={cn(fade, 'h-full min-w-0')}><Photos card={card} fill={fill} label={card.title ?? title} status={status} />{actions}</div>
+  // a flashback carries its title on the photo
+  if (card?.type === 'photos' && outside(card) && !large && card.style !== 'mosaic' && card.style !== 'album') return (
+    <div className={cn(fade, 'h-full min-w-0')}><Photos card={card} fill={fill} label={headless ? undefined : card.title ?? title} status={status} />{actions}</div>
   );
-  if (card?.type === 'photos') return (
-    <div className={cn(fade, 'min-w-0 space-y-3')}><BareHeader card={card} title={title} status={status} /><Photos card={card} large={large} />{actions}</div>
+  if (card?.type === 'photos' && outside(card)) return (
+    <div className={cn(fade, 'min-w-0 space-y-3')}>{header()}<Photos card={card} large={large} />{actions}</div>
   );
-  if (card?.type === 'media') return (
-    <div className={cn(fade, 'flex min-w-0 flex-col gap-3', fill && 'h-full')}><BareHeader card={card} title={title} status={status} /><Media card={card} compact={compact} run={run} />{actions}</div>
+  if (card?.type === 'media' && outside(card)) return (
+    <div className={cn(fade, 'flex min-w-0 flex-col gap-3', fill && 'h-full')}>{header()}<Media card={card} run={run} />{actions}</div>
   );
-  // the house's cards are glass edge to edge, with no header; in chat they're ordinary cards, below
-  if (!compact && (card?.type === 'forecast' || card?.type === 'calendar' || card?.type === 'thermostat')) return (
-    <Card className={cn(fade, 'relative isolate min-w-0 gap-0 overflow-hidden py-0 shadow-card', fill && 'h-full')}>
-      {status && <div className="absolute top-3 right-4 z-10">{status}</div>}
-      {card.type === 'forecast' ? <WeatherCard card={card} /> : card.type === 'calendar' ? <CalendarView card={card} large={large} /> : <Thermostat card={card} run={run} />}
-    </Card>
-  );
-  const t = card?.title ?? title;
+  // the house's cards are glass edge to edge: weather and the calendar lead with their own big line (the sky, the day), so
+  // their title is for a screen reader; the thermostat's says which room. In chat they're ordinary cards, below.
+  if (!compact && (card?.type === 'forecast' || card?.type === 'calendar' || card?.type === 'thermostat')) {
+    const named = card.type === 'thermostat' && !headless;
+    return (
+      <Card className={cn(fade, 'card-pad relative isolate min-w-0 gap-0 overflow-hidden py-0 shadow-card', fill && 'h-full')}>
+        <CardHeader card={card} title={title} status={status} hidden={!named} className="pt-(--pad)" />
+        {card.type === 'forecast' ? <WeatherCard card={card} /> : card.type === 'calendar' ? <CalendarView card={card} large={large} /> : <Thermostat card={card} run={run} titled={named} />}
+      </Card>
+    );
+  }
   const bare = card?.type === 'group';
   const scene = !compact && card ? card.type === 'schedule' ? <SkyWash card={card} /> : null : null;
   return (
     <Dense.Provider value={!!compact}>
-    <Card className={cn('@container/card relative min-w-0 overflow-hidden shadow-card', compact ? 'gap-2.5 py-3 shadow-none' : 'gap-4 py-5', bare && 'border-0 bg-transparent py-0 shadow-none', fill && 'h-full', scene && 'relative isolate overflow-hidden')}>
+    <Card className={cn('@container/card card-pad relative min-w-0 overflow-hidden shadow-card', compact ? 'is-tight gap-2.5 shadow-none' : 'gap-4', bare ? 'border-0 bg-transparent py-0 shadow-none' : 'py-(--pad)', fill && 'h-full', scene && 'relative isolate overflow-hidden')}>
       {scene}
-      {t && !bare && !headless && (
-        <CardHeader className={cn('flex items-center gap-2', compact ? 'px-3.5' : 'px-5')}>
-          <CardTitle className={cn('flex min-w-0 items-center gap-2 truncate', compact ? 'text-body' : 'text-title')}>{card?.source?.icon && <img src={card.source.icon} alt="" className="size-icon-lg flex-none rounded-thumb object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />}{card?.href ? <a href={card.href} target="_blank" rel="noreferrer" className="title-link">{t}</a> : t}</CardTitle>
-          {status}
-          <CardAction className="flex items-center gap-2 self-center">
-            {card?.note && <span className="truncate text-meta tabular text-muted-foreground">{card.note}</span>}
-          </CardAction>
-        </CardHeader>
-      )}
-      <CardContent className={cn(bare ? 'p-0' : compact ? 'px-3.5' : 'px-5', fill && 'flex flex-1 flex-col')}>
+      {!bare && header()}
+      <CardContent className={cn(bare ? 'p-0' : 'px-(--pad)', fill && 'flex flex-1 flex-col')}>
         {card?.banner && <BannerLine b={card.banner} run={run} />}
         {card ? <div className={cn(fade, fill && 'flex flex-1 flex-col')}><CardBody card={card} run={run} large={large} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /></div> : <CardSkeleton kind={kind} />}
         {card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null}
@@ -1455,17 +1466,17 @@ function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
     <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift', art && 'border-transparent text-white')} style={{ '--tint': s.color ?? 'color-mix(in oklab, var(--foreground) 55%, transparent)' } as React.CSSProperties}>
       {art && <><Art src={s.image} className={cn('absolute inset-0 -z-10 size-full object-cover transition-transform duration-(--dur-move) ease-out', href && 'group-hover/tile:scale-[1.03]')} /><div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(0_0_0/.78),rgb(0_0_0/.42)_38%,transparent_72%)]" /></>}
       {!art && !s.marks && !s.waffle && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} gauge={s.ring != null} /></div>}
-      <div className={cn('relative flex flex-1 flex-col p-4', art && '[text-shadow:0_1px_10px_rgb(0_0_0/.7)]')}>
+      <div className={cn('relative flex flex-1 flex-col p-(--spacing-inset-tight)', art && '[text-shadow:0_1px_10px_rgb(0_0_0/.7)]')}>
         <div className="flex items-center gap-2.5">
           {s.icon && isWeather(s.icon) && !art && <WeatherGlyph name={s.icon} size={38} className="-my-1 -ml-0.5" />}
           <div className="min-w-0">
-            <div className="truncate text-item font-semibold leading-tight @[200px]/tile:text-title">{s.label}</div>
+            <div className="truncate text-title leading-tight font-semibold">{s.label}</div>
             {s.sub && <div className={cn('truncate text-body leading-tight', art ? 'text-white/75' : 'text-muted-foreground')}>{s.sub}</div>}
           </div>
           {s.tone === 'bad' && <span className="dot dot-bad ml-auto" />}
         </div>
         <div className={cn('mt-auto flex min-w-0 justify-between gap-3 pt-3', s.marks || s.waffle ? 'items-end' : 'items-baseline')}>
-          <div className={cn('metric min-w-0 truncate text-[20px] leading-none @[200px]/tile:text-[22px]', !art && toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}><Metric value={s.value} /></div>
+          <div className={cn('metric min-w-0 truncate text-metric-s leading-none', !art && toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}><Metric value={s.value} /></div>
           {s.marks?.length ? <TileMarks marks={s.marks} /> : s.waffle && s.pct != null ? <Waffle pct={s.pct} label={s.sub} /> : null}
           {s.detail && <div className="hidden min-w-0 truncate text-meta tabular text-muted-foreground @[200px]/tile:block">{s.detail}</div>}
         </div>
@@ -1588,7 +1599,7 @@ export function Forecast({ card }: { card: ForecastCard }) {
     <div className="p-5">
       <div className="flex items-start justify-between">
         <div>
-          <div className="metric text-[44px] leading-none"><Metric value={`${now.temp}°`} /></div>
+          <div className="metric text-metric-l leading-none"><Metric value={`${now.temp}°`} /></div>
           <div className="mt-1.5 text-item font-medium">{now.words}</div>
           <div className="text-meta text-muted-foreground">Feels {now.feels}° · {highLow(now.hi, now.lo)}</div>
         </div>

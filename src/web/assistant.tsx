@@ -22,7 +22,6 @@ import { play } from './sound.ts';
 
 /** What `chat:` says about the window. */
 export interface ChatUi { followUps?: string[]; review?: string; steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string; beam?: 'off' | 'always' | 'focus' | 'thinking' | 'once'; beamColor?: 'colorful' | 'mono' | 'ocean' | 'sunset'; beamStrength?: number }
-const NEXT = 'press flex w-full items-center gap-2 rounded-control px-1.5 py-1.5 text-left max-sm:py-2.5 text-item text-muted-foreground hover:bg-fill-1 hover:text-foreground';
 const Ui = createContext<ChatUi>({ steps: true, thinking: 'collapsed', send: 'enter' });
 
 // One conversation for the whole page session, so closing and reopening the panel keeps it.
@@ -44,7 +43,7 @@ function TextView({ text, live }: { text: string; live?: boolean }) {
   // only a reply still arriving gets a span per word; a finished one is plain text, so old messages cost nothing
   const words = (t: string, k: string) => !live ? t : t.split(/(\s+)/).map((w, i) => /^\s+$/.test(w) || !w ? w : <span key={`${k}.${i}`} className="chat-word">{w}</span>);
   return (
-    <div className="prose-chat text-title leading-relaxed">
+    <div className="prose-chat text-item leading-relaxed">
       {text.split(/\n{2,}/).map((para, i) => (
         <p key={i}>{para.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|`[^`]+`|\n)/g).map((t, j) =>
           t.startsWith('**') ? <strong key={j}>{words(t.slice(2, -2), `${i}.${j}`)}</strong>
@@ -240,7 +239,7 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
   const [copied, setCopied] = useState<boolean | null>(null), ui = useContext(Ui);
   if (m.role === 'user') return (
     <div className="chat-msg flex justify-end">
-      <div className="chat-in chat-bubble max-w-[85%] rounded-surface rounded-br-md px-3.5 py-2 text-title">
+      <div className="chat-in chat-bubble max-w-[85%] rounded-surface rounded-br-md px-3.5 py-2 text-item">
         {m.parts.map((p: any, i: number) => p.type === 'text' ? <span key={i} className="whitespace-pre-wrap">{p.text.replace(/\n?\[attached: ([^(\]]+) \(file id [a-f0-9]+\)\]/g, '\n📎 $1')}</span> : null)}
       </div>
     </div>
@@ -289,11 +288,9 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
         </div>
       )}
       {(follow.length > 0 || (ui.review && isLast && !busy && !waiting)) && (
-        <div className="space-y-0.5 pt-1">
-          {follow.slice(0, ui.review ? 2 : 3).map((f: string) => (
-            <button key={f} onClick={() => act.ask(f)} className={NEXT}><CornerDownRight className="size-icon-sm shrink-0 opacity-60" />{f}</button>
-          ))}
-          {ui.review && <a href="#recap" className={NEXT}><CornerDownRight className="size-icon-sm shrink-0 opacity-60" />{ui.review}</a>}
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {follow.slice(0, ui.review ? 2 : 3).map((f: string) => <Chip key={f} onClick={() => act.ask(f)}><span className="truncate">{f}</span></Chip>)}
+          {ui.review && <Chip as="a" href="#recap"><span className="truncate">{ui.review}</span></Chip>}
         </div>
       )}
     </div>
@@ -441,7 +438,7 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
         {/* one line: the name, then the model and its context meter beside it. The meter's place is kept from the start,
             so nothing moves when the first answer brings the numbers in */}
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
-          <span className="shrink-0 text-item font-semibold">{name}</span>
+          <span className="shrink-0 text-title font-semibold">{name}</span>
           {/* the model and its meter as one inline group: the group sits on the name's baseline, the meter centred on the model's line */}
           <span className="inline-flex min-w-0 items-center gap-1.5 text-meta leading-4 text-muted-foreground">
             {model && <span className="min-w-0 truncate">{model}</span>}

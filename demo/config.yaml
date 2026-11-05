@@ -94,7 +94,6 @@ layout:
   - title: Home
     icon: home
     heading: false
-    header: false
     overview: false
     widgets:
       - { widget: lab.cameras, size: large, rows: 2 }

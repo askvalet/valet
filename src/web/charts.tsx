@@ -224,7 +224,7 @@ export function Heatmap({ card }: { card: HeatmapCard }) {
   return (
     <div className="heatmap">
       <div className="mb-3 flex items-baseline gap-2">
-        <span className="metric text-[28px] leading-none"><Metric value={card.headline ?? count(whole)} /></span>
+        <span className="metric text-metric-m leading-none"><Metric value={card.headline ?? count(whole)} /></span>
         {card.span && <span className="min-w-0 truncate text-meta text-muted-foreground">{card.span}</span>}
       </div>
       <div className="heat-months" aria-hidden>{months.map(m => <span key={m.x} style={{ left: `${m.x * 100}%` }}>{m.name}</span>)}</div>

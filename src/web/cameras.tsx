@@ -1,12 +1,13 @@
 // The cameras card: a big live view, a pill per camera, what they've noticed lately. A video plays if there is one and a
 // snapshot refreshes about once a second if not, and both rest when the tab is hidden or the card has scrolled away. An
 // event opens as its own picture, never as the live view; a card that says `sample` plays recordings and never says LIVE.
-import { Expand, X } from 'lucide-react';
+import { Cctv, Expand, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useId, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import type { Camera, CameraEvent, CamerasCard, Detection } from '../shared/cards.ts';
 import { Row, RowArrows } from './feel.tsx';
+import { Empty } from './empty.tsx';
 import { clock } from './format.ts';
 import './cameras.css';
 
@@ -214,7 +215,7 @@ export function Cameras({ card }: { card: CamerasCard }) {
   const cam = card.cameras.find(c => c.id === at) ?? card.cameras[0], many = card.cameras.length > 1;
   const pick = (id: string) => { setAt(id); setStill(null); };
   const openEvent = useCallback((e: CameraEvent) => { setAt(e.camera); setStill(e); }, []);
-  if (!cam) return <p className="py-6 text-center text-item text-muted-foreground">{card.empty ?? 'No cameras'}</p>;
+  if (!cam) return <Empty icon={Cctv} text={card.empty ?? 'No cameras'} height={240} />;
   return (
     <div className="cam-card @container">
       <div className={cn('cam-grid', many && 'has-pills')}>

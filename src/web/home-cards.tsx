@@ -1,13 +1,14 @@
 // The cards that live in a house: weather, the family calendar and the thermostat. They draw their own frame edge to edge
 // (the glass comes from WidgetView), read their own size, and stretch to fill a bento row without leaving a gap.
 import { clock as clockOf, day as dayOf, duration, firstDay, highLow, withUnit, longDay as longDayOf, month as monthOf, range, weekday } from './format.ts';
-import { Armchair, ArrowUpDown, BedDouble, ChevronLeft, ChevronRight, Droplets, Fan, Flame, House, Leaf, Minus, Moon, Plane, Plus, Power, Snowflake, Sparkles, Zap, type LucideIcon } from 'lucide-react';
+import { Armchair, ArrowUpDown, BedDouble, CalendarDays, ChevronLeft, ChevronRight, Droplets, Fan, Flame, House, Leaf, Minus, Moon, Plane, Plus, Power, Snowflake, Sparkles, Thermometer, Zap, type LucideIcon } from 'lucide-react';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import type { CalendarCard, CalendarEvent, ForecastCard, ThermostatCard, ThermostatMode } from '../shared/cards.ts';
 import { Metric } from './metric.tsx';
 import { LinkButton } from './link-button.tsx';
 import { Cant } from './visuals/note.tsx';
+import { Empty } from './empty.tsx';
 import './home-cards.css';
 
 type Run = (action: string, args?: Record<string, unknown>) => Promise<void>;
@@ -128,7 +129,7 @@ function Hero({ card, s }: { card: ForecastCard; s: number }) {
         <WeatherGlyph name={now.icon} size={112 * s} />
         <div className="wx-temp tabular" style={{ fontSize: 82 * s }}>{now.temp}°</div>
       </div>
-      <div className="mt-1 font-semibold tracking-tight" style={{ fontSize: 21 * s }}>{now.words}</div>
+      <div className="mt-1 font-medium" style={{ fontSize: `calc(var(--text-metric-s) * ${s})` }}>{now.words}</div>
       <Caps className="mt-1.5 text-muted-foreground">{highLow(now.hi, now.lo)}</Caps>
     </div>
   );
@@ -265,7 +266,7 @@ function Agenda({ days, from, today, cap, empty }: { days: Map<string, CalendarE
       </li>
     );
   };
-  if (!groups.length) return <p className="pt-3 text-item text-muted-foreground">{empty}</p>;
+  if (!groups.length) return <Empty icon={CalendarDays} text={empty} />;
   return (
     <div className="space-y-4">
       {groups.map(g => {
@@ -320,10 +321,10 @@ export function CalendarView({ card, large, dense }: { card: CalendarCard; large
   const chosen = days.get(key) ?? [], away = !!picked || y !== today.getFullYear() || m !== today.getMonth();
   const list = <Agenda days={days} from={day} today={today} cap={two ? 14 : dense ? 4 : 6} empty={picked ? 'Nothing on from here' : card.empty ?? 'Nothing coming up'} />;
   return (
-    <div ref={ref} className={cn('cal relative flex h-full min-w-0 flex-1', two ? 'gap-7' : 'flex-col gap-5', !dense && 'p-5')}>
+    <div ref={ref} className={cn('cal relative flex h-full min-w-0 flex-1', two ? 'gap-7' : 'flex-col gap-5', !dense && 'p-(--pad)')}>
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="mb-3 flex items-baseline justify-between gap-2">
-          <h3 className={cn('truncate font-semibold tracking-tight', dense ? 'text-title' : 'text-metric-s')}>{longDay(day)}</h3>
+          <div className="truncate text-metric-s font-medium">{longDay(day)}</div>
           {away && !dense && <button onClick={home} className="press shrink-0 text-body font-medium text-primary">Today</button>}
         </div>
         {/* side by side the month sets the height, and the agenda scrolls in whatever's left: it can't stretch the row */}
@@ -370,7 +371,7 @@ function ModeButton({ m, on, press, disabled }: { m: ThermostatMode; on: boolean
   return <button onClick={press} disabled={disabled} aria-pressed={on} title={m.label} className={cn('th-mode press flex h-11 min-w-0 flex-1 flex-col items-center justify-center rounded-control px-1', on && 'is-on')}>{I && <I className="size-icon-lg flex-none" />}<span className="max-w-full truncate text-caption leading-[1.3] font-medium">{m.label}</span></button>;
 }
 
-export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: Run; dense?: boolean }) {
+export function Thermostat({ card, run, dense, titled }: { card: ThermostatCard; run?: Run; dense?: boolean; titled?: boolean }) {
   const { min, max, step, unit } = card, grad = useId().replace(/[^a-zA-Z0-9]/g, ''), canSet = !!run && !!card.set && card.target != null;
   const [draft, setDraft] = useState<number | null>(null), [live, setLive] = useState<number | null>(null), [flip, setFlip] = useState<string | null>(null), [oops, setOops] = useState(false);
   const value = draft ?? card.target, drag = useRef<{ off: number; last: number } | null>(null), box = useRef<HTMLDivElement>(null), hit = useRef<SVGPathElement>(null);
@@ -420,8 +421,10 @@ export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: R
   const ticks = useMemo(() => Array.from({ length: 49 }, (_, i) => { const [a, b] = [at(i / 48, R - 22), at(i / 48, R - (i % 4 ? 26 : 29))]; return `M${a[0].toFixed(1)} ${a[1].toFixed(1)}L${b[0].toFixed(1)} ${b[1].toFixed(1)}`; }).join(''), []);
   const [mx, my] = room != null ? at(pctOf(room)) : [0, 0], rise = value != null && room != null && card.mode !== 'off';
   const pressMode = (m: ThermostatMode) => { setFlip(m.id); hold(); run?.(m.action, m.args).catch(fail); };
+  // nothing to read and nothing to set: say so in the card's frame instead of an empty dial
+  if (card.state === 'Unavailable' || (card.current == null && card.target == null && !card.range)) return <Empty icon={Thermometer} text="Not reporting right now" height={dense ? 96 : 280} className={cn(!dense && 'p-(--pad)')} />;
   return (
-    <div className={cn('th flex h-full min-w-0 flex-1 flex-col items-center gap-3', !dense && 'p-5')} data-mode={card.mode ?? 'heat'}>
+    <div className={cn('th flex h-full min-w-0 flex-1 flex-col items-center gap-3', !dense && 'p-(--pad)', titled && 'pt-3')} data-mode={card.mode ?? 'heat'}>
       <div className="flex w-full min-h-0 flex-1 items-center justify-center">
         <div ref={box} className={cn('relative aspect-square w-full', live != null && 'is-drag', dense ? 'max-w-[180px]' : 'max-w-[216px]')}>
           <svg viewBox="0 0 320 320" className="absolute inset-0 size-full overflow-visible" aria-hidden={!canSet}>
@@ -439,7 +442,7 @@ export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: R
           </svg>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pb-[8%] text-center">
             <div className={cn('font-medium', dense ? 'text-meta' : 'text-item', oops ? 'text-bad' : 'text-muted-foreground')}>{oops ? "Couldn't set it" : card.state}</div>
-            <div className={cn('wx-temp', dense ? 'text-[32px]' : 'text-[40px]')}>{big != null ? <Metric value={big.toFixed(value != null ? dp : 1)} unit={`°${unit}`} size="l" /> : <Metric value="–" unit={`°${unit}`} size="l" />}</div>
+            <div className={cn('wx-temp', dense ? 'text-metric-m' : 'text-metric-l')}>{big != null ? <Metric value={big.toFixed(value != null ? dp : 1)} unit={`°${unit}`} size="l" /> : <Metric value="–" unit={`°${unit}`} size="l" />}</div>
             {value != null && room != null ? <div className={cn('mt-1 text-muted-foreground tabular', 'text-meta')}>Room {withUnit(room.toFixed(Number.isInteger(room) ? 0 : 1), `°${unit}`)}</div>
               : card.range ? <div className="mt-1 text-item text-muted-foreground tabular">Set to {withUnit(`${card.range[0]}–${card.range[1]}`, `°${unit}`)}</div> : null}
           </div>

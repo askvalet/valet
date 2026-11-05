@@ -12,7 +12,7 @@ const RADIUS = ['surface', 'popover', 'control', 'inset', 'chip', 'tag', 'thumb'
 test('every token is defined', () => {
   for (const t of TEXT) assert.match(css, new RegExp(`--text-${t}:`), t);
   for (const r of RADIUS) assert.match(css, new RegExp(`--radius-${r}:`), r);
-  for (const f of ['--fill-1:', '--fill-2:', '--fill-3:', '--color-fill-1:', '--spacing-icon:', '--spacing-icon-sm:', '--spacing-icon-lg:']) assert.ok(css.includes(f), f);
+  for (const f of ['--fill-1:', '--fill-2:', '--fill-3:', '--color-fill-1:', '--spacing-icon:', '--spacing-icon-sm:', '--spacing-icon-lg:', '--spacing-inset:', '--spacing-inset-tight:']) assert.ok(css.includes(f), f);
 });
 
 test('cn keeps a size token beside a colour', () => {

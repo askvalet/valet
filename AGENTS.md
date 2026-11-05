@@ -217,6 +217,28 @@ literal; a new size or corner is a new token with a role, argued for here.
   shows focus there (a field's border, a composer's glow); a thing clipped by its container sets `outline-offset: -2px`.
 - **Icons**: `size-icon-sm` 14 beside words, `size-icon` 16 in a control, `size-icon-lg` 18 in the navigation. Fixed pixels, so
   density doesn't shrink them.
+- **Insets**: `--spacing-inset` (20 at normal density) between a card's edge and everything in it, `--spacing-inset-tight` (16) for a
+  tile and a card in chat. `.card-pad` on a card sets `--pad` to the one it uses; its header, content and anything that runs edge to
+  edge (`-mx-(--pad)`, as Downloading's rows do) read `--pad`, never `px-5`.
+- **CardHeader** (`cards.tsx`): the one title row: the source's icon, the title (`text-title`, semibold, a link when the card has
+  `href`), a status, the card's `note` pushed right. Inside the glass for every card. Outside it, at the same inset, only for artwork
+  that runs edge to edge, and `outside()` is the one place that says which: a single stream's poster, shelves and their views, and
+  photos (a flashback carries its title on the photo). A row of downloads is a list, so it's inside, like Hacker News. `hidden` keeps
+  an `sr-only` heading where the card says what it is without one: the weather and the calendar always (their big line is the sky and
+  the day, in `text-metric-s`, not a title), and any card in a `header: false` section, on the overview and its tab alike (Services'
+  group labels and the house and desktop models say what they are). The thermostat shows its title: it names the room. One title
+  size everywhere; a compact place takes padding away, never title size.
+- **Empty** (`empty.tsx`): `<Empty icon text action? height?/>` for anything empty, unavailable or failed: an icon and a line, centred,
+  inside the card's normal frame (header and all), `height` about what the card is when full (a list 160, Now playing 150, cameras
+  240, a thermostat 280); in chat it's at most 96. No card draws its own empty box.
+- **Tiles**: one anatomy for a number with its trend, `SummaryTileView`, on the overview, the AI tab's column and a ring's popover:
+  the tight inset, `rounded-surface`, label in `text-title` and context under it, the value in `text-metric-s` at the bottom, and the
+  graph behind across the lower part, faded out on the left (`.tile-graph`) so the number stays clear. A stats card with one number
+  and its history (Services' System) is the same picture at card size. Don't restyle tiles by where they sit.
+- **Chat** cards are the page's cards (`Widget compact`): same corners, header and title, the tight inset, and the same renderer
+  (a drive's "now" included). They keep a flat fill and no blur or shadow, because a blurred card in a scrolling list repaints every
+  frame. Replies and the question bubble are `text-item`. Suggestions are `Chip`s wherever they appear (the overview, the AI tab, under
+  an answer); ⌘K lists them as commands, which is a menu, not a set of chips.
 
 ## Working on it
 

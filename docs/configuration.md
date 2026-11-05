@@ -503,7 +503,7 @@ A list of sections; each is a tab in the rail. Sections appear in this order, to
 | `gap` | `appearance.gap` | px between its cards |
 | `place` | `main` | `left` or `right` makes it a sidebar |
 | `variant` | `full` | `minimal`: tighter rows, just the essentials |
-| `header` | `true` | `false`: its cards drop their title bar |
+| `header` | `true` | `false`: its cards drop their title bar, on the overview and its tab (a screen reader still hears it) |
 | `heading` | `true` | `false`: no title above it (it still names its tab) |
 | `overview` | `true` | `false`: only on its own tab |
 | `tab` | its title | share a tab with other sections |

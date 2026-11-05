@@ -143,7 +143,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
         <div key="all" className="space-y-2 animate-in fade-in duration-(--dur-pop)">
           <div className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1.5">
             {note ? <Said note={note} /> : <>
-              <Counter value={String(lit.length)} className="metric text-[22px] leading-none" />
+              <Counter value={String(lit.length)} className="metric text-metric-s leading-none" />
               <span className="text-body text-muted-foreground">{lit.length === 1 ? 'light on' : 'lights on'}</span>
               <Pill icon={Power} disabled={!canAct || !lit.length} onClick={() => flip(lit, false, `Turned off ${plural(lit.length, 'light')}`)}>All off</Pill>
             </>}
