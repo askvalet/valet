@@ -1,5 +1,5 @@
 // Karakeep: bookmarks and read-later. Send the assistant a link and it's saved (Karakeep crawls it, tags and
-// summarises it); ask about what you've saved and it searches and reads them. Recent saves show as a shelf.
+// summarises it); ask about what you've saved and it searches and reads them. Recent saves show as a stack of cards.
 import { z } from 'zod';
 import { defineIntegration, fmt } from '../server/core.ts';
 import type { ShelfItem } from '../shared/cards.ts';
@@ -38,7 +38,7 @@ export default defineIntegration({
       },
       widgets: {
         digest: {
-          title: 'Recently saved', interval: 300_000,
+          title: 'Recently saved', interval: 300_000, card: 'list',
           async fetch() {
             const r = await api<any>('bookmarks?limit=8&sortOrder=desc');
             return { type: 'list', title: 'Recently saved', icon: 'bookmark', href: search, source: { name: 'Karakeep', icon: '/api/icon/karakeep' }, empty: 'Nothing saved yet',
@@ -47,7 +47,7 @@ export default defineIntegration({
         },
         // something you saved, a new one each day: its page behind it and what it says up front
         reading: {
-          title: 'From your reading', interval: 3_600_000,
+          title: 'From your reading', interval: 3_600_000, card: 'article',
           async fetch() {
             const r = await api<any>('bookmarks?limit=100&sortOrder=desc&archived=false');
             const worth = (r.bookmarks ?? []).filter((b: any) => b.content?.type === 'link' && (b.summary || b.content?.description));
@@ -63,12 +63,12 @@ export default defineIntegration({
           },
         },
         recent: {
-          title: 'Saved', interval: 120_000,
+          title: 'Saved', interval: 120_000, card: 'shelf',
           async fetch() {
             const r = await api<any>('bookmarks?limit=12&sortOrder=desc&archived=false');
             // the page as it looked, not its banner, for a window to show
             const items = (r.bookmarks ?? []).map((b: any) => ({ ...shelf([b])[0], id: b.id, note: brief(b).summary?.replace(/[#*_`>]/g, ''), image: b.content?.screenshotAssetId ? ctx.image(b.content.screenshotAssetId) : shelf([b])[0].image }));
-            return { type: 'shelf', layout: 'windows', title: 'Recently saved', icon: 'bookmark', href: search, archived, aspect: 'wide', items, empty: 'Nothing saved yet' };
+            return { type: 'shelf', layout: 'cards', title: 'Recently saved', icon: 'bookmark', href: search, archived, aspect: 'wide', items, empty: 'Nothing saved yet' };
           },
         },
       },

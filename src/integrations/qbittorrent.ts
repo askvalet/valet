@@ -90,7 +90,7 @@ export default defineIntegration({
 
     const widgets = {
       active: {
-        title: 'Downloads', interval: 5000,
+        title: 'Downloads', interval: 5000, card: 'media',
         async fetch() {
           const { info, dl, stuck, moving } = await state();
           speeds.push(info.dl_info_speed); if (speeds.length > 40) speeds.shift();

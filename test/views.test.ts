@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { CardSchema } from '../src/shared/cards.schema.ts';
-import { asView, VIEWS } from '../src/shared/views.ts';
+import { asView, fits, viewsFor, VIEWS } from '../src/shared/views.ts';
 import { Config } from '../src/server/config.ts';
 import type { Card } from '../src/shared/cards.ts';
 
@@ -36,8 +36,11 @@ test('a heatmap needs dates: without them the card stays as it was', () => {
 });
 
 test('anything with pictures can be any gallery', () => {
-  for (const card of [shelf, photos, ranked, race]) for (const view of ['row', 'spotlight', 'coverflow', 'desk', 'windows', 'tickets', 'mosaic', 'flashback', 'album'] as const) CardSchema.parse(asView(card, view));
-  assert.equal((asView(photos, 'coverflow') as any).layout, 'coverflow');
+  for (const card of [shelf, photos, ranked, race]) for (const view of ['row', 'spotlight', 'focus', 'coverflow', 'masonry', 'cards', 'desk', 'windows', 'tickets', 'mosaic', 'flashback', 'album'] as const) CardSchema.parse(asView(card, view));
+  assert.equal((asView(photos, 'coverflow') as any).layout, 'coverflow', 'cover flow is its own view again, not focus');
+  assert.equal((asView(shelf, 'cards') as any).layout, 'cards');
+  assert.equal((asView(shelf, 'masonry') as any).layout, 'masonry');
+  assert.equal((asView(photos, 'focus') as any).layout, 'focus');
   assert.equal((asView(shelf, 'mosaic') as any).items.length, 2);                     // only what has a picture
   assert.equal((asView(shelf, 'row') as any).layout, undefined);
 });
@@ -52,5 +55,6 @@ test('a view that doesn\'t fit leaves the card alone; the same card gives the sa
 test('a widget takes a view in the config, and only a real one', () => {
   const c = Config.parse({ layout: [{ widgets: [{ widget: 'plex.top', view: 'coverflow' }] }] });
   assert.equal(c.layout[0].widgets[0].view, 'coverflow');
+  assert.equal(Config.parse({ layout: [{ widgets: [{ widget: 'plex.top', view: 'focus' }] }] }).layout[0].widgets[0].view, 'focus');
   assert.throws(() => Config.parse({ layout: [{ widgets: [{ widget: 'plex.top', view: 'sideways' }] }] }));
 });

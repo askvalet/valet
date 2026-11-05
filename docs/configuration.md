@@ -296,7 +296,7 @@ layout:
       - { widget: plex.recent, size: tall, title: New on Plex, icon: film, header: false }
       - { widget: dns.stats, size: small, tint: "#0a7d4f", opacity: 0.8, blur: 12 }
       - { widget: drives.health, size: wide, background: "https://example.com/rack.jpg" }
-      - { widget: plex.top, size: tall, view: coverflow, rows: 3 }
+      - { widget: plex.top, size: tall, view: focus, rows: 3 }
 ```
 
 ## `auth`
@@ -522,14 +522,32 @@ A widget entry takes these, all optional but `widget`:
 
 ```yaml
 widgets:
-  - { widget: plex.top, view: coverflow }
+  - { widget: plex.top, view: focus }
   - { widget: plex.plays, view: bars }
 ```
 
 | Views | Work on |
 |---|---|
 | Charts: `line`, `bars`, `stream`, `race`, `heatmap`, `ranked`, `pie` | anything with numbers: a chart, race, heatmap or ranked card, or a stats card with a pie |
-| Galleries: `row`, `spotlight`, `coverflow`, `desk`, `windows`, `tickets`, `mosaic`, `flashback`, `album` | anything with pictures: a shelf, photos, ranked, race or media card |
+| Galleries: `row`, `spotlight`, `focus`, `coverflow`, `masonry`, `cards`, `desk`, `windows`, `tickets`, `mosaic`, `flashback`, `album` | anything with pictures: a shelf, photos, ranked, race or media card, or a reading pile (an article card) |
+
+| Gallery | What it looks like | Used by default for |
+|---|---|---|
+| `row` | a plain row of artwork | most shelves |
+| `focus` | the artwork large, one at a time, the ones either side peeking in smaller and dimmer | recently added (Plex through Tautulli, Jellyfin, Emby), continue reading and listening, new music, games |
+| `coverflow` | Cover Flow: the one in the middle faces you, the rest turn away either side in 3D, each with a reflection | nothing; pick it for a shelf of covers |
+| `masonry` | a wall of pictures three rows high, some larger, that scrolls sideways | Immich's On this day |
+| `cards` | a stack of cards: the one in front square on, the next ones fanned out behind | Paperless documents, Karakeep's saved links |
+| `spotlight`, `desk`, `windows`, `tickets` | one large with a row beside it; documents on a desk; saved pages as small browser windows; what's coming as tickets | |
+| `mosaic`, `flashback`, `album` | photos as a mosaic, a slow crossfade, or an album | |
+
+`focus`, `coverflow` and `cards` move one at a time: swipe them, drag them with a mouse, use their Previous and Next
+buttons or the arrow keys, or click one at the side to bring it to the middle. `masonry` and `row` scroll a screenful at a
+time. All of them are the browser's own scrolling, and the 3D follows it on the graphics card, with nothing redrawn as
+they move. Asked for reduced motion (by the system or `appearance.motion`), each is a plain row. In `cards`, a Karakeep
+link has its Archive button and every card opens its page.
+
+A view a widget's card can't take is a problem in `config check`, which names the views it can take.
 
 `heatmap` needs dates. A view that doesn't fit leaves the card as it was. It changes the card, so a small or wide tile keeps
 showing the headline.

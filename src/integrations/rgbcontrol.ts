@@ -59,7 +59,7 @@ export default defineIntegration({
       },
       widgets: {
         pc: {
-          title: 'Desktop', interval: cfg.interval,
+          title: 'Desktop', interval: cfg.interval, card: 'showcase',
           async fetch() {
             const s = await get(), t = s.telemetry ?? {}, hub: number[] = t.hub_rpm ?? [];
             const parts = s.cards.filter((c: any) => !c.error && c.zones)

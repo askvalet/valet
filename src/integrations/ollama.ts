@@ -17,7 +17,7 @@ export default defineIntegration({
     return {
       widgets: {
         models: {
-          title: 'Ollama', interval: 30_000,
+          title: 'Ollama', interval: 30_000, card: 'list',
           async fetch() {
             const list = await state(), on = list.filter((m: any) => m.loaded);
             return {

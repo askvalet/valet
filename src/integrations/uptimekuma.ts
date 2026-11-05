@@ -43,7 +43,7 @@ export default defineIntegration({
       },
       widgets: {
         monitors: {
-          title: 'Uptime', interval: 60_000,
+          title: 'Uptime', interval: 60_000, card: 'status',
           async fetch() {
             const list = await monitors(), down = list.filter(m => m.status === 0);
             const month = list.filter(m => m.month != null), avg = month.length ? month.reduce((s, m) => s + m.month!, 0) / month.length : undefined;

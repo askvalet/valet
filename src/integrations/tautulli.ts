@@ -144,7 +144,7 @@ export default defineIntegration({
 
     const widgets = {
       library: {
-        title: 'Your library', interval: 3_600_000,
+        title: 'Your library', interval: 3_600_000, card: 'stats',
         async fetch() {
           const libs = await api('get_libraries') as any[], sum = (t: string, k: string) => libs.filter(l => l.section_type === t).reduce((n, l) => n + Number(l[k] ?? 0), 0);
           const plays = await api('get_plays_by_date', { time_range: 30 }).catch(() => null);
@@ -155,11 +155,11 @@ export default defineIntegration({
         },
       },
       top: {
-        title: 'Most watched', interval: 3_600_000,
+        title: 'Most watched', interval: 3_600_000, card: 'ranked',
         async fetch() { return { type: 'ranked', title: 'Most watched', icon: 'film', source, note: scope, items: await mostWatched(6), empty: 'Nothing watched yet' }; },
       },
       people: {
-        title: 'Who\'s watching', interval: 60_000,
+        title: 'Who\'s watching', interval: 60_000, card: 'list',
         async fetch() {
           const [rows, now] = await Promise.all([totals(), activity().then(a => a.sessions, () => [] as any[])]), top = Math.max(1, ...rows.map(r => r.total_duration ?? 0));
           // one list, most watched first; whoever's on right now says what, on their own row
@@ -170,7 +170,7 @@ export default defineIntegration({
         },
       },
       plays: {
-        title: 'Plays', interval: 3_600_000,
+        title: 'Plays', interval: 3_600_000, card: 'chart',
         async fetch() {
           const d = await api('get_plays_by_date', { time_range: 30 }), series = (d.series as any[]).filter(x => x.name !== 'Total' && x.data.some((n: number) => n > 0));
           const all = (d.series as any[]).find(x => x.name === 'Total')?.data as number[] | undefined;
@@ -178,7 +178,7 @@ export default defineIntegration({
         },
       },
       race: {
-        title: 'The year so far', interval: HEAVY,
+        title: 'The year so far', interval: HEAVY, card: 'race',
         async fetch() {
           const year = new Date().getFullYear(), r = raceOf(await history(year), ctx.image), lead = r?.items[0];
           return { type: 'race', title: 'The year so far', icon: 'film', source, steps: r?.steps ?? [], items: r?.items ?? [], unit: r?.unit, span: r && (/ /.test(r.steps[0]) ? `Hours watched since ${r.steps[0]}` : `Hours watched in ${year}`),
@@ -186,14 +186,14 @@ export default defineIntegration({
         },
       },
       viewing: {
-        title: 'Viewing', interval: HEAVY,
+        title: 'Viewing', interval: HEAVY, card: 'heatmap',
         async fetch() {
           const d = await api('get_plays_by_date', { time_range: 365 }), all = (d.series as any[]).find(x => x.name === 'Total')?.data as number[] | undefined;
           return { type: 'heatmap', title: 'Viewing', icon: 'calendar', source, from: d.categories[0], days: all ?? [], unit: 'play', span: 'last 12 months' };
         },
       },
       streams: {
-        title: 'Now playing', interval: 10_000,
+        title: 'Now playing', interval: 10_000, card: 'media',
         async fetch() {
           const a = await activity();
           bw.push(a.bandwidth / 1000); if (bw.length > 40) bw.shift();
@@ -209,10 +209,10 @@ export default defineIntegration({
         },
       },
       recent: {
-        title: 'Recently added', interval: 300_000,
+        title: 'Recently added', interval: 300_000, card: 'shelf',
         async fetch() {
           const d = await api('get_recently_added', { count: 24 });
-          return { type: 'shelf', title: 'Recently added', icon: 'film', href: cfg.href, aspect: 'poster', layout: 'spotlight', source,
+          return { type: 'shelf', title: 'Recently added', icon: 'film', href: cfg.href, aspect: 'poster', layout: 'focus', source,
             items: (d.recently_added as any[]).map(r => ({
               backdrop: r.art || r.grandparent_art || r.parent_art ? ctx.image(r.art || r.grandparent_art || r.parent_art) : undefined,
               title: r.media_type === 'season' ? r.parent_title : r.media_type === 'episode' ? r.grandparent_title : r.title,

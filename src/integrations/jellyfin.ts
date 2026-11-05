@@ -100,7 +100,7 @@ export function mediaServer(f: Flavour) {
           },
         },
         library: {
-          title: 'Your library', interval: 3_600_000,
+          title: 'Your library', interval: 3_600_000, card: 'stats',
           async fetch() {
             const c = await api<any>('/Items/Counts'), n = (k: string) => Number(c?.[k] ?? 0);
             const parts = ([['Movies', 'MovieCount', 'film'], ['Shows', 'SeriesCount', 'play'], ['Episodes', 'EpisodeCount', 'pulse'], ['Albums', 'AlbumCount', 'play'], ['Books', 'BookCount', 'book']] as const).filter(([, k], i) => i < 3 || n(k));
@@ -110,7 +110,7 @@ export function mediaServer(f: Flavour) {
           },
         },
         streams: {
-          title: 'Now playing', interval: 10_000,
+          title: 'Now playing', interval: 10_000, card: 'media',
           async fetch() {
             const now = await playing(), items = now.map(toItem), first = items.find(i => i.state !== 'paused') ?? items[0];
             return { type: 'media' as const, title: 'Now playing', icon: 'play', href: web, source, empty: 'Nothing playing', items,
@@ -121,7 +121,7 @@ export function mediaServer(f: Flavour) {
           },
         },
         resume: {
-          title: 'Continue watching', interval: 300_000,
+          title: 'Continue watching', interval: 300_000, card: 'shelf',
           async fetch() {
             const u = await user(), r = await api<any>(`${f.resume(u.id)}Limit=12&MediaTypes=Video&Fields=PrimaryImageAspectRatio&EnableUserData=true`);
             const items: ShelfItem[] = (r?.Items ?? []).map((i: any) => {
@@ -133,11 +133,11 @@ export function mediaServer(f: Flavour) {
           },
         },
         recent: {
-          title: 'Recently added', interval: 300_000,
+          title: 'Recently added', interval: 300_000, card: 'shelf',
           async fetch() {
             const u = await user(), list = await api<any[]>(`${f.latest(u.id)}Limit=16&Fields=DateCreated,PrimaryImageAspectRatio&IncludeItemTypes=Movie,Series,Episode&GroupItems=true`);
             const items: ShelfItem[] = (list ?? []).map(i => ({ id: i.Id, title: titleOf(i), subtitle: subtitleOf(i), image: poster(i), backdrop: backdrop(i), href: link(i), badge: i.DateCreated ? fmt.relativeDay(i.DateCreated).replace('Tonight', 'Today') : undefined }));
-            return { type: 'shelf' as const, title: 'Recently added', icon: 'film', href: web, source, aspect: 'poster' as const, layout: 'spotlight' as const, items, empty: 'Nothing added yet',
+            return { type: 'shelf' as const, title: 'Recently added', icon: 'film', href: web, source, aspect: 'poster' as const, layout: 'focus' as const, items, empty: 'Nothing added yet',
               summary: items[0] && { label: 'Recently added', icon: 'film', value: items[0].title, sub: items[0].badge, image: items[0].backdrop ?? items[0].image } };
           },
         },

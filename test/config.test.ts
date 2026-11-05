@@ -48,6 +48,18 @@ test('check: unknown types, options and widget keys are named; links from the to
   assert.equal(config.layout[0].widgets[3].every, 120_000);
 });
 
+test('check: a view the widget\'s card can\'t take is named, with the ones it can', () => {
+  const config = Config.parse({
+    integrations: { hn: { type: 'hackernews' }, w: { type: 'weather', latitude: 1, longitude: 2 } },
+    layout: [{ widgets: [{ widget: 'hn.stories', view: 'masonry' }, { widget: 'w.now', view: 'coverflow' }] }],
+  });
+  const problems = check(config, registry).problems.filter(p => p.includes('drawn as'));
+  assert.deepEqual(problems, [
+    'layout: hn.stories can\'t be drawn as "masonry" (it\'s a list card)',
+    'layout: w.now can\'t be drawn as "coverflow" (it\'s a forecast card)',
+  ]);
+});
+
 test('first run: writes a starter config that checks clean, and runs from memory when it can\'t', async () => {
   const { startConfig } = await import('../src/server/config.ts');
   const dir = await mkdtemp(join(tmpdir(), 'valet-first-'));

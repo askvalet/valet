@@ -19,6 +19,7 @@ export type Access = 'read' | 'write' | 'control';
 export interface Widget {
   title: string;
   interval?: number;                     // ms between refreshes while visible (default 10 s)
+  card?: Card['type'];                   // the kind of card it returns, so the config check can tell a `view` that can't draw it
   fetch(): Promise<Card>;
 }
 

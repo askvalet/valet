@@ -1,7 +1,7 @@
 // The card library: every card type validates, every sample renders in every size (homepage, chat, large) and as a
 // headline tile, without throwing. Rendering runs through React's server renderer, so effects don't run, but every
 // branch of every renderer that a card's data selects is exercised.
-import { place } from '../src/web/coverflow.tsx';
+import { openAt } from '../src/web/focus.tsx';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { renderToString } from 'react-dom/server';
@@ -9,7 +9,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { stateOf } from '../src/shared/cards.ts';
 import { checkCard } from '../src/shared/cards.schema.ts';
 import { MiniRing, SummaryTile, Widget } from '../src/web/cards.tsx';
-import { Counter, ElasticSlider, Flap, landing, pose, RowSlot, rubber, Tick, useRows } from '../src/web/feel.tsx';
+import { Counter, ElasticSlider, Flap, pose, RowSlot, rubber, Tick, useRows } from '../src/web/feel.tsx';
 import { byDay, CalendarView, headsUp, span, splitToday, Thermostat, WeatherCard } from '../src/web/home-cards.tsx';
 import HomeCase from '../src/web/visuals/home-case.tsx';
 import { batteryNote, heard, near, restoreGroups, restoreOf, unsettled, wearNote, type PlanData, type PlanLight } from '../src/web/visuals/home-model.ts';
@@ -304,12 +304,7 @@ test('heatmap, stream and waffle: integer counts, and nothing drawn from nothing
   assert.ok(!chartless({ type: 'chart', style: 'bars', series: [{ name: 'TV', points: [0, 0] }] }));
 });
 
-test('feel: a throw lands on the stop its speed reaches, and rubber never passes its limit', () => {
-  const stops = [0, 100, 200, 300];
-  assert.equal(landing(40, 0, stops), 0);
-  assert.equal(landing(60, 0, stops), 100);
-  assert.equal(landing(100, 2000, stops), 300);
-  assert.equal(landing(100, -2000, stops), 0);
+test('feel: rubber never passes its limit', () => {
   assert.equal(rubber(0, 36), 0);
   assert.ok(rubber(1e6, 36) < 36 && rubber(1e6, 36) > 35);
   assert.ok(rubber(-40, 36) < 0 && rubber(-40, 36) > -40, 'it gives, but less than the pointer moved');
@@ -331,11 +326,14 @@ test('feel: a pile: on top nothing is moved or dimmed, behind is smaller, thrown
   assert.match(html({ type: 'article', headline: 'Alone' }), /is-single/);
 });
 
-test('feel: a row: shelves throw, and the desk stays a desk', () => {
+test('feel: a row: shelves are Blossom carousels with arrows, and the desk stays a desk', () => {
   const items = [{ title: 'A', href: 'http://x/a' }, { title: 'B', href: 'http://x/b' }];
-  assert.match(html({ type: 'shelf', title: 'Shelf', items }), /class="carousel /);
-  assert.match(html({ type: 'shelf', title: 'Shelf', items }), /carousel-face/);
-  assert.match(html({ type: 'shelf', layout: 'desk', title: 'Docs', items }), /desk carousel/);
+  const shelf = html({ type: 'shelf', title: 'Shelf', items });
+  assert.match(shelf, /blossom-carousel="true"/); assert.match(shelf, /class="carousel /); assert.match(shelf, /carousel-face/);
+  assert.equal(shelf.match(/data-blossom-slide/g)?.length, 2, 'every poster is a slide');
+  const id = /blossom-carousel="true" id="([^"]+)"/.exec(shelf)?.[1] ?? /id="([^"]+)"[^>]*blossom-carousel/.exec(shelf)?.[1];
+  assert.ok(id); assert.match(shelf, new RegExp(`aria-controls="${id}" aria-label="Next in Shelf"`), 'the arrows name the row they move');
+  assert.match(html({ type: 'shelf', layout: 'desk', title: 'Docs', items }), /carousel desk/);
   assert.match(html({ type: 'shelf', layout: 'desk', title: 'Docs', items }), /desk-page/);
 });
 
@@ -367,8 +365,43 @@ test('feel: the slider keeps its range and value, and a Counter says the whole n
   assert.doesNotMatch(word, /digit/); assert.doesNotMatch(word, /tick/);
 });
 
-test('cover flow: the front is flat and in front, and the fan turns towards it from both sides', () => {
-  assert.deepEqual(place(0), { x: 0, turn: -0, sink: 0, z: 100 });
-  assert.ok(place(1).turn < 0 && place(-1).turn > 0 && place(1).x === -place(-1).x);
-  assert.ok(place(3).x > place(2).x && place(2).x - place(1).x < place(1).x && place(3).z < place(1).z && place(1).z < place(0).z);
+test('focus: one large in the middle, opening near the middle on something with artwork', () => {
+  const items = Array.from({ length: 5 }, (_, i) => ({ title: `T${i}`, subtitle: '2020', href: `http://x/${i}`, image: i === 2 ? undefined : `/art/${i}.jpg` }));
+  assert.equal(openAt(items), 1, 'the middle has no picture, so the nearest that has one');
+  assert.equal(openAt(items.map(i => ({ ...i, image: '/a.jpg' }))), 2);
+  const out = html({ type: 'shelf', layout: 'focus', title: 'Recent', aspect: 'poster', items });
+  assert.match(out, /class="focus is-poster"/); assert.match(out, /class="focus-track"/); assert.match(out, /blossom-carousel="true"/);
+  assert.equal(out.match(/class="focus-slide"/g)?.length, 5);
+  assert.match(out, /aria-label="Next in Recent"/); assert.match(out, /aria-label="T0, 2020"/);
+  assert.doesNotMatch(out, /cover-/);
+  assert.doesNotMatch(html({ type: 'shelf', layout: 'focus', title: 'Two', items: items.slice(0, 2) }), /focus-track/, 'two is a row');
+});
+
+test('cover flow: its own 3D carousel, a real list in a Blossom scroller, with Prev and Next', () => {
+  const items = Array.from({ length: 6 }, (_, i) => ({ title: `G${i}`, subtitle: 'SNES', image: `/g/${i}.jpg`, href: i % 2 ? `http://x/${i}` : undefined }));
+  const out = html({ type: 'shelf', layout: 'coverflow', title: 'Games', aspect: 'square', items });
+  assert.match(out, /class="cover is-square"/); assert.match(out, /class="cover-track"/); assert.match(out, /blossom-carousel="true"/);
+  assert.match(out, /<ul class="cover-list">/); assert.equal(out.match(/class="cover-slide"/g)?.length, 6);
+  assert.match(out, /aria-label="Previous in Games"/); assert.match(out, /aria-label="Next in Games"/);
+  assert.match(out, /aria-label="G1, SNES"/); assert.match(out, /aria-roledescription="slide" aria-label="G0, SNES"/);
+  assert.doesNotMatch(out, /focus-track/);
+  assert.doesNotMatch(html({ type: 'shelf', layout: 'coverflow', title: 'Two', items: items.slice(0, 2) }), /cover-track/, 'two is a row');
+});
+
+test('masonry: any pictures as a wall that scrolls sideways, shelf or photos', () => {
+  const items = Array.from({ length: 8 }, (_, i) => ({ title: `P${i}`, image: `/p/${i}.jpg`, href: i ? `http://x/${i}` : undefined }));
+  for (const card of [{ type: 'shelf', layout: 'masonry', title: 'Wall', items: [...items, { title: 'No picture' }] }, { type: 'photos', style: 'masonry', title: 'Wall', items }]) {
+    const out = html(card);
+    assert.match(out, /class="[^"]*masonry/); assert.equal(out.match(/class="masonry-tile"/g)?.length, 8, 'only what has a picture');
+    assert.match(out, /aria-label="Next in Wall"/); assert.doesNotMatch(out, /No picture/);
+  }
+});
+
+test('cards: a stack to deal through; documents keep their sender and date, saved pages keep archive', () => {
+  const docs = html({ type: 'shelf', layout: 'cards', title: 'Documents', aspect: 'poster', items: [{ title: 'Bill', subtitle: 'City Power · Sep 2', image: '/d.jpg', href: 'http://x/d', doc: { type: 'Invoice' } }, { title: 'Letter', subtitle: 'Bank · Sep 1' }] });
+  assert.match(docs, /class="deck-track"/); assert.equal(docs.match(/class="deck-slide"/g)?.length, 2);
+  assert.match(docs, />Invoice</); assert.match(docs, /City Power · Sep 2/); assert.match(docs, /aria-label="Next in Documents"/);
+  assert.doesNotMatch(docs, /Archive Bill/, 'nothing to archive without a way to run it');
+  const saved = html({ type: 'shelf', layout: 'cards', title: 'Saved', aspect: 'wide', archived: '/archive', items: [{ id: 'a', title: 'A page', href: 'http://x/a' }] }, { run: true });
+  assert.match(saved, /aria-label="Archive A page"/);
 });

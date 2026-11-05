@@ -54,7 +54,7 @@ export default defineIntegration({
     return {
       widgets: {
         status: {
-          title: 'Mealie', interval: cfg.every ?? 300_000,
+          title: 'Mealie', interval: cfg.every ?? 300_000, card: 'stats',
           async fetch() {
             const s = await api<any>(`${home}/statistics`);
             const items = [{ label: 'Recipes', value: s.totalRecipes ?? 0 }, { label: 'Categories', value: s.totalCategories ?? 0 }, { label: 'Tags', value: s.totalTags ?? 0 }, { label: 'Users', value: s.totalUsers ?? 0 }]
@@ -64,7 +64,7 @@ export default defineIntegration({
         },
         // the week ahead, today first: one tile a meal, the day on it
         week: {
-          title: 'This week', interval: 900_000,
+          title: 'This week', interval: 900_000, card: 'shelf',
           async fetch() {
             const [plan, g] = await Promise.all([week(), slugOfGroup()]);
             const items: ShelfItem[] = plan.map(e => ({ id: String(e.id), at: e.date, title: e.recipe?.name ?? e.title ?? 'A meal', subtitle: cap(e.entryType),
@@ -76,7 +76,7 @@ export default defineIntegration({
         },
         // one recipe a day, the same all day: its photo behind it, and a few more to flick through
         today: {
-          title: 'Recipe of the day', interval: 3_600_000,
+          title: 'Recipe of the day', interval: 3_600_000, card: 'article',
           async fetch() {
             const seed = ymd(new Date());
             const [pick, g] = await Promise.all([
@@ -90,7 +90,7 @@ export default defineIntegration({
           },
         },
         recent: {
-          title: 'New recipes', interval: 900_000,
+          title: 'New recipes', interval: 900_000, card: 'shelf',
           async fetch() {
             const [list, g] = await Promise.all([recipes('orderBy=created_at&orderDirection=desc&perPage=12'), slugOfGroup()]);
             return { type: 'shelf', title: 'New recipes', icon: 'book', href: web, source, aspect: 'square', items: list.map(r => tile(r, g)), empty: 'No recipes yet',

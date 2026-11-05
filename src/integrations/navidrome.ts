@@ -59,7 +59,7 @@ export default defineIntegration({
 
     const widgets = {
       status: {
-        title: 'Navidrome', interval: (() => { const r = Every.safeParse(cfg.every); return r.success ? r.data : 60_000; })(),
+        title: 'Navidrome', interval: (() => { const r = Every.safeParse(cfg.every); return r.success ? r.data : 60_000; })(), card: 'stats',
         async fetch() {
           const [now, scan] = await Promise.all([nowPlaying(), api('getScanStatus').then(s => s.scanStatus, () => undefined)]);
           const songs = Number(scan?.count);
@@ -69,7 +69,7 @@ export default defineIntegration({
         },
       },
       playing: {
-        title: 'Now playing', interval: 10_000,
+        title: 'Now playing', interval: 10_000, card: 'media',
         async fetch() {
           const now = await nowPlaying(), items = now.map(toItem), first = items.find(i => i.state !== 'paused') ?? items[0];
           return { type: 'media' as const, title: 'Now playing', icon: 'play', href: web, source, empty: 'Nothing playing', items,
@@ -79,7 +79,7 @@ export default defineIntegration({
         },
       },
       recent: {
-        title: 'Recently played', interval: 300_000,
+        title: 'Recently played', interval: 300_000, card: 'shelf',
         async fetch() {
           const items = (await albums('recent', 12)).map(a => ({ ...tile(a), badge: a.played ? fmt.relativeDay(a.played).replace('Tonight', 'Today') : undefined }));
           return { type: 'shelf' as const, title: 'Recently played', icon: 'play', href: web, source, aspect: 'square' as const, items, empty: 'Nothing played yet',
@@ -87,7 +87,7 @@ export default defineIntegration({
         },
       },
       added: {
-        title: 'New music', interval: 900_000,
+        title: 'New music', interval: 900_000, card: 'shelf',
         async fetch() {
           const items = (await albums('newest', 12)).map(a => ({ ...tile(a), badge: a.created ? fmt.relativeDay(a.created).replace('Tonight', 'Today') : undefined }));
           return { type: 'shelf' as const, title: 'New music', icon: 'play', href: web, source, aspect: 'square' as const, layout: 'spotlight' as const, items, empty: 'Nothing added yet',
@@ -95,7 +95,7 @@ export default defineIntegration({
         },
       },
       top: {
-        title: 'Most played', interval: 3_600_000,
+        title: 'Most played', interval: 3_600_000, card: 'ranked',
         async fetch() {
           const rows = (await albums('frequent', 6)).filter(a => Number(a.playCount) > 0), most = Math.max(1, ...rows.map(a => Number(a.playCount)));
           return { type: 'ranked' as const, title: 'Most played', icon: 'play', href: web, source, empty: 'Nothing played yet',
@@ -103,10 +103,10 @@ export default defineIntegration({
         },
       },
       rediscover: {
-        title: 'Rediscover', interval: 3_600_000,
+        title: 'Rediscover', interval: 3_600_000, card: 'shelf',
         async fetch() {
           const items = (await rediscover()).map(a => ({ ...tile(a), note: a.year ? String(a.year) : undefined }));
-          return { type: 'shelf' as const, title: 'Rediscover', icon: 'play', href: web, source, aspect: 'square' as const, layout: 'coverflow' as const, items, empty: 'No albums yet',
+          return { type: 'shelf' as const, title: 'Rediscover', icon: 'play', href: web, source, aspect: 'square' as const, layout: 'focus' as const, items, empty: 'No albums yet',
             summary: items[0] && { label: 'Rediscover', icon: 'play', value: items[0].title, sub: items[0].subtitle, image: items[0].image } };
         },
       },

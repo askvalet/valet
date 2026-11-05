@@ -31,7 +31,7 @@ export default defineIntegration({
     return {
       widgets: {
         now: {
-          title: 'Weather', interval: cfg.interval,
+          title: 'Weather', interval: cfg.interval, card: 'forecast',
           async fetch() {
             const w = await get(), t = w.current.temperature_2m, lo = w.daily.temperature_2m_min[0], hi = w.daily.temperature_2m_max[0];
             const look = (code: number, day: number) => { const [, w, i] = describe(code); return { words: w, icon: !day && i === 'sun' ? 'moon' : !day && i === 'cloud-sun' ? 'cloud-moon' : i }; };

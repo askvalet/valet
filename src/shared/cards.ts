@@ -145,7 +145,7 @@ export interface MediaCard extends Base { type: 'media'; items: MediaItem[]; emp
 
 /** A horizontal shelf of artwork (posters, albums, photos), like a row in the Apple TV app. */
 export interface ShelfItem { id?: string; mark?: string; at?: string; title: string; subtitle?: string; note?: string; image?: string; badge?: string; href?: string; backdrop?: string; tone?: Tone; cta?: { label: string; href: string }; doc?: { sender?: string; date?: string; type?: string } }   // cta: the next step, which the whole tile then opens · doc: a document's columns in list view
-export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string; stack?: boolean; archived?: string; layout?: 'row' | 'spotlight' | 'week' | 'tickets' | 'desk' | 'windows' | 'coverflow' }   // stack: a pile of pages that fans out · archived: where archived things can be found, with an `unarchive` action beside `archive`
+export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; aspect?: 'poster' | 'square' | 'wide'; empty?: string; stack?: boolean; archived?: string; layout?: 'row' | 'spotlight' | 'week' | 'tickets' | 'desk' | 'windows' | 'focus' | 'coverflow' | 'masonry' | 'cards' }   // stack: a pile of pages that fans out · archived: where archived things can be found, with an `unarchive` action beside `archive`
 
 export type ServiceState = 'up' | 'degraded' | 'down' | 'off';
 export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string; group?: string; quiet?: boolean; state?: ServiceState }   // quiet: being down is expected, never an alert · state: up, up but unwell, down, or off by choice; left out, it follows from ok and quiet
@@ -207,11 +207,11 @@ export interface ForecastCard extends Base {
   sun?: { rise: string; set: string };     // today's sunrise and sunset where the weather is, as "06:52": the wall dims by them
 }
 
-/** Photos to look at, not browse: a slow crossfading flashback, or a mosaic. */
+/** Photos to look at, not browse: a slow crossfading flashback, a mosaic, an album, or a masonry wall to throw. */
 export interface PhotosCard extends Base {
   type: 'photos';
   items: { image: string; title?: string; subtitle?: string; badge?: string; href?: string }[];
-  style?: 'flashback' | 'mosaic' | 'album';
+  style?: 'flashback' | 'mosaic' | 'album' | 'masonry';
   empty?: string;
 }
 

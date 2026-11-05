@@ -141,8 +141,10 @@ https://askvalet.dev.
   motion needs nothing, and hover or press movement scales by `--move`. `stage.css` and `pc-case.css` keep their own
   media rule because they ship with the exported model.
 - **Feel lives in `feel.tsx`** (rewritten from Arc UI's free MIT items; nothing is imported, and the Pro items are unlicensed
-  here). `useRow` + `Arrows`: rows scroll natively, so touch keeps the phone's momentum and vertical scroll, and a mouse can
-  throw them; `Pile`: the reading card;
+  here). `Row` + `RowArrows` (same `id`): every row of artwork is a Blossom Carousel, a native scroller with CSS snapping, so
+  touch keeps the phone's momentum and vertical scroll and a mouse can throw it; slides carry `data-blossom-slide`, the
+  arrows are the only part that hears it move, and the slides sit in a `memo` so a live update doesn't redraw them.
+  `focus.tsx` is the `focus` view (`coverflow` is its old name): sizes come from a scroll-driven animation; `Pile`: the reading card;
   `ElasticSlider`: Radix's slider with give at the ends; `Counter`: every number that changes, still on first paint and
   faster than 1.5 s (`flap` makes it a departures board, for a countdown); `useRows` + `RowSlot`: a list whose rows come and go, never
   on first paint or when the whole list is another list; `Tick`: draws itself only for what was seen unfinished; `toast(key, note)`: the page's stack, only for what piles up or a note whose place is out of view, with
@@ -246,3 +248,7 @@ https://askvalet.dev.
 - **Two small libraries from libraries.dev are in on purpose**, pinned exactly: `thinking-orbs` (the chat's working states and the
   recap's loading) and `border-beam` (`chat.beam` and the approval card). All MIT, no dependencies, no network. Left out:
   `img-fx` needs three.js; `liquid-gooey`, `bot-avatars` and `voice-glow` have no job here yet.
+- **Blossom Carousel is pinned to `@blossom-carousel/react` 1.7.1** (MIT; its core comes with it). 1.8's `onCommand` and
+  `onOverscroll` props don't exist in 1.7, so listen on the element instead. Its stylesheet sits in `@layer blossom-carousel`,
+  declared first in `styles.css` so ours wins; it toggles `has-snap` while a throw glides, and its drag engine loads only for
+  a fine pointer, so headless checks of dragging need one emulated.

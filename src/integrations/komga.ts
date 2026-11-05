@@ -55,7 +55,7 @@ export default defineIntegration({
       },
       widgets: {
         status: {
-          title: 'Komga', interval: cfg.every ?? 300_000,
+          title: 'Komga', interval: cfg.every ?? 300_000, card: 'stats',
           async fetch() {
             const c = await counts();
             const items = [{ label: 'Libraries', value: c.libraries }, { label: 'Series', value: c.series }, { label: 'Books', value: c.books }].map(i => ({ ...i, value: i.value.toLocaleString('en') }));
@@ -63,17 +63,17 @@ export default defineIntegration({
           },
         },
         reading: {
-          title: 'Continue reading', interval: 300_000,
+          title: 'Continue reading', interval: 300_000, card: 'shelf',
           async fetch() {
             const books = await reading(), first = books[0], pct = first ? progress(first) : undefined;
-            return { type: 'shelf', layout: 'coverflow', title: 'Continue reading', icon: 'book', href: web, source, aspect: 'poster', items: books.map(book), empty: 'Nothing in progress',
+            return { type: 'shelf', layout: 'focus', title: 'Continue reading', icon: 'book', href: web, source, aspect: 'poster', items: books.map(book), empty: 'Nothing in progress',
               note: books.length ? `${books.length} in progress` : undefined,
               summary: { label: 'Reading', icon: 'book', value: first ? title(first) : 'Nothing', sub: first?.seriesTitle, pct, ring: pct != null ? `${Math.round(pct * 100)}%` : undefined, image: first && ID.test(first.id) ? ctx.image(`book-${first.id}`) : undefined } };
           },
         },
         // the next book of a series you've started and have nothing open in
         ondeck: {
-          title: 'On deck', interval: 900_000,
+          title: 'On deck', interval: 900_000, card: 'shelf',
           async fetch() {
             const books = pageOf(await api<any>('books/ondeck?size=12'));
             return { type: 'shelf', title: 'On deck', icon: 'book', href: web, source, aspect: 'poster', items: books.map(book), empty: 'Nothing next up',
@@ -81,7 +81,7 @@ export default defineIntegration({
           },
         },
         recent: {
-          title: 'Recently added', interval: 900_000,
+          title: 'Recently added', interval: 900_000, card: 'shelf',
           async fetch() {
             const s = pageOf(await api<any>('series/new?size=12'));
             return { type: 'shelf', title: 'Recently added', icon: 'book', href: web, source, aspect: 'poster', items: s.map(series), empty: 'Nothing added yet',

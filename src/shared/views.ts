@@ -3,9 +3,16 @@
 import type { Card, ChartCard, HeatmapCard, RaceCard, RankedCard, ShelfCard, ShelfItem } from './cards.ts';
 
 export const CHART_VIEWS = ['line', 'bars', 'stream', 'race', 'heatmap', 'ranked', 'pie'] as const;
-export const GALLERY_VIEWS = ['row', 'spotlight', 'coverflow', 'desk', 'windows', 'tickets', 'mosaic', 'flashback', 'album'] as const;
+export const GALLERY_VIEWS = ['row', 'spotlight', 'focus', 'coverflow', 'masonry', 'cards', 'desk', 'windows', 'tickets', 'mosaic', 'flashback', 'album'] as const;
 export const VIEWS = [...CHART_VIEWS, ...GALLERY_VIEWS] as const;
 export type View = (typeof VIEWS)[number];
+
+/** Which cards can honestly become which views: numbers into charts, pictures into galleries. */
+const CHARTABLE: readonly Card['type'][] = ['chart', 'race', 'heatmap', 'ranked', 'stats'];
+const PICTURED: readonly Card['type'][] = ['shelf', 'photos', 'ranked', 'race', 'media', 'article'];
+export const fits = (view: View, type: Card['type']) => ((CHART_VIEWS as readonly string[]).includes(view) ? CHARTABLE : PICTURED).includes(type);
+/** The views a kind of card can take, for a config problem to suggest. */
+export const viewsFor = (type: Card['type']) => VIEWS.filter(v => fits(v, type));
 
 type Numbers = { series: { name: string; points: number[]; image?: string }[]; labels?: string[]; unit?: string; from?: number; to?: number; span?: string; headline?: string };
 const DAY = 86_400_000;
@@ -66,6 +73,8 @@ function pictures(card: Card): ShelfItem[] | undefined {
     case 'ranked': return card.items.map(i => ({ title: i.title, subtitle: i.subtitle ?? i.value, image: i.image, backdrop: i.backdrop, href: i.href }));
     case 'race': return card.items.map(i => ({ title: i.title, image: i.image }));
     case 'media': return card.items.map(i => ({ title: i.title, subtitle: i.subtitle, image: i.image }));
+    // the reading pile: each thing saved keeps its id, so archiving still works from a gallery
+    case 'article': return (card.more?.length ? card.more : card.headline ? [card] : []).map(a => ({ id: a.id, title: a.headline, subtitle: a.site, note: a.blurb, image: a.image, href: a.link }));
     default: return undefined;
   }
 }
@@ -77,8 +86,9 @@ function gallery(card: Card, view: View): Card | undefined {
     const seen = items.flatMap(i => i.image ? [{ image: i.image, title: i.title || undefined, subtitle: i.subtitle, badge: i.badge, href: i.href }] : []);
     return seen.length ? { ...base, type: 'photos', style: view, items: seen } : undefined;
   }
-  const was = card.type === 'shelf' ? card : undefined;
-  return { ...base, ...was, type: 'shelf', layout: view === 'row' ? undefined : view as ShelfCard['layout'], aspect: was?.aspect ?? (card.type === 'photos' ? 'wide' : undefined), items } as ShelfCard;
+  const was = card.type === 'shelf' ? card : undefined, archived = card.type === 'article' ? card.archived : undefined;
+  const aspect = was?.aspect ?? (card.type === 'photos' || card.type === 'article' ? 'wide' : undefined);
+  return { ...base, ...(archived && { archived }), ...was, type: 'shelf', layout: view === 'row' ? undefined : view as ShelfCard['layout'], aspect, items } as ShelfCard;
 }
 
 const drawn = new WeakMap<Card, { view: View; out: Card }>();

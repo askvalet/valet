@@ -26,7 +26,7 @@ export default defineIntegration({
     return {
       widgets: {
         stories: {
-          title: 'Hacker News', interval: 600_000,
+          title: 'Hacker News', interval: 600_000, card: 'list',
           async fetch() {
             const list = await stories(cfg.limit);
             return { type: 'list', layout: 'headlines', title: 'Hacker News', icon: 'news', source: { name: 'Hacker News', icon: iconFor('hacker-news') }, href: 'https://hn.algolia.com', items: list.map(row), empty: 'Nothing on the front page',

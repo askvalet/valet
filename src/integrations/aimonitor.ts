@@ -49,7 +49,7 @@ export default defineIntegration({
     const widgets = {
       // the day at a glance: cost, requests, tokens, power, memory and heat, each with its last 24 hours drawn behind it
       usage: {
-        title: 'Local AI usage', interval: 5000,
+        title: 'Local AI usage', interval: 5000, card: 'stats',
         async fetch() {
           // the live numbers every few seconds; the day's history and cost don't need asking for as often
           // both optional: without them the card shows today's numbers, without graphs or cost
@@ -78,7 +78,7 @@ export default defineIntegration({
         },
       },
       gpu: {
-        title: 'Local AI', interval: 5000,
+        title: 'Local AI', interval: 5000, card: 'stats',
         async fetch() {
           const j = await live();
           const g = j.gpu, m = j.model;

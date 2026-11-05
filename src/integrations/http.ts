@@ -37,7 +37,7 @@ export default defineIntegration({
     return {
       widgets: {
         status: {
-          title: 'Services', interval: cfg.interval,
+          title: 'Services', interval: cfg.interval, card: 'status',
           async fetch() {
             const items = await check(), down = items.filter(i => stateOf(i) === 'down'), off = items.filter(i => stateOf(i) === 'off').length;
             const up = items.filter(i => i.ok && i.ms != null), avg = up.length ? Math.round(up.reduce((a, i) => a + i.ms!, 0) / up.length) : 0;

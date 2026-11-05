@@ -120,7 +120,7 @@ export default defineIntegration({
       },
       widgets: {
         updates: {
-          title: 'Updates', interval: 3_600_000,
+          title: 'Updates', interval: 3_600_000, card: 'list',
           async fetch() {
             const list = await updates(), behind = list.filter(u => u.state === 'behind'), risky = behind.filter(u => u.warnings?.length);
             return { type: 'list', layout: 'chips', title: 'Updates', icon: 'tag', items: behind.map(row), limit: 12, empty: 'Everything is up to date',
@@ -128,7 +128,7 @@ export default defineIntegration({
           },
         },
         containers: {
-          title: 'Containers', interval: 30_000,
+          title: 'Containers', interval: 30_000, card: 'status',
           async fetch() {
             const list = await containers(), bad = list.filter(c => !healthy(c) && !idle(c));
             return { type: 'status', layout: 'wall', title: 'Containers', icon: 'disk', source: { name: 'Docker', icon: iconFor('docker') }, items: list.map(item),

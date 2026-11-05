@@ -1,6 +1,6 @@
 // Paperless-ngx: your documents. The assistant can search them (full text, with highlighted matches), read one to
 // answer questions about it, and file new ones: a pasted note, or a file attached in chat. Recent documents show
-// as a shelf of page thumbnails.
+// as a stack of cards, each one's first page with its title, who sent it and when.
 import { z } from 'zod';
 import { defineIntegration, fmt } from '../server/core.ts';
 import type { ShelfItem } from '../shared/cards.ts';
@@ -45,10 +45,10 @@ export default defineIntegration({
       },
       widgets: {
         recent: {
-          title: 'Documents', interval: 300_000,
+          title: 'Documents', interval: 300_000, card: 'shelf',
           async fetch() {
             const [n, r] = await Promise.all([lookup(), api<any>('documents/?ordering=-added&page_size=12')]);
-            return { type: 'shelf', layout: 'desk', title: 'Recent documents', icon: 'file', href: `${web}/documents`, aspect: 'poster', items: shelf(r.results, n), empty: 'No documents yet',
+            return { type: 'shelf', layout: 'cards', title: 'Recent documents', icon: 'file', href: `${web}/documents`, aspect: 'poster', items: shelf(r.results, n), empty: 'No documents yet',
               summary: { label: 'Documents', icon: 'file', value: r.count.toLocaleString(), sub: 'in Paperless' } };
           },
         },
