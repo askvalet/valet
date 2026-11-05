@@ -1,34 +1,51 @@
 /* Valet's charts. Colours come from the page's tokens, so they sit on glass, on a card, in either theme and on the
    recap's dark stage, which redefines only --race-lead. What moves every frame moves by transform and opacity. */
 
-/* the race: rows slide past each other, a bar grows by sliding out of its lane */
-.race { --row: 46px; --race-lead: var(--primary); --race-bar: color-mix(in oklab, var(--foreground) 15%, transparent); min-width: 0; }
-.race-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; }
+/* the race: rows slide past each other, a bar grows by sliding out of its lane. Each bar takes its poster's hue (--hue,
+   --sat, set once the poster has loaded) at one lightness for all, so the board reads as a set; the leader's is the
+   strongest. Without a hue, the bars are the page's grey and the leader its accent. */
+.race { --row: 54px; --bar: 12px; --knob: 16px; --race-lead: var(--primary); --race-bar: color-mix(in oklab, var(--foreground) 24%, transparent); --race-track: color-mix(in oklab, var(--foreground) 6%, transparent);
+  --tint-lead: .76; --tint-bar: .64; --tint-alpha: .78; min-width: 0; }
+:root:not(.dark) .race:not(.rc-race > *) { --race-bar: color-mix(in oklab, var(--foreground) 20%, transparent); --tint-lead: .58; --tint-bar: .72; --tint-alpha: .9; }
+.race-row[data-tint] { --race-lead: oklch(var(--tint-lead) calc(.15 * var(--sat)) var(--hue)); --race-bar: oklch(var(--tint-bar) calc(.07 * var(--sat)) var(--hue) / var(--tint-alpha)); }
+.race-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+.race-date { font-size: 30px; line-height: 1; letter-spacing: -.01em; }
+.race-span { min-width: 0; overflow: hidden; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; color: var(--muted-foreground); }
 .race-field { position: relative; overflow: hidden; }
-.race-row { position: absolute; inset: 0 0 auto; display: flex; align-items: center; gap: 10px; height: var(--row); }
-.race-art { flex: none; width: 26px; height: 39px; border-radius: 5px; object-fit: cover; background: var(--muted); }
+.race-row { position: absolute; inset: 0 0 auto; display: flex; align-items: center; gap: 12px; height: var(--row); }
+.race-art { flex: none; height: calc(var(--row) - 12px); aspect-ratio: 2 / 3; border-radius: 6px; object-fit: cover; background: var(--muted); box-shadow: 0 0 0 .5px color-mix(in oklab, var(--foreground) 14%, transparent), 0 2px 6px rgb(0 0 0 / .18); }
 .race-lane { flex: 1; min-width: 0; }
-.race-name { display: block; overflow: hidden; font-size: 13px; line-height: 17px; white-space: nowrap; text-overflow: ellipsis; }
-.race-line { position: relative; height: 16px; margin-right: 64px; }
-.race-track { position: absolute; inset: 4px 0; overflow: hidden; border-radius: 99px; }
+.race-name { display: block; overflow: hidden; margin-bottom: 5px; font-size: 13px; font-weight: 500; line-height: 16px; white-space: nowrap; text-overflow: ellipsis; }
+.race-line { position: relative; height: var(--bar); margin-right: 58px; }
+.race-track { position: absolute; inset: 0; overflow: hidden; border-radius: 99px; background: var(--race-track); }
 .race-bar { position: absolute; inset: 0; border-radius: 99px; background: var(--race-bar); }
 .race-bar b { position: absolute; inset: 0; border-radius: 99px; background: var(--race-lead); opacity: 0; transition: opacity var(--dur-move) var(--ease-out); }
 .race-row.is-lead .race-bar b { opacity: 1; }
 .race-end { position: absolute; inset: 0; pointer-events: none; }
 .is-running :is(.race-row, .race-bar, .race-end) { will-change: transform; }
-.race-end span { position: absolute; left: 8px; top: 0; font-size: 12px; line-height: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+.race-end span { position: absolute; left: 8px; top: 50%; font-size: 12px; font-weight: 500; line-height: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted-foreground); transform: translateY(-50%); }
 .race-row.is-lead .race-end span { color: var(--foreground); }
-.race-foot { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
-.race-play { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 99px; color: var(--foreground); background: color-mix(in oklab, var(--foreground) 9%, transparent); }
+
+/* the timeline: a play button, then the year as a track that fills as it goes */
+.race-foot { display: flex; align-items: flex-start; gap: 12px; margin-top: 14px; }
+.race-play { flex: none; display: grid; place-items: center; width: 32px; height: 32px; margin-top: -4px; border-radius: 99px; color: #16161a; background: var(--foreground); }
+:root:not(.dark) .race:not(.rc-race > *) .race-play { color: #fff; }
+.race-play:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .race-scale { position: relative; flex: 1; min-width: 0; }
-.race-months { display: flex; justify-content: space-between; margin-top: 1px; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
-.race-scrub { display: block; width: 100%; height: 20px; margin: 0; appearance: none; background: none; cursor: pointer; touch-action: pan-y; }
-.race-scrub::-webkit-slider-runnable-track { height: 3px; border-radius: 99px; background: color-mix(in oklab, var(--foreground) 16%, transparent); }
-.race-scrub::-moz-range-track { height: 3px; border-radius: 99px; background: color-mix(in oklab, var(--foreground) 16%, transparent); }
-.race-scrub::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; margin-top: -4.5px; border: 0; border-radius: 99px; background: var(--foreground); }
-.race-scrub::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 99px; background: var(--foreground); }
-.race-scrub:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 6px; }
-@media (max-width: 480px) { .race { --row: 42px; } .race-art { width: 24px; height: 36px; } }
+.race-scrub { --fill: color-mix(in oklab, var(--foreground) 72%, transparent); --empty: color-mix(in oklab, var(--foreground) 12%, transparent);
+  --track: linear-gradient(to right, var(--fill) 0 calc(var(--knob) / 2 + (100% - var(--knob)) * var(--at)), var(--empty) 0);
+  display: block; width: 100%; height: 24px; margin: 0; appearance: none; background: none; cursor: pointer; touch-action: pan-y; }
+.race-scrub::-webkit-slider-runnable-track { height: 6px; border-radius: 99px; background: var(--track); }
+.race-scrub::-moz-range-track { height: 6px; border-radius: 99px; background: var(--track); }
+.race-scrub::-webkit-slider-thumb { appearance: none; width: var(--knob); height: var(--knob); margin-top: -5px; border: 0; border-radius: 99px; background: #fff; box-shadow: 0 0 0 .5px rgb(0 0 0 / .14), 0 1px 4px rgb(0 0 0 / .3); transition: scale var(--dur-move) var(--ease-out); }
+.race-scrub::-moz-range-thumb { width: var(--knob); height: var(--knob); border: 0; border-radius: 99px; background: #fff; box-shadow: 0 0 0 .5px rgb(0 0 0 / .14), 0 1px 4px rgb(0 0 0 / .3); }
+.race-scrub:active::-webkit-slider-thumb { scale: 1.15; }
+.race-scrub:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 99px; }
+.race-months { position: relative; height: 15px; margin-top: 2px; font-size: 11px; line-height: 15px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.race-months span { position: absolute; top: 0; translate: -50% 0; white-space: nowrap; }
+.race-months span:first-child { left: 0; translate: none; }
+.race-months span:last-child { right: 0; left: auto; translate: none; }
+@media (max-width: 480px) { .race { --row: 50px; --bar: 10px; } .race-head { margin-bottom: 12px; } .race-date { font-size: 28px; } }
 
 /* the stream sits where the columns would, and shares their tip and axis */
 .stream { position: absolute; inset: 0; touch-action: pan-y; }

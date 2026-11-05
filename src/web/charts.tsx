@@ -3,7 +3,7 @@
 // show says so through `chartless`, and the page leaves its slot out.
 import './charts.css';
 import { Pause, Play } from 'lucide-react';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, type KeyboardEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { day as dayOf, firstDay, num as written } from './format.ts';
 import type { Card, ChartCard, HeatmapCard, Race as RaceData, RaceItem } from '../shared/cards.ts';
 import { Counter } from './feel.tsx';
@@ -37,12 +37,48 @@ export function standing(items: RaceItem[], t: number) {
 const amount = (v: number, unit?: string) => unit === 'h' ? (v < 1 ? `${written(Math.round(v * 60))} min` : `${v < 10 ? written(Math.round(v * 10) / 10) : written(Math.round(v))} h`) : `${written(Math.round(v))}${unit ? ` ${unit}` : ''}`;
 const shown = new Set<string>();   // each race runs once a visit: a tab you come back to is at rest
 
+type Tint = { h: number; c: number } | null;
+const tints = new Map<string, Tint>();
+/** sRGB (0-255) to OKLab, so a hue is a hue whatever its lightness. */
+function oklab(r: number, g: number, b: number) {
+  const lin = (v: number) => (v /= 255) <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4;
+  const [R, G, B] = [lin(r), lin(g), lin(b)];
+  const l = Math.cbrt(.4122214708 * R + .5363325363 * G + .0514459929 * B), m = Math.cbrt(.2119034982 * R + .6806995451 * G + .1073969566 * B), s = Math.cbrt(.0883024619 * R + .2817188376 * G + .6299787005 * B);
+  return [.2104542553 * l + .793617785 * m - .0040720468 * s, 1.9779984951 * l - 2.428592205 * m + .4505937099 * s, .0259040371 * l + .7827717662 * m - .808675766 * s];
+}
+/** A poster's own colour, for its bar: the hue its colourful pixels share most, and how colourful that is. Read once from a
+ *  tiny copy of the picture already on the page. A picture from another site, or one without much colour, keeps the page's. */
+function tintOf(img: HTMLImageElement): Tint {
+  const src = img.currentSrc || img.src;
+  if (tints.has(src)) return tints.get(src)!;
+  let out: Tint = null;
+  try {
+    const c = document.createElement('canvas'), g = c.getContext('2d', { willReadFrequently: true })!;
+    c.width = 12; c.height = 18; g.drawImage(img, 0, 0, 12, 18);
+    const px = g.getImageData(0, 0, 12, 18).data, bins = Array.from({ length: 24 }, () => ({ w: 0, a: 0, b: 0, c: 0, n: 0 }));
+    for (let i = 0; i < px.length; i += 4) {
+      const [L, a, b] = oklab(px[i], px[i + 1], px[i + 2]), ch = Math.hypot(a, b), w = ch * ch;
+      if (ch < .04 || L < .2 || L > .96) continue;
+      const k = bins[Math.floor((Math.atan2(b, a) / Math.PI + 1) * 12) % 24];
+      k.w += w; k.a += a * w; k.b += b * w; k.c += ch * w; k.n++;
+    }
+    const near = (i: number) => [bins[(i + 23) % 24], bins[i], bins[(i + 1) % 24]];
+    const best = bins.map((_, i) => near(i).reduce((s, k) => s + k.w, 0)).reduce((top, w, i, all) => w > all[top] ? i : top, 0), ks = near(best);
+    const sum = (f: (k: typeof bins[0]) => number) => ks.reduce((s, k) => s + f(k), 0);
+    if (sum(k => k.n) >= 14) out = { h: Math.round((Math.atan2(sum(k => k.b), sum(k => k.a)) * 180 / Math.PI + 360) % 360), c: sum(k => k.c) / sum(k => k.w) };
+  } catch { /* another site's picture: the page's colours */ }
+  tints.set(src, out);
+  return out;
+}
+const hue = (t: Tint) => t ? { '--hue': t.h, '--sat': Math.min(1, Math.max(.5, t.c / .12)).toFixed(2) } as CSSProperties : undefined;
+
 /** Titles overtaking each other. Everything that moves is written straight to the DOM from one rAF loop, which stops when the
  *  rows settle; the render itself is the final frame, so that's what shows with no script, no motion or no scroll. */
 export function Race({ race, span, now }: { race: RaceData; span?: string; now?: boolean }) {
   const { steps, items, unit } = race, end = steps.length - 1, key = `${steps.join()}|${items.map(i => `${i.title}${i.points[end]}`).join()}`, peak = useMemo(() => Math.max(...items.map(i => i.points[end] ?? 0), 1), [items, end]);
   const box = useRef<HTMLDivElement>(null), rows = useRef<(HTMLDivElement | null)[]>([]), date = useRef<HTMLSpanElement>(null), scrub = useRef<HTMLInputElement>(null);
   const live = useRef({ t: end, y: items.map(() => 0), o: items.map(() => 0), going: false, raf: 0, last: 0 }), [playing, setPlaying] = useState(false), [still, setStill] = useState(false);
+  const [tint, setTint] = useState<Record<string, Tint>>({});
   const bar = (v: number, top: number) => Math.max(v > 0 ? .012 : 0, v / Math.max(top, peak * .3));   // the leader fills the lane, but early on the bars have room to grow
   const when = (t: number) => steps[Math.ceil(t - 1e-6)];
 
@@ -62,7 +98,10 @@ export function Race({ race, span, now }: { race: RaceData; span?: string; now?:
       row.classList.toggle('is-lead', place[n] === 0);
     });
     if (date.current && date.current.textContent !== when(s.t)) date.current.textContent = when(s.t);
-    if (scrub.current) scrub.current.value = String(s.t);
+    if (scrub.current) {
+      scrub.current.value = String(s.t); scrub.current.style.setProperty('--at', (s.t / end).toFixed(4));
+      if (scrub.current.getAttribute('aria-valuetext') !== when(s.t)) scrub.current.setAttribute('aria-valuetext', when(s.t));
+    }
     return moving;
   };
   const run = () => {
@@ -77,6 +116,14 @@ export function Race({ race, span, now }: { race: RaceData; span?: string; now?:
   };
   const start = () => { const s = live.current; if (s.t >= end) { s.t = 0; } s.going = true; setPlaying(true); run(); };
   const stop = () => { live.current.going = false; setPlaying(false); };
+  const seek = (t: number) => { const s = live.current; stop(); s.t = Math.min(end, Math.max(0, t)); run(); };
+  // the arrows step a month (or whatever a step is), not a hundredth of one
+  const keys = (e: KeyboardEvent<HTMLInputElement>) => {
+    const t = live.current.t, to = ({ ArrowRight: Math.floor(t + 1e-6) + 1, ArrowUp: Math.floor(t + 1e-6) + 1, ArrowLeft: Math.ceil(t - 1e-6) - 1, ArrowDown: Math.ceil(t - 1e-6) - 1,
+      PageUp: Math.floor(t + 1e-6) + 3, PageDown: Math.ceil(t - 1e-6) - 3, Home: 0, End: end } as Record<string, number>)[e.key];
+    if (to === undefined) return;
+    e.preventDefault(); seek(to);
+  };
 
   // the first frame goes down before the page paints, so nobody sees the end before the start
   useLayoutEffect(() => {
@@ -102,15 +149,15 @@ export function Race({ race, span, now }: { race: RaceData; span?: string; now?:
   return (
     <div ref={box} className={playing ? 'race is-running' : 'race'}>
       <div className="race-head">
-        <span ref={date} className="metric text-[28px] leading-none">{steps[end]}</span>
-        {span && <span className="min-w-0 truncate text-xs text-muted-foreground">{span}</span>}
+        <span ref={date} className="race-date metric">{steps[end]}</span>
+        {span && <span className="race-span">{span}</span>}
       </div>
       <div className="race-field" role="img" aria-label={says} style={{ height: `calc(var(--row) * ${Math.min(ROWS, items.length)})` }}>
         {items.map((it, n) => {
-          const place = rest.place[n], p = bar(rest.value[n], rest.top);
+          const place = rest.place[n], p = bar(rest.value[n], rest.top), t = tint[it.title];
           return (
-            <div key={it.title} ref={el => { rows.current[n] = el; }} className={place === 0 ? 'race-row is-lead' : 'race-row'} style={{ transform: `translateY(calc(var(--row) * ${place}))`, opacity: place < ROWS ? 1 : 0 }}>
-              {it.image ? <img className="race-art" src={it.image} alt="" decoding="async" /> : <span className="race-art" />}
+            <div key={it.title} ref={el => { rows.current[n] = el; }} className={place === 0 ? 'race-row is-lead' : 'race-row'} data-tint={t ? '' : undefined} style={{ transform: `translateY(calc(var(--row) * ${place}))`, opacity: place < ROWS ? 1 : 0, ...hue(t) }}>
+              {it.image ? <img className="race-art" src={it.image} alt="" decoding="async" onLoad={e => { const c = tintOf(e.currentTarget); if (c && !t) setTint(m => ({ ...m, [it.title]: c })); }} /> : <span className="race-art" />}
               <div className="race-lane">
                 <span className="race-name">{it.title}</span>
                 <div className="race-line">
@@ -123,11 +170,11 @@ export function Race({ race, span, now }: { race: RaceData; span?: string; now?:
         })}
       </div>
       <div className="race-foot">
-        {!still && <button type="button" className="press race-play" aria-label={playing ? 'Pause' : 'Play'} onClick={() => playing ? stop() : start()}>{playing ? <Pause className="size-3" fill="currentColor" /> : <Play className="size-3" fill="currentColor" />}</button>}
+        {!still && <button type="button" className="press race-play" aria-label={playing ? 'Pause' : 'Play'} onClick={() => playing ? stop() : start()}>{playing ? <Pause className="size-3.5" fill="currentColor" strokeWidth={0} /> : <Play className="size-3.5 translate-x-px" fill="currentColor" strokeWidth={0} />}</button>}
         <div className="race-scale">
-          <input ref={scrub} className="race-scrub" type="range" aria-label="Move through the year" min={0} max={end} step={.01} defaultValue={end}
-            onInput={e => { const s = live.current; stop(); s.t = Number(e.currentTarget.value); run(); }} />
-          <div className="race-months">{ticks.map(i => <span key={i}>{steps[i]}</span>)}</div>
+          <input ref={scrub} className="race-scrub" type="range" aria-label="Move through the year" aria-valuetext={steps[end]} min={0} max={end} step={.01} defaultValue={end} style={{ '--at': 1 } as CSSProperties}
+            onKeyDown={keys} onInput={e => seek(Number(e.currentTarget.value))} />
+          <div className="race-months">{ticks.map((i, k) => <span key={i} style={k && k < ticks.length - 1 ? { left: `calc(var(--knob) / 2 + (100% - var(--knob)) * ${(i / end).toFixed(4)})` } : undefined}>{steps[i]}</span>)}</div>
         </div>
       </div>
     </div>
