@@ -10,6 +10,7 @@ import { createContext, Fragment, memo, useContext, useEffect, useLayoutEffect, 
 import { ThinkingOrb } from 'thinking-orbs';
 import { ChatBeam } from './beam.tsx';
 import { Button } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
 import { cn } from '@/lib/utils';
 import type { Card, Confirm } from '../shared/cards.ts';
 import { splitThink } from '../shared/think.ts';
@@ -21,8 +22,7 @@ import { play } from './sound.ts';
 
 /** What `chat:` says about the window. */
 export interface ChatUi { followUps?: string[]; review?: string; steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string; beam?: 'off' | 'always' | 'focus' | 'thinking' | 'once'; beamColor?: 'colorful' | 'mono' | 'ocean' | 'sunset'; beamStrength?: number }
-const NEXT = 'press flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left max-sm:py-2.5 text-[14px] text-muted-foreground hover:bg-white/[.05] hover:text-foreground';
-const STARTER = 'press flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-left text-sm text-foreground/85 hover:bg-white/[.07] hover:text-foreground';
+const NEXT = 'press flex w-full items-center gap-2 rounded-control px-1.5 py-1.5 text-left max-sm:py-2.5 text-item text-muted-foreground hover:bg-fill-1 hover:text-foreground';
 const Ui = createContext<ChatUi>({ steps: true, thinking: 'collapsed', send: 'enter' });
 
 // One conversation for the whole page session, so closing and reopening the panel keeps it.
@@ -44,7 +44,7 @@ function TextView({ text, live }: { text: string; live?: boolean }) {
   // only a reply still arriving gets a span per word; a finished one is plain text, so old messages cost nothing
   const words = (t: string, k: string) => !live ? t : t.split(/(\s+)/).map((w, i) => /^\s+$/.test(w) || !w ? w : <span key={`${k}.${i}`} className="chat-word">{w}</span>);
   return (
-    <div className="prose-chat text-[15px] leading-relaxed">
+    <div className="prose-chat text-title leading-relaxed">
       {text.split(/\n{2,}/).map((para, i) => (
         <p key={i}>{para.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|`[^`]+`|\n)/g).map((t, j) =>
           t.startsWith('**') ? <strong key={j}>{words(t.slice(2, -2), `${i}.${j}`)}</strong>
@@ -63,10 +63,10 @@ function Pending({ since, label: text = label('thinking') }: { since: number; la
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 100); return () => clearInterval(t); }, []);
   return (
-    <div className="flex items-center gap-2.5 text-sm animate-in fade-in duration-(--dur-pop)">
+    <div className="flex items-center gap-2.5 text-item animate-in fade-in duration-(--dur-pop)">
       <ThinkingOrb state="working" size={20} />
       <span className="chat-shimmer font-medium">{text}</span>
-      <span className="tabular text-xs text-muted-foreground">{(Math.max(0, now - since) / 1000).toFixed(1)}s</span>
+      <span className="tabular text-meta text-muted-foreground">{(Math.max(0, now - since) / 1000).toFixed(1)}s</span>
     </div>
   );
 }
@@ -76,9 +76,9 @@ function Reasoning({ text, streaming, took }: { text: string; streaming: boolean
   const ui = useContext(Ui), [open, setOpen] = useState(ui.thinking === 'open');
   if ((!text.trim() && !streaming) || ui.thinking === 'hidden') return null;
   return (
-    <div className="text-[13px]">
+    <div className="text-body">
       <button onClick={() => setOpen(o => !o)} className="press flex items-center gap-1 text-muted-foreground hover:text-foreground">
-        <ChevronRight className={cn('size-3.5 transition-transform duration-(--dur-pop)', open && 'rotate-90')} />
+        <ChevronRight className={cn('size-icon-sm transition-transform duration-(--dur-pop)', open && 'rotate-90')} />
         {streaming && <ThinkingOrb state="searching" size={20} />}<span className={cn(streaming && 'chat-shimmer')}>{streaming ? label('thinking') : took ? label('thoughtFor', { n: (took / 1000).toFixed(took < 10_000 ? 1 : 0) }) : label('thought')}</span>
       </button>
       <div className={cn('grid transition-[grid-template-rows,opacity] duration-(--dur-move) ease-out', open ? 'mt-1.5 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
@@ -119,10 +119,10 @@ function ToolChips({ parts: all, settled, tools, fresh }: { parts: any[]; settle
   const name = (p: any) => p.type === 'dynamic-tool' ? p.toolName : p.type.replace(/^tool-/, '');
   if (!parts.length || !useContext(Ui).steps) return null;
   return (
-    <div className="text-[13px]">
+    <div className="text-body">
       {parts.length > 1 && (
-        <button onClick={() => setOpen(!shown)} className="press mb-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-          <ChevronRight className={cn('size-3.5 transition-transform duration-(--dur-pop)', shown && 'rotate-90')} />{label('steps', { n: parts.length })}
+        <button onClick={() => setOpen(!shown)} className="press mb-1 flex items-center gap-1 text-meta text-muted-foreground hover:text-foreground">
+          <ChevronRight className={cn('size-icon-sm transition-transform duration-(--dur-pop)', shown && 'rotate-90')} />{label('steps', { n: parts.length })}
         </button>
       )}
       <div className={cn('grid transition-[grid-template-rows,opacity] duration-(--dur-move) ease-out', shown || parts.length === 1 ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
@@ -136,8 +136,8 @@ function ToolChips({ parts: all, settled, tools, fresh }: { parts: any[]; settle
               <button type="button" disabled={!card} onClick={() => setPeek(x => x === p.toolCallId ? null : p.toolCallId)} className={cn('flex w-full min-w-0 items-center gap-2 text-left text-muted-foreground', card && 'transition-colors hover:text-foreground')}>
                 <I className="size-3.5 shrink-0" />
                 <span className={cn('shrink-0', !done && !failed && !denied && 'chat-shimmer')}>{denied ? `Skipped: ${verb.toLowerCase()}` : verb}</span>
-                {arg && <span className="truncate rounded-md bg-white/[.06] px-1.5 py-px font-mono text-[12px] text-foreground/75">{arg}</span>}
-                <span className="ml-auto shrink-0">{failed ? <X className="size-3.5 text-bad" /> : done ? <Tick className="size-3.5 text-good" draw={waited.current.has(p.toolCallId) && (tools[name(p)]?.access ?? 'read') !== 'read'} /> : denied ? null : <ThinkingOrb state={(tools[name(p)]?.access ?? 'read') === 'read' ? 'connecting' : 'listening'} size={20} />}</span>
+                {arg && <span className="truncate rounded-tag bg-fill-1 px-1.5 py-px font-mono text-meta text-foreground/75">{arg}</span>}
+                <span className="ml-auto shrink-0">{failed ? <X className="size-icon-sm text-bad" /> : done ? <Tick className="size-3.5 text-good" draw={waited.current.has(p.toolCallId) && (tools[name(p)]?.access ?? 'read') !== 'read'} /> : denied ? null : <ThinkingOrb state={(tools[name(p)]?.access ?? 'read') === 'read' ? 'connecting' : 'listening'} size={20} />}</span>
               </button>
               {peek === p.toolCallId && card && <div className="chat-peek py-1"><ChatCard first={card} name={name(p)} input={p.input} tools={tools} fresh={fresh} /></div>}
               </Fragment>
@@ -167,21 +167,21 @@ function Confirmation({ p, name, approve, tools }: { p: any; name: string; appro
         // a plan: every step, in order, before any of them runs
         <ol className="mt-2 space-y-2">
           {p.input.steps.map((s: any, i: number) => (
-            <li key={i} className="flex gap-2.5 text-[13px]">
-              <span className="mt-px grid size-5 shrink-0 place-items-center rounded-full bg-white/10 text-[11px] font-semibold tabular">{i + 1}</span>
+            <li key={i} className="flex gap-2.5 text-body">
+              <span className="mt-px grid size-5 shrink-0 place-items-center rounded-full bg-fill-2 text-caption font-medium tabular">{i + 1}</span>
               <span className="min-w-0"><span className="font-medium">{tools[s.tool]?.label ?? toolLabel(s.tool)}</span>
                 {said?.steps?.[i]?.title
-                  ? <span className="block text-xs text-foreground/85">{said.steps[i]!.title}{said.steps[i]!.detail ? ` · ${said.steps[i]!.detail}` : ''}</span>
-                  : <span className="ml-1.5 text-xs text-muted-foreground">{Object.entries(s.input ?? {}).map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`).join(' · ')}</span>}
-                <span className="block text-xs text-muted-foreground">{s.why}</span></span>
+                  ? <span className="block text-meta text-foreground/85">{said.steps[i]!.title}{said.steps[i]!.detail ? ` · ${said.steps[i]!.detail}` : ''}</span>
+                  : <span className="ml-1.5 text-meta text-muted-foreground">{Object.entries(s.input ?? {}).map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`).join(' · ')}</span>}
+                <span className="block text-meta text-muted-foreground">{s.why}</span></span>
             </li>
           ))}
         </ol>
       ) : isConfig ? (
         // a change to the config: what it means, then exactly what it writes
-        <div className="mt-1 space-y-1.5 text-xs text-muted-foreground">
+        <div className="mt-1 space-y-1.5 text-meta text-muted-foreground">
           {p.input.summary && <div>{p.input.summary}</div>}
-          <pre className="max-h-48 overflow-auto rounded-lg bg-white/[.06] p-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-all">{p.input.ops.map((o: any) => `${o.op} ${o.path.join('.')}${o.value === undefined ? '' : ` = ${JSON.stringify(o.value)}`}`).join('\n')}</pre>
+          <pre className="max-h-48 overflow-auto rounded-inset bg-fill-1 p-2 font-mono text-caption leading-relaxed whitespace-pre-wrap break-all">{p.input.ops.map((o: any) => `${o.op} ${o.path.join('.')}${o.value === undefined ? '' : ` = ${JSON.stringify(o.value)}`}`).join('\n')}</pre>
         </div>
       ) : null}
     </Approval>
@@ -197,15 +197,15 @@ function ToolPart({ p, approve, tools = {}, fresh, shown = true }: { p: any; app
     if (card) return shown ? <ChatCard first={card} name={name} input={p.input} tools={tools} fresh={fresh} /> : null;
     const mcp = Array.isArray(p.output?.content) ? p.output.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n') : '';
     if (mcp) return (
-      <details className="group rounded-xl border bg-card px-4 py-3 text-sm">
-        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-muted-foreground"><ChevronRight className="size-3.5 transition-transform group-open:rotate-90" /><span className="first-letter:uppercase">{label}</span></summary>
-        <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words font-sans text-xs">{mcp.slice(0, 4000)}</pre>
+      <details className="group rounded-surface border bg-card px-4 py-3 text-item">
+        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-muted-foreground"><ChevronRight className="size-icon-sm transition-transform group-open:rotate-90" /><span className="first-letter:uppercase">{label}</span></summary>
+        <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words font-sans text-meta">{mcp.slice(0, 4000)}</pre>
       </details>
     );
-    if (p.output?.data?.error) return <div className="text-sm text-warn">{label}: {p.output.data.error}</div>;
+    if (p.output?.data?.error) return <div className="text-item text-warn">{label}: {p.output.data.error}</div>;
     return null;
   }
-  if (p.state === 'output-error') return <div className="text-sm text-bad">{label} failed: {p.errorText}</div>;
+  if (p.state === 'output-error') return <div className="text-item text-bad">{label} failed: {p.errorText}</div>;
   return null;
 }
 
@@ -220,15 +220,15 @@ export function InlineAnswer({ text, tools, onMore, ui }: { text: string; tools:
   const steps = (reply?.parts ?? []).filter((p: any) => p.type.startsWith('tool-') || p.type === 'dynamic-tool');
   return (
     <Ui.Provider value={ui ?? { steps: true, thinking: 'collapsed', send: 'enter' }}><div className="space-y-3">
-      <div className="text-[13px] text-muted-foreground">{text}</div>
+      <div className="text-body text-muted-foreground">{text}</div>
       {steps.length > 0 && <ToolChips parts={steps} tools={tools} settled={!busy} />}
       {steps.map((p: any, i) => <ToolPart key={i} p={p} tools={tools} approve={(id, ok) => addToolApprovalResponse({ id, approved: ok })} />)}
       {said && <Text text={said} />}
       {busy && !said && <Pending since={started.current || Date.now()} />}
-      {error && <div className="text-sm text-bad">Couldn't reach the model: {error.message}</div>}
+      {error && <div className="text-item text-bad">Couldn't reach the model: {error.message}</div>}
       {!busy && reply && (
-        <button onClick={() => { chat.messages = [...chat.messages, ...one.messages]; onMore(); }} className="press flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-          <CornerDownRight className="size-3.5" />Continue in chat
+        <button onClick={() => { chat.messages = [...chat.messages, ...one.messages]; onMore(); }} className="press flex items-center gap-1.5 text-body text-muted-foreground transition-colors hover:text-foreground">
+          <CornerDownRight className="size-icon-sm" />Continue in chat
         </button>
       )}
     </div></Ui.Provider>
@@ -240,7 +240,7 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
   const [copied, setCopied] = useState<boolean | null>(null), ui = useContext(Ui);
   if (m.role === 'user') return (
     <div className="chat-msg flex justify-end">
-      <div className="chat-in chat-bubble max-w-[85%] rounded-[20px] rounded-br-md px-3.5 py-2 text-[15px]">
+      <div className="chat-in chat-bubble max-w-[85%] rounded-surface rounded-br-md px-3.5 py-2 text-title">
         {m.parts.map((p: any, i: number) => p.type === 'text' ? <span key={i} className="whitespace-pre-wrap">{p.text.replace(/\n?\[attached: ([^(\]]+) \(file id [a-f0-9]+\)\]/g, '\n📎 $1')}</span> : null)}
       </div>
     </div>
@@ -265,7 +265,7 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
       const t = splitThink(p.text);
       if (t.thought) thoughts.push(t.thought);
       thinking ||= live && t.thinking;
-      if (t.said) { flush(); const more = m.parts.slice(i + 1).some((x: any) => x.type.startsWith('tool-') || x.type === 'dynamic-tool'); blocks.push(more ? <div key={i} className="text-[14px] text-muted-foreground"><Text text={t.said} live={live} /></div> : <Text key={i} text={t.said} live={live} />); }
+      if (t.said) { flush(); const more = m.parts.slice(i + 1).some((x: any) => x.type.startsWith('tool-') || x.type === 'dynamic-tool'); blocks.push(more ? <div key={i} className="text-item text-muted-foreground"><Text text={t.said} live={live} /></div> : <Text key={i} text={t.said} live={live} />); }
     }
   });
   if (ui.thinking === 'hidden') thinking = false;
@@ -283,17 +283,17 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
       {!live && text && (
         <div className="flex items-center gap-1 text-muted-foreground animate-in fade-in duration-(--dur-pop)">
           <button aria-label="Copy" title="Copy" onClick={() => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1400); }}
-            className="chat-icon">{copied ? <Tick draw className="morph size-3.5 text-good" /> : <Copy className={cn('size-3.5', copied === false && 'morph')} />}</button>
-          {isLast && <button aria-label="Ask again" title="Ask again" onClick={act.regenerate} className="chat-icon"><RotateCcw className="size-3.5" /></button>}
-          {tookMs != null && tookMs >= 1000 && <span className="ml-1 text-[12px] tabular">{label('worked', { n: (tookMs / 1000).toFixed(tookMs < 10_000 ? 1 : 0) })}</span>}
+            className="chat-icon">{copied ? <Tick draw className="morph size-3.5 text-good" /> : <Copy className={cn('size-icon-sm', copied === false && 'morph')} />}</button>
+          {isLast && <button aria-label="Ask again" title="Ask again" onClick={act.regenerate} className="chat-icon"><RotateCcw className="size-icon-sm" /></button>}
+          {tookMs != null && tookMs >= 1000 && <span className="ml-1 text-meta tabular">{label('worked', { n: (tookMs / 1000).toFixed(tookMs < 10_000 ? 1 : 0) })}</span>}
         </div>
       )}
       {(follow.length > 0 || (ui.review && isLast && !busy && !waiting)) && (
         <div className="space-y-0.5 pt-1">
           {follow.slice(0, ui.review ? 2 : 3).map((f: string) => (
-            <button key={f} onClick={() => act.ask(f)} className={NEXT}><CornerDownRight className="size-3.5 shrink-0 opacity-60" />{f}</button>
+            <button key={f} onClick={() => act.ask(f)} className={NEXT}><CornerDownRight className="size-icon-sm shrink-0 opacity-60" />{f}</button>
           ))}
-          {ui.review && <a href="#recap" className={NEXT}><CornerDownRight className="size-3.5 shrink-0 opacity-60" />{ui.review}</a>}
+          {ui.review && <a href="#recap" className={NEXT}><CornerDownRight className="size-icon-sm shrink-0 opacity-60" />{ui.review}</a>}
         </div>
       )}
     </div>
@@ -308,7 +308,7 @@ const compactedAt = (ms: UIMessage[], i: number) =>
 /** A quiet rule across the chat where older messages stopped going to the model as they were. */
 function Compacted({ kind }: { kind: string }) {
   return (
-    <div className="chat-compacted flex items-center gap-3 text-[12px] text-muted-foreground" role="note">
+    <div className="chat-compacted flex items-center gap-3 text-meta text-muted-foreground" role="note">
       <span className="h-px flex-1 bg-current opacity-20" /><span className="shrink-0">{label(kind === 'summary' ? 'compacted' : 'compactedOut')}</span><span className="h-px flex-1 bg-current opacity-20" />
     </div>
   );
@@ -328,10 +328,10 @@ function ContextMeter({ used, total, auto, fresh }: { used: number; total?: numb
           : <circle cx="7" cy="7" r="1.6" fill="currentColor" />}
       </svg>
       <span className="ctx-pop glass-pop">
-        <span className="block text-[13px] font-medium text-foreground tabular">{words}</span>
-        {total && <span className="block text-[12px] text-muted-foreground tabular">{num(pct, { style: 'percent' })}</span>}
-        {full && <><span className="mt-1.5 block text-[12px] leading-snug text-muted-foreground">{label(auto ? 'contextAuto' : 'contextFull')}</span>
-          <button type="button" onClick={fresh} className="press mt-2 rounded-sm bg-white/10 px-2.5 py-1 text-[12px] text-foreground hover:bg-white/15">{label('newChat')}</button></>}
+        <span className="block text-body font-medium text-foreground tabular">{words}</span>
+        {total && <span className="block text-meta text-muted-foreground tabular">{num(pct, { style: 'percent' })}</span>}
+        {full && <><span className="mt-1.5 block text-meta leading-snug text-muted-foreground">{label(auto ? 'contextAuto' : 'contextFull')}</span>
+          <Button size="sm" onClick={fresh} className="mt-2">{label('newChat')}</Button></>}
       </span>
     </span>
   );
@@ -441,27 +441,27 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
         {/* one line: the name, then the model and its context meter beside it. The meter's place is kept from the start,
             so nothing moves when the first answer brings the numbers in */}
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
-          <span className="shrink-0 text-sm font-semibold">{name}</span>
+          <span className="shrink-0 text-item font-semibold">{name}</span>
           {/* the model and its meter as one inline group: the group sits on the name's baseline, the meter centred on the model's line */}
-          <span className="inline-flex min-w-0 items-center gap-1.5 text-xs leading-4 text-muted-foreground">
+          <span className="inline-flex min-w-0 items-center gap-1.5 text-meta leading-4 text-muted-foreground">
             {model && <span className="min-w-0 truncate">{model}</span>}
             {!external && <span className="relative size-3.5 shrink-0 [&>.ctx]:absolute [&>.ctx]:top-1/2 [&>.ctx]:left-1/2 [&>.ctx]:-translate-x-1/2 [&>.ctx]:-translate-y-1/2">{context && <ContextMeter used={context.used} total={context.window} auto={context.auto} fresh={() => { stop(); setMessages([]); setTook({}); }} />}</span>}
           </span>
         </div>
-        {sheet && <button onClick={onClose} onPointerDown={e => e.stopPropagation()} aria-label="Close" className="press grid size-9 place-items-center rounded-full bg-white/[.08]"><ChevronDown className="size-[18px]" /></button>}
-        {onDismiss && <button onClick={onDismiss} aria-label="Close" className="chat-icon text-muted-foreground"><X className="size-4" /></button>}
+        {sheet && <button onClick={onClose} onPointerDown={e => e.stopPropagation()} aria-label="Close" className="press grid size-9 place-items-center rounded-full bg-fill-1"><ChevronDown className="size-icon-lg" /></button>}
+        {onDismiss && <button onClick={onDismiss} aria-label="Close" className="chat-icon text-muted-foreground"><X className="size-icon" /></button>}
       </header>
 
-      {external && <div className="border-b px-5 py-2 text-[13px] text-muted-foreground">{name} runs its own tools. Valet's approvals and access levels don't apply, and answers are plain text.</div>}
+      {external && <div className="border-b px-5 py-2 text-body text-muted-foreground">{name} runs its own tools. Valet's approvals and access levels don't apply, and answers are plain text.</div>}
       <div ref={scroller} onScroll={onScroll} className={cn('relative flex-1 overflow-y-auto overscroll-contain px-5', sheet && !messages.length && 'flex flex-col justify-end')}>
         <div ref={column} className="mx-auto w-full max-w-[820px] space-y-4 py-4">
         {!messages.length && (
           // on a phone the suggestions sit low, where the thumb is
           <div className={cn('text-center', !sheet && 'pt-10')}>
-            <div className="text-lg font-semibold tracking-tight">{label('chatTitle')}</div>
-            <div className="mx-auto mt-6 grid max-w-[560px] gap-1.5 sm:grid-cols-2">
-              {suggestions.slice(0, ui.review ? 3 : 4).map(s => <button key={s} onClick={() => onAsk(s)} className={STARTER}>{s}</button>)}
-              {ui.review && <a href="#recap" className={STARTER}>{ui.review}</a>}
+            <div className="text-title font-semibold tracking-tight">{label('chatTitle')}</div>
+            <div className="mx-auto mt-6 flex max-w-[560px] flex-wrap justify-center gap-1.5">
+              {suggestions.slice(0, ui.review ? 3 : 4).map(s => <Chip key={s} onClick={() => onAsk(s)}><span className="truncate">{s}</span></Chip>)}
+              {ui.review && <Chip as="a" href="#recap"><span className="truncate">{ui.review}</span></Chip>}
             </div>
           </div>
         )}
@@ -475,17 +475,17 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
         ))}
         {status === 'submitted' && messages.at(-1)?.role === 'user' && <Pending since={started.current || Date.now()} />}
         {error && (
-          <div className="chat-error flex items-center gap-3 rounded-2xl border border-bad/20 bg-bad/[.06] px-4 py-3 text-sm">
+          <div className="chat-error flex items-center gap-3 rounded-surface border border-bad/20 bg-bad/[.06] px-4 py-3 text-item">
             <span className="min-w-0 flex-1"><span className="font-medium">Couldn't reach the model.</span> <span className="text-muted-foreground">{error.message}</span></span>
-            <button onClick={() => regenerate()} className="press shrink-0 rounded-sm bg-white/10 px-3 py-1 text-[13px] transition-colors hover:bg-white/15">Try again</button>
+            <Button size="sm" onClick={() => regenerate()}>Try again</Button>
           </div>
         )}
         </div>
       </div>
       {away && (
         <button onClick={toLatest} aria-label="Jump to the latest"
-          className="to-latest glass-round absolute bottom-[88px] left-1/2 z-10 flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-sm px-3 text-[13px] text-foreground/85">
-          <ArrowDown className="size-3.5" />{busy ? 'Writing…' : 'Latest'}
+          className="to-latest glass-round absolute bottom-[88px] left-1/2 z-10 flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-sm px-3 text-body text-foreground/85">
+          <ArrowDown className="size-icon-sm" />{busy ? 'Writing…' : 'Latest'}
         </button>
       )}
 
@@ -495,22 +495,22 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
         {files.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5">
             {files.map(f => (
-              <span key={f.key} className={cn('flex max-w-[220px] items-center gap-1.5 rounded-full bg-secondary py-1 pr-1.5 pl-2.5 text-xs', f.error && 'text-bad')}>
-                {f.id ? <FileText className="size-3.5 shrink-0" /> : f.error ? null : <Loader2 className="size-3.5 shrink-0 animate-spin" />}
+              <span key={f.key} className={cn('flex max-w-[220px] items-center gap-1.5 rounded-full bg-secondary py-1 pr-1.5 pl-2.5 text-meta', f.error && 'text-bad')}>
+                {f.id ? <FileText className="size-icon-sm shrink-0" /> : f.error ? null : <Loader2 className="size-icon-sm shrink-0 animate-spin" />}
                 <span className="truncate">{f.error ? `${f.name}: ${f.error}` : f.name}</span>
-                <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles(fs => fs.filter(x => x.key !== f.key))} className="grid size-4 place-items-center rounded-full hover:bg-white/10"><X className="size-3" /></button>
+                <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles(fs => fs.filter(x => x.key !== f.key))} className="grid size-4 place-items-center rounded-full hover:bg-fill-2"><X className="size-3" /></button>
               </span>
             ))}
           </div>
         )}
         <ChatBeam ui={ui} busy={busy}>
-        <div className={cn('composer flex items-end gap-2 rounded-2xl border bg-card px-3 py-2 shadow-card', over && 'ring-2 ring-primary/60')}>
+        <div className={cn('composer flex items-end gap-2 rounded-surface border bg-card px-3 py-2 shadow-card', over && 'ring-2 ring-primary/60')}>
           <input ref={filePicker} type="file" multiple hidden onChange={e => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
- {canAttach && <button type="button" onClick={() => filePicker.current?.click()} aria-label="Attach a file" className={cn('press grid shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground', sheet ? 'mb-0.5 size-8' : 'mb-1 size-7')}><Paperclip className="size-4" /></button>}
+ {canAttach && <button type="button" onClick={() => filePicker.current?.click()} aria-label="Attach a file" className={cn('press grid shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-fill-2 hover:text-foreground', sheet ? 'mb-0.5 size-8' : 'mb-1 size-7')}><Paperclip className="size-icon" /></button>}
           <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={label(sheet || external || !canAttach ? 'message' : 'messageHint', { name })} aria-label="Message"
             onKeyDown={e => { if (e.key === 'Enter' && (ui.send === 'enter' ? !e.shiftKey : e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
             onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
-            className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-[16px] leading-[22px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-[15px]" autoFocus={!sheet} />
+            className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-[16px] leading-[22px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-title" autoFocus={!sheet} />
           {busy
             ? <Button type="button" size="icon" variant="secondary" className="relative mb-0.5 size-8 overflow-hidden rounded-sm" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" />{sent > 0 && <ArrowUp key={sent} className="send-lift absolute inset-0 m-auto" aria-hidden />}</Button>
             : <Button type="submit" size="icon" className="mb-0.5 size-8 rounded-sm bg-foreground text-(--card-tint) hover:bg-foreground/90 disabled:bg-foreground/20 disabled:text-foreground disabled:opacity-100" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}

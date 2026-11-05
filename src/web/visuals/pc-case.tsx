@@ -2,6 +2,7 @@
 // numbers. A part selected: the camera flies to it, the rest dims, and the panel shows its numbers and lighting.
 import { ChevronLeft } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Chip } from '@/components/ui/chip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Counter, ElasticSlider } from '../feel.tsx';
@@ -27,7 +28,7 @@ function MiniGauge({ m }: { m: Metric }) {
         <circle cx="16" cy="16" r={r} fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${Math.max(.001, pct) * arc} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move)" />
       </svg>
       <span className="leading-[1.3]"><span className="metric flex items-baseline gap-0.5 text-[13px]"><Counter value={String(m.value)} /><span className="text-[11px] font-medium text-muted-foreground">{m.unit}</span></span>
-        <span className="block text-[11px] text-muted-foreground">{m.label}</span></span>
+        <span className="block text-caption text-muted-foreground">{m.label}</span></span>
     </span>
   );
 }
@@ -85,7 +86,7 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
   return (
     <div className="case"><div ref={steady.body} className="case-body" style={steady.style}>
       <div className="relative">
-        <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-xl" aria-label="3D model of the PC. Select a part to see it and change its lighting; every part is also in the list below." role="img" />
+        <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-inset" aria-label="3D model of the PC. Select a part to see it and change its lighting; every part is also in the list below." role="img" />
       </div>
       {!pick ? (
         <div key="all" className="space-y-2 animate-in fade-in duration-(--dur-pop)">
@@ -94,17 +95,16 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
               {data.presets.map(p => (
                 <button key={p.id} disabled={!run} onClick={() => applyPreset(p)} aria-pressed={p.id === active} className="press flex h-14 w-[60px] flex-none flex-col items-center gap-1.5 pt-1">
                   <i className="size-7 flex-none rounded-full outline-offset-1" style={{ background: p.swatch.length > 1 ? `conic-gradient(${[...p.swatch, p.swatch[0]].join(', ')})` : p.swatch[0], boxShadow: 'inset 0 0 0 1px rgb(255 255 255 / .22)', outline: p.id === active ? '2px solid var(--foreground)' : '2px solid transparent' }} />
-                  <span className={cn('max-w-full truncate text-[11px] leading-[1.3]', p.id === active ? 'font-medium' : 'text-muted-foreground')}>{p.name}</span>
+                  <span className={cn('max-w-full truncate text-caption leading-[1.3]', p.id === active ? 'font-medium' : 'text-muted-foreground')}>{p.name}</span>
                 </button>
               ))}
             </div>
           )}
           <div className="flex flex-wrap gap-1.5">
             {PICKS.map(p => (
-              <button key={p.id} onClick={() => choose(p.id)} className="press flex h-8 flex-none items-center gap-2 rounded-full px-3 text-[12.5px] ring-1 ring-foreground/15 hover:bg-foreground/10">
-                {p.light && <i className="size-2 flex-none rounded-full" style={dotOf(p.id) ? { background: dotOf(p.id), boxShadow: `0 0 6px ${dotOf(p.id)}` } : { boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--foreground) 35%, transparent)' }} />}
+              <Chip key={p.id} variant="outline" onClick={() => choose(p.id)} dot={p.light ? dotOf(p.id) || 'off' : null}>
                 {SHORT[p.id] ?? p.name}{value(p.id) && <span className="tabular text-muted-foreground">{value(p.id)}</span>}
-              </button>
+              </Chip>
             ))}
           </div>
           {data.controls === false ? <Cant>Lighting is read-only in this install.</Cant> : !run ? <Cant>View only: sign in to change this.</Cant> : note && <Said note={note} />}
@@ -112,15 +112,15 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
       ) : (
         <section key={pick.id} aria-label={`${pick.name} controls`} className="space-y-1.5 animate-in fade-in duration-(--dur-pop)">
           <div className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1">
-            <button onClick={() => choose(null)} className="press flex h-8 flex-none items-center gap-1 rounded-full pr-3 pl-1.5 text-[12.5px] text-muted-foreground ring-1 ring-foreground/15 hover:bg-foreground/10 hover:text-foreground"><ChevronLeft className="size-4" />All parts</button>
-            <h4 className="min-w-0 truncate text-[15px] font-semibold">{pick.name}</h4>
+            <Chip variant="outline" icon={ChevronLeft} onClick={() => choose(null)} className="gap-1 text-muted-foreground hover:text-foreground">All parts</Chip>
+            <h4 className="min-w-0 truncate text-title font-semibold">{pick.name}</h4>
             {metrics.length > 0 && <span className="ml-auto flex flex-none items-center gap-4">{metrics.map(m => <MiniGauge key={m.label} m={m} />)}</span>}
           </div>
           {pick.note && <Cant>{pick.note}</Cant>}
-          {pick.light && !lp && <Cant>Lighting not reachable yet: OpenRGB needs the i2c group (<code className="text-[11px]">sudo usermod -aG i2c $USER</code>, reboot).</Cant>}
+          {pick.light && !lp && <Cant>Lighting not reachable yet: OpenRGB needs the i2c group (<code className="text-caption">sudo usermod -aG i2c $USER</code>, reboot).</Cant>}
           {lp && !canAct && <Cant>{data.controls === false ? 'Lighting is read-only in this install.' : 'View only: sign in to change this.'}</Cant>}
           {lp && canAct && (<>
-            <div className="text-[12.5px] leading-[1.35]"><span className="font-medium">Colour</span> <span className="text-muted-foreground">{colourNow}</span></div>
+            <div className="text-meta leading-[1.35]"><span className="font-medium">Colour</span> <span className="text-muted-foreground">{colourNow}</span></div>
             <div role="group" aria-label="Colour" className="flex flex-wrap">
               {SWATCHES.map(c => <Swatch key={c} name={NAMES[c]} color={c} on={!off && !effect && hex(zone?.color) === c} press={() => set({ color: rgbOf(c), mode: ['Off', 'Rainbow', 'RainbowMorph', 'ColorCycle'].includes(zone?.mode ?? '') ? 'Static' : zone?.mode })} />)}
               <label className="swatch relative cursor-pointer" title="Any colour">
@@ -130,13 +130,13 @@ export default function PcCase({ data, run }: { data: PcCaseData; run?: Run }) {
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
               {lp.modes && lp.modes.length > 1 ? (
-                <span className="flex flex-none items-center gap-2 text-[12.5px]"><span className="font-medium">Effect</span>
+                <span className="flex flex-none items-center gap-2 text-meta"><span className="font-medium">Effect</span>
                   <Select value={zone?.mode} onValueChange={mode => set({ mode })}>
-                    <SelectTrigger size="sm" className="h-8 w-auto flex-none rounded-full text-xs" aria-label="Effect"><SelectValue /></SelectTrigger>
+                    <SelectTrigger size="sm" className="h-8 w-auto flex-none rounded-full text-meta" aria-label="Effect"><SelectValue /></SelectTrigger>
                     <SelectContent>{lp.modes.map(m => <SelectItem key={m} value={m}>{pretty(m)}</SelectItem>)}</SelectContent>
                   </Select></span>
               ) : <Cant className="flex-none">One effect only</Cant>}
-              <span className="flex min-w-40 flex-1 items-center gap-2 text-[12.5px]"><span className="flex-none font-medium">Brightness</span>
+              <span className="flex min-w-40 flex-1 items-center gap-2 text-meta"><span className="flex-none font-medium">Brightness</span>
                 <ElasticSlider className="min-w-16 flex-1" aria-label="Brightness" value={[zone?.brightness ?? 100]} min={5} max={100} step={5}
                   onValueChange={([b]) => setDraft(d => ({ ...d, [light!]: { ...(lp.zones[0] ?? {}), brightness: b } }))} onValueCommit={([b]) => set({ brightness: b })} />
                 <Counter value={`${zone?.brightness ?? 100}%`} className="w-9 flex-none text-right text-muted-foreground" /></span>

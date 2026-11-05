@@ -19,14 +19,14 @@
 .cal-day[data-out] .cal-num { opacity: .36; }
 .cal-day[data-out] > span:last-child:not(.cal-num) { opacity: .4; }
 .cal-num { transition: background-color var(--dur-press) var(--ease-out); }
-.is-picked { background: color-mix(in srgb, var(--foreground) 15%, transparent); }
+.is-picked { background: var(--fill-2); }
 @media (hover: hover) { .cal-day:hover .cal-num:not(.bg-primary):not(.is-picked) { background: color-mix(in srgb, var(--foreground) 9%, transparent); } }
 
 /* thermostat: one colour per mood, the same dial for all of them */
 .th { --th-a: var(--primary); --th-b: var(--primary); --th-soft: color-mix(in srgb, var(--primary) 18%, transparent); user-select: none; -webkit-user-select: none; }
 .th[data-mode="cool"] { --th-a: #a4dcff; --th-b: #4ba7ff; --th-soft: rgb(90 170 255 / .2); }
 .th[data-mode="auto"] { --th-a: #b5efd7; --th-b: #5cd6a7; --th-soft: rgb(100 220 170 / .18); }
-.th[data-mode="off"] { --th-a: #9b9ba3; --th-b: #77777f; --th-soft: rgb(255 255 255 / .1); }
+.th[data-mode="off"] { --th-a: #9b9ba3; --th-b: #77777f; --th-soft: var(--fill-2); }
 .th-track { stroke: color-mix(in srgb, var(--foreground) 13%, transparent); }
 .th-ticks { stroke: var(--foreground); opacity: 0; transition: opacity var(--dur-pop) var(--ease-out); }
 .is-drag .th-ticks { opacity: .22; }
@@ -39,13 +39,13 @@
 .th-room.on-fill { fill: #fff; stroke: rgb(0 0 0 / .18); stroke-width: 1; }
 .th-hit { stroke: transparent; pointer-events: stroke; cursor: grab; touch-action: none; outline: none; }
 .is-drag .th-hit { cursor: grabbing; }
-.th-hit:focus-visible { stroke: color-mix(in srgb, var(--foreground) 7%, transparent); }
-.th-step { background: color-mix(in srgb, var(--foreground) 10%, transparent); color: var(--foreground); transition: background-color var(--dur-press) var(--ease-out), opacity var(--dur-press) var(--ease-out), transform var(--dur-press) var(--ease-out); }
+.th-hit:focus-visible { stroke: color-mix(in oklab, var(--ring) 30%, transparent); }
+.th-step { background: var(--fill-1); color: var(--foreground); transition: background-color var(--dur-press) var(--ease-out), opacity var(--dur-press) var(--ease-out), transform var(--dur-press) var(--ease-out); }
 .th-step:disabled { opacity: .35; }
-.th-mode { background: color-mix(in srgb, var(--foreground) 7%, transparent); color: var(--muted-foreground); transition: background-color var(--dur-pop) var(--ease-out), color var(--dur-pop) var(--ease-out), transform var(--dur-press) var(--ease-out); }
+.th-mode { background: var(--fill-1); color: var(--muted-foreground); transition: background-color var(--dur-pop) var(--ease-out), color var(--dur-pop) var(--ease-out), transform var(--dur-press) var(--ease-out); }
 .th-mode.is-on { background: var(--th-soft); color: var(--th-a); }
-@media (hover: hover) { .th-step:hover:not(:disabled), .th-mode:hover:not(.is-on):not(:disabled) { background: color-mix(in srgb, var(--foreground) 15%, transparent); } }
-.th[data-mode="off"] .th-mode.is-on { background: color-mix(in srgb, var(--foreground) 18%, transparent); color: var(--foreground); }
+@media (hover: hover) { .th-step:hover:not(:disabled), .th-mode:hover:not(.is-on):not(:disabled) { background: var(--fill-2); } }
+.th[data-mode="off"] .th-mode.is-on { background: var(--fill-3); color: var(--foreground); }
 html:not(.dark):not(.has-wallpaper) .th-mode.is-on { color: color-mix(in srgb, var(--th-b) 78%, #000); }
 
 /* the clock's month with no calendar behind it: nothing to list, so only the grid */

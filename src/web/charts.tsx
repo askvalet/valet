@@ -170,7 +170,7 @@ export function Race({ race, span, now }: { race: RaceData; span?: string; now?:
         })}
       </div>
       <div className="race-foot">
-        {!still && <button type="button" className="press race-play" aria-label={playing ? 'Pause' : 'Play'} onClick={() => playing ? stop() : start()}>{playing ? <Pause className="size-3.5" fill="currentColor" strokeWidth={0} /> : <Play className="size-3.5 translate-x-px" fill="currentColor" strokeWidth={0} />}</button>}
+        {!still && <button type="button" className="press race-play" aria-label={playing ? 'Pause' : 'Play'} onClick={() => playing ? stop() : start()}>{playing ? <Pause className="size-icon-sm" fill="currentColor" strokeWidth={0} /> : <Play className="size-icon-sm translate-x-px" fill="currentColor" strokeWidth={0} />}</button>}
         <div className="race-scale">
           <input ref={scrub} className="race-scrub" type="range" aria-label="Move through the year" aria-valuetext={steps[end]} min={0} max={end} step={.01} defaultValue={end} style={{ '--at': 1 } as CSSProperties}
             onKeyDown={keys} onInput={e => seek(Number(e.currentTarget.value))} />
@@ -225,7 +225,7 @@ export function Heatmap({ card }: { card: HeatmapCard }) {
     <div className="heatmap">
       <div className="mb-3 flex items-baseline gap-2">
         <span className="metric text-[28px] leading-none"><Counter value={card.headline ?? count(whole)} /></span>
-        {card.span && <span className="min-w-0 truncate text-xs text-muted-foreground">{card.span}</span>}
+        {card.span && <span className="min-w-0 truncate text-meta text-muted-foreground">{card.span}</span>}
       </div>
       <div className="heat-months" aria-hidden>{months.map(m => <span key={m.x} style={{ left: `${m.x * 100}%` }}>{m.name}</span>)}</div>
       <div className="heat" role="img" aria-label={`${count(whole)}, most on ${dayOf(date(best))}`} onPointerMove={point} onPointerDown={point} onPointerLeave={() => setAt(null)}>
@@ -235,7 +235,7 @@ export function Heatmap({ card }: { card: HeatmapCard }) {
         </svg>
         {at != null && <div className="col-tip" style={{ left: `${tip * 100}%`, translate: `${-tip * 100}% 0` }}><b>{dayOf(date(at))}</b> · {count(card.days[at])}</div>}
       </div>
-      <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+      <div className="mt-2 flex items-center justify-between gap-3 text-meta text-muted-foreground">
         <span className="min-w-0 truncate tabular">Most in a day {written(most)}</span>
         <span className="heat-key shrink-0" aria-hidden>Less{[0, 1, 2, 3, 4].map(l => <svg key={l} viewBox="0 0 10 10"><rect width="10" height="10" rx="2" className={`heat-${l}`} /></svg>)}More</span>
       </div>

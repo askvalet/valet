@@ -11,19 +11,19 @@ export default function Gallery() {
     <TooltipProvider>
       <main className="mx-auto max-w-[1400px] space-y-14 px-6 py-12">
         <header>
-          <h1 className="text-[28px] font-semibold tracking-tight">Card library</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{SAMPLES.length} samples · each as a homepage card, a large card, in chat, and as a headline tile. Made-up data.</p>
+          <h1 className="text-metric-m font-semibold tracking-tight">Card library</h1>
+          <p className="mt-1 text-item text-muted-foreground">{SAMPLES.length} samples · each as a homepage card, a large card, in chat, and as a headline tile. Made-up data.</p>
         </header>
         <LiveDemo />
         {SAMPLES.map(({ name, card }) => (
           <section key={name} className="space-y-3">
-            <h2 className="font-mono text-xs text-muted-foreground">{name}</h2>
+            <h2 className="font-mono text-meta text-muted-foreground">{name}</h2>
             <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,.9fr)]">
-              <div className="min-w-0 space-y-1.5"><div className="text-[11px] text-muted-foreground">medium</div><Widget card={card} run={async () => {}} /></div>
-              <div className="min-w-0 space-y-1.5"><div className="text-[11px] text-muted-foreground">large</div><Widget card={card} large run={async () => {}} /></div>
+              <div className="min-w-0 space-y-1.5"><div className="text-caption text-muted-foreground">medium</div><Widget card={card} run={async () => {}} /></div>
+              <div className="min-w-0 space-y-1.5"><div className="text-caption text-muted-foreground">large</div><Widget card={card} large run={async () => {}} /></div>
               <div className="min-w-0 space-y-3">
-                <div className="space-y-1.5"><div className="text-[11px] text-muted-foreground">in chat</div><Widget card={card} compact run={async () => {}} /></div>
-                {card.summary && <div className="space-y-1.5"><div className="text-[11px] text-muted-foreground">small · tile and ring</div>
+                <div className="space-y-1.5"><div className="text-caption text-muted-foreground">in chat</div><Widget card={card} compact run={async () => {}} /></div>
+                {card.summary && <div className="space-y-1.5"><div className="text-caption text-muted-foreground">small · tile and ring</div>
                   <div className="flex items-center gap-3"><div className="w-[200px]"><SummaryTile s={card.summary} /></div><MiniRing s={card.summary} /></div></div>}
               </div>
             </div>
@@ -39,7 +39,7 @@ function LiveDemo() {
   const live = [{ key: 'a', title: 'A Film', icon: 'play', pct: .4, trailing: '1h left' }, { key: 'b', title: 'A download', icon: 'download', pct: .7 }];
   return (
     <section className="space-y-3">
-      <h2 className="font-mono text-xs text-muted-foreground">live</h2>
+      <h2 className="font-mono text-meta text-muted-foreground">live</h2>
       <div className="glass-bar glass-plate relative inline-flex items-center gap-3 border px-4 py-1.5"><LiveRings live={live} /></div>
     </section>
   );

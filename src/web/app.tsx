@@ -8,6 +8,8 @@ import { acted, dissolve } from './dust.ts';
 import { play, setSounds, type Sounds } from './sound.ts';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
 import { LiveRings, type Live, type Notice } from './live.tsx';
 import { SignIn, useMe } from './signin.tsx';
 import { suggest } from './suggest.ts';
@@ -117,7 +119,7 @@ function RoundButton({ label, active, onClick, children, tip = 'right', words }:
     <Tooltip>
       <TooltipTrigger asChild>
         <button onClick={onClick} aria-label={label} aria-current={active ? 'page' : undefined}
-          className={cn('glass-round relative grid size-11 flex-none place-items-center rounded-full [&_svg]:size-[18px]', active ? 'is-on' : 'text-foreground/85 hover:text-foreground')}>
+          className={cn('glass-round relative grid size-11 flex-none place-items-center rounded-full [&_svg]:size-icon-lg', active ? 'is-on' : 'text-foreground/85 hover:text-foreground')}>
           {children}{words && <span>{label}</span>}
         </button>
       </TooltipTrigger>
@@ -131,9 +133,9 @@ function RoundButton({ label, active, onClick, children, tip = 'right', words }:
 function DockButton({ name, active, onClick, children }: { name: string; active?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button onClick={onClick} aria-current={active ? 'page' : undefined}
-      className={cn('press relative flex h-[46px] min-w-[54px] flex-[1_0_auto] flex-col items-center justify-center gap-0.5 rounded-[23px] px-1.5 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 focus-visible:ring-inset [&_svg]:size-[18px]',
+      className={cn('press relative flex h-[46px] min-w-[54px] flex-[1_0_auto] flex-col items-center justify-center gap-0.5 rounded-full px-1.5 transition-colors focus-visible:-outline-offset-2 [&_svg]:size-icon-lg',
         active ? 'bg-[var(--nav-pill,var(--foreground))] text-[var(--nav-pill-ink,#fff)] dark:text-[var(--nav-pill-ink,#000)]' : 'text-foreground/85')}>
-      {children}<span className="max-w-[64px] truncate text-[11px] leading-3 font-medium">{name}</span>
+      {children}<span className="max-w-[64px] truncate text-caption leading-3 font-medium">{name}</span>
     </button>
   );
 }
@@ -229,37 +231,36 @@ function Starting({ setup, ask }: { setup: boolean; ask: (q: string) => void }) 
   useEffect(() => { fetch('/api/discover').then(r => r.json()).then(d => setFound(d.found ?? [])).catch(() => setFound([])); }, []);
   const shown = found?.find(f => f.type === open);
   return (
-    <div className="grid gap-3 border-t border-white/10 pt-4">
+    <div className="grid gap-3 border-t pt-4">
       {!!found?.length && <div>
-        <div className="text-sm font-medium">Running on this machine</div>
+        <div className="text-item font-medium">Running on this machine</div>
         <div className="mt-2 flex flex-wrap gap-2">{found.map(f => (
-          <button key={f.type} onClick={() => setup ? ask(`Add ${f.name} to my page. It runs at ${f.url}.`) : setOpen(o => o === f.type ? null : f.type)} aria-pressed={!setup ? open === f.type : undefined}
-            className="press flex items-center gap-2 rounded-full border border-white/10 bg-white/[.06] py-1.5 pr-3.5 pl-2 text-[13px] hover:bg-white/10 aria-pressed:bg-white/15">
-            <img src={f.icon} alt="" className="size-5 object-contain" />{f.name}
-          </button>))}</div>
-        <p className="mt-2 text-[13px] text-muted-foreground">{setup ? 'Pick one and Valet sets it up in chat. It asks before it saves anything.' : 'Pick one for the lines to add under integrations: in your config. Secrets go in .env.'}</p>
-        {shown && <pre className="mt-2 overflow-x-auto rounded-lg bg-black/30 p-3 font-mono text-[12px] leading-relaxed text-foreground/85">{shown.yaml}</pre>}
+          <Chip key={f.type} variant={!setup && open === f.type ? 'selected' : 'tonal'} onClick={() => setup ? ask(`Add ${f.name} to my page. It runs at ${f.url}.`) : setOpen(o => o === f.type ? null : f.type)} aria-pressed={!setup ? open === f.type : undefined}>
+            <img src={f.icon} alt="" className="size-icon-lg object-contain" />{f.name}
+          </Chip>))}</div>
+        <p className="mt-2 text-body text-muted-foreground">{setup ? 'Pick one and Valet sets it up in chat. It asks before it saves anything.' : 'Pick one for the lines to add under integrations: in your config. Secrets go in .env.'}</p>
+        {shown && <pre className="mt-2 overflow-x-auto rounded-inset bg-fill-1 p-3 font-mono text-meta leading-relaxed text-foreground/85">{shown.yaml}</pre>}
       </div>}
       {setup ? <form onSubmit={e => { e.preventDefault(); if (said.trim()) ask(`I run ${said.trim()}. Add them to my page.`); }} className="flex flex-wrap items-center gap-2">
-          <label htmlFor="what-you-run" className="text-sm font-medium">What do you run?</label>
-          <input id="what-you-run" value={said} onChange={e => setSaid(e.target.value)} placeholder="Plex, Sonarr, Home Assistant…" className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/[.06] px-3.5 py-1.5 text-[13px] outline-none placeholder:text-muted-foreground focus:border-white/25" />
-          <button disabled={!said.trim()} className="press rounded-full bg-white px-3.5 py-1.5 text-[13px] font-medium text-black disabled:opacity-40">Set it up</button>
+          <label htmlFor="what-you-run" className="text-item font-medium">What do you run?</label>
+          <input id="what-you-run" value={said} onChange={e => setSaid(e.target.value)} placeholder="Plex, Sonarr, Home Assistant…" className="h-9 min-w-0 flex-1 rounded-control border bg-fill-1 px-3.5 text-body outline-none placeholder:text-muted-foreground focus:border-ring" />
+          <Button variant="solid" disabled={!said.trim()}>Set it up</Button>
         </form>
-        : <p className="text-[13px] text-muted-foreground">Or tell Valet what you run and let it write the config: give the assistant <code className="rounded-md bg-white/[.08] px-1.5 py-0.5 font-mono text-[12px]">access: {'{ config: control }'}</code>, and it asks before every change.</p>}
+        : <p className="text-body text-muted-foreground">Or tell Valet what you run and let it write the config: give the assistant <code className="rounded-tag bg-fill-1 px-1.5 py-0.5 font-mono text-meta">access: {'{ config: control }'}</code>, and it asks before every change.</p>}
     </div>
   );
 }
 
 function Welcome({ path, saved, setup, ask }: { path: string; saved: boolean; setup?: boolean; ask?: (q: string) => void }) {
   const step = (n: number, title: string, body: React.ReactNode) => (
-    <div className="flex gap-3"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-white/10 text-xs font-semibold tabular">{n}</span>
-      <div className="min-w-0"><div className="text-sm font-medium">{title}</div><div className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">{body}</div></div></div>
+    <div className="flex gap-3"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-fill-2 text-meta font-medium tabular">{n}</span>
+      <div className="min-w-0"><div className="text-item font-medium">{title}</div><div className="mt-0.5 text-body leading-relaxed text-muted-foreground">{body}</div></div></div>
   );
-  const code = 'rounded-md bg-white/[.08] px-1.5 py-0.5 font-mono text-[12px] break-all text-foreground/85', word = code.replace('break-all', 'whitespace-nowrap');
+  const code = 'rounded-tag bg-fill-1 px-1.5 py-0.5 font-mono text-meta break-all text-foreground/85', word = code.replace('break-all', 'whitespace-nowrap');
   return (
     <Card className="settle gap-4 px-6 py-5 shadow-card">
-      <div><div className="text-[17px] font-semibold tracking-tight">Welcome to your homepage</div>
-        <p className="mt-0.5 text-[14px] text-muted-foreground">This page is built from one file. Edit it and watch here: changes appear as you save.</p></div>
+      <div><div className="text-title font-semibold tracking-tight">Welcome to your homepage</div>
+        <p className="mt-0.5 text-item text-muted-foreground">This page is built from one file. Edit it and watch here: changes appear as you save.</p></div>
       <div className="grid gap-4 md:grid-cols-3">
         {step(1, saved ? 'Open your config' : 'Create your config', <>{saved ? 'A starter is at' : 'Save a config at'} <code className={code}>{path}</code>{!saved && ' (that folder is read-only to Valet, so this page is a sample until then)'}</>)}
         {step(2, 'Add your services', <>Each one is a few lines. Secrets go in <code className={word}>.env</code> as <code className={word}>{'${NAME}'}</code>. Anything with a JSON API works with <code className={word}>type: api</code>.</>)}
@@ -529,38 +530,38 @@ function Home({ account }: { account: boolean }) {
   const line = cause || oneLine(trouble, how.parts);
   const hero = view === 'all' && (hello || h?.status !== false || boxed || pill || page?.notice) && (
           <header className={cn('wall-text w-full max-w-[720px] pt-3 xl:pt-5', side)}>
-            {page?.notice && <p className="mb-2 text-[12px] text-muted-foreground">{page.notice}</p>}
-            {hello && <h1 className="hero-title text-[28px] leading-tight font-medium">{hello}</h1>}
+            {page?.notice && <p className="mb-2 text-meta text-muted-foreground">{page.notice}</p>}
+            {hello && <h1 className="hero-title text-metric-m leading-tight font-medium">{hello}</h1>}
             {/* its line is held from the start, so its words arriving move nothing */}
-            {h?.status !== false && <div key={line} role="status" title={brief ?? undefined} className="brief-in mx-auto mt-1 min-h-[21px] max-w-full text-[14px] leading-[1.5] text-pretty text-muted-foreground sm:truncate">{line}</div>}
+            {h?.status !== false && <div key={line} role="status" title={brief ?? undefined} className="brief-in mx-auto mt-1 min-h-[21px] max-w-full text-item leading-[1.5] text-pretty text-muted-foreground sm:truncate">{line}</div>}
             {askHere && boxed && (
-              <ChatBeam ui={ui} className="mt-4"><form className="glass-round flex items-center gap-2.5 py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-white/25"
+              <ChatBeam ui={ui} className="mt-4"><form className="glass-round flex items-center gap-2.5 py-2 pr-2 pl-5 text-left transition-shadow focus-within:ring-2 focus-within:ring-fill-3"
                 onSubmit={e => { e.preventDefault(); ask(draft); }}>
                 <label htmlFor="ask-box" className="sr-only">{label('ask', named)}</label>
                 <input id="ask-box" value={draft} onChange={e => setDraft(e.target.value)} onFocus={warm} placeholder={placeholder}
                   className="h-11 min-w-0 flex-1 bg-transparent text-[16px] text-ellipsis outline-none placeholder:text-muted-foreground" />
-                {!draft.trim() && <kbd className="hidden rounded-[6px] border border-white/15 px-1.5 py-0.5 font-sans text-[12px] text-muted-foreground sm:block">⌘K</kbd>}
+                {!draft.trim() && <kbd className="hidden rounded-tag border border-input px-1.5 py-0.5 font-sans text-meta text-muted-foreground sm:block">⌘K</kbd>}
                 <button type="submit" aria-label="Ask" disabled={!draft.trim()}
-                  className="send-round grid size-10 shrink-0 place-items-center rounded-sm bg-white text-black transition-colors disabled:bg-white/20 disabled:text-white"><ArrowUp className="size-[18px]" /></button>
+                  className="send-round grid size-10 shrink-0 place-items-center rounded-chip bg-foreground text-(--card-tint) transition-colors disabled:bg-fill-3 disabled:text-foreground"><ArrowUp className="size-icon-lg" /></button>
               </form></ChatBeam>
             )}
             {page && !askHere && boxed && (
-              <button onClick={() => setPalette(true)} className="glass-round mt-4 flex h-11 w-full items-center gap-2.5 rounded-sm px-5 text-left text-[15px] text-muted-foreground">
-                <Search className="size-4" /><span className="flex-1">{label('search')}</span>
-                <kbd className="hidden rounded-[6px] border border-white/15 px-1.5 py-0.5 font-sans text-[12px] sm:block">⌘K</kbd>
+              <button onClick={() => setPalette(true)} className="glass-round mt-4 flex h-11 w-full items-center gap-2.5 rounded-sm px-5 text-left text-title text-muted-foreground">
+                <Search className="size-icon" /><span className="flex-1">{label('search')}</span>
+                <kbd className="hidden rounded-tag border border-input px-1.5 py-0.5 font-sans text-meta sm:block">⌘K</kbd>
               </button>
             )}
             {chips && (
-              <div className="fade-x no-scrollbar mt-2.5 overflow-x-auto">
+              <div className="fade-x no-scrollbar mt-1.5 overflow-x-auto py-1">
                 {/* centred when it fits, scrolls from the start when it doesn't */}
-                <div className={cn('flex min-h-7 w-max min-w-full justify-center gap-1.5', h?.align === 'left' ? 'mr-auto' : h?.align === 'right' ? 'ml-auto' : 'mx-auto')}>
+                <div className={cn('flex min-h-8 w-max min-w-full justify-center gap-1.5', h?.align === 'left' ? 'mr-auto' : h?.align === 'right' ? 'ml-auto' : 'mx-auto')}>
                   {shownChips.map(({ s, out }) => (
-                    <button key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={cn('press shrink-0 rounded-sm px-2.5 py-1 text-[13px] text-muted-foreground hover:bg-white/10 hover:text-foreground', out ? 'chip-out' : arrival(`chip:${s}`))} style={out ? { maxWidth: 320 } : undefined}>{s}</button>
+                    <Chip key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={out ? 'chip-out' : arrival(`chip:${s}`)} style={out ? { maxWidth: 320 } : undefined}>{s}</Chip>
                   ))}
                 </div>
               </div>
             )}
-            {pill && <div className={cn('mt-1 flex items-center text-[13px] text-muted-foreground', h?.align === 'left' ? 'justify-start' : h?.align === 'right' ? 'justify-end' : 'justify-center')}>
+            {pill && <div className={cn('mt-1 flex items-center text-body text-muted-foreground', h?.align === 'left' ? 'justify-start' : h?.align === 'right' ? 'justify-end' : 'justify-center')}>
               <a href="#recap" className="press rounded-sm py-1 pr-1 pl-2.5 hover:text-foreground">{label('review', { year: now.getFullYear() })}</a>
               <button onClick={e => { dissolve(e.currentTarget.parentElement); dismissReview(); }} aria-label={label('dismiss')} className="press grid size-6 flex-none place-items-center rounded-sm hover:text-foreground"><X className="size-3" /></button>
             </div>}
@@ -576,7 +577,7 @@ function Home({ account }: { account: boolean }) {
   const titled = (sec: Page['sections'][number]) => view === 'all' && sec.heading !== false && (sec.display === 'cards' || sec.display === 'media') && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title);
   const renderSection = (sec: (typeof sections)[number], aside = sec.place === 'left' || sec.place === 'right') => (
           <section key={`${view}:${sec.i}`} className="space-y-3" style={sec.gap != null ? { '--card-gap': `${sec.gap}px`, '--tile-gap': `${sec.gap}px` } as React.CSSProperties : undefined}>
-            {sec.title && (titled(sec) ? <h2 className="wall-text px-0.5 text-sm font-medium text-muted-foreground">{sec.title}</h2> : sec.title !== view && <h2 className="sr-only">{sec.title}</h2>)}
+            {sec.title && (titled(sec) ? <h2 className="wall-text px-0.5 text-item font-medium text-muted-foreground">{sec.title}</h2> : sec.title !== view && <h2 className="sr-only">{sec.title}</h2>)}
             {sec.display === 'media'
               ? (
                 <div className={cn('grid gap-(--card-gap)', sec.grid && 'cols')} style={sec.grid ? gridVars(sec.grid) : { gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${sec.columns ? Math.floor(1200 / sec.columns) - 40 : 420}px), 1fr))` }}>
@@ -612,7 +613,7 @@ function Home({ account }: { account: boolean }) {
                   const widget = (key: string, large = false, fill = false, dense = false) => {
                     const s = state[key], o = sec.looks?.[key], card = dress(asView(view === 'all' ? favorites(s?.card, sec.favorites) : s?.card, o?.view), o);
                     const body = <Shaped key={key} id={key} card={s?.card}><Widget large={large} fill={fill} card={card} kind={shapeOf(key)?.t} failed={s?.error} title={o?.title ?? page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={dense || sec.variant === 'minimal' || (phone && view === 'all')} headless={o?.header === false || (o?.header !== true && sec.header === false && view === 'all')}
-                      status={s?.error ? <span className="truncate text-xs text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
+                      status={s?.error ? <span className="truncate text-meta text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
                       run={page?.canAct === false ? undefined : runFor(key)} /></Shaped>;
                     return o?.style ? <div key={key} className="card-look contents" style={o.style as React.CSSProperties}>{body}</div> : body;
                   };
@@ -667,7 +668,7 @@ function Home({ account }: { account: boolean }) {
             {(() => {   // favourites: the way to the rest of them
               const whole = view === 'all' && sec.favorites ? sec.widgets.map(k => state[k]?.card).find(c => c?.type === 'status') : undefined, key = tabOf(sec, sec.i);
               if (whole?.type !== 'status' || !tabs.some(t => t.key === key) || (favorites(whole, sec.favorites) as StatusCard).items.length >= whole.items.length) return null;
-              return <div className="wall-text flex justify-end"><button onClick={() => go(key)} className="press px-0.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"><span key={whole.items.length} className="tick">{label('allOf', { n: whole.items.length })}</span> →</button></div>;
+              return <div className="wall-text flex justify-end"><button onClick={() => go(key)} className="press px-0.5 text-body text-muted-foreground transition-colors hover:text-foreground"><span key={whole.items.length} className="tick">{label('allOf', { n: whole.items.length })}</span> →</button></div>;
             })()}
           </section>
   );
@@ -707,8 +708,8 @@ function Home({ account }: { account: boolean }) {
         {(topbar?.clock !== false || topbar?.date !== false || weatherCard) && <div className="glass-bar glass-plate relative flex shrink-0 items-center gap-2.5 rounded-full border py-1 pr-3.5 pl-1.5 sm:gap-4 sm:py-1.5 sm:pr-5 sm:pl-2">
           {weatherCard && <WeatherRing card={weatherCard} />}
           {!noClock && (topbar?.clock !== false || topbar?.date !== false) && <ClockMonth card={page?.calendar ? state[page.calendar]?.card : undefined}>
-          {topbar?.clock !== false && <div className="text-sm font-semibold tabular">{clock(now)}</div>}
-          {topbar?.date !== false && <div className={cn('text-xs text-muted-foreground sm:block', topbar?.clock !== false && 'hidden')}>{day(now)}</div>}
+          {topbar?.clock !== false && <div className="text-item font-medium tabular">{clock(now)}</div>}
+          {topbar?.date !== false && <div className={cn('text-meta text-muted-foreground sm:block', topbar?.clock !== false && 'hidden')}>{day(now)}</div>}
           </ClockMonth>}
         </div>}
         {topbar?.theme !== false && switchable(page?.look.theme ?? 'auto', wall) && <RoundButton label={theme.dark ? 'Light' : 'Dark'} onClick={() => { flipped.current = true; theme.toggle(); }}>{theme.dark ? <Sun key="sun" className={cn(flipped.current && 'spin-in')} /> : <Moon key="moon" className={cn(flipped.current && 'spin-in')} />}</RoundButton>}
@@ -718,21 +719,21 @@ function Home({ account }: { account: boolean }) {
         {(view !== 'all' || !hello) && <h1 className="sr-only">{view === 'all' ? page?.title : view}</h1>}
         {!hasSide && hero}
         {/* an edit that didn't apply says so here, on every tab, until the next one that does */}
-        {page?.configError && <div role="alert" className="settle flex gap-3 rounded-[calc(var(--radius)*1.2)] border border-[color-mix(in_oklab,var(--warn)_45%,transparent)] bg-card px-5 py-4 shadow-card">
-          <TriangleAlert className="mt-0.5 size-5 shrink-0 text-(--warn)" aria-hidden />
-          <div className="min-w-0"><div className="text-[15px] font-semibold">Your last edit to config.yaml wasn't applied</div>
-            <p className="mt-0.5 text-[13px] text-muted-foreground">The page is still running the last version that worked. {page.configError.message ? 'Fix this and save again:' : 'The server log says what went wrong.'}</p>
-            {page.configError.message && <pre className="mt-2 overflow-x-auto rounded-md bg-foreground/[.06] px-3 py-2 font-mono text-[12px] leading-relaxed whitespace-pre-wrap text-foreground/85">{page.configError.message}</pre>}</div>
+        {page?.configError && <div role="alert" className="settle flex gap-3 rounded-surface border border-[color-mix(in_oklab,var(--warn)_45%,transparent)] bg-card px-5 py-4 shadow-card">
+          <TriangleAlert className="mt-0.5 size-icon-lg shrink-0 text-(--warn)" aria-hidden />
+          <div className="min-w-0"><div className="text-title font-semibold">Your last edit to config.yaml wasn't applied</div>
+            <p className="mt-0.5 text-body text-muted-foreground">The page is still running the last version that worked. {page.configError.message ? 'Fix this and save again:' : 'The server log says what went wrong.'}</p>
+            {page.configError.message && <pre className="mt-2 overflow-x-auto rounded-md bg-foreground/[.06] px-3 py-2 font-mono text-meta leading-relaxed whitespace-pre-wrap text-foreground/85">{page.configError.message}</pre>}</div>
         </div>}
         {page?.welcome && view === 'all' && <Welcome path={page.welcome.path} saved={page.welcome.saved} setup={page.welcome.setup && !!page.assistant} ask={ask} />}
 
         {/* phones: the assistant's tab is its stats plus a way into the chat sheet */}
         {phone && chatTab && view === chatTab && page?.assistant && (
-          <button onClick={() => setChatOpen(true)} className="glass-round press flex h-12 items-center gap-2.5 rounded-sm px-5 text-left text-[16px] text-muted-foreground"><MessageCircle className="size-[18px]" />{label('ask', named)}</button>
+          <button onClick={() => setChatOpen(true)} className="glass-round press flex h-12 items-center gap-2.5 rounded-sm px-5 text-left text-[16px] text-muted-foreground"><MessageCircle className="size-icon-lg" />{label('ask', named)}</button>
         )}
         {!phone && chatTab && view === chatTab && page?.assistant && (
           <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_200px]">
-          <div data-slot="card" className="h-[calc(100dvh-7.5rem)] min-h-[520px] overflow-hidden rounded-[calc(var(--radius)*1.4)] border bg-card shadow-card">
+          <div data-slot="card" className="h-[calc(100dvh-7.5rem)] min-h-[520px] overflow-hidden rounded-surface border bg-card shadow-card">
             <Suspense fallback={null}>
               <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} onAsk={ask} ui={ui} attach={page.canAct !== false && !page.sandbox} />
             </Suspense>
@@ -756,13 +757,13 @@ function Home({ account }: { account: boolean }) {
           );
         })()}
         {closing && (
-          <div data-slot="card" className="review-end rounded-[calc(var(--radius)*1.4)] border bg-card shadow-card">
+          <div data-slot="card" className="review-end rounded-surface border bg-card shadow-card">
             <div className="min-w-0 flex-1">
-              <div className="text-[17px] font-medium">{label('review', { year: now.getFullYear() })}</div>
-              <div className="mt-0.5 truncate text-[14px] text-muted-foreground">{label('reviewMore')}</div>
+              <div className="text-title font-medium">{label('review', { year: now.getFullYear() })}</div>
+              <div className="mt-0.5 truncate text-item text-muted-foreground">{label('reviewMore')}</div>
             </div>
-            <a href="#recap" className="review-end-go press">{label('reviewGo')}<ArrowUp className="size-4 rotate-90" /></a>
-            <button onClick={e => { dissolve(e.currentTarget.closest('.review-end')); dismissReview(); }} aria-label={label('dismiss')} className="press grid size-8 flex-none place-items-center rounded-full text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
+            <a href="#recap" className="review-end-go press">{label('reviewGo')}<ArrowUp className="size-icon rotate-90" /></a>
+            <button onClick={e => { dissolve(e.currentTarget.closest('.review-end')); dismissReview(); }} aria-label={label('dismiss')} className="press grid size-8 flex-none place-items-center rounded-full text-muted-foreground hover:text-foreground"><X className="size-icon" /></button>
           </div>
         )}
       </main>

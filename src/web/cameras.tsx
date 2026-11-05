@@ -213,7 +213,7 @@ export function Cameras({ card }: { card: CamerasCard }) {
   const cam = card.cameras.find(c => c.id === at) ?? card.cameras[0], many = card.cameras.length > 1;
   const pick = (id: string) => { setAt(id); setStill(null); };
   const openEvent = useCallback((e: CameraEvent) => { setAt(e.camera); setStill(e); }, []);
-  if (!cam) return <p className="py-6 text-center text-sm text-muted-foreground">{card.empty ?? 'No cameras'}</p>;
+  if (!cam) return <p className="py-6 text-center text-item text-muted-foreground">{card.empty ?? 'No cameras'}</p>;
   return (
     <div className="cam-card @container">
       <div className={cn('cam-grid', many && 'has-pills')}>

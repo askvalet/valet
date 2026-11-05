@@ -108,7 +108,7 @@ function WallSection({ sec, state, titles }: { sec: Section; state: Record<strin
   }
   if (sec.display === 'rings') return (
     <section className="space-y-3" style={style}>{heading}
-      <div data-slot="card" className="grid gap-y-5 rounded-[calc(var(--radius)*1.4)] border bg-card px-4 py-5 shadow-card" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))' }}>
+      <div data-slot="card" className="grid gap-y-5 rounded-surface border bg-card px-4 py-5 shadow-card" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))' }}>
         {sec.widgets.flatMap(key => { const c = state[key]?.card; return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <Ring key={`${key}${j}`} s={t} />); })}
       </div></section>
   );

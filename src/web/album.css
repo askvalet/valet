@@ -6,9 +6,8 @@
 .album-strip::after { content: ""; position: absolute; inset: 45% 0 0; background: linear-gradient(to top, rgb(0 0 0 / .62), transparent); opacity: 0; transition: opacity var(--dur-move) var(--ease-out); pointer-events: none; }
 .album-strip.is-open::after { opacity: 1; }
 .album-note { position: absolute; z-index: 1; left: 18px; bottom: 15px; display: grid; gap: 1px; width: max-content; max-width: 340px; color: #fff; text-align: left; opacity: 0; translate: 0 6px; transition: opacity var(--dur-pop) var(--ease-out), translate var(--dur-pop) var(--ease-out); pointer-events: none; }
-.album-note b { font-size: 17px; font-weight: 600; }
-.album-note i { font-size: 13px; font-style: normal; opacity: .8; }
+.album-note b { font-size: var(--text-title); font-weight: 600; }
+.album-note i { font-size: var(--text-body); font-style: normal; opacity: .8; }
 .album-strip.is-open .album-note { opacity: 1; translate: 0; transition-delay: 160ms; }
-.album-strip:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 :is(.motion-none, .motion-reduced) .album-strip { transition: none; }
 @container (max-width: 560px) { .album-strip:nth-child(n+7) { display: none; } .album-strip.is-open { flex-grow: 9; } .album-note { left: 12px; bottom: 11px; } }

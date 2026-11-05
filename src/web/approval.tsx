@@ -58,21 +58,21 @@ export function Approval({ said, title, detail, icon, ready, answer, children, w
     dissolve(box.current?.closest('.is-asking') ?? box.current); answer(false);
   };
   const buttons = () => <>
-    <button onClick={() => choose(false)} disabled={chose != null} className="press h-9 flex-1 rounded-sm px-4 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:flex-none">{label('notNow')}</button>
-    <button disabled={!ready || chose != null} onClick={() => choose(true)} data-chosen={chose || undefined} className={cn('press approve relative h-9 flex-1 rounded-sm px-5 text-[14px] font-semibold transition-opacity sm:flex-none', chose ? '' : 'disabled:opacity-40', said?.danger ? 'bg-bad text-white' : 'bg-primary text-primary-foreground')}>
-      <span className={cn('transition-opacity duration-(--dur-press)', chose && 'opacity-0')}>{said?.verb ?? label('allow')}</span>{chose && <Tick draw className="absolute inset-0 m-auto size-[18px]" />}</button>
+    <button onClick={() => choose(false)} disabled={chose != null} className="press h-9 flex-1 rounded-sm px-4 text-item font-medium text-muted-foreground transition-colors hover:text-foreground sm:flex-none">{label('notNow')}</button>
+    <button disabled={!ready || chose != null} onClick={() => choose(true)} data-chosen={chose || undefined} className={cn('press approve relative h-9 flex-1 rounded-sm px-5 text-item font-medium transition-opacity sm:flex-none', chose ? '' : 'disabled:opacity-40', said?.danger ? 'bg-bad text-white' : 'bg-primary text-primary-foreground')}>
+      <span className={cn('transition-opacity duration-(--dur-press)', chose && 'opacity-0')}>{said?.verb ?? label('allow')}</span>{chose && <Tick draw className="absolute inset-0 m-auto size-icon-lg" />}</button>
   </>;
   return (
     // a slow beam around the edge: nothing goes further until this has an answer
-    <BorderBeam size="md" colorVariant={said?.danger ? 'sunset' : 'gold'} strength={.6} duration={3.2} className="chat-card is-asking rounded-2xl" style={{ display: 'block', width }}>
-    <div ref={box} className="overflow-hidden rounded-2xl border bg-card shadow-card">
+    <BorderBeam size="md" colorVariant={said?.danger ? 'sunset' : 'gold'} strength={.6} duration={3.2} className="chat-card is-asking rounded-surface" style={{ display: 'block', width }}>
+    <div ref={box} className="overflow-hidden rounded-surface border bg-card shadow-card">
       <div className="flex items-center gap-3.5 p-3.5">
-        {said?.image ? <img src={said.image} alt="" className="h-[84px] w-14 shrink-0 rounded-lg object-cover shadow-md" />
-          : said?.logo ? <img src={said.logo} alt="" className="size-11 shrink-0 rounded-xl object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />
-          : <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/10"><Icon name={said?.icon ?? icon} className="size-5" /></span>}
+        {said?.image ? <img src={said.image} alt="" className="h-[84px] w-14 shrink-0 rounded-poster object-cover shadow-md" />
+          : said?.logo ? <img src={said.logo} alt="" className="size-11 shrink-0 rounded-control object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />
+          : <span className="grid size-11 shrink-0 place-items-center rounded-control bg-fill-2"><Icon name={said?.icon ?? icon} className="size-icon-lg" /></span>}
         <div className="min-w-0 flex-1">
-          <div className="text-[15px] leading-snug font-semibold text-pretty">{title}</div>
-          {detail && <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">{detail}</div>}
+          <div className="text-title leading-snug font-semibold text-pretty">{title}</div>
+          {detail && <div className="mt-0.5 text-body leading-snug text-muted-foreground">{detail}</div>}
         </div>
         <div className="hidden shrink-0 gap-2 sm:flex">{buttons()}</div>
       </div>

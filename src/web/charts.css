@@ -7,13 +7,13 @@
 .race { --row: 54px; --bar: var(--meter-lg); --knob: 18px; --race-lead: var(--primary); --race-bar: var(--meter-rest); --race-track: var(--meter-track); min-width: 0; }
 .race-row[data-tint] { --race-lead: var(--tint-strong); --race-bar: var(--tint-soft); }
 .race-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
-.race-date { font-size: 30px; line-height: 1; letter-spacing: -.01em; }
-.race-span { min-width: 0; overflow: hidden; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; color: var(--muted-foreground); }
+.race-date { font-size: var(--text-metric-m); line-height: 1; letter-spacing: -.01em; }
+.race-span { min-width: 0; overflow: hidden; font-size: var(--text-body); white-space: nowrap; text-overflow: ellipsis; color: var(--muted-foreground); }
 .race-field { position: relative; overflow: hidden; }
 .race-row { position: absolute; inset: 0 0 auto; display: flex; align-items: center; gap: 12px; height: var(--row); }
-.race-art { flex: none; height: calc(var(--row) - 12px); aspect-ratio: 2 / 3; border-radius: 6px; object-fit: cover; background: var(--muted); box-shadow: 0 0 0 .5px color-mix(in oklab, var(--foreground) 14%, transparent), 0 2px 6px rgb(0 0 0 / .18); }
+.race-art { flex: none; height: calc(var(--row) - 12px); aspect-ratio: 2 / 3; border-radius: var(--radius-thumb); object-fit: cover; background: var(--muted); box-shadow: 0 0 0 .5px color-mix(in oklab, var(--foreground) 14%, transparent), 0 2px 6px rgb(0 0 0 / .18); }
 .race-lane { flex: 1; min-width: 0; }
-.race-name { display: block; overflow: hidden; margin-bottom: 5px; font-size: 13px; font-weight: 500; line-height: 16px; white-space: nowrap; text-overflow: ellipsis; }
+.race-name { display: block; overflow: hidden; margin-bottom: 5px; font-size: var(--text-body); font-weight: 500; line-height: 16px; white-space: nowrap; text-overflow: ellipsis; }
 .race-line { position: relative; height: var(--bar); margin-right: 58px; }
 .race-track { position: absolute; inset: 0; overflow: hidden; border-radius: 99px; background: var(--race-track); }
 .race-bar { position: absolute; inset: 0; border-radius: 99px; background: var(--race-bar); }
@@ -21,14 +21,13 @@
 .race-row.is-lead .race-bar b { opacity: 1; }
 .race-end { position: absolute; inset: 0; pointer-events: none; }
 .is-running :is(.race-row, .race-bar, .race-end) { will-change: transform; }
-.race-end span { position: absolute; left: 8px; top: 50%; font-size: 12px; font-weight: 500; line-height: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted-foreground); transform: translateY(-50%); }
+.race-end span { position: absolute; left: 8px; top: 50%; font-size: var(--text-meta); font-weight: 500; line-height: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted-foreground); transform: translateY(-50%); }
 .race-row.is-lead .race-end span { color: var(--foreground); }
 
 /* the timeline: a play button, then the year as a track that fills as it goes */
 .race-foot { display: flex; align-items: flex-start; gap: 12px; margin-top: 14px; }
 .race-play { flex: none; display: grid; place-items: center; width: 32px; height: 32px; margin-top: -4px; border-radius: 99px; color: #16161a; background: var(--foreground); }
 :root:not(.dark) .race:not(.rc-race > *) .race-play { color: #fff; }
-.race-play:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .race-scale { position: relative; flex: 1; min-width: 0; }
 /* the year so far is a meter too: its track, its neutral step, its middle height */
 .race-scrub { --fill: var(--meter-rest); --empty: var(--meter-track);
@@ -39,12 +38,12 @@
 .race-scrub::-webkit-slider-thumb { appearance: none; width: var(--knob); height: var(--knob); margin-top: calc((var(--meter-md) - var(--knob)) / 2); border: 0; border-radius: 99px; background: #fff; box-shadow: 0 0 0 .5px rgb(0 0 0 / .14), 0 1px 4px rgb(0 0 0 / .3); transition: scale var(--dur-move) var(--ease-out); }
 .race-scrub::-moz-range-thumb { width: var(--knob); height: var(--knob); border: 0; border-radius: 99px; background: #fff; box-shadow: 0 0 0 .5px rgb(0 0 0 / .14), 0 1px 4px rgb(0 0 0 / .3); }
 .race-scrub:active::-webkit-slider-thumb { scale: 1.15; }
-.race-scrub:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 99px; }
-.race-months { position: relative; height: 15px; margin-top: 2px; font-size: 11px; line-height: 15px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.race-scrub:focus-visible { border-radius: 99px; }
+.race-months { position: relative; height: 15px; margin-top: 2px; font-size: var(--text-caption); line-height: 15px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
 .race-months span { position: absolute; top: 0; translate: -50% 0; white-space: nowrap; }
 .race-months span:first-child { left: 0; translate: none; }
 .race-months span:last-child { right: 0; left: auto; translate: none; }
-@media (max-width: 480px) { .race { --row: 50px; } .race-head { margin-bottom: 12px; } .race-date { font-size: 28px; } }
+@media (max-width: 480px) { .race { --row: 50px; } .race-head { margin-bottom: 12px; } .race-date { font-size: var(--text-metric-m); } }
 
 /* the stream sits where the columns would, and shares their tip and axis */
 .stream { position: absolute; inset: 0; touch-action: pan-y; }
@@ -61,7 +60,7 @@
 .heat-3 { fill: color-mix(in oklab, var(--primary) 78%, transparent); }
 .heat-4 { fill: var(--primary); }
 .heat-at { fill: none; stroke: var(--foreground); stroke-width: 1; }
-.heat-months { position: relative; height: 16px; font-size: 11px; line-height: 14px; color: var(--muted-foreground); }
+.heat-months { position: relative; height: 16px; font-size: var(--text-caption); line-height: 14px; color: var(--muted-foreground); }
 .heat-months span { position: absolute; top: 0; }
 .heatmap { container-type: inline-size; display: flex; flex: 1; flex-direction: column; }
 .heatmap .heat-months { margin-top: auto; }

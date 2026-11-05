@@ -242,8 +242,8 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
               <div className="rc-chips" role="group" aria-label="Numbers on the card">
                 {r.stats.filter(st => !(bare && revealing(r, st))).map(st => { const on = list.includes(st); return <button key={st.label} aria-pressed={on} disabled={!on && list.length >= CARD_MAX} onClick={() => toggle(st.label)} className="press rc-pill">{st.label}</button>; })}
               </div>
-              <button onClick={() => setBare(b => !b)} aria-pressed={bare} className="press rc-btn">{bare ? <Eye className="size-4" /> : <EyeOff className="size-4" />}{bare ? 'Show posters and details' : 'Hide posters, names and network'}</button>
-              <button onClick={save} className="press rc-btn rc-primary"><Download className="size-4" />Save picture</button>
+              <button onClick={() => setBare(b => !b)} aria-pressed={bare} className="press rc-btn">{bare ? <Eye className="size-icon" /> : <EyeOff className="size-icon" />}{bare ? 'Show posters and details' : 'Hide posters, names and network'}</button>
+              <button onClick={save} className="press rc-btn rc-primary"><Download className="size-icon" />Save picture</button>
             </div>
           </div>
         : s && <Slide s={s} year={r.year} />}
@@ -252,12 +252,12 @@ export default function RecapStory({ onClose, year, wallpaper }: { onClose: () =
       {!!r?.slides.length && <div className="rc-seg" aria-hidden>{Array.from({ length: last + 1 }, (_, n) => <span key={n}><i className={n === i && !done ? 'on' : ''} style={n < i || done ? { animation: 'none' } : n === i ? { animationDuration: `${ms}ms`, animationPlayState: running ? 'running' : 'paused' } : { transform: 'scaleX(0)' }} /></span>)}</div>}
       {hint && i < 2 && !text && <div className="rc-hint">Tap the right to go on, the left to go back. Hold to pause. Arrow keys work too.</div>}
       {!!r?.slides.length && !text && <div className="rc-ctl">
-        <button aria-label="Previous" disabled={i === 0} onClick={() => go(-1)} className="press"><ChevronLeft className="size-5" /></button>
-        <button aria-label={paused ? 'Play' : 'Pause'} disabled={done} onClick={() => setPaused(p => !p)} className="press">{paused ? <Play className="size-[18px]" /> : <Pause className="size-[18px]" />}</button>
-        <button aria-label="Next" disabled={done} onClick={() => go(1)} className="press"><ChevronRight className="size-5" /></button>
+        <button aria-label="Previous" disabled={i === 0} onClick={() => go(-1)} className="press"><ChevronLeft className="size-icon-lg" /></button>
+        <button aria-label={paused ? 'Play' : 'Pause'} disabled={done} onClick={() => setPaused(p => !p)} className="press">{paused ? <Play className="size-icon-lg" /> : <Pause className="size-icon-lg" />}</button>
+        <button aria-label="Next" disabled={done} onClick={() => go(1)} className="press"><ChevronRight className="size-icon-lg" /></button>
         <span>{i + 1} of {last + 1}</span>
       </div>}
-      {!!r?.slides.length && <button aria-label="Read as text" aria-pressed={text} onClick={() => setText(t => !t)} className="press absolute top-6 right-16 z-10 grid size-10 place-items-center rounded-full bg-black/40 backdrop-blur-md"><AlignLeft className="size-5" /></button>}
-      <button aria-label="Close" onClick={onClose} className="press absolute top-6 right-4 z-10 grid size-10 place-items-center rounded-full bg-black/40 backdrop-blur-md"><X className="size-5" /></button>
+      {!!r?.slides.length && <button aria-label="Read as text" aria-pressed={text} onClick={() => setText(t => !t)} className="press absolute top-6 right-16 z-10 grid size-10 place-items-center rounded-full bg-black/40 backdrop-blur-md"><AlignLeft className="size-icon-lg" /></button>}
+      <button aria-label="Close" onClick={onClose} className="press absolute top-6 right-4 z-10 grid size-10 place-items-center rounded-full bg-black/40 backdrop-blur-md"><X className="size-icon-lg" /></button>
     </div>, document.body);
 }

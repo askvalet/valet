@@ -52,8 +52,8 @@ const Deck = memo(function Deck({ id, items, title, archive, leaving }: { id: st
                 {line && <small>{line}</small>}
               </span>
               {(archive && it.id || it.href) && <span className="deck-tools">
-                {archive && it.id && <button type="button" aria-label={`Archive ${it.title}`} title="Archive" onClick={e => archive(it.id!, e.currentTarget.closest('.deck-card'))}><Archive className="size-[15px]" /></button>}
-                {it.href && <a href={it.href} target="_blank" rel="noreferrer" tabIndex={-1} aria-hidden title="Open"><ArrowUpRight className="size-4" /></a>}
+                {archive && it.id && <button type="button" aria-label={`Archive ${it.title}`} title="Archive" onClick={e => archive(it.id!, e.currentTarget.closest('.deck-card'))}><Archive className="size-icon" /></button>}
+                {it.href && <a href={it.href} target="_blank" rel="noreferrer" tabIndex={-1} aria-hidden title="Open"><ArrowUpRight className="size-icon" /></a>}
               </span>}
             </div>
           </div>

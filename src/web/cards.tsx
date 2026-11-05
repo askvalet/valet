@@ -13,6 +13,7 @@ import { Masonry } from './masonry.tsx';
 import { CardStack } from './cardstack.tsx';
 import { chartless, flow, Heatmap, hue, Race, smooth, Stream, tintOf, type Tint, Waffle } from './charts.tsx';
 import { Button } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -95,10 +96,10 @@ function Donut({ slices, center }: { slices: NonNullable<StatsCard['pie']>; cent
         </svg>
         {center && <span className="metric absolute inset-0 grid place-items-center text-[15px]">{center}</span>}
       </div>
-      <ul className="min-w-0 flex-1 space-y-1 text-[13px]">
+      <ul className="min-w-0 flex-1 space-y-1 text-body">
         {slices.map((s, i) => (
           <li key={s.label} className="flex items-center gap-2">
-            <span className="size-2 shrink-0 rounded-full" style={{ background: s.tone ? toneVar(s.tone) : colors[i % 4] }} />
+            <span className="dot dot-lg" style={{ background: s.tone ? toneVar(s.tone) : colors[i % 4] }} />
             <span className="min-w-0 flex-1 truncate text-muted-foreground">{s.label}</span>
             <span className="tabular">{written(s.value)}</span>
           </li>
@@ -124,7 +125,7 @@ function Stats({ card }: { card: StatsCard }) {
           <div className={cn('metric leading-[0.95]', dense ? 'text-[26px]' : 'text-[44px]', toneText[hero.tone ?? 'neutral'])}>
             <Counter value={hero.value} />{hero.unit && <span className={cn('ml-1 font-medium tracking-normal text-muted-foreground', dense ? 'text-[13px]' : 'text-[18px]')}>{hero.unit}</span>}
           </div>
-          <div className={cn('truncate text-muted-foreground', dense ? 'mt-1 text-[12px]' : 'mt-1.5 text-[13px]')}>{[hero.label, hero.sub].filter(Boolean).join(' · ')}</div>
+          <div className={cn('truncate text-muted-foreground', dense ? 'mt-1 text-meta' : 'mt-1.5 text-body')}>{[hero.label, hero.sub].filter(Boolean).join(' · ')}</div>
         </div>
         {!behind && <div className={cn('min-w-0 flex-1 pb-1', dense && 'max-h-9 overflow-hidden')}>
           {trend ? <Spark points={trend} tone={hero.tone} /> : hero.pct != null ? <Meter pct={hero.pct} tone={hero.tone} /> : null}
@@ -134,9 +135,9 @@ function Stats({ card }: { card: StatsCard }) {
         <div className={cn('grid divide-x border-t', dense ? 'pt-2.5' : 'pt-3.5')} style={{ gridTemplateColumns: `repeat(${facts.length}, minmax(0, 1fr))` }}>
           {facts.map(f => (
             <div key={f.label} className="min-w-0 px-3 first:pl-0 last:pr-0">
-              <div className={cn('truncate text-muted-foreground', dense ? 'text-[11px]' : 'text-[12px]')}>{f.label}</div>
+              <div className={cn('truncate text-muted-foreground', dense ? 'text-caption' : 'text-meta')}>{f.label}</div>
               <div className={cn('metric truncate', dense ? 'text-[14px]' : 'text-[17px]', toneText[f.tone ?? 'neutral'])}>
-                <Counter value={f.value} />{f.unit && <span className="ml-0.5 text-[12px] font-medium text-muted-foreground">{f.unit}</span>}
+                <Counter value={f.value} />{f.unit && <span className="ml-0.5 text-meta font-medium text-muted-foreground">{f.unit}</span>}
               </div>
             </div>
           ))}
@@ -146,7 +147,7 @@ function Stats({ card }: { card: StatsCard }) {
   );
 }
 
-const Empty = ({ text }: { text: string }) => <p className="py-6 text-center text-sm text-muted-foreground">{text}</p>;
+const Empty = ({ text }: { text: string }) => <p className="py-6 text-center text-item text-muted-foreground">{text}</p>;
 
 function List({ card, run }: { card: ListCard; run?: RunAction }) {
   const dense = useContext(Dense);
@@ -169,8 +170,8 @@ function Headlines({ card }: { card: ListCard }) {
             {it.image ? <img src={it.image} alt="" loading="lazy" className="headline-art" />
               : h && <span className="headline-mark"><img src={`/api/favicon/${h}`} alt="" loading="lazy" onError={e => { e.currentTarget.style.display = 'none'; }} /></span>}
             <span className="min-w-0">
-              <span className="line-clamp-2 text-[14px] leading-snug font-medium">{it.title}</span>
-              <span className="mt-1 block truncate text-xs text-muted-foreground">{[h ?? it.subtitle, it.meta].filter(Boolean).join(' · ')}</span>
+              <span className="line-clamp-2 text-item leading-snug font-medium">{it.title}</span>
+              <span className="mt-1 block truncate text-meta text-muted-foreground">{[h ?? it.subtitle, it.meta].filter(Boolean).join(' · ')}</span>
             </span>
           </a>
         );
@@ -187,12 +188,12 @@ function Temps({ card }: { card: ListCard }) {
         const at = Math.max(0, Math.min(1, it.pct ?? 0));
         return (
           <div key={i} className="min-w-0">
-            <div className="flex items-baseline justify-between gap-3 text-sm">
+            <div className="flex items-baseline justify-between gap-3 text-item">
               <span className="truncate font-medium">{it.title}</span>
-              <span className="shrink-0 tabular"><Counter value={it.meta ?? ''} className={cn('font-medium', toneText[it.tone ?? 'neutral'])} /> <span className="text-xs text-muted-foreground">now</span></span>
+              <span className="shrink-0 tabular"><Counter value={it.meta ?? ''} className={cn('font-medium', toneText[it.tone ?? 'neutral'])} /> <span className="text-meta text-muted-foreground">now</span></span>
             </div>
             <Meter scale pct={at} label={`${it.title} temperature`} valuetext={it.meta} className="mt-1.5" />
-            {it.subtitle && <div className={cn('mt-1 truncate text-xs', it.tone === 'bad' ? 'text-bad' : 'text-muted-foreground')}>{it.subtitle}</div>}
+            {it.subtitle && <div className={cn('mt-1 truncate text-meta', it.tone === 'bad' ? 'text-bad' : 'text-muted-foreground')}>{it.subtitle}</div>}
           </div>
         );
       })}
@@ -207,14 +208,14 @@ function Chips({ card }: { card: ListCard }) {
   return (
     <div className="flex flex-wrap gap-2">
       {(cap && !all ? card.items.slice(0, cap) : card.items).map((it, i) => (
-        <a key={i} href={it.href} target="_blank" rel="noreferrer" className={cn('chip', !it.badge && it.tone === 'warn' && 'is-warn', !it.href && 'pointer-events-none', i >= (cap || Infinity) && 'chip-in')}>
-          {(it.image || slug(it.title)) && <img src={it.image ?? `/api/icon/${slug(it.title)}`} alt="" className="size-[18px] rounded-[5px] object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />}
+        <Chip as="a" key={i} href={it.href} target="_blank" rel="noreferrer" className={cn('chip', !it.badge && it.tone === 'warn' && 'is-warn', !it.href && 'pointer-events-none', i >= (cap || Infinity) && 'chip-in')}>
+          {(it.image || slug(it.title)) && <img src={it.image ?? `/api/icon/${slug(it.title)}`} alt="" className="size-icon-lg rounded-thumb object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />}
           <span className="font-medium">{it.title}</span>
           {(it.subtitle || it.meta) && <span className="max-w-[180px] truncate text-muted-foreground" title={it.subtitle}>{it.subtitle ?? it.meta}</span>}
           {it.badge && <span className={cn('chip-mark', it.tone === 'warn' && 'text-warn')}>{it.badge}</span>}
-        </a>
+        </Chip>
       ))}
-      {cap > 0 && <button type="button" className="chip chip-more" aria-expanded={all} onClick={() => setAll(a => !a)}>{all ? 'Fewer' : `${card.items.length} in all`}</button>}
+      {cap > 0 && <Chip variant="ghost" aria-expanded={all} onClick={() => setAll(a => !a)}>{all ? 'Fewer' : `${card.items.length} in all`}</Chip>}
     </div>
   );
 }
@@ -239,21 +240,21 @@ function Rows({ card, dense, run }: { card: ListCard; dense: boolean; run?: RunA
   return (
     <ul className="-my-1 divide-y">
       {rows.map(({ key, item: it, state }, i) => <Fragment key={key}>
-        {it.section && it.section !== rows[i - 1]?.item.section && <li className="pt-2.5 pb-1 text-xs font-medium text-muted-foreground first:pt-1">{it.section}</li>}
+        {it.section && it.section !== rows[i - 1]?.item.section && <li className="pt-2.5 pb-1 text-meta font-medium text-muted-foreground first:pt-1">{it.section}</li>}
         <RowSlot as="li" state={card.log || state === 'out' ? state : undefined} on={on} dust={dust}><Row className={cn('flex min-w-0 items-center gap-3', dense ? 'py-1.5' : 'py-2.5', it.href && 'row-link -mx-2 cursor-pointer px-2 transition-colors hover:bg-accent')}
           onClick={it.href ? () => window.open(it.href, '_blank', 'noopener') : undefined} role={it.href ? 'link' : undefined}>
           {it.image && <img src={it.image} alt="" loading="lazy" className={cn('shrink-0 rounded-md bg-muted object-cover', dense ? 'h-9 w-6' : 'h-12 w-8')} />}
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-3">
-              <div className={cn('min-w-0 flex-1 font-medium', dense ? 'text-[13px]' : 'text-sm', it.href && !dense ? 'line-clamp-2 leading-snug' : 'truncate')}>{it.title}</div>
+              <div className={cn('min-w-0 flex-1 font-medium', dense ? 'text-body' : 'text-item', it.href && !dense ? 'line-clamp-2 leading-snug' : 'truncate')}>{it.title}</div>
               {(it.trend?.length ?? 0) > 1 && <RowLine points={it.trend!} tone={it.tone} />}
-              {it.meta && <div className="shrink-0 text-xs tabular text-muted-foreground">{it.meta}</div>}
+              {it.meta && <div className="shrink-0 text-meta tabular text-muted-foreground">{it.meta}</div>}
               {it.link && <LinkButton link={it.link} className="self-center" />}
               {it.dot && <span className={cn('dot size-1.5', it.dot === 'good' ? 'dot-good' : 'dot-bad')} style={it.dot === 'warn' ? { background: 'var(--warn)' } : undefined} title={it.dot === 'good' ? 'Healthy' : undefined} />}
-              {it.href && <ArrowUpRight className="row-arrow size-3.5 shrink-0 text-muted-foreground" />}
+              {it.href && <ArrowUpRight className="row-arrow size-icon-sm shrink-0 text-muted-foreground" />}
             </div>
-            {it.subtitle && <div className={cn('truncate text-xs', it.tone && it.tone !== 'neutral' ? toneText[it.tone] : 'text-muted-foreground')}>{it.subtitle}</div>}
-            {it.detail && <Clamp text={it.detail} className="mt-1 text-[13px] leading-snug text-foreground/70" />}
+            {it.subtitle && <div className={cn('truncate text-meta', it.tone && it.tone !== 'neutral' ? toneText[it.tone] : 'text-muted-foreground')}>{it.subtitle}</div>}
+            {it.detail && <Clamp text={it.detail} className="mt-1 text-body leading-snug text-foreground/70" />}
             {it.pct != null && <Meter pct={it.pct} tone={it.tone} rest size={dense ? 'sm' : 'md'} className={dense ? 'mt-1' : 'mt-2'} />}
             {it.buttons?.length && run ? <RowButtons buttons={it.buttons} run={run} /> : null}
           </div>
@@ -267,7 +268,7 @@ function Rows({ card, dense, run }: { card: ListCard; dense: boolean; run?: RunA
 function RowButtons({ buttons, run }: { buttons: NonNullable<ListCard['items'][number]['buttons']>; run: RunAction }) {
   const [busy, setBusy] = useState<string | null>(null);
   return (
-    <div className="mt-1 flex gap-3 text-xs">
+    <div className="mt-1 flex gap-3 text-meta">
       {buttons.map(b => (
         <button key={b.label} type="button" disabled={!!busy} onClick={e => { e.stopPropagation(); setBusy(b.label); void run(b.action, b.args).then(() => play('done'), () => play('no')).finally(() => setBusy(null)); }}
           className={cn('title-link text-foreground/75 transition-opacity disabled:opacity-50', busy === b.label && 'chat-shimmer')}>{b.label}</button>
@@ -279,7 +280,7 @@ function RowButtons({ buttons, run }: { buttons: NonNullable<ListCard['items'][n
 /** An app icon that falls back to the service's initial if no icon exists. */
 function AppIcon({ src, name, small }: { src?: string; name: string; small?: boolean }) {
   const [failed, setFailed] = useState(false);
-  const size = small ? 'size-[18px]' : 'size-7';
+  const size = small ? 'size-icon-lg' : 'size-7';
   if (!src) return null;
   if (failed) return <span className={cn(size, 'shrink-0')} aria-hidden />;   // no icon found: just the space, so names still line up
   return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className={cn(size, 'shrink-0 object-contain')} />;
@@ -295,18 +296,18 @@ function ServiceRow({ s, minimal }: { s: StatusCard['items'][number]; minimal?: 
   const st = stateOf(s), dot = DOT[st];
   // minimal: one tight line, icon, name and the dot; hover says what's wrong
   if (minimal) return (
-    <Tile href={s.href} title={stateTip(s)} className={cn('flex min-w-0 break-inside-avoid items-center gap-2.5 rounded-lg px-2 py-1 transition-colors', s.href && 'hover:bg-accent')}>
+    <Tile href={s.href} title={stateTip(s)} className={cn('flex min-w-0 break-inside-avoid items-center gap-2.5 rounded-control px-2 py-1 transition-colors', s.href && 'hover:bg-accent')}>
       <AppIcon src={s.icon} name={s.name} small />
-      <span className="min-w-0 flex-1 truncate text-[13px]">{s.name}</span>
+      <span className="min-w-0 flex-1 truncate text-body">{s.name}</span>
       <span className={cn('dot size-1.5', dot)} />
     </Tile>
   );
   return (
-    <Tile href={s.href} title={stateTip(s)} className={cn('flex min-w-0 break-inside-avoid items-center gap-3 rounded-xl px-2 py-2 transition-colors', s.href && 'hover:bg-accent')}>
+    <Tile href={s.href} title={stateTip(s)} className={cn('flex min-w-0 break-inside-avoid items-center gap-3 rounded-control px-2 py-2 transition-colors', s.href && 'hover:bg-accent')}>
       <AppIcon src={s.icon} name={s.name} />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium">{s.name}</div>
-        <div className={cn('truncate text-xs tabular', st === 'down' ? 'text-bad' : st === 'degraded' ? 'text-warn' : 'text-muted-foreground')}>{stateLine(s)}</div>
+        <div className="truncate text-item font-medium">{s.name}</div>
+        <div className={cn('truncate text-meta tabular', st === 'down' ? 'text-bad' : st === 'degraded' ? 'text-warn' : 'text-muted-foreground')}>{stateLine(s)}</div>
       </div>
       <span className={cn('dot', dot)} />
     </Tile>
@@ -316,7 +317,7 @@ function ServiceRow({ s, minimal }: { s: StatusCard['items'][number]; minimal?: 
 /** An app's icon, or a plain box when it has none, so a wall never has a blank tile. */
 function Glyph({ src }: { src?: string }) {
   const [failed, setFailed] = useState(false);
-  if (!src || failed) return <span className="wall-box"><Box className="size-4" /></span>;
+  if (!src || failed) return <span className="wall-box"><Box className="size-icon" /></span>;
   return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className="object-contain" />;
 }
 
@@ -360,7 +361,7 @@ function Status({ card, columns, minimal }: { card: StatusCard; columns?: number
       {groups.map(g => (
         // a sidebar list: groups flow on across its columns
         <div key={g} className={cn('break-inside-auto', minimal ? 'mb-2' : 'mb-3')}>
-          <div className={cn('break-after-avoid px-2 font-medium text-muted-foreground', minimal ? 'pt-1 pb-0.5 text-[11px]' : 'pt-1 pb-1.5 text-xs')}>{g || '\u00a0'}</div>
+          <div className={cn('break-after-avoid px-2 font-medium text-muted-foreground', minimal ? 'pt-1 pb-0.5 text-caption' : 'pt-1 pb-1.5 text-meta')}>{g || '\u00a0'}</div>
           {card.items.filter(i => (i.group ?? '') === g).map(s => <ServiceRow key={s.name} s={s} minimal={minimal} />)}
         </div>
       ))}
@@ -384,7 +385,7 @@ function Balanced({ groups, minimal }: { groups: { g: string; items: StatusCard[
         const span = side ? widths(rows)[i] : room, down = side ? rows : Math.ceil(items.length / room);
         return (
           <div key={g} className="min-w-0" style={{ gridColumn: `span ${span}` }}>
-            {g && <div className={cn('px-2 font-medium text-muted-foreground', minimal ? 'pt-1 pb-0.5 text-[11px]' : 'pt-1 pb-1.5 text-xs')}>{g}</div>}
+            {g && <div className={cn('px-2 font-medium text-muted-foreground', minimal ? 'pt-1 pb-0.5 text-caption' : 'pt-1 pb-1.5 text-meta')}>{g}</div>}
             <div className="grid gap-x-4" style={{ gridAutoFlow: 'column', gridTemplateRows: `repeat(${down}, auto)`, gridTemplateColumns: `repeat(${span}, minmax(0, 1fr))` }}>
               {items.map(s => <ServiceRow key={s.name} s={s} minimal={minimal} />)}
             </div>
@@ -425,14 +426,14 @@ function UndoBar({ a }: { a: ReturnType<typeof useArchive> }) {
   if (!a.last && !a.slip) return null;
   return <div className="undo-bar" role="status">{a.slip || <>Archived<button type="button" onClick={() => a.undo()}>Undo</button></>}</div>;
 }
-const SeeArchived = ({ href, className }: { href?: string; className?: string }) => href ? <a href={href} target="_blank" rel="noreferrer" className={cn('title-link text-xs text-muted-foreground', className)}>See archived</a> : null;
+const SeeArchived = ({ href, className }: { href?: string; className?: string }) => href ? <a href={href} target="_blank" rel="noreferrer" className={cn('title-link text-meta text-muted-foreground', className)}>See archived</a> : null;
 
 /** The reading pile: each thing saved with the page itself filling the card, the next ones showing behind it. Flick through
  *  it, or use the controls, which stay put while the cards change. Hover and the page scrolls by, as if you'd started reading. */
 function Article({ card, run }: { card: ArticleCard; run?: RunAction }) {
   const [at, setAt] = useState(0), arch = useArchive(run);
   const pile = (card.more?.length ? card.more : [card]).filter(a => !a.id || !arch.gone.includes(a.id)), now = Math.min(at, pile.length - 1), a = pile[now];
-  if (!a?.headline) return <div className="relative grid h-full min-h-[200px] place-items-center rounded-2xl bg-card text-sm text-muted-foreground shadow-card">{card.empty ?? 'Nothing saved to read'}<div className="article-corner"><UndoBar a={arch} /></div></div>;
+  if (!a?.headline) return <div className="relative grid h-full min-h-[200px] place-items-center rounded-surface bg-card text-item text-muted-foreground shadow-card">{card.empty ?? 'Nothing saved to read'}<div className="article-corner"><UndoBar a={arch} /></div></div>;
   const n = pile.length, top = a.link ?? card.href;
   const face = (i: number) => {
     const p = pile[i], link = p.link ?? card.href;
@@ -441,9 +442,9 @@ function Article({ card, run }: { card: ArticleCard; run?: RunAction }) {
         {p.image && <img src={p.image} alt="" draggable={false} className="article-page" />}
         {link && <a href={link} target="_blank" rel="noreferrer" aria-label={p.headline} className="article-open" />}
         <div className="article-text">
-          <div className="flex items-center gap-1.5 text-[12px] font-medium text-white/70">{card.source?.icon && <img src={card.source.icon} alt="" className="size-3.5 object-contain" />}<span className="truncate">{[card.title, p.site].filter(Boolean).join(' · ')}</span>{n > 1 && <span className="ml-auto shrink-0 tabular">{i + 1} of {n}</span>}</div>
-          <div className="mt-1 line-clamp-2 text-[19px] leading-tight font-semibold tracking-tight text-pretty text-white">{p.headline}</div>
-          {p.blurb && <Clamp text={p.blurb} className="article-blurb mt-1.5 text-[14px] leading-snug text-white/75" />}
+          <div className="flex items-center gap-1.5 text-meta font-medium text-white/70">{card.source?.icon && <img src={card.source.icon} alt="" className="size-3.5 object-contain" />}<span className="truncate">{[card.title, p.site].filter(Boolean).join(' · ')}</span>{n > 1 && <span className="ml-auto shrink-0 tabular">{i + 1} of {n}</span>}</div>
+          <div className="mt-1 line-clamp-2 text-metric-s leading-tight font-semibold tracking-tight text-pretty text-white">{p.headline}</div>
+          {p.blurb && <Clamp text={p.blurb} className="article-blurb mt-1.5 text-item leading-snug text-white/75" />}
         </div>
       </div>
     );
@@ -452,10 +453,10 @@ function Article({ card, run }: { card: ArticleCard; run?: RunAction }) {
     <Pile count={n} at={now} go={setAt} id={i => pile[i].id ?? pile[i].headline ?? String(i)} card={face} label={card.title ?? 'Reading'} status={n > 1 ? `${now + 1} of ${n}: ${a.headline}` : undefined} over={<>
       {arch.last || arch.slip ? <div className="article-corner"><UndoBar a={arch} /></div> : card.archived && run ? <div className="article-corner"><SeeArchived href={card.archived} className="article-chip" /></div> : null}
       {n > 1 || (run && a.id) ? <div className="article-tools">
-        {n > 1 && <button type="button" aria-label="Previous" title="Previous" aria-disabled={now === 0} onClick={() => { if (now > 0) setAt(now - 1); }}><ChevronLeft className="size-4" /></button>}
-        {run && a.id && <button type="button" aria-label="Archive" title="Archive" onClick={e => arch.archive(a.id!, e.currentTarget.closest('.pile')?.querySelector('.pile-card[data-at="0"] .article'))}><Archive className="size-[15px]" /></button>}
-        {top && <a href={top} target="_blank" rel="noreferrer" aria-label="Open" title="Open"><ArrowUpRight className="size-4" /></a>}
-        {n > 1 && <button type="button" aria-label="Next" title="Next" aria-disabled={now === n - 1} onClick={() => { if (now < n - 1) setAt(now + 1); }}><ChevronRight className="size-4" /></button>}
+        {n > 1 && <button type="button" aria-label="Previous" title="Previous" aria-disabled={now === 0} onClick={() => { if (now > 0) setAt(now - 1); }}><ChevronLeft className="size-icon" /></button>}
+        {run && a.id && <button type="button" aria-label="Archive" title="Archive" onClick={e => arch.archive(a.id!, e.currentTarget.closest('.pile')?.querySelector('.pile-card[data-at="0"] .article'))}><Archive className="size-icon" /></button>}
+        {top && <a href={top} target="_blank" rel="noreferrer" aria-label="Open" title="Open"><ArrowUpRight className="size-icon" /></a>}
+        {n > 1 && <button type="button" aria-label="Next" title="Next" aria-disabled={now === n - 1} onClick={() => { if (now < n - 1) setAt(now + 1); }}><ChevronRight className="size-icon" /></button>}
       </div> : null}
     </>} />
   );
@@ -467,10 +468,10 @@ function Links({ card }: { card: LinksCard }) {
   return (
     <div className="-mx-2 grid gap-0.5" style={{ gridTemplateColumns: dense ? undefined : 'repeat(auto-fill, minmax(180px, 1fr))' }}>
       {card.items.map(l => (
-        <a key={l.href + l.name} href={l.href} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent">
+        <a key={l.href + l.name} href={l.href} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-2.5 rounded-control px-2 py-1.5 transition-colors hover:bg-accent">
           <AppIcon src={l.icon} name={l.name} small />
-          <span className="min-w-0 flex-1 truncate text-[13px]">{l.name}</span>
-          {l.note && <span className="shrink-0 truncate text-[11px] text-muted-foreground">{l.note}</span>}
+          <span className="min-w-0 flex-1 truncate text-body">{l.name}</span>
+          {l.note && <span className="shrink-0 truncate text-caption text-muted-foreground">{l.note}</span>}
         </a>
       ))}
     </div>
@@ -492,12 +493,12 @@ function Art({ src, className, alt = '', style, onLoaded }: { src?: string; clas
 /** One stream as a cinematic tile: the backdrop is the card, details float over a soft scrim. */
 /** Which app a picture is from, in the corner of a full-bleed card. */
 const AppBadge = ({ of }: { of?: CardT['source'] }) => !of?.icon ? null : (
-  <span className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/45 py-1 pr-2.5 pl-1.5 text-[11px] font-medium text-white backdrop-blur-md"><img src={of.icon} alt="" className="size-4 object-contain" />{of.name}</span>
+  <span className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/45 py-1 pr-2.5 pl-1.5 text-caption font-medium text-white backdrop-blur-md"><img src={of.icon} alt="" className="size-4 object-contain" />{of.name}</span>
 );
 
 export function NowPlaying({ m, compact, source }: { m: MediaItem; compact?: boolean; source?: CardT['source'] }) {
   return (
-    <div className={cn('@container/np relative isolate w-full overflow-hidden rounded-2xl bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/0.55)]',
+    <div className={cn('@container/np relative isolate w-full overflow-hidden rounded-surface bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/0.55)]',
       compact ? 'aspect-[16/9] min-h-[170px]' : 'h-full min-h-[210px] flex-1')}>
       <AppBadge of={source} />
       {m.backdrop
@@ -506,22 +507,22 @@ export function NowPlaying({ m, compact, source }: { m: MediaItem; compact?: boo
       <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
       <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/50 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 flex items-end gap-5 p-5 @md/np:p-6">
-        <Art src={m.image} className="hidden aspect-[2/3] w-[84px] shrink-0 rounded-lg object-cover shadow-[0_16px_32px_-8px_rgb(0_0_0/0.7)] @md/np:block @2xl/np:w-[96px]" />
+        <Art src={m.image} className="hidden aspect-[2/3] w-[84px] shrink-0 rounded-poster object-cover shadow-[0_16px_32px_-8px_rgb(0_0_0/0.7)] @md/np:block @2xl/np:w-[96px]" />
         <div className="min-w-0 flex-1">
           {m.tags && m.tags.length > 0 && (
             <div className="mb-2.5 flex flex-wrap gap-1.5">
-              {m.tags.map(t => <span key={t} className="rounded-sm bg-white/15 px-2 py-0.5 text-[12px] font-medium backdrop-blur-md">{t}</span>)}
+              {m.tags.map(t => <span key={t} className="rounded-sm bg-white/15 px-2 py-0.5 text-meta font-medium backdrop-blur-md">{t}</span>)}
             </div>
           )}
-          <div className="truncate text-xl font-semibold tracking-tight @md/np:text-2xl">{m.title}</div>
-          {m.subtitle && <div className="truncate text-[15px] text-white/75">{m.subtitle}</div>}
+          <div className="truncate text-metric-s font-semibold tracking-tight">{m.title}</div>
+          {m.subtitle && <div className="truncate text-title text-white/75">{m.subtitle}</div>}
           <div className="mt-4 flex items-center gap-3">
             {/* a status, not a button: nothing here controls the stream */}
-            {m.icon ? <Icon name={m.icon} className="size-3.5 shrink-0" /> : <span className={cn('np-state', m.state === 'paused' && 'is-paused')} role="img" aria-label={m.state === 'paused' ? 'Paused' : m.state === 'buffering' ? 'Buffering' : 'Playing'} />}
+            {m.icon ? <Icon name={m.icon} className="size-icon-sm shrink-0" /> : <span className={cn('np-state', m.state === 'paused' && 'is-paused')} role="img" aria-label={m.state === 'paused' ? 'Paused' : m.state === 'buffering' ? 'Buffering' : 'Playing'} />}
             <Meter art size="sm" pct={m.pct ?? 0} className="flex-1" />
-            {m.remaining && <span className="shrink-0 text-xs tabular text-white/80">{m.remaining}</span>}
+            {m.remaining && <span className="shrink-0 text-meta tabular text-white/80">{m.remaining}</span>}
           </div>
-          {(m.user || m.device) && <div className="mt-2 truncate text-xs text-white/65">{m.user}{m.device ? ` on ${m.device}` : ''}{m.state === 'paused' ? ' · Paused' : ''}</div>}
+          {(m.user || m.device) && <div className="mt-2 truncate text-meta text-white/65">{m.user}{m.device ? ` on ${m.device}` : ''}{m.state === 'paused' ? ' · Paused' : ''}</div>}
         </div>
       </div>
     </div>
@@ -538,7 +539,7 @@ function StallLine({ m, stall, card, run }: { m: MediaItem; stall: Stall; card: 
   const next = stall.next ?? (card.href ? { label: `Check in ${card.source?.name ?? 'the app'}`, href: card.href } : undefined), word = stall.word ?? 'Stalled';
   const says = [`${word}${stall.since ? ` ${heldFor(stall.since)}` : ''}`, stall.why ?? (/stalled/i.test(word) ? 'nothing coming in' : undefined)].filter(Boolean).join(' · ');
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-2 text-xs">
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 text-meta">
       <span className="truncate text-warn">{says}</span>
       {next?.action && run ? <button type="button" className="title-link text-foreground/85" onClick={() => void run(next.action!, next.args)}>{next.label}</button>
         : next?.href ? <a href={next.href} target="_blank" rel="noreferrer" className="title-link text-foreground/85">{next.label}</a> : null}
@@ -550,10 +551,10 @@ function Media({ card, compact, run }: { card: MediaCard; compact?: boolean; run
   const dust = justActed(), rows = useRows(card.items, m => m.title, true, dust ? DUST_HOLD : undefined);
   // in chat, an empty answer is one quiet line, not a big empty frame
   if (!card.items.length) return compact
-    ? <div className="flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-[13px] text-muted-foreground"><Film className="size-4" />{card.empty ?? 'Nothing playing'}</div>
+    ? <div className="flex items-center gap-2 rounded-control bg-card px-3 py-2 text-body text-muted-foreground"><Film className="size-icon" />{card.empty ?? 'Nothing playing'}</div>
     : (
-    <div className="grid min-h-[180px] place-items-center rounded-2xl bg-card text-center shadow-card">
-      <div><Film className="mx-auto mb-2 size-5 text-muted-foreground" /><div className="text-sm text-muted-foreground">{card.empty ?? 'Nothing playing'}</div></div>
+    <div className="grid min-h-[180px] place-items-center rounded-surface bg-card text-center shadow-card">
+      <div><Film className="mx-auto mb-2 size-icon-lg text-muted-foreground" /><div className="text-item text-muted-foreground">{card.empty ?? 'Nothing playing'}</div></div>
     </div>
   );
   if (card.items.length === 1 && !stallOf(card.items[0])) return <NowPlaying m={card.items[0]} source={card.source} />;
@@ -565,12 +566,12 @@ function Media({ card, compact, run }: { card: MediaCard; compact?: boolean; run
         return (
           <RowSlot key={key} state={state} dust={dust}><div className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden px-4 py-2.5">
             {m.pct != null && <span className={cn('meter-row', stall && 'is-warn')} style={{ transform: `translateX(${(Math.max(0, Math.min(1, m.pct)) * 100 - 100).toFixed(2)}%)` }} />}
-            {m.image ? <Art src={m.image} className="h-12 w-8 shrink-0 rounded-md object-cover" /> : <span className="grid h-12 w-8 shrink-0 place-items-center rounded-md bg-white/10 text-muted-foreground"><Icon name={m.icon ?? 'film'} className="size-4" /></span>}
+            {m.image ? <Art src={m.image} className="h-12 w-8 shrink-0 rounded-md object-cover" /> : <span className="grid h-12 w-8 shrink-0 place-items-center rounded-thumb bg-fill-2 text-muted-foreground"><Icon name={m.icon ?? 'film'} className="size-icon" /></span>}
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium">{m.title}</div>
-              {stall ? <StallLine m={m} stall={stall} card={card} run={run} /> : <div className="truncate text-xs text-muted-foreground">{m.tags?.join(' · ') ?? m.subtitle}</div>}
+              <div className="truncate text-item font-medium">{m.title}</div>
+              {stall ? <StallLine m={m} stall={stall} card={card} run={run} /> : <div className="truncate text-meta text-muted-foreground">{m.tags?.join(' · ') ?? m.subtitle}</div>}
             </div>
-            {m.pct != null && <Counter value={`${Math.floor(m.pct * 100)}%`} className="shrink-0 text-sm font-medium" />}
+            {m.pct != null && <Counter value={`${Math.floor(m.pct * 100)}%`} className="shrink-0 text-item font-medium" />}
           </div></RowSlot>
         );
       })}
@@ -600,18 +601,18 @@ function Stack({ card, header, onOpen }: { card: ShelfCard; header?: ReactNode; 
           const [r, x] = rest[i], depth = pile.length - 1 - i;
           return (
             <div key={i} className={cn('stack-page absolute top-2.5 left-3 h-[176px] origin-bottom-left overflow-hidden shadow-[0_10px_30px_-10px_rgb(0_0_0/.6),0_0_0_1px_rgb(0_0_0/.08)]',
-              photo ? 'aspect-square rounded-[16px] bg-muted ring-[3px] ring-white/90' : 'aspect-[3/4] rounded-[10px] bg-white')}
+              photo ? 'aspect-square rounded-hero bg-muted ring-[3px] ring-white/90' : 'aspect-[3/4] rounded-poster bg-white')}
               style={{ '--r': `${one ? -2 : r * .7}deg`, '--x': `${x + 10}px`, '--fan-x': `${depth ? (pile.length - 1 - depth) * 58 : (pile.length - 1) * 58}px`, '--fan-r': `${(i - (pile.length - 1)) * -2.5}deg`,
                 zIndex: i, filter: depth ? `brightness(${1 - depth * .06})` : undefined } as React.CSSProperties}>
               <Art src={it.image} alt="" className={cn('size-full object-cover', !photo && 'object-top')} />
             </div>
           );
         })}
-        {more > 0 && <span className="absolute bottom-1 left-[140px] z-10 rounded-sm bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-md">+{more}</span>}
+        {more > 0 && <span className="absolute bottom-1 left-[140px] z-10 rounded-sm bg-black/60 px-2 py-0.5 text-caption font-medium text-white backdrop-blur-md">+{more}</span>}
       </button>
       <div className="mt-2 pl-1">
-        <div className="truncate text-[13px] font-medium">{top.title}</div>
-        <div className="truncate text-xs text-muted-foreground">{one ? top.subtitle : `${card.items.length} ${photo ? 'photos' : 'documents'} · tap to see all`}</div>
+        <div className="truncate text-body font-medium">{top.title}</div>
+        <div className="truncate text-meta text-muted-foreground">{one ? top.subtitle : `${card.items.length} ${photo ? 'photos' : 'documents'} · tap to see all`}</div>
       </div>
     </div>
   );
@@ -649,13 +650,13 @@ function Spotlight({ card, header }: { card: ShelfCard; header?: ReactNode }) {
     <div>
       <div className="mb-3 flex items-center gap-2">{header}</div>
       <div className="grid gap-4 @4xl/main:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <Tile href={first.href} className="group relative block aspect-[16/9] overflow-hidden rounded-2xl @4xl/main:aspect-auto @4xl/main:h-full bg-muted shadow-[0_18px_40px_-20px_rgb(0_0_0/.6)]">
+        <Tile href={first.href} className="group relative block aspect-[16/9] overflow-hidden rounded-hero @4xl/main:aspect-auto @4xl/main:h-full bg-muted shadow-[0_18px_40px_-20px_rgb(0_0_0/.6)]">
           <Art src={first.backdrop ?? first.image} alt={first.title} className={cn('absolute inset-0 size-full object-cover transition-transform duration-(--dur-move) ease-out', first.href && 'group-hover:scale-[1.03]')} />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-4 text-white">
-            {first.backdrop && first.image && <Art src={first.image} alt="" className="h-[92px] w-[62px] shrink-0 rounded-lg object-cover shadow-lg" />}
-            <div className="min-w-0"><div className="text-[12px] text-white/75">{first.badge ?? 'New'}</div>
-              <div className="truncate text-[20px] font-semibold tracking-tight">{first.title}</div>{first.subtitle && <div className="truncate text-[13px] text-white/75">{first.subtitle}</div>}</div>
+            {first.backdrop && first.image && <Art src={first.image} alt="" className="h-[92px] w-[62px] shrink-0 rounded-poster object-cover shadow-lg" />}
+            <div className="min-w-0"><div className="text-meta text-white/75">{first.badge ?? 'New'}</div>
+              <div className="truncate text-metric-s font-semibold tracking-tight">{first.title}</div>{first.subtitle && <div className="truncate text-body text-white/75">{first.subtitle}</div>}</div>
           </div>
         </Tile>
         {rest.length > 0 && <ShelfRow card={{ ...card, items: rest }} beside />}
@@ -713,8 +714,8 @@ const DeskRow = memo(function DeskRow({ id, card }: { id: string; card: ShelfCar
       {card.items.slice(0, 8).map((d, i) => (
         <a key={i} data-blossom-slide href={d.href} target="_blank" rel="noreferrer" className="desk-page" style={{ '--tilt': `${TILT[i]}deg` } as React.CSSProperties}>
           <span className="desk-sheet"><Art src={d.image} className="size-full object-cover object-top" />{d.badge && <span className="desk-stamp">{d.badge}</span>}</span>
-          <span className="mt-2.5 block truncate text-sm font-medium">{d.title}</span>
-          {d.subtitle && <span className="block truncate text-xs text-muted-foreground">{d.subtitle}</span>}
+          <span className="mt-2.5 block truncate text-item font-medium">{d.title}</span>
+          {d.subtitle && <span className="block truncate text-meta text-muted-foreground">{d.subtitle}</span>}
         </a>
       ))}
     </Row>
@@ -743,12 +744,12 @@ function Windows({ card, header, run }: { card: ShelfCard; header?: ReactNode; r
       <div ref={grid} className="windows">
         {shown.map((w, i) => (
           <a key={w.id ?? i} data-key={w.id ?? w.title} href={w.href} target="_blank" rel="noreferrer" className={cn('window relative', w.id && arch.leaving.includes(w.id) && 'gone')}>
-            {run && w.id && <button type="button" aria-label="Archive" title="Archive" className="window-archive" onClick={e => { e.preventDefault(); e.stopPropagation(); arch.archive(w.id!, e.currentTarget.closest('.window')); }}><Archive className="size-3.5" /></button>}
+            {run && w.id && <button type="button" aria-label="Archive" title="Archive" className="window-archive" onClick={e => { e.preventDefault(); e.stopPropagation(); arch.archive(w.id!, e.currentTarget.closest('.window')); }}><Archive className="size-icon-sm" /></button>}
             <span className="window-bar"><i /><i /><i />{site(w.subtitle) && <img src={`/api/favicon/${w.subtitle}`} alt="" className="ml-1.5 size-3.5 rounded-sm" onError={e => { e.currentTarget.style.display = 'none'; }} />}<span className="min-w-0 truncate">{w.subtitle}</span></span>
-            <span className="window-page">{w.image ? <Art src={w.image} className="w-full" /> : <span className="grid h-full place-items-center bg-white/[.04]"><Bookmark className="size-5 text-muted-foreground" /></span>}</span>
+            <span className="window-page">{w.image ? <Art src={w.image} className="w-full" /> : <span className="grid h-full place-items-center bg-fill-1"><Bookmark className="size-icon-lg text-muted-foreground" /></span>}</span>
             <span className="block p-3.5">
-              <span className="line-clamp-2 text-sm leading-snug font-medium">{w.title}</span>
-              {w.note && <Clamp text={w.note} className="mt-1 text-xs leading-snug text-muted-foreground" />}
+              <span className="line-clamp-2 text-item leading-snug font-medium">{w.title}</span>
+              {w.note && <Clamp text={w.note} className="mt-1 text-meta leading-snug text-muted-foreground" />}
             </span>
           </a>
         ))}
@@ -774,9 +775,9 @@ function Ranked({ card }: { card: RankedCard }) {
     <ol className="space-y-3">
       {card.items.slice(0, 5).map((it, i) => (
         <li key={i} className="flex min-w-0 items-center gap-3">
-          {it.image && <Art src={it.image} alt="" className="h-[42px] w-7 shrink-0 rounded-[5px] object-cover" onLoaded={img => { const c = tintOf(img); if (c) setTint(m => m[it.title] ? m : { ...m, [it.title]: c }); }} />}
+          {it.image && <Art src={it.image} alt="" className="h-[42px] w-7 shrink-0 rounded-thumb object-cover" onLoaded={img => { const c = tintOf(img); if (c) setTint(m => m[it.title] ? m : { ...m, [it.title]: c }); }} />}
           <div className="min-w-0 flex-1">
-            <div className="flex items-baseline gap-3"><span className="min-w-0 flex-1 truncate text-sm font-medium">{it.title}</span>{it.value && <span className="shrink-0 text-xs tabular text-muted-foreground">{it.value}</span>}</div>
+            <div className="flex items-baseline gap-3"><span className="min-w-0 flex-1 truncate text-item font-medium">{it.title}</span>{it.value && <span className="shrink-0 text-meta tabular text-muted-foreground">{it.value}</span>}</div>
             <Meter pct={it.pct ?? (i ? 0 : 1)} rest={i > 0} hue={hue(tint[it.title] ?? null)} className="mt-1.5" />
           </div>
         </li>
@@ -809,15 +810,15 @@ const Shelved = memo(function Shelved({ id, card, small, lines }: { id: string; 
         const href = it.cta?.href ?? it.href;
         const inner = (
           <div className="carousel-face">
-            <div className={cn('poster relative overflow-hidden rounded-xl bg-muted shadow-[0_10px_24px_-12px_rgb(0_0_0/0.45)] transition-[translate,box-shadow] duration-(--dur-pop) ease-out', href && 'group-hover:-translate-y-1 group-hover:shadow-[0_18px_32px_-12px_rgb(0_0_0/0.5)]', ratio)}>
+            <div className={cn('poster relative overflow-hidden rounded-poster bg-muted shadow-[0_10px_24px_-12px_rgb(0_0_0/0.45)] transition-[translate,box-shadow] duration-(--dur-pop) ease-out', href && 'group-hover:-translate-y-1 group-hover:shadow-[0_18px_32px_-12px_rgb(0_0_0/0.5)]', ratio)}>
               <Art src={it.image} alt={it.title} className="size-full object-cover" />
-              {it.badge && !lines && <span className={cn('absolute bottom-2 left-2 rounded-sm px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-md', 'bg-black/60', it.badge === 'Ready' ? 'text-good' : it.badge === 'Today' && 'text-primary')}>{it.badge}</span>}
+              {it.badge && !lines && <span className={cn('absolute bottom-2 left-2 rounded-sm px-2 py-0.5 text-caption font-medium text-white backdrop-blur-md', 'bg-black/60', it.badge === 'Ready' ? 'text-good' : it.badge === 'Today' && 'text-primary')}>{it.badge}</span>}
               {lines && <i className={`ticket-line is-${lineOf(it)}`} />}
             </div>
-            <div className="mt-2.5 truncate text-[13px] font-medium">{it.title}</div>
-            {(lines ? it.badge ?? it.subtitle : it.subtitle) && <div className="truncate text-xs text-muted-foreground">{lines ? it.badge ?? it.subtitle : it.subtitle}</div>}
-            {lines && it.note && <div className="truncate text-xs text-muted-foreground">{it.note}</div>}
-            {it.cta && <div className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground"><span className="truncate">{it.cta.label}</span><ArrowUpRight className="size-3 shrink-0" /></div>}
+            <div className="mt-2.5 truncate text-body font-medium">{it.title}</div>
+            {(lines ? it.badge ?? it.subtitle : it.subtitle) && <div className="truncate text-meta text-muted-foreground">{lines ? it.badge ?? it.subtitle : it.subtitle}</div>}
+            {lines && it.note && <div className="truncate text-meta text-muted-foreground">{it.note}</div>}
+            {it.cta && <div className="mt-0.5 flex items-center gap-0.5 text-meta text-muted-foreground"><span className="truncate">{it.cta.label}</span><ArrowUpRight className="size-3 shrink-0" /></div>}
           </div>
         );
         return href
@@ -851,7 +852,7 @@ function Columns({ card }: { card: ChartCard }) {
     <div className="chart-body">
       <div className="mb-3 flex items-baseline gap-2">
         <span className="metric text-[28px] leading-none"><Counter value={card.headline ?? written(whole)} /></span>
-        <span className="min-w-0 truncate text-xs text-muted-foreground">{card.span}</span>
+        <span className="min-w-0 truncate text-meta text-muted-foreground">{card.span}</span>
       </div>
       <div className="columns-chart" onPointerLeave={() => setAt(null)}>
         {card.style === 'stream' ? <Stream card={card} at={at} onAt={setAt} /> : tops.map((t, i) => (
@@ -863,13 +864,13 @@ function Columns({ card }: { card: ChartCard }) {
         {at != null && <div className="col-tip" style={{ left: `${spot * 100}%`, translate: `${-spot * 100}% 0` }}><b>{when(at)}</b>{card.series.map(s => ` · ${written(s.points[at] ?? 0)} ${/^[A-Z]+$/.test(s.name) ? s.name : s.name.toLowerCase()}`).join('')}</div>}
       </div>
       {ticks.length > 0 && <div className="col-axis">{ticks.map((i, k) => <span key={i}>{k === 2 && live ? 'now' : when(i)}</span>)}</div>}
-      <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-        {card.series.map(s => <span key={s.name} className="flex items-center gap-1.5 tabular"><i className="size-2 rounded-full" style={{ background: paint(s) }} />{s.name} {written(sum(s))}</span>)}
+      <div className="mt-2 flex items-center gap-3 text-meta text-muted-foreground">
+        {card.series.map(s => <span key={s.name} className="flex items-center gap-1.5 tabular"><i className="dot dot-lg" style={{ background: paint(s) }} />{s.name} {written(sum(s))}</span>)}
         {card.window && <span className="ml-auto shrink-0">{card.window}</span>}
       </div>
       {card.facts?.length ? (
         <>
-          {card.factsNote && <div className="mt-3 text-xs text-muted-foreground">{card.factsNote}</div>}
+          {card.factsNote && <div className="mt-3 text-meta text-muted-foreground">{card.factsNote}</div>}
           <div className={cn('flex flex-wrap gap-1.5', card.factsNote ? 'mt-1.5' : 'mt-3')}>
             {card.facts.map(f => <span key={f.label} className="fact"><span className="truncate">{f.label}</span>{f.value && <b>{f.value}</b>}</span>)}
           </div>
@@ -903,7 +904,7 @@ function Chart({ card }: { card: ChartCard }) {
     <div>
       <div className="mb-2 flex items-baseline gap-2">
         <span className="metric text-[22px] leading-none">{at == null && card.headline ? card.headline : shown != null ? num(shown) : '–'}</span>
-        <span className="min-w-0 truncate text-xs text-muted-foreground">
+        <span className="min-w-0 truncate text-meta text-muted-foreground">
           {at != null ? when(at) : card.headline ? card.span : move != null && Math.abs(move) >= .005 ? <span className={cn('tabular', lead.tone === 'bad' ? 'text-bad' : '')}>{move > 0 ? '+' : ''}{Math.round(move * 1000) / 10}%{card.span ? ` over the ${card.span}` : ''}</span> : card.span}
         </span>
       </div>
@@ -924,7 +925,7 @@ function Chart({ card }: { card: ChartCard }) {
         )}
       </div>
       {timed && <div className="col-axis"><span>{tick(card.from!)}</span><span>{tick((card.from! + card.to!) / 2)}</span><span>{Date.now() - card.to! < 72e5 ? 'now' : tick(card.to!)}</span></div>}
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground">
         {card.series.length > 1 && card.series.map((s, k) => <span key={s.name} className="tabular" style={k ? undefined : { color: toneVar(s.tone) }}>{s.name}{at != null && s.points[at] != null ? ` ${num(s.points[at])}` : card.headline ? '' : s.points.length ? ` ${num(s.points.at(-1)!)}` : ''}</span>)}
         {card.span && !card.headline && <span className="ml-auto">{card.span}</span>}
       </div>
@@ -938,8 +939,8 @@ function Code({ card }: { card: CodeCard }) {
   const copy = () => { navigator.clipboard?.writeText(card.lines.join('\n')); setCopied(true); setTimeout(() => setCopied(false), 1400); };
   return (
     <div className="group/code relative -mx-1">
-      <button type="button" onClick={copy} aria-label="Copy" className="chat-icon absolute top-1 right-1 z-10 text-muted-foreground">{copied ? <Check className="morph size-3.5 text-good" /> : <Copy className="size-3.5" />}</button>
-      <pre className="max-h-72 overflow-auto rounded-xl bg-black/25 py-2 font-mono text-[12px] leading-[1.65]">
+      <button type="button" onClick={copy} aria-label="Copy" className="chat-icon absolute top-1 right-1 z-10 text-muted-foreground">{copied ? <Check className="morph size-icon-sm text-good" /> : <Copy className="size-icon-sm" />}</button>
+      <pre className="max-h-72 overflow-auto rounded-inset bg-fill-1 py-2 font-mono text-meta leading-[1.65]">
         {card.lines.map((l, i) => {
           const tone = card.diff && l[0] === '+' ? 'bg-good/10 text-good' : card.diff && l[0] === '-' ? 'bg-bad/10 text-bad' : '';
           return <div key={i} className={cn('flex min-w-max gap-3 pr-10 pl-2', tone)}><span className="w-6 shrink-0 text-right text-muted-foreground/50 tabular select-none">{i + 1}</span><span className="whitespace-pre">{l || ' '}</span></div>;
@@ -957,7 +958,7 @@ function Table({ card }: { card: TableCard }) {
   const rows = sort ? [...card.rows].sort((a, b) => { const x = value(a[sort.col], sort.col), y = value(b[sort.col], sort.col); return (x < y ? -1 : x > y ? 1 : 0) * (sort.up ? 1 : -1); }) : card.rows;
   return (
     <div className="-mx-1 overflow-x-auto">
-      <table className="w-full text-[13px]">
+      <table className="w-full text-body">
         <thead><tr>{card.columns.map((c, i) => (
           <th key={c} className={cn('whitespace-nowrap px-1.5 pb-1.5 font-medium text-muted-foreground', numeric[i] ? 'text-right' : 'text-left')}>
             <button type="button" className="transition-colors hover:text-foreground" onClick={() => setSort(s => s?.col === i ? (s.up ? { col: i, up: false } : null) : { col: i, up: true })}>{c}{sort?.col === i ? (sort.up ? ' ↑' : ' ↓') : ''}</button>
@@ -981,10 +982,10 @@ function Controls({ card, run }: { card: ControlsCard; run?: RunAction }) {
         <RowSlot key={key} state={state === 'out' ? state : undefined} on={!!run} dust={dust}><div className="flex min-h-12 min-w-0 items-center gap-3 py-2">
           {c.color !== undefined && <span className="size-2.5 shrink-0 rounded-full ring-1 ring-border" style={{ background: c.color ?? 'var(--muted)' }} />}
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm">{c.label}</div>
-            {c.sub && <div className="truncate text-xs text-muted-foreground">{c.sub}</div>}
+            <div className="truncate text-item">{c.label}</div>
+            {c.sub && <div className="truncate text-meta text-muted-foreground">{c.sub}</div>}
           </div>
-          {c.kind === 'value' && <span className="text-sm tabular text-muted-foreground">{String(c.value ?? '–')}</span>}
+          {c.kind === 'value' && <span className="text-item tabular text-muted-foreground">{String(c.value ?? '–')}</span>}
           {c.kind === 'toggle' && <Switch checked={!!c.value} disabled={!run} aria-label={c.label} onCheckedChange={v => { play('tap'); fire(c, { value: v }); }} />}
           {c.kind === 'slider' && (
             <Slider className="w-32" min={c.min ?? 0} max={c.max ?? 100} step={c.step ?? 1} defaultValue={[Number(c.value ?? 0)]} disabled={!run}
@@ -996,7 +997,7 @@ function Controls({ card, run }: { card: ControlsCard; run?: RunAction }) {
               <SelectContent>{c.options?.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
             </Select>
           )}
-          {c.kind === 'button' && <Button size="sm" variant="secondary" disabled={!run} onClick={() => fire(c, {})}>{String(c.value ?? 'Run')}</Button>}
+          {c.kind === 'button' && <Button size="sm" disabled={!run} onClick={() => fire(c, {})}>{String(c.value ?? 'Run')}</Button>}
         </div></RowSlot>
       ))}
     </div>
@@ -1033,24 +1034,24 @@ function Showcase({ card, run }: { card: ShowcaseCard; run?: RunAction }) {
   const builtIn = VISUALS[card.visual.kind];
   const V = builtIn ?? (card.visual.kind !== 'image' ? (p: { data: any; run?: RunAction }) => <PluginVisual kind={card.visual.kind} {...p} /> : undefined);
   // an interactive visual with no numbers of its own beside it lays itself out
-  if (V && !card.items.length) return <Suspense fallback={<Skeleton className="aspect-[4/3] w-full rounded-xl" />}><V data={card.visual.data} run={run} /></Suspense>;
+  if (V && !card.items.length) return <Suspense fallback={<Skeleton className="aspect-[4/3] w-full rounded-inset" />}><V data={card.visual.data} run={run} /></Suspense>;
   return (
     <div className="grid items-center gap-x-6 gap-y-4 @md/card:grid-cols-[minmax(0,1fr)_150px]">
       <div className="min-w-0">
-        {V ? <Suspense fallback={<Skeleton className="aspect-square w-full rounded-xl" />}><V data={card.visual.data} /></Suspense>
-          : card.visual.src ? <img src={card.visual.src} alt="" className="w-full rounded-xl object-cover" /> : null}
+        {V ? <Suspense fallback={<Skeleton className="aspect-square w-full rounded-inset" />}><V data={card.visual.data} /></Suspense>
+          : card.visual.src ? <img src={card.visual.src} alt="" className="w-full rounded-inset object-cover" /> : null}
       </div>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-4 @md/card:grid-cols-1 @md/card:gap-y-5">
         {card.items.map(s => (
           <div key={s.label} className="min-w-0">
-            <dt className="text-[12px] text-muted-foreground">{s.label}</dt>
+            <dt className="text-meta text-muted-foreground">{s.label}</dt>
             <dd className={cn('metric mt-0.5 truncate text-[26px] leading-none', toneText[s.tone ?? 'neutral'])}>
               <Counter value={s.value} />{s.unit && <span className="ml-0.5 text-[14px] font-medium text-muted-foreground">{s.unit}</span>}
             </dd>
-            {s.sub && <div className="mt-1 truncate text-[12px] text-muted-foreground">{s.sub}</div>}
+            {s.sub && <div className="mt-1 truncate text-meta text-muted-foreground">{s.sub}</div>}
           </div>
         ))}
-        {card.caption && <div className="col-span-full text-[12px] text-muted-foreground">{card.caption}</div>}
+        {card.caption && <div className="col-span-full text-meta text-muted-foreground">{card.caption}</div>}
       </dl>
     </div>
   );
@@ -1102,7 +1103,7 @@ function Sky({ card }: { card: ScheduleCard }) {
       <div className="flex items-end justify-between">
         <div><div className="metric text-[24px] leading-none">{next.name}</div><div className="mt-1.5 text-[13px] text-muted-foreground tabular">{clock(next.t)}</div></div>
         <div className="text-right"><div className={cn('metric text-[22px] tabular leading-none', mins <= 15 && 'text-good')}><Counter flap value={mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`} /></div>
-          <div className="mt-1.5 text-[12px] text-muted-foreground">to go</div></div>
+          <div className="mt-1.5 text-meta text-muted-foreground">to go</div></div>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block max-h-[150px] w-full overflow-visible" aria-hidden>
         <defs>
@@ -1154,13 +1155,13 @@ function Schedule({ card }: { card: ScheduleCard }) {
       <div className="flex items-end justify-between gap-4">
         <div className="min-w-0">
           <div className={cn('metric leading-none', dense ? 'text-[24px]' : 'text-[34px]')}>{next.name}</div>
-          <div className="mt-1.5 text-[13px] text-muted-foreground tabular">{clock(next.t)}</div>
+          <div className="mt-1.5 text-body text-muted-foreground tabular">{clock(next.t)}</div>
         </div>
         <div className="text-right">
           <div className={cn('metric tabular leading-none', dense ? 'text-[18px]' : 'text-[22px]', mins <= 15 && 'text-good')}>
             <Counter flap value={mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`} />
           </div>
-          <div className="mt-1.5 text-[12px] text-muted-foreground">to go</div>
+          <div className="mt-1.5 text-meta text-muted-foreground">to go</div>
         </div>
       </div>
       <div className="relative pt-1 pb-7">
@@ -1170,8 +1171,8 @@ function Schedule({ card }: { card: ScheduleCard }) {
           // a moment that's never "next" is a notch on the line, not a word: hover says which
           ? <span key={x.name} title={`${x.name} · ${clock(x.t)}`} className="absolute top-[2.5px] h-[7px] w-px -translate-x-1/2 bg-foreground/35" style={{ left: `${pos(k) * 100}%` }} />
           : <div key={x.name} className={cn('absolute top-3 text-center', k === 0 ? '' : k === n - 1 ? '-translate-x-full text-right' : '-translate-x-1/2')} style={{ left: `${pos(k) * 100}%` }}>
-              <div className={cn('text-[11px] font-medium', x.name === next.name ? 'text-foreground' : 'text-muted-foreground')}>{x.name}</div>
-              {!dense && <div className="text-[11px] tabular text-muted-foreground/70">{clock(x.t)}</div>}
+              <div className={cn('text-caption font-medium', x.name === next.name ? 'text-foreground' : 'text-muted-foreground')}>{x.name}</div>
+              {!dense && <div className="text-caption tabular text-muted-foreground/70">{clock(x.t)}</div>}
             </div>)}
       </div>
     </div>
@@ -1210,11 +1211,11 @@ function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?
   if (large || card.style === 'mosaic') {
     const [first, ...rest] = items;
     return (
-      <div className="grid aspect-[2/1] grid-cols-4 grid-rows-2 gap-1.5 overflow-hidden rounded-2xl">
+      <div className="grid aspect-[2/1] grid-cols-4 grid-rows-2 gap-1.5 overflow-hidden rounded-hero">
         {[first, ...rest.slice(0, 4)].map((p, k) => (
           <a key={k} href={p.href} target="_blank" rel="noreferrer" className={cn('group/ph relative overflow-hidden bg-muted', k === 0 && 'col-span-2 row-span-2')}>
             <Art src={p.image} alt={p.title ?? ''} className={cn('size-full object-cover transition-transform duration-(--dur-move) ease-out', p.href && 'group-hover/ph:scale-[1.03]')} />
-            {k === 0 && p.badge && <span className="absolute bottom-3 left-3 rounded-sm bg-black/50 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md">{p.badge}</span>}
+            {k === 0 && p.badge && <span className="absolute bottom-3 left-3 rounded-sm bg-black/50 px-2.5 py-1 text-meta font-medium text-white backdrop-blur-md">{p.badge}</span>}
           </a>
         ))}
       </div>
@@ -1223,7 +1224,7 @@ function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?
   const cur = items[i], [lead, ...rest] = [cur.badge, cur.title, cur.subtitle].filter(Boolean);
   return (
     <a ref={box} href={cur.href} target="_blank" rel="noreferrer" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
-      className={cn(cur.href && 'lift', 'relative isolate block overflow-hidden rounded-[calc(var(--radius)*1.6)] bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/.55)]', fill ? 'h-full min-h-[280px]' : 'aspect-[4/3] max-h-[460px] w-full')}>
+      className={cn(cur.href && 'lift', 'relative isolate block overflow-hidden rounded-surface bg-neutral-900 text-white shadow-[0_18px_40px_-20px_rgb(0_0_0/.55)]', fill ? 'h-full min-h-[280px]' : 'aspect-[4/3] max-h-[460px] w-full')}>
       {items.map((p, k) => (
         <Art key={k} src={p.image} alt={p.title ?? ''} className={cn('photo-slide absolute inset-0 -z-10 size-full object-cover', k === i && 'is-on')}
           style={bars[k] && { height: `${100 / (1 - bars[k][0] - bars[k][1])}%`, top: `${-100 * bars[k][0] / (1 - bars[k][0] - bars[k][1])}%` }}
@@ -1231,11 +1232,11 @@ function Photos({ card, large, fill, label, status }: { card: PhotosCard; large?
       ))}
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_top,rgb(0_0_0/.72),rgb(0_0_0/.08)_38%,transparent_60%,rgb(0_0_0/.5))]" />
       <AppBadge of={card.source} />
-      {label && <div className="absolute inset-x-0 top-0 flex items-center gap-2 p-5 text-[15px] font-semibold [text-shadow:0_1px_8px_rgb(0_0_0/.45)]"><span className="min-w-0 truncate">{label}</span>{status}</div>}
+      {label && <div className="absolute inset-x-0 top-0 flex items-center gap-2 p-5 text-title font-semibold [text-shadow:0_1px_8px_rgb(0_0_0/.45)]"><span className="min-w-0 truncate">{label}</span>{status}</div>}
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-5">
         <div key={i} className="min-w-0 tick">
-          {lead && <div className="truncate text-[21px] font-semibold tracking-tight">{lead}</div>}
-          {rest.length > 0 && <div className="truncate text-[13px] text-white/75">{rest.join(' · ')}</div>}
+          {lead && <div className="truncate text-metric-s font-semibold tracking-tight">{lead}</div>}
+          {rest.length > 0 && <div className="truncate text-body text-white/75">{rest.join(' · ')}</div>}
         </div>
         {items.length > 1 && (
           <div className="mb-1 flex shrink-0 gap-1">
@@ -1256,7 +1257,7 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
     case 'showcase': return <Showcase card={card} run={run} />;
     case 'photos': return <Photos card={card} large={large} />;
     case 'schedule': return <Times card={card} />;
-    case 'embed': return <iframe src={card.src} title={card.title ?? 'Embedded page'} loading="lazy" referrerPolicy="no-referrer" sandbox={card.scripts ? 'allow-scripts allow-same-origin allow-forms' : ''} className="w-full rounded-xl border-0 bg-black/20" style={{ height: card.height }} />;
+    case 'embed': return <iframe src={card.src} title={card.title ?? 'Embedded page'} loading="lazy" referrerPolicy="no-referrer" sandbox={card.scripts ? 'allow-scripts allow-same-origin allow-forms' : ''} className="w-full rounded-inset border-0 bg-fill-1" style={{ height: card.height }} />;
     case 'forecast': return <WeatherCard card={card} dense />;
     case 'calendar': return <CalendarView card={card} dense />;
     case 'thermostat': return <Thermostat card={card} run={run} dense />;
@@ -1273,8 +1274,8 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
     case 'ranked': return <Ranked card={card} />;
     case 'table': return <Table card={card} />;
     case 'controls': return <Controls card={card} run={run} />;
-    case 'kv': return <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">{card.rows.map(([k, v]) => <Fragment key={k}><dt className="text-muted-foreground">{k}</dt><dd className="text-right tabular">{v}</dd></Fragment>)}</dl>;
-    case 'text': return <p className={cn('text-sm', toneText[card.tone ?? 'neutral'])}>{card.text}</p>;
+    case 'kv': return <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-item">{card.rows.map(([k, v]) => <Fragment key={k}><dt className="text-muted-foreground">{k}</dt><dd className="text-right tabular">{v}</dd></Fragment>)}</dl>;
+    case 'text': return <p className={cn('text-item', toneText[card.tone ?? 'neutral'])}>{card.text}</p>;
     case 'group': return (
       <div className={card.layout === 'row' ? 'grid gap-4 @lg:grid-cols-2' : 'space-y-4'}>
         {card.cards.map((c, i) => <Widget key={i} card={c} run={run} compact />)}
@@ -1287,10 +1288,10 @@ export function CardBody({ card, run, columns, minimal, large }: { card: CardT; 
 function BareHeader({ card, title, status }: { card?: CardT; title?: string; status?: ReactNode }) {
   return (
     <div className="flex min-w-0 items-center gap-2">
-      {card?.source?.icon && <img src={card.source.icon} alt="" className="size-[18px] flex-none rounded-[5px] object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />}
-      <h3 className="truncate text-[15px] font-semibold tracking-tight">{card?.href ? <a href={card.href} target="_blank" rel="noreferrer" className="title-link">{card?.title ?? title}</a> : card?.title ?? title}</h3>
+      {card?.source?.icon && <img src={card.source.icon} alt="" className="size-icon-lg flex-none rounded-thumb object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />}
+      <h3 className="truncate text-title font-semibold tracking-tight">{card?.href ? <a href={card.href} target="_blank" rel="noreferrer" className="title-link">{card?.title ?? title}</a> : card?.title ?? title}</h3>
       {status}
-      {card?.note && <span className="truncate text-xs tabular text-muted-foreground">{card.note}</span>}
+      {card?.note && <span className="truncate text-meta tabular text-muted-foreground">{card.note}</span>}
     </div>
   );
 }
@@ -1302,8 +1303,8 @@ function BannerLine({ b, run }: { b: Banner; run?: RunAction }) {
   const go = async () => { setBusy(true); try { await run?.(b.button!.action, b.button!.args); } finally { setBusy(false); } };
   return (
     <div className={cn('card-banner mb-3', b.tone === 'bad' ? 'is-bad' : 'is-warn')} role="status">
-      <span className="min-w-0 flex-1 text-[14px] font-medium">{b.text}{b.until ? ` until ${clockOf(b.until)}` : ''}</span>
-      {b.button && run && <button type="button" disabled={busy} onClick={go} className="press flex h-7 shrink-0 items-center gap-1.5 rounded-sm bg-foreground/15 px-3 text-[12px] font-medium text-foreground transition-colors hover:bg-foreground/25 disabled:opacity-60">{busy && <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />}{b.button.label}</button>}
+      <span className="min-w-0 flex-1 text-item font-medium">{b.text}{b.until ? ` until ${clockOf(b.until)}` : ''}</span>
+      {b.button && run && <Button size="sm" disabled={busy} onClick={go} className="bg-fill-2 hover:bg-fill-3">{busy && <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />}{b.button.label}</Button>}
     </div>
   );
 }
@@ -1315,14 +1316,14 @@ function CardButtons({ buttons, run }: { buttons: NonNullable<CardT['buttons']>;
   return (
     <div ref={box} className="mt-3.5 flex flex-wrap gap-1.5">
       {buttons.map(b => (
-        <button key={b.label} disabled={!!busy} onClick={async () => {
+        <Button key={b.label} disabled={!!busy} onClick={async () => {
           setBusy(b.label);
           const card = b.action === 'unpin' ? box.current?.closest('[data-slot="card"]') : null;   // unpinned, the card itself is leaving
           try { await run(b.action, b.args); play('done'); if (card) dissolve(card); setDone(b.label); setTimeout(() => setDone(null), 1600); } catch { play('no'); } finally { setBusy(null); }
-        }} className="press flex h-7 items-center gap-1.5 rounded-sm bg-white/[.07] px-3 text-[12px] text-foreground/85 transition-colors hover:bg-white/[.12] disabled:opacity-60">
+        }} size="sm">
           {busy === b.label ? <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" /> : done === b.label ? <Tick draw className="size-3 text-good" /> : null}
           {b.label}
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -1350,11 +1351,11 @@ export function Shaped({ id, card, children }: { id: string; card?: CardT; child
 
 /** A placeholder that looks like the card that's coming. */
 function CardSkeleton({ kind }: { kind?: string }) {
-  const row = (i: number) => <div key={i} className="flex items-center gap-3"><Skeleton className="size-8 shrink-0 rounded-lg" /><div className="flex-1 space-y-1.5"><Skeleton className="h-3 w-3/4" /><Skeleton className="h-2.5 w-1/2" /></div></div>;
+  const row = (i: number) => <div key={i} className="flex items-center gap-3"><Skeleton className="size-8 shrink-0 rounded-thumb" /><div className="flex-1 space-y-1.5"><Skeleton className="h-3 w-3/4" /><Skeleton className="h-2.5 w-1/2" /></div></div>;
   if (kind === 'stats') return <div className="grid grid-cols-2 gap-4">{[0, 1, 2, 3].map(i => <div key={i} className="space-y-2"><Skeleton className="h-2.5 w-1/2" /><Skeleton className="h-6 w-2/3" /></div>)}</div>;
-  if (kind === 'status') return <div className="grid grid-cols-2 gap-3">{[0, 1, 2, 3, 4, 5].map(i => <div key={i} className="flex items-center gap-2.5"><Skeleton className="size-[18px] rounded-md" /><Skeleton className="h-3 flex-1" /></div>)}</div>;
-  if (kind === 'shelf') return <div className="flex gap-3 overflow-hidden">{[0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="aspect-[2/3] w-[120px] shrink-0 rounded-xl" />)}</div>;
-  if (kind === 'media' || kind === 'photos' || kind === 'showcase' || kind === 'cameras') return <Skeleton className="aspect-[16/7] w-full rounded-xl" />;
+  if (kind === 'status') return <div className="grid grid-cols-2 gap-3">{[0, 1, 2, 3, 4, 5].map(i => <div key={i} className="flex items-center gap-2.5"><Skeleton className="size-icon-lg rounded-thumb" /><Skeleton className="h-3 flex-1" /></div>)}</div>;
+  if (kind === 'shelf') return <div className="flex gap-3 overflow-hidden">{[0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="aspect-[2/3] w-[120px] shrink-0 rounded-poster" />)}</div>;
+  if (kind === 'media' || kind === 'photos' || kind === 'showcase' || kind === 'cameras') return <Skeleton className="aspect-[16/7] w-full rounded-hero" />;
   if (kind === 'list' || kind === 'links') return <div className="space-y-4">{[0, 1, 2, 3].map(row)}</div>;
   return <div className="space-y-3"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-4 w-3/5" /></div>;
 }
@@ -1393,14 +1394,14 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
   const scene = !compact && card ? card.type === 'schedule' ? <SkyWash card={card} /> : null : null;
   return (
     <Dense.Provider value={!!compact}>
-    <Card className={cn('@container/card relative min-w-0 overflow-hidden shadow-card', compact ? 'gap-2.5 rounded-2xl py-3 shadow-none' : 'gap-4 py-5', bare && 'border-0 bg-transparent py-0 shadow-none', fill && 'h-full', scene && 'relative isolate overflow-hidden')}>
+    <Card className={cn('@container/card relative min-w-0 overflow-hidden shadow-card', compact ? 'gap-2.5 py-3 shadow-none' : 'gap-4 py-5', bare && 'border-0 bg-transparent py-0 shadow-none', fill && 'h-full', scene && 'relative isolate overflow-hidden')}>
       {scene}
       {t && !bare && !headless && (
         <CardHeader className={cn('flex items-center gap-2', compact ? 'px-3.5' : 'px-5')}>
-          <CardTitle className={cn('flex min-w-0 items-center gap-2 truncate', compact ? 'text-[13px]' : 'text-[15px]')}>{card?.source?.icon && <img src={card.source.icon} alt="" className="size-[18px] flex-none rounded-[5px] object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />}{card?.href ? <a href={card.href} target="_blank" rel="noreferrer" className="title-link">{t}</a> : t}</CardTitle>
+          <CardTitle className={cn('flex min-w-0 items-center gap-2 truncate', compact ? 'text-body' : 'text-title')}>{card?.source?.icon && <img src={card.source.icon} alt="" className="size-icon-lg flex-none rounded-thumb object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} />}{card?.href ? <a href={card.href} target="_blank" rel="noreferrer" className="title-link">{t}</a> : t}</CardTitle>
           {status}
           <CardAction className="flex items-center gap-2 self-center">
-            {card?.note && <span className="truncate text-xs tabular text-muted-foreground">{card.note}</span>}
+            {card?.note && <span className="truncate text-meta tabular text-muted-foreground">{card.note}</span>}
           </CardAction>
         </CardHeader>
       )}
@@ -1457,15 +1458,15 @@ function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
         <div className="flex items-center gap-2.5">
           {s.icon && isWeather(s.icon) && !art && <WeatherGlyph name={s.icon} size={38} className="-my-1 -ml-0.5" />}
           <div className="min-w-0">
-            <div className="truncate text-[14px] font-semibold leading-tight @[200px]/tile:text-[15px]">{s.label}</div>
-            {s.sub && <div className={cn('truncate text-[13px] leading-tight', art ? 'text-white/75' : 'text-muted-foreground')}>{s.sub}</div>}
+            <div className="truncate text-item font-semibold leading-tight @[200px]/tile:text-title">{s.label}</div>
+            {s.sub && <div className={cn('truncate text-body leading-tight', art ? 'text-white/75' : 'text-muted-foreground')}>{s.sub}</div>}
           </div>
           {s.tone === 'bad' && <span className="dot dot-bad ml-auto" />}
         </div>
         <div className={cn('mt-auto flex min-w-0 justify-between gap-3 pt-3', s.marks || s.waffle ? 'items-end' : 'items-baseline')}>
           <div className={cn('metric min-w-0 truncate text-[20px] leading-none @[200px]/tile:text-[22px]', !art && toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}><Counter value={s.value} /></div>
           {s.marks?.length ? <TileMarks marks={s.marks} /> : s.waffle && s.pct != null ? <Waffle pct={s.pct} label={s.sub} /> : null}
-          {s.detail && <div className="hidden min-w-0 truncate text-xs tabular text-muted-foreground @[200px]/tile:block">{s.detail}</div>}
+          {s.detail && <div className="hidden min-w-0 truncate text-meta tabular text-muted-foreground @[200px]/tile:block">{s.detail}</div>}
         </div>
       </div>
     </Card>
@@ -1487,12 +1488,12 @@ export function Ring({ s }: { s: Summary }) {
             />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <Icon name={s.icon} className="mb-0.5 size-4 text-muted-foreground" />
+          <Icon name={s.icon} className="mb-0.5 size-icon text-muted-foreground" />
           <div className="metric max-w-[76px] truncate text-[19px] leading-tight"><Counter value={s.ring ?? s.value} /></div>
         </div>
       </div>
-      <div className="mt-1 max-w-full truncate text-[13px] font-medium">{s.label}</div>
-      {s.detail && <div className="max-w-full truncate text-[12px] text-muted-foreground">{s.detail}</div>}
+      <div className="mt-1 max-w-full truncate text-body font-medium">{s.label}</div>
+      {s.detail && <div className="max-w-full truncate text-meta text-muted-foreground">{s.detail}</div>}
     </div>
   );
 }
@@ -1518,7 +1519,7 @@ export function Popover({ group, className, children }: { group: 'ring' | 'wx'; 
 export function ClockMonth({ card, children }: { card?: CardT; children: ReactNode }) {
   const events = card?.type === 'calendar';
   return (
-    <div className="group/wx relative text-right leading-tight outline-none" tabIndex={0}>
+    <div className="group/wx relative rounded-control text-right leading-tight" tabIndex={0}>
       {children}
       <Popover group="wx" className={cn('right-[-14px]', events ? 'w-[680px]' : 'w-[340px]')}><div className={cn('text-left', !events && 'cal-month-only')}><CalendarView card={events ? card : { type: 'calendar', events: [] }} large /></div></Popover>
     </div>
@@ -1537,16 +1538,16 @@ function MiniRingView({ s }: { s: Summary }) {
   const color = s.tone === 'bad' ? 'var(--bad)' : s.tone === 'warn' ? 'var(--warn)' : s.color ?? (s.tone === 'accent' ? 'var(--primary)' : 'var(--good)');
   const n = String(s.ring ?? s.value).replace(/%$/, '');
   return (
-    <div className="group/ring relative flex flex-col items-center outline-none" tabIndex={0} aria-label={[s.label, s.value, s.detail].filter(Boolean).join(', ')}>
+    <div className="group/ring relative flex flex-col items-center rounded-control" tabIndex={0} aria-label={[s.label, s.value, s.detail].filter(Boolean).join(', ')}>
       <div className="relative size-[clamp(26px,7.7vw,32px)] transition-transform duration-(--dur-pop) ease-out group-hover/ring:scale-110 sm:size-[38px]">
         <svg viewBox="0 0 38 38" className="size-full rotate-[135deg]" aria-hidden>
           <circle cx="19" cy="19" r={r} fill="none" stroke="currentColor" strokeOpacity=".16" strokeWidth="3.2" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} />
           <circle cx="19" cy="19" r={r} fill="none" stroke={color} strokeWidth="3.2" strokeLinecap="round"
             strokeDasharray={`${Math.max(0.001, pct) * arc} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move) ease-out" />
         </svg>
-        <div className="metric absolute inset-0 grid place-items-center text-[11px]">{n.length > 4 ? <Icon name={s.icon} className="size-3.5" /> : <Counter value={n} />}</div>
+        <div className="metric absolute inset-0 grid place-items-center text-[11px]">{n.length > 4 ? <Icon name={s.icon} className="size-icon-sm" /> : <Counter value={n} />}</div>
       </div>
-      <div className="-mt-1 hidden max-w-[56px] truncate text-[10px] font-medium text-muted-foreground sm:block">{s.label}</div>
+      <div className="-mt-1 hidden max-w-[56px] truncate text-caption font-medium text-muted-foreground sm:block">{s.label}</div>
       <Popover group="ring" className="right-1/2 w-[280px] translate-x-1/2">{s.every && (s.trend?.length ?? 0) > 7 ? <div className="p-3.5"><Chart card={trendOf(s)} /></div> : <SummaryTile s={s} />}</Popover>
     </div>
   );
@@ -1558,18 +1559,18 @@ export function WeatherRing({ card }: { card: ForecastCard }) {
   const r = 17, c = 2 * Math.PI * r, arc = c * 0.75, pct = Math.max(0, Math.min(1, s.pct ?? 0.5));
   const a = (135 + 270 * pct) * Math.PI / 180, mx = 21 + r * Math.cos(a), my = 21 + r * Math.sin(a);
   return (
-    <div className="group/wx relative flex items-center gap-2 outline-none sm:gap-2.5" tabIndex={0} aria-label={`${s.value}, ${s.label}. ${s.detail}`}>
+    <div className="group/wx relative flex items-center gap-2 rounded-control sm:gap-2.5" tabIndex={0} aria-label={`${s.value}, ${s.label}. ${s.detail}`}>
       <div className="relative size-[clamp(26px,7.7vw,32px)] sm:size-[42px]">
         <svg viewBox="0 0 42 42" className="size-full" aria-hidden>
           <defs><linearGradient id="wx" x1="0" y1="1" x2="1" y2="1"><stop offset="0" stopColor="#64d2ff" /><stop offset=".55" stopColor="#ffd60a" /><stop offset="1" stopColor="#ff9f0a" /></linearGradient></defs>
           <circle cx="21" cy="21" r={r} fill="none" stroke="url(#wx)" strokeOpacity=".9" strokeWidth="3" strokeLinecap="round" strokeDasharray={`${arc} ${c}`} transform="rotate(135 21 21)" />
           <circle cx={mx} cy={my} r="3.6" fill="#fff" stroke="rgb(0 0 0 / .35)" strokeWidth="1" />
         </svg>
-        <div className="absolute inset-0 grid place-items-center"><Icon name={s.icon} className="size-4" /></div>
+        <div className="absolute inset-0 grid place-items-center"><Icon name={s.icon} className="size-icon" /></div>
       </div>
       <div className="text-left leading-tight">
-        <div className="text-sm font-semibold tabular"><Counter value={s.value} /></div>
-        <div className="hidden max-w-[90px] truncate text-xs text-muted-foreground sm:block">{s.label}</div>
+        <div className="text-item font-medium tabular"><Counter value={s.value} /></div>
+        <div className="hidden max-w-[90px] truncate text-meta text-muted-foreground sm:block">{s.label}</div>
       </div>
       <Popover group="wx" className="right-[-8px] w-[440px]"><Forecast card={card} /></Popover>
     </div>
@@ -1587,34 +1588,34 @@ export function Forecast({ card }: { card: ForecastCard }) {
       <div className="flex items-start justify-between">
         <div>
           <div className="metric text-[44px] leading-none"><Counter value={`${now.temp}°`} /></div>
-          <div className="mt-1.5 text-sm font-medium">{now.words}</div>
-          <div className="text-xs text-muted-foreground">Feels {now.feels}° · H {now.hi}° · L {now.lo}°</div>
+          <div className="mt-1.5 text-item font-medium">{now.words}</div>
+          <div className="text-meta text-muted-foreground">Feels {now.feels}° · H {now.hi}° · L {now.lo}°</div>
         </div>
         <Icon name={now.icon} className="size-9 text-foreground/90" />
       </div>
       <div className="mt-5 grid" style={{ gridTemplateColumns: `repeat(${hours.length}, minmax(0, 1fr))` }}>
         {hours.map((h, i) => (
           <div key={i} className="flex flex-col items-center gap-1.5">
-            <div className="text-[11px] text-muted-foreground">{i === 0 ? 'Next' : h.time}</div>
-            <Icon name={h.icon} className="size-4" />
+            <div className="text-caption text-muted-foreground">{i === 0 ? 'Next' : h.time}</div>
+            <Icon name={h.icon} className="size-icon" />
           </div>
         ))}
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="mt-1 block w-full overflow-visible" aria-hidden>
         <path d={smooth(hours.map((h, i) => [x(i), y(h.temp)] as [number, number]))} fill="none" stroke="currentColor" strokeOpacity=".55" strokeWidth="1.5" />
         {hours.map((h, i) => <g key={i}><circle cx={x(i)} cy={y(h.temp)} r="2.2" fill="currentColor" />
-          <text x={x(i)} y={y(h.temp) - 6} textAnchor="middle" className="fill-current text-[10px] font-semibold tabular-nums">{h.temp}°</text></g>)}
+          <text x={x(i)} y={y(h.temp) - 6} textAnchor="middle" className="fill-current text-[10px] font-medium tabular-nums">{h.temp}°</text></g>)}
       </svg>
       {wet ? (
         <div className="mt-2 grid items-end" style={{ gridTemplateColumns: `repeat(${hours.length}, minmax(0, 1fr))`, height: 46 }}>
           {hours.map((h, i) => (
             <div key={i} className="flex h-full flex-col items-center justify-end gap-1">
               <div className="w-3 rounded-full bg-[#64d2ff]" style={{ height: `${Math.max(2, h.pop * .3)}px`, opacity: .25 + h.pop / 130 }} />
-              <div className={cn('text-[10px] tabular', h.pop >= 30 ? 'text-[#64d2ff]' : 'text-muted-foreground')}>{h.pop}%</div>
+              <div className={cn('text-caption tabular', h.pop >= 30 ? 'text-[#64d2ff]' : 'text-muted-foreground')}>{h.pop}%</div>
             </div>
           ))}
         </div>
-      ) : <div className="mt-3 text-center text-xs text-muted-foreground">No rain expected in the next 12 hours</div>}
+      ) : <div className="mt-3 text-center text-meta text-muted-foreground">No rain expected in the next 12 hours</div>}
     </div>
   );
 }

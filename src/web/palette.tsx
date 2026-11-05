@@ -165,11 +165,11 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
       </CommandItem>
       <CommandItem {...alerts} onSelect={() => void flipPush()} className={cn(asking && 'chat-shimmer')}>
         {pushed === 'on' ? <Bell /> : <BellOff className="text-muted-foreground" />}Notifications on this device
-        <span className="ml-auto text-[12px] text-muted-foreground">{pushed === 'on' ? 'On' : 'Off'}</span>
+        <span className="ml-auto text-meta text-muted-foreground">{pushed === 'on' ? 'On' : 'Off'}</span>
       </CommandItem>
       {glassy && <CommandItem {...glass} onSelect={() => { const on = toggleGlass(); setLiquid(on); toast('glass', { text: on ? 'Liquid glass on this device' : 'Frosted glass on this device' }, { ms: 2000 }); }}>
         <Droplet className={cn(!liquid && 'text-muted-foreground')} />Liquid glass
-        <span className="ml-auto text-[12px] text-muted-foreground">{liquid ? 'On' : 'Off'}</span>
+        <span className="ml-auto text-meta text-muted-foreground">{liquid ? 'On' : 'Off'}</span>
       </CommandItem>}
     </CommandGroup>],
     [best([{ value: 'sign out' }, { value: 'sign out everywhere' }]), account && <CommandGroup key="account" heading="Account">
@@ -182,7 +182,7 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
   return (
         <Dialog open={palette} onOpenChange={setPalette}>
           <DialogHeader className="sr-only"><DialogTitle>{assistantName ? `Ask ${assistantName}` : 'Search'}</DialogTitle><DialogDescription>Run a command, ask a question or jump to a section</DialogDescription></DialogHeader>
-          <DialogContent showCloseButton={false} className="palette-pop top-[18%] translate-y-0 overflow-hidden rounded-[22px] p-0 sm:max-w-[600px]">
+          <DialogContent showCloseButton={false} className="palette-pop top-[18%] translate-y-0 overflow-hidden rounded-popover p-0 sm:max-w-[600px]">
           <Command filter={(v, q, k) => v.startsWith('cmd ') ? scores.get(v) ?? 0 : isDoc(v) ? DOCS_SCORE : rank(v, q, k)} className={SHELL}>
           <CommandInput placeholder={placeholder ?? assistantName ? placeholder ?? `Ask ${assistantName} anything about your homelab…` : 'Type a command, or search services and pages…'} value={query} onValueChange={setQuery}
             onKeyDown={e => {
@@ -198,11 +198,11 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
             }} />
           {ran ? (
             <div className="max-h-[440px] overflow-y-auto p-4"><div className="space-y-3">
-              <div className={cn('text-[13px] text-muted-foreground', ran.busy && 'chat-shimmer')}>{filled(ran.c.label, ran.m.slots)}</div>
+              <div className={cn('text-body text-muted-foreground', ran.busy && 'chat-shimmer')}>{filled(ran.c.label, ran.m.slots)}</div>
               {ran.said && <Approval said={ran.said} title={ran.said.title ?? `${filled(ran.c.label, ran.m.slots)}?`} detail={ran.said.detail} icon="pulse" ready={!ran.busy} width="100%"
                 answer={ok => { if (ok) void command(ran.m, true); else setRan(null); }} />}
               {ran.card && <ChatCard first={ran.card} name={ran.tool ?? ''} input={ran.input} tools={tools ?? {}} fresh />}
-              {ran.error && <div className="text-sm text-bad">{ran.error}</div>}
+              {ran.error && <div className="text-item text-bad">{ran.error}</div>}
             </div></div>
           ) : inline ? (
             <div className="max-h-[440px] overflow-y-auto p-4">
@@ -211,7 +211,7 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
           ) : (
           <CommandList onPointerMove={() => { picked.current = true; }}>
             <CommandEmpty>
-              {assistantName ? <button className="mx-auto flex items-center gap-2 text-sm" onClick={() => answer(query)}><CornerDownLeft className="text-muted-foreground" />Ask “{query}”</button> : 'Nothing matches'}
+              {assistantName ? <button className="mx-auto flex items-center gap-2 text-item" onClick={() => answer(query)}><CornerDownLeft className="text-muted-foreground" />Ask “{query}”</button> : 'Nothing matches'}
             </CommandEmpty>
             {groups.map(g => g[1])}
             {/* Valet's own docs, always last */}

@@ -3,7 +3,7 @@
 // robot: its state, what its percentages mean, and its controls. Whatever is pressed answers in a line beside it.
 import { ChevronLeft, Pause, Play, Power, Sparkles, Zap, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Chip, ChipDot } from '@/components/ui/chip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -26,7 +26,7 @@ type Sent = { command: string; label: string; rooms?: number[]; fan?: string };
 function Reading({ label, note, value, tone }: { label: string; note: string; value: number; tone?: 'warn' | 'bad' }) {
   const r = 7.5, c = 2 * Math.PI * r, p = Math.max(0, Math.min(1, value / 100)), color = tone === 'bad' ? 'var(--bad)' : tone === 'warn' ? 'var(--warn)' : 'var(--good)';
   return (
-    <div className="flex h-7 min-w-0 items-center gap-2 text-[13px] leading-[1.35]">
+    <div className="flex h-7 min-w-0 items-center gap-2 text-body leading-[1.35]">
       <svg viewBox="0 0 20 20" className="size-5 flex-none -rotate-90" aria-hidden>
         <circle cx="10" cy="10" r={r} fill="none" stroke="currentColor" strokeOpacity=".14" strokeWidth="3" />
         <circle cx="10" cy="10" r={r} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${Math.max(.001, p) * c} ${c}`} className="transition-[stroke-dasharray] duration-(--dur-move)" />
@@ -41,19 +41,21 @@ function Reading({ label, note, value, tone }: { label: string; note: string; va
 /** One line of the room: a name, its brightness and a switch that looks like one, whatever kind of light it is. */
 function LightRow({ dot, name, state, label, middle, control }: { dot?: string; name: string; state: string; label: string; middle?: React.ReactNode; control: React.ReactNode }) {
   return (
-    <div role="group" aria-label={label} className="grid min-h-9 grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)_2.5rem_auto] items-center gap-2 text-[13px] leading-[1.35]">
+    <div role="group" aria-label={label} className="grid min-h-9 grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)_2.5rem_auto] items-center gap-2 text-body leading-[1.35]">
       <span className="flex min-w-0 items-center gap-2">
-        <i className="size-2 flex-none rounded-full" style={dot ? { background: dot, boxShadow: `0 0 6px ${dot}` } : { boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--foreground) 35%, transparent)' }} />
+        <ChipDot dot={dot ?? 'off'} />
         <span className="truncate" title={name}>{name}</span>
       </span>
       <span className="min-w-0">{middle}</span>
-      <Counter value={state} className="text-right text-[12px] text-muted-foreground" />
+      <Counter value={state} className="text-right text-meta text-muted-foreground" />
       {control}
     </div>
   );
 }
 
-const Pill = ({ icon: I, children, ...p }: { icon?: LucideIcon } & React.ComponentProps<typeof Button>) => <Button size="sm" variant="secondary" {...p} className={cn('h-8 flex-none rounded-sm text-xs', p.className)}>{I && <I className="size-4" />}{children}</Button>;
+// the case's actions are chips; the one that starts the robot is the accent
+const Pill = ({ accent, className, ...p }: { icon?: LucideIcon; accent?: boolean } & Omit<React.ComponentProps<'button'>, 'ref'>) =>
+  <Chip {...p} className={cn('justify-center', accent && 'bg-primary font-medium text-primary-foreground [&:is(a,button)]:hover:bg-primary/90', className)} />;
 
 export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
   const box = useRef<HTMLDivElement>(null);
@@ -131,36 +133,34 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
   const sentWord = (...commands: string[]) => !!sent && commands.includes(sent.command);
   const viewOnly = !canAct && <Cant>View only: sign in to change this.</Cant>;
   const steady = useSteady(!!sel);
-  const back = <button onClick={() => choose(null)} className="press flex h-8 flex-none items-center gap-1 rounded-sm pr-3 pl-1.5 text-[13px] text-muted-foreground ring-1 ring-foreground/15 hover:bg-foreground/10 hover:text-foreground"><ChevronLeft className="size-4" />All rooms</button>;
+  const back = <Chip variant="outline" icon={ChevronLeft} onClick={() => choose(null)} className="gap-1 text-muted-foreground hover:text-foreground">All rooms</Chip>;
   return (
     <div className="case"><div ref={steady.body} className="case-body" style={steady.style}>
       <div className="relative">
-        <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-xl" role="img" aria-label="3D floor plan. Drag to look around; select a room or the robot. Every room is also in the list below." />
+        <div ref={box} className="relative w-full touch-none select-none overflow-hidden rounded-inset" role="img" aria-label="3D floor plan. Drag to look around; select a room or the robot. Every room is also in the list below." />
       </div>
       {!sel && (
         <div key="all" className="space-y-2 animate-in fade-in duration-(--dur-pop)">
           <div className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1.5">
             {note ? <Said note={note} /> : <>
               <Counter value={String(lit.length)} className="metric text-[22px] leading-none" />
-              <span className="text-[13px] text-muted-foreground">{lit.length === 1 ? 'light on' : 'lights on'}</span>
+              <span className="text-body text-muted-foreground">{lit.length === 1 ? 'light on' : 'lights on'}</span>
               <Pill icon={Power} disabled={!canAct || !lit.length} onClick={() => flip(lit, false, `Turned off ${plural(lit.length, 'light')}`)}>All off</Pill>
             </>}
             {r && (
-              <button onClick={() => choose('robot')} className="press ml-auto flex h-8 flex-none items-center gap-2 rounded-sm bg-foreground/[.06] pr-3 pl-2.5 text-[13px] hover:bg-foreground/10">
-                <i className={cn('size-2 flex-none rounded-full', r.error ? 'bg-bad' : sent ? 'bg-warn' : busy ? 'bg-[#64d2ff]' : 'bg-good')} />
+              <Chip onClick={() => choose('robot')} className="ml-auto" dot={r.error ? 'bad' : sent ? 'warn' : busy ? '#64d2ff' : 'good'}>
                 <span>Vacuum · {sent ? 'Sent' : said(r)}</span>
                 {r.battery != null && <span className="tabular text-muted-foreground">{r.battery}%</span>}
-              </button>
+              </Chip>
             )}
           </div>
           <div className="flex flex-wrap gap-1.5">
             {shown.rooms.filter(rm => rm.lights.length || r).map(rm => {
               const on = rm.lights.filter(l => l.on), clean = cleaning?.[rm.id], c = on[0]?.color ?? '#ffd8a8';
               return (
-                <button key={rm.id} onClick={() => choose(`room:${rm.id}`)} className="press flex h-8 flex-none items-center gap-2 rounded-sm px-3 text-[13px] ring-1 ring-foreground/15 hover:bg-foreground/10">
-                  <i className="size-2 flex-none rounded-full" style={on.length ? { background: c, boxShadow: `0 0 6px ${c}` } : { boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--foreground) 35%, transparent)' }} />
+                <Chip key={rm.id} variant="outline" onClick={() => choose(`room:${rm.id}`)} dot={on.length ? c : 'off'}>
                   {rm.name}<span className="text-muted-foreground">{clean ? (clean === 'queued' ? 'Queued' : 'Cleaning') : !rm.lights.length ? 'No lights' : on.length ? `${on.length}/${rm.lights.length}` : 'Off'}</span>
-                </button>
+                </Chip>
               );
             })}
           </div>
@@ -172,10 +172,10 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
         <section key={room.id} aria-label={`${room.name} controls`} className="space-y-1 animate-in fade-in duration-(--dur-pop)">
           <div className="flex min-h-8 items-center gap-2">
             {back}
-            <h4 className="min-w-0 truncate text-[15px] font-semibold">{room.name}</h4>
-            {room.lights.length > 0 && <span className="flex-none text-[13px] text-muted-foreground">{lamped.length ? `${lamped.length} of ${room.lights.length} on` : 'All off'}</span>}
+            <h4 className="min-w-0 truncate text-title font-semibold">{room.name}</h4>
+            {room.lights.length > 0 && <span className="flex-none text-body text-muted-foreground">{lamped.length ? `${lamped.length} of ${room.lights.length} on` : 'All off'}</span>}
           </div>
-          {!room.lights.length && <Cant>No lights in this room. Add them under <code className="text-[11px]">floorplans → rooms</code>.</Cant>}
+          {!room.lights.length && <Cant>No lights in this room. Add them under <code className="text-caption">floorplans → rooms</code>.</Cant>}
           {room.lights.length > 0 && <>
             <LightRow name="Whole room" label="Whole room" dot={lamped[0]?.color} state={lamped.length ? `${roomLevel || 100}%` : 'Off'}
               middle={dims.length > 0 ? <ElasticSlider aria-label="Room brightness" disabled={!canAct} value={[roomLevel || 1]} min={1} max={100} step={1} onValueChange={([v]) => slide(dims, v)} onValueCommit={([v]) => change(dims, { on: true, brightness: v })} /> : <Cant>On/off only</Cant>}
@@ -206,21 +206,21 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
         <section key="robot" aria-label="Vacuum controls" className="space-y-1.5 animate-in fade-in duration-(--dur-pop)">
           <div className="flex min-h-8 items-center gap-2">
             {back}
-            <h4 className="flex-none text-[15px] font-semibold">Vacuum</h4>
-            <span className={cn('min-w-0 truncate text-[13px]', r.error ? 'text-bad' : 'text-muted-foreground')}>{sent ? `Sent, ${said(r).toLowerCase()} for now` : said(r)}</span>
+            <h4 className="flex-none text-title font-semibold">Vacuum</h4>
+            <span className={cn('min-w-0 truncate text-body', r.error ? 'text-bad' : 'text-muted-foreground')}>{sent ? `Sent, ${said(r).toLowerCase()} for now` : said(r)}</span>
           </div>
           <div className="grid grid-cols-3 gap-1.5">
-            <Pill variant={busy ? 'secondary' : 'default'} disabled={!canAct || !!sent} aria-label={busy ? 'Pause' : paused ? 'Resume' : 'Clean'} onClick={() => busy ? vac('pause', 'pause') : vac('start', paused ? 'resume' : 'clean everywhere')}>
-              <Slots at={sentWord('start', 'pause', 'clean_rooms') ? 'sent' : busy ? 'pause' : paused ? 'resume' : 'clean'} words={{ clean: <><Play className="size-4" fill="currentColor" />Clean</>, resume: <><Play className="size-4" fill="currentColor" />Resume</>, pause: <><Pause className="size-4" fill="currentColor" />Pause</>, sent: 'Sent' }} />
+            <Pill accent={!busy} disabled={!canAct || !!sent} aria-label={busy ? 'Pause' : paused ? 'Resume' : 'Clean'} onClick={() => busy ? vac('pause', 'pause') : vac('start', paused ? 'resume' : 'clean everywhere')}>
+              <Slots at={sentWord('start', 'pause', 'clean_rooms') ? 'sent' : busy ? 'pause' : paused ? 'resume' : 'clean'} words={{ clean: <><Play className="size-icon" fill="currentColor" />Clean</>, resume: <><Play className="size-icon" fill="currentColor" />Resume</>, pause: <><Pause className="size-icon" fill="currentColor" />Pause</>, sent: 'Sent' }} />
             </Pill>
             <Pill disabled={!canAct || !!sent || r.state === 'docked'} aria-label="Dock" onClick={() => vac('dock', 'dock')}><Slots at={sentWord('dock') ? 'sent' : r.state === 'docked' ? 'docked' : 'dock'} words={{ dock: 'Dock', docked: 'Docked', sent: 'Sent' }} /></Pill>
-            <Pill disabled={!canAct || !!sent} aria-label="Find" onClick={() => vac('locate', 'find the robot')}><Slots at={sentWord('locate') ? 'sent' : 'find'} words={{ find: <><Zap className="size-4" fill="currentColor" />Find</>, sent: 'Sent' }} /></Pill>
+            <Pill disabled={!canAct || !!sent} aria-label="Find" onClick={() => vac('locate', 'find the robot')}><Slots at={sentWord('locate') ? 'sent' : 'find'} words={{ find: <><Zap className="size-icon" fill="currentColor" />Find</>, sent: 'Sent' }} /></Pill>
           </div>
-          <div className="flex min-h-8 items-center gap-2 text-[13px]">
+          <div className="flex min-h-8 items-center gap-2 text-body">
             {r.fanSpeeds.length > 0 ? <>
               <span className="flex-none font-medium">Suction</span>
               <Select disabled={!canAct} value={sent?.fan ?? r.fanSpeed} onValueChange={v => vac('fan_speed', `suction ${pretty(v).toLowerCase()}`, { fan_speed: v })}>
-                <SelectTrigger size="sm" className="ml-auto h-8 w-auto flex-none rounded-sm text-xs" aria-label="Suction"><SelectValue /></SelectTrigger>
+                <SelectTrigger size="sm" className="ml-auto h-8 w-auto flex-none rounded-sm text-meta" aria-label="Suction"><SelectValue /></SelectTrigger>
                 <SelectContent>{r.fanSpeeds.map(s => <SelectItem key={s} value={s}>{pretty(s)}</SelectItem>)}</SelectContent>
               </Select>
             </> : <Cant>This robot doesn't report suction levels.</Cant>}
@@ -229,7 +229,7 @@ export default function HomeCase({ data, run }: { data: PlanData; run?: Run }) {
             {r.battery != null && <Reading label="Battery" note={batteryNote(r.battery, r)} value={r.battery} tone={r.battery < 20 ? 'bad' : r.battery < 40 ? 'warn' : undefined} />}
             {r.wear.map(([name, n]) => <Reading key={name} label={name} note={wearNote(n)} value={n} tone={n < 10 ? 'bad' : n < 25 ? 'warn' : undefined} />)}
           </div>
-          {r.wear.length > 0 ? <p className="text-[12px] leading-[1.35] text-muted-foreground">Part percentages are life left.</p> : <Cant>This robot doesn't report brush or filter wear.</Cant>}
+          {r.wear.length > 0 ? <p className="text-meta leading-[1.35] text-muted-foreground">Part percentages are life left.</p> : <Cant>This robot doesn't report brush or filter wear.</Cant>}
           <Said note={note} />
           {viewOnly}
         </section>

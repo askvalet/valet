@@ -116,9 +116,9 @@ export function headsUp({ now, hours: all, days }: ForecastCard): string | undef
   if (Math.abs(gap) >= 6) return `Today's high of ${now.hi}° is ${Math.abs(gap)}° ${gap > 0 ? 'warmer' : 'cooler'} than the next few days`;
   if (Math.abs(now.feels - now.temp) >= 5) return `Feels like ${now.feels}° right now`;
 }
-const HeadsUp = ({ card, className }: { card: ForecastCard; className?: string }) => { const line = headsUp(card); return line ? <p className={cn('text-center text-[14px] leading-[1.35] font-medium', className)}>{line}</p> : null; };
+const HeadsUp = ({ card, className }: { card: ForecastCard; className?: string }) => { const line = headsUp(card); return line ? <p className={cn('text-center text-item leading-[1.35] font-medium', className)}>{line}</p> : null; };
 const skyOf = (icon: string) => /moon/.test(icon) ? 'night' : icon === 'sun' ? 'clear' : /rain|storm/.test(icon) ? 'wet' : 'grey';
-const Caps = ({ children, className }: { children: ReactNode; className?: string }) => <div className={cn('text-[12px] font-medium', className)}>{children}</div>;
+const Caps = ({ children, className }: { children: ReactNode; className?: string }) => <div className={cn('text-meta font-medium', className)}>{children}</div>;
 
 function Hero({ card, s }: { card: ForecastCard; s: number }) {
   const { now } = card;
@@ -141,10 +141,10 @@ function Outlook({ card, n, size = 34 }: { card: ForecastCard; n: number; size?:
     <div className="grid" style={{ gridTemplateColumns: `repeat(${cols.length}, minmax(0, 1fr))` }}>
       {cols.map(c => (
         <div key={c.k} className="flex flex-col items-center">
-          <div className="text-[13px] font-semibold">{c.k}</div>
+          <div className="text-body font-medium">{c.k}</div>
           <WeatherGlyph name={c.icon} size={size} className="my-1" />
-          <div className="tabular text-[14px] font-semibold">{c.a}°</div>
-          {c.b != null && <div className="tabular text-[13px] text-muted-foreground">{c.b}°</div>}
+          <div className="tabular text-item font-medium">{c.a}°</div>
+          {c.b != null && <div className="tabular text-body text-muted-foreground">{c.b}°</div>}
         </div>
       ))}
     </div>
@@ -156,9 +156,9 @@ function HourStrip({ card, n }: { card: ForecastCard; n: number }) {
     <div className="grid" style={{ gridTemplateColumns: `repeat(${hours.length}, minmax(0, 1fr))` }}>
       {hours.map((h, i) => (
         <div key={i} className="flex flex-col items-center gap-1">
-          <div className="text-[12px] text-muted-foreground">{h.time}</div>
+          <div className="text-meta text-muted-foreground">{h.time}</div>
           <WeatherGlyph name={h.icon} size={24} />
-          <div className="tabular text-[13px] font-semibold">{h.temp}°</div>
+          <div className="tabular text-body font-medium">{h.temp}°</div>
         </div>
       ))}
     </div>
@@ -170,12 +170,12 @@ function DayBars({ card }: { card: ForecastCard }) {
   return (
     <div className="space-y-1.5">
       {days.map(d => (
-        <div key={d.name} className="grid grid-cols-[38px_28px_30px_minmax(0,1fr)_30px] items-center gap-2 text-[14px]">
-          <div className="font-semibold">{d.name}</div>
+        <div key={d.name} className="grid grid-cols-[38px_28px_30px_minmax(0,1fr)_30px] items-center gap-2 text-item">
+          <div className="font-medium">{d.name}</div>
           <WeatherGlyph name={d.icon} size={26} />
           <div className="tabular text-right text-muted-foreground">{d.lo}°</div>
           <div className="meter meter-sm"><div className="wx-range absolute inset-y-0 rounded-full" style={{ left: `${(d.lo - lo) / span * 100}%`, right: `${(hi - d.hi) / span * 100}%` }} /></div>
-          <div className="tabular text-right font-semibold">{d.hi}°</div>
+          <div className="tabular text-right font-medium">{d.hi}°</div>
         </div>
       ))}
     </div>
@@ -192,7 +192,7 @@ export function WeatherCard({ card, dense }: { card: ForecastCard; dense?: boole
         <div className="min-w-0 flex-1 space-y-4"><HeadsUp card={card} className="text-left" /><HourStrip card={card} n={w >= 720 ? 7 : 6} /><DayBars card={card} /></div>
       </> : <>
         <div className="flex flex-1 flex-col justify-center"><Hero card={card} s={s} /></div>
-        <HeadsUp card={card} className={dense ? 'text-[13px]' : undefined} />
+        <HeadsUp card={card} className={dense ? 'text-body' : undefined} />
         {tall && <HourStrip card={card} n={w >= 380 ? 6 : 5} />}
         {tall && card.days?.length ? <DayBars card={card} /> : <Outlook card={card} n={4} size={dense ? 26 : 34} />}
       </>}
@@ -264,12 +264,12 @@ function Agenda({ days, from, today, cap, empty }: { days: Map<string, CalendarE
     return (
       <li key={i} className={cn('flex min-w-0 items-stretch gap-2.5', over && 'opacity-50')}>
         <span className="w-[3.5px] shrink-0 rounded-full" style={{ background: colorOf(e) }} />
-        <div className="min-w-0 flex-1 py-px"><div className="truncate text-[14px] leading-[1.3] font-semibold">{e.title}</div><div className="truncate text-[13px] leading-[1.35] text-muted-foreground tabular">{span(e)}{lead && soon(e, now)}{e.join && ` · ${e.join.provider}`}</div></div>
+        <div className="min-w-0 flex-1 py-px"><div className="truncate text-item leading-[1.3] font-medium">{e.title}</div><div className="truncate text-body leading-[1.35] text-muted-foreground tabular">{span(e)}{lead && soon(e, now)}{e.join && ` · ${e.join.provider}`}</div></div>
         {e.join && !over && <LinkButton link={{ label: 'Join', href: e.join.href, note: e.join.provider }} className="self-center" />}
       </li>
     );
   };
-  if (!groups.length) return <p className="pt-3 text-[14px] text-muted-foreground">{empty}</p>;
+  if (!groups.length) return <p className="pt-3 text-item text-muted-foreground">{empty}</p>;
   return (
     <div className="space-y-4">
       {groups.map(g => {
@@ -277,10 +277,10 @@ function Agenda({ days, from, today, cap, empty }: { days: Map<string, CalendarE
         return (
           <section key={keyOf(g.day)}>
             <Caps className="mb-2 text-muted-foreground">{tag(g.day)}</Caps>
-            {g.list.length > 0 ? <ul className="space-y-2.5">{g.list.map((e, i) => row(e, i, isToday && i === 0))}</ul> : <p className="text-[13px] leading-[1.35] text-muted-foreground">Nothing else today</p>}
+            {g.list.length > 0 ? <ul className="space-y-2.5">{g.list.map((e, i) => row(e, i, isToday && i === 0))}</ul> : <p className="text-body leading-[1.35] text-muted-foreground">Nothing else today</p>}
             {g.earlier.length > 0 && <>
-              <button onClick={() => setOpen(o => !o)} aria-expanded={open} className="press mt-1.5 flex h-8 items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
-                <ChevronRight className={cn('size-4 flex-none transition-transform', open && 'rotate-90')} />{g.earlier.length} earlier today</button>
+              <button onClick={() => setOpen(o => !o)} aria-expanded={open} className="press mt-1.5 flex h-8 items-center gap-1 text-body text-muted-foreground hover:text-foreground">
+                <ChevronRight className={cn('size-icon flex-none transition-transform', open && 'rotate-90')} />{g.earlier.length} earlier today</button>
               {open && <ul className="mt-1 space-y-2.5 opacity-70">{g.earlier.map((e, i) => row(e, i))}</ul>}
             </>}
           </section>
@@ -300,7 +300,7 @@ function Month({ year, month, days, today, picked, pick }: { year: number; month
         return (
           <button key={k} onClick={() => pick(d)} aria-pressed={chosen} aria-current={isToday ? 'date' : undefined} aria-label={`${d.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' })}, ${list.length ? `${list.length} event${list.length > 1 ? 's' : ''}` : 'nothing on'}`}
             className="cal-day press relative grid min-h-0 place-items-center" data-out={out || undefined}>
-            <span className={cn('cal-num tabular grid size-[28px] place-items-center rounded-full text-[13px]', isToday ? 'bg-primary font-semibold text-primary-foreground' : chosen && 'is-picked font-semibold')}>{d.getDate()}</span>
+            <span className={cn('cal-num tabular grid size-[28px] place-items-center rounded-full text-body', isToday ? 'bg-primary font-medium text-primary-foreground' : chosen && 'is-picked font-medium')}>{d.getDate()}</span>
             {!isToday && list.length > 0 && <span className="absolute bottom-[1px] flex gap-[2px]">{[...new Set(list.map(colorOf))].slice(0, 3).map(c => <i key={c} className="size-[3.5px] rounded-full" style={{ background: c }} />)}</span>}
           </button>
         );
@@ -327,8 +327,8 @@ export function CalendarView({ card, large, dense }: { card: CalendarCard; large
     <div ref={ref} className={cn('cal relative flex h-full min-w-0 flex-1', two ? 'gap-7' : 'flex-col gap-5', !dense && 'p-5')}>
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="mb-3 flex items-baseline justify-between gap-2">
-          <h3 className={cn('truncate font-semibold tracking-tight', dense ? 'text-[15px]' : 'text-[20px]')}>{longDay(day)}</h3>
-          {away && !dense && <button onClick={home} className="press shrink-0 text-[13px] font-medium text-primary">Today</button>}
+          <h3 className={cn('truncate font-semibold tracking-tight', dense ? 'text-title' : 'text-metric-s')}>{longDay(day)}</h3>
+          {away && !dense && <button onClick={home} className="press shrink-0 text-body font-medium text-primary">Today</button>}
         </div>
         {/* side by side the month sets the height, and the agenda scrolls in whatever's left: it can't stretch the row */}
         {two ? <div className="cal-scroll relative min-h-0 flex-1"><div className="absolute inset-0 overflow-y-auto pb-3">{list}</div></div> : list}
@@ -336,17 +336,17 @@ export function CalendarView({ card, large, dense }: { card: CalendarCard; large
       {month && (
         <div className={cn('flex min-w-0 flex-col', two && 'w-[47%] shrink-0')}>
           <div className="mb-1 flex items-center justify-between">
-            <div className="text-[14px] font-semibold tracking-tight">{new Date(y, m, 1).toLocaleDateString('en', { month: 'long', ...(y !== today.getFullYear() ? { year: 'numeric' } : {}) })}</div>
+            <div className="text-item font-semibold tracking-tight">{new Date(y, m, 1).toLocaleDateString('en', { month: 'long', ...(y !== today.getFullYear() ? { year: 'numeric' } : {}) })}</div>
             <div className="-mr-1.5 flex">
-              <button aria-label="Previous month" disabled={!!low && new Date(y, m, 1) <= low} onClick={() => go(-1)} className="press grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"><ChevronLeft className="size-[17px]" /></button>
-              <button aria-label="Next month" disabled={!!high && new Date(y, m + 1, 1) > high} onClick={() => go(1)} className="press grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"><ChevronRight className="size-[17px]" /></button>
+              <button aria-label="Previous month" disabled={!!low && new Date(y, m, 1) <= low} onClick={() => go(-1)} className="press grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"><ChevronLeft className="size-icon-lg" /></button>
+              <button aria-label="Next month" disabled={!!high && new Date(y, m + 1, 1) > high} onClick={() => go(1)} className="press grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"><ChevronRight className="size-icon-lg" /></button>
             </div>
           </div>
-          <div className="mb-1 grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground" aria-hidden>{Array.from({ length: 7 }, (_, i) => 'SMTWTFS'[(firstDay() + i) % 7]).map((l, i) => <div key={i}>{l}</div>)}</div>
+          <div className="mb-1 grid grid-cols-7 text-center text-caption font-medium text-muted-foreground" aria-hidden>{Array.from({ length: 7 }, (_, i) => 'SMTWTFS'[(firstDay() + i) % 7]).map((l, i) => <div key={i}>{l}</div>)}</div>
           <div key={`${y}-${m}`} className={cn('flex min-h-0 flex-1 flex-col', view?.dir && 'cal-page')} style={{ '--from': `${(view?.dir ?? 0) * 10}px` } as CSSProperties}><Month year={y} month={m} days={days} today={today} picked={key} pick={pick} /></div>
           {/* two quiet lines for the chosen day; always this tall, so choosing a day doesn't move anything */}
-          <ul className="mt-2 h-[38px] space-y-0.5 overflow-hidden text-[12px] leading-[18px]">
-            {chosen.slice(0, 2).map((e, i) => <li key={i} className="flex min-w-0 items-center gap-1.5"><i className="size-1.5 shrink-0 rounded-full" style={{ background: colorOf(e) }} /><span className="truncate font-medium">{e.title}</span><span className="ml-auto shrink-0 tabular text-muted-foreground">{i === 1 && chosen.length > 2 ? `+${chosen.length - 2} more` : dated(e.start) ? 'All day' : clock(parse(e.start))}</span></li>)}
+          <ul className="mt-2 h-[38px] space-y-0.5 overflow-hidden text-meta leading-[18px]">
+            {chosen.slice(0, 2).map((e, i) => <li key={i} className="flex min-w-0 items-center gap-1.5"><i className="dot" style={{ background: colorOf(e) }} /><span className="truncate font-medium">{e.title}</span><span className="ml-auto shrink-0 tabular text-muted-foreground">{i === 1 && chosen.length > 2 ? `+${chosen.length - 2} more` : dated(e.start) ? 'All day' : clock(parse(e.start))}</span></li>)}
             {!chosen.length && <li className="text-muted-foreground">Nothing on</li>}
           </ul>
         </div>
@@ -371,7 +371,7 @@ const MODE_ICONS: Record<string, LucideIcon | typeof Zzz> = { off: Power, heat: 
 
 function ModeButton({ m, on, press, disabled }: { m: ThermostatMode; on: boolean; press: () => void; disabled: boolean }) {
   const I = MODE_ICONS[m.id];
-  return <button onClick={press} disabled={disabled} aria-pressed={on} title={m.label} className={cn('th-mode press flex h-11 min-w-0 flex-1 flex-col items-center justify-center rounded-sm px-1', on && 'is-on')}>{I && <I className="size-[18px] flex-none" />}<span className="max-w-full truncate text-[11px] leading-[1.3] font-medium">{m.label}</span></button>;
+  return <button onClick={press} disabled={disabled} aria-pressed={on} title={m.label} className={cn('th-mode press flex h-11 min-w-0 flex-1 flex-col items-center justify-center rounded-control px-1', on && 'is-on')}>{I && <I className="size-icon-lg flex-none" />}<span className="max-w-full truncate text-caption leading-[1.3] font-medium">{m.label}</span></button>;
 }
 
 export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: Run; dense?: boolean }) {
@@ -442,15 +442,15 @@ export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: R
               className="th-hit" fill="none" strokeWidth="58" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onKeyDown={key} />}
           </svg>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pb-[8%] text-center">
-            <div className={cn('font-medium', dense ? 'text-[12px]' : 'text-[14px]', oops ? 'text-bad' : 'text-muted-foreground')}>{oops ? "Couldn't set it" : card.state}</div>
+            <div className={cn('font-medium', dense ? 'text-meta' : 'text-item', oops ? 'text-bad' : 'text-muted-foreground')}>{oops ? "Couldn't set it" : card.state}</div>
             <div className={cn('wx-temp', dense ? 'text-[32px]' : 'text-[40px]')}>{big != null ? <Counter value={big.toFixed(value != null ? dp : 1)} /> : '–'}<span className={cn('ml-1 font-medium tracking-normal text-foreground/75', dense ? 'text-[13px]' : 'text-[15px]')}>°{unit}</span></div>
-            {value != null && room != null ? <div className={cn('mt-1 text-muted-foreground tabular', 'text-[12px]')}>Room {room.toFixed(Number.isInteger(room) ? 0 : 1)} °{unit}</div>
-              : card.range ? <div className="mt-1 text-[14px] text-muted-foreground tabular">Set to {card.range[0]}–{card.range[1]} °{unit}</div> : null}
+            {value != null && room != null ? <div className={cn('mt-1 text-muted-foreground tabular', 'text-meta')}>Room {room.toFixed(Number.isInteger(room) ? 0 : 1)} °{unit}</div>
+              : card.range ? <div className="mt-1 text-item text-muted-foreground tabular">Set to {card.range[0]}–{card.range[1]} °{unit}</div> : null}
           </div>
           {canSet && (
             <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 gap-2">
-              <button aria-label="Cooler" disabled={(value ?? min) <= min} onClick={() => nudge(-1)} className="th-step press grid size-8 place-items-center rounded-full"><Minus className="size-4" /></button>
-              <button aria-label="Warmer" disabled={(value ?? max) >= max} onClick={() => nudge(1)} className="th-step press grid size-8 place-items-center rounded-full"><Plus className="size-4" /></button>
+              <button aria-label="Cooler" disabled={(value ?? min) <= min} onClick={() => nudge(-1)} className="th-step press grid size-8 place-items-center rounded-full"><Minus className="size-icon" /></button>
+              <button aria-label="Warmer" disabled={(value ?? max) >= max} onClick={() => nudge(1)} className="th-step press grid size-8 place-items-center rounded-full"><Plus className="size-icon" /></button>
             </div>
           )}
         </div>

@@ -20,11 +20,11 @@
 /* no artwork: the name, and the mark (a console, say) large above it */
 .focus-art.is-blank { display: grid; place-items: end start; padding: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--foreground) 12%, transparent), color-mix(in srgb, var(--foreground) 4%, transparent)); }
 .focus-art.is-blank .focus-mark { inset: 10% 0 auto; width: 100%; height: 54%; }
-.focus-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 15px; font-weight: 500; line-height: 1.25; }
+.focus-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: var(--text-title); font-weight: 500; line-height: 1.25; }
 .focus-cap { display: block; margin-top: 12px; text-align: center; }
-.focus-cap b { display: block; overflow: hidden; font-size: 15px; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
-.focus-cap small { display: block; overflow: hidden; margin-top: 1px; font-size: 12.5px; color: var(--muted-foreground); white-space: nowrap; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
-.focus-slide:focus-visible .focus-art { outline: 2px solid var(--ring); outline-offset: 3px; }
+.focus-cap b { display: block; overflow: hidden; font-size: var(--text-title); font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
+.focus-cap small { display: block; overflow: hidden; margin-top: 1px; font-size: var(--text-meta); color: var(--muted-foreground); white-space: nowrap; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.focus-slide:focus-visible .focus-art { outline: 2px solid var(--ring); outline-offset: 2px; }
 
 /* Where each one sits sets its size: full in the middle, smaller and dimmer one away, smaller again two away, each drawn
    in towards the middle so the gaps between them stay even. Scroll-driven, so it follows a finger or a throw exactly and

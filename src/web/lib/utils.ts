@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { twMerge } from 'tailwind-merge';
+import { extendTailwindMerge } from 'tailwind-merge';
+
+// the design tokens in styles.css, so a later `text-muted-foreground` doesn't knock out `text-meta` as if both were colours
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: {
+      text: ['caption', 'meta', 'body', 'item', 'title', 'metric-s', 'metric-m', 'metric-l'],
+      radius: ['surface', 'popover', 'control', 'inset', 'chip', 'tag', 'thumb', 'poster', 'hero'],
+      spacing: ['icon-sm', 'icon', 'icon-lg'],
+    },
+  },
+});
 
 type ClassValue = string | number | null | undefined | false | ClassValue[] | Record<string, unknown>;
 
