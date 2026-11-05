@@ -872,3 +872,6 @@ main[data-settling] { visibility: hidden; }
   .meeting-join:hover { background: color-mix(in oklab, var(--meeting), #fff 14%); }
   .meeting-chip:hover { background: color-mix(in oklab, var(--meeting) 22%, transparent); }
 }
+
+/* a section with no heading carries on the grid above it: the cards' own gap, not a section's */
+section + section[data-plain] { margin-top: calc(var(--card-gap) - var(--section-gap)); }

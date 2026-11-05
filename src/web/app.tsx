@@ -579,7 +579,7 @@ function Home({ account }: { account: boolean }) {
   // a section title on the page, as it always was; one that's only a tab's name is still a heading to a screen reader
   const titled = (sec: Page['sections'][number]) => view === 'all' && sec.heading !== false && (sec.display === 'cards' || sec.display === 'media') && !(sec.widgets.length === 1 && page?.widgets[sec.widgets[0]]?.title === sec.title);
   const renderSection = (sec: (typeof sections)[number], aside = sec.place === 'left' || sec.place === 'right') => (
-          <section key={`${view}:${sec.i}`} className="space-y-3" style={sec.gap != null ? { '--card-gap': `${sec.gap}px`, '--tile-gap': `${sec.gap}px` } as React.CSSProperties : undefined}>
+          <section key={`${view}:${sec.i}`} data-plain={sec.title && titled(sec) ? undefined : ''} className="space-y-3" style={sec.gap != null ? { '--card-gap': `${sec.gap}px`, '--tile-gap': `${sec.gap}px` } as React.CSSProperties : undefined}>
             {sec.title && (titled(sec) ? <h2 className="wall-text px-0.5 text-item font-medium text-muted-foreground">{sec.title}</h2> : sec.title !== view && <h2 className="sr-only">{sec.title}</h2>)}
             {sec.display === 'media'
               ? (
