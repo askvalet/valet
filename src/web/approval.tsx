@@ -37,8 +37,8 @@ export function ChatCard({ first, name, input, tools, fresh }: { first: Card; na
   const { card, live } = useLive(first, name, input ?? {}, !!fresh && (name === 'show' || !!tools[name]?.live));
   return (
     <div className="chat-card relative">
-      {live && <span className="live-dot" title="Live" aria-label="Live" />}
-      <Widget card={card} compact />
+      {/* live: a still dot in the title row, beside where a card's own status goes, not floating in the corner */}
+      <Widget card={card} compact status={live ? <span className="live-dot" title="Live" aria-label="Live" /> : undefined} />
     </div>
   );
 }

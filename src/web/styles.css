@@ -538,7 +538,7 @@
 /* a ring's segments ease to their new size when the numbers change */
 .donut-seg { transition: stroke-dasharray var(--dur-move) var(--ease-out), stroke-dashoffset var(--dur-move) var(--ease-out); }
 /* a chat card that's keeping itself current: one small dot */
-.live-dot { position: sticky; float: right; top: 14px; margin: 12px 12px -20px 0; left: auto; z-index: 2; width: 6px; height: 6px; border-radius: 99px; background: var(--good); }
+.live-dot { display: inline-block; flex: none; width: 6px; height: 6px; border-radius: 99px; background: var(--good); }
 .chart-scrub { cursor: crosshair; }
 /* a theme switch: the sun and moon turn into each other */
 .spin-in { animation: spin-in var(--dur-move) var(--ease-out) backwards; }

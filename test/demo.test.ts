@@ -147,8 +147,9 @@ test('demo: a question it has no answer for says so, and never gets the nearest 
 });
 
 test('demo: every scenario the README promises works from start to finish', async () => {
-  // real Valet reads Docker but can't restart it, so the demo explains and says how, rather than offering to
-  assert.match(await carry('Why is Mealie down?'), /out of memory at 3:12 AM.*can't restart containers/);
+  // real Valet reads Docker but can't restart it, so the demo says what to change (without dwelling on what it can't do), rather than offering to
+  assert.match(await carry('Why is Mealie down?'), /out of memory at 3:12 AM.*mem_limit/);
+  assert.doesNotMatch(await carry('Why is Mealie down?'), /can't/);
   assert.match(ask('Restart Mealie').text!, /can't restart containers or services/);
   assert.equal(ask('Show me the Mealie logs').call?.name, 'lab__container_logs');
   assert.match(await carry('Anything happen overnight?'), /Mealie ran out of memory.*Severance/);

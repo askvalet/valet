@@ -1401,7 +1401,7 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
       <CardHeader card={card} title={title} status={status} hidden={quiet} slot={setSlot} />
       <CardContent className={cn('flex min-w-0 flex-col px-(--pad)', fill && 'flex-1')}>
         {card?.banner && <BannerLine b={card.banner} run={run} />}
-        {card ? <div className={cn(fade, 'flex min-w-0 flex-1 flex-col')}><CardBody card={card} run={run} large={large} fill={fill} columns={columns ?? (compact && card.type === 'status' ? 2 : undefined)} minimal={minimal || (compact && card.type === 'status')} /></div> : <CardSkeleton kind={kind} />}
+        {card ? <div className={cn(fade, 'flex min-w-0 flex-1 flex-col')}><CardBody card={card} run={run} large={large} fill={fill} columns={columns} minimal={minimal || (compact && card.type === 'status')} /></div> : <CardSkeleton kind={kind} />}
         {card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null}
       </CardContent>
     </Shell>

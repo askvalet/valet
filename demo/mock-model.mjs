@@ -12,7 +12,7 @@ const heat = String.raw`(?:the |my )?(?:thermostat|heat|heating|furnace|hallway)
 const ROOM_IDS = ['living room', 'kitchen', 'dining room', 'hallway', 'office', 'bedroom', 'bathroom', 'laundry', 'guest room'];
 const roomId = said => ROOM_IDS.findIndex(r => said.toLowerCase().includes(r)) + 1;
 const lights = said => ({ room: /\ball\b/i.test(said) ? 'All' : titled(new RegExp(lit, 'i').exec(said)?.[0].toLowerCase() ?? 'living room'), on: /\bon\b/i.test(said) });
-const logsSay = d => d.up ? 'Mealie is running again. It ran out of memory at 3:12 AM when it hit its 256 MB limit, so it may need a higher one.' : 'Mealie ran out of memory at 3:12 AM and hasn\'t come back. Its logs end with the out-of-memory kill, so it hit its 256 MB limit. Raise `mem_limit` for it in its compose file, then restart it there: Valet reads Docker but can\'t restart containers.';
+const logsSay = d => d.up ? 'Mealie is running again. It ran out of memory at 3:12 AM when it hit its 256 MB limit, so it may need a higher one.' : 'Mealie ran out of memory at 3:12 AM and hasn\'t come back. Its logs end with the out-of-memory kill, so it hit its 256 MB limit. Raise `mem_limit` to 512 MB in its compose file and start it again.';
 // [what's said, the tool (by its name), its input, or how to get it from what's said, how to word the answer]. An order has
 // to match the whole sentence, so a question or a passing mention can never touch the house.
 export const ORDERS = [
