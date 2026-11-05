@@ -83,7 +83,7 @@ function Extra({ s }: { s: RecapSlide }) {
   }
   if (s.bars?.length) {
     const top = Math.max(...s.bars.map(b => b.value));
-    return <div className="rc-glass rc-rows">{s.bars.map(b => <div key={b.label}><span>{b.label}</span><em>{b.show}</em><div className="rc-track"><i style={{ width: `${b.value / top * 100}%` }} /></div></div>)}</div>;
+    return <div className="rc-glass rc-rows">{s.bars.map(b => <div key={b.label}><span>{b.label}</span><em>{b.show}</em><div className={b.value === top ? 'rc-track' : 'rc-track rest'}><i style={{ width: `${b.value / top * 100}%` }} /></div></div>)}</div>;
   }
   if (s.race) return null;   // it stands beside the words
   if (s.items?.some(i => i.image)) return <div className="rc-posters">{s.items.slice(0, 5).map((it, i) => <div key={it.name} className="rc-poster" style={{ animationDelay: `${250 + i * 90}ms` }}><img src={it.image} alt="" /><b>{it.name}</b><em>{it.value}</em></div>)}</div>;

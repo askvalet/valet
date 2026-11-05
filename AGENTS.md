@@ -130,6 +130,14 @@ https://askvalet.dev.
 - **The title says whose homelab it is, not hello.** `hero.greeting: "{greeting}, {name}"` brings the time of day back.
 - **One weight of emphasis.** `font-semibold` is mapped to 500 in `@theme` and `tracking-tight` to 0, so hierarchy comes from size
   and colour. Corners follow `--radius` (controls `* .6`, tags `* .4`); only things that hold no words stay round.
+- **One bar** (`.meter` in `styles.css`, `Meter` in `meter.tsx`). Every bar that shows how far or how much is a meter: fully
+  round, `--meter-sm/md/lg` (4/8/12 px: over a picture / lists and popovers / the race and the recap), one `--meter-track`, a fill
+  that slides by `translateX`. Its colour, in order: a tone or the thing's own (`color`, a poster's `hue` from `tintOf`), else a
+  set's leader in the accent and the rest `--meter-rest`, else a lone bar in the accent. Over art it's `art` (white on white). The
+  number sits right-aligned on the text line beside it, never inside the fill. Downloads keep a row-wide fill (`.meter-row`): the
+  row is the bar. The race and the recap draw their own DOM (rAF, entrance) but read the same tokens. The track tokens are set on
+  the bar itself, not `:root`, so a surface that redefines `--foreground` (the recap's stage) gets its own. Not meters: rings,
+  the context pie, the shelf's status stripe, columns.
 - **Numbers as shapes.** Health reads at a glance: rings coloured by tone, area graphs behind tiles. Values sit inside
   the shape; labels stay quiet.
 - **Motion follows one vocabulary** (`styles.css`, after Emil Kowalski's skills): `--ease-out` for arriving/leaving,

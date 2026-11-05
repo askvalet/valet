@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import type { Activity } from '../shared/cards.ts';
 import { Icon, Popover } from './cards.tsx';
 import { LinkButton } from './link-button.tsx';
+import { Meter } from './meter.tsx';
 
 export type Live = Activity & { key: string; href?: string; source?: { name: string; icon?: string } };
 export type Notice = { key: string; text: string; sub?: string; icon?: string; image?: string; tone: 'good' | 'warn' | 'bad' | 'accent'; n: number };
@@ -46,7 +47,7 @@ function Story({ a, when }: { a: Live; when?: ReturnType<typeof counted> }) {
       <div className="min-w-0 flex-1">
         {a.href ? <a href={a.href} target="_blank" rel="noreferrer" className="title-link">{title}</a> : title}
         {a.subtitle && <div className="truncate text-[13px] text-muted-foreground">{a.subtitle}</div>}
-        {pct != null && <div className="mt-2 h-1 overflow-hidden rounded-full bg-foreground/10"><div className="h-full rounded-full transition-transform duration-(--dur-move) ease-out" style={{ background: tint(a), transform: `translateX(${Math.round(pct * 100) - 100}%)` }} /></div>}
+        {pct != null && <Meter pct={pct} color={tint(a)} className="mt-2" />}
         <div className="mt-1.5 flex justify-between gap-3 text-[12px] text-muted-foreground tabular">
           <span className="truncate">{a.paused ? 'Paused' : (a.count ?? 0) > 1 && when ? `${a.count! - 1} more at the same time` : a.source?.name}</span>{trailing && <span className={cn('shrink-0', when && 'text-foreground/85')}>{trailing}</span>}
         </div>
@@ -80,7 +81,7 @@ function Meeting({ a, when }: { a: Live; when?: ReturnType<typeof counted> }) {
           <span className="min-w-0 truncate">{names.join(', ')}{more ? ` ${more}` : ''}</span>
         </>}
       </div>
-      {live && when?.pct != null && <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10"><div className="h-full rounded-full transition-transform duration-(--dur-move) ease-out" style={{ background: MEETING, transform: `translateX(${Math.round(when.pct * 100) - 100}%)` }} /></div>}
+      {live && when?.pct != null && <Meter pct={when.pct} color={MEETING} />}
       {(a.count ?? 0) > 1 && when && <div className="-mt-1 text-[12px] text-muted-foreground">{a.count! - 1} more at the same time</div>}
       <LinkButton link={{ ...a.link!, label: a.link!.note ? `Join ${a.link!.note}` : a.link!.label }} big />
     </div>

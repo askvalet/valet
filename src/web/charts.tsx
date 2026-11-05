@@ -37,7 +37,7 @@ export function standing(items: RaceItem[], t: number) {
 const amount = (v: number, unit?: string) => unit === 'h' ? (v < 1 ? `${written(Math.round(v * 60))} min` : `${v < 10 ? written(Math.round(v * 10) / 10) : written(Math.round(v))} h`) : `${written(Math.round(v))}${unit ? ` ${unit}` : ''}`;
 const shown = new Set<string>();   // each race runs once a visit: a tab you come back to is at rest
 
-type Tint = { h: number; c: number } | null;
+export type Tint = { h: number; c: number } | null;
 const tints = new Map<string, Tint>();
 /** sRGB (0-255) to OKLab, so a hue is a hue whatever its lightness. */
 function oklab(r: number, g: number, b: number) {
@@ -48,7 +48,7 @@ function oklab(r: number, g: number, b: number) {
 }
 /** A poster's own colour, for its bar: the hue its colourful pixels share most, and how colourful that is. Read once from a
  *  tiny copy of the picture already on the page. A picture from another site, or one without much colour, keeps the page's. */
-function tintOf(img: HTMLImageElement): Tint {
+export function tintOf(img: HTMLImageElement): Tint {
   const src = img.currentSrc || img.src;
   if (tints.has(src)) return tints.get(src)!;
   let out: Tint = null;
@@ -70,7 +70,7 @@ function tintOf(img: HTMLImageElement): Tint {
   tints.set(src, out);
   return out;
 }
-const hue = (t: Tint) => t ? { '--hue': t.h, '--sat': Math.min(1, Math.max(.5, t.c / .12)).toFixed(2) } as CSSProperties : undefined;
+export const hue = (t: Tint) => t ? { '--hue': t.h, '--sat': Math.min(1, Math.max(.5, t.c / .12)).toFixed(2) } as CSSProperties : undefined;
 
 /** Titles overtaking each other. Everything that moves is written straight to the DOM from one rAF loop, which stops when the
  *  rows settle; the render itself is the final frame, so that's what shows with no script, no motion or no scroll. */

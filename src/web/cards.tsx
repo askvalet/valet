@@ -11,7 +11,7 @@ import { Focus } from './focus.tsx';
 import { CoverFlow } from './coverflow.tsx';
 import { Masonry } from './masonry.tsx';
 import { CardStack } from './cardstack.tsx';
-import { chartless, flow, Heatmap, Race, smooth, Stream, Waffle } from './charts.tsx';
+import { chartless, flow, Heatmap, hue, Race, smooth, Stream, tintOf, type Tint, Waffle } from './charts.tsx';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -23,6 +23,7 @@ import { Counter, DUST_HOLD, lean, Pile, Row, RowArrows, RowSlot, Tick, toast, u
 import { dissolve, justActed, useSettle } from './dust.ts';
 import { play } from './sound.ts';
 import { LinkButton } from './link-button.tsx';
+import { Meter } from './meter.tsx';
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
 import { clock as clockOf, day as dayOf, num as written } from './format.ts';
 import { stateOf } from '../shared/cards.ts';
@@ -42,7 +43,6 @@ export function Icon({ name, className }: { name?: string; className?: string })
 }
 
 const toneText: Record<Tone, string> = { neutral: '', good: 'text-good', warn: 'text-warn', bad: 'text-bad', accent: 'text-primary' };
-const toneBar: Record<Tone, string> = { neutral: '', good: 'bg-good', warn: 'bg-warn', bad: 'bg-bad', accent: 'bg-primary' };
 const toneVar = (t?: Tone) => (t && t !== 'neutral' && t !== 'accent' ? `var(--${t})` : 'var(--primary)');
 
 // Cards in chat are dense: same content, about half the height (smaller numbers, tighter rows, a smaller header)
@@ -76,11 +76,6 @@ function RowLine({ points, tone }: { points: number[]; tone?: Tone }) {
   );
 }
 
-const Bar = ({ pct, tone }: { pct: number; tone?: Tone }) => (
-  <div role="progressbar" aria-valuenow={Math.round(pct * 100)} aria-valuemin={0} aria-valuemax={100} className="h-1 overflow-hidden rounded-full bg-foreground/10">
-    <div className={cn('h-full rounded-full bg-foreground/50 transition-transform duration-(--dur-move) ease-out', toneBar[tone ?? 'neutral'])} style={{ transform: `translateX(${Math.max(1.5, Math.min(100, pct * 100)) - 100}%)` }} />
-  </div>
-);
 
 /** One point per card: the first item is the hero (large number, its label, one sparkline); the rest become a quiet
  *  footer of at most three small facts, divided by hairlines. */
@@ -132,7 +127,7 @@ function Stats({ card }: { card: StatsCard }) {
           <div className={cn('truncate text-muted-foreground', dense ? 'mt-1 text-[12px]' : 'mt-1.5 text-[13px]')}>{[hero.label, hero.sub].filter(Boolean).join(' · ')}</div>
         </div>
         {!behind && <div className={cn('min-w-0 flex-1 pb-1', dense && 'max-h-9 overflow-hidden')}>
-          {trend ? <Spark points={trend} tone={hero.tone} /> : hero.pct != null ? <Bar pct={hero.pct} tone={hero.tone} /> : null}
+          {trend ? <Spark points={trend} tone={hero.tone} /> : hero.pct != null ? <Meter pct={hero.pct} tone={hero.tone} /> : null}
         </div>}
       </div>
       {facts.length > 0 && (
@@ -196,9 +191,7 @@ function Temps({ card }: { card: ListCard }) {
               <span className="truncate font-medium">{it.title}</span>
               <span className="shrink-0 tabular"><Counter value={it.meta ?? ''} className={cn('font-medium', toneText[it.tone ?? 'neutral'])} /> <span className="text-xs text-muted-foreground">now</span></span>
             </div>
-            <div className="reading mt-1.5" role="meter" aria-label={`${it.title} temperature`} aria-valuenow={Math.round(at * 100)} aria-valuemin={0} aria-valuemax={100} aria-valuetext={it.meta}>
-              <i style={{ clipPath: `inset(0 ${(1 - at) * 100}% 0 0 round 3px)` }} />
-            </div>
+            <Meter scale pct={at} label={`${it.title} temperature`} valuetext={it.meta} className="mt-1.5" />
             {it.subtitle && <div className={cn('mt-1 truncate text-xs', it.tone === 'bad' ? 'text-bad' : 'text-muted-foreground')}>{it.subtitle}</div>}
           </div>
         );
@@ -261,7 +254,7 @@ function Rows({ card, dense, run }: { card: ListCard; dense: boolean; run?: RunA
             </div>
             {it.subtitle && <div className={cn('truncate text-xs', it.tone && it.tone !== 'neutral' ? toneText[it.tone] : 'text-muted-foreground')}>{it.subtitle}</div>}
             {it.detail && <Clamp text={it.detail} className="mt-1 text-[13px] leading-snug text-foreground/70" />}
-            {it.pct != null && <div className={dense ? 'mt-1' : 'mt-2'}><Bar pct={it.pct} tone={it.tone} /></div>}
+            {it.pct != null && <Meter pct={it.pct} tone={it.tone} rest size={dense ? 'sm' : 'md'} className={dense ? 'mt-1' : 'mt-2'} />}
             {it.buttons?.length && run ? <RowButtons buttons={it.buttons} run={run} /> : null}
           </div>
         </Row></RowSlot>
@@ -489,7 +482,8 @@ function Art({ src, className, alt = '', style, onLoaded }: { src?: string; clas
   const [ready, setReady] = useState(false);
   // one the browser already has is simply there: a tab you come back to doesn't fade its pictures up again. A steady ref,
   // so a render doesn't call it again and set the state again, which rendered it again on every live update
-  const had = useCallback((el: HTMLImageElement | null) => { if (el?.complete && el.naturalWidth) setReady(true); }, []);
+  const loaded = useRef(onLoaded); loaded.current = onLoaded;
+  const had = useCallback((el: HTMLImageElement | null) => { if (el?.complete && el.naturalWidth) { setReady(true); loaded.current?.(el); } }, []);
   if (!src) return null;
   return <img src={src} alt={alt} loading="lazy" decoding="async" style={style} ref={had} onLoad={e => { setReady(true); onLoaded?.(e.currentTarget); }}
     className={cn('transition-opacity duration-(--dur-move) ease-out', ready ? 'opacity-100' : 'opacity-0', className)} />;
@@ -524,9 +518,7 @@ export function NowPlaying({ m, compact, source }: { m: MediaItem; compact?: boo
           <div className="mt-4 flex items-center gap-3">
             {/* a status, not a button: nothing here controls the stream */}
             {m.icon ? <Icon name={m.icon} className="size-3.5 shrink-0" /> : <span className={cn('np-state', m.state === 'paused' && 'is-paused')} role="img" aria-label={m.state === 'paused' ? 'Paused' : m.state === 'buffering' ? 'Buffering' : 'Playing'} />}
-            <div className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/25">
-              <div className="h-full rounded-full bg-white transition-transform duration-(--dur-move)" style={{ transform: `translateX(${Math.round((m.pct ?? 0) * 100) - 100}%)` }} />
-            </div>
+            <Meter art size="sm" pct={m.pct ?? 0} className="flex-1" />
             {m.remaining && <span className="shrink-0 text-xs tabular text-white/80">{m.remaining}</span>}
           </div>
           {(m.user || m.device) && <div className="mt-2 truncate text-xs text-white/65">{m.user}{m.device ? ` on ${m.device}` : ''}{m.state === 'paused' ? ' · Paused' : ''}</div>}
@@ -572,7 +564,7 @@ function Media({ card, compact, run }: { card: MediaCard; compact?: boolean; run
         const stall = stallOf(m);
         return (
           <RowSlot key={key} state={state} dust={dust}><div className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden px-4 py-2.5">
-            {m.pct != null && <span className={cn('absolute inset-0 -z-10 transition-transform duration-(--dur-move) ease-out', stall ? 'bg-warn/15' : 'bg-foreground/[.07]')} style={{ transform: `translateX(${m.pct * 100 - 100}%)` }} />}
+            {m.pct != null && <span className={cn('meter-row', stall && 'is-warn')} style={{ transform: `translateX(${(Math.max(0, Math.min(1, m.pct)) * 100 - 100).toFixed(2)}%)` }} />}
             {m.image ? <Art src={m.image} className="h-12 w-8 shrink-0 rounded-md object-cover" /> : <span className="grid h-12 w-8 shrink-0 place-items-center rounded-md bg-white/10 text-muted-foreground"><Icon name={m.icon ?? 'film'} className="size-4" /></span>}
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium">{m.title}</div>
@@ -774,17 +766,18 @@ function dayWord(at?: string) {
 }
 const lineOf = (it: ShelfItem) => /partial/i.test(it.badge ?? '') ? 'part' : it.tone === 'good' ? 'done' : it.tone === 'accent' || /download|processing/i.test(it.badge ?? '') ? 'busy' : it.tone === 'bad' ? 'bad' : 'wait';
 
-/** A leaderboard: the winner in full colour, the rest measured against it. */
+/** A leaderboard: the winner in full colour, the rest measured against it. Like the race, each bar takes its poster's hue. */
 function Ranked({ card }: { card: RankedCard }) {
+  const [tint, setTint] = useState<Record<string, Tint>>({});
   if (!card.items.length) return <Empty text={card.empty ?? 'Nothing yet'} />;
   return (
     <ol className="space-y-3">
       {card.items.slice(0, 5).map((it, i) => (
         <li key={i} className="flex min-w-0 items-center gap-3">
-          {it.image && <Art src={it.image} alt="" className="h-[42px] w-7 shrink-0 rounded-[5px] object-cover" />}
+          {it.image && <Art src={it.image} alt="" className="h-[42px] w-7 shrink-0 rounded-[5px] object-cover" onLoaded={img => { const c = tintOf(img); if (c) setTint(m => m[it.title] ? m : { ...m, [it.title]: c }); }} />}
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-3"><span className="min-w-0 flex-1 truncate text-sm font-medium">{it.title}</span>{it.value && <span className="shrink-0 text-xs tabular text-muted-foreground">{it.value}</span>}</div>
-            <div className="mt-1.5"><Bar pct={it.pct ?? (i ? 0 : 1)} /></div>
+            <Meter pct={it.pct ?? (i ? 0 : 1)} rest={i > 0} hue={hue(tint[it.title] ?? null)} className="mt-1.5" />
           </div>
         </li>
       ))}
@@ -1171,12 +1164,11 @@ function Schedule({ card }: { card: ScheduleCard }) {
         </div>
       </div>
       <div className="relative pt-1 pb-7">
-        <div className="h-[3px] rounded-full bg-white/10" />
-        <div className="absolute top-1 left-0 h-[3px] rounded-full bg-gradient-to-r from-white/20 to-white/60" style={{ width: `${at(now) * 100}%` }} />
-        <span className="absolute top-[-1px] h-[11px] w-[2px] -translate-x-1/2 rounded-full bg-white" style={{ left: `${at(now) * 100}%` }} />
+        <Meter size="sm" rest pct={at(now)} />
+        <span className="absolute top-[.5px] h-[11px] w-[2px] -translate-x-1/2 rounded-full bg-foreground" style={{ left: `${at(now) * 100}%` }} />
         {items.map((x, k) => x.muted
           // a moment that's never "next" is a notch on the line, not a word: hover says which
-          ? <span key={x.name} title={`${x.name} · ${clock(x.t)}`} className="absolute top-[2px] h-[7px] w-px -translate-x-1/2 bg-white/35" style={{ left: `${pos(k) * 100}%` }} />
+          ? <span key={x.name} title={`${x.name} · ${clock(x.t)}`} className="absolute top-[2.5px] h-[7px] w-px -translate-x-1/2 bg-foreground/35" style={{ left: `${pos(k) * 100}%` }} />
           : <div key={x.name} className={cn('absolute top-3 text-center', k === 0 ? '' : k === n - 1 ? '-translate-x-full text-right' : '-translate-x-1/2')} style={{ left: `${pos(k) * 100}%` }}>
               <div className={cn('text-[11px] font-medium', x.name === next.name ? 'text-foreground' : 'text-muted-foreground')}>{x.name}</div>
               {!dense && <div className="text-[11px] tabular text-muted-foreground/70">{clock(x.t)}</div>}
