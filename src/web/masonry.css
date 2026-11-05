@@ -1,12 +1,14 @@
 /* Masonry, after Blossom Carousel's example: three rows, every third tile two columns wide, the first, sixth and thirteenth two
    rows tall, packed densely so nothing's left empty. Snaps to every fourth one. Sizes follow the box. */
+/* The box is as tall as three rows at least and as tall as the card lets it be; the rows share its height. */
+.masonry-box { --row0: clamp(82px, 13cqw, 132px); container-type: size; flex: 1 0 auto; min-height: calc(3 * var(--row0) + 12px); }
+@container (max-width: 520px) { .masonry-box { --row0: 96px; } }
 .masonry {
-  --row: clamp(82px, 13cqw, 132px); --col: calc(var(--row) * 1.35);
+  --row: max(var(--row0), min((100cqh - 12px) / 3, 220px)); --col: calc(var(--row) * 1.35);
   display: grid; grid-template-rows: repeat(3, var(--row)); grid-auto-columns: var(--col); grid-auto-flow: column dense; gap: 6px;
-  scroll-padding-inline: 2px;
+  align-content: center; height: 100%; scroll-padding-inline: 2px;
 }
 .masonry.is-poster { --col: calc(var(--row) * .8); }
-@container (max-width: 520px) { .masonry { --row: 96px; } }
 .masonry-tile {
   position: relative; display: block; min-width: 0; overflow: hidden; border-radius: var(--radius-poster); color: #fff; text-decoration: none;
   background: color-mix(in srgb, var(--foreground) 8%, transparent);

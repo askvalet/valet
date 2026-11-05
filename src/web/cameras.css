@@ -1,7 +1,18 @@
 /* The cameras card. Sizes follow the card, not the page: a pill column beside the picture when there's room, a row under it
    when a bigger picture matters more. */
-.cam-card { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.cam-grid { display: grid; gap: 10px; min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.cam-card { display: flex; flex: 1 1 auto; flex-direction: column; gap: 12px; min-width: 0; }
+.cam-grid { display: grid; flex: 1 1 auto; gap: 10px; min-width: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-auto-rows: auto; }
+/* a card its row makes taller than the picture: the picture grows into it (to 16:11 at most) and fills it rather than gaining
+   black bars, trimming a little off the sides; never more than a quarter, so a camera of another shape still fits */
+.cam-card .cam-stage { align-self: stretch; max-height: calc(100cqw * 11 / 16); }
+.cam-card .cam-stage:not(.is-full) .cam-frame {
+  --fw: min(max(100cqw, 100cqh * var(--a)), 1.25 * min(100cqw, 100cqh * var(--a)));
+  --ox: max(0px, (var(--fw) - 100cqw) / 2); --oy: max(0px, (var(--fw) / var(--a) - 100cqh) / 2);   /* what's trimmed each side */
+  inset: auto; top: 50%; left: 50%; translate: -50% -50%; width: var(--fw);
+}
+/* the words stay at the corners you can see */
+.cam-card .cam-stage:not(.is-full) .cam-osd-top { top: calc(var(--oy) + clamp(10px, 2.4cqw, 22px)); left: calc(var(--ox) + clamp(11px, 2.6cqw, 24px)); }
+.cam-card .cam-stage:not(.is-full) .cam-osd-end { right: calc(var(--ox) + clamp(11px, 2.6cqw, 24px)); bottom: calc(var(--oy) + clamp(10px, 2.4cqw, 22px)); }
 @container (min-width: 760px) { .cam-grid.has-pills { grid-template-columns: minmax(0, 1fr) 176px; gap: 12px; } }
 
 /* the picture: cqw/cqh fit any camera's shape inside the stage, and the OSD scales with it */

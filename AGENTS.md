@@ -138,7 +138,7 @@ https://askvalet.dev.
   that slides by `translateX`. Its colour, in order: a tone or the thing's own (`color`, a poster's `hue` from `tintOf`), else a
   set's leader in the accent and the rest `--meter-rest`, else a lone bar in the accent. Over art it's `art` (white on white). The
   number sits right-aligned on the text line beside it, never inside the fill. Downloads keep a row-wide fill (`.meter-row`): the
-  row is the bar. The race and the recap draw their own DOM (rAF, entrance) but read the same tokens. The track tokens are set on
+  row is the bar, inside the card's inset, `rounded-control` at both ends of the fill, no hard edge. The race and the recap draw their own DOM (rAF, entrance) but read the same tokens. The track tokens are set on
   the bar itself, not `:root`, so a surface that redefines `--foreground` (the recap's stage) gets its own. Not meters: rings,
   the context pie, the shelf's status stripe, columns.
 - **Numbers as shapes.** Health reads at a glance: rings coloured by tone, area graphs behind tiles. Values sit inside
@@ -234,7 +234,8 @@ literal; a new size or corner is a new token with a role, argued for here.
   density doesn't shrink them.
 - **Insets**: `--spacing-inset` (20 at normal density) between a card's edge and everything in it, `--spacing-inset-tight` (16) for a
   tile and a card in chat. `.card-pad` on a card sets `--pad` to the one it uses; its header, content and anything that runs edge to
-  edge (`-mx-(--pad)`, as Downloading's rows do, or `.bleed` for a carousel) read `--pad`, never `px-5`. A card with no visible
+  edge (`.bleed`, only for a carousel) read `--pad`, never `px-5`. A popover's content takes `--spacing-inset` too (`p-(--spacing-inset)`
+  on what's inside `Popover`); a tile inside one keeps its own. A card with no visible
   title (weather, the calendar, a `header: false` section) starts its content at the same inset, so a row's tops line up.
 - **One shell** (`Shell` in `cards.tsx`): every widget is drawn in the same card, whatever it shows: the same glass, corner
   (`rounded-surface`), rim, shadow and inset (`--pad`, 20; 16 in chat). There is no other mode: nothing sits on the wallpaper,
@@ -244,7 +245,12 @@ literal; a new size or corner is a new token with a role, argued for here.
   tint of the same glass. Every carousel runs to the card's edges and scrolls under the inset (`.bleed`), its first thing lined
   up with the content and its edges fading where there's more; nothing else bleeds. Only the wall's full-screen staging and the
   recap keep their own; a card on the wall is the same shell (a media section's streams too). A `group` is a set of shells, not
-  a card. One gap between cards and tiles alike (`--card-gap`; `--tile-gap` is the same). `test/cards.test.tsx` checks every
+  a card. One gap between cards and tiles alike (`--card-gap`; `--tile-gap` is the same). **No dead space**: cards in a row
+  stretch to its height, so a body fills it (`flex-1` down the column): Daylight's panel grows, the masonry's rows grow to the box
+  (`.masonry-box`, a size container), list rows share it, a camera grows to 16:11, and a stack, cover flow or focus centres
+  itself. A list or a block of words can't fill sensibly, so it doesn't stretch (`KEEPS_HEIGHT` in `cards.tsx`) and the row
+  lines up tops. Never `justify-between`
+  across a gap. A carousel's edge fade is wider than the inset (`.bleed > .carousel`), so what's cut reads as more. `test/cards.test.tsx` checks every
   sample renders in the shell with its title as the first row.
 - **CardHeader** (`cards.tsx`): the one title row, the shell's first row, 28 high in every card: the source's icon, the title
   (`text-title`, semibold, a link when the card has `href`), a status, then at the far right the card's `note` and its actions.
@@ -351,6 +357,11 @@ literal; a new size or corner is a new token with a role, argued for here.
 - **Two small libraries from libraries.dev are in on purpose**, pinned exactly: `thinking-orbs` (the chat's working states and the
   recap's loading) and `border-beam` (`chat.beam` and the approval card). All MIT, no dependencies, no network. Left out:
   `img-fx` needs three.js; `liquid-gooey`, `bot-avatars` and `voice-glow` have no job here yet.
+- **A carousel is `inline-block` with `max-inline-size: 100vw`** (Blossom's sheet) and `inline-size: auto` (ours), so a track whose
+  content has a wide min-content (cover flow's 3D list) grows to the viewport and its middle drifts right: give it `inline-size: 100%`.
+  A track that must be wider than its card (the cards stack, `--sw`, centred by negative margins) needs `max-width: none` too.
+- **The cards stack's fan is tuned to a track 3.3 cards wide.** Narrower, the scroll-driven turn puts the next cards on the wrong
+  side; and moving a slide (`translate`) changes where its view timeline thinks it is. Lean the track, never the slides.
 - **Blossom Carousel is pinned to `@blossom-carousel/react` 1.7.1** (MIT; its core comes with it). 1.8's `onCommand` and
   `onOverscroll` props don't exist in 1.7, so listen on the element instead. Its stylesheet sits in `@layer blossom-carousel`,
   declared first in `styles.css` so ours wins; it toggles `has-snap` while a throw glides, and its drag engine loads only for

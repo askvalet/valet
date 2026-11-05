@@ -321,7 +321,8 @@ export function CalendarView({ card, large, dense }: { card: CalendarCard; large
   const chosen = days.get(key) ?? [], away = !!picked || y !== today.getFullYear() || m !== today.getMonth();
   const list = <Agenda days={days} from={day} today={today} cap={two ? 14 : dense ? 4 : 6} empty={picked ? 'Nothing on from here' : card.empty ?? 'Nothing coming up'} />;
   return (
-    <div ref={ref} className={cn('cal relative flex h-full min-w-0 flex-1', two ? 'gap-7' : 'flex-col gap-5')}>
+    <div ref={ref} className={cn('cal relative flex h-full min-w-0 flex-1', two ? 'flex-row-reverse gap-7' : 'flex-col gap-5')}>
+      {/* side by side, the month is on the left and the day on the right, so an event's Join sits at the card's right edge */}
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="mb-3 flex items-baseline justify-between gap-2">
           <div className="truncate text-metric-s font-medium">{longDay(day)}</div>

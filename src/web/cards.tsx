@@ -549,13 +549,14 @@ function Media({ card, run }: { card: MediaCard; run?: RunAction }) {
   const dust = justActed(), rows = useRows(card.items, m => m.title, true, dust ? DUST_HOLD : undefined);
   if (!card.items.length) return <Empty icon={Film} text={card.empty ?? 'Nothing playing'} height={150} />;
   if (card.items.length === 1 && !stallOf(card.items[0])) return <NowPlaying m={card.items[0]} />;
-  // rows run edge to edge inside their card, so a row's progress fills the whole row
+  // each row is its own bar, inside the card's inset: its progress fills the row from the left, round at both ends.
+  // The rows share whatever height the card has, so a card stretched by its row has no empty foot.
   if (mediaRows(card)) return (
-    <div className="media-rows -mx-(--pad) divide-y divide-border border-t">
+    <div className="media-rows flex flex-1 flex-col gap-1.5">
       {rows.map(({ key, item: m, state }) => {
         const stall = stallOf(m);
         return (
-          <RowSlot key={key} state={state} dust={dust}><div className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden px-(--pad) py-2.5">
+          <RowSlot key={key} state={state} dust={dust}><div className="relative isolate flex min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-control bg-fill-1 px-3 py-2.5">
             {m.pct != null && <span className={cn('meter-row', stall && 'is-warn')} style={{ transform: `translateX(${(Math.max(0, Math.min(1, m.pct)) * 100 - 100).toFixed(2)}%)` }} />}
             {m.image ? <Art src={m.image} className="h-12 w-8 shrink-0 rounded-thumb object-cover" /> : <span className="grid h-12 w-8 shrink-0 place-items-center rounded-thumb bg-fill-2 text-muted-foreground"><Icon name={m.icon ?? 'film'} className="size-icon" /></span>}
             <div className="min-w-0 flex-1">
@@ -1084,13 +1085,14 @@ function Sky({ card }: { card: ScheduleCard }) {
   const path = Array.from({ length: 61 }, (_, i) => { const p = point(rise - .22 * (set - rise) + (i / 60) * 1.44 * (set - rise)); return `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`; }).join('');
   const clock = clockOf;
   return (
-    <div className="flex flex-1 flex-col justify-between gap-2">
+    <div className="flex flex-1 flex-col gap-4">
       <div className="flex items-end justify-between">
         <div><div className="metric text-metric-s leading-none">{next.name}</div><div className="mt-1.5 text-body text-muted-foreground tabular">{clock(next.t)}</div></div>
         <div className="text-right"><div className={cn('metric text-metric-s tabular leading-none', mins <= 15 && 'text-good')}><Counter flap value={duration(Math.max(1, mins) * 6e4)} /></div>
           <div className="mt-1.5 text-meta text-muted-foreground">to go</div></div>
       </div>
-      <div className="relative isolate overflow-hidden rounded-hero bg-fill-1 px-6 pt-9 pb-2">
+      {/* the panel takes whatever height the row gives the card, and the arc sits in its middle: no gap above or below */}
+      <div className="relative isolate flex flex-1 flex-col justify-center overflow-hidden rounded-hero bg-fill-1 px-6 pt-9 pb-2">
       <SkyWash card={card} />
       <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block max-h-[150px] w-full overflow-visible" aria-hidden>
         <defs>
@@ -1367,7 +1369,12 @@ export function Shell({ className, tight, children, ...props }: React.ComponentP
   return <Card {...props} className={cn('@container/card card-pad relative isolate min-w-0 gap-4 overflow-hidden py-(--pad) shadow-card', tight && 'is-tight gap-2.5 shadow-none', className)}>{children}</Card>;
 }
 
-function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, fill, kind, failed }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; fill?: boolean; kind?: string; failed?: string }) {
+/** Cards whose content is a list or a block of words: stretched to their row they'd only grow an empty foot, so they keep
+ *  their own height and the row lines up their tops. Everything else fills the height its row gives it. */
+const KEEPS_HEIGHT = new Set<string>(['list', 'status', 'links', 'code', 'ranked', 'table', 'controls', 'kv', 'text']);
+
+function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, fill: stretch, kind, failed }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; fill?: boolean; kind?: string; failed?: string }) {
+  const fill = stretch && !(card && KEEPS_HEIGHT.has(card.type));
   const fade = useRef(card ? '' : 'fade-in-soft').current;   // up from its skeleton; a tab you come back to is already there
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   // a group is a set of cards, not a card: it has no glass of its own
@@ -1497,7 +1504,7 @@ export function ClockMonth({ card, children }: { card?: CardT; children: ReactNo
   return (
     <div className="group/wx relative rounded-control text-right leading-tight" tabIndex={0}>
       {children}
-      <Popover group="wx" className={cn('right-[-14px]', events ? 'w-[680px]' : 'w-[340px]')}><div className={cn('text-left', !events && 'cal-month-only')}><CalendarView card={events ? card : { type: 'calendar', events: [] }} large /></div></Popover>
+      <Popover group="wx" className={cn('right-[-14px]', events ? 'w-[680px]' : 'w-[340px]')}><div className={cn('p-(--spacing-inset) text-left', !events && 'cal-month-only')}><CalendarView card={events ? card : { type: 'calendar', events: [] }} large /></div></Popover>
     </div>
   );
 }
@@ -1524,7 +1531,7 @@ function MiniRingView({ s }: { s: Summary }) {
         <div className="metric absolute inset-0 grid place-items-center text-[11px]">{n.length > 4 ? <Icon name={s.icon} className="size-icon-sm" /> : <Counter value={n} />}</div>
       </div>
       <div className="-mt-1 hidden max-w-[56px] truncate text-caption font-medium text-muted-foreground sm:block">{s.label}</div>
-      <Popover group="ring" className="right-1/2 w-[280px] translate-x-1/2">{s.every && (s.trend?.length ?? 0) > 7 ? <div className="p-3.5"><Chart card={trendOf(s)} /></div> : <SummaryTile s={s} />}</Popover>
+      <Popover group="ring" className="right-1/2 w-[280px] translate-x-1/2">{s.every && (s.trend?.length ?? 0) > 7 ? <div className="p-(--spacing-inset)"><Chart card={trendOf(s)} /></div> : <SummaryTile s={s} />}</Popover>
     </div>
   );
 }
@@ -1560,7 +1567,7 @@ export function Forecast({ card }: { card: ForecastCard }) {
   const W = 400, H = 44, x = (i: number) => (i + .5) * (W / hours.length), y = (t: number) => 8 + (1 - (t - lo) / span) * (H - 16);
   const wet = hours.some(h => h.pop >= 10);
   return (
-    <div className="p-5">
+    <div className="p-(--spacing-inset)">
       <div className="flex items-start justify-between">
         <div>
           <div className="metric text-metric-l leading-none"><Metric value={`${now.temp}°`} /></div>

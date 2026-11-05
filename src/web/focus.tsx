@@ -19,7 +19,7 @@ export const openAt = (items: ShelfItem[]) => {
 export function Focus({ card }: { card: ShelfCard }) {
   const id = useId();
   return (
-    <div className="min-w-0">
+    <div className="flex min-w-0 flex-1 flex-col justify-center">
       <HeadActions><RowArrows id={id} one label={card.title} /></HeadActions>
       <div className={cn('focus', card.aspect && `is-${card.aspect}`, 'bleed')}>
         <Glow id={id} items={card.items} />

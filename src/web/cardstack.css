@@ -1,7 +1,7 @@
 /* Cards, after Blossom Carousel's example. Plainly a row of cards; where scroll-driven animations work and nothing asked for
    less motion, each card is sticky in its own column the width of one card, so they all sit in one place, and where its
    column is turns it into the stack: square on in front, fanned out and smaller behind, the one leaving tucked under. */
-.deck { --cw: min(228px, 60cqw); --sw: min(100cqw, calc(var(--cw) * 3.3)); container-type: inline-size; }
+.deck { --cw: min(228px, 60cqw); --sw: calc(var(--cw) * 3.3); container-type: inline-size; }
 .deck-track { display: flex; gap: 14px; padding: 6px 2px 10px; outline: none; mask-image: none; }   /* the stack has its own edges */
 .deck-slide { flex: none; width: var(--cw); aspect-ratio: 3 / 4; scroll-snap-align: center; scroll-snap-stop: always; }
 .deck-card {
@@ -19,18 +19,22 @@
 .deck-text b { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: var(--text-title); font-weight: 500; line-height: 1.25; text-wrap: pretty; }
 .deck-text small { overflow: hidden; font-size: var(--text-meta); color: rgb(255 255 255 / .74); white-space: nowrap; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 .deck-kind { align-self: flex-start; margin-bottom: 4px; padding: 1px 6px; border-radius: calc(var(--radius) * .4); background: rgb(0 0 0 / .5); font-size: var(--text-caption); font-weight: 500; backdrop-filter: blur(8px); }
-.deck-tools { position: absolute; top: 9px; right: 9px; z-index: 2; display: flex; gap: 5px; }
-.deck-tools > * { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; color: #fff; background: rgb(0 0 0 / .46); backdrop-filter: blur(10px); transition: background-color var(--dur-press) var(--ease-out); }
-.deck-tools > *:hover { background: rgb(0 0 0 / .66); }
+/* the card's tools sit at its foot beside the words, which keep clear of them, never over the page's own text */
+.deck-tools { position: absolute; right: 10px; bottom: 12px; z-index: 2; display: flex; gap: 5px; }
+.deck-card[data-tools="1"] .deck-text { padding-right: 50px; }
+.deck-card[data-tools="2"] .deck-text { padding-right: 85px; }
+.deck-tools > * { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; color: #fff; background: rgb(255 255 255 / .14); backdrop-filter: blur(10px); transition: background-color var(--dur-press) var(--ease-out); }
+.deck-tools > *:hover { background: rgb(255 255 255 / .26); }
 .deck-tools > button:active { transform: scale(calc(1 - .03 * var(--move))); }
 
-/* The stack. The track is three cards wide at most, its padding a card's room either side of the middle column, and a card
-   sticks a pixel past that padding (Safari miscounts the range otherwise). z-index rides the same timeline so the one in
+/* The stack. The track is always 3.3 cards wide, its padding a card's room either side of the middle column, and a card
+   sticks a pixel past that padding (Safari miscounts the range otherwise). The fan is tuned to that width (a narrower track
+   turned it inside out), so in a narrow card the track runs past the card's edges, centred, where only empty padding is. z-index rides the same timeline so the one in
    front is on top and the one leaving slips under the next. */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
     :root:not(.motion-none, .motion-reduced) .deck-track {
-      display: grid; grid-auto-flow: column; grid-auto-columns: 100%; gap: 0; width: var(--sw); margin-inline: auto;
+      display: grid; grid-auto-flow: column; grid-auto-columns: 100%; gap: 0; width: var(--sw); max-width: none; margin-inline: calc((100cqw - var(--sw)) / 2);
       padding: 22px calc((var(--sw) - var(--cw)) / 2) 26px;
     }
     :root:not(.motion-none, .motion-reduced) .deck-slide {
@@ -38,6 +42,11 @@
       transform-origin: center 70%; view-timeline: --deck inline;
       animation: deck-layer linear both; animation-timeline: --deck; animation-range: contain;
     }
+    /* at either end the fan is all on one side, so the stack leans the other way and its weight stays in the middle. The
+       track moves, not the cards: the cards' turn reads where they sit in it */
+    :root:not(.motion-none, .motion-reduced) .deck-track { --lean: calc(var(--cw) * .12); transition: translate var(--dur-move) var(--ease-out); }
+    :root:not(.motion-none, .motion-reduced) .deck-track[data-start]:not([data-end]) { translate: calc(-1 * var(--lean)); }
+    :root:not(.motion-none, .motion-reduced) .deck-track[data-end]:not([data-start]) { translate: var(--lean); }
     :root:not(.motion-none, .motion-reduced) .deck-card { animation: deck-turn linear both; animation-timeline: --deck; animation-range: contain -50% contain 150%; }
     :root:not(.motion-none, .motion-reduced) .deck-tools { animation: deck-tools linear both; animation-timeline: --deck; animation-range: contain; }
     @keyframes deck-layer { 0% { z-index: calc(100 - var(--i)); } 40% { z-index: 1000; } 100% { z-index: var(--i); } }

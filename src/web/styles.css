@@ -519,7 +519,6 @@
 .bleed > .shelf-row, .bleed > .masonry, .bleed > .desk { margin-inline: 0; padding-inline: var(--pad); scroll-padding-inline: var(--pad); }
 /* nothing to show: the same card, a quiet middle, at the height it has when full */
 .empty { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; min-height: var(--empty-h, 160px); padding-block: .75rem; text-align: center; }
-.card-pad:not(:has(.card-buttons)) .media-rows:last-child { margin-bottom: calc(-1 * var(--pad)); }   /* rows run to the card's foot */
 .card-pad.is-tight .empty { min-height: min(var(--empty-h, 160px), 96px); }
 /* a ring's segments ease to their new size when the numbers change */
 .donut-seg { transition: stroke-dasharray var(--dur-move) var(--ease-out), stroke-dashoffset var(--dur-move) var(--ease-out); }
@@ -761,8 +760,8 @@
 .meter-art { --meter-track: rgb(255 255 255 / .24); --meter-c: #fff; }
 /* a download fills its own row: the row is the bar, so the fill is the meters' track colour with their neutral step as its edge,
    and the number at the row's end. Stalled, it's the warning colour. */
-.meter-row { position: absolute; inset: 0; z-index: -1; background: var(--meter-track); box-shadow: inset -2px 0 0 var(--meter-rest); transition: transform var(--dur-move) var(--ease-out); }
-.meter-row.is-warn { background: color-mix(in oklab, var(--warn) 14%, transparent); box-shadow: inset -2px 0 0 color-mix(in oklab, var(--warn) 70%, transparent); }
+.meter-row { position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: linear-gradient(90deg, var(--meter-track), color-mix(in oklab, var(--foreground) 14%, transparent)); transition: transform var(--dur-move) var(--ease-out); }
+.meter-row.is-warn { background: linear-gradient(90deg, color-mix(in oklab, var(--warn) 10%, transparent), color-mix(in oklab, var(--warn) 22%, transparent)); }
 /* a reading, not a control: the scale is the colour, cool at the left, hot at the right, and the fill uncovers it */
 .meter-scale .meter-fill { background: linear-gradient(90deg, #64d2ff, #ffd60a 55%, #ff453a); transition-property: clip-path; }
 /* a chip (Chip in components/ui/chip.tsx) that says something more: a badge, a warning, arriving with "n in all" */

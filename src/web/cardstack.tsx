@@ -16,7 +16,7 @@ export function CardStack({ items, title, aside, archive, leaving }: {
 }) {
   const id = useId();
   return (
-    <div className="min-w-0">
+    <div className="flex min-w-0 flex-1 flex-col justify-center">
       <HeadActions>{aside}<RowArrows id={id} one label={title} /></HeadActions>
       <div className="deck bleed"><Deck id={id} items={items} title={title} archive={archive} leaving={leaving} /></div>
     </div>
@@ -43,7 +43,7 @@ const Deck = memo(function Deck({ id, items, title, archive, leaving }: { id: st
         return (
           <div key={it.id ?? i} data-blossom-slide className="deck-slide" style={{ '--i': i + 1 } as CSSProperties}
             {...(!it.href && { 'aria-roledescription': 'slide', 'aria-label': it.title })}>
-            <div className={cn('deck-card', it.id && leaving?.includes(it.id) && 'is-leaving')}>
+            <div className={cn('deck-card', it.id && leaving?.includes(it.id) && 'is-leaving')} data-tools={(archive && it.id ? 1 : 0) + (it.href ? 1 : 0) || undefined}>
               {it.image ? <img src={it.image} alt="" draggable={false} loading="lazy" className="deck-page" /> : <span className="deck-blank"><FileText className="size-7" /></span>}
               {it.href && <a href={it.href} target="_blank" rel="noreferrer" draggable={false} aria-label={it.title} className="deck-open" onClick={(e: MouseEvent<HTMLElement>) => tap(e, i)} />}
               <span className="deck-text">

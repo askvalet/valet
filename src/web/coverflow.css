@@ -6,6 +6,7 @@
 .cover.is-wide { --w: min(340px, 64cqw); --h: .5625; }
 
 .cover-track {
+  inline-size: 100%;   /* the list's 3D room is wider than the card; without this the row takes that width and its middle drifts right */
   padding: calc(var(--w) * var(--h) * .12 + 8px) calc(50% - var(--slot) / 2) 4px; outline: none;
   mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
 }

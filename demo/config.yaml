@@ -143,20 +143,19 @@ layout:
   - tab: Media
     overview: false
     heading: false
-    columns: 1
-    widgets: [{ widget: lab.games, view: coverflow }, lab.recent]
+    columns: 2
+    widgets: [{ widget: lab.games, view: coverflow }, lab.recent]   # side by side, half the width each
   - title: Library
     columns: 1
     overview: false
-    widgets: [lab.album, lab.books, lab.docs]
+    widgets: [lab.album, lab.books]
   - title: Reading
     tab: Library
     overview: false
-    widgets:
-      - { widget: lab.reading, size: large, rows: 2, view: cards }   # the reading pile as a stack of cards to deal through
-      - { widget: lab.news, size: medium, rows: 2 }
+    columns: 2
+    widgets: [lab.docs, { widget: lab.reading, view: cards }]   # two stacks of cards to deal through, half the width each
   - tab: Library
     heading: false
     overview: false
-    columns: 1
-    widgets: [lab.feeds]
+    columns: 2
+    widgets: [lab.news, lab.feeds]
