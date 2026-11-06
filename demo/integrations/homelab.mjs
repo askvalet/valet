@@ -126,6 +126,13 @@ const WEEK = { 1: [['Daycare drop-off', 8, 30, 20, FAMILY], ['Team standup', 9, 
   3: [['Daycare drop-off', 8, 30, 20, FAMILY], ['Design review', 14, 0, 60, WORK], ['Daycare pick-up', 16, 45, 30, FAMILY]], 4: [['Daycare drop-off', 8, 30, 20, FAMILY], ['Planning', 11, 0, 45, WORK], ['Piano practice', 17, 30, 30, FAMILY]],
   5: [['Daycare drop-off', 8, 30, 20, FAMILY], ['Daycare pick-up', 16, 0, 30, FAMILY], ['Pizza night', 18, 0, 90, HOME]], 6: [['Swimming lessons', 10, 0, 45, FAMILY], ['Farmers market', 12, 0, 60, HOME]], 0: [['Groceries', 9, 30, 60, HOME], ['Meal prep', 16, 0, 90, HOME]] };
 const NOW_AND_THEN = [['Dentist', 15, 0, 45, FAMILY], ['Vet check-up', 10, 30, 30, HOME], ['Parent-teacher meeting', 17, 0, 30, FAMILY], ['Furnace service', 13, 0, 120, HOME], ['Dinner with the neighbours', 18, 30, 150, FAMILY], ['Haircut', 12, 30, 30, FAMILY], ['Quarterly review', 15, 30, 60, WORK], ['Book club', 19, 30, 90, HOME]];
+// made-up sites' favicons for Hacker News (the demo reaches nothing outside): a tile in the site's colour with its mark
+const tile = (bg, fg, ch) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='${bg}'/><text x='16' y='22' text-anchor='middle' font-family='Inter,system-ui,sans-serif' font-size='17' font-weight='700' fill='${fg}'>${ch}</text></svg>`)}`;
+const FAV = { 'news.ycombinator.com': tile('#ff6600', '#fff', 'Y'), 'lapnas.dev': tile('#2563eb', '#fff', 'L'), 'storagereview.example': tile('#0f172a', '#38bdf8', 'S'),
+  'mailcraft.blog': tile('#e11d48', '#fff', 'M'), 'github.com': tile('#f6f8fa', '#24292f', '⌘'), 'restic.blog': tile('#16a34a', '#fff', 'R'), 'pi-notes.org': tile('#c51a4a', '#fff', 'π'),
+  'quietweb.net': tile('#7c3aed', '#fff', 'Q'), 'rackside.io': tile('#f59e0b', '#1c1917', 'R'), 'wattwise.dev': tile('#facc15', '#1c1917', 'W') };
+// pictures for the feeds' posts, from the demo's own credited art
+const FEED_PICS = ['photo0', 'meal4', 'page1', 'photo2', 'album1', 'photo3', 'album4', 'page3', 'meal7', 'album6'];
 const SERVICES = [['Plex', 'Media', 'plex'], ['Tautulli', 'Media', 'tautulli'], ['Sonarr', 'Media', 'sonarr'], ['Radarr', 'Media', 'radarr'], ['Lidarr', 'Media', 'lidarr'], ['Prowlarr', 'Media', 'prowlarr'], ['Bazarr', 'Media', 'bazarr'], ['qBittorrent', 'Media', 'qbittorrent'],
   ['Navidrome', 'Media', 'navidrome'], ['Audiobookshelf', 'Media', 'audiobookshelf'], ['Komga', 'Media', 'komga'],
   ['Home Assistant', 'Home', 'home-assistant'], ['Frigate', 'Home', 'frigate'], ['Immich', 'Home', 'immich'], ['Paperless', 'Home', 'paperless'], ['Karakeep', 'Home', 'karakeep'], ['Mealie', 'Home', 'mealie'],
@@ -482,12 +489,12 @@ export default ({ z, defineIntegration, fmt: write }) => {
           ['Ask HN: What runs in your closet?', 176, 311, '', '14h'], ['Backups you never test are not backups', 163, 77, 'restic.blog', '16h'],
           ['ZFS on a Raspberry Pi, a year later', 149, 58, 'pi-notes.org', '19h'], ['The quiet return of the home server', 132, 64, 'quietweb.net', '21h'],
           ['How I label every cable in the rack', 118, 49, 'rackside.io', '22h'], ['A power meter for every outlet, cheaply', 104, 37, 'wattwise.dev', '23h']]
-          .map(([title, points, comments, site, meta]) => ({ title, subtitle: [`${points} points`, `${comments} comments`, site].filter(Boolean).join(' · '), meta })) })),
+          .map(([title, points, comments, site, meta]) => ({ title, subtitle: [`${points} points`, `${comments} comments`, site].filter(Boolean).join(' · '), meta, icon: FAV[site || 'news.ycombinator.com'] })) })),
         feeds: w('Feeds', 1_800_000, () => ({ type: 'list', layout: 'headlines', title: 'Feeds', icon: 'rss', source: { name: 'RSS', icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23f26522'/%3E%3Ccircle cx='7' cy='17' r='2' fill='%23fff'/%3E%3Cpath d='M5 11a8 8 0 0 1 8 8M5 6a13 13 0 0 1 13 13' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E" }, items: [
           ['This week in open-source home automation', 'The Example Times', '1h'], ['Pizza at home, the long way round', 'Personal blog', '3h', 'meal4'], ['Quiet fans, ranked', 'Hardware Weekly', '4h'],
           ['Ten small scripts that run my house', 'Personal blog', '8h'], ['A week of slow walks in the Dolomites', 'Example Travel', '20h', 'album1'], ['Solar panels and home servers: the numbers', 'Example Energy', '1d'],
           ['A month with a heat pump', 'The Example Times', '1d'], ['Picking a UPS for a small rack', 'Hardware Weekly', '2d'], ['Notes on keeping a garden log', 'Personal blog', '2d'],
-          ['What the grid sees when you plug in a car', 'Example Energy', '3d']].map(([title, subtitle, meta, pic]) => ({ title, subtitle, meta, ...(pic && { image: ctx.image(pic) }) })) })),   // two with the post's own picture, as feeds often carry
+          ['What the grid sees when you plug in a car', 'Example Energy', '3d']].map(([title, subtitle, meta, pic], i) => ({ title, subtitle, meta, image: ctx.image(pic ?? FEED_PICS[i % FEED_PICS.length]) })) })),   // each with the post's own picture, as feeds carry
         // the house's electricity over the last day, an hour a point: what it drew and what the roof made. Valet has no
         // energy integration, so it's this plugin's own chart card, as any plugin can draw
         energy: w('Energy', 300_000, () => { const end = new Date(now()); end.setMinutes(0, 0, 0); const hours = Array.from({ length: 24 }, (_, i) => new Date(+end - (23 - i) * 36e5).getHours());

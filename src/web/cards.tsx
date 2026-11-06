@@ -182,6 +182,8 @@ export function Headlines({ card }: { card: ListCard }) {
     fit();
     const o = new ResizeObserver(fit); o.observe(el); return () => o.disconnect();
   }, [card.items]);
+  // an item's own icon, when it's a picture (a feed's favicon), before asking the site for one
+  const fav = (icon?: string) => icon && /^(https:\/\/|\/api\/|data:image\/)/.test(icon) ? icon : undefined;
   return (
     <div ref={box} className="headlines">
       {card.items.slice(0, 30).map((it, i) => {
@@ -189,6 +191,7 @@ export function Headlines({ card }: { card: ListCard }) {
         return (
           <a key={it.id ?? i} href={it.href} target="_blank" rel="noreferrer" className={cn('headline', !it.href && 'pointer-events-none')}>
             {it.image ? <img src={it.image} alt="" loading="lazy" className="headline-art" />
+              : fav(it.icon) ? <img src={fav(it.icon)} alt="" loading="lazy" className="headline-icon" />
               : <span className="headline-mark" data-letter={letter}>{h && <img src={`/api/favicon/${h}`} alt="" loading="lazy" onError={e => { e.currentTarget.remove(); }} />}</span>}
             <span className="min-w-0 flex-1">
               <span className="line-clamp-2 text-item leading-snug font-medium">{it.title}</span>

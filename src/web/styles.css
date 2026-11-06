@@ -815,7 +815,8 @@ img[data-ink-light="plate"]:not(.dark *, .on-art *, .rc *), .dark img[data-ink-d
 .headline-mark { position: relative; display: grid; flex: none; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-thumb); background: var(--fill-2); overflow: hidden; }
 .headline-mark::before { content: attr(data-letter); font-size: var(--text-meta); font-weight: 600; color: var(--muted-foreground); }
 .headline-mark img { position: absolute; inset: 0; margin: auto; width: 18px; height: 18px; border-radius: 4px; background: var(--fill-2); box-shadow: 0 0 0 7px var(--fill-2); }
-.headline-art { flex: none; width: 32px; height: 32px; border-radius: var(--radius-thumb); object-fit: cover; background: var(--muted); }
+.headline-icon { flex: none; width: 32px; height: 32px; border-radius: var(--radius-thumb); }   /* a site's own icon, given with the item: the tile is the icon */
+.headline-art { flex: none; width: 56px; height: 40px; border-radius: var(--radius-thumb); object-fit: cover; background: var(--muted); }   /* a post's own picture: a small preview, landscape */
 @media (hover: hover) and (pointer: fine) { .headline:hover { background: var(--fill-1); } .headline:hover::before, .headline:hover + .headline::before { opacity: 0; } }
 
 /* the shell: a line that comes and goes opens and closes rather than jumping, and a chip on its way out gives its room back */

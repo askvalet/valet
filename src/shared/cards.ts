@@ -116,6 +116,7 @@ export interface ListItem {
   pct?: number;           // 0..1 progress bar
   tone?: Tone;
   image?: string;
+  icon?: string;          // headlines: where it's from, as a small picture (a site's favicon); else the site is asked for one
   badge?: string;         // a small mark on a chip: "Major", "Read first"
   band?: [number, number];   // temps: the normal stretch of the track, 0..1 at each end
   section?: string;       // rows: a quiet heading wherever this changes, e.g. "Today" above "Earlier"

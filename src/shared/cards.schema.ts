@@ -34,7 +34,7 @@ const base = {
 };
 const StatItem = z.object({ label: z.string(), value: z.union([z.string(), z.number()]), unit: z.string().optional(), sub: z.string().optional(),
   tone: Tone.optional(), pct: z.number().optional(), trend: nums.optional() }).strict();
-const ListItem = z.object({ id: z.string().optional(), detail: z.string().optional(), title: z.string(), href: z.string().optional(), dot: Tone.optional(), subtitle: z.string().optional(), meta: z.string().optional(), pct: unit.optional(), tone: Tone.optional(),
+const ListItem = z.object({ id: z.string().optional(), detail: z.string().optional(), icon: z.string().regex(/^(https:\/\/|\/api\/|data:image\/svg\+xml,)/).optional(), title: z.string(), href: z.string().optional(), dot: Tone.optional(), subtitle: z.string().optional(), meta: z.string().optional(), pct: unit.optional(), tone: Tone.optional(),
   image: z.string().optional(), badge: z.string().optional(), band: z.tuple([unit, unit]).optional(), section: z.string().optional(), trend: nums.optional(),
   buttons: z.array(z.object({ label: z.string(), action: z.string(), args: z.record(z.string(), z.unknown()).optional() }).strict()).max(3).optional(), link: Link.optional() }).strict();
 const MediaItem = z.object({ title: z.string(), subtitle: z.string().optional(), image: z.string().optional(), backdrop: z.string().optional(), pct: unit.optional(),
