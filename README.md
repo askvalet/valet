@@ -69,6 +69,8 @@ Open `/wall` on a tablet or a spare monitor for a page made to be read from acro
 pick exactly which cards it shows, several pages can take turns, and it dims at night. Nothing on it can be pressed, and
 chat never shows.
 
+<p align="center"><img src="docs/images/wall-services.webp" alt="The wall display: a large clock, the date and the weather, with every service's status below" width="620"></p>
+
 
 <br>
 
