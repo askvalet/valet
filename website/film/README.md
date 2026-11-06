@@ -44,8 +44,10 @@ what matters (the chat while it talks, a card while it's used), and back out. Pi
 `./gif.sh <clip.mp4> <out.gif> <width> [crop,]` then makes a 15 fps GIF: one palette for the whole clip, ordered
 dither, a light temporal denoise so still glass stays the same from frame to frame, and held frames merged (their
 delay keeps the time). With the camera moving, a GIF has to store most of every frame again (15-20 MB for 20
-seconds), so the README and the site use animated WebP instead, about 3 MB at the same size: `./webp.sh chat.mp4
-ask-chat.webp 960`. GitHub and every current browser play it like a GIF.
+seconds), so the README and the site use animated WebP instead: `./webp.sh chat.mp4 ask-chat.webp 960` (24 fps,
+quality 78; `config-live` at 1200 so the YAML reads). `webp.py` encodes with Pillow: every frame whole and a keyframe
+each second, because ffmpeg's `libwebp_anim` stores partial lossy updates that pile up into blocky patches in blurred
+glass. GitHub and every current browser play it like a GIF.
 
 ## The film
 
