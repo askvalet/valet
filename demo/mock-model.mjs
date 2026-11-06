@@ -9,6 +9,7 @@ const lit = '(?:living room|kitchen|dining room|hallway|office|bedroom|bathroom|
 const titled = s => s.replace(/\b\w/g, c => c.toUpperCase());
 const robot = String.raw`(?:the |my )?(?:vacuum|robot|robot vacuum)`;
 const heat = String.raw`(?:the |my )?(?:thermostat|heat|heating|furnace|hallway)`;
+const watched = '(?:oppenheimer|andor)', tellMe = '(?:tell me|let me know|ping me|notify me)', getting = String.raw`(?:the )?${watched}(?: download)?`, done = '(?:finishes|is done|has finished|is finished|completes|is downloaded)(?: downloading)?';
 const ROOM_IDS = ['living room', 'kitchen', 'dining room', 'hallway', 'office', 'bedroom', 'bathroom', 'laundry', 'guest room'];
 const roomId = said => ROOM_IDS.findIndex(r => said.toLowerCase().includes(r)) + 1;
 const lights = said => ({ room: /\ball\b/i.test(said) ? 'All' : titled(new RegExp(lit, 'i').exec(said)?.[0].toLowerCase() ?? 'living room'), on: /\bon\b/i.test(said) });
@@ -30,6 +31,9 @@ export const ORDERS = [
   [new RegExp(String.raw`^(?:start|run) ${robot}$|^(?:vacuum|clean) (?:the )?(?:house|floors?)$`, 'i'), 'run_vacuum', { command: 'start' }, vacuumSay],
   [new RegExp(String.raw`^(?:dock|stop) ${robot}$|^send ${robot} (?:home|back|to (?:the |its )?dock)$`, 'i'), 'run_vacuum', { command: 'dock' }, vacuumSay],
   [new RegExp(String.raw`^find ${robot}$`, 'i'), 'run_vacuum', { command: 'locate' }, vacuumSay],
+  // a reminder, as Valet's own watch_add sets one: the demo's downloads then finish in seconds, so it arrives while you look
+  [new RegExp(String.raw`^(?:${tellMe}) (?:when|once) ${getting} ${done}$|^(?:when|once) ${getting} ${done},? (?:${tellMe})$`, 'i'), 'watch_add', said => { const t = titled(new RegExp(watched, 'i').exec(said)[0].toLowerCase());
+    return { widget: 'lab.downloads', on: 'ends', name: t, say: `${t} has finished downloading` }; }, (d, said) => d.denied ? 'Okay, no reminder.' : d.error ? "I couldn't set that reminder." : `Done. I'll tell you when ${titled(new RegExp(watched, 'i').exec(said)?.[0].toLowerCase() ?? 'it')} finishes.`],
 ];
 // The page offers "What's <title> about?" for what's playing (src/web/suggest.ts), so every title the demo plays has an answer
 export const ABOUT = {
@@ -124,7 +128,7 @@ export function reply(body) {
     let data = {};
     try { data = JSON.parse(textOf(last.content)); } catch { data = /denied|not approved/i.test(textOf(last.content)) ? { denied: true } : {}; }
     if (/denied/i.test(data?.type ?? '') || data?.denied) data = { denied: true };
-    return { text: say(data) };
+    return { text: say(data, said) };
   }
   const name = (body.tools ?? []).map(t => t.function?.name).find(n => n?.endsWith(tool));
   return name ? { call: { name, args: JSON.stringify(typeof input === 'function' ? input(said, re.exec(said)) : input) } } : offScript();

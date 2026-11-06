@@ -23,6 +23,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 - `config check` names a `view` a widget's card can't take, and the views it can.
 - The demo's Home tab has the week's meal plan from Mealie under the house and the PC: real food photos, today first. Mealie is down in the demo's story, so the row is the plan it last sent, marked stale.
 - The demo's Media tab has music: Navidrome's most played albums as a cover flow beside The year so far, in place of Requested. The ten albums are real ones whose covers are free to share (CC0, CC BY-SA or public domain), credited on the Credits page.
+- The demo sets reminders. Ask it to tell you when Oppenheimer finishes downloading: it asks first, and after your OK the download finishes within a few seconds and the notice arrives, as a real one would.
 - Long chats compact themselves instead of breaking. When the model's window is known, what's sent stays under about 70% of it: the oldest turns become a short summary (one tool-less call, cached for the next turns), the latest question always goes whole, and a quiet line in the chat says "Earlier messages summarised to make room". The page keeps the whole conversation. Within one answer, earlier lookups' results shrink when they pile up, and a request the model's server rejects as too long is sent once more cut right down, then answered in plain words instead of an error. `assistant.compact: false` turns it off.
 
 ### Changed

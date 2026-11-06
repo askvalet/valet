@@ -249,12 +249,16 @@ export default ({ z, defineIntegration, fmt: write }) => {
         return { name, group, icon: `/api/icon/${icon}`, href, ok, ms: ok ? 4 + hash(name + Math.floor(now() / 30_000)) % 30 : undefined, detail: ok ? undefined : 'timed out' };
       });
 
-      const CYCLE = 42 * 60_000;
+      const CYCLE = 42 * 60_000, RUSH = 6_000;
       const downloads = () => {
         if (paused()) return [];
-        return [['Andor', 'S02E05', 1.4], ['Oppenheimer', '2023', 6.8]].map(([title, sub, gb], i) => {
-          const pct = (.08 + ((now() + i * 1.3e7) % CYCLE) / CYCLE * .9), left = gb * (1 - pct);
-          return { title, sub, pct, left, speed: gb * 1000 / (CYCLE / 1000 * .9) * (1 + .15 * Math.sin(now() / 40_000 + i)) };
+        const r = got('rush', null);
+        return [['Andor', 'S02E05', 1.4], ['Oppenheimer', '2023', 6.8]].flatMap(([title, sub, gb], i) => {
+          let pct = (.08 + ((now() + i * 1.3e7) % CYCLE) / CYCLE * .9);
+          // one someone is waiting on runs to the end in a few seconds, then it's done for the next ten minutes
+          if (r?.title === title) { pct = Math.min(1, r.pct + (now() - r.at) / RUSH * (1 - r.pct)); if (pct >= 1) return []; }
+          const left = gb * (1 - pct);
+          return [{ title, sub, pct, left, speed: gb * 1000 / (CYCLE / 1000 * .9) * (1 + .15 * Math.sin(now() / 40_000 + i)) }];
         }).concat({ title: 'Shōgun', sub: 'S01E08', pct: .37, left: 1.3, speed: 0, stalled: true });   // no peers, so it just sits there, as one always does
       };
       const STREAM = 118 * 60_000;
@@ -453,7 +457,8 @@ export default ({ z, defineIntegration, fmt: write }) => {
         people: w("Who's watching", 3_600_000, () => { const most = Math.max(...VIEWERS.map((_, i) => hoursOf(i))), on = stream(); return { type: 'list', title: "Who's watching", icon: 'play', note: `Everyone · ${LAST_30}`, items: VIEWERS.map((title, i) => ({ title, subtitle: i ? undefined : `Watching ${on.title}`, meta: `${hoursOf(i)}h`, pct: hoursOf(i) / most, tone: hoursOf(i) === most ? 'accent' : undefined })) }; }),
         week: w('Coming up', 3_600_000, () => ({ type: 'shelf', title: 'Coming up', icon: 'film', aspect: 'poster', layout: 'week',
           items: CALENDAR.map(([n, title, badge, subtitle = episode]) => ({ at: ymd(n), badge: badge ?? inDays(n), cta: badge ? { label: 'Open in Plex', href: poster(title) } : undefined, title, subtitle, image: poster(title), href: poster(title) })) })),
-        requests: w('Requested', 3_600_000, () => ({ type: 'shelf', title: 'Requested', icon: 'film', aspect: 'poster', layout: 'tickets', items: [['Oppenheimer', 'Downloading', 'accent'], ['Severance', 'Partly available', 'warn'], ['The Grand Budapest Hotel', 'Available', 'good'], ['Spirited Away', 'Available', 'good'], ['Interstellar', 'Available', 'good']].map(([title, badge, tone]) => {
+        requests: w('Requested', 3_600_000, () => ({ type: 'shelf', title: 'Requested', icon: 'film', aspect: 'poster', layout: 'tickets', items: [['Oppenheimer', 'Downloading', 'accent'], ['Severance', 'Partly available', 'warn'], ['The Grand Budapest Hotel', 'Available', 'good'], ['Spirited Away', 'Available', 'good'], ['Interstellar', 'Available', 'good']].map(([title, b, t]) => {
+            const done = b === 'Downloading' && !paused() && got('rush', null)?.title === title && !downloads().some(d => d.title === title), [badge, tone] = done ? ['Available', 'good'] : [b, t];
             const getting = downloads().find(t => t.title === title), there = { title, subtitle: String(ART.films[title].year), badge, tone, image: poster(title), href: poster(title) };
             return badge === 'Downloading' ? { ...there, note: getting && `${Math.floor(getting.pct * 100)}% there`, cta: { label: 'See progress', href: poster(title) } }
               : badge === 'Available' ? { ...there, cta: { label: 'Watch', href: poster(title) } } : { ...there, note: 'Missing S3', cta: { label: "Watch what's here", href: poster(title) } }; }) })),
@@ -542,6 +547,9 @@ export default ({ z, defineIntegration, fmt: write }) => {
       ].map(({ sizes, ...j }) => ({ ...j, ...(sizes ? { sizes, size: sizes.at(-1) } : {}) }));
       return {
         onChat() { asked += 1; thinking = now() + 9_000; return ['ai']; },
+        // the static demo, when a visitor asks to hear when a download finishes: it finishes in a few seconds rather than half
+        // an hour, so they see the reminder arrive. Nothing else calls it
+        hurry(name) { const t = downloads().find(d => !d.stalled && d.title.toLowerCase().includes(String(name).toLowerCase())); if (t) put('rush', { title: t.title, pct: t.pct, at: now() }); return !!t; },
         backups: async () => backups(),
         widgets,
         commands: [{ say: ['join meeting', 'join next meeting', 'join the meeting', 'join my meeting', 'join call'], run: 'tool:calendar_next_meeting', input: {}, open: true, label: 'Join the next meeting' },

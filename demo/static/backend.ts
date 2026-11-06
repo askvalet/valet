@@ -6,6 +6,8 @@ import { z } from 'zod';
 import { chatRoute } from '../../src/server/chat.ts';
 import { Backups, backupParts } from '../../src/server/backups.ts';
 import { fmt } from '../../src/server/core.ts';
+import { ownInstance } from '../../src/server/own.ts';
+import { Watches } from '../../src/server/watches.ts';
 import { findDocs, type DocIndex } from '../../src/shared/docs.ts';
 import plugin from '../integrations/homelab.mjs';
 import { reply, suggestions } from '../mock-model.mjs';
@@ -65,12 +67,26 @@ const listeners = new Set<Listener>(), known = new Map<string, any>();
 const tell = (type: string, data: unknown) => { for (const l of listeners) l(type, JSON.stringify(data)); };
 async function refresh(key: string) {
   const [inst, name] = key.split('.'), w = instances.get(inst)?.widgets[name]; if (!w) return;
-  try { const s = { key, card: await w.fetch(), at: Date.now() }; known.set(key, s); tell('widget', s); } catch (e) {
+  try { const s = { key, card: await w.fetch(), at: Date.now() }; known.set(key, s); tell('widget', s); watches.check([...known.values()]); } catch (e) {
     // as the hub does: a widget that stops answering keeps the last card it had, which the page marks stale
     const s = { key, error: (e as Error).message, at: Date.now(), card: known.get(key)?.card }; known.set(key, s); tell('widget', s);
   }
 }
 const refreshAll = () => Promise.all([...known.keys()].map(refresh));
+// "tell me when…": Valet's own reminders and its watch_add tool, checked each time a card changes (the server checks every
+// half minute). When one fires the page gets the notice the server would send. The made-up downloads are half an hour
+// long, so the one asked about finishes in a few seconds (the homelab's hurry), and the reminder arrives while you look
+const watches = new Watches([], w => tell('notice', { key: w.widget, text: w.say, icon: 'pulse', tone: 'accent', at: Date.now() }));
+const remind = () => {
+  const t = ownInstance({ watches, hub: () => ({ widget: (k: string) => known.get(k)?.card }) as any, widgets: [...known.keys()], timeline: {} as any, activity: {} as any, rules: {} as any, recap: () => snapshot('recap'), undo: async () => '' }).tools!.watch_add;
+  const run = t.run;
+  t.run = async (input: any) => {
+    const out = await run(input);
+    if (out.data?.set && input.widget === 'lab.downloads' && input.on === 'ends' && input.name && lab.hurry?.(input.name)) void refresh('lab.downloads');
+    return out;
+  };
+  return t;
+};
 let started: Promise<void> | undefined;
 const start = () => started ??= snapshot('page').then((page: any) => {
   for (const key of Object.keys(page.widgets)) { const [inst, name] = key.split('.'), w = instances.get(inst)?.widgets[name]; if (!w) continue; known.set(key, { key, at: 0 }); void refresh(key); setInterval(() => { if (!document.hidden) void refresh(key); }, w.interval ?? 10_000); }
@@ -125,6 +141,7 @@ async function answer(path: string, method: string, body: any, signal?: AbortSig
   }
   if (route === 'chat') {
     const config = await snapshot('config');
+    await start(); (valet.tools as Record<string, unknown>).watch_add ??= remind();
     chat ??= chatRoute(config, instances as any, new Map<string, any>([['lab', { type: 'demo-homelab', name: integration.name, integration }], ['valet', { type: 'valet', name: 'Valet', integration: { type: 'valet', name: 'Valet' } }]]), { acting: true, redact: s => s, model: model as any });
     lab.onChat?.(); void refresh('lab.ai');
     return chat({ req: { json: async () => body, raw: { signal } }, get: () => 'you' });

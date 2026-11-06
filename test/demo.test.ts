@@ -36,7 +36,7 @@ test('demo: every widget returns a valid card, and the layout only names widgets
 
 test('demo: the script only calls tools that exist, and answers from what they return', async () => {
   // a null tool is a plain answer; Valet's own backups tool gathers from the lab, as the server's does
-  for (const [, tool] of SCRIPT) if (tool) assert.ok(inst.tools[tool as string] || tool === 'backups_status', tool as string);
+  for (const [, tool] of SCRIPT) if (tool) assert.ok(inst.tools[tool as string] || tool === 'backups_status' || tool === 'watch_add', tool as string);
   assert.equal(ask('How are the downloads?').call?.name, 'lab__downloads_status');
   assert.equal(ask('turn off the lights').call?.name, 'lab__set_lights');
   const { data } = await inst.tools.service_status.run({});
@@ -95,6 +95,30 @@ test('demo: what the page offers works, and saying what happened uses the words 
   assert.equal(services.filter((s: any) => s.quiet).length, 1);
   const off = (await inst.widgets.containers.fetch()).items.filter((c: any) => c.state === 'off');
   assert.deepEqual(off.map((c: any) => c.name), services.filter((s: any) => s.quiet).map((s: any) => s.name.toLowerCase()));   // the same thing, on both cards
+});
+
+test('demo: "tell me when" sets Valet\'s own reminder, and the download it names then finishes in seconds', async () => {
+  const own = [...tools, { function: { name: 'valet__watch_add' } }], said = (q: string) => reply({ tools: own, messages: [{ role: 'user', content: q }] });
+  for (const q of ['Tell me when Oppenheimer finishes downloading', 'let me know when Oppenheimer is done', 'When Andor finishes, tell me']) assert.equal(said(q).call?.name, 'valet__watch_add', q);
+  const call = said('Tell me when Oppenheimer finishes downloading').call!;
+  assert.deepEqual(JSON.parse(call.args), { widget: 'lab.downloads', on: 'ends', name: 'Oppenheimer', say: 'Oppenheimer has finished downloading' });
+  const after = (d: unknown) => reply({ tools: own, messages: [{ role: 'user', content: 'Tell me when Oppenheimer finishes downloading' }, { role: 'tool', content: JSON.stringify(d) }] }).text;
+  assert.equal(after({ set: true }), "Done. I'll tell you when Oppenheimer finishes.");
+  assert.equal(after({ denied: true }), 'Okay, no reminder.');
+  // with no reminder tool (read-only Valet) it doesn't pretend; anything else about a film isn't an order
+  assert.equal(ask('Tell me when Oppenheimer finishes downloading').call, undefined);
+  for (const q of ['When does Oppenheimer finish?', 'Tell me when Dune finishes']) assert.notEqual(said(q).call?.name, 'valet__watch_add', q);
+  // the made-up download runs to the end in a few seconds, so the reminder fires while you look
+  const fresh = lab.create(lab.config.parse({}), { image: (r: string) => `/x/${r}` } as any), real = Date.now;
+  try {
+    const t0 = real(); Date.now = () => t0;
+    assert.ok((await fresh.widgets.downloads.fetch()).items.some((i: any) => i.title === 'Oppenheimer'));
+    assert.equal(fresh.hurry('oppenheimer'), true);
+    Date.now = () => t0 + 7_000;
+    const card = await fresh.widgets.downloads.fetch();
+    assert.ok(!card.items.some((i: any) => i.title === 'Oppenheimer') && card.items.some((i: any) => i.title === 'Andor'));
+    assert.equal((await fresh.widgets.requests.fetch()).items[0].badge, 'Available');
+  } finally { Date.now = real; }
 });
 
 test('demo: what a visitor types never comes back', () => {
