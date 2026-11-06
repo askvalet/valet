@@ -5,6 +5,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-05
+
 ### Added
 
 - Home Assistant cards have icons and colour. Each row gets a small icon from what the entity is (a lock, a garage door, a person, energy, money, temperature), and the ones that say how things stand are coloured: locked, closed and at home in green, unlocked or left open in amber. `locked` and `not_home` read as Locked and Away. An entity in `cards` can be `{ id, icon }` to choose its icon.
@@ -241,7 +243,8 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/compare/v0.1.8...HEAD
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/askvalet/valet/compare/v0.1.8...v0.2.0
 [0.1.8]: https://github.com/askvalet/valet/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/askvalet/valet/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/askvalet/valet/compare/v0.1.5...v0.1.6

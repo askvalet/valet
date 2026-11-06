@@ -59,7 +59,7 @@ works just fine with the AI switched off.
 
 Everything on the page is live. Progress bars move, numbers tick over, and new things appear as they happen, with no refreshing. Hover anything in the top bar for its details: what's playing, a download, the CPU or the weather.
 
-<p align="center"><img src="docs/images/live.webp" alt="The top bar: hovering what's playing, a download and the CPU opens each one's live details" width="620"></p>
+<p align="center"><img src="docs/images/live.webp" alt="The top bar: hovering a meeting, what's playing, a download, the CPU, memory, the network, the weather and the calendar opens each one's live details" width="620"></p>
 
 <br>
 
