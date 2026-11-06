@@ -559,10 +559,15 @@ function Home({ account }: { account: boolean }) {
                   {shownChips.map(({ s, out }) => (
                     <Chip key={s} onClick={() => ask(s)} tabIndex={out ? -1 : undefined} className={out ? 'chip-out' : arrival(`chip:${s}`)} style={out ? { maxWidth: 320 } : undefined}>{s}</Chip>
                   ))}
+                  {/* the year in review, one more chip in the row, with its own way to put it away */}
+                  {pill && <span className="review-chip inline-flex flex-none items-center rounded-chip bg-fill-1">
+                    <a href="#recap" className="press flex h-8 items-center pr-1 pl-3 text-body hover:text-foreground">{label('review', { year: now.getFullYear() })}</a>
+                    <button onClick={e => { dissolve(e.currentTarget.parentElement); dismissReview(); }} aria-label={label('dismiss')} className="press mr-1 grid size-6 flex-none place-items-center rounded-sm text-muted-foreground hover:text-foreground"><X className="size-3" /></button>
+                  </span>}
                 </div>
               </div>
             )}
-            {pill && <div className={cn('mt-1 flex items-center text-body text-muted-foreground', h?.align === 'left' ? 'justify-start' : h?.align === 'right' ? 'justify-end' : 'justify-center')}>
+            {pill && !chips && <div className={cn('mt-1 flex items-center text-body text-muted-foreground', h?.align === 'left' ? 'justify-start' : h?.align === 'right' ? 'justify-end' : 'justify-center')}>
               <a href="#recap" className="press rounded-sm py-1 pr-1 pl-2.5 hover:text-foreground">{label('review', { year: now.getFullYear() })}</a>
               <button onClick={e => { dissolve(e.currentTarget.parentElement); dismissReview(); }} aria-label={label('dismiss')} className="press grid size-6 flex-none place-items-center rounded-sm hover:text-foreground"><X className="size-3" /></button>
             </div>}
