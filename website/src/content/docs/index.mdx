@@ -17,7 +17,7 @@ hero:
       link: /integrations/
       variant: minimal
 ---
-<video class="film" controls autoplay muted loop playsinline preload="metadata" poster="/film/poster.webp" aria-label="Valet in a minute and a half: the main screen, liquid glass from ⌘K, the Services, Home, Media and Library tabs, asking what's playing and what to watch, approving a change, adding a card from chat, and the integrations.">
+<video class="film" controls autoplay muted loop playsinline preload="metadata" poster="/film/poster.webp" aria-label="Valet in a minute and a half: the main screen, ⌘K opening a service, answering a question and finding a page in the docs, the Services, Home, Media and Library tabs, asking what's playing and what to watch, approving a change, adding a card from chat, and the integrations.">
   <source src="/film/valet-mobile.mp4" media="(max-width: 640px)" type="video/mp4" />
   <source src="/film/valet.mp4" type="video/mp4" />
 </video>
@@ -35,21 +35,25 @@ Instead of opening five different tabs to work out what's going on, just open Va
 Ask Valet anything about your homelab. Use a local model or a hosted one. Valet knows its own documentation, so it can help you set itself up! Anything it changes waits for your approval, and Valet works just fine with the AI switched off.
 
 <div class="why-pair">
-<figure><img src="/why/ask-chat.gif" alt="Asking who's watching shows the now-playing card, asking what to watch shows the most-watched list with posters, and pausing Pi-hole waits for approval, then shows its chart" loading="lazy" /><figcaption>"Who's watching?" "What should we watch tonight?" Then "Pause Pi-hole", which waits for your approval.</figcaption></figure>
-<figure><img src="/why/ask-for-a-card.gif" alt="Asking for an internet speed card: Valet asks first, then the card appears on the page" loading="lazy" /><figcaption>"Add an internet speed card." Valet edits its own config, after asking first.</figcaption></figure>
+<figure><img src="/why/ask-chat.webp" alt="Asking who's watching shows the now-playing card, asking what to watch shows the most-watched list with posters, and pausing Pi-hole waits for approval, then shows its chart" loading="lazy" /><figcaption>"Who's watching?" "What should we watch tonight?" Then "Pause Pi-hole", which waits for your approval.</figcaption></figure>
+<figure><img src="/why/ask-for-a-card.webp" alt="Asking for an internet speed card: Valet asks first, then the card appears on the page" loading="lazy" /><figcaption>"Add an internet speed card." Valet edits its own config, after asking first.</figcaption></figure>
 </div>
+
+<figure class="why"><img src="/why/rule.webp" alt="Asking Valet to say when Oppenheimer finishes downloading: it asks first, then a notice arrives on the page when the download is done" loading="lazy" /><figcaption>"Tell me when Oppenheimer finishes downloading." Set once in plain words, and the notice comes when it's done.</figcaption></figure>
 
 ## Updates in real time
 
 Everything on the page is live. Progress bars move, numbers tick over, and new things appear as they happen, with no refreshing. Hover anything in the top bar for its details: what's playing, a download, the CPU or the weather.
 
-<figure class="why"><img src="/why/live.gif" alt="The top bar: hovering what's playing, a download, the CPU and the weather opens each one's live details" loading="lazy" /></figure>
+<figure class="why"><img src="/why/live.webp" alt="The top bar: hovering what's playing, a download and the CPU opens each one's live details" loading="lazy" /></figure>
 
 ## Made to be enjoyed
 
 Live cards, real artwork, smooth animations and 3D models. It's a page you'll want to look at and use.
 
-<figure class="why"><img src="/why/home-3d.gif" alt="The 3D floor plan: picking the living room, turning its lights blue, and sending the vacuum, which drives through the house" loading="lazy" /><figcaption>Pick a room, change its lights, and send the vacuum, which drives through the house.</figcaption></figure>
+<figure class="why"><img src="/why/home-3d.webp" alt="The 3D floor plan: picking the living room, turning its lights blue, and sending the vacuum, which drives through the house" loading="lazy" /><figcaption>Pick a room, change its lights, and send the vacuum, which drives through the house.</figcaption></figure>
+
+<figure class="why"><img src="/why/year-in-review.webp" alt="The year in review, full screen: the race of what was watched most, the house the vacuum cleaned, the ads blocked and the uptime, one screen at a time" loading="lazy" /><figcaption>Your year in review, told from your services' own numbers.</figcaption></figure>
 
 ## Wall display mode
 
@@ -64,7 +68,7 @@ Open [`/wall`](/concepts/wall/) on a tablet or a spare monitor for a page made t
 
 One YAML file controls everything, with [185 integrations](/integrations/) and a simple way to [add your own](/build/). It runs as one Node process, uses about 45 MB of RAM on a fresh install, and the image is 165 MB.
 
-<figure class="why"><img src="/why/config-live.gif" alt="Editing config.yaml while Valet runs: the greeting, the wallpaper and its brightness change on the page as each line is saved" loading="lazy" /></figure>
+<figure class="why"><img src="/why/config-live.webp" alt="Editing config.yaml while Valet runs, ten times over: the greeting, the wallpaper, liquid glass, light mode, the greeting's place, a labelled dock at the bottom, two columns, the full services list, no ask box and a serif font, each on the page as soon as the line is saved" loading="lazy" /></figure>
 
 ## Security first
 

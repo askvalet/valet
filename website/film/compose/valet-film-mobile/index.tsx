@@ -1,27 +1,20 @@
 import { ArrowUp } from 'lucide-react'
-import { Stage, type Act } from '../../kit'
-import { Clip, type Src } from './cam'
+import { Stage } from '../../kit'
+import { union, type Rect, type Src } from '../valet-film/cam'
+import { at, cardFiles, cardMeta, FAST, FROM, iconFiles, icons, initial, PICK, r, script, TAG, url, YAML, type S } from '../valet-film/index'
+import { camera, TallClip, type PKey } from './cam'
 import './mobile.css'
 
-// Valet's film for a phone feed, 4:5. The footage is the demo's own phone layout, recorded frame-exact at 3x
-// (rec/phone.mjs). The whole phone screen is always in frame, under a short caption, so nothing is cut at an edge.
+// Valet's film for small screens, 4:5. The same story, beats and footage as the desktop film (the desktop page,
+// recorded at 1600x900, 2x), framed for a tall screen: wide, the whole page sits at full width under the caption;
+// close, the band opens to the bottom of the frame and one part of the page fills it.
 
-const clips = import.meta.glob<string>('./assets/clips/*.mp4', { eager: true, query: '?url', import: 'default' })
-type Mark = { name: string; t: number }
-type Log = { W: number; H: number; frames: number; marks: Mark[] }
-const logs = import.meta.glob<Log>('./assets/clips/*.json', { eager: true, import: 'default' })
-const log = (n: string) => logs[`./assets/clips/${n}.json`]!
-const url = (n: string) => clips[`./assets/clips/${n}.mp4`]!
-const ms = (n: string) => Math.round(log(n).frames / 60 * 1000)
-const at = (n: string, m: string) => Math.round(log(n).marks.find(x => x.name === m)!.t * 1000)
-const iconFiles = import.meta.glob<string>('./assets/icons/*.png', { eager: true, query: '?url', import: 'default' })
-const cardFiles = import.meta.glob<string>('./assets/cards/*.jpg', { eager: true, query: '?url', import: 'default' })
-const cardMeta = Object.values(import.meta.glob<{ file: string; name: string; icon: string; w: number; h: number }[]>('./assets/cards/cards.json', { eager: true, import: 'default' }))[0] ?? []
+const SRC: Src = { W: 1600, H: 900 }
+const WIDE = { x: 0, y: 526, w: 1080, h: 607.5 }, CLOSE = { x: 0, y: 300, w: 1080, h: 1050 }
+const cam = camera(SRC, WIDE, CLOSE)
+const P = (t: number, rect: Rect | null, d = 1.1, zmax = 1.6): PKey => ({ t, r: rect, d, zmax })
 
-const SRC: Src = { W: 402, H: 620 }
-const PLATE = { w: 726, h: 1120 }
 const BOX = { w: 900, h: 700 }, GAP = 70
-const PICK = ['plex', 'homeassistant', 'frigate', 'immich', 'pihole', 'qbittorrent', 'tautulli', 'romm', 'mealie', 'paperless', 'navidrome', 'hackernews']
 const REEL = (() => {
   let x = 0
   return PICK.map(f => cardMeta.find(c => c.file === f)!).filter(Boolean).map(c => {
@@ -32,28 +25,27 @@ const REEL = (() => {
   })
 })()
 
-type Scene = 'open' | 'main' | 'ask' | 'self' | 'cards' | 'end'
-type S = { scene: Scene; typed: number; ok: boolean; reel: number }
-const TAG = 'Talk to your homelab.'
-const initial: S = { scene: 'open', typed: 0, ok: false, reel: 0 }
-
-async function script(a: Act<S>) {
-  await a.wait(350)
-  for (let i = 1; i <= TAG.length; i++) { a.set({ typed: i }); await a.wait(42) }
-  await a.wait(900)
-  a.mark('main'); a.set({ scene: 'main' }); await a.wait(ms('main'))
-  a.mark('ask'); a.set({ scene: 'ask' }); await a.wait(at('ask', 'approval') - 300); a.set({ ok: true }); await a.wait(ms('ask') - at('ask', 'approval') + 300)
-  a.mark('self'); a.set({ scene: 'self' }); await a.wait(ms('self'))
-  a.mark('cards'); a.set({ scene: 'cards' }); await a.wait(700)
-  for (let i = 1; i < REEL.length; i++) { a.set({ reel: i }); await a.wait(Math.max(260, 470 - i * 22)) }
-  await a.wait(600)
-  a.mark('end'); a.set({ scene: 'end' }); await a.wait(3800)
-  a.mark('done')
-  await a.wait(60000)
+const tt = (n: string, m: string) => at(n, m).t
+const keys: Record<string, () => PKey[]> = {
+  // the first seconds are the whole page; then, still before anything scrolls, a slow glide in to the greeting and services
+  overview: () => [
+    P(2.9, [96, 24, 1000, 400], 1.8),
+    P(tt('overview', 'three') - .1, union(r('overview', 'three', 'ha'), r('overview', 'three', 'pc')), .9),
+    P(tt('overview', 'dns') - .1, r('overview', 'dns', 'dns'), .9),
+    P(tt('overview', 'now') - .1, union(r('overview', 'now', 'now'), r('overview', 'now', 'photos')), .9),
+    P(tt('overview', 'carousels') + .05, r('overview', 'carousels', 'recent'), 1.1)],
+  kbar: () => [P(tt('kbar', 'open') - .3, union(...['open', 'svc', 'answer', 'docs'].map(m => r('kbar', m, 'pal'))), 1), P(tt('kbar', 'closed'), null, 1.1)],
+  services: () => [P(.5, union(r('services', 'top', 'Updates'), r('services', 'top', 'Pi-hole')), 2.4)],
+  home: () => [P(.4, union(r('home', 'top', 'Cameras'), r('home', 'top', 'Hallway')), 2.4)],
+  media: () => [P(.4, r('media', 'top', 'Now playing'), 2.4)],
+  library: () => [P(.4, r('library', 'top', 'Hacker News'), 2.4)],
+  chat: () => [P(tt('chat', 'sheet') + .1, r('chat', 'sheet', 'sheet'), 1),
+    ...['watching', 'popular', 'approval', 'paused'].map(m => P(tt('chat', m) - .1, r('chat', m, 'card'), 1))],
+  self: () => [P(tt('self', 'ask') - .1, r('self', 'ask', 'card'), 1), P(tt('self', 'done') - .05, null, 1), P(tt('self', 'page') + .3, r('self', 'page', 'speed'), 1.2, 1.4)],
 }
 
-function Title({ on, big, sub }: { on: boolean; big: string; sub?: string }) {
-  return <div className="mf-title" data-on={on || undefined}><h2>{big}</h2>{sub && <p>{sub}</p>}</div>
+function Title({ on, big, sub, keys: k }: { on: boolean; big: string; sub?: string; keys?: string[] }) {
+  return <div className="mf-title" data-on={on || undefined}><h2>{k && <span className="mf-keys">{k.map(x => <kbd key={x}>{x}</kbd>)}</span>}{big}</h2>{sub && <p>{sub}</p>}</div>
 }
 
 export default function ValetFilmMobile() {
@@ -63,18 +55,21 @@ export default function ValetFilmMobile() {
         <div className="mf-film" data-scene={s.scene}>
           <div className="mf-wall" />
           <section className="mf-open" data-on={s.scene === 'open' || undefined}>
-            <div className="mf-box"><span>{TAG.slice(0, s.typed)}<i /></span><b data-ready={s.typed === TAG.length || undefined}><ArrowUp size={30} strokeWidth={2.2} /></b></div>
+            <div className="mf-box"><span>{TAG.slice(0, s.words)}<i /></span><b data-ready={s.words === TAG.length || undefined}><ArrowUp size={30} strokeWidth={2.2} /></b></div>
           </section>
 
-          <Title on={s.scene === 'main'} big="A homepage worth opening." sub="Your services, the house and the week, on one page." />
-          <Title on={s.scene === 'ask' && !s.ok} big="Just ask." sub="Run it on fully local AI, and nothing leaves your home." />
-          <Title on={s.scene === 'ask' && s.ok} big="Nothing changes without your OK." sub="Pausing Pi-hole waits for you." />
-          <Title on={s.scene === 'self'} big="Self-improving." sub="Ask for a card. Valet edits its own config, with your OK." />
-          {(['main', 'ask', 'self'] as const).map(n => (
-            <div key={n} className="mf-phone" data-on={s.scene === n || undefined}>
-              <Clip src={SRC} url={url(n)} on={s.scene === n} plate={PLATE} />
+          {(['overview', 'kbar', 'services', 'home', 'media', 'library', 'chat', 'self'] as const).map(n => (
+            <div key={n} className="mf-plate" data-on={s.scene === n || undefined}>
+              <TallClip src={SRC} url={url(n)} on={s.scene === n} keys={keys[n]!()} map={FAST[n]?.map} from={FROM[n] ?? 0} cam={cam} />
             </div>
           ))}
+
+          <Title on={s.scene === 'overview'} big="A homepage worth opening." sub="Your services, the house, the week and what's playing." />
+          <Title on={s.scene === 'kbar'} keys={['⌘', 'K']} big="finds anything." sub="Open a service, ask, or search the docs." />
+          <Title on={['services', 'home', 'media', 'library'].includes(s.scene)} big="No more switching." sub="Services, Home, Media and Library, each a tab." />
+          <Title on={s.scene === 'chat' && !s.ok} big="Just ask." sub="Run it on fully local AI. Nothing leaves home." />
+          <Title on={s.scene === 'chat' && s.ok} big="Nothing changes without your OK." sub="Pausing Pi-hole waits for you." />
+          <Title on={s.scene === 'self'} big="Self-improving." sub="Ask for a card. Valet edits its own config." />
 
           <Title on={s.scene === 'cards'} big="185 integrations." />
           <div className="mf-reel" data-on={s.scene === 'cards' || undefined}>
@@ -85,6 +80,14 @@ export default function ValetFilmMobile() {
                   <figcaption><img src={iconFiles[`./assets/icons/${c.icon}.png`]} alt="" />{c.name}</figcaption>
                 </figure>
               ))}
+            </div>
+          </div>
+
+          <Title on={s.scene === 'yours'} big="All in one YAML file." />
+          <div className="mf-yours" data-on={s.scene === 'yours' || undefined}>
+            <pre className="mf-code">{YAML.map((l, i) => <div key={l} data-on={i < s.yaml || undefined}>{l || ' '}</div>)}</pre>
+            <div className="mf-wallicons">
+              {icons.slice(0, 28).map((u, i) => <span key={u} style={{ '--i': i } as React.CSSProperties}><img src={u} alt="" /></span>)}
             </div>
           </div>
 

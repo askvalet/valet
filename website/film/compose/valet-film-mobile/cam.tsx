@@ -1,75 +1,63 @@
 import { useEffect, useRef } from 'react'
 import { clock } from '../../kit/clock'
+import type { Rect, Src } from '../valet-film/cam'
 
-// A camera over recorded footage. Footage is a frame-exact recording of the demo at 2x; a View is the part of the
-// recorded viewport (CSS px) that fills the plate. Keys move the camera with an eased glide, so a zoom always lands
-// on a whole card with even margins: fit() works out the view from the card's own measured rectangle.
+// A camera for a tall frame over the desktop footage. Wide, the whole page shows at full width in a band under the
+// caption; a close-up opens the band to the bottom of the frame and fills it with one part of the page. The band and
+// the zoom glide together on one eased curve, and the view never leaves the footage.
 
-export type Rect = [number, number, number, number]
-export type View = { x: number; y: number; w: number }
-export type Key = { t: number; v: View; d?: number }
-export type Src = { W: number; H: number }
-export type Region = { x: number; y: number; w: number; h: number }
+export type Win = { x: number; y: number; w: number; h: number }
+/** `r` null is the whole page. */
+export type PKey = { t: number; r: Rect | null; d?: number; zmax?: number }
+type Cam = { win: Win; s: number; cx: number; cy: number }
 
 const ease = (t: number) => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
-export const full = (s: Src): View => ({ x: 0, y: 0, w: s.W })
 
-export function union(...rs: (Rect | null | undefined)[]): Rect {
-  const ok = rs.filter(Boolean) as Rect[]
-  const x = Math.min(...ok.map(r => r[0])), y = Math.min(...ok.map(r => r[1]))
-  return [x, y, Math.max(...ok.map(r => r[0] + r[2])) - x, Math.max(...ok.map(r => r[1] + r[3])) - y]
-}
-
-/** The view that shows `r` whole inside `region` (plate px), as close as `zmax` allows, kept inside the footage. */
-export function fit(r: Rect, src: Src, plate: { w: number; h: number }, region: Region, zmax = 1.6): View {
-  const k = plate.w / src.W
-  const z = Math.max(1, Math.min(zmax, region.w / (r[2] * k), region.h / (r[3] * k)))
-  const s = k * z, w = src.W / z, h = w * plate.h / plate.w
-  const cx = r[0] + r[2] / 2, cy = r[1] + r[3] / 2
-  let x = cx - (region.x + region.w / 2) / s, y = cy - (region.y + region.h / 2) / s
-  x = Math.max(0, Math.min(src.W - w, x)); y = Math.max(0, Math.min(src.H - h, y))
-  return { x, y, w }
-}
-
-function lerp(a: View, b: View, e: number, src: Src): View {
-  const R = src.H / src.W
-  // zoom moves evenly in scale; the centre glides on a straight line; the view never leaves the footage
-  const w = Math.exp(Math.log(a.w) + (Math.log(b.w) - Math.log(a.w)) * e)
-  const cx = a.x + a.w / 2 + (b.x + b.w / 2 - a.x - a.w / 2) * e, cy = a.y + a.w * R / 2 + (b.y + b.w * R / 2 - a.y - a.w * R / 2) * e
-  return { x: Math.max(0, Math.min(src.W - w, cx - w / 2)), y: Math.max(0, Math.min(src.H - w * R, cy - w * R / 2)), w }
-}
-
-export function camAt(keys: Key[], sec: number, start: View, src: Src): View {
-  let v = start
-  for (let i = 0; i < keys.length; i++) {
-    const k = keys[i]!
-    if (sec < k.t) break
-    const from = camAt(keys.slice(0, i), k.t, start, src)
-    v = lerp(from, k.v, ease(Math.min(1, (sec - k.t) / (k.d ?? 1.2))), src)
+export function camera(src: Src, wide: Win, close: Win) {
+  const whole: Cam = { win: wide, s: wide.w / src.W, cx: src.W / 2, cy: src.H / 2 }
+  const shot = (k: PKey): Cam => {
+    if (!k.r) return whole
+    const [x, y, w, h] = k.r, win = close
+    // as close as fits (with a margin), but never so far out that the footage stops filling the band's width
+    const s = Math.max(win.w / src.W, Math.min(k.zmax ?? 1.6, (win.w - 56) / w, (win.h - 56) / h))
+    const hw = win.w / s / 2, hh = win.h / s / 2
+    const cx = hw * 2 >= src.W ? src.W / 2 : Math.max(hw, Math.min(src.W - hw, x + w / 2))
+    const cy = hh * 2 >= src.H ? src.H / 2 : Math.max(hh, Math.min(src.H - hh, y + h / 2))
+    return { win, s, cx, cy }
   }
-  return v
+  const mix = (a: Cam, b: Cam, e: number): Cam => {
+    const l = (p: number, q: number) => p + (q - p) * e
+    return { win: { x: l(a.win.x, b.win.x), y: l(a.win.y, b.win.y), w: l(a.win.w, b.win.w), h: l(a.win.h, b.win.h) }, s: Math.exp(l(Math.log(a.s), Math.log(b.s))), cx: l(a.cx, b.cx), cy: l(a.cy, b.cy) }
+  }
+  return (keys: PKey[], sec: number): Cam => {
+    let v = whole
+    for (const k of keys) {
+      if (sec < k.t) break
+      v = mix(v, shot(k), ease(Math.min(1, (sec - k.t) / (k.d ?? 1.2))))
+    }
+    return v
+  }
 }
 
-/** A clip played at 1x from `from` seconds, framed by `keys`. */
-export function Clip({ src, url, on, from = 0, keys = [], plate, hold }: { src: Src; url: string; on: boolean; from?: number; keys?: Key[]; plate: { w: number; h: number }; hold?: number }) {
-  const ref = useRef<HTMLVideoElement>(null)
+/** A clip played from `from` (or through `map`), in a band that the camera moves and sizes. */
+export function TallClip({ src, url, on, from = 0, keys = [], map, cam }: { src: Src; url: string; on: boolean; from?: number; keys?: PKey[]; map?: (e: number) => number; cam: ReturnType<typeof camera> }) {
+  const box = useRef<HTMLDivElement>(null), ref = useRef<HTMLVideoElement>(null)
   useEffect(() => {
-    const v = ref.current!
+    const v = ref.current!, b = box.current!
     if (!on) return
     const t0 = clock.now()
     let id = 0
-    const k = plate.w / src.W
     const tick = () => {
-      let e = (clock.now() - t0) / 1000
-      if (hold !== undefined) e = Math.min(e, hold)
-      // the middle of the frame, so rounding never lands on the one before
-      v.currentTime = from + e + 1 / 120
-      const c = camAt(keys, from + e, full(src), src), z = src.W / c.w
-      v.style.transform = `scale(${z}) translate(${-c.x * k}px, ${-c.y * k}px)`
+      const e = (clock.now() - t0) / 1000
+      const t = map ? map(e) : from + e
+      v.currentTime = t + 1 / 120
+      const c = cam(keys, t)
+      b.style.cssText = `left:${c.win.x}px;top:${c.win.y}px;width:${c.win.w}px;height:${c.win.h}px`
+      v.style.transform = `translate(${c.win.w / 2 - c.cx * c.s}px, ${c.win.h / 2 - c.cy * c.s}px) scale(${c.s})`
       id = clock.raf(tick)
     }
     tick()
     return () => clock.cancelRaf(id)
   }, [on])
-  return <video ref={ref} src={url} muted playsInline preload="auto" style={{ width: plate.w, height: plate.h, transformOrigin: '0 0' }} />
+  return <div ref={box} className="mf-band"><video ref={ref} src={url} muted playsInline preload="auto" style={{ width: src.W, height: src.H, transformOrigin: '0 0' }} /></div>
 }

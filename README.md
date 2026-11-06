@@ -18,7 +18,7 @@ A self-hosted, open-source, AI-native homepage.
 
 <br>
 
-<a href="https://askvalet.dev/film/valet.mp4"><img src="docs/images/film.webp" alt="Play the film: the main screen, liquid glass from ⌘K, the Services, Home, Media and Library tabs, asking what's playing and what to watch, approving a change, adding a card from chat, and the integrations" width="100%"></a>
+<a href="https://askvalet.dev/film/valet.mp4"><img src="docs/images/film.webp" alt="Play the film: the main screen, ⌘K opening a service, answering a question and finding a page in the docs, the Services, Home, Media and Library tabs, asking what's playing and what to watch, approving a change, adding a card from chat, and the integrations" width="100%"></a>
 
 <sub>▶ <a href="https://askvalet.dev/film/valet.mp4">Watch the film</a> · or <a href="https://demo.askvalet.dev">try the demo</a>, right in your browser</sub>
 
@@ -47,9 +47,11 @@ its own documentation, so you can use it to build itself! Anything it changes wa
 works just fine with the AI switched off.
 
 <table><tr>
-<td width="50%" valign="top"><img src="docs/images/ask-chat.gif" alt="Asking who's watching shows the now-playing card, asking what to watch shows the most-watched list with posters, and pausing Pi-hole waits for approval, then shows its chart"><br><sub>"Who's watching?" "What should we watch tonight?" Then "Pause Pi-hole", which waits for your approval.</sub></td>
-<td width="50%" valign="top"><img src="docs/images/ask-for-a-card.gif" alt="Asking for an internet speed card: Valet asks first, then the card appears on the page"><br><sub>"Add an internet speed card." Valet edits its own config, after asking first.</sub></td>
+<td width="50%" valign="top"><img src="docs/images/ask-chat.webp" alt="Asking who's watching shows the now-playing card, asking what to watch shows the most-watched list with posters, and pausing Pi-hole waits for approval, then shows its chart"><br><sub>"Who's watching?" "What should we watch tonight?" Then "Pause Pi-hole", which waits for your approval.</sub></td>
+<td width="50%" valign="top"><img src="docs/images/ask-for-a-card.webp" alt="Asking for an internet speed card: Valet asks first, then the card appears on the page"><br><sub>"Add an internet speed card." Valet edits its own config, after asking first.</sub></td>
 </tr></table>
+
+<p align="center"><img src="docs/images/rule.webp" alt="Asking Valet to say when Oppenheimer finishes downloading: it asks first, then a notice arrives on the page when the download is done" width="620"><br><sub>"Tell me when Oppenheimer finishes downloading." Set once in plain words, and the notice comes when it's done.</sub></p>
 
 <br>
 
@@ -57,7 +59,7 @@ works just fine with the AI switched off.
 
 Everything on the page is live. Progress bars move, numbers tick over, and new things appear as they happen, with no refreshing. Hover anything in the top bar for its details: what's playing, a download, the CPU or the weather.
 
-<p align="center"><img src="docs/images/live.gif" alt="The top bar: hovering what's playing, a download, the CPU and the weather opens each one's live details" width="620"></p>
+<p align="center"><img src="docs/images/live.webp" alt="The top bar: hovering what's playing, a download and the CPU opens each one's live details" width="620"></p>
 
 <br>
 
@@ -76,7 +78,9 @@ chat never shows.
 Live cards, real artwork, smooth animations and 3D models. It's a page
 you'll want to look at and use.
 
-<p align="center"><img src="docs/images/home-3d.gif" alt="The 3D floor plan: picking the living room, turning its lights blue, and sending the vacuum, which drives through the house" width="620"><br><sub>Pick a room, change its lights, and send the vacuum, which drives through the house.</sub></p>
+<p align="center"><img src="docs/images/home-3d.webp" alt="The 3D floor plan: picking the living room, turning its lights blue, and sending the vacuum, which drives through the house" width="620"><br><sub>Pick a room, change its lights, and send the vacuum, which drives through the house.</sub></p>
+
+<p align="center"><img src="docs/images/year-in-review.webp" alt="The year in review, full screen: the race of what was watched most, the house the vacuum cleaned, the ads blocked and the uptime, one screen at a time" width="620"><br><sub>Your year in review, told from your services' own numbers.</sub></p>
 
 <br>
 
@@ -86,7 +90,7 @@ One YAML file controls everything, with 185 integrations and a simple way to add
 runs as one Node process, uses about 45 MB of RAM on a fresh install, and the image is 165 MB.
 Add it to your phone's Home Screen and it's an app, with [its own notifications](https://askvalet.dev/start/app/).
 
-<p align="center"><img src="docs/images/config-live.gif" alt="Editing config.yaml while Valet runs: the greeting, the wallpaper and its brightness change on the page as each line is saved" width="620"></p>
+<p align="center"><img src="docs/images/config-live.webp" width="100%" alt="Editing config.yaml while Valet runs, ten times over: the greeting, the wallpaper, liquid glass, light mode, the greeting's place, a labelled dock at the bottom, two columns, the full services list, no ask box and a serif font, each on the page as soon as the line is saved"></p>
 
 <br>
 

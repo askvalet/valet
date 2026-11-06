@@ -6,19 +6,19 @@ import './film.css'
 // Valet's film, desktop. Every picture of the product is a frame-exact recording of the demo at 2x (rec/desktop.mjs);
 // the camera only ever frames whole cards, and the words sit in a small glass caption over the footage.
 
-const clips = import.meta.glob<string>('./assets/clips/*.mp4', { eager: true, query: '?url', import: 'default' })
-type Mark = { name: string; t: number; [k: string]: unknown }
+export const clips = import.meta.glob<string>('./assets/clips/*.mp4', { eager: true, query: '?url', import: 'default' })
+export type Mark = { name: string; t: number; [k: string]: unknown }
 type Log = { W: number; H: number; frames: number; marks: Mark[] }
 const logs = import.meta.glob<Log>('./assets/clips/*.json', { eager: true, import: 'default' })
-const log = (n: string) => logs[`./assets/clips/${n}.json`]!
-const url = (n: string) => clips[`./assets/clips/${n}.mp4`]!
-const secs = (n: string) => log(n).frames / 60
-const at = (n: string, m: string) => log(n).marks.find(x => x.name === m)!
-const r = (n: string, m: string, k: string) => at(n, m)[k] as Rect
-const iconFiles = import.meta.glob<string>('./assets/icons/*.png', { eager: true, query: '?url', import: 'default' })
-const icons = Object.values(iconFiles)
-const cardFiles = import.meta.glob<string>('./assets/cards/*.jpg', { eager: true, query: '?url', import: 'default' })
-const cardMeta = Object.values(import.meta.glob<{ file: string; name: string; icon: string; w: number; h: number }[]>('./assets/cards/cards.json', { eager: true, import: 'default' }))[0] ?? []
+export const log = (n: string) => logs[`./assets/clips/${n}.json`]!
+export const url = (n: string) => clips[`./assets/clips/${n}.mp4`]!
+export const secs = (n: string) => log(n).frames / 60
+export const at = (n: string, m: string) => log(n).marks.find(x => x.name === m)!
+export const r = (n: string, m: string, k: string) => at(n, m)[k] as Rect
+export const iconFiles = import.meta.glob<string>('./assets/icons/*.png', { eager: true, query: '?url', import: 'default' })
+export const icons = Object.values(iconFiles)
+export const cardFiles = import.meta.glob<string>('./assets/cards/*.jpg', { eager: true, query: '?url', import: 'default' })
+export const cardMeta = Object.values(import.meta.glob<{ file: string; name: string; icon: string; w: number; h: number }[]>('./assets/cards/cards.json', { eager: true, import: 'default' }))[0] ?? []
 
 const PLATE = { w: 1920, h: 1080 }
 const SRC: Src = { W: 1600, H: 900 }
@@ -30,7 +30,7 @@ const K = (t: number, v: View, d = 1.2): Key => ({ t, v, d })
 
 // the reel: each card at its own shape inside a 1180x600 box, side by side
 const BOX = { w: 1180, h: 600 }, GAP = 90
-const PICK = ['plex', 'homeassistant', 'frigate', 'immich', 'pihole', 'tautulli', 'romm', 'mealie', 'paperless', 'hackernews']
+export const PICK = ['plex', 'homeassistant', 'frigate', 'immich', 'pihole', 'tautulli', 'romm', 'mealie', 'paperless', 'hackernews']
 const REEL = (() => {
   let x = 0
   return PICK.map(f => cardMeta.find(c => c.file === f)!).filter(Boolean).map(c => {
@@ -41,24 +41,24 @@ const REEL = (() => {
   })
 })()
 
-type Scene = 'open' | 'overview' | 'kbar' | 'services' | 'home' | 'media' | 'library' | 'chat' | 'self' | 'cards' | 'yours' | 'end'
-type S = { scene: Scene; words: number; ok: boolean; cap: boolean; yaml: number; reel: number }
-const TAG = 'Talk to your homelab.'
-const YAML = ['integrations:', '  docs:', '    type: paperless', '    url: http://paperless:8000', '  dns:', '    type: pihole', '    url: http://pihole']
-const initial: S = { scene: 'open', words: 0, ok: false, cap: false, yaml: 0, reel: 0 }
+export type Scene = 'open' | 'overview' | 'kbar' | 'services' | 'home' | 'media' | 'library' | 'chat' | 'self' | 'cards' | 'yours' | 'end'
+export type S = { scene: Scene; words: number; ok: boolean; cap: boolean; yaml: number; reel: number }
+export const TAG = 'Talk to your homelab.'
+export const YAML = ['integrations:', '  docs:', '    type: paperless', '    url: http://paperless:8000', '  dns:', '    type: pihole', '    url: http://pihole']
+export const initial: S = { scene: 'open', words: 0, ok: false, cap: false, yaml: 0, reel: 0 }
 // typing and waiting for answers play at 2x; every hold is real time
-const t = (n: string, m: string) => at(n, m).t
+export const t = (n: string, m: string) => at(n, m).t
 // each stretch ends before the camera's next move, so no glide ever runs at 2x
-const FAST: Record<string, ReturnType<typeof fast>> = {
+export const FAST: Record<string, ReturnType<typeof fast>> = {
   chat: fast([[.9, t('chat', 'watching') - .25], [t('chat', 'watching') + 1.75, t('chat', 'popular') - .95],
     [t('chat', 'popular') + 1.95, t('chat', 'approval') - .35], [t('chat', 'approval') + 2.35, t('chat', 'paused') - 1]]),
   self: fast([[.5, t('self', 'ask') - .25], [t('self', 'ask') + 2.35, t('self', 'done') - .2]]),
 }
-const FROM: Record<string, number> = { overview: .5 }
-const ms = (n: string) => Math.round((secs(n) - (FAST[n]?.saved ?? 0) - (FROM[n] ?? 0)) * 1000)
-const sceneAt = (n: string, clipSec: number) => { let lo = 0, hi = secs(n); const f = FAST[n]?.map ?? (e => e + (FROM[n] ?? 0)); for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (f(mid) < clipSec) lo = mid; else hi = mid } return Math.round(lo * 1000) }
+export const FROM: Record<string, number> = { overview: .5 }
+export const ms = (n: string) => Math.round((secs(n) - (FAST[n]?.saved ?? 0) - (FROM[n] ?? 0)) * 1000)
+export const sceneAt = (n: string, clipSec: number) => { let lo = 0, hi = secs(n); const f = FAST[n]?.map ?? (e => e + (FROM[n] ?? 0)); for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (f(mid) < clipSec) lo = mid; else hi = mid } return Math.round(lo * 1000) }
 
-async function script(a: Act<S>) {
+export async function script(a: Act<S>) {
   await a.wait(600)
   for (let i = 1; i <= TAG.length; i++) { a.set({ words: i }); await a.wait(52) }
   await a.wait(1100)
@@ -85,11 +85,15 @@ async function script(a: Act<S>) {
 // whole card (or a row of them) when it holds
 const cam: Record<string, () => Key[]> = {
   overview: () => [K(at('overview', 'carousels').t + .05, F(union(r('overview', 'carousels', 'reading'), r('overview', 'carousels', 'recent'))), 1.3)],
-  kbar: () => [K(at('kbar', 'open').t - .25, F(r('kbar', 'open', 'pal'), 1.5), 1), K(at('kbar', 'closed').t, FULL, 1.1)],
-  services: () => [],
-  home: () => [],   // a close-up here would cut the weather and who's home at the frame's edge
-  media: () => [K(at('media', 'low').t + .05, F(union(r('media', 'low', 'Games'), r('media', 'low', 'Most played'))), 1.2)],
-  library: () => [],   // the books and the collage are taller than a clean zoom allows
+  kbar: () => {
+    const pal = union(...['open', 'svc', 'answer', 'docs'].map(m => r('kbar', m, 'pal')))
+    return [K(at('kbar', 'open').t - .3, F(pal, 1.45), 1), K(at('kbar', 'closed').t, FULL, 1.1)]
+  },
+  // one calm look at each tab: the camera leans in once, slowly
+  services: () => [K(.5, F(union(r('services', 'top', 'Updates'), r('services', 'top', 'Pi-hole'), r('services', 'top', 'CPU')), 1.3), 2.6)],
+  home: () => [K(.4, F(union(r('home', 'top', 'Cameras'), r('home', 'top', 'Weather')), 1.3), 2.4)],
+  media: () => [K(.4, F(union(r('media', 'top', 'Now playing'), r('media', 'top', 'Downloading')), 1.3), 2.4)],
+  library: () => [K(.4, F([96, 101, 976, 460], 1.3), 2.4)],
   chat: () => [
     K(at('chat', 'watching').t - .1, F(r('chat', 'watching', 'card')), 1),
     K(at('chat', 'popular').t - .1, F(r('chat', 'popular', 'card')), 1),
@@ -125,7 +129,7 @@ export default function ValetFilm() {
           ))}
 
           <Cap on={s.scene === 'overview' && s.cap} big="A homepage worth opening." sub="Your services, the house, the week and what's playing, on one page." />
-          <Cap on={s.scene === 'kbar' && s.cap} keys={['⌘', 'K']} big="finds anything." sub="Even the look: liquid glass, on this device." />
+          <Cap on={s.scene === 'kbar' && s.cap} keys={['⌘', 'K']} big="finds anything." sub="Open a service, ask a question, or search the docs." />
           <Cap on={s.scene === 'services' && s.cap} big="No more switching between services." sub="Services, Home, Media and Library, each a tab." />
           <Cap on={s.scene === 'chat' && !s.ok && s.cap} big="Just ask." sub="Run it on fully local AI, and nothing leaves your home." />
           <Cap on={s.scene === 'chat' && s.ok && s.cap} big="Nothing changes without your OK." sub="Pausing Pi-hole waits for you." />

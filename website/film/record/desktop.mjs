@@ -20,7 +20,7 @@ if (want('overview')) {
   await p.setCursor(1180, 620);
   p.open(`${out}/overview.mp4`);
   await p.mark('top', { services: card('Services') });
-  await p.wait(1.3);
+  await p.wait(5.6);   // the film starts this clip .5 s in: five seconds still before anything moves
   await scrollTo(card('Home Assistant'), 96, 1.8); await p.mark('three', { ha: card('Home Assistant'), pc: card("Daniel's Desktop"), cal: cardHas('/November/') }); await p.wait(1);
   await scrollTo(card('Pi-hole'), 96, 1.4); await p.mark('dns', { dns: card('Pi-hole'), drives: card('Drives') }); await p.wait(.8);
   await scrollTo(card('Now playing'), 96, 1.3); await p.mark('now', { now: card('Now playing'), photos: card('On this day') }); await p.wait(.8);
@@ -30,53 +30,50 @@ if (want('overview')) {
   await p.js('scrollTo(0,0)'); await p.settle();
 }
 
-// 2. ⌘K: find "liquid", flip the glass, close, look at the page in liquid glass
+// 2. ⌘K, three ways: open a service by name, ask a question (answered right in the palette), find a page in the docs.
+// Opening a service or a doc would open a new tab, so window.open is a no-op while filming.
 if (want('kbar')) {
-  await p.js('scrollTo(0,0)'); await p.setCursor(1180, 620); await p.settle();
+  await p.js('scrollTo(0,0);window.open=()=>null'); await p.setCursor(1180, 620); await p.settle();
+  const pal = upH(`document.querySelector('[cmdk-input]')`, 220);
+  const sel = `document.querySelector('[cmdk-item][data-selected=true]')?.getAttribute('data-value')||''`;
   p.open(`${out}/kbar.mp4`);
   await p.wait(.5);
-  await p.key('k', 'KeyK', 75, 4); await p.wait(.4);
-  const pal = upH(`document.querySelector('[cmdk-input]')`, 220);
+  await p.key('k', 'KeyK', 75, 4); await p.wait(.45);
   await p.mark('open', { pal });
-  await p.type('liquid', 4); await p.wait(.6);
-  await p.mark('typed', { pal });
-  await p.key('Enter'); await p.wait(1.3);
-  await p.mark('flipped', { pal });
+  await p.type('plex', 5); await p.wait(1.1);
+  await p.mark('svc', { pal });
+  await p.key('Enter'); await p.wait(.8);
+  await p.key('k', 'KeyK', 75, 4); await p.wait(.4);
+  await p.type('When will the downloads finish?', 3); await p.wait(.35); await p.key('Enter');
+  await p.mark('asked', { pal });
+  p.fast = 2; await p.until(says('with no peers'), 20, 'answer'); p.fast = 1; await p.settle(); await p.wait(.2);
+  await p.mark('answer', { pal }); await p.wait(2.4);
+  await p.key('Escape', 'Escape', 27); await p.wait(.6);
+  await p.key('k', 'KeyK', 75, 4); await p.wait(.4);
+  await p.type('wallpaper', 4);
+  await p.until(`[...document.querySelectorAll('[cmdk-item]')].some(e=>e.getAttribute('data-value')?.startsWith('docs '))`, 6, 'docs'); await p.wait(.5);
+  for (let i = 0; i < 8 && !(await p.js(sel)).startsWith('docs '); i++) { await p.key('ArrowDown', 'ArrowDown', 40); await p.wait(.22) }
+  await p.mark('docs', { pal }); await p.wait(1.8);
   await p.key('Escape', 'Escape', 27); await p.wait(.3);
   await p.mark('closed');
-  await p.move(1250, 470, 1); await p.wait(1.2);
+  await p.move(1250, 470, 1); await p.wait(.8);
   await p.shut();
-  console.log('glass', await p.js(`document.documentElement.className`));
 }
 await p.js(`localStorage.setItem('valet-glass','liquid');document.documentElement.classList.add('glass-liquid')`);
 
-// 3. The tabs, liquid
+// 3. The tabs, liquid: one calm look at each, the film's camera leans in once
 if (want('tabs')) {
-  await go('Services');
-  p.open(`${out}/services.mp4`);
-  await p.mark('top', rects(['Services', 'Updates', 'Pi-hole', 'CPU', 'Memory']));
-  await p.move(820, 520, .8); await p.wait(.3);
-  await scrollTo(card('Backups'), 90, 1.8); await p.mark('low', rects(['Backups', 'Containers', 'Drives', 'Network'])); await p.wait(.8);
-  await p.shut();
-  await go('Home');
-  p.open(`${out}/home.mp4`);
-  await p.mark('top', rects(['Cameras', 'Hallway', 'Weather', 'Around the house', "Who's home"]));
-  await p.wait(1.2); await p.press(next('events'), .8); await p.wait(1.1);
-  await scrollTo(card('Home'), 40, 1.8); await p.mark('mid', rects(['Home', 'Desktop', 'Watching', 'Mealie', 'Energy'])); await p.wait(1.3);
-  await p.shut();
-  await go('Media');
-  p.open(`${out}/media.mp4`);
-  await p.mark('top', rects(['Now playing', 'Downloading', 'The year so far', 'Viewing']));
-  await p.wait(1.2);
-  await scrollTo(card('Games'), 300, 1.6); await p.mark('low', rects(['The year so far', 'Viewing', 'Games', 'Most played']));
-  await p.press(next('Games'), .8); await p.wait(.8); await p.press(next('Most played'), .9); await p.wait(1.1);
-  await p.shut();
-  await go('Library');
-  p.open(`${out}/library.mp4`);
-  await p.mark('top', rects(['Hacker News', 'Feeds', 'Recent documents', 'From your reading']));
-  await p.wait(.5); await p.press(next('Recent documents'), .9); await p.wait(1);
-  await scrollTo(card('Books'), 260, 1.6); await p.mark('low', rects(['Books', 'The long way round', 'Listening this week'])); await p.wait(1.2);
-  await p.shut();
+  const look = async (tab, names, sec, from, to) => {
+    await go(tab); await p.setCursor(...from);
+    p.open(`${out}/${tab.toLowerCase()}.mp4`);
+    await p.mark('top', rects(names));
+    await p.wait(.4); await p.move(...to, 1.6); await p.wait(sec - 2);
+    await p.shut();
+  };
+  await look('Services', ['Services', 'Updates', 'Pi-hole', 'CPU', 'Memory'], 4.2, [1000, 560], [900, 470]);
+  await look('Home', ['Cameras', 'Hallway', 'Weather', 'Around the house', "Who's home"], 3.2, [1000, 560], [1060, 420]);
+  await look('Media', ['Now playing', 'Downloading', 'The year so far', 'Viewing'], 3.2, [1000, 560], [900, 470]);
+  await look('Library', ['Hacker News', 'Feeds', 'Recent documents', 'From your reading'], 3.2, [1000, 560], [1060, 470]);
   await go('Overview');
 }
 
