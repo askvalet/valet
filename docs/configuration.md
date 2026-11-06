@@ -670,7 +670,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 ### Online meetings: `calendar.meetings`
 
 A calendar finds the meeting link in each event (Google Meet, Zoom, Microsoft Teams, Webex, Whereby, Jitsi, GoTo, Around,
-Discord, FaceTime, Chime, BlueJeans), from Google's conference property, the event's URL, its location or its description.
+Discord, FaceTime, Chime, BlueJeans, and Preply lessons), from Google's conference property, the event's URL, its location or its description.
 Only https links on those services count. From `lead` before a meeting until it ends, the calendar's ring (add the widget to
 `live.activities`) counts down with a Join button; each `remind` sends one notification, once, to `notify.channels` and
 to devices with notifications on. Rows get a Join button, ⌘K gets **join meeting** and **next meeting**, and the assistant

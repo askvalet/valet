@@ -93,6 +93,7 @@ const PROVIDERS: [string, string][] = [
   ['meet.google.com', 'Google Meet'], ['zoom.us', 'Zoom'], ['zoomgov.com', 'Zoom'], ['teams.microsoft.com', 'Microsoft Teams'], ['teams.live.com', 'Microsoft Teams'],
   ['webex.com', 'Webex'], ['whereby.com', 'Whereby'], ['meet.jit.si', 'Jitsi'], ['8x8.vc', 'Jitsi'], ['gotomeeting.com', 'GoTo'], ['goto.com', 'GoTo'], ['gotomeet.me', 'GoTo'],
   ['around.co', 'Around'], ['discord.gg', 'Discord'], ['discord.com', 'Discord'], ['facetime.apple.com', 'FaceTime'], ['chime.aws', 'Amazon Chime'], ['bluejeans.com', 'BlueJeans'],
+  ['preply.com', 'Preply'],
 ];
 const under = (host: string, domain: string) => host === domain || host.endsWith(`.${domain}`);
 /** Which meeting service a link is for, if it's https and on one. */
@@ -104,6 +105,7 @@ export function providerOf(href: string): { href: string; provider: string } | u
   if (!hit || u.pathname.length < 2) return undefined;   // the service's home page isn't a meeting
   if (hit[1] === 'Discord' && u.hostname !== 'discord.gg' && !/^\/(channels|invite)\//.test(u.pathname)) return undefined;
   if (hit[1] === 'GoTo' && u.hostname === 'goto.com') return undefined;   // GoTo's own site; its meetings are on meet. and app.
+  if (hit[1] === 'Preply' && !/\/classroom\b/.test(u.pathname)) return undefined;   // a lesson is its classroom; the rest of preply.com isn't
   return { href: u.href, provider: hit[1] };
 }
 const STOP = new Set([' ', '\t', '\n', '\r', '"', '\'', '<', '>', '`', '\\', '{', '}', '|', '^', '[', ']']);

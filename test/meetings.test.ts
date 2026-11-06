@@ -52,6 +52,9 @@ test('links: found in plain and HTML text, trailing punctuation and entities dea
   // Google's own property wins over a link in the words
   assert.equal(meetingOf({ conference: 'https://meet.google.com/aaa-bbbb-ccc', description: 'https://zoom.us/j/9' })?.href, 'https://meet.google.com/aaa-bbbb-ccc');
   assert.equal(meetingOf({ location: 'Room 4', description: 'Agenda https://docs.example.com/x\nJoin https://zoom.us/j/9' })?.provider, 'Zoom');
+  // a Preply lesson's classroom link is the lesson; Preply's other pages aren't meetings
+  assert.equal(providerOf('https://preply.com/edu/arabic/classroom-v2/615864?utm_source=calendar')?.provider, 'Preply');
+  assert.equal(providerOf('https://preply.com/en/tutor/123'), undefined);
   assert.equal(meetingOf({ description: 'http://zoom.us/j/9 and https://example.com/x' }), undefined);
 });
 
