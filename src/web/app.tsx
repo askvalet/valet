@@ -5,6 +5,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { Card as CardData, ForecastCard, StatusCard, WidgetState } from '../shared/cards.ts';
 import { toast } from './feel.tsx';
 import { acted, dissolve } from './dust.ts';
+import { gridVars, SPANS, type Grid, type Size } from './grid.ts';
+export type { Size } from './grid.ts';
 import { play, setSounds, type Sounds } from './sound.ts';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
@@ -27,9 +29,7 @@ import type { ChatUi, ToolInfo } from './assistant.tsx';
 const Palette = lazy(() => import('./palette.tsx'));
 const RecapStory = lazy(() => import('./recap.tsx'));
 
-export type Size = 'small' | 'wide' | 'medium' | 'tall' | 'large';
 export type Paper = { image?: string; paint?: string };
-type Grid = { phone?: number; tablet?: number; desktop?: number; wide?: number };
 export type CardOverride = { title?: string; icon?: string; header?: boolean; view?: View; rows?: number; cols?: number; style?: Record<string, string> };
 
 export interface Page {
@@ -329,8 +329,6 @@ export function dress(card?: CardData, o?: CardOverride) {
 // tabs: sections sharing a `tab` (or title) open together
 const tabOf = (s: Page['sections'][number], i: number) => s.tab ?? s.title ?? `#${i}`;
 const hashNow = () => { try { return decodeURIComponent(location.hash); } catch { return location.hash; } };
-const gridVars = (g: Grid) => ({ '--cols-phone': g.phone, '--cols-tablet': g.tablet, '--cols-desktop': g.desktop, '--cols-wide': g.wide }) as React.CSSProperties;
-const SPANS: Record<Size, [number, number]> = { small: [1, 1], wide: [2, 1], medium: [2, 1], tall: [2, 2], large: [4, 1] };
 
 function Home({ account }: { account: boolean }) {
   const [page, setPage] = useState<Page | null>(null);

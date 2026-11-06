@@ -62,10 +62,16 @@ wall:
     - title: House
       every: 30s
       layout:
-        - widgets:
-            - { widget: lab.cameras, size: large, rows: 2 }
-            - { widget: lab.thermostat, size: medium }
-            - { widget: lab.sky, size: medium }
+        # the cameras half the width over two rows; beside them the thermostat, tall, by who's home over the doors; then the
+        # energy and the week's weather half the width each
+        - columns: { phone: 1, tablet: 2, desktop: 4, wide: 4 }
+          widgets:
+            - { widget: lab.cameras, cols: 2, rows: 2 }
+            - { widget: lab.thermostat, rows: 2 }
+            - lab.presence   # who's home
+            - lab.doors      # around the house: the lock, the garage door, the washer
+            - { widget: lab.energy, cols: 2 }   # the last day's electricity: used and solar
+            - { widget: lab.weather, cols: 2 }
     - title: Services
       layout:
         - widgets: [lab.services]

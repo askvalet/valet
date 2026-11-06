@@ -23,7 +23,7 @@ With no `wall:` in your config, the wall shows the time and weather, your servic
 
 ## Your own pages
 
-Each page is a `layout`, written exactly like the main one: sections, widgets, sizes, `columns`, `display`. Pages take turns.
+Each page is a `layout`, written exactly like the main one: sections, widgets, sizes, `columns` (a count per screen too), a card's own `cols` and `rows`, `display`. Pages take turns.
 
 ```yaml title="config.yaml"
 wall:
@@ -40,10 +40,14 @@ wall:
     - title: House
       every: 30s
       layout:
-        - widgets:
-            - { widget: frigate.cameras, size: large, rows: 2 }
-            - { widget: ha.thermostat, size: medium }
-            - { widget: ha.daylight, size: medium }
+        - columns: { phone: 1, tablet: 2, desktop: 4 }
+          widgets:
+            - { widget: frigate.cameras, cols: 2, rows: 2 }
+            - { widget: ha.thermostat, rows: 2 }
+            - ha.people
+            - ha.doors
+            - { widget: ha.energy, cols: 2 }
+            - { widget: weather.forecast, cols: 2 }
     - title: Services
       clock: false             # no time and weather on this one
       layout:

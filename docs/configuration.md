@@ -584,14 +584,17 @@ wall:
     - title: House
       every: 30s
       layout:
-        - widgets:
-            - { widget: frigate.cameras, size: large, rows: 2 }
-            - { widget: ha.thermostat, size: medium }
+        - columns: { phone: 1, tablet: 2, desktop: 4 }
+          widgets:
+            - { widget: frigate.cameras, cols: 2, rows: 2 }
+            - { widget: ha.thermostat, rows: 2 }
+            - ha.people
+            - ha.doors
 ```
 
 | Option | Default | |
 |---|---|---|
-| `pages` | the default page | pages that take turns; each has `layout` (sections, as in [`layout`](#layout)), and optionally `title`, `every` and `clock: false` to drop the time and weather |
+| `pages` | the default page | pages that take turns; each has `layout` (sections, as in [`layout`](#layout), with `columns` per screen and a card's `cols` and `rows`), and optionally `title`, `every` and `clock: false` to drop the time and weather |
 | `layout` | none | one page, written straight here instead of `pages` |
 | `every` | `1m` | how long each page stays: seconds, or `45s`, `2m` |
 | `pause` | `2m` | after a touch, how long it stays on that page (and how long the night's dimming lifts) |

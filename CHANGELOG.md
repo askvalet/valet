@@ -5,6 +5,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+
+- The wall display lays out a page like the main page: a section's `columns` per screen (`{ phone, tablet, desktop, wide }`) and a card's own `cols` and `rows`, with cards in a row ending flush. The demo's House page uses it: the cameras over two rows, the thermostat beside who's home and the doors, then the energy and the weather.
+
 ## [0.2.0] - 2026-11-05
 
 ### Added

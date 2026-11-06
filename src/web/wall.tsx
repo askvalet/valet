@@ -9,10 +9,10 @@ import { applyLook, applyTheme } from './look.ts';
 import { isEmpty, NowPlaying, Ring, Shell, Shaped, shapeOf, SummaryTile, TileSkeleton, Widget } from './cards.tsx';
 import { WeatherGlyph } from './home-cards.tsx';
 import { dress, useDark, useHeld, useLive, Walls, type Page, type Size } from './app.tsx';
+import { gridVars, wallCell } from './grid.ts';
 
 type Section = Page['sections'][number];
 type WallPage = Page['wall']['pages'][number];
-const SPAN: Record<Size, string> = { small: '', wide: 'col-span-2', medium: 'col-span-2', tall: 'col-span-2 row-span-2', large: 'col-span-full @5xl/main:col-span-4' };
 const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches || /motion-(reduced|none)/.test(document.documentElement.className);
 
 /** With no pages of its own, the wall shows the main page's services and what's playing or downloading. */
@@ -129,17 +129,18 @@ function WallSection({ sec, state, titles }: { sec: Section; state: Record<strin
   const widget = (key: string, size: Size) => {
     const s = state[key], o = sec.looks?.[key], card = dress(asView(s?.card, o?.view), o);
     if ((size === 'small' || size === 'wide') && card?.summary) return <SummaryTile s={card.summary} />;
-    const body = <Shaped id={key} card={s?.card}><Widget large={size === 'large'} fill card={card} kind={shapeOf(key)?.t} failed={s?.error} title={o?.title ?? titles[key]?.title}
+    const body = <Shaped id={key} card={s?.card}><Widget large={size === 'large'} fill={sec.grid ? 'always' : true} card={card} kind={shapeOf(key)?.t} failed={s?.error} title={o?.title ?? titles[key]?.title}
       minimal={sec.variant === 'minimal'} headless={o?.header === false || (o?.header !== true && sec.header === false)} /></Shaped>;
     return o?.style ? <div className="card-look contents" style={o.style as React.CSSProperties}>{body}</div> : body;
   };
   return (
     <section className="space-y-3" style={style}>{heading}
-      {sized || !sec.columns
-        // a bento of 2, 4 or 6 tracks as the wall widens, as on the main page
-        ? <div className="bento grid grid-flow-row-dense grid-cols-2 gap-(--card-gap) @2xl/main:grid-cols-4 @5xl/main:grid-cols-6">
-          {keys.map(key => { const size = (sec.sizes?.[key] ?? 'medium') as Size, rows = sec.looks?.[key]?.rows;
-            return <div key={key} className={cn('min-w-0', size === 'small' ? 'col-span-1' : SPAN[size])} style={rows ? { gridRow: `span ${rows}` } : undefined}>{widget(key, size)}</div>; })}
+      {sized || sec.grid || !sec.columns
+        // a bento of 2, 4 or 6 tracks as the wall widens, as on the main page, or the section's own columns per screen;
+        // a card's cols and rows place it by number, never past the last column
+        ? <div className={cn('bento grid grid-flow-row-dense gap-(--card-gap)', sec.grid ? 'cols' : 'grid-cols-2 @2xl/main:grid-cols-4 @5xl/main:grid-cols-6')} style={sec.grid && gridVars(sec.grid)}>
+          {keys.map(key => { const size = sec.sizes?.[key] as Size | undefined, cell = wallCell(size, sec.looks?.[key], !!sec.grid);
+            return <div key={key} className={cn('min-w-0', sec.grid && 'flex flex-col', cell.className)} style={cell.style}>{widget(key, size ?? 'medium')}</div>; })}
         </div>
         : <div className="grid grid-cols-1 gap-(--card-gap) @3xl/main:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))]" style={{ '--cols': Math.min(sec.columns, keys.length) } as React.CSSProperties}>
           {keys.map(key => <div key={key} className="min-w-0">{widget(key, 'medium')}</div>)}
