@@ -384,7 +384,7 @@ function EventSheet({ e, close }: { e: CalendarEvent; close: () => void }) {
 function Week({ days, today, low, high, w }: { days: Map<string, CalendarEvent[]>; today: Date; low: Date | null; high: Date | null; w: number }) {
   const id = `cal-week-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const list = useMemo(() => {
-    const a = low && +low > +shift(today, -7) ? low : shift(today, -7), b = high && +high < +shift(today, 34) ? high : shift(today, 34), out: Date[] = [];
+    const a = low && +low > +shift(today, -7) ? parse(keyOf(low)) : shift(today, -7), b = high && +high < +shift(today, 34) ? high : shift(today, 34), out: Date[] = [];
     for (let d = a; +d <= +b; d = shift(d, 1)) out.push(d);
     return out.length ? out : [today];
   }, [today, low, high]);
@@ -409,7 +409,8 @@ function Week({ days, today, low, high, w }: { days: Map<string, CalendarEvent[]
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 60_000); return () => clearInterval(t); }, []);
   const [sel, setSel] = useState<CalendarEvent | null>(null), close = useMemo(() => () => setSel(null), []);
   // which day is at the left: the header says it, and Today comes back once it's out of view
-  const todayAt = Math.max(0, list.findIndex(d => +d === +today)), [at, setAt] = useState(todayAt);
+  // by date, not by instant: a feed's range can start at another hour of the day than today's midnight
+  const todayAt = Math.max(0, list.findIndex(d => keyOf(d) === keyOf(today))), [at, setAt] = useState(todayAt);
   const row = useRef<HTMLElement | null>(null);
   const colW = () => (row.current?.clientWidth ?? 1) / n;
   // the day at the left stays there as the card's size changes, a tab drawn hidden included (it's 0 wide until it shows)

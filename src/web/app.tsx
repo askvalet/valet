@@ -515,7 +515,6 @@ function Home({ account }: { account: boolean }) {
   const placeholder = (ui?.placeholder ?? (h?.scope?.length ? label('askAbout', { scope: h.scope.slice(0, phone ? 2 : 6).join(', ') }) : label('askAnything'))).replace('{name}', page?.assistant?.name ?? '');
   const askHere = !!page?.assistant && ui?.overview !== false, chips = askHere && chatMode !== 'off';
   const hello = !h || h.greeting === false ? '' : typeof h.greeting === 'string' ? h.greeting.replace('{greeting}', greet(now.getHours())).replace('{name}', page?.greeting ?? '').trim() : page?.greeting ? label('homelab', { name: page.greeting }) : label('yourHomelab');
-  const boxed = h?.search !== false, shownChips = useLeaving(chips ? questions.slice(0, 3) : []);
   const [reviewed, setReviewed] = useState(() => { try { return !!sessionStorage.getItem('valet-review'); } catch { return false; } });   // dismissed, for this visit
   // the link waits until there's a story to tell: a near-empty install has nothing to look back on
   const [story, setStory] = useState(false);
@@ -525,6 +524,7 @@ function Home({ account }: { account: boolean }) {
     return () => clearTimeout(t);
   }, [page?.recap, h?.review, !!page]);
   const offered = story && page?.recap !== false && h?.review !== false && !reviewed, pill = offered, closing = offered && h?.review === 'end' && view === 'all';
+  const boxed = h?.search !== false, shownChips = useLeaving(chips ? questions.slice(0, pill && h?.review !== 'end' ? 2 : 3) : []);   // three in all: the year in review takes a place
   const dismissReview = () => { setReviewed(true); try { sessionStorage.setItem('valet-review', '1'); } catch { /* private mode */ } };
   const side = h?.align === 'left' ? 'mr-auto text-left' : h?.align === 'right' ? 'ml-auto text-right' : 'mx-auto text-center';
   // the hero: ask anything
