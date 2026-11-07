@@ -10,6 +10,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 - `assistant.access` takes a key per tool: `plex.plex_stop_stream: control` under `plex: read` lets that one tool act, and `downloads.torrent_control: none` or `valet.report_issue: none` takes one away from the chat, commands, rules, plans, pins and live cards alike. `config check` names a key that matches no tool, with the tools that instance has. Without dotted keys nothing changes.
 - `assistant.reasoning`: `auto` (as before), `off`, `low` or `high`. `off` turns a Qwen-style model's thinking off in the chat (`chat_template_kwargs: { enable_thinking: false }`, which servers that don't know it ignore); `low` and `high` send `reasoning_effort`; Anthropic maps them to its thinking budget. Background calls keep the model's default.
 - `assistant.options` passes `temperature`, `topP` and `maxOutputTokens` to the model. Left out, the server's defaults.
+- `assistant.tools`: `all` (the default, as before), `lazy` or `auto`. `lazy` sends Valet's own tools and one line per integration, and loads an integration's tools when a question needs them; `auto` is `lazy` once all the tools come to about 6k tokens. A much smaller prompt on a big setup, for one more step on questions about an integration. When it loads some, the chat shows a "Picked tools" step.
 - The docs say how to keep the assistant's context small: which settings helped in testing against a local model, and which made answers worse.
 
 ### Changed
