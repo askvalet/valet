@@ -32,6 +32,7 @@ import { loadPins, pinsInstance, savePins, type Pin } from './pins.ts';
 import { setupTools } from './setup.ts';
 import { sandbox } from './sandbox.ts';
 import { wallPages, wallProblems, wallWidgets } from './wall.ts';
+import { choices } from './model.ts';
 
 export interface Site {
   config: Config;
@@ -95,6 +96,8 @@ export function check(config: Config, registry: Record<string, Integration>, fro
     if (inst === 'valet') continue;      // Valet's own widgets exist once the site is built
     if (!instances.get(inst)?.widgets[w]) problems.push(`layout: no widget "${key}"${instances.has(inst) ? ` (${inst} has: ${Object.keys(instances.get(inst)!.widgets).join(', ')})` : ''}`);
   }
+  // a choice on Anthropic with no key of its own (the main server's isn't passed to another provider) can't answer
+  if (config.assistant) for (const c of choices(config.assistant).slice(1)) if (c.settings.provider === 'anthropic' && !c.settings.apiKey && !process.env.ANTHROPIC_API_KEY) problems.push(`assistant.models: "${c.id}" needs an apiKey, e.g. apiKey: \${ANTHROPIC_API_KEY} with the key in .env`);
   for (const [id] of Object.entries(config.assistant?.access ?? {})) if (!id.includes('.') && !['default', 'config', 'valet'].includes(id) && !instances.has(id)) problems.push(`assistant.access.${id}: no such integration`);
   // the wall's own cards are polled too, while a wall is open; its typos name the wall
   const has = (key: string) => { const [inst, w] = key.split('.'); return inst === 'valet' || !!instances.get(inst)?.widgets[w]; };

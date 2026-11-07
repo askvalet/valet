@@ -13,7 +13,7 @@ import type { Activity } from './activity.ts';
 import type { Config } from './config.ts';
 import type { Instance, Integration } from './core.ts';
 import { mcpTools } from './mcp.ts';
-import { callSettings, chatAgent, contextWindow, lastStepSettings, makeAgentModel, makeModel } from './model.ts';
+import { callSettings, chatAgent, choices, contextWindow, lastStepSettings, makeAgentModel, makeModel } from './model.ts';
 import { checkCard } from '../shared/cards.schema.ts';
 import { accessOf as granted, asker, rank, runTool as run, toolAccess, who } from './run.ts';
 import { CORE, LAZY_BELOW, askedFor, groupOf, indexLine, resolve, usedBefore, type Group } from './lazy.ts';
@@ -24,9 +24,11 @@ export { trimHistory } from './compact.ts';
 const APPROVALS = randomBytes(32);
 
 export function chatRoute(config: Config, instances: Map<string, Instance>, meta: Map<string, { type: string; name: string; integration: Integration }>,
-  safety: { acting: boolean; redact: (s: string) => string; activity?: Activity; model?: LanguageModel } = { acting: true, redact: s => s }) {
+  safety: { acting: boolean; redact: (s: string) => string; activity?: Activity; model?: LanguageModel; models?: Record<string, LanguageModel> } = { acting: true, redact: s => s }) {
   const a = config.assistant!;
   const model = safety.model ?? makeModel(a);
+  // assistant.models: a chat may name one of these by id, and nothing else; each is made once, on its first use
+  const picks = new Map(choices(a).map(c => [c.id, { s: c.settings, model: c.settings === a ? model : safety.models?.[c.id] }]));
   // Valet's own tools (what happened, reminders, rules) work without being granted; read-only pages still cap them
   const accessOf = (id: string) => granted(a, id);
   // one tool's level: its own dotted key (`plex.plex_stop_stream: control`), else its integration's; a read-only Valet only looks
@@ -183,7 +185,11 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   ].join('\n');
 
   return async (c: HonoContext) => asker.run((c.get as (k: string) => string | undefined)('user') ?? 'you', async () => {
-    const { messages: all_ } = await c.req.json<{ messages: UIMessage[] }>();
+    const { messages: all_, model: asked } = await c.req.json<{ messages: UIMessage[]; model?: unknown }>();
+    // the page sends a choice's id, never a model or a server: anything else is refused
+    const pick = asked == null ? picks.get(a.model) : typeof asked === 'string' ? picks.get(asked) : undefined;
+    if (!pick) return c.json({ error: 'That model is not one of the choices in assistant.models.' }, 400);
+    const s = pick.s, llm = pick.model ??= makeModel(s);
     const other = chatAgent(a, safety.acting);
     if (other) {
       const plain = all_.slice(-24).filter(m => m.role !== 'system')
@@ -204,7 +210,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       return out;
     } }]));
     const all: ToolSet = { ...tools, ...mcp_ }, approvals = { ...approval, ...m.approval };
-    const chars = (x: unknown) => size(x), tokens = (n: number) => tokensOf(n, a.model);
+    const chars = (x: unknown) => size(x), tokens = (n: number) => tokensOf(n, s.model);
     const cost = Object.fromEntries(await Promise.all(Object.entries(all).map(async ([k, t]: [string, any]) =>
       [k, k.length + size(t.description ?? '') + size(await Promise.resolve(asSchema(t.inputSchema).jsonSchema).catch(() => ({})))] as const)));
     const sum = (keys: string[]) => keys.reduce((x, k) => x + (cost[k] ?? 0), 0);
@@ -235,16 +241,16 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     // what's sent is sized against the window: the system prompt and tools are fixed, the history gets the rest of the
     // target, and what doesn't fit is summarised (or, without a window, the last 24 messages go as they always have).
     // Lazy loading still reserves room for every tool, since any of them may be loaded during the answer.
-    const window = await contextWindow(a), auto = a.compact && !!window;
+    const window = await contextWindow(s), auto = a.compact && !!window;
     const fixed = size(prompt) + sum(Object.keys(all));
     const budget = auto ? Math.max(0, Math.floor(window! * TARGET) - tokens(fixed)) : undefined;
     const fitted = await fit(all_, { budget, cost: msg => tokens(chars(msg)),
-      summarise: summariser(model, { redact: safety.redact, signal: c.req.raw.signal, chars: window ? Math.floor(window * .4 * 3) : undefined }) });
+      summarise: summariser(llm, { redact: safety.redact, signal: c.req.raw.signal, chars: window ? Math.floor(window * .4 * 3) : undefined }) });
     const messages = fitted.messages, sent = (lazy ? size(prompt) + sum(activeFor(new Set())) : fixed) + chars(messages);
     let squeezed = false;   // the provider said it was too long, and it went again cut right down
     const lastStep = `${prompt}\n\nYou have no more lookups. Answer now in plain words from what you already found. If it doesn't settle the question, say what you checked and that you can't tell. Do not write tool calls.`;
     const result = streamText({
-      model: wrapLanguageModel({ model: model as Parameters<typeof wrapLanguageModel>[0]['model'], middleware: retryShorter(() => { squeezed = true; }) }),
+      model: wrapLanguageModel({ model: llm as Parameters<typeof wrapLanguageModel>[0]['model'], middleware: retryShorter(() => { squeezed = true; }) }),
       abortSignal: c.req.raw.signal,   // Stop (or closing the chat) ends generation and any tools still running
       system: prompt,
       messages: await convertToModelMessages(messages, { tools: all }),
@@ -252,14 +258,14 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       toolApproval: approvals,
       experimental_toolApprovalSecret: APPROVALS,
       stopWhen: isStepCount(a.maxSteps),
-      ...callSettings(a),   // assistant.reasoning and assistant.options; nothing when they're left out
+      ...callSettings(s),   // assistant.reasoning and assistant.options; nothing when they're left out
       ...(lazy ? { activeTools: activeFor(new Set()), toolOrder: activeFor(new Set()) } : {}),
       prepareStep: ({ stepNumber, messages: now, steps: done }) => {
         // a turn whose tool results pile up: earlier steps' results shrink before the next step, so one turn can't fill the window
         const smaller = auto && stepNumber > 0 ? squeezeSteps(now, budget!, tokens) : undefined;
         // the last step is for answering: a model still looking things up when its steps run out would otherwise say nothing
         // It's short and doesn't think first: a model forced to answer sometimes loops instead ("Let me check…" over and over)
-        const last = stepNumber >= a.maxSteps - 1 ? { toolChoice: 'none' as const, system: lastStep, ...lastStepSettings(a) } : {};
+        const last = stepNumber >= a.maxSteps - 1 ? { toolChoice: 'none' as const, system: lastStep, ...lastStepSettings(s) } : {};
         const loaded = lazy && stepNumber > 0 ? activeFor(askedFor(done, lazy)) : undefined;
         const active = loaded ? { activeTools: loaded, toolOrder: loaded } : {};
         return smaller || lazy || stepNumber >= a.maxSteps - 1 ? { ...last, ...active, ...(smaller ? { messages: smaller } : {}) } : undefined;
@@ -271,7 +277,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     const messageMetadata = ({ part }: { part: { type: string; usage?: { inputTokens?: number; outputTokens?: number } } }) => {
       if (part.type === 'start' && fitted.compacted) return { compacted: fitted.compacted };
       if (part.type !== 'finish-step') return undefined;
-      if (first && !squeezed) calibrate(a.model, sent, part.usage?.inputTokens);
+      if (first && !squeezed) calibrate(s.model, sent, part.usage?.inputTokens);
       first = false;
       const shown = squeezed ? { compacted: 'dropped' } : {};
       return part.usage?.inputTokens ? { ...shown, context: { used: part.usage.inputTokens + (part.usage.outputTokens ?? 0), window, ...(auto ? { auto } : {}) } } : squeezed ? shown : undefined;

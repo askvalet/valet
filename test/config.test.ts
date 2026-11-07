@@ -4,7 +4,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { Config, Every, substitute } from '../src/server/config.ts';
+import { Config, Every, parseConfig, substitute } from '../src/server/config.ts';
 import { check } from '../src/server/site.ts';
 import { registry } from '../src/integrations/index.ts';
 
@@ -125,4 +125,46 @@ test('assistant.access: a dotted key must name a tool the integration has', () =
   assert.equal(problems.length, 3, problems.join('\n'));
   assert.match(problems.find(p => p.includes('"nope"'))!, /w has no tool "nope" \(it has: weather\)/);
   assert.ok(problems.some(p => p.includes('valet has no tool "nothing"')) && problems.some(p => p.includes('no integration gone')));
+});
+
+test('assistant.models: each choice fills in from the main settings, but a key never goes to another server', async () => {
+  const { choices } = await import('../src/server/model.ts');
+  const base = { model: 'qwen', baseURL: 'http://gpu:8000/v1', apiKey: 'local-key', reasoning: 'off', options: { temperature: 0.3 } };
+  // left out, nothing changes: one choice, the main settings themselves
+  const plain = Config.parse({ assistant: base }).assistant!;
+  assert.deepEqual(plain.models, []);
+  assert.deepEqual(choices(plain).map(c => c.id), ['qwen']);
+  assert.equal(choices(plain)[0].settings, plain);
+  const a = Config.parse({ assistant: { ...base, contextWindow: 32768, models: [
+    { model: 'qwen-big' },                                                       // same server: its address and key
+    { name: 'Other', model: 'llama', baseURL: 'http://other:8000/v1' },           // another server: not the main key
+    { name: 'Sonnet', model: 'claude-sonnet-5-5', provider: 'anthropic', apiKey: 'anthropic-key', reasoning: 'high', options: { maxOutputTokens: 900 } },
+  ] } }).assistant!;
+  const [main, big, other, sonnet] = choices(a);
+  assert.deepEqual(choices(a).map(c => c.id), ['qwen', 'qwen-big', 'Other', 'Sonnet']);
+  assert.equal(main.settings, a);
+  assert.deepEqual([big.settings.baseURL, big.settings.apiKey, big.settings.reasoning, big.settings.contextWindow], ['http://gpu:8000/v1', 'local-key', 'off', undefined]);
+  assert.deepEqual([other.settings.baseURL, other.settings.apiKey], ['http://other:8000/v1', undefined]);
+  assert.deepEqual([sonnet.settings.provider, sonnet.settings.baseURL, sonnet.settings.apiKey, sonnet.settings.reasoning], ['anthropic', undefined, 'anthropic-key', 'high']);
+  assert.deepEqual(sonnet.settings.options, { temperature: 0.3, maxOutputTokens: 900 });
+  assert.equal(sonnet.settings.access, a.access);                                // the same assistant: same access, tools, steps
+});
+
+test('assistant.models: names are unique, providers known, keys from the environment, and the checker names a missing key', () => {
+  const parse = (models: object[]) => Config.safeParse({ assistant: { model: 'qwen', models } });
+  assert.ok(parse([{ model: 'a' }, { name: 'A again', model: 'a' }]).success);
+  const dup = parse([{ model: 'a' }, { model: 'a' }]);
+  assert.equal(dup.success, false);
+  assert.match(JSON.stringify(dup.error!.issues), /already a choice/);
+  assert.equal(parse([{ model: 'qwen' }]).success, false);                        // the main model's id is taken
+  assert.equal(parse([{ model: 'a', provider: 'openai' }]).success, false);
+  assert.equal(parse([{ model: 'a', url: 'x' }]).success, false);
+  assert.throws(() => parseConfig('assistant:\n  model: qwen\n  models:\n    - model: c\n      apiKey: ${VALET_T_MISSING_KEY}\n'), /VALET_T_MISSING_KEY is not set/);
+  const had = process.env.ANTHROPIC_API_KEY; delete process.env.ANTHROPIC_API_KEY;
+  try {
+    const keyless = Config.parse({ assistant: { model: 'qwen', models: [{ name: 'Sonnet', model: 'claude-sonnet-5-5', provider: 'anthropic' }] } });
+    assert.ok(check(keyless, registry).problems.some(p => /"Sonnet" needs an apiKey/.test(p)));
+    const keyed = Config.parse({ assistant: { model: 'qwen', models: [{ name: 'Sonnet', model: 'claude-sonnet-5-5', provider: 'anthropic', apiKey: 'k' }] } });
+    assert.ok(!check(keyed, registry).problems.some(p => p.includes('assistant.models')));
+  } finally { if (had !== undefined) process.env.ANTHROPIC_API_KEY = had; }
 });

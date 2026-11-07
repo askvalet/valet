@@ -36,6 +36,19 @@ export function makeModel(a: NonNullable<Config['assistant']>) {
     : createOpenAICompatible({ name: 'assistant', baseURL: a.baseURL ?? 'http://localhost:11434/v1', apiKey: a.apiKey, includeUsage: true, headers: { 'User-Agent': 'Valet' } })(a.model);
 }
 
+type Assistant = NonNullable<Config['assistant']>;
+/** What the chat may run on: the main settings first (the default), then each of `assistant.models`, known by its name or
+ *  model id, filled in from the main settings. The main server's address only goes to the same provider and its key only
+ *  to the same server, so a key never reaches a host it wasn't written for; a window is the model's own. */
+export function choices(a: Assistant): { id: string; settings: Assistant }[] {
+  return [{ id: a.model, settings: a }, ...a.models.map(m => {
+    const provider = m.provider ?? a.provider, baseURL = m.baseURL ?? (provider === a.provider ? a.baseURL : undefined);
+    const apiKey = m.apiKey ?? (provider === a.provider && baseURL === a.baseURL ? a.apiKey : undefined);
+    return { id: m.name ?? m.model, settings: { ...a, provider, baseURL, apiKey, model: m.model, contextWindow: m.contextWindow,
+      reasoning: m.reasoning ?? a.reasoning, options: { ...a.options, ...m.options } } };
+  })];
+}
+
 /** What `assistant.reasoning` and `assistant.options` add to a chat call. Left out (`auto`, no options), nothing: the model
  *  and its server decide, as before. An OpenAI-compatible server gets `chat_template_kwargs: { enable_thinking: false }`
  *  for off (Qwen-style chat templates read it, servers that don't know it ignore it; not every one takes reasoning_effort

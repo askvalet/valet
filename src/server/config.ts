@@ -17,6 +17,26 @@ const validLocale = (l: string) => { try { new Intl.Locale(l); return true; } ca
 
 const Access = z.enum(['none', 'read', 'write', 'control']);   // write: may add things (save a link, file a doc) · control: may change or remove them. Both ask first
 
+// sampling, passed to the model as is
+const Sampling = z.object({
+  temperature: z.number().min(0).max(2).optional(),   // 0 to 2: lower is steadier
+  topP: z.number().gt(0).max(1).optional(),   // above 0, up to 1: the share of likely words it picks from
+  maxOutputTokens: z.number().int().min(64).max(200_000).optional(),   // the most it writes in one step, thinking included
+}).strict();
+
+// another model the chat may switch to. What it leaves out comes from the main settings, except that the main server's
+// address goes only to the same provider, its key only to the same server, and a window is the model's own
+const ModelChoice = z.object({
+  name: z.string().min(1).optional(),      // in the chat's menu; default: the model id
+  model: z.string(),
+  provider: z.enum(['openai-compatible', 'anthropic']).optional(),
+  baseURL: z.string().optional(),
+  apiKey: z.string().optional(),
+  contextWindow: z.number().int().min(1000).max(10_000_000).optional(),
+  reasoning: z.enum(['auto', 'off', 'low', 'high']).optional(),
+  options: Sampling.optional(),
+}).strict();
+
 export const AssistantConfig = z.object({
   // any OpenAI-compatible server (Ollama, llama.cpp, vLLM, OpenRouter, OpenAI…) or Anthropic
   provider: z.enum(['openai-compatible', 'anthropic']).default('openai-compatible'),
@@ -32,11 +52,7 @@ export const AssistantConfig = z.object({
   // model's thinking off (chat_template_kwargs.enable_thinking), low and high ask for that effort; Anthropic maps them to a thinking budget
   reasoning: z.enum(['auto', 'off', 'low', 'high']).default('auto'),
   // sampling, passed to the model as is: leave out for the server's defaults
-  options: z.object({
-    temperature: z.number().min(0).max(2).optional(),   // 0 to 2: lower is steadier
-    topP: z.number().gt(0).max(1).optional(),   // above 0, up to 1: the share of likely words it picks from
-    maxOutputTokens: z.number().int().min(64).max(200_000).optional(),   // the most it writes in one step, thinking included
-  }).strict().default({}),
+  options: Sampling.default({}),
   // which tools each request offers: all of them, or (lazy) Valet's own plus a line per integration, whose tools it loads
   // when a question needs them: most of the prompt saved, for a step. auto: lazy once all the tools come to ~6k tokens
   tools: z.enum(['all', 'auto', 'lazy']).default('all'),
@@ -52,7 +68,18 @@ export const AssistantConfig = z.object({
   background: z.object({ watch: z.boolean().default(true), brief: z.boolean().default(true), suggest: z.boolean().default(true), perDay: z.number().int().min(1).max(500).default(100) }).default({ watch: true, brief: true, suggest: true, perDay: 100 }),
   // questions offered on an empty chat and in ⌘K
   suggestions: z.array(z.string()).default(['Is anything down?', 'How are my downloads doing?', "What's playing on Plex?", 'Show me the GPU and Plex side by side']),
-}).strict();
+  // more models to pick from in the chat's header, for one chat at a time; the main model above stays the default and
+  // does everything in the background
+  models: z.array(ModelChoice).default([]),
+}).strict().superRefine((a, ctx) => {
+  // each choice is known by its name (or model id), and the main model by its model id
+  const seen = new Set([a.model]);
+  a.models.forEach((m, i) => {
+    const id = m.name ?? m.model;
+    if (seen.has(id)) ctx.addIssue({ code: 'custom', path: ['models', i, m.name ? 'name' : 'model'], message: `"${id}" is already a choice: give this one a name of its own` });
+    seen.add(id);
+  });
+});
 
 /** a duration: seconds as a number, or "30s" / "5m" / "2h" / "1d"; comes out in milliseconds */
 export const Every = z.union([z.number().positive(), z.string().regex(/^\d+(\.\d+)?\s*[smhd]?$/, 'a duration like 30s, 5m or 1h')])

@@ -295,3 +295,49 @@ test('tools: lazy starts with Valet\'s own tools and an index, loads an integrat
   const plain = await talk(scripted('hi'), say('hi'));
   assert.ok(plain.offered.includes('dl__status') && !plain.offered.includes('tools'));
 });
+
+// ---- assistant.models: the chat picks one of the configured choices, never a model of its own ---------------------------
+async function choose(body: object, assistant: object = {}) {
+  const main = scripted('from the main model'), other = scripted('from sonnet');
+  const app = new Hono();
+  const config = Config.parse({ assistant: { model: 'm', ...assistant } });
+  app.post('/chat', chatRoute(config, home(), meta(), { acting: true, redact, model: main as any, models: { Sonnet: other as any } }) as any);
+  const r = await app.request('/chat', { method: 'POST', body: JSON.stringify({ messages: say('hi'), ...body }) });
+  const text = await r.text();
+  const meta_ = text.split('\n').filter(l => l.startsWith('data: {')).map(l => JSON.parse(l.slice(6))).filter(e => e.type === 'message-metadata').map(e => e.messageMetadata);
+  return { status: r.status, text, main: main.doStreamCalls as any[], other: other.doStreamCalls as any[], context: meta_.at(-1)?.context };
+}
+const sonnet = { models: [{ name: 'Sonnet', model: 'claude-sonnet-5-5', provider: 'anthropic', apiKey: 'k', contextWindow: 50_000, reasoning: 'high', options: { maxOutputTokens: 900 } }] };
+
+test('models: a chosen model answers that chat, with its own reasoning, options and window; the default stays the default', async () => {
+  const picked = await choose({ model: 'Sonnet' }, sonnet);
+  assert.equal(picked.status, 200);
+  assert.equal(picked.main.length, 0);
+  assert.equal(picked.other.length, 1);
+  assert.equal(picked.other[0].reasoning, 'high');
+  assert.equal(picked.other[0].maxOutputTokens, 900);
+  assert.equal(picked.context.window, 50_000);
+  assert.match(picked.text, /from sonnet/);
+  for (const body of [{}, { model: 'm' }, { model: null }]) {
+    const d = await choose(body, sonnet);
+    assert.equal(d.status, 200);
+    assert.deepEqual([d.main.length, d.other.length], [1, 0]);
+    assert.equal(d.context.window, undefined);
+  }
+});
+
+test('models: anything but a configured choice is refused before a model is asked', async () => {
+  for (const body of [{ model: 'claude-opus-5-5' }, { model: 'claude-sonnet-5-5' }, { model: { model: 'x', baseURL: 'http://evil/v1' } }, { model: '' }, { model: 3 }]) {
+    const r = await choose(body, sonnet);
+    assert.equal(r.status, 400, JSON.stringify(body));
+    assert.deepEqual([r.main.length, r.other.length], [0, 0]);
+  }
+  // without assistant.models there's one choice, the main model, and the same request as before still works
+  const plain = await choose({}, {});
+  assert.equal(plain.status, 200);
+  assert.equal(plain.main.length, 1);
+  assert.equal((await choose({ model: 'Sonnet' }, {})).status, 400);
+  // a baseURL or key in the request is never read
+  const sneaky = await choose({ baseURL: 'http://evil/v1', apiKey: 'x', provider: 'anthropic' }, {});
+  assert.deepEqual([sneaky.status, sneaky.main.length], [200, 1]);
+});

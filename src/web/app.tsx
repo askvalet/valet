@@ -39,7 +39,7 @@ export interface Page {
   hero: { greeting: boolean | string; status: boolean; search: boolean; review: boolean | 'end'; align: 'center' | 'left' | 'right'; scope?: string[] };
   chat: ChatUi & { open: 'center' | 'right' | 'left' | 'bottom' | 'page'; overview: boolean; placeholder?: string; suggestions: 'ai' | 'fixed' | 'off' };
   format: Format; labels: Labels;
-  assistant: { name: string; model: string; suggestions: string[]; tools: Record<string, ToolInfo>; external?: boolean } | null;
+  assistant: { name: string; model: string; models?: string[]; suggestions: string[]; tools: Record<string, ToolInfo>; external?: boolean } | null;
   search?: string;
   insight?: string;
   welcome?: { path: string; saved: boolean; setup?: boolean };
@@ -743,7 +743,7 @@ function Home({ account }: { account: boolean }) {
           <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_200px]">
           <div data-slot="card" className="h-[calc(100dvh-var(--chat-top,7.5rem))] min-h-[520px] overflow-hidden rounded-surface border bg-card shadow-card">
             <Suspense fallback={null}>
-              <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} onAsk={ask} ui={ui} attach={page.canAct !== false && !page.sandbox} />
+              <Assistant name={page.assistant.name} model={page.assistant.model} models={page.assistant.models} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} onAsk={ask} ui={ui} attach={page.canAct !== false && !page.sandbox} />
             </Suspense>
           </div>
           {/* the tab's numbers sit small beside the chat, which gets the room */}
@@ -801,7 +801,7 @@ function Home({ account }: { account: boolean }) {
             <DialogDescription className="sr-only">Ask about your homelab</DialogDescription>
             {chatOpen && (
               <Suspense fallback={null}>
-                <Assistant name={page.assistant.name} model={page.assistant.model} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} onAsk={ask} ui={ui} attach={page.canAct !== false && !page.sandbox} onClose={phone ? () => setChatOpen(false) : undefined} onDismiss={!phone && place !== 'center' ? () => setChatOpen(false) : undefined} />
+                <Assistant name={page.assistant.name} model={page.assistant.model} models={page.assistant.models} ask={chat} suggestions={questions.slice(0, 4)} tools={page.assistant.tools} external={page.assistant.external} onAsk={ask} ui={ui} attach={page.canAct !== false && !page.sandbox} onClose={phone ? () => setChatOpen(false) : undefined} onDismiss={!phone && place !== 'center' ? () => setChatOpen(false) : undefined} />
               </Suspense>
             )}
           </DialogContent>

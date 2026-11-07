@@ -11,6 +11,7 @@ import { ThinkingOrb } from 'thinking-orbs';
 import { ChatBeam } from './beam.tsx';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { Card, Confirm } from '../shared/cards.ts';
 import { splitThink } from '../shared/think.ts';
@@ -26,7 +27,9 @@ const Ui = createContext<ChatUi>({ steps: true, thinking: 'collapsed', send: 'en
 
 // One conversation for the whole page session, so closing and reopening the panel keeps it.
 // a long chat's early messages stay on screen, but only the recent ones are sent: the server would drop the rest anyway
-const lastOnly = ({ messages, body, id }: any) => ({ body: { ...body, id, messages: messages.slice(-24) } });
+// and the model this chat is on, if it isn't the default (assistant.models): kept with the chat, back to the default for a new one
+let picked: string | undefined;
+const lastOnly = ({ messages, body, id }: any) => ({ body: { ...body, id, messages: messages.slice(-24), ...(picked ? { model: picked } : {}) } });
 // the last question from `ask` already sent; kept with the chat because the panel remounts on every navigation
 let lastAsk = 0;
 const chat = new Chat({
@@ -335,8 +338,8 @@ function ContextMeter({ used, total, auto, fresh }: { used: number; total?: numb
   );
 }
 
-export default function Assistant({ name, model, ask, suggestions, tools = {}, external, onAsk, onClose, onDismiss, ui = { steps: true, thinking: 'collapsed', send: 'enter' }, attach: canAttach = true }: {
-  name: string; model: string; ask: { text: string; n: number } | null; suggestions: string[]; tools?: Record<string, ToolInfo>; onAsk: (t: string) => void;
+export default function Assistant({ name, model, models, ask, suggestions, tools = {}, external, onAsk, onClose, onDismiss, ui = { steps: true, thinking: 'collapsed', send: 'enter' }, attach: canAttach = true }: {
+  name: string; model: string; models?: string[]; ask: { text: string; n: number } | null; suggestions: string[]; tools?: Record<string, ToolInfo>; onAsk: (t: string) => void;
   external?: boolean;   // the chat is another agent's (assistant.agent), with tools of its own
   onClose?: () => void;   // shown as a phone sheet: a grabber to drag it away, and room for fingers and the keyboard
   onDismiss?: () => void;   // a panel or a full page: a plain close button, there being no outside to click
@@ -360,6 +363,10 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
     },
   };
   const { messages, sendMessage, status, addToolApprovalResponse, error, stop, regenerate, setMessages } = useChat({ chat, experimental_throttle: 60 });
+  // which model this chat is on: the first of `models` is the default, and a choice the config no longer has goes back to it
+  const [choice, setChoice] = useState(picked);
+  const choose = (id?: string) => { picked = id === models?.[0] ? undefined : id; setChoice(picked); };
+  if (choice && !models?.includes(choice)) choose();
   const context = (messages.findLast(m => m.role === 'assistant' && (m.metadata as any)?.context)?.metadata as { context?: { used: number; window?: number; auto?: boolean } } | undefined)?.context;
   // how long each answer took, measured from the question to the last word
   const started = useRef(0);
@@ -442,8 +449,13 @@ export default function Assistant({ name, model, ask, suggestions, tools = {}, e
           <span className="shrink-0 text-title font-semibold">{name}</span>
           {/* the model and its meter as one inline group: the group sits on the name's baseline, the meter centred on the model's line */}
           <span className="inline-flex min-w-0 items-center gap-1.5 text-meta leading-4 text-muted-foreground">
-            {model && <span className="min-w-0 truncate">{model}</span>}
-            {!external && <span className="relative size-3.5 shrink-0 [&>.ctx]:absolute [&>.ctx]:top-1/2 [&>.ctx]:left-1/2 [&>.ctx]:-translate-x-1/2 [&>.ctx]:-translate-y-1/2">{context && <ContextMeter used={context.used} total={context.window} auto={context.auto} fresh={() => { stop(); setMessages([]); setTook({}); }} />}</span>}
+            {models && models.length > 1 && !external
+              ? <Select value={choice ?? models[0]} onValueChange={choose}>
+                  <SelectTrigger aria-label="Model" className="h-auto min-w-0 gap-1 rounded-sm border-0 bg-transparent p-0 text-meta leading-4 text-muted-foreground shadow-none hover:text-foreground dark:bg-transparent dark:hover:bg-transparent [&_svg]:size-3"><SelectValue /></SelectTrigger>
+                  <SelectContent position="popper" align="start">{models.map((m, i) => <SelectItem key={m} value={m}>{i ? m : model}</SelectItem>)}</SelectContent>
+                </Select>
+              : model && <span className="min-w-0 truncate">{model}</span>}
+            {!external && <span className="relative size-3.5 shrink-0 [&>.ctx]:absolute [&>.ctx]:top-1/2 [&>.ctx]:left-1/2 [&>.ctx]:-translate-x-1/2 [&>.ctx]:-translate-y-1/2">{context && <ContextMeter used={context.used} total={context.window} auto={context.auto} fresh={() => { stop(); setMessages([]); setTook({}); choose(); }} />}</span>}
           </span>
         </div>
         {sheet && <button onClick={onClose} onPointerDown={e => e.stopPropagation()} aria-label="Close" className="press grid size-9 place-items-center rounded-full bg-fill-1"><ChevronDown className="size-icon-lg" /></button>}

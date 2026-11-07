@@ -16,7 +16,7 @@ import { UPLOAD_DIR, LOGO, hearBrowser } from './core.ts';
 import { parseSuggestions, scopeOf, statusLine, suggestPrompt, troubles } from './insight.ts';
 import { loadPins, newPin, pinnedCard, savePins } from './pins.ts';
 import { loadPlugins } from './plugins.ts';
-import { chatAgent } from './model.ts';
+import { chatAgent, choices } from './model.ts';
 import { buildRecap, recapYear } from './recap.ts';
 import { discover } from './discover.ts';
 import { mcpServer } from './mcpserver.ts';
@@ -259,7 +259,9 @@ app.get('/api/page', c => {
     appearance, look,
     chat: config.chat,
     // the demo's model is scripted, and says so beside its name
-    assistant: config.assistant ? { ...(agent ? { name: agent.name, model: agent.model, external: true } : { name: config.assistant.name, model: sandbox.on ? `${config.assistant.model} (demo)` : config.assistant.model }), suggestions: config.assistant.suggestions,
+    assistant: config.assistant ? { ...(agent ? { name: agent.name, model: agent.model, external: true } : { name: config.assistant.name, model: sandbox.on ? `${config.assistant.model} (demo)` : config.assistant.model,
+        // assistant.models: what the chat's header offers, the default first; one model offers nothing
+        ...(config.assistant.models.length ? { models: choices(config.assistant).map(c => c.id) } : {}) }), suggestions: config.assistant.suggestions,
       // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>")
       tools: Object.fromEntries([...instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {})
         .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access, live: t.live }]))) } : null,

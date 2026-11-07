@@ -35,6 +35,9 @@ assistant:
   model: qwen3:8b
   # what it may use, per integration: none | read | write (adds things, like saving a link) | control (changes or removes them). Both ask you first
   access: { default: read, downloads: control, docs: write, bookmarks: write }
+  # more models to pick from in the chat's header, one chat at a time; the one above stays the default
+  # models:
+  #   - { name: Claude, provider: anthropic, model: claude-sonnet-5-5, apiKey: "${ANTHROPIC_API_KEY}" }
 
 integrations:
   docs:
