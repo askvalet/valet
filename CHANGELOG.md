@@ -5,6 +5,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-07
+
 ### Added
 
 - `assistant.access` takes a key per tool: `plex.plex_stop_stream: control` under `plex: read` lets that one tool act, and `downloads.torrent_control: none` or `valet.report_issue: none` takes one away from the chat, commands, rules, plans, pins and live cards alike. `config check` names a key that matches no tool, with the tools that instance has. Without dotted keys nothing changes.
@@ -260,7 +262,8 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/askvalet/valet/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/askvalet/valet/compare/v0.1.8...v0.2.0
 [0.1.8]: https://github.com/askvalet/valet/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/askvalet/valet/compare/v0.1.6...v0.1.7
