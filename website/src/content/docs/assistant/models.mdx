@@ -65,6 +65,7 @@ If that matters to you, use a local model, or set sensitive integrations to `non
 | `maxSteps` | `6` | Tool rounds per answer, 1 to 20. The last step is kept for answering. |
 | `reasoning` | `auto` | How much the model thinks before it answers in the chat: `auto` (as the model and its server decide), `off`, `low` or `high`. See [thinking](#thinking). |
 | `options` | none | Sampling, passed to the model as is: `temperature` (0 to 2), `topP` (above 0, up to 1) and `maxOutputTokens` (64 to 200,000). Leave it out for the server's defaults. |
+| `tools` | `all` | `all` sends every tool with every request. `lazy` sends Valet's own tools and a line per integration, and loads an integration's tools when a question needs them: a much smaller prompt on a big setup, for one more step. `auto` is `lazy` once the tools add up to about 6k tokens. |
 | `contextWindow` | known Claude models, or what your server reports | How many tokens the model holds, for the chat's context meter and for keeping long chats inside it. |
 | `compact` | `true` | Near a known window, summarise the oldest part of a long chat for the model. `false` sends the last 24 messages instead. |
 | `background` | see below | What it does on its own. |

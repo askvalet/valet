@@ -16,6 +16,7 @@ import { mcpTools } from './mcp.ts';
 import { callSettings, chatAgent, contextWindow, lastStepSettings, makeAgentModel, makeModel } from './model.ts';
 import { checkCard } from '../shared/cards.schema.ts';
 import { accessOf as granted, asker, rank, runTool as run, toolAccess, who } from './run.ts';
+import { CORE, LAZY_BELOW, askedFor, groupOf, indexLine, resolve, usedBefore, type Group } from './lazy.ts';
 
 export { trimHistory } from './compact.ts';
 
@@ -37,6 +38,8 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   const tools: ToolSet = {};
   const approval: Record<string, 'user-approval'> = {};
   const catalog: string[] = [];
+  // for assistant.tools: lazy, each integration's tools by instance, and its line in the catalog (which the index replaces)
+  const groups = new Map<string, Group>(), lineOf = new Map<string, string>();
   const steps = new Map<string, { id: string; name: string; t: Instance['tools'] extends Record<string, infer T> | undefined ? T : never }>();
   // every tool call goes through one door (run.ts): redacted, and logged unless it only looks
   const runTool = (id: string, name: string, t: any, args: any, via: 'chat' | 'plan') => run({ id, name, t, args, via, who: who(), activity: safety.activity, redact: safety.redact });
@@ -45,6 +48,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     const usable = Object.entries(inst.tools ?? {}).filter(([name, t]) => rank[t.access] <= levelOf(id, name));
     if (!usable.length) continue;
     catalog.push(`- ${id} (${meta.get(id)!.name}): ${usable.map(([n]) => n).join(', ')}`);
+    if (!CORE.has(id)) { groups.set(id, { id, name: meta.get(id)!.name, type: meta.get(id)!.type, keys: usable.map(([n]) => `${id}__${n}`) }); lineOf.set(id, catalog.at(-1)!); }
     for (const [name, t] of usable) {
       const key = `${id}__${name}`;
       // a plan can't edit the config or set up a rule: each of those gets an approval of its own
@@ -149,7 +153,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
 
   const mcp = mcpTools(config, safety.acting);
 
-  const system = (extra: string[]) => [
+  const system = (extra: string[], index?: string[]) => [
     `You are ${a.name}, the assistant built into ${config.title}, a homepage for a self-hosted homelab${config.greeting ? ` run by ${config.greeting}` : ''}.`,
     `Now: ${new Date().toString()}.${config.location ? ` Location: ${config.location}.` : ''} Every time in tool results is already in this time zone; "today" and "yesterday" mean this zone's calendar days.`,
     'You answer questions about the homelab by calling tools. Never guess a status, number or name: call the tool.',
@@ -171,7 +175,10 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       : 'You cannot change Valet from here: tell them the page, cards and look are in config.yaml, or that `assistant.access: { config: control }` lets you edit it with their approval.',
     'What you can never change, so say so plainly and point to the docs: sign-in, allowed hosts, plugins, MCP, notifications, your own access, model or instructions, files on disk, and secrets, which go in .env by hand. You cannot change Valet\'s code, install anything, or restart it.',
     'If something looks like a bug in Valet itself, not a service that is down, say so and use report_issue to give them a filled-in GitHub issue to read and submit. Also use it when they ask for a feature or an integration Valet lacks.',
-    'Available integrations and tools:', ...catalog, ...extra,
+    ...(index ? [
+      'Your own tools are loaded. Each integration\'s tools load when you ask: call tools with the ids of every integration the question needs, all in one call, and use their tools from your next step. Integrations:',
+      ...index, 'Valet\'s own tools:', ...catalog.filter(l => ![...lineOf.values()].includes(l)),
+    ] : ['Available integrations and tools:', ...catalog, ...extra]),
     a.instructions ?? '',
   ].join('\n');
 
@@ -196,18 +203,44 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       log(!out?.isError, out?.isError ? safety.redact(JSON.stringify(out.content ?? '').slice(0, 300)) : undefined);
       return out;
     } }]));
-    const all = { ...tools, ...mcp_ }, approvals = { ...approval, ...m.approval };
-    const prompt = system(m.catalog);
-    // what's sent is sized against the window: the system prompt and tools are fixed, the history gets the rest of the
-    // target, and what doesn't fit is summarised (or, without a window, the last 24 messages go as they always have)
-    const window = await contextWindow(a), auto = a.compact && !!window;
+    const all: ToolSet = { ...tools, ...mcp_ }, approvals = { ...approval, ...m.approval };
     const chars = (x: unknown) => size(x), tokens = (n: number) => tokensOf(n, a.model);
-    const fixed = size(prompt) + (await Promise.all(Object.entries(all).map(async ([k, t]: [string, any]) =>
-      k.length + size(t.description ?? '') + size(await Promise.resolve(asSchema(t.inputSchema).jsonSchema).catch(() => ({})))))).reduce((x, y) => x + y, 0);
+    const cost = Object.fromEntries(await Promise.all(Object.entries(all).map(async ([k, t]: [string, any]) =>
+      [k, k.length + size(t.description ?? '') + size(await Promise.resolve(asSchema(t.inputSchema).jsonSchema).catch(() => ({})))] as const)));
+    const sum = (keys: string[]) => keys.reduce((x, k) => x + (cost[k] ?? 0), 0);
+    // assistant.tools: lazy (or auto, with enough tools to matter): integrations' tools go only once asked for, or used earlier in the chat
+    const lazy = a.tools === 'lazy' || (a.tools === 'auto' && tokens(sum(Object.keys(all))) >= LAZY_BELOW) ? (() => {
+      const g = new Map(groups);
+      for (const k of Object.keys(mcp_)) { const id = groupOf(k)!; const e = g.get(id) ?? { id, name: m.names?.[id] ?? id, type: 'mcp', keys: [] }; e.keys.push(k); g.set(id, e); }
+      return g;
+    })() : undefined;
+    if (lazy) {
+      all.tools = tool({
+        description: 'Load the tools of integrations from the list in your instructions, by id, so you can call them from your next step. Name every integration the question needs in one call.',
+        inputSchema: z.object({ use: z.array(z.string()).min(1).max(12).describe('integration ids, e.g. ["plex", "downloads"]') }),
+        execute: async ({ use }) => {
+          const { found, unknown } = resolve(use, lazy);
+          return { data: { loaded: Object.fromEntries([...found].map(id => [id, lazy.get(id)!.keys])), ...(unknown.length ? { unknown, ids: [...lazy.keys()] } : {}) } };
+        },
+        toModelOutput: ({ output }) => ({ type: 'json', value: (output as { data: any }).data }),
+      });
+      cost.tools = 'tools'.length + 400;
+    }
+    const core = lazy ? Object.keys(all).filter(k => { const g = groupOf(k); return !g || !lazy.has(g); }) : undefined;
+    const before = lazy ? usedBefore(all_, lazy) : undefined;
+    // Valet's own first, then integrations in the order they were loaded, so each step's tools start like the last one's
+    // (a server's prompt cache keeps the part that didn't change)
+    const activeFor = (more: Set<string>) => [...core!, ...[...new Set([...before!, ...more])].flatMap(id => lazy!.get(id)?.keys ?? [])];
+    const prompt = system(m.catalog, lazy && [...lazy.values()].map(g => indexLine(g)));
+    // what's sent is sized against the window: the system prompt and tools are fixed, the history gets the rest of the
+    // target, and what doesn't fit is summarised (or, without a window, the last 24 messages go as they always have).
+    // Lazy loading still reserves room for every tool, since any of them may be loaded during the answer.
+    const window = await contextWindow(a), auto = a.compact && !!window;
+    const fixed = size(prompt) + sum(Object.keys(all));
     const budget = auto ? Math.max(0, Math.floor(window! * TARGET) - tokens(fixed)) : undefined;
     const fitted = await fit(all_, { budget, cost: msg => tokens(chars(msg)),
       summarise: summariser(model, { redact: safety.redact, signal: c.req.raw.signal, chars: window ? Math.floor(window * .4 * 3) : undefined }) });
-    const messages = fitted.messages, sent = fixed + chars(messages);
+    const messages = fitted.messages, sent = (lazy ? size(prompt) + sum(activeFor(new Set())) : fixed) + chars(messages);
     let squeezed = false;   // the provider said it was too long, and it went again cut right down
     const lastStep = `${prompt}\n\nYou have no more lookups. Answer now in plain words from what you already found. If it doesn't settle the question, say what you checked and that you can't tell. Do not write tool calls.`;
     const result = streamText({
@@ -220,13 +253,16 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       experimental_toolApprovalSecret: APPROVALS,
       stopWhen: isStepCount(a.maxSteps),
       ...callSettings(a),   // assistant.reasoning and assistant.options; nothing when they're left out
-      prepareStep: ({ stepNumber, messages: now }) => {
+      ...(lazy ? { activeTools: activeFor(new Set()), toolOrder: activeFor(new Set()) } : {}),
+      prepareStep: ({ stepNumber, messages: now, steps: done }) => {
         // a turn whose tool results pile up: earlier steps' results shrink before the next step, so one turn can't fill the window
         const smaller = auto && stepNumber > 0 ? squeezeSteps(now, budget!, tokens) : undefined;
         // the last step is for answering: a model still looking things up when its steps run out would otherwise say nothing
         // It's short and doesn't think first: a model forced to answer sometimes loops instead ("Let me check…" over and over)
         const last = stepNumber >= a.maxSteps - 1 ? { toolChoice: 'none' as const, system: lastStep, ...lastStepSettings(a) } : {};
-        return smaller || stepNumber >= a.maxSteps - 1 ? { ...last, ...(smaller ? { messages: smaller } : {}) } : undefined;
+        const loaded = lazy && stepNumber > 0 ? activeFor(askedFor(done, lazy)) : undefined;
+        const active = loaded ? { activeTools: loaded, toolOrder: loaded } : {};
+        return smaller || lazy || stepNumber >= a.maxSteps - 1 ? { ...last, ...active, ...(smaller ? { messages: smaller } : {}) } : undefined;
       },
     });
     // how full the model's context is after each step, for the meter beside its name: what it was given, and what it said.

@@ -37,6 +37,9 @@ export const AssistantConfig = z.object({
     topP: z.number().gt(0).max(1).optional(),   // above 0, up to 1: the share of likely words it picks from
     maxOutputTokens: z.number().int().min(64).max(200_000).optional(),   // the most it writes in one step, thinking included
   }).strict().default({}),
+  // which tools each request offers: all of them, or (lazy) Valet's own plus a line per integration, whose tools it loads
+  // when a question needs them: most of the prompt saved, for a step. auto: lazy once all the tools come to ~6k tokens
+  tools: z.enum(['all', 'auto', 'lazy']).default('all'),
   // how many tokens the model can hold, for the chat's context meter; known Claude models fill it in, others show what's used
   contextWindow: z.number().int().min(1000).max(10_000_000).optional(),
   // near a known window, summarise the oldest part of a long chat for the model (the page keeps all of it); false sends the last 24 messages

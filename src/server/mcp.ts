@@ -34,18 +34,19 @@ export function mcpTools(config: Config, acting = true) {
 
   /** Tools from every allowed MCP server, named "mcp_<server>__<tool>", plus which of them need approval. */
   return async () => {
-    const tools: ToolSet = {}, approval: Record<string, 'user-approval'> = {}, catalog: string[] = [];
+    const tools: ToolSet = {}, approval: Record<string, 'user-approval'> = {}, catalog: string[] = [], names_: Record<string, string> = {};
     await Promise.all(Object.entries(config.mcp).filter(([, s]) => s.access !== 'none').map(async ([id, s]) => {
       const e = await load(id);
       const names = Object.keys(e.tools);
       if (!names.length) return;
       catalog.push(`- ${id} (${s.name ?? 'MCP server'}): ${names.join(', ')}`);
+      names_[`mcp_${id}`.replace(/[^a-zA-Z0-9_-]/g, '_')] = s.name ?? 'MCP server';
       for (const n of names) {
         const key = `mcp_${id}__${n.replace(new RegExp(`^${id}__`), '')}`.replace(/[^a-zA-Z0-9_-]/g, '_');
         tools[key] = e.tools[n];
         if (!e.readOnly.has(n)) approval[key] = 'user-approval';
       }
     }));
-    return { tools, approval, catalog };
+    return { tools, approval, catalog, names: names_ };
   };
 }

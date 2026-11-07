@@ -98,11 +98,12 @@ const verbOf = (name: string, tools: Record<string, ToolInfo>) => {
   if (name === 'search_everything') return ['Searched everything', Search] as const;
   if (name === 'plan') return ['Made a plan', Zap] as const;
   if (name === 'present') return ['Laid it out', Lightbulb] as const;
+  if (name === 'tools') return ['Picked tools', Search] as const;
   return [t?.label ?? toolLabel(name).replace(/^\w/, c => c.toUpperCase()), t ? ICON[t.access] : Activity] as const;
 };
 const argOf = (input: any) => {
   if (!input || typeof input !== 'object') return '';
-  const v = input.summary ?? input.query ?? input.url ?? input.entity_id ?? input.title ?? input.id ?? input.text ?? Object.values(input).find(x => typeof x !== 'object');
+  const v = input.summary ?? input.query ?? input.url ?? input.entity_id ?? input.title ?? input.id ?? input.text ?? input.use ?? Object.values(input).find(x => typeof x !== 'object');
   const t = Array.isArray(v) ? v.filter(x => typeof x !== 'object').join(', ') : v == null || typeof v === 'object' ? '' : String(v);
   try { if (input.url) return new URL(t).hostname.replace(/^www\./, ''); } catch {}
   return t.length > 36 ? t.slice(0, 34) + '…' : t;

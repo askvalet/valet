@@ -44,15 +44,16 @@ const home = () => new Map<string, any>([
 const meta = () => new Map<string, any>(['dl', 'links', 'secret', 'config', 'valet'].map(id => [id, { type: id, name: id }]));
 const redact = (s: string) => s.replaceAll('sekret-value-123', '•••');
 
-async function talk(model: MockLanguageModelV4, messages: any[], o: { acting?: boolean; access?: object; activity?: InstanceType<typeof Activity> } = {}) {
+async function talk(model: MockLanguageModelV4, messages: any[], o: { acting?: boolean; access?: object; activity?: InstanceType<typeof Activity>; assistant?: object } = {}) {
   ran.length = 0;
-  const config = Config.parse({ assistant: { model: 'm', access: { default: 'read', dl: 'control', links: 'write', secret: 'none', config: 'control', ...o.access } } });
+  const config = Config.parse({ assistant: { model: 'm', ...o.assistant, access: { default: 'read', dl: 'control', links: 'write', secret: 'none', config: 'control', ...o.access } } });
   const app = new Hono();
   app.post('/chat', chatRoute(config, home(), meta(), { acting: o.acting ?? true, redact, activity: o.activity, model: model as any }) as any);
   const r = await app.request('/chat', { method: 'POST', body: JSON.stringify({ messages }) });
   const text = await r.text();
   return { text, events: text.split('\n').filter(l => l.startsWith('data: {')).map(l => JSON.parse(l.slice(6))), offered: Object.keys(model.doStreamCalls[0]?.tools?.reduce?.((m: any, t: any) => ({ ...m, [t.name]: 1 }), {}) ?? {}) };
 }
+const talkWith = (model: MockLanguageModelV4, messages: any[], assistant: object) => talk(model, messages, { assistant });
 const say = (text: string) => [{ id: 'u1', role: 'user', parts: [{ type: 'text', text }] }];
 
 test('access: it\'s offered only what its level allows, and nothing that acts on a read-only page', async () => {
@@ -263,4 +264,34 @@ test('the forced last step is short and doesn\'t think first, so a model that lo
   assert.deepEqual(last.providerOptions?.assistant, { chat_template_kwargs: { enable_thinking: false } });
   assert.equal(before.maxOutputTokens, undefined);                        // the steps before keep the server's limit
   assert.equal(before.providerOptions?.assistant, undefined);
+});
+
+test('tools: lazy starts with Valet\'s own tools and an index, loads an integration when asked, and keeps it for follow-ups', async () => {
+  const lazy = { tools: 'lazy' };
+  const model = scripted([['tools', { use: ['dl'] }]], [['dl__status', {}]], 'all fine');
+  const r = await talkWith(model, say('how is it'), lazy);
+  const names = (i: number) => (model.doStreamCalls[i]!.tools ?? []).map((t: any) => t.name);
+  assert.ok(names(0).includes('tools') && names(0).includes('valet__rule_add') && names(0).includes('config__config_apply'));
+  assert.ok(!names(0).some((n: string) => n.startsWith('dl__') || n.startsWith('links__')));
+  assert.match(JSON.stringify(model.doStreamCalls[0].prompt), /- dl \(dl\): status, pause, resume, boom/);
+  assert.ok(names(1).includes('dl__status') && names(1).includes('dl__pause') && !names(1).includes('links__save'));
+  assert.deepEqual(ran, ['status']);
+  assert.match(r.text, /all fine/);
+  // approvals don't change: an unloaded tool is still registered and still asks
+  const asked = await talkWith(scripted([['tools', { use: ['downloads', 'dl'] }]], [['dl__pause', {}]]), say('pause'), lazy);
+  assert.deepEqual(ran, []);
+  assert.ok(asked.events.some(e => e.type === 'tool-approval-request'));
+  // used earlier in the chat: loaded from the first step
+  const again = scripted('still fine');
+  await talkWith(again, [...say('how is it'), { id: 'a1', role: 'assistant', parts: [{ type: 'tool-dl__status', toolCallId: 'x', state: 'output-available', input: {}, output: { data: {} } }, { type: 'text', text: 'fine' }] }, { id: 'u2', role: 'user', parts: [{ type: 'text', text: 'and now?' }] }], lazy);
+  assert.ok((again.doStreamCalls[0]!.tools ?? []).some((t: any) => t.name === 'dl__status'));
+  // calling one before loading it fails that call, and loads it for the next step
+  const eager = scripted([['dl__status', {}]], [['dl__status', {}]], 'ok');
+  await talkWith(eager, say('how is it'), lazy);
+  assert.deepEqual(ran, ['status']);
+  // auto, with a setup this small: everything, as before; and all is the default
+  const small = await talkWith(scripted('hi'), say('hi'), { tools: 'auto' });
+  assert.ok(small.offered.includes('dl__status') && !small.offered.includes('tools'));
+  const plain = await talk(scripted('hi'), say('hi'));
+  assert.ok(plain.offered.includes('dl__status') && !plain.offered.includes('tools'));
 });
