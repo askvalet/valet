@@ -36,6 +36,28 @@ export function makeModel(a: NonNullable<Config['assistant']>) {
     : createOpenAICompatible({ name: 'assistant', baseURL: a.baseURL ?? 'http://localhost:11434/v1', apiKey: a.apiKey, includeUsage: true, headers: { 'User-Agent': 'Valet' } })(a.model);
 }
 
+/** What `assistant.reasoning` and `assistant.options` add to a chat call. Left out (`auto`, no options), nothing: the model
+ *  and its server decide, as before. An OpenAI-compatible server gets `chat_template_kwargs: { enable_thinking: false }`
+ *  for off (Qwen-style chat templates read it, servers that don't know it ignore it; not every one takes reasoning_effort
+ *  "none"), and reasoning_effort for low and high. Anthropic maps the level to its thinking budget. */
+export function callSettings(a: NonNullable<Config['assistant']>) {
+  const sampling = { ...a.options };
+  if (a.reasoning === 'auto') return sampling;
+  if (a.provider === 'anthropic') return { ...sampling, reasoning: a.reasoning === 'off' ? 'none' as const : a.reasoning };
+  return a.reasoning === 'off' ? { ...sampling, ...NO_THINKING } : { ...sampling, reasoning: a.reasoning };
+}
+const NO_THINKING = { providerOptions: { assistant: { chat_template_kwargs: { enable_thinking: false } } } };
+
+/** The most the forced last step may write. It only has to say what was found, in a sentence or two; a small model made to
+ *  answer without tools sometimes loops instead (a tag or "Let me check…" over and over) until the server's limit. */
+export const LAST_STEP_TOKENS = 400;
+
+/** The forced last step: short, and without thinking first, since thinking counts against the same limit. */
+export function lastStepSettings(a: NonNullable<Config['assistant']>) {
+  const maxOutputTokens = Math.min(LAST_STEP_TOKENS, a.options.maxOutputTokens ?? Infinity);
+  return a.provider === 'anthropic' ? { maxOutputTokens, reasoning: 'none' as const } : { maxOutputTokens, ...NO_THINKING };
+}
+
 /** How many tokens a model can hold, when its name says: Claude's from Opus and Sonnet 4.6, Haiku 5 and every Fable on take
  *  a million, the ones before 200k. Anything else is unknown, and the chat's meter then shows only what's used. Written
  *  either way a provider spells it: claude-sonnet-4-6, anthropic/claude-sonnet-4.6, claude-3-5-haiku-20241022. */

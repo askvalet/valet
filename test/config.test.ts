@@ -118,3 +118,11 @@ test('context window: read from the model server\'s list when the name doesn\'t 
   assert.equal(windowFromModels(list, 'missing'), undefined);
   assert.equal(windowFromModels({ nope: true }, 'qwen3.8-27b'), undefined);
 });
+
+test('assistant.access: a dotted key must name a tool the integration has', () => {
+  const config = Config.parse({ integrations: { w: { type: 'weather', latitude: 1, longitude: 2 } }, layout: [], assistant: { model: 'm', access: { 'w.nope': 'none', 'w.weather': 'none', 'valet.report_issue': 'none', 'valet.plan': 'none', 'valet.nothing': 'none', 'gone.x': 'none' } } });
+  const problems = check(config, registry).problems.filter(p => p.startsWith('assistant.access'));
+  assert.equal(problems.length, 3, problems.join('\n'));
+  assert.match(problems.find(p => p.includes('"nope"'))!, /w has no tool "nope" \(it has: weather\)/);
+  assert.ok(problems.some(p => p.includes('valet has no tool "nothing"')) && problems.some(p => p.includes('no integration gone')));
+});

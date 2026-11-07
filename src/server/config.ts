@@ -28,6 +28,15 @@ export const AssistantConfig = z.object({
   // what the assistant may use: a default plus per-integration overrides, e.g. { default: read, lights: control }
   access: z.record(z.string(), Access).default({ default: 'read' }),
   maxSteps: z.number().int().min(1).max(20).default(6),
+  // how much the model thinks before it answers, in the chat: auto leaves it to the model and its server. off turns a Qwen-style
+  // model's thinking off (chat_template_kwargs.enable_thinking), low and high ask for that effort; Anthropic maps them to a thinking budget
+  reasoning: z.enum(['auto', 'off', 'low', 'high']).default('auto'),
+  // sampling, passed to the model as is: leave out for the server's defaults
+  options: z.object({
+    temperature: z.number().min(0).max(2).optional(),   // 0 to 2: lower is steadier
+    topP: z.number().gt(0).max(1).optional(),   // above 0, up to 1: the share of likely words it picks from
+    maxOutputTokens: z.number().int().min(64).max(200_000).optional(),   // the most it writes in one step, thinking included
+  }).strict().default({}),
   // how many tokens the model can hold, for the chat's context meter; known Claude models fill it in, others show what's used
   contextWindow: z.number().int().min(1000).max(10_000_000).optional(),
   // near a known window, summarise the oldest part of a long chat for the model (the page keeps all of it); false sends the last 24 messages

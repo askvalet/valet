@@ -52,8 +52,8 @@ export const MAX_RULES = 20, FAILS = 3, LATE_MS = 15 * 60_000;
 
 export interface RuleEnv {
   instances(): Map<string, Instance>;
-  /** What `assistant.access` grants this integration now (run.ts's rank). */
-  access(id: string): number;
+  /** What `assistant.access` grants this integration now, or one of its tools by its dotted key (run.ts's rank). */
+  access(id: string, tool?: string): number;
   acting(): boolean;
   /** A placed widget's own title, or nothing if it isn't on the page. */
   title(widget: string): string | undefined;
@@ -75,7 +75,7 @@ export function actionFor(tool: string, input: unknown, env: Pick<RuleEnv, 'inst
   const t = env.instances().get(id)?.tools?.[name];
   if (!t) return { error: `no tool ${tool}` };
   if (t.access === 'read') return { error: `${tool} only looks, so a rule has nothing to do with it: leave the tool out to just send the message` };
-  const level = env.access(id);
+  const level = env.access(id, name);
   if (level < rank[t.access]) return { error: `${tool} needs ${t.access} access, and assistant.access gives ${id} ${(Object.keys(rank) as (keyof typeof rank)[]).find(k => rank[k] === level)}` };
   const args = t.input.safeParse(input ?? {});
   if (!args.success) return { error: `${tool}: ${args.error.issues[0]?.path.join('.') || 'input'}: ${args.error.issues[0]?.message}` };

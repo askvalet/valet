@@ -13,9 +13,9 @@ import type { Activity } from './activity.ts';
 import type { Config } from './config.ts';
 import type { Instance, Integration } from './core.ts';
 import { mcpTools } from './mcp.ts';
-import { chatAgent, contextWindow, makeAgentModel, makeModel } from './model.ts';
+import { callSettings, chatAgent, contextWindow, lastStepSettings, makeAgentModel, makeModel } from './model.ts';
 import { checkCard } from '../shared/cards.schema.ts';
-import { accessOf as granted, asker, rank, runTool as run, who } from './run.ts';
+import { accessOf as granted, asker, rank, runTool as run, toolAccess, who } from './run.ts';
 
 export { trimHistory } from './compact.ts';
 
@@ -28,6 +28,10 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   const model = safety.model ?? makeModel(a);
   // Valet's own tools (what happened, reminders, rules) work without being granted; read-only pages still cap them
   const accessOf = (id: string) => granted(a, id);
+  // one tool's level: its own dotted key (`plex.plex_stop_stream: control`), else its integration's; a read-only Valet only looks
+  const levelOf = (id: string, name: string) => Math.min(toolAccess(a, id, name), safety.acting ? rank.control : rank.read);
+  // the chat's built-ins answer to `valet.<name>: none` too
+  const builtin = (name: string) => a.access[`valet.${name}`] !== 'none';
 
   // Tool names are "<instance>__<tool>" so two instances of one integration (two Plex servers) don't collide.
   const tools: ToolSet = {};
@@ -38,8 +42,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   const runTool = (id: string, name: string, t: any, args: any, via: 'chat' | 'plan') => run({ id, name, t, args, via, who: who(), activity: safety.activity, redact: safety.redact });
   for (const [id, inst] of instances) {
     // read-only Valet (no sign-in, untrusted network): the assistant may look, never add or change
-    const level = Math.min(accessOf(id), safety.acting ? rank.control : rank.read);
-    const usable = Object.entries(inst.tools ?? {}).filter(([, t]) => rank[t.access] <= level);
+    const usable = Object.entries(inst.tools ?? {}).filter(([name, t]) => rank[t.access] <= levelOf(id, name));
     if (!usable.length) continue;
     catalog.push(`- ${id} (${meta.get(id)!.name}): ${usable.map(([n]) => n).join(', ')}`);
     for (const [name, t] of usable) {
@@ -58,7 +61,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
 
   // Built-in: several changes approved once. Every step is still a tool this access level allows, with checked input, and
   // the person sees the whole list before anything runs. It stops at the first failure.
-  if (safety.acting) {
+  if (safety.acting && builtin('plan')) {
     tools.plan = tool({
       description: 'Do several things in order, with one approval, when a request takes more than one change ("clear space", "get ready for movie night"). Look things up first, then list the exact tool calls. Each step needs a why in plain words. Never use it for a single change.',
       inputSchema: z.object({ title: z.string().describe('what this achieves, in plain words'), steps: z.array(z.object({ tool: z.string().describe('its full name, e.g. downloads__pause_downloads'), input: z.record(z.string(), z.unknown()).optional(), why: z.string() })).min(2).max(8) }),
@@ -90,8 +93,8 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
 
   // Built-in: one search across everything searchable it may read, for when it doesn't know where something lives.
   const finders = [...instances].flatMap(([id, inst]) => (accessOf(id) >= rank.read
-    ? Object.entries(inst.tools ?? {}).filter(([, t]) => t.find && t.access === 'read') : []).map(([name, t]) => ({ source: `${meta.get(id)!.name}: ${name}`, t })));
-  if (finders.length > 1) {
+    ? Object.entries(inst.tools ?? {}).filter(([name, t]) => t.find && t.access === 'read' && levelOf(id, name) >= rank.read) : []).map(([name, t]) => ({ source: `${meta.get(id)!.name}: ${name}`, t })));
+  if (finders.length > 1 && builtin('search_everything')) {
     tools.search_everything = tool({
       description: `Search all of these at once: ${finders.map(f => f.source).join(', ')}. Use when you don't know where something is, or the question could be in more than one place.`,
       inputSchema: z.object({ query: z.string() }),
@@ -111,7 +114,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   }
 
   // Built-in: numbers it already has, drawn properly. It only makes a card: no data of its own, no effect on anything.
-  tools.present = tool({
+  if (builtin('present')) tools.present = tool({
     description: 'Draw a chart or table in the chat from numbers you already got from tools, when that reads better than a sentence: comparisons, rankings, several rows. Never invent or estimate a value. For a number over time use metric_chart instead.',
     inputSchema: z.object({ kind: z.enum(['chart', 'table']), title: z.string(), unit: z.string().optional(), labels: z.array(z.string()).optional().describe('chart: a name per point'),
       series: z.array(z.object({ name: z.string(), points: z.array(z.number()) })).optional().describe('chart'), columns: z.array(z.string()).optional().describe('table'), rows: z.array(z.array(z.union([z.string(), z.number()]))).optional().describe('table') }),
@@ -123,12 +126,12 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     },
     toModelOutput: ({ output }) => ({ type: 'json', value: (output as { data: any }).data }),
   });
-  catalog.push('- present: draw a chart or table from numbers you already have');
+  if (builtin('present')) catalog.push('- present: draw a chart or table from numbers you already have');
 
   // Built-in: lay out any widgets the assistant may read, as live cards side by side or stacked.
   const readable = [...instances].filter(([id]) => accessOf(id) >= rank.read)
     .flatMap(([id, inst]) => Object.entries(inst.widgets).map(([w, def]) => ({ key: `${id}.${w}`, title: def.title, def })));
-  if (readable.length) {
+  if (readable.length && builtin('show')) {
     tools.show = tool({
       description: 'Show live widgets as cards, side by side ("row") or stacked ("column"). Use when the person asks to see, show or compare things. Widgets: '
         + readable.map(r => `${r.key} (${r.title})`).join(', '),
@@ -216,11 +219,13 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       toolApproval: approvals,
       experimental_toolApprovalSecret: APPROVALS,
       stopWhen: isStepCount(a.maxSteps),
+      ...callSettings(a),   // assistant.reasoning and assistant.options; nothing when they're left out
       prepareStep: ({ stepNumber, messages: now }) => {
         // a turn whose tool results pile up: earlier steps' results shrink before the next step, so one turn can't fill the window
         const smaller = auto && stepNumber > 0 ? squeezeSteps(now, budget!, tokens) : undefined;
         // the last step is for answering: a model still looking things up when its steps run out would otherwise say nothing
-        const last = stepNumber >= a.maxSteps - 1 ? { toolChoice: 'none' as const, system: lastStep } : {};
+        // It's short and doesn't think first: a model forced to answer sometimes loops instead ("Let me check…" over and over)
+        const last = stepNumber >= a.maxSteps - 1 ? { toolChoice: 'none' as const, system: lastStep, ...lastStepSettings(a) } : {};
         return smaller || stepNumber >= a.maxSteps - 1 ? { ...last, ...(smaller ? { messages: smaller } : {}) } : undefined;
       },
     });

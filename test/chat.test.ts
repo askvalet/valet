@@ -196,3 +196,71 @@ test('context: each step says how much of the model\'s window the chat now takes
   const meta = r.events.filter(e => e.type === 'message-metadata').map(e => e.messageMetadata);
   assert.deepEqual(meta.at(-1), { context: { used: 2 } });   // one in, one out; the test's model has no known window
 });
+
+// ---- per-tool access, reasoning and sampling, the forced last step -------------------------------------------------------
+const { actionFor } = await import('../src/server/rules.ts');
+const { toolAccess } = await import('../src/server/run.ts');
+
+test('per-tool access: a dotted key takes one tool away everywhere, or gives one more than its integration', async () => {
+  const off = await talk(scripted('hi'), say('hi'), { access: { dl: 'control', 'dl.pause': 'none' } });
+  assert.ok(!off.offered.includes('dl__pause') && off.offered.includes('dl__resume') && off.offered.includes('dl__status'));
+  const config = Config.parse({ assistant: { model: 'm', access: { default: 'read', dl: 'control', 'dl.pause': 'none' } } });
+  const env = { instances: () => home(), access: (id: string, t?: string) => toolAccess(config.assistant, id, t) };
+  assert.match((actionFor('dl__pause', {}, env) as any).error, /needs control access/);   // a rule can't use it either
+  assert.ok(!('error' in actionFor('dl__resume', {}, env)));
+  const up = await talk(scripted('hi'), say('hi'), { access: { dl: 'read', 'dl.pause': 'control' } });
+  assert.ok(up.offered.includes('dl__pause') && !up.offered.includes('dl__resume') && up.offered.includes('dl__status'));
+  // a read-only page still only looks, whatever a key raises
+  const ro = await talk(scripted('hi'), say('hi'), { acting: false, access: { dl: 'read', 'dl.pause': 'control' } });
+  assert.ok(!ro.offered.includes('dl__pause'));
+  // the chat's own built-ins answer to valet.<name>
+  const builtins = await talk(scripted('hi'), say('hi'), { access: { 'valet.plan': 'none', 'valet.present': 'none' } });
+  assert.ok(!builtins.offered.includes('plan') && !builtins.offered.includes('present'));
+  // no dotted keys: exactly what the integration's level gives, as before
+  const plain = await talk(scripted('hi'), say('hi'));
+  assert.ok(['dl__pause', 'dl__resume', 'plan', 'present'].every(t => plain.offered.includes(t)));
+});
+
+test('a plan can\'t take a step its access takes away', async () => {
+  const model = scripted([['plan', { title: 't', steps: [{ tool: 'dl__resume', why: 'x' }, { tool: 'dl__pause', why: 'y' }] }]], 'ok');
+  const r = await talk(model, say('go'), { access: { dl: 'control', 'dl.pause': 'none' } });
+  const request = r.events.find(e => e.type === 'tool-approval-request'), call = r.events.find(e => e.type === 'tool-input-available');
+  const msgs = [...say('go'), { id: 'a1', role: 'assistant', parts: [{ type: 'tool-plan', toolCallId: call.toolCallId, state: 'approval-responded', input: call.input, approval: { id: request.approvalId, approved: true, signature: request.signature } }] }];
+  const again = await talk(scripted('done'), msgs, { access: { dl: 'control', 'dl.pause': 'none' } });
+  assert.deepEqual(ran, []);   // nothing ran, not even the allowed step
+  assert.match(again.text, /no tool dl__pause/);
+});
+
+const firstCall = async (assistant: object) => {
+  const model = scripted('hi');
+  const app = new Hono();
+  app.post('/chat', chatRoute(Config.parse({ assistant: { model: 'm', ...assistant } }), home(), meta(), { acting: true, redact, model: model as any }) as any);
+  await (await app.request('/chat', { method: 'POST', body: JSON.stringify({ messages: say('hi') }) })).text();
+  return model.doStreamCalls[0] as any;
+};
+
+test('assistant.reasoning and assistant.options reach the model call, and left out change nothing', async () => {
+  const auto = await firstCall({});
+  assert.equal(auto.providerOptions?.assistant, undefined);
+  assert.ok(auto.reasoning == null || auto.reasoning === 'provider-default');
+  assert.equal(auto.temperature, undefined); assert.equal(auto.topP, undefined); assert.equal(auto.maxOutputTokens, undefined);
+  assert.deepEqual((await firstCall({ reasoning: 'off' })).providerOptions.assistant, { chat_template_kwargs: { enable_thinking: false } });
+  assert.equal((await firstCall({ reasoning: 'low' })).reasoning, 'low');
+  assert.equal((await firstCall({ provider: 'anthropic', reasoning: 'off' })).reasoning, 'none');
+  const tuned = await firstCall({ options: { temperature: 0.2, topP: 0.9, maxOutputTokens: 800 } });
+  assert.equal(tuned.temperature, 0.2); assert.equal(tuned.topP, 0.9); assert.equal(tuned.maxOutputTokens, 800);
+  assert.throws(() => Config.parse({ assistant: { model: 'm', options: { temperature: 5 } } }));
+  assert.throws(() => Config.parse({ assistant: { model: 'm', options: { seed: 1 } } }));
+  assert.throws(() => Config.parse({ assistant: { model: 'm', reasoning: 'max' } }));
+});
+
+test('the forced last step is short and doesn\'t think first, so a model that loops there stops soon', async () => {
+  const model = scripted([['dl__status', {}]], [['dl__status', {}]], [['dl__status', {}]], [['dl__status', {}]], [['dl__status', {}]], 'here is the answer');
+  await talk(model, say('dig into it'));
+  const { LAST_STEP_TOKENS } = await import('../src/server/model.ts');
+  const last = model.doStreamCalls[5] as any, before = model.doStreamCalls[4] as any;
+  assert.equal(last.maxOutputTokens, LAST_STEP_TOKENS);
+  assert.deepEqual(last.providerOptions?.assistant, { chat_template_kwargs: { enable_thinking: false } });
+  assert.equal(before.maxOutputTokens, undefined);                        // the steps before keep the server's limit
+  assert.equal(before.providerOptions?.assistant, undefined);
+});

@@ -16,6 +16,10 @@ import { backupParts, type Backups } from './backups.ts';
 // today needs no day
 const stamp = (t: number) => fmt.stamp(t), when = stamp;
 
+/** Every name `valet.<name>` can take in assistant.access: Valet's own tools and the chat's built-ins. */
+export const OWN_TOOLS = ['plan', 'show', 'present', 'search_everything', 'docs_search', 'docs_read', 'report_issue', 'rule_add', 'rule_list', 'rule_remove',
+  'watch_add', 'watch_list', 'watch_remove', 'year_in_review', 'timeline', 'metric_chart', 'activity_log', 'backups_status'];
+
 export function ownInstance(o: { timeline: Timeline; activity: Activity; watches: Watches; rules: Rules; hub: () => Hub; widgets: string[]; history?: History; backups?: Backups; recap: (year?: number) => Promise<Recap>; undo: (id: number) => Promise<string> }): Instance {
   const log = () => {
     const list = o.activity.recent(12), undoable = list.find(e => e.undo && !e.undone);

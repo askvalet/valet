@@ -358,3 +358,14 @@ test('integrations: "stop plex" stops the one stream, and says so when there are
   sessions = [...sessions, { friendly_name: 'Alex', full_title: 'Other Film' }];
   await assert.rejects(stop.input({}), /2 streams are playing/);
 });
+
+test('per-tool access: a dotted key turns one command\'s tool off, or lets one act under an integration that only looks', async () => {
+  const { refusal } = await import('../src/server/commands.ts');
+  const t = (access: 'read' | 'control') => ({ description: '', label: 'x', access, input: z.object({}), run: async () => ({ data: {} }) });
+  const entry = (name: string, access: 'read' | 'control') => ({ id: `dl:${name}`, say: [name], label: name, kind: 'tool', access, inst: 'dl', name, cmd: { say: [name] }, target: t(access) }) as any;
+  const site = (access: object) => ({ config: Config.parse({ assistant: { model: 'm', access } }), acting: true }) as any;
+  assert.equal(refusal(site({ dl: 'read' }), entry('status', 'read')), null);
+  assert.match(refusal(site({ dl: 'read', 'dl.status': 'none' }), entry('status', 'read'))!, /turns dl\.status off/);
+  assert.match(refusal(site({ dl: 'read' }), entry('stop', 'control'))!, /gives dl read; this needs control/);
+  assert.equal(refusal(site({ dl: 'read', 'dl.stop': 'control' }), entry('stop', 'control')), null);
+});

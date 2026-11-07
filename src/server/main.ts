@@ -22,7 +22,7 @@ import { discover } from './discover.ts';
 import { mcpServer } from './mcpserver.ts';
 import { listCommands, runCommand } from './commands.ts';
 import { buildSite, type Site } from './site.ts';
-import { accessOf, rank } from './run.ts';
+import { rank, toolAccess } from './run.ts';
 import { registry } from '../integrations/index.ts';
 import { LABELS } from '../shared/labels.ts';
 import { cardLook, isBoth, isPaint, listOf, lookOf, type Both } from '../shared/look.ts';
@@ -385,11 +385,11 @@ app.post('/api/confirm', async c => {
   const [inst, name] = String(tool ?? '').split('__'), t = name ? site.instances.get(inst)?.tools?.[name] : undefined;
   const type = site.config.integrations[inst]?.type, logo = type ? `/api/icon/${type}` : undefined;
   // the same doors the chat has: a page that can't act gets no words, and a tool only ever sees checked input
-  const may = (id: string) => accessOf(site.config.assistant, id) > rank.none;
+  const may = (id: string, n: string) => toolAccess(site.config.assistant, id, n) > rank.none;
   if (!site.acting) return c.json({ logo });
-  const words = async (id: string, step: NonNullable<typeof t>, raw: unknown) => {
+  const words = async (id: string, n: string, step: NonNullable<typeof t>, raw: unknown) => {
     const args = step.input.safeParse(raw ?? {});
-    if (!args.success || !step.confirm || !may(id)) return null;
+    if (!args.success || !step.confirm || !may(id, n)) return null;
     return step.confirm(args.data);
   };
   try {
@@ -397,12 +397,12 @@ app.post('/api/confirm', async c => {
       // each step in the service's own words, so what's approved is what the tool says, not what the model wrote beside it
       const steps = await Promise.all(input.steps.map(async (s: any) => {
         const [id, n] = String(s?.tool ?? '').split('__'), step = site.instances.get(id)?.tools?.[n];
-        return step ? await words(id, step, s.input).catch(() => null) : null;
+        return step ? await words(id, n, step, s.input).catch(() => null) : null;
       }));
       return c.json(JSON.parse(site.redact(JSON.stringify({ steps, danger: steps.some(s => s?.danger) || undefined }))));
     }
     if (!t?.confirm) return c.json({ logo });
-    const said = await words(inst, t, input);
+    const said = await words(inst, name, t, input);
     return c.json(said ? JSON.parse(site.redact(JSON.stringify({ logo, ...said }))) : { logo });
   } catch { return c.json({ logo }); }
 });
@@ -462,7 +462,9 @@ app.post('/api/pins', async c => {
   // a pin of several cards is checked card by card: `show` is a key the access list doesn't name
   const barred = (inst: string) => (a.access[inst] ?? a.access.default ?? 'read') === 'none';
   const reaches = tool === 'show' ? (Array.isArray(input.widgets) ? input.widgets : []).map((k: unknown) => String(k).split('.')[0]) : [tool.split('__')[0]];
-  if (!reaches.length || reaches.some(barred)) return c.json({ error: 'the assistant can\'t reach that' }, 403);
+  // and a tool assistant.access turns off by name (`plex.plex_streams: none`, `valet.show: none`) can't be pinned either
+  const [pi, pn] = tool.split('__'), off = tool === 'show' ? a.access['valet.show'] === 'none' : toolAccess(a, pi, pn) === rank.none;
+  if (!reaches.length || reaches.some(barred) || off) return c.json({ error: 'the assistant can\'t reach that' }, 403);
   if (sandbox.on) return c.json({ ok: true });   // a demo saves nothing, and a rebuild would reload every other visitor
   const pins = await loadPins();
   if (pins.length >= 24) return c.json({ error: 'that\'s plenty of pins; unpin one first' }, 409);
@@ -481,10 +483,11 @@ const liveCache = new Map<string, { at: number; card: unknown }>();
 app.post('/api/live', async c => {
   const a = site.config.assistant, { tool, input } = await c.req.json().catch(() => ({} as any));
   if (!a || typeof tool !== 'string' || !input || typeof input !== 'object') return c.json({ error: 'bad request' }, 400);
-  const allowed = (id: string) => (a.access[id] ?? a.access.default ?? 'read') !== 'none';
   const [inst, name] = tool.split('__');
+  // its integration, and the tool by name (`plex.plex_streams: none`, `valet.show: none`), must still be reachable
+  const allowed = (id: string) => (a.access[id] ?? a.access.default ?? 'read') !== 'none' && (tool === 'show' ? a.access['valet.show'] !== 'none' : toolAccess(a, id, name) > rank.none);
   const ok = tool === 'show' ? Array.isArray(input.widgets) && input.widgets.every((k: unknown) => typeof k === 'string' && allowed(k.split('.')[0]))
-    : inst !== 'valet' ? !!site.instances.get(inst)?.tools?.[name]?.live && allowed(inst) : !!site.instances.get(inst)?.tools?.[name]?.live;
+    : inst !== 'valet' ? !!site.instances.get(inst)?.tools?.[name]?.live && allowed(inst) : !!site.instances.get(inst)?.tools?.[name]?.live && a.access[`valet.${name}`] !== 'none';
   if (!ok) return c.json({ error: 'not a live card' }, 403);
   const id = JSON.stringify([tool, input]), hit = liveCache.get(id);
   if (hit && Date.now() - hit.at < 5000) return c.json({ card: hit.card });

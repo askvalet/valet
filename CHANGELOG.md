@@ -5,10 +5,21 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- `assistant.access` takes a key per tool: `plex.plex_stop_stream: control` under `plex: read` lets that one tool act, and `downloads.torrent_control: none` or `valet.report_issue: none` takes one away from the chat, commands, rules, plans, pins and live cards alike. `config check` names a key that matches no tool, with the tools that instance has. Without dotted keys nothing changes.
+- `assistant.reasoning`: `auto` (as before), `off`, `low` or `high`. `off` turns a Qwen-style model's thinking off in the chat (`chat_template_kwargs: { enable_thinking: false }`, which servers that don't know it ignore); `low` and `high` send `reasoning_effort`; Anthropic maps them to its thinking budget. Background calls keep the model's default.
+- `assistant.options` passes `temperature`, `topP` and `maxOutputTokens` to the model. Left out, the server's defaults.
+- The docs say how to keep the assistant's context small: which settings helped in testing against a local model, and which made answers worse.
+
 ### Changed
 
 - A Preply lesson counts as an online meeting: its classroom link gets the ring before it starts, the reminder and a Join button, like Meet or Zoom.
 - The wall display lays out a page like the main page: a section's `columns` per screen (`{ phone, tablet, desktop, wide }`) and a card's own `cols` and `rows`, with cards in a row ending flush. The demo's House page uses it: the cameras over two rows, the thermostat beside who's home and the doors, then the energy and the weather.
+
+### Fixed
+
+- The assistant's last step, the one kept for answering, could loop on a small model: a tag or "Let me check…" hundreds of times, until the server's limit. It now doesn't think first and stops after about 400 tokens, and stray tags a model leaves in its answer (`</think>`, `</thinking>`, `<trans>`) aren't shown.
 
 ## [0.2.0] - 2026-11-05
 

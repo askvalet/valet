@@ -10,6 +10,7 @@ import type { Action, Command, Instance, Tool } from './core.ts';
 import type { Hub } from './hub.ts';
 import { match, type Phrase } from '../shared/commands.ts';
 import { httpsOnly } from './webpush.ts';
+import { toolAccess } from './run.ts';
 
 const RANK = { none: 0, read: 1, write: 2, control: 3 } as const;
 // Valet's own parts (its setup tools above all) never answer to a command, whatever they declare. Valet's own tools
@@ -46,15 +47,18 @@ export async function commandsOf(site: CommandSite): Promise<Entry[]> {
 /** Whether this page may run it, and why not. */
 export function refusal(site: CommandSite, e: Entry): string | null {
   if (OWN.has(e.inst) && !looks(e.inst, e.kind, e.target)) return 'that isn\'t something a command can do';
-  if (OWN.has(e.inst)) return site.config.assistant?.access.valet === 'none' ? 'assistant.access gives valet none' : null;
+  if (OWN.has(e.inst)) return site.config.assistant?.access.valet === 'none' ? 'assistant.access gives valet none'
+    : site.config.assistant?.access[`${e.inst}.${e.name}`] === 'none' ? `assistant.access turns ${e.inst}.${e.name} off` : null;
   if (e.kind === 'action') return site.acting ? null : 'Valet is read-only: sign-in is off (set auth.mode, or auth.trustNetwork if the network is private)';
   const a = site.config.assistant, t = e.target as Tool;
   // no assistant: only looking. With one, what the assistant may use here, capped at looking on a read-only page
-  const granted = a ? RANK[a.access[e.inst] ?? a.access.default ?? 'read'] : RANK.read;
+  // a dotted key (`plex.plex_stop_stream: control`) sets one tool's level, over its integration's
+  const granted = a ? toolAccess(a, e.inst, e.name) : RANK.read;
+  if (a && granted === RANK.none) return `assistant.access turns ${e.inst}.${e.name} off`;
   const level = Math.min(granted, site.acting ? RANK.control : RANK.read);
   if (RANK[t.access] <= level) return null;
   if (!site.acting) return 'Valet is read-only: sign-in is off (set auth.mode, or auth.trustNetwork if the network is private)';
-  return a ? `assistant.access gives ${e.inst} ${a.access[e.inst] ?? a.access.default ?? 'read'}; this needs ${t.access}` : 'without an assistant, commands only look; this one changes something';
+  return a ? `assistant.access gives ${a.access[`${e.inst}.${e.name}`] ? `${e.inst}.${e.name}` : e.inst} ${a.access[`${e.inst}.${e.name}`] ?? a.access[e.inst] ?? a.access.default ?? 'read'}; this needs ${t.access}` : 'without an assistant, commands only look; this one changes something';
 }
 
 const who = (c: Context) => (c.get as (k: string) => string | undefined)('user') ?? 'you';

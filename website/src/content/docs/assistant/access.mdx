@@ -36,6 +36,23 @@ Two other keys are special:
 - `config` turns on [editing the config](/assistant/limits/#editing-the-config). Without it, those tools don't exist.
 - `valet` is Valet's own tools: reminders, rules, the timeline, the activity log. It defaults to `control`, so reminders and [rules](/assistant/rules/) work with no setup. Each one still asks. `valet: write` keeps reminders and turns rules off, including ones already set up.
 
+## One tool at a time
+
+A key with a dot names one tool: the instance, then the tool's name as its integration's page lists it. It wins over the instance's level, up or down.
+
+```yaml title="config.yaml"
+assistant:
+  access:
+    plex: read
+    plex.plex_stop_stream: control   # this one tool may act; the rest of Plex only looks
+    downloads.torrent_control: none  # the rest of qBittorrent keeps its level
+    valet.report_issue: none         # Valet's own tools too, and the built-ins: valet.plan, valet.show, valet.present, valet.search_everything
+```
+
+It uses the same levels, and a tool that acts still asks first. `none` takes the tool away everywhere: from the chat, the palette's commands, rules, plans, pins and live cards. A read-only page still caps it at `read`. Valet reports a dotted key that names no tool as a config problem, with the list of tools that instance has.
+
+Dotted keys are optional. Without them, every tool gets its instance's level, as before. They're also a way to [keep the assistant's context small](/assistant/models/#keeping-the-context-small).
+
 ## Commands
 
 The palette's plain [commands](/concepts/layout/#the-palette) ("stop plex") follow the same levels, with no model. A command that uses a `control` tool on Plex needs `plex: control`, and still shows its approval card. With no `assistant` block, commands use only tools that look, plus the page's own actions.

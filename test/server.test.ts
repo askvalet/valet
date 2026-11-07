@@ -174,6 +174,11 @@ test('thinking: reasoning left in a reply is split from the answer', async () =>
   assert.deepEqual(splitThink('<think>still going'), { thought: 'still going', said: '', thinking: true });
   assert.deepEqual(splitThink('Plain answer about <b>'), { thought: '', said: 'Plain answer about <b>', thinking: false });
   assert.deepEqual(splitThink('one</think>two</think>three'), { thought: 'onetwo', said: 'three', thinking: false });
+  // a model that lost its way: template tags left in the answer, sometimes hundreds of them
+  assert.deepEqual(splitThink('Looking.</think>\n\nAll up.\n' + '</trans>\n'.repeat(300) + '<trans>'), { thought: 'Looking.', said: 'All up.', thinking: false });
+  assert.equal(splitThink('All up.</thinking>').said, 'All up.');
+  assert.equal(splitThink('<trans>All up.</trans>').said, 'All up.');
+  assert.equal(splitThink('Use <transform> and <b>').said, 'Use <transform> and <b>');
 });
 
 test('another agent: the config hands it the chat, but never on a read-only page', async () => {

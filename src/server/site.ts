@@ -21,13 +21,13 @@ import { buildRecap, recapYear } from './recap.ts';
 import { troubles, Watcher } from './insight.ts';
 import { push, type Message } from './notify.ts';
 import { pushAll } from './webpush.ts';
-import { ownInstance } from './own.ts';
+import { OWN_TOOLS, ownInstance } from './own.ts';
 import { Backups, news } from './backups.ts';
 import { Reminders } from './reminders.ts';
 import { Timeline } from './timeline.ts';
 import { loadWatches, Watches } from './watches.ts';
 import { loadRules, Rules } from './rules.ts';
-import { accessOf, runTool } from './run.ts';
+import { runTool, toolAccess } from './run.ts';
 import { loadPins, pinsInstance, savePins, type Pin } from './pins.ts';
 import { setupTools } from './setup.ts';
 import { sandbox } from './sandbox.ts';
@@ -95,7 +95,7 @@ export function check(config: Config, registry: Record<string, Integration>, fro
     if (inst === 'valet') continue;      // Valet's own widgets exist once the site is built
     if (!instances.get(inst)?.widgets[w]) problems.push(`layout: no widget "${key}"${instances.has(inst) ? ` (${inst} has: ${Object.keys(instances.get(inst)!.widgets).join(', ')})` : ''}`);
   }
-  for (const [id] of Object.entries(config.assistant?.access ?? {})) if (!['default', 'config', 'valet'].includes(id) && !instances.has(id)) problems.push(`assistant.access.${id}: no such integration`);
+  for (const [id] of Object.entries(config.assistant?.access ?? {})) if (!id.includes('.') && !['default', 'config', 'valet'].includes(id) && !instances.has(id)) problems.push(`assistant.access.${id}: no such integration`);
   // the wall's own cards are polled too, while a wall is open; its typos name the wall
   const has = (key: string) => { const [inst, w] = key.split('.'); return inst === 'valet' || !!instances.get(inst)?.widgets[w]; };
   problems.push(...wallProblems(config, has));
@@ -111,6 +111,13 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   for (const t of Object.keys(config.appearance.wallpapers)) if (!tabs.has(t)) problems.push(`appearance.wallpapers: no tab "${t}" (the tabs are: ${[...tabs].join(', ')})`);
   const lists = [config.appearance.wallpaper].flatMap(w => isBoth(w) ? [w.light, w.dark] : [w]);
   if (lists.some(w => Array.isArray(w) && w.length > 1) && !config.appearance.rotate) problems.push('appearance.rotate: a list of wallpapers needs a time to take turns, like 10m (only the first shows)');
+  // a dotted key in assistant.access names one tool: <instance>.<tool>
+  for (const key of Object.keys(config.assistant?.access ?? {}).filter(k => k.includes('.'))) {
+    const [id, name] = [key.slice(0, key.indexOf('.')), key.slice(key.indexOf('.') + 1)];
+    const names = id === 'valet' ? OWN_TOOLS : id === 'config' ? Object.keys(setupTools('', registry)) : Object.keys(instances.get(id)?.tools ?? {});
+    if (id !== 'valet' && id !== 'config' && !instances.has(id)) problems.push(`assistant.access: "${key}" names no integration ${id}`);
+    else if (!names.includes(name)) problems.push(`assistant.access: ${id} has no tool "${name}" (it has: ${names.join(', ') || 'none'})`);
+  }
   return { problems, instances, meta, placed };
 }
 
@@ -153,7 +160,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   // standing instructions: each run re-checked against the config as it is now, then through the chat's own door
   const rules = new Rules(await loadRules(), {
     instances: () => instances,
-    access: id => accessOf(config.assistant, id),
+    access: (id, tool) => toolAccess(config.assistant, id, tool),
     acting: () => canAct(config),
     title: key => hub.widget(key)?.title,
     act: async (r, s) => {

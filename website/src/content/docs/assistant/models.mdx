@@ -63,6 +63,8 @@ If that matters to you, use a local model, or set sensitive integrations to `non
 | `instructions` | none | Extra text for the system prompt. |
 | `access` | `{ default: read }` | What it may use. See [access levels](/assistant/access/). |
 | `maxSteps` | `6` | Tool rounds per answer, 1 to 20. The last step is kept for answering. |
+| `reasoning` | `auto` | How much the model thinks before it answers in the chat: `auto` (as the model and its server decide), `off`, `low` or `high`. See [thinking](#thinking). |
+| `options` | none | Sampling, passed to the model as is: `temperature` (0 to 2), `topP` (above 0, up to 1) and `maxOutputTokens` (64 to 200,000). Leave it out for the server's defaults. |
 | `contextWindow` | known Claude models, or what your server reports | How many tokens the model holds, for the chat's context meter and for keeping long chats inside it. |
 | `compact` | `true` | Near a known window, summarise the oldest part of a long chat for the model. `false` sends the last 24 messages instead. |
 | `background` | see below | What it does on its own. |
@@ -72,6 +74,21 @@ A small pie beside the model's name in the chat shows how full its context is, f
 
 The chat window has its own options under [`chat`](/reference/configuration/#chat). Tool results from older turns shrink to a preview, so a long chat doesn't get slower with every turn.
 
+### Thinking
+
+A model that thinks before it answers, like Qwen 3, is slower. `reasoning: off` turns the thinking off. To an OpenAI-compatible server (vLLM, llama.cpp, SGLang) Valet sends `chat_template_kwargs: { enable_thinking: false }`, which Qwen-style chat templates read; a server that doesn't know it ignores it. `low` and `high` send `reasoning_effort`, for models and servers that take it. With Anthropic, `off` turns extended thinking off and `low` and `high` set its budget.
+
+It applies to the chat. Background calls and the summary of a long chat keep the model's own default.
+
+```yaml title="config.yaml"
+assistant:
+  model: qwen3:8b
+  reasoning: off
+  options: { temperature: 0.6 }
+```
+
+Whatever `reasoning` says, the last step, the one kept for answering, doesn't think first and stops after about 400 tokens. A small model made to answer without tools sometimes repeats itself there instead; this keeps that short. Stray tags a model leaves in its answer (`</think>`, `<trans>`) aren't shown.
+
 ### Long chats
 
 When the window is known, Valet sizes what it sends before each answer: the instructions, the tools and the conversation stay under about 70% of the window, leaving room for lookups and the reply. A chat that fits goes as it is. One that doesn't has its oldest turns replaced by a short summary, written by the same model in a separate call with no tools. Your latest question and the turn it belongs to always go whole. The summary is reused on the next turns and extended when the chat grows again.
@@ -79,6 +96,15 @@ When the window is known, Valet sizes what it sends before each answer: the inst
 The chat shows a quiet line where that happened, "Earlier messages summarised to make room". The page keeps the whole conversation; only what's sent to the model gets shorter. Within one answer, results from earlier lookups shrink when they pile up, so a single question can't fill the window either.
 
 If the summary can't be written, or the window isn't known, the oldest messages are left out instead (the last 24 go), and the model is told that earlier turns are missing. If the model's server still says the request is too long, Valet sends it once more with only your latest question and a summary, and if that fails too, the chat says so in plain words instead of showing an error.
+
+## Keeping the context small
+
+Every integration you connect adds its tools to every message the assistant sends, whether the question is about it or not. On a busy homelab with about 90 tools, the first step of a chat is about 16,000 tokens, and about 90% of that is tool definitions. A small local model reads all of it before it starts, so a smaller first step answers sooner. What helped, and what didn't, in testing against a local model:
+
+- **Turn off what you never ask about.** Set `access: none` for integrations you never ask the assistant about (their cards stay on the page), or `read` where you only ask. Use [per-tool access](/assistant/access/#one-tool-at-a-time) to drop single tools. In testing this cut about 10% of tokens with no loss in answers.
+- **Don't connect the same thing twice.** If you connect an [MCP server](/assistant/mcp/) that overlaps a built-in integration, such as Home Assistant's MCP server alongside the Home Assistant integration, turn one of them off.
+- **Leave `maxSteps` and `contextWindow` at their defaults.** Lowering them made answers worse: a 32k window or 4 steps dropped pass rates.
+- **Keep `reasoning: auto` unless speed matters more.** `reasoning: off` is about 2 to 3 times faster, but the model starts answering follow-up questions without checking, and makes up values.
 
 ## Background use
 
