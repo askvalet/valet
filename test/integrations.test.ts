@@ -84,6 +84,39 @@ test('pihole: parallel requests share one sign-in, and an expired session signs 
   assert.equal((card as any).summary.ring, '14%');
 });
 
+test('pihole: status names the devices behind the blocks, and a domain says who asked for it', async () => {
+  const seen: string[] = [];
+  const ctx = fake(url => {
+    seen.push(url);
+    if (url.endsWith('/api/auth')) return { session: { valid: true, sid: 's' } };
+    if (url.includes('summary')) return { queries: { total: 1000, blocked: 140, percent_blocked: 14 }, clients: { active: 3 } };
+    if (url.includes('history')) return { history: [] };
+    if (url.includes('dns/blocking')) return { blocking: 'enabled', timer: null };
+    if (url.includes('top_clients')) return { clients: [{ name: 'tv.lan', ip: '192.168.1.20', count: 90 }, { name: '', ip: '100.64.0.5', count: 30 }, { name: '', ip: '192.168.1.9', count: 5 }] };
+    if (url.includes('config/dns/hosts')) return { config: { dns: { hosts: ['100.64.0.5 laptop', '10.0.0.1 router gw'] } } };
+    if (url.includes('queries?domain=') && url.includes('nothing')) return { queries: [], recordsFiltered: 0 };
+    if (url.includes('queries?domain=')) return { recordsFiltered: 450, queries: [
+      { domain: 'a.tracker.example', client: { ip: '192.168.1.20', name: 'tv.lan' } }, { domain: 'b.tracker.example', client: { ip: '192.168.1.20', name: 'tv.lan' } },
+      { domain: 'a.tracker.example', client: { ip: '100.64.0.5', name: null } }] };
+    return { domains: [{ domain: 'ads.example', count: 9 }] };
+  });
+  const p = make(pihole, { url: 'http://pi', password: 'x' }, ctx);
+  const plain: any = await p.tools!.adblock_status.run({});
+  assert.deepEqual(plain.data.topClients, [{ device: 'tv.lan', ip: '192.168.1.20', count: 90 }, { device: 'laptop', ip: '100.64.0.5', count: 30 }, { device: '192.168.1.9', count: 5 }]);
+  assert.equal(plain.data.asked, undefined);
+  assert.ok(seen.some(u => u.includes('stats/top_clients?blocked=true&count=5')));
+  assert.ok(!seen.some(u => u.includes('queries?')), 'no domain, no query log');
+  const asked: any = (await p.tools!.adblock_status.run({ domain: 'tracker' })).data.asked;
+  assert.ok(seen.some(u => u.includes(`queries?domain=${encodeURIComponent('*tracker*')}&length=200`)), 'a plain name matches anywhere');
+  assert.deepEqual(asked.devices, [{ device: 'tv.lan', ip: '192.168.1.20', count: 2 }, { device: 'laptop', ip: '100.64.0.5', count: 1 }]);
+  assert.deepEqual(asked.domains, [{ domain: 'a.tracker.example', count: 2 }, { domain: 'b.tracker.example', count: 1 }]);
+  assert.equal(asked.queries, 450); assert.equal(asked.note, 'counts are from the latest 3 of 450 queries');
+  await p.tools!.adblock_status.run({ domain: '*.example' });
+  assert.ok(seen.some(u => u.includes(`domain=${encodeURIComponent('*.example')}&`)), 'a pattern is used as given');
+  const none: any = await p.tools!.adblock_status.run({ domain: 'nothing.example' });
+  assert.equal(typeof none.data.asked, 'string'); assert.match(none.data.asked, /no queries/i);
+});
+
 test('uptime kuma: parses metrics; a down monitor makes the summary red', async () => {
   const metrics = [
     'monitor_status{monitor_id="1",monitor_name="Plex",monitor_type="http"} 1',

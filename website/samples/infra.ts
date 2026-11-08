@@ -67,6 +67,9 @@ const pihole = (blocking: unknown) => route([
   ['/api/auth', { session: { valid: true, sid: 'sample' } }], ['stats/summary', { queries: { total: 18_412, blocked: 2_577, percent_blocked: 14 }, clients: { active: 23 } }], ['/history', { history: dnsHistory }],
   ['dns/blocking', blocking], ['stats/database/summary', { sum_blocked: 1_204_118, percent_blocked: 14.2, total_clients: 23 }],
   ['stats/top_domains', { domains: [['ads.example.net', 412], ['telemetry.example.com', 318], ['metrics.example.org', 201], ['tracker.example.io', 96], ['pixel.example.co', 41]].map(([domain, count]) => ({ domain, count })) }],
+  ['stats/top_clients', { clients: [['living-room-tv', '192.168.1.40', 1_204], ['laptop', '192.168.1.21', 611], ['', '192.168.1.33', 287], ['phone', '192.168.1.52', 240], ['tablet', '192.168.1.60', 98]].map(([name, ip, count]) => ({ name, ip, count })) }],
+  ['config/dns/hosts', { config: { dns: { hosts: ['192.168.1.33 thermostat'] } } }],
+  ['/api/queries', { recordsFiltered: 12, queries: Array.from({ length: 12 }, (_, i) => ({ domain: i % 3 ? 'ads.example.net' : 'cdn.ads.example.net', client: i % 4 ? { ip: '192.168.1.40', name: 'living-room-tv' } : { ip: '192.168.1.21', name: 'laptop' } })) }],
 ]);
 
 // ── Local AI monitor

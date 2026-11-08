@@ -8,6 +8,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 ### Added
 
 - `assistant.models`: more models to pick from in the chat's header, for one chat at a time. Each entry needs only `model`; what it leaves out comes from the main settings (the address only to the same provider, the key only to the same server). The server accepts only a configured choice, the context meter follows the chosen model's window, and background calls stay on the main model. `config check` names duplicate names and an Anthropic choice without a key. Without `models` nothing changes.
+- Pi-hole's `adblock_status` also lists the devices with the most blocked queries, by name where Pi-hole or its local DNS records know one, and takes an optional `domain` (a plain name matches anywhere, `*` as in Pi-hole) to say which devices looked it up lately.
 
 ## [0.3.0] - 2026-11-07
 

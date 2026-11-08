@@ -28,6 +28,23 @@ export default defineIntegration({
       const [s, h, b, top] = await Promise.all([api<any>('stats/summary'), api<any>('history'), api<any>('dns/blocking'), api<any>('stats/top_domains?blocked=true&count=5')]);
       return { s, history: (h.history ?? []) as any[], blocking: b.blocking as string, timer: b.timer as number | null, top: (top.domains ?? []) as { domain: string; count: number }[] };
     }
+    /** Devices by name: Pi-hole only learns a name from its own lookups, so for one it hasn't named yet, its local DNS
+     *  records (dns.hosts, "ip name") stand in, and failing that the address. */
+    async function named(list: { name?: string | null; ip: string; count: number }[]) {
+      const hosts = list.some(c => !c.name) ? await api<any>('config/dns/hosts').then(r => new Map<string, string>(((r.config?.dns?.hosts ?? []) as string[]).map(l => l.trim().split(/\s+/)).filter(p => p.length > 1).map(p => [p[0], p[1]])), () => new Map<string, string>()) : new Map<string, string>();
+      return list.map(c => { const name = c.name || hosts.get(c.ip); return name ? { device: name.replace(/\.$/, ''), ip: c.ip, count: c.count } : { device: c.ip, count: c.count }; });
+    }
+    /** Who looked a domain up lately: a plain name matches anywhere in the domain, * works as in Pi-hole. */
+    async function whoAsked(domain: string) {
+      const pattern = domain.includes('*') ? domain : `*${domain}*`;
+      const r = await api<any>(`queries?domain=${encodeURIComponent(pattern)}&length=200`);
+      const qs = (r.queries ?? []) as any[];
+      if (!qs.length) return `No queries for ${pattern} in Pi-hole's recent log.`;
+      const tally = <K>(key: (q: any) => K) => { const m = new Map<K, number>(); for (const q of qs) m.set(key(q), (m.get(key(q)) ?? 0) + 1); return [...m].sort((a, b) => b[1] - a[1]).slice(0, 5); };
+      const devices = await named(tally(q => q.client?.ip as string).map(([ip, count]) => ({ ip, count, name: qs.find(q => q.client?.ip === ip)?.client?.name })));
+      const total = Number(r.recordsFiltered ?? qs.length);
+      return { pattern, queries: total, ...(total > qs.length ? { note: `counts are from the latest ${qs.length} of ${total.toLocaleString('en')} queries` } : {}), devices, domains: tally(q => q.domain as string).map(([d, count]) => ({ domain: d, count })) };
+    }
     /** The day's chart, with the pause banner while blocking is off: the widget, and what a pause from chat shows. */
     async function statsCard(): Promise<Card> {
       const { s, history, blocking, timer, top } = await stats();
@@ -82,11 +99,12 @@ export default defineIntegration({
         adblock_status: {
           live: true,
           label: 'Checked ad blocking',
-          description: 'Pi-hole: share of DNS queries blocked today, totals, whether blocking is on, and the most blocked domains.',
-          access: 'read', input: z.object({}),
-          async run() {
-            const [{ s, blocking, timer, top }, card] = await Promise.all([stats(), statsCard()]);
-            return { data: { blocking, pausedSeconds: timer, queries: s.queries.total, blocked: s.queries.blocked, percentBlocked: Math.round(s.queries.percent_blocked * 10) / 10, topBlocked: top }, card };
+          description: 'Pi-hole: share of DNS queries blocked today, totals, whether blocking is on, the most blocked domains and devices; pass domain to see which devices ask for it.',
+          access: 'read', input: z.object({ domain: z.string().trim().min(1).max(253).optional() }),
+          async run({ domain }) {
+            const [{ s, blocking, timer, top }, card, clients, asked] = await Promise.all([stats(), statsCard(), api<any>('stats/top_clients?blocked=true&count=5'), domain ? whoAsked(domain) : undefined]);
+            const topClients = await named(((clients.clients ?? []) as any[]).map(c => ({ name: c.name, ip: c.ip, count: c.count })));
+            return { data: { blocking, pausedSeconds: timer, queries: s.queries.total, blocked: s.queries.blocked, percentBlocked: Math.round(s.queries.percent_blocked * 10) / 10, topBlocked: top, topClients, ...(asked ? { asked } : {}) }, card };
           },
         },
         adblock_pause: {
