@@ -12,6 +12,7 @@ import { findDocs, type DocIndex } from '../../src/shared/docs.ts';
 import plugin from '../integrations/homelab.mjs';
 import { modelList, reply, suggestions } from '../mock-model.mjs';
 import { discovery } from '../../src/server/model.ts';
+import { voiceKey } from '../../src/shared/speech.ts';
 
 const snapshot = (name: string) => realFetch(`/snapshot/${name}.json`).then(r => r.json());
 const realFetch = window.fetch.bind(window), json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -113,7 +114,7 @@ class Events {
 const models = new Proxy({}, { get: () => model }) as Record<string, any>;
 const listing = (async (u: RequestInfo | URL) => /\/models(\?|$)/.test(String(u instanceof Request ? u.url : u)) ? json(modelList()) : json({ error: 'no network in the demo' }, 404)) as typeof fetch;
 let listed: ReturnType<typeof discovery> | undefined;
-let chat: ((c: any) => Promise<Response>) | undefined, docs: Promise<DocIndex> | undefined;
+let chat: ((c: any) => Promise<Response>) | undefined, docs: Promise<DocIndex> | undefined, voices: Promise<{ clips: Record<string, string> }> | undefined;
 async function answer(path: string, method: string, body: any, signal?: AbortSignal | null): Promise<Response> {
   const [, , route, a, b] = path.split('?')[0].split('/');
   if (route === 'auth') return json({ mode: 'none', user: { name: 'you' } });
@@ -161,6 +162,14 @@ async function answer(path: string, method: string, body: any, signal?: AbortSig
     listed ??= discovery((await snapshot('config')).assistant, { fetch: listing });
     const l = await listed.list(new URLSearchParams(path.split('?')[1] ?? '').get('fresh') === '1');
     return json({ ok: l.ok, at: l.at, servers: l.servers, models: l.models.map(m => ({ id: m.id, ...(m.id !== m.model ? { model: m.model } : {}), ...(m.label ? { label: m.label } : {}), group: m.group })) });
+  }
+  // voice: no server to listen, so the mic only says where voice is set up and never records; answers are read aloud from
+  // clips recorded ahead (`npm run demo:voices`), found by their words, and the browser's own voice says the rest (204)
+  if (route === 'voice') {
+    if (a !== 'speak' || method !== 'POST') return json({ error: 'Voice runs on your own Valet' }, 403);
+    voices ??= realFetch('/voices/manifest.json').then(r => r.ok ? r.json() : { clips: {} }).catch(() => ({ clips: {} }));
+    const file = (await voices).clips[await voiceKey(String(body?.text ?? ''))];
+    return file ? realFetch(`/voices/${file}`) : new Response(null, { status: 204 });
   }
   if (route === 'live') { const [inst, name] = String(body?.tool ?? '').split('__'), t = instances.get(inst)?.tools?.[name]; return t ? json({ card: (await t.run(body.input)).card }) : json({ error: 'not a live card' }, 403); }
   return json({ error: 'not in the demo' }, 404);

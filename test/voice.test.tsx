@@ -257,7 +257,7 @@ test('read aloud: posts the answer\'s plain words to /api/voice/speak and return
   assert.equal(calls[0].url, '/api/voice/speak');
   assert.equal(calls[0].init.method, 'POST');
   assert.deepEqual(JSON.parse(calls[0].init.body as string), { text: 'Plex is up. See the dashboard.' });
-  assert.equal(blob?.size, 2);
+  assert.equal((blob as Blob).size, 2);
   const long = Array.from({ length: 200 }, (_, i) => `Sentence number ${i} is here.`).join(' ');
   await fetchSpeech(long, stub);
   assert.ok(JSON.parse(calls[1].init.body as string).text.length <= 1500, 'capped like before');

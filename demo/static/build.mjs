@@ -20,7 +20,9 @@ try {
   for (let i = 0; i < 60; i++) { try { if ((await fetch(`http://127.0.0.1:${port}/healthz`)).ok) break; } catch {} await sleep(250); }
   await sleep(1500);
   const page = await (await fetch(`http://127.0.0.1:${port}/api/page`)).json(), recap = await fetch(`http://127.0.0.1:${port}/api/recap`).then(r => r.ok ? r.text() : 'null');
-  page.canAct = true; page.sandbox = true; page.insight = null; if (page.assistant && !/\(demo\)$/.test(page.assistant.model)) page.assistant.model += ' (demo)';
+  page.canAct = true; page.sandbox = true; page.insight = null;
+  // a speaker under each answer (recorded clips, see backend.ts) and a mic that says where voice is set up
+  page.voice = { listen: true, speak: true, speakReplies: false, autoSend: false, demo: 'https://askvalet.dev/assistant/voice/' }; if (page.assistant && !/\(demo\)$/.test(page.assistant.model)) page.assistant.model += ' (demo)';
   writeFileSync(resolve(out, 'snapshot/page.json'), JSON.stringify(page));
   // installable like the real thing (notifications aren't: there's no server to send them)
   writeFileSync(resolve(out, 'manifest.webmanifest'), await (await fetch(`http://127.0.0.1:${port}/manifest.webmanifest`)).text());
@@ -36,6 +38,7 @@ const i = await docsIndex(registry); console.log(JSON.stringify({ ...i, parts: i
 
 execFileSync('npx', ['vite', 'build', '--config', 'demo/static/vite.config.mjs'], { cwd: repo, stdio: 'inherit' });
 cpSync(resolve(repo, 'demo/art'), resolve(out, 'art'), { recursive: true });
+cpSync(resolve(repo, 'demo/voices'), resolve(out, 'voices'), { recursive: true });
 for (const f of readdirSync(resolve(repo, 'demo/icons'))) cpSync(resolve(repo, 'demo/icons', f), resolve(out, 'api/icon', f.replace(/\.(png|svg|webp)$/, '')));
 cpSync(resolve(repo, 'demo/static/_headers'), resolve(out, '_headers'));
 // /wall is the same page, which reads its address; a static host needs a file there

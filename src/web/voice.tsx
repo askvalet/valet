@@ -6,34 +6,18 @@
 import { Mic, Square, Volume2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { label } from './format.ts';
+import { speakable } from '../shared/speech.ts';
 
 /** What `/api/page` says about voice: which halves are on, and the two defaults. */
-export interface VoiceUi { listen: boolean; speak: boolean; speakReplies: boolean; autoSend: boolean }
+export interface VoiceUi { listen: boolean; speak: boolean; speakReplies: boolean; autoSend: boolean;
+  /** the static demo only: there's no server to listen, so the mic says where voice is set up instead (this link) */
+  demo?: string }
 
 /** About as long as the server takes (10 MB at any browser's bitrate is well past this). */
 export const MAX_SECONDS = 120;
-/** How much of an answer is read aloud: the start, to a sentence's end. */
-export const SPEAK_CAP = 1500;
-
-/** The words of an answer as they'd be said: no markdown, links, code blocks, tables or addresses, and only the start. */
-export function speakable(text: string, cap = SPEAK_CAP) {
-  const t = text
-    .replace(/```[^]*?```/g, ' ')
-    .replace(/`([^`\n]*)`/g, '$1')
-    .replace(/!\[[^\]\n]*\]\([^)\n]*\)/g, ' ')
-    .replace(/\[([^\]\n]+)\]\([^)\n]*\)/g, '$1')
-    .replace(/https?:\/\/\S+/g, ' ')
-    .split('\n')
-    .filter(l => !/^\s*\|/.test(l) && !/^\s*[-:| ]{3,}$/.test(l))   // tables and rules say nothing aloud
-    .map(l => l.replace(/^\s{0,3}(#{1,6}|>|[-*+•]|\d+[.)])\s+/, ''))
-    .join('\n')
-    .replace(/[*~#|]/g, '')
-    .replace(/\s*\n\s*/g, '. ').replace(/([.!?:;,])\.\s/g, '$1 ').replace(/\s+/g, ' ').trim();
-  if (t.length <= cap) return t;
-  const cut = t.slice(0, cap), end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
-  return end > cap / 2 ? cut.slice(0, end + 1) : cut.slice(0, cut.lastIndexOf(' ')).trim() + '…';
-}
+export { SPEAK_CAP, speakable } from '../shared/speech.ts';
 
 /** The first container this browser records in. Safari has only mp4; Chrome prefers webm. */
 export function recordingType(can: (t: string) => boolean = t => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) {
@@ -129,6 +113,28 @@ export function MicButton({ rec, sheet, disabled }: { rec: ReturnType<typeof use
   );
 }
 
+/** The static demo's mic: it looks like the real one, but there's no server to listen, so it never records or asks for the
+ *  microphone. Hovering, focusing or tapping it says where voice is set up; Enter on it opens that page. */
+export function DemoMic({ href, sheet }: { href: string; sheet?: boolean }) {
+  const [open, setOpen] = useState(false), was = useRef(false);
+  return (
+    <TooltipProvider delayDuration={150}><Tooltip open={open} onOpenChange={setOpen}>
+      <TooltipTrigger asChild>
+        <button type="button" aria-label={label('voiceStart')} data-demo-mic
+          // a tap shows it and the next tap hides it (a finger has no hover); a mouse keeps it open; Enter opens the page
+          onPointerDown={e => { was.current = open; if (e.pointerType === 'touch') e.preventDefault(); }}
+          onClick={e => { e.preventDefault(); if (e.detail === 0) window.open(href, '_blank', 'noopener'); else setOpen((e.nativeEvent as PointerEvent).pointerType === 'touch' ? !was.current : true); }}
+          className={cn('press grid shrink-0 cursor-pointer place-items-center rounded-full text-muted-foreground select-none hover:bg-fill-2 hover:text-foreground', sheet ? 'mb-[3px] size-8' : 'mb-1 size-7')}>
+          <Mic className="size-icon" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={6} className="max-w-[calc(100vw-32px)] px-3 py-2 text-left text-wrap sm:whitespace-nowrap">
+        Voice runs on your own Valet. <a href={href} target="_blank" rel="noopener" className="font-medium whitespace-nowrap underline underline-offset-2">Set it up →</a>
+      </TooltipContent>
+    </Tooltip></TooltipProvider>
+  );
+}
+
 /** In place of the text while it listens: a dot, how loud, how long, and a way out that keeps nothing. */
 export function Listening({ rec }: { rec: ReturnType<typeof useRecorder> }) {
   const m = Math.floor(rec.secs / 60), s = Math.floor(rec.secs % 60);
@@ -154,12 +160,13 @@ function silence() {
   return URL.createObjectURL(new Blob([b.buffer], { type: 'audio/wav' }));
 }
 
-/** The answer read aloud, as Valet's speech route returns it: MP3, from the answer's speakable words. */
-export async function fetchSpeech(text: string, get: typeof fetch = fetch) {
+/** The answer read aloud, as Valet's speech route returns it: MP3, from the answer's speakable words. A 204 means there's
+ *  no recording to play and the browser's own voice should say it (the static demo, for an answer it has none for). */
+export async function fetchSpeech(text: string, get: typeof fetch = fetch): Promise<Blob | 'browser' | null> {
   const words = speakable(text); if (!words) return null;
   const r = await get('/api/voice/speak', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: words }) });
   if (!r.ok) throw new Error(await said(r));
-  return r.blob();
+  return r.status === 204 ? 'browser' : r.blob();
 }
 
 /** Answers read aloud, one at a time: from an answer's own speaker button, or each finished answer with
@@ -172,13 +179,21 @@ export function useSpeaker(onError: (e: string) => void) {
   const drop = () => { if (url.current) { URL.revokeObjectURL(url.current); url.current = null; } };
   /** from a tap or a key: lets this player make sound later without one */
   const unlock = () => { const a = el(); if (a.src && !a.paused) return; const s = silence(); a.src = s; a.play().catch(() => {}).finally(() => URL.revokeObjectURL(s)); };
-  const stop = () => { turn.current++; const a = player.current; if (a) { a.pause(); a.removeAttribute('src'); a.load(); } drop(); setPlaying(null); };
+  const hush = () => { if (typeof speechSynthesis !== 'undefined' && (speechSynthesis.speaking || speechSynthesis.pending)) speechSynthesis.cancel(); };
+  const stop = () => { turn.current++; const a = player.current; if (a) { a.pause(); a.removeAttribute('src'); a.load(); } hush(); drop(); setPlaying(null); };
   const say = async (text: string, id: string) => {
     if (!speakable(text)) return;
     stop(); const n = turn.current; setPlaying(id);
     try {
       const blob = await fetchSpeech(text);
       if (n !== turn.current || !blob) return;
+      if (blob === 'browser') {
+        if (typeof speechSynthesis === 'undefined') throw new Error("this browser can't speak");
+        const u = new SpeechSynthesisUtterance(speakable(text));
+        u.onend = u.onerror = () => { if (n === turn.current) setPlaying(null); };
+        speechSynthesis.speak(u);
+        return;
+      }
       const a = el(); drop(); url.current = URL.createObjectURL(blob); a.src = url.current;
       a.onended = () => { if (n === turn.current) { drop(); setPlaying(null); } };
       await a.play();
@@ -191,7 +206,7 @@ export function useSpeaker(onError: (e: string) => void) {
       cb.current(name === 'NotAllowedError' ? 'The browser blocked the sound. Press the speaker under the answer to hear it.' : (e as Error).message === 'Failed to fetch' ? "Can't reach Valet." : `Couldn't read it aloud: ${(e as Error).message}`);
     }
   };
-  useEffect(() => () => { turn.current++; player.current?.pause(); drop(); }, []);
+  useEffect(() => () => { turn.current++; player.current?.pause(); hush(); drop(); }, []);
   return { playing, say, stop, unlock };
 }
 

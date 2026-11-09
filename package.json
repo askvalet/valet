@@ -23,7 +23,8 @@
     "test:live": "esbuild test/live.ts --bundle --platform=node --format=esm --outfile=.test/live.mjs --packages=external --loader:.txt=text --log-level=warning && node --env-file-if-exists=.env .test/live.mjs",
     "test:services": "esbuild test/live-services.ts --bundle --platform=node --format=esm --outfile=.test/live-services.mjs --packages=external --loader:.txt=text --log-level=warning && node --env-file-if-exists=.env .test/live-services.mjs",
     "docs:services": "esbuild scripts/services-doc.ts --bundle --platform=node --format=esm --outfile=.test/services-doc.mjs --packages=external --loader:.txt=text --log-level=warning && node .test/services-doc.mjs",
-    "demo:static": "npm run build && node demo/static/build.mjs"
+    "demo:static": "npm run build && node demo/static/build.mjs",
+    "demo:voices": "node demo/voices.mjs"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

@@ -21,7 +21,7 @@ import { Tick } from './feel.tsx';
 import { label, num } from './format.ts';
 import { play } from './sound.ts';
 import { ModelPicker, ReasoningPicker, type Choice, type Thinking } from './models.tsx';
-import { Listening, MicButton, ReadAloud, useRecorder, useSpeaker, type VoiceUi } from './voice.tsx';
+import { DemoMic, Listening, MicButton, ReadAloud, useRecorder, useSpeaker, type VoiceUi } from './voice.tsx';
 import { ComposerMenu, HelpNote, Mentions, Note, WithMentions, runSlash, useComposerMenu, type Mentionable, type Slash } from './slash.tsx';
 import { matchModel, mentionsIn } from '../shared/slash.ts';
 
@@ -616,7 +616,7 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
             onKeyDown={e => { if (menu.onKey(e)) return; if (e.key === 'Enter' && (ui.send === 'enter' ? !e.shiftKey : e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
             onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
             className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-[16px] leading-[22px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-title" autoFocus={!sheet} />}
-          {voice?.listen && <MicButton rec={rec} sheet={sheet} />}
+          {voice?.listen && (voice.demo ? <DemoMic href={voice.demo} sheet={sheet} /> : <MicButton rec={rec} sheet={sheet} />)}
           {busy
             ? <Button type="button" size="icon" variant="secondary" className="relative mb-[3px] size-8 overflow-hidden rounded-sm" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" />{sent > 0 && <ArrowUp key={sent} className="send-lift absolute inset-0 m-auto" aria-hidden />}</Button>
             : <Button type="submit" size="icon" className="mb-[3px] size-8 rounded-sm bg-foreground text-(--card-tint) hover:bg-foreground/90 disabled:bg-foreground/20 disabled:text-foreground disabled:opacity-100" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}

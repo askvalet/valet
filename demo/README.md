@@ -36,3 +36,16 @@ Valet's real chat, tools and approvals. Each visitor's changes live in their tab
 in review are saved from a real server at build time.
 
 One change to the page works from chat, to show what the real assistant does: "Add an internet speed card" asks first, then the card appears, and "undo" takes it away. It's scripted and lives in the tab, like everything else.
+
+Voice works without a server too. The mic is there but only says where voice is set up: it never records or asks for the
+microphone. The speaker under an answer plays a clip recorded ahead from `voices/`, found by a hash of the words Valet would
+read (`src/shared/speech.ts`), and an answer with live numbers in it (the downloads, what's playing, the server's load, the
+next meeting) is read by the browser's own voice. After changing what the script says, record the clips again:
+
+```sh
+SPEECH_VIA=valet npm run demo:voices                   # from inside a container that can reach the speech server
+SPEECH_URL=http://localhost:8000/v1 npm run demo:voices   # or straight to any OpenAI-compatible /audio/speech
+```
+
+It keeps clips whose words haven't changed and removes ones no answer uses; `test/demo-voice.test.tsx` fails if an answer
+has no clip. Kokoro's `af_heart` by default (`SPEECH_MODEL`, `SPEECH_VOICE`), mono MP3 at 32 kbps, about 2 MB in all.
