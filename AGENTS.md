@@ -356,6 +356,8 @@ literal; a new size or corner is a new token with a role, argued for here.
 - **Glass traps `position: fixed`.** `backdrop-filter` makes a card the containing block for anything fixed inside it. Full-screen
   things go through a portal to the body (the cameras' theatre does).
 - **SSE keeps pages busy**: headless tools waiting for network idle never finish; wait a fixed time instead.
+- **The static demo's voice is recorded.** Its read-aloud clips (`demo/voices/`) are named by a hash of the speakable words, so changing an answer in `demo/mock-model.mjs` or `speakable()` needs `npm run demo:voices` (the demo README says how); `test/demo-voice.test.tsx` names what's missing.
+- **A screenshot beyond the viewport closes menus.** `captureBeyondViewport` lays the page out again, and Radix closes an open select or popover on that resize; the scenes capture beyond only when the box is.
 
 - **cmdk 1.1.1 doesn't reorder groups.** Its `filter` orders the items inside a group and never the groups themselves, so
   `palette.tsx` scores each group with `rank` and sorts them itself. A new group goes in that list, not straight into the JSX.

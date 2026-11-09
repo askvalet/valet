@@ -46,7 +46,7 @@ chat:
   followUps: [Why is Mealie down?, Pause Pi-hole, Turn off the living room lights, What should we watch tonight?, Anything happen overnight?, How are the downloads doing?]
   # your own /commands: in the / menu, ⌘K and /help. Each sends its prompt through the chat as if it were typed
   commands:
-    morning: { prompt: What happened overnight? Keep it to a few lines., description: Last night in a few lines }
+    morning-brief: { prompt: What happened overnight? Keep it to a few lines., description: Last night in a few lines }
     downloads: { prompt: How are the downloads doing?, description: What's downloading and how fast }
 hero: { scope: [downloads, lights, what to watch], review: false, align: left }   # the greeting at the top left, beside the top bar, for room   # the year in review is still at #recap, just not offered
 

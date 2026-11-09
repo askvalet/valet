@@ -166,7 +166,7 @@ const stopDemo: (() => Promise<void> | void)[] = [];
 try {
   if (!only) rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
-  browser = await chromium.launch({ executablePath: CHROME, headless: true, args: ['--no-sandbox', '--disable-gpu', '--hide-scrollbars', '--force-color-profile=srgb'] });
+  browser = await chromium.launch({ executablePath: CHROME, headless: true, args: ['--no-sandbox', '--disable-gpu', '--hide-scrollbars', '--force-color-profile=srgb', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', '--autoplay-policy=no-user-gesture-required'] });
   const context = await browser.newContext({ viewport: { width: 1400, height: 1000 }, deviceScaleFactor: 2, colorScheme: 'dark', reducedMotion: 'reduce' });
   // nothing leaves this machine from a harness page
   await context.route('**/*', r => new URL(r.request().url()).hostname === '127.0.0.1' || r.request().url().startsWith('data:') ? r.continue() : r.abort());

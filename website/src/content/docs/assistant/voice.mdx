@@ -3,6 +3,7 @@ title: Voice
 description: Talk to the chat and hear it answer, with OpenAI or a speech server on your own network.
 sidebar: { order: 4.5 }
 ---
+import Shot from '~/components/Shot.astro';
 
 With a `voice` block the chat gets a mic in its message box and a speaker under each answer. Valet uses the OpenAI audio API (`/audio/transcriptions` and `/audio/speech`), so it works with OpenAI itself or with any server that speaks the same API. Leave the block out and nothing changes.
 
@@ -48,6 +49,9 @@ voice:
 - **Speak.** Tap the mic, talk, tap again. Or hold it down and let go when you're done. A level and a timer show it's listening, and the cross throws a recording away. The words go in the box so you can check them before sending. `autoSend: true` sends them straight away.
 - **Hear an answer.** Press the speaker under an answer, beside copy, to have it read: its words without markdown, tables, code or cards, up to about 1,500 characters. While it talks the speaker is a square: press it to stop. Starting another answer, or asking something new, stops the one playing. `speakReplies: true` reads each finished answer aloud without a press.
 
+<Shot id="scene/voice-mic" label="Listening" alt="The message box while it listens: a red dot, a level, 0:02, Listening, a cross to throw it away and a red square to stop." />
+<Shot id="scene/voice-read" label="Reading an answer aloud" alt="An answer with its actions showing: copy, ask again, and the speaker turned into a square while it reads, then Worked for 3.0s." />
+
 Safari records MP4 and Chrome and Firefox record WebM. Valet passes either on as it is. The mic needs a secure page (HTTPS, or `localhost`), and the browser asks for permission the first time.
 
 ## Privacy and limits
@@ -56,7 +60,7 @@ Safari records MP4 and Chrome and Firefox record WebM. Valet passes either on as
 - **With a local server, audio stays in your network.** With OpenAI, what you say and the answers read aloud go to OpenAI.
 - **Nothing is kept.** Recordings pass through memory to the speech server and are gone. The log notes sizes and timings, never words.
 - **Voice changes no permissions.** A spoken question goes through the chat like a typed one, with the same [access](/assistant/access/) and [approvals](/assistant/approvals/). An approval still takes a click.
-- **The same doors as the chat.** Both routes need a session when sign-in is on. Wherever the chat works, voice does too. The demo has none.
+- **The same doors as the chat.** Both routes need a session when sign-in is on. Wherever the chat works, voice does too. The [demo](https://demo.askvalet.dev) has no server, so its mic only says where to set voice up, and its speaker plays answers recorded ahead (with Speaches and Kokoro's `af_heart`), or the browser's own voice for one with live numbers in it.
 - **Limits:** a recording is at most two minutes (10 MB), and a reading at most 2,000 characters. Each person gets 20 recordings and 30 readings a minute.
 
 ## Options

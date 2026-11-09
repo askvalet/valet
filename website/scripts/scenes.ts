@@ -2,6 +2,7 @@
 // with the demo's scripted model as the assistant. Nothing real is reachable: the only plugin is demo/integrations/homelab.mjs.
 // These shots are the demo exactly as visitors see it, with its own covers from demo/art, and no request leaves 127.0.0.1.
 import { spawn } from 'node:child_process';
+import { createServer } from 'node:http';
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -15,13 +16,28 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
   // pausing the downloads is marked dangerous here, so the docs can show the red button: the demo has nothing dangerous to do
   writeFileSync(resolve(data, 'integrations/homelab.mjs'), readFileSync(resolve(repo, 'demo/integrations/homelab.mjs'), 'utf8').replace("const dir = existsSync('/demo/art') ? '/demo/art' : resolve('demo/art');", `const dir = ${JSON.stringify(resolve(repo, 'demo/art'))};`).replace("title: 'Pause all downloads?',", "title: 'Pause all downloads?', danger: true,"));
   cpSync(resolve(repo, 'demo/icons'), resolve(data, 'icons'), { recursive: true });
-  const modelPort = await freePort(7730), port = await freePort(7760);
+  const modelPort = await freePort(7730), port = await freePort(7760), speechPort = await freePort(7790);
+  // a stand-in speech server for the voice shots: it reads every answer with the demo's longest recorded clip (so it's still
+  // talking when the picture is taken) and hears one question
+  const clips = JSON.parse(readFileSync(resolve(repo, 'demo/voices/manifest.json'), 'utf8')), longest = Object.keys(clips.words).sort((a, b) => clips.words[b].length - clips.words[a].length)[0];
+  const speech = createServer((req, res) => {
+    req.resume();
+    req.on('end', () => {
+      if (req.url?.endsWith('/audio/speech')) res.writeHead(200, { 'Content-Type': 'audio/mpeg' }).end(readFileSync(resolve(repo, 'demo/voices', clips.clips[longest])));
+      else if (req.url?.endsWith('/audio/transcriptions')) res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ text: 'How are the downloads doing?' }));
+      else res.writeHead(404).end();
+    });
+  }).listen(speechPort, '127.0.0.1');
+  stop.push(() => { speech.close(); });
   // the demo's own model and config, on free ports, with the public host names taken out
   // the script starts itself when run as mock-model.mjs, on MOCK_PORT
   writeFileSync(resolve(dir, 'mock-model.mjs'), readFileSync(resolve(repo, 'demo/mock-model.mjs'), 'utf8'));
   writeFileSync(resolve(dir, 'config.yaml'), readFileSync(resolve(repo, 'demo/config.yaml'), 'utf8')
-    .replace(/^allowedHosts:.*$/m, 'allowedHosts: []').replace(/^notice:.*$/m, '').replace('http://valet-demo-model:8080/v1', `http://127.0.0.1:${modelPort}/v1`)
-    .replace('/demo/wallpaper.jpg', resolve(repo, 'demo/wallpaper.jpg')).replace('type: demo-homelab', `type: demo-homelab\n    art: ${resolve(repo, 'demo/art/cameras')}`));
+    .replace(/^allowedHosts:.*$/m, 'allowedHosts: []').replace(/^notice:.*$/m, '')
+    // a sandbox would hide voice and the server's model list, and label the model "(demo)"; this copy is thrown away anyway
+    .replace('sandbox: true', 'sandbox: false').replace('http://valet-demo-model:8080/v1', `http://127.0.0.1:${modelPort}/v1`)
+    .replace('/demo/wallpaper.jpg', resolve(repo, 'demo/wallpaper.jpg')).replace('type: demo-homelab', `type: demo-homelab\n    art: ${resolve(repo, 'demo/art/cameras')}`)
+    + `\nvoice:\n  stt: { baseURL: http://127.0.0.1:${speechPort}/v1, model: whisper-1, language: en }\n  tts: { model: tts-1, voice: alloy }\n`);
   const start = (args: string[], env = {}) => { const p = spawn('node', args, { cwd: repo, stdio: 'ignore', env: { PATH: process.env.PATH, HOME: process.env.HOME, TZ: 'America/Toronto', ...env } }); stop.push(() => { p.kill('SIGTERM'); }); return p; };
   start([resolve(dir, 'mock-model.mjs')], { MOCK_PORT: String(modelPort) });
   start(['dist/server.js'], { PORT: String(port), HOST: '127.0.0.1', VALET_CONFIG: resolve(dir, 'config.yaml'), VALET_DATA: data, NODE_ENV: 'production' });
@@ -43,7 +59,9 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
     const text = await page.evaluate(() => document.body.innerText);
     if (forbidden.test(text)) problems.push(`${id}: the page text has a forbidden word`);
     const view = page.viewportSize(), clip = box ? { x: Math.max(0, box.x - pad), y: Math.max(0, box.y - pad), width: box.width + pad * 2, height: box.height + pad * 2 } : { x: 0, y: 0, width: view.width, height: view.height };
-    const r = await cdp.send('Page.captureScreenshot', { format: 'webp', quality: 82, captureBeyondViewport: !!box, clip: { ...clip, scale: 2 } });
+    // beyond the viewport only when the box is: that capture lays the page out again, which closes an open menu
+    const beyond = !!box && (clip.x + clip.width > view.width || clip.y + clip.height > view.height);
+    const r = await cdp.send('Page.captureScreenshot', { format: 'webp', quality: 82, captureBeyondViewport: beyond, clip: { ...clip, scale: 2 } });
     const file = `${id}.webp`, to = resolve(out, file);
     mkdirSync(dirname(to), { recursive: true }); writeFileSync(to, Buffer.from(r.data, 'base64'));
     manifest[id] = { id, file, w: Math.round(clip.width), h: Math.round(clip.height) };
@@ -116,12 +134,78 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
     if (risky) await shot(page, cdp, 'scene/approval-danger', risky, 16); else problems.push('scene/approval-danger: no card');
   } finally { await desktop.context.close(); }
 
+  // the chat's own tools: the row under the box and its menus, commands and mentions, voice, and a skipped approval
+  const tools = await make(1440, 900);
+  try {
+    const { page, cdp } = tools;
+    await tools.context.grantPermissions(['microphone']);
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'hover', value: 'hover' }, { name: 'pointer', value: 'fine' }] });
+    await page.goto(url); await page.waitForSelector('#ask-box', { timeout: 15000 }); await quiet(page, 3000);
+    const box = 'textarea[aria-label="Message"]';
+    const ask = async (q: string, wait = 6000) => { await page.fill(box, ''); await page.locator(box).focus(); await page.keyboard.type(q, { delay: 20 }); await sleep(250); await page.keyboard.press('Enter'); await sleep(wait); };
+    const panel = () => page.locator('form:has(.composer)').first().evaluate((f: Element) => { const r = (f.parentElement?.parentElement ?? f).getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; });
+    const form = () => page.locator('form:has(.composer)').first().boundingBox();
+    /** the lower part of the panel: the box, the row under it, and what's above them up to `up` pixels */
+    const lower = async (up: number) => { const p = await panel(), f = (await form())!; const top = Math.max(p.y, f.y - up); return { x: f.x - 16, y: top, width: f.width + 32, height: p.y + p.height - top }; };
+    // on the AI tab the chat has the page to itself, so nothing shows through behind its menus
+    await tab(page, 'AI'); await page.waitForSelector(box, { timeout: 15000 });
+    await ask('Is anything down?', 6000);
+    await shot(page, cdp, 'scene/models-row', await lower(40), 0);
+    // /reasoning on its own opens the menu, as a click on Auto does
+    await page.locator(box).focus(); await page.keyboard.type('/reasoning', { delay: 30 }); await page.keyboard.press('Enter'); await sleep(300); await page.keyboard.press('Enter'); await sleep(2000);
+    await shot(page, cdp, 'scene/models-reasoning', await lower(260), 0);
+    await page.keyboard.press('Escape'); await sleep(500);
+    // the model picker, searchable past eight choices: configured ones first, then the server's
+    await page.locator('form button', { hasText: 'qwen3.8-27b' }).first().click(); await sleep(700);
+    await page.keyboard.type('4', { delay: 60 }); await sleep(700);
+    await shot(page, cdp, 'scene/models-picker', await lower(470), 0);
+    await page.keyboard.press('Escape'); await sleep(500);
+    // commands and mentions
+    await page.locator(box).focus(); await page.keyboard.type('/', { delay: 40 }); await sleep(700);
+    await shot(page, cdp, 'scene/commands-slash', await lower(400), 0);
+    await page.fill(box, ''); await sleep(300);
+    await page.locator(box).focus(); await page.keyboard.type('What is playing on @', { delay: 30 }); await sleep(700);
+    await shot(page, cdp, 'scene/commands-mention', await lower(400), 0);
+    await page.fill(box, ''); await sleep(300);
+    await ask('/new', 1200);
+    await ask('/morning-brief', 7000);
+    await shot(page, cdp, 'scene/commands-custom', await panel(), 0);
+    await ask('/help', 1500);
+    await shot(page, cdp, 'scene/commands-help', await panel(), 0);
+    // voice: an answer being read aloud, then the mic listening (a fake microphone in this browser)
+    await ask('/new', 1200);
+    await ask('Is Bazarr ok?', 6000);
+    const said = page.locator('.chat-msg').last(), at = (await said.boundingBox())!;
+    await page.mouse.move(at.x + 40, at.y + 10); await sleep(400);
+    // pressed in the page: a pointer click a few pixels off would land outside the chat and close it
+    const press = (sel: string) => page.locator(sel).last().evaluate((e: HTMLElement) => e.click()).catch(() => problems.push(`no ${sel}`));
+    await press('button[aria-label="Read aloud"]'); await sleep(1500);
+    if (!await page.locator('button[aria-label="Stop reading"]').count()) problems.push('scene/voice-read: not reading');
+    await shot(page, cdp, 'scene/voice-read', await lower(260), 0);
+    await press('button[aria-label="Stop reading"]'); await sleep(300);
+    await press('button[aria-label="Speak"]'); await sleep(2600);
+    if (!await page.locator('[role="status"][aria-label="Listening"]').count()) problems.push('scene/voice-mic: not listening');
+    await shot(page, cdp, 'scene/voice-mic', await lower(40), 0);
+    await press('button[aria-label="Cancel"]'); await sleep(500);
+    // an approval left unanswered for a new question: Skipped
+    await ask('/new', 1200);
+    await ask('pause pi-hole', 5000);
+    await ask('Is Bazarr ok?', 6000);
+    if (!await page.getByText('Skipped').count()) problems.push('scene/approval-skipped: no Skipped step');
+    await shot(page, cdp, 'scene/approval-skipped', await panel(), 0);
+  } finally { await tools.context.close(); }
+
   const phone = await make(390, 844, true);
   try {
     const { page, cdp } = phone;
     await page.goto(url); await page.waitForSelector('#ask-box', { timeout: 15000 }); await quiet(page, 3500);
     await shot(page, cdp, 'scene/phone');
     await tab(page, 'Home'); await shot(page, cdp, 'scene/phone-home');
+    // the chat on a phone, with the / menu open
+    await tab(page, 'Overview'); await page.fill('#ask-box', 'Is anything down?'); await page.keyboard.press('Enter');
+    await page.waitForSelector('textarea[aria-label="Message"]', { timeout: 15000 }); await sleep(6000);
+    await page.fill('textarea[aria-label="Message"]', '/'); await page.locator('textarea[aria-label="Message"]').press('End'); await sleep(800);
+    await shot(page, cdp, 'scene/phone-commands');
   } finally { await phone.context.close(); }
 
   const story = await make(1280, 720);

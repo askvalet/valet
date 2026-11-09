@@ -119,7 +119,7 @@ export const ABOUT: Record<string, string> = {
   peanut: 'PeaNUT is a dashboard for NUT, the UPS tools. This shows status, battery, load and runtime.',
   pfsense: 'pfSense is a firewall. This shows WAN status, load, memory, disk and temperature.',
   photoprism: 'PhotoPrism is a photo library. This shows photos, videos, albums and people.',
-  pihole: 'Pi-hole blocks ads at the DNS level. This shows the last 24 hours as columns with the blocked share in red, and the domains it blocked most, with buttons to pause it. As a tile it\'s the ads blocked, with their share as a pie. The assistant can pause it too, after asking.',
+  pihole: 'Pi-hole blocks ads at the DNS level. This shows the last 24 hours as columns with the blocked share in red, and the domains it blocked most, with buttons to pause it. As a tile it\'s the ads blocked, with their share as a pie. The assistant can pause it too, after asking. It also knows which devices had the most queries blocked, by name where Pi-hole or its local DNS records know one, and who looked up a domain lately: ask "Which devices asked for doubleclick.net lately?" (a plain name matches anywhere in the domain, and `*` works as in Pi-hole).',
   'plant-it': 'Plant-it tracks plant care. This shows plants, species, diary entries and photos.',
   plex: 'Plex is a media server. This shows what the server itself reports: streams playing now and how much is in its libraries. For history and rankings, use [Tautulli](/integrations/tautulli/).',
   portainer: 'Portainer manages Docker. This shows running, stopped, total and unhealthy containers for one environment.',

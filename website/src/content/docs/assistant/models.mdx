@@ -3,6 +3,7 @@ title: Models
 description: Use any OpenAI-compatible server, Anthropic, or a local model through Ollama.
 sidebar: { order: 2 }
 ---
+import Shot from '~/components/Shot.astro';
 
 The `assistant` block picks the model. Leave the block out and there's no assistant.
 
@@ -80,7 +81,9 @@ The chat window has its own options under [`chat`](/reference/configuration/#cha
 
 A model that thinks before it answers, like Qwen 3, is slower. `reasoning: off` turns the thinking off. To an OpenAI-compatible server (vLLM, llama.cpp, SGLang) Valet sends `chat_template_kwargs: { enable_thinking: false }`, which Qwen-style chat templates read; a server that doesn't know it ignores it. `low`, `medium` and `high` send `reasoning_effort`, for models and servers that take it, and leave the thinking on. With Anthropic, `off` turns extended thinking off and `low`, `medium` and `high` set its budget.
 
-It applies to the chat. Background calls and the summary of a long chat keep the model's own default. Under the message box, beside the model's name, a **Reasoning** menu (Auto, Off, Low, Medium, High): it sets the level for that chat only, over what the config says for the model, and a new chat starts on Auto again, which is whatever the config says.
+It applies to the chat. Background calls and the summary of a long chat keep the model's own default. Under the message box, beside the model's name, a **Reasoning** menu (Auto, Off, Low, Medium, High): it sets the level for that chat only, over what the config says for the model, and a new chat starts on Auto again, which is whatever the config says. `/reasoning high` in the message box does the same.
+
+<Shot id="scene/models-reasoning" alt="The Reasoning menu open above the message box: Auto (ticked), Off, Low, Medium and High." />
 
 ```yaml title="config.yaml"
 assistant:
@@ -112,6 +115,8 @@ Every integration you connect adds its tools to every message the assistant send
 ## More than one model
 
 `assistant.models` lists other models the chat can use. With it, the model's name under the message box becomes a menu. The choice holds for that chat, and a new chat starts on the main model again.
+
+<Shot id="scene/models-row" alt="Under the message box, on the right: the model's name, the reasoning level (Auto) and the context meter." />
 
 ```yaml title="config.yaml"
 assistant:
@@ -168,6 +173,8 @@ Valet asks an OpenAI-compatible server `GET {baseURL}/models` with the key as a 
 Lists mix in models you can't chat with, so Valet leaves out the ones whose id says what they are (embeddings, Whisper, text-to-speech, transcription, image models like DALL·E and gpt-image, moderation, rerankers and the old `davinci-002` and `babbage-002`), and OpenRouter's models that don't write text. A model it can't tell about stays.
 
 Past eight choices the menu becomes a list you can type into: the models you named first, then the ones you picked lately in this browser, then each server's, under its own heading, narrowed as you type (arrows and Enter pick, Esc closes). The search covers every server, and it shows a hundred matches at a time, so a router with hundreds of models stays quick. If a server doesn't answer, the menu says which and keeps the rest.
+
+<Shot id="scene/models-picker" alt="The model menu with 4 typed in its search: Fast under Configured, then gemma, llama, mistral and deepseek models under On the server, and Refresh the list at the foot." />
 
 The server still decides: a chat can name the main model, one you named, or one in the latest lists (asked again once if it isn't there), and nothing else. A server address or key in a request is never read. `config check` names an Anthropic `auto` entry without a key.
 

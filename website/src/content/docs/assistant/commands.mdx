@@ -3,12 +3,19 @@ title: Commands and mentions
 description: Slash commands for the chat, @mentions for an integration, and commands of your own.
 sidebar: { order: 2.5 }
 ---
+import Shot from '~/components/Shot.astro';
+import Row from '~/components/Row.astro';
 
 The message box takes a few shortcuts. A `/` at the start opens a menu of commands, and an `@` anywhere opens a menu of your integrations. Both narrow as you type: the arrow keys move, Tab or Enter chooses, and Esc closes the menu.
 
 ## Built-in commands
 
 These are Valet's own. They run straight away, with no model and no tokens, and none of them changes what the assistant may do.
+
+<Row>
+  <Shot id="scene/commands-slash" label="On a computer" alt="The / menu open above the message box: /model, /reasoning, /new, /compact and /help, then the demo's own /morning-brief and /downloads, each with a short description." />
+  <Shot id="scene/phone-commands" label="On a phone" alt="The same / menu on a phone, above the message box at the foot of the chat." />
+</Row>
 
 | Command | What it does |
 |---|---|
@@ -20,9 +27,13 @@ These are Valet's own. They run straight away, with no model and no tokens, and 
 
 A line from one of these, like "This chat is on Deep now", is Valet's. The model never sees it.
 
+<Shot id="scene/commands-help" alt="/help in the chat: the built-in commands with what each takes and does, then Yours with /morning-brief and /downloads, and a line about @mentions." />
+
 ## Mentions
 
 Type `@` and pick an integration, or just type its id, like `@plex`. The mention shows as a token in your message, and the question goes to the model with that integration first:
+
+<Shot id="scene/commands-mention" alt="Typing What is playing on @ opens a menu of integrations above the message box, here the demo's @lab, Made-up homelab." />
 
 - With [`assistant.tools: lazy`](/assistant/models/#options), its tools are loaded from the first step, so the model doesn't spend a step asking for them.
 - With every tool sent (`all`), the model is told what the question is about, so it reaches for those tools first.
@@ -50,6 +61,8 @@ chat:
 ```
 
 Now `/morning-brief` asks for the brief, and `/watch Dune` asks "Add Dune to my watchlist and tell me when it's out". Your message shows what you typed, and the model reads the prompt.
+
+<Shot id="scene/commands-custom" alt="/morning-brief sent in the chat: the assistant looked back and shows an Overnight list (Mealie stopped, out of memory; backup finished; a new episode), then sums it up in one line." />
 
 - A plain string is the prompt. `{input}` is replaced with whatever you type after the command. Without `{input}`, anything you type after it goes on the end.
 - `description` is shown beside the command in the menu and in `/help`. Without one, the start of the prompt is.

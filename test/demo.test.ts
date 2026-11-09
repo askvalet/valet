@@ -189,10 +189,10 @@ test('demo: a question it has no answer for says so, and never gets the nearest 
 test('demo: its own /commands are answered by the script, from real tools', async () => {
   const { customs, expand } = await import('../src/shared/slash.ts');
   const list = customs(Config.parse(parse(readFileSync('demo/config.yaml', 'utf8'))).chat.commands);
-  assert.deepEqual(list.map(c => c.name), ['morning', 'downloads']);
+  assert.deepEqual(list.map(c => c.name), ['morning-brief', 'downloads']);
   // the server sends the prompt, so that's what the script reads
   const said = Object.fromEntries(await Promise.all(list.map(async c => [c.name, await carry(expand(c.prompt, ''))])));
-  assert.match(said.morning, /Mealie ran out of memory/);
+  assert.match(said['morning-brief'], /Mealie ran out of memory/);
   assert.match(said.downloads, /going at [\d.]+ MB\/s/);
   for (const c of list) assert.ok(ask(expand(c.prompt, '')).call, c.name);
 });

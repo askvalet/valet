@@ -42,7 +42,7 @@ links and a status dot, Valet is meant to be powerful and actionable.
 
 ### AI-native, if you want it
 
-Ask Valet anything about your homelab. Use a local model or a hosted one. Valet knows
+Ask Valet anything about your homelab. Use a local model or a hosted one, or [several](https://askvalet.dev/assistant/models/#more-than-one-model) and switch per chat. Valet knows
 its own documentation, so you can use it to build itself! Anything it changes waits for your approval, and Valet
 works just fine with the AI switched off. You can [talk to it, too](https://askvalet.dev/assistant/voice/), with a speech server
 on your own network or OpenAI's. Type `/` for [commands](https://askvalet.dev/assistant/commands/), your own included, and `@`
@@ -52,6 +52,8 @@ to point it at one integration.
 <td width="50%" valign="top"><img src="docs/images/ask-chat.webp" alt="Asking who's watching shows the now-playing card, asking what to watch shows the most-watched list with posters, and pausing Pi-hole waits for approval, then shows its chart"><br><sub>"Who's watching?" "What should we watch tonight?" Then "Pause Pi-hole", which waits for your approval.</sub></td>
 <td width="50%" valign="top"><img src="docs/images/ask-for-a-card.webp" alt="Asking for an internet speed card: Valet asks first, then the card appears on the page"><br><sub>"Add an internet speed card." Valet edits its own config, after asking first.</sub></td>
 </tr></table>
+
+<p align="center"><img src="docs/images/commands.webp" alt="The / menu open above the message box: /model, /reasoning, /new, /compact and /help, then your own /morning-brief and /downloads; under the box, the model, the reasoning level and the context meter" width="620"><br><sub>Type <code>/</code> for commands, your own included. The model and how much it thinks sit under the box, per chat.</sub></p>
 
 <p align="center"><img src="docs/images/rule.webp" alt="Asking Valet to say when Oppenheimer finishes downloading: it asks first, then a notice arrives on the page when the download is done" width="620"><br><sub>"Tell me when Oppenheimer finishes downloading." Set once in plain words, and the notice comes when it's done.</sub></p>
 
