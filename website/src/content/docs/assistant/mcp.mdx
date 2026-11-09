@@ -1,6 +1,6 @@
 ---
 title: MCP
-description: Give the assistant an MCP server's tools under the same rules, or let your own AI client look at Valet, read-only.
+description: Give the assistant an MCP server's tools under the same rules, or let your own AI client look at Valet, and change things only with your approval.
 sidebar: { order: 6 }
 ---
 
@@ -64,7 +64,7 @@ mcp:
 ## Valet as an MCP server
 
 It works the other way too. With `mcpServer` set, an AI client you already use (Claude Desktop, an editor, anything that
-speaks MCP) can look at your homelab through Valet, read-only.
+speaks MCP) can look at your homelab through Valet. It's read-only unless you say more.
 
 ```yaml title="config.yaml"
 mcpServer:
@@ -74,8 +74,8 @@ mcpServer:
 
 Point the client at `https://<your valet>/mcp` (Streamable HTTP) with the header `Authorization: Bearer <token>`.
 
-- **Only tools that look.** It offers each integration's read tools and nothing that adds, changes or removes, so there's
-  nothing to approve. Valet's own config tools are never offered, whatever `access` says.
+- **Only tools that look, by default.** With `read` it offers each integration's read tools and nothing that adds,
+  changes or removes, so there's nothing to approve. Valet's own config tools are never offered, whatever `access` says.
 - **Its own leash.** `access` is separate from the assistant's: open only what that client needs.
 - **The same protection as the chat.** Secrets stay on the server, results pass the same redactor, and every call shows
   in the activity log as "MCP client".
@@ -83,3 +83,25 @@ Point the client at `https://<your valet>/mcp` (Streamable HTTP) with the header
   never offers it.
 
 Anything the client reads goes to whatever model it uses, so give it only what you'd paste into that model yourself.
+
+### Letting it change things
+
+Give an integration `write` or `control` and its tools that add or change things are offered too, at the same levels
+as [the assistant's access](/assistant/access/). None of them runs on the client's word.
+
+```yaml title="config.yaml"
+mcpServer:
+  token: ${VALET_MCP_TOKEN}
+  access: { default: read, downloads: control, lights: control }
+```
+
+- **Every call waits for you.** The approval card appears on your Valet page, in the tool's own words, and a
+  notification goes wherever your notifications go. Nothing happens until someone signed in presses the button.
+- **A yes covers one exact call, once.** The same tool with other arguments is another question, and so is the same call
+  a second time.
+- **The client waits about 45 seconds.** After that it's told the call is still waiting and to try again with the same
+  arguments. Your answer keeps for ten minutes, so approving late still works on its next try.
+- **Five can wait at once.** More than that are refused until you answer some, so a client can't bury the page in cards.
+- **Not everything can be opened.** Valet's config, its rules and its pins can't be changed from here at any level, and a
+  [read-only page](/start/sign-in/) offers only tools that look, since nobody there could approve.
+- **Approvals and refusals are in the activity log**, with what was asked.

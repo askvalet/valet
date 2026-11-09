@@ -6,7 +6,7 @@ export const LABELS = {
   ask: 'Ask {name}', askAnything: 'Ask {name} anything', askAbout: 'Ask about {scope}', allOf: 'All {n}', dismiss: 'Dismiss', message: 'Type / for commands', messageHint: 'Type / for commands',
   chatTitle: 'Talk to your homelab',
   working: 'Working', thinking: 'Thinking', writing: 'Writing', thought: 'Thought', thoughtFor: 'Thought for {n}s', steps: '{n} steps', worked: 'Worked for {n}s',
-  allow: 'Allow', notNow: 'Not now',
+  allow: 'Allow', notNow: 'Not now', askedBy: 'Asked by {who}',
   wall: 'Wall display', paused: 'Paused',
   context: '{used} of {total} tokens', contextUsed: '{used} tokens so far', contextFull: 'Long chats get slower and lose track of how they started.',
   contextAuto: 'When it fills up, the oldest messages are summarised to make room. A new chat starts clean and answers faster.', newChat: 'Start a new chat',

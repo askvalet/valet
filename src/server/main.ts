@@ -23,6 +23,7 @@ import { mcpServer } from './mcpserver.ts';
 import { listCommands, runCommand } from './commands.ts';
 import { findersOf, search } from './search.ts';
 import { confirmWords } from './confirm.ts';
+import { Asks } from './asks.ts';
 import { buildSite, type Site } from './site.ts';
 import { rank, toolAccess } from './run.ts';
 import { customs } from '../shared/slash.ts';
@@ -125,8 +126,10 @@ if (sandbox.on) {
 // Valet as a read-only MCP server, for an AI client of the owner's choosing. Outside /api: it has no session or page
 // origin, so it answers only to its own bearer token, and only when mcpServer is configured. The demo never offers it.
 const mcpSize = bodyLimit({ maxSize: 64 * 2 ** 10, onError: c => c.json({ error: 'request too large' }, 413) });
-app.post('/mcp', mcpSize, c => sandbox.on ? c.notFound() : mcpServer(c, site));
-app.get('/mcp', c => sandbox.on ? c.notFound() : mcpServer(c, site));
+// what an MCP client asked to change, waiting for a person on the page to say yes or no (asks.ts)
+const asks = new Asks();
+app.post('/mcp', mcpSize, c => sandbox.on ? c.notFound() : mcpServer(c, site, asks));
+app.get('/mcp', c => sandbox.on ? c.notFound() : mcpServer(c, site, asks));
 
 // for Docker's healthcheck and uptime monitors: up, and how many widgets have a fresh card
 app.get('/healthz', c => c.json({ ok: true, widgets: site.hub.snapshot().filter(s => s.card && !s.error).length }));
@@ -306,15 +309,20 @@ app.get('/api/events', c => streamSSE(c, async stream => {
   for (const s of hub.snapshot()) if (heard(s) && !queue.has(s.key)) queue.set(s.key, redact(JSON.stringify(s)));
   const tell = (n: { at: number }) => { if (wall) return; notices.push(redact(JSON.stringify(n))); wake?.(); };
   const onReload = () => { reloaded = true; wake?.(); };
-  noticeListeners.add(tell); sseClients.add(onReload);
-  const done = () => { off(); noticeListeners.delete(tell); sseClients.delete(onReload); };
+  // approvals waiting from outside the chat: the whole (short) list whenever it changes, and on connect if there is one
+  const answers = !wall && site.acting;   // only a page that could answer one is shown any
+  let asked = answers && asks.list().length > 0;
+  const onAsk = () => { if (answers) { asked = true; wake?.(); } };
+  noticeListeners.add(tell); sseClients.add(onReload); asks.listeners.add(onAsk);
+  const done = () => { off(); noticeListeners.delete(tell); sseClients.delete(onReload); asks.listeners.delete(onAsk); };
   stream.onAbort(done);
   while (!stream.aborted && !reloaded) {
     for (const [k, data] of queue) { queue.delete(k); await stream.writeSSE({ event: 'widget', data }); }
     while (notices.length) await stream.writeSSE({ event: 'notice', data: notices.shift()! });
+    if (asked) { asked = false; await stream.writeSSE({ event: 'asks', data: redact(JSON.stringify(asks.list())) }); }
     await Promise.race([new Promise<void>(r => (wake = r)), stream.sleep(25_000)]);
     wake = null;
-    if (!queue.size && !notices.length && !reloaded) await stream.writeSSE({ event: 'ping', data: '' });   // keeps proxies from closing it
+    if (!queue.size && !notices.length && !reloaded && !asked) await stream.writeSSE({ event: 'ping', data: '' });   // keeps proxies from closing it
   }
   if (reloaded) await stream.writeSSE({ event: 'reload', data: '' });
   done();
@@ -371,6 +379,18 @@ app.post('/api/action/:inst/:action', async c => {
     site.activity.add({ who, via: 'page', what, action: `${site.meta.get(inst)?.name ?? inst}: ${action}`, input: args.data, ok: false, error: redact((e as Error).message) });
     return c.json({ error: redact((e as Error).message) }, 502);
   }
+});
+
+// An approval asked from outside the chat (an MCP client's call): a signed-in person answers it here, like a button on
+// the page, so a read-only page can't. What runs is what was asked, never anything this request says.
+app.post('/api/asks/:id', async c => {
+  if (!site.acting) return c.json({ error: 'Valet is read-only: sign-in is off (set auth.mode, or auth.trustNetwork if the network is private)' }, 403);
+  const { ok } = await c.req.json().catch(() => ({})) as { ok?: unknown };
+  if (typeof ok !== 'boolean') return c.json({ error: 'ok: true or false' }, 400);
+  const ask = asks.answer(c.req.param('id'), ok);
+  if (!ask) return c.json({ error: 'That\'s no longer waiting.' }, 404);
+  site.activity.add({ who: userOf(c) ?? 'you', via: 'page', what: `${ok ? 'Approved' : 'Declined'} for ${ask.from}: ${ask.said.title}`, ok: true });
+  return c.json({ ok: true });
 });
 
 // ⌘K's plain commands ("pause downloads"): run by rule, never by a model, through the same doors as the chat (commands.ts)

@@ -544,15 +544,19 @@ Each entry is an MCP server whose tools the assistant may use, under the same ru
 
 ## `mcpServer`
 
-Valet as a read-only MCP server, so an AI client you already use (Claude Desktop, an editor) can look at your homelab
-through the same tools Valet's assistant has. Off unless set. It answers at `/mcp` (Streamable HTTP) to its own bearer
-token, offers only tools that look, never one that adds or changes something, and never Valet's config tools. Results go
-through the same redactor as the chat's, and every call is in the activity log.
+Valet as an MCP server, so an AI client you already use (Claude Desktop, an editor) can look at your homelab through the
+same tools Valet's assistant has. Off unless set. It answers at `/mcp` (Streamable HTTP) to its own bearer token. Left at
+`read` it offers only tools that look. With `write` or `control` for an integration it also offers that integration's
+tools that add or change things, and each call waits for a signed-in person to approve it on the page (the card says it
+in the tool's own words, and a notification goes out): one exact call, once. The client waits about 45 seconds, then is
+told to ask again; an answer keeps for ten minutes; five can wait at a time. Never Valet's config, rules or pins, and
+never anything past looking on a read-only page. Results go through the same redactor as the chat's, and every call is in
+the activity log.
 
 | Option | Default | |
 |---|---|---|
 | `token` | required | at least 32 characters; keep it in `.env`, e.g. `token: ${VALET_MCP_TOKEN}` |
-| `access` | `{ default: read }` | per integration, `none` or `read`. `{ default: none, plex: read }` opens only Plex |
+| `access` | `{ default: read }` | per integration: `none`, `read`, `write` or `control`. `{ default: none, plex: read }` opens only Plex; `{ default: read, downloads: control }` also lets it ask to change downloads, with your approval each time |
 
 ## `live`
 

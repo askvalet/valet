@@ -416,11 +416,12 @@ export const Config = z.object({
   voice: VoiceConfig.optional(),
   integrations: z.record(z.string(), z.object({ type: z.string() }).loose()).default({}),
   mcp: z.record(z.string(), McpServer).default({}),
-  // Valet as a read-only MCP server for an AI client you already use: off unless set. The token is a long secret from
-  // .env, and access says which integrations it may look at (none or read; never more)
+  // Valet as an MCP server for an AI client you already use: off unless set. The token is a long secret from .env, and
+  // access says what it may use per integration: none, read (the default: only looking), or write / control, which also
+  // offer tools that add or change things. Each of those calls waits for you to approve it on the page; nothing runs unasked
   mcpServer: z.object({
     token: z.string().min(32, 'use a long random token, at least 32 characters, from .env'),
-    access: z.record(z.string(), z.enum(['none', 'read'])).default({ default: 'read' }),
+    access: z.record(z.string(), Access).default({ default: 'read' }),
   }).strict().optional(),
   layout: z.array(Section).default([]),
   // the wall display at /wall: its own pages, for a wall tablet or a spare monitor (left out: time, weather, status, what's playing)

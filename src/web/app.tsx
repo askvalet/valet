@@ -28,6 +28,7 @@ const Assistant = lazy(() => import('./assistant.tsx'));
 import type { ChatUi, ToolInfo } from './assistant.tsx';
 import type { VoiceUi } from './voice.tsx';
 const Palette = lazy(() => import('./palette.tsx'));
+const Asks = lazy(() => import('./asks.tsx'));
 const RecapStory = lazy(() => import('./recap.tsx'));
 
 export type Paper = { image?: string; paint?: string };
@@ -65,6 +66,7 @@ export function useLive() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [generation, setGeneration] = useState(0);   // bumps when the server's config was reloaded
   const [insight, setInsight] = useState<string | null | undefined>(undefined);   // undefined: nothing new since the page loaded
+  const [asks, setAsks] = useState<import('./asks.tsx').Ask[]>([]);   // approvals asked from outside the chat, waiting for an answer here
   useEffect(() => {
     const es = new EventSource('/api/events');
     es.addEventListener('notice', e => {
@@ -72,6 +74,7 @@ export function useLive() {
       if (n.key === 'insight') setInsight(n.text || null);     // what several problems have in common; empty once they've cleared
       if (n.text) setNotice({ ...n, n: Date.now() });
     });
+    es.addEventListener('asks', e => setAsks(JSON.parse((e as MessageEvent).data)));
     es.addEventListener('widget', e => {
       const s = JSON.parse((e as MessageEvent).data) as WidgetState;
       setState(prev => ({ ...prev, [s.key]: s }));
@@ -83,7 +86,7 @@ export function useLive() {
     es.onerror = () => setOnline(false);
     return () => es.close();
   }, [generation]);
-  return { state, online, notice, generation, insight };
+  return { state, online, notice, generation, insight, asks };
 }
 
 function useClock() {
@@ -335,7 +338,8 @@ const hashNow = () => { try { return decodeURIComponent(location.hash); } catch 
 
 function Home({ account }: { account: boolean }) {
   const [page, setPage] = useState<Page | null>(null);
-  const { state, notice, generation, insight: liveInsight } = useLive();
+  const { state, notice, generation, insight: liveInsight, asks } = useLive();
+  useEffect(() => { if (asks.length) play('notice'); }, [asks.length]);
   useEffect(() => { if (notice) play('notice'); }, [notice]);
   useEffect(() => { if (notice) toast(`notice:${notice.n}`, { text: notice.sub ? `${notice.text} · ${notice.sub}` : notice.text, tone: notice.tone === 'accent' ? undefined : notice.tone }, { ms: 6000 }); }, [notice]);
   const [brief, setBrief] = useState<string | null>(null);
@@ -788,6 +792,7 @@ function Home({ account }: { account: boolean }) {
         </div>
       </nav>
 
+      {asks.length > 0 && <Suspense fallback={null}><Asks asks={asks} /></Suspense>}
       {recap && page?.recap !== false && <Suspense fallback={null}><RecapStory onClose={closeRecap} wallpaper={page?.appearance.walls.find(w => w.image)?.image} /></Suspense>}
       {page && palette && (
         <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} placeholder={page.assistant && (page.chat.placeholder || page.hero.scope?.length) ? placeholder : undefined} ui={ui} ask={ask} actions={actions} account={account} tools={page.assistant?.tools}

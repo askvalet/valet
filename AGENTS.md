@@ -63,6 +63,11 @@ https://askvalet.dev.
 - **Backups are one shape** (`BackupJob` in `core.ts`, `src/server/backups.ts`). An integration reports its jobs through
   `backups()` (a `service()` through `backups`/`backupGet`) and never judges them: Valet works out overdue, failing and
   odd sizes once, for the card, the tool, the timeline and the push, and tells each change once.
+- **Every way in is the chat's doors, never a copy of them.** ⌘K's search (`search.ts`) runs `find` tools that only look;
+  Telegram (`telegram.ts`) posts the conversation to the chat's own handler and only renders what comes back (cards as
+  lines through `shared/plain.ts`, approvals as buttons with the tool's words from `confirm.ts`); an MCP client's change
+  (`mcpserver.ts`) waits in `asks.ts` for a signed-in person, one exact call at a time. A new surface does the same: it
+  never decides what's allowed, and it never runs a tool that changes something without a person's yes for that call.
 - **Server stays small.** Hono + node-server, bundled with esbuild (dependencies included, so the image ships no
   `node_modules`) into `dist/server/`. No database: state lives in the services Valet talks to.
 - **A config is a Site** (`src/server/site.ts`): `check()` turns a config into instances and the list of problems
