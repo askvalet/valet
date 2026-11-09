@@ -20,6 +20,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 - The model, the reasoning level and the context meter moved from the chat's header to a quiet row under the message box, on the right; their menus open upward. The header shows just the assistant's name.
 - Pi-hole's `adblock_status` also lists the devices with the most blocked queries, by name where Pi-hole or its local DNS records know one, and takes an optional `domain` (a plain name matches anywhere, `*` as in Pi-hole) to say which devices looked it up lately.
 
+### Fixed
+
+- An approval card left unanswered when you ask something else is now a no: the card goes, its step reads Skipped instead of spinning forever, it can't be pressed later, nothing runs, and the model is told it wasn't done.
+
 ## [0.3.0] - 2026-11-07
 
 ### Added

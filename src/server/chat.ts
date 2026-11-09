@@ -6,6 +6,7 @@ import {
 } from 'ai';
 import { TARGET, TOO_LONG_ANSWER, calibrate, fit, retryShorter, size, squeezeSteps, summariser, tokensOf, tooLong } from './compact.ts';
 import { splitThink } from '../shared/think.ts';
+import { skipUnanswered } from '../shared/approvals.ts';
 import { randomBytes } from 'node:crypto';
 import type { Context as HonoContext } from 'hono';
 import { z } from 'zod';
@@ -196,7 +197,9 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   ].join('\n');
 
   return async (c: HonoContext) => asker.run((c.get as (k: string) => string | undefined)('user') ?? 'you', async () => {
-    const { messages: all_, model: asked, reasoning: level } = await c.req.json<{ messages: UIMessage[]; model?: unknown; reasoning?: unknown }>();
+    const { messages: sent_, model: asked, reasoning: level } = await c.req.json<{ messages: UIMessage[]; model?: unknown; reasoning?: unknown }>();
+    // an approval card left unanswered when they asked something else is a no: it never ran, and the model hears so
+    const all_ = skipUnanswered(sent_);
     // the page sends a choice's id, never a model or a server: anything else is refused
     const pick = asked == null ? picks.get(a.model) : typeof asked === 'string' ? picks.get(asked) ?? await discovered(asked) : undefined;
     if (!pick) return c.json({ error: 'That model is not one of the choices in assistant.models.' }, 400);

@@ -14,6 +14,7 @@ process.env.VALET_DATA = await mkdtemp(join(tmpdir(), 'valet-chat-'));
 const { chatRoute } = await import('../src/server/chat.ts');
 const { Config } = await import('../src/server/config.ts');
 const { Activity } = await import('../src/server/activity.ts');
+const { SKIPPED, skipBeforeSending, skipUnanswered } = await import('../src/shared/approvals.ts');
 
 const usage = { inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 1, text: 1, reasoning: 0 } };
 const stream = (parts: any[], reason: string) => ({ stream: new ReadableStream({ start(c) {
@@ -85,6 +86,39 @@ test('a control tool asks first and doesn\'t run until approved; a denial stays 
   assert.deepEqual(ran, []);
   await talk(scripted('ok'), answer(true));
   assert.deepEqual(ran, ['pause']);
+});
+
+test('a card left unanswered for a new question is a no: nothing runs, and the model hears it was declined', async () => {
+  const q = (await talk(scripted([['dl__pause', {}]]), say('pause'))).events.find(e => e.type === 'tool-approval-request');
+  const waiting = { id: 'a1', role: 'assistant', parts: [{ type: 'step-start' }, { type: 'tool-dl__pause', toolCallId: q.toolCallId, state: 'approval-requested', input: {}, approval: { id: q.approvalId, signature: q.signature } }] };
+  const model = scripted('Theo is watching.');
+  const r = await talk(model, [...say('pause'), waiting, { id: 'u2', role: 'user', parts: [{ type: 'text', text: 'who is watching?' }] }]);
+  assert.deepEqual(ran, [], 'the skipped call never runs');
+  const prompt = model.doStreamCalls[0].prompt as any[];
+  const call = prompt.find(m => m.role === 'assistant' && m.content.some((p: any) => p.type === 'tool-call' && p.toolCallId === q.toolCallId));
+  assert.ok(call, 'the model still sees what it asked to do');
+  const result = prompt.flatMap(m => m.role === 'tool' ? m.content : []).find((p: any) => p.type === 'tool-result' && p.toolCallId === q.toolCallId);
+  assert.equal(result?.output.type, 'execution-denied');
+  assert.equal(result?.output.reason, SKIPPED);
+  assert.ok(prompt.findIndex(m => m === call) < prompt.findLastIndex(m => m.role === 'user'), 'and it comes before the new question');
+  assert.match(r.text, /Theo is watching/);
+  assert.ok(!r.events.some(e => e.type === 'tool-approval-request'), 'and nothing asks again');
+  // a card still waiting with nothing after it is left alone: that's the question being asked right now
+  const now = [...say('pause'), waiting];
+  assert.equal(skipUnanswered(now as any), now);
+});
+
+test('the page marks a waiting card as declined before it sends a new message, and leaves everything else', () => {
+  const msgs: any[] = [...say('pause'), { id: 'a1', role: 'assistant', parts: [
+    { type: 'tool-dl__pause', toolCallId: 'c1', state: 'approval-requested', input: {}, approval: { id: 'x1', signature: 's' } },
+    { type: 'tool-dl__status', toolCallId: 'c2', state: 'output-available', input: {}, output: { ok: true } },
+    { type: 'tool-dl__status', toolCallId: 'c3', state: 'approval-requested', input: {}, approval: { id: 'x2', isAutomatic: true } }] }];
+  const out = skipBeforeSending(msgs);
+  assert.deepEqual(out[1].parts[0], { ...msgs[1].parts[0], state: 'output-denied', approval: { id: 'x1', signature: 's', approved: false, reason: SKIPPED } });
+  assert.equal(out[1].parts[1], msgs[1].parts[1]);
+  assert.equal(out[1].parts[2], msgs[1].parts[2], 'an automatic approval is the SDK\'s own, not a card');
+  assert.equal(out[0], msgs[0]);
+  assert.equal(skipBeforeSending(out), out, 'nothing waiting: the same list back');
 });
 
 test('rules: setting one up is offered by default and asks first; valet: write turns rules off', async () => {

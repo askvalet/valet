@@ -22,6 +22,8 @@ The card says what's about to happen, in plain words. The words come from the to
 
 **Not now** refuses, and the assistant is told so. The other button names the action: Pause, Stop, Request. One click either way. If a tool has no words of its own, the card says "Allow this:" and shows its input.
 
+Ask something else instead of answering, and that counts as Not now: the card goes, its step reads **Skipped**, nothing runs, and the assistant is told you didn't approve it. Ask again if you still want it done.
+
 ## Dangerous actions
 
 Some actions are hard to take back, like stopping someone's stream. Those tools set `danger`, and the button turns red. It's still one click, so read the card.

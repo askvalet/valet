@@ -14,6 +14,7 @@ import { Chip } from '@/components/ui/chip';
 import { cn } from '@/lib/utils';
 import type { Card, Confirm } from '../shared/cards.ts';
 import { splitThink } from '../shared/think.ts';
+import { skipBeforeSending } from '../shared/approvals.ts';
 import { Icon } from './cards.tsx';
 import { Approval, ChatCard, type ToolInfo } from './approval.tsx';
 import { Tick } from './feel.tsx';
@@ -114,7 +115,7 @@ const argOf = (input: any) => {
 };
 
 /** A run of tool calls as compact chips: what it did, with what, and whether it worked. Collapses once the answer's in. */
-function ToolChips({ parts: all, settled, tools, fresh }: { parts: any[]; settled: boolean; tools: Record<string, ToolInfo>; fresh?: boolean }) {
+export function ToolChips({ parts: all, settled, tools, fresh }: { parts: any[]; settled: boolean; tools: Record<string, ToolInfo>; fresh?: boolean }) {
   const parts = all.filter(p => p.state !== 'approval-requested' || p.approval?.isAutomatic);   // the card asking says it, and nothing has happened yet
   const [open, setOpen] = useState<boolean | null>(null);
   const [peek, setPeek] = useState<string | null>(null);   // a step's card, opened from its line
@@ -133,7 +134,7 @@ function ToolChips({ parts: all, settled, tools, fresh }: { parts: any[]; settle
         <div className="max-w-[560px] space-y-1 overflow-hidden">
           {parts.map((p, i) => {
             const [verb, I] = verbOf(name(p), tools), arg = argOf(p.input), card = p.output?.card as Card | undefined;
-            const done = p.state === 'output-available', failed = p.state === 'output-error' || p.output?.data?.error, denied = p.state === 'output-denied';
+            const done = p.state === 'output-available', failed = p.state === 'output-error' || p.output?.data?.error, denied = p.state === 'output-denied' || (p.state === 'approval-responded' && p.approval?.approved === false);
             if (!done) waited.current.add(p.toolCallId);
             return (
               <Fragment key={i}>
@@ -363,7 +364,10 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
       p.el.style.transition = 'transform 280ms var(--ease-drawer)'; p.el.style.transform = '';
     },
   };
-  const { messages, sendMessage, status, addToolApprovalResponse, error, stop, regenerate, setMessages } = useChat({ chat, experimental_throttle: 60 });
+  const { messages, sendMessage: post, status, addToolApprovalResponse, error, stop, regenerate, setMessages } = useChat({ chat, experimental_throttle: 60 });
+  // asking something else instead of answering a card is a no to it: the card goes, its row says Skipped, and it can't be
+  // pressed later to run something the chat has moved on from
+  const sendMessage = (m: { text: string }) => { setMessages(skipBeforeSending); return post(m); };
   // which model this chat is on: the first of `models` is the default, and a choice the config no longer has goes back to
   // it (one from the server's list is the server's to refuse)
   const [choice, setChoice] = useState(picked);
@@ -422,7 +426,7 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
   const busy = status === 'submitted' || status === 'streaming';
 
   // questions from the ⌘K palette arrive through `ask`
-  useEffect(() => { if (ask && ask.n !== lastAsk) { lastAsk = ask.n; following.current = true; sendMessage({ text: ask.text }); } }, [ask, sendMessage]);
+  useEffect(() => { if (ask && ask.n !== lastAsk) { lastAsk = ask.n; following.current = true; sendMessage({ text: ask.text }); } }, [ask, post]);
   useLayoutEffect(pin, [messages, status]);
   // cards and images that finish loading change the height too
   useEffect(() => {
