@@ -104,6 +104,28 @@ export const AssistantConfig = z.object({
   });
 });
 
+// Talking to the chat and hearing it answer, over the OpenAI audio API: OpenAI itself, or a server of your own (Speaches,
+// LocalAI…). Off unless set, and either half works alone. A half without a baseURL uses the other half's, then the
+// assistant's (an OpenAI-compatible one); a key goes only with the address it was written for.
+const VoiceEnd = { baseURL: z.string().url().optional(), apiKey: z.string().optional() };
+export const VoiceConfig = z.object({
+  // speech to text, POST {baseURL}/audio/transcriptions: the mic in the chat's message box
+  stt: z.object({
+    ...VoiceEnd,
+    model: z.string().min(1).default('whisper-1'),
+    language: z.string().regex(/^[a-z]{2,3}(-[a-z0-9]{2,8})?$/i, 'a language code, like en or pt').optional(),   // default: the server works it out
+  }).strict().optional(),
+  // text to speech, POST {baseURL}/audio/speech: answers read aloud
+  tts: z.object({
+    ...VoiceEnd,
+    model: z.string().min(1).default('tts-1'),
+    voice: z.string().min(1).default('alloy'),
+    speed: z.number().min(.25).max(4).default(1),
+  }).strict().optional(),
+  speakReplies: z.boolean().default(false),   // the speaker toggle's default; each browser remembers its own choice
+  autoSend: z.boolean().default(false),       // send what was heard straight away, rather than leaving it in the box to check
+}).strict();
+
 /** a duration: seconds as a number, or "30s" / "5m" / "2h" / "1d"; comes out in milliseconds */
 export const Every = z.union([z.number().positive(), z.string().regex(/^\d+(\.\d+)?\s*[smhd]?$/, 'a duration like 30s, 5m or 1h')])
   .transform(v => {
@@ -363,6 +385,7 @@ export const Config = z.object({
   // the words on the page, for another language or your own: { overview: Accueil, thinking: Réflexion }
   labels: z.object(Object.fromEntries(Object.keys(LABELS).map(k => [k, z.string().optional()])) as Record<keyof typeof LABELS, z.ZodOptional<z.ZodString>>).strict().prefault({}),
   assistant: AssistantConfig.optional(),
+  voice: VoiceConfig.optional(),
   integrations: z.record(z.string(), z.object({ type: z.string() }).loose()).default({}),
   mcp: z.record(z.string(), McpServer).default({}),
   // Valet as a read-only MCP server for an AI client you already use: off unless set. The token is a long secret from

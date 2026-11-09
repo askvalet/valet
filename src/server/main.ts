@@ -7,7 +7,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono, type Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { bodyLimit } from 'hono/body-limit';
-import { sameOrigin, setupAuth, setupWall, userCommand } from './auth.ts';
+import { clientIp, sameOrigin, setupAuth, setupWall, userCommand } from './auth.ts';
 import { wallPages, wallReads, wallWidgets } from './wall.ts';
 import type { WidgetState } from '../shared/cards.ts';
 import { loadConfig, startConfig, validZone, type Config } from './config.ts';
@@ -29,6 +29,8 @@ import { cardLook, isBoth, isPaint, listOf, lookOf, type Both } from '../shared/
 import { sandbox } from './sandbox.ts';
 import { allowed, has, pushAll, Subscription, subscribe, unsubscribe, vapidKeys } from './webpush.ts';
 import { paletteDocs } from './guide.ts';
+import { MAX_AUDIO, speak, transcribe, voiceForPage, voiceOf } from './voice.ts';
+import { getConnInfo } from '@hono/node-server/conninfo';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { getCookie, setCookie } from 'hono/cookie';
 
@@ -128,10 +130,11 @@ app.get('/healthz', c => c.json({ ok: true, widgets: site.hub.snapshot().filter(
 // under /api needs a session, and test/exposure.ts holds that for every route in this file. Anything that changes something must also come from this page's origin.
 const tooBig = (c: Context) => c.json({ error: 'request too large' }, 413);
 const small = bodyLimit({ maxSize: 256 * 2 ** 10, onError: tooBig }), chatSize = bodyLimit({ maxSize: 8 * 2 ** 20, onError: tooBig });   // a chat carries its history
+const voiceSize = bodyLimit({ maxSize: MAX_AUDIO + 64 * 2 ** 10, onError: c => c.json({ error: 'a recording is limited to about two minutes' }, 413) });
 app.use('/api/*', sameOrigin);                 // before the auth routes, so sign-in is covered too
 // JSON bodies are small; only uploads are big. Capping before anything reads a body means nobody, signed in or not,
 // can make the server buffer megabytes (sign-in routes included).
-app.use('/api/*', async (c, next) => c.req.path === '/api/files' ? next() : c.req.path === '/api/chat' ? chatSize(c, next) : small(c, next));
+app.use('/api/*', async (c, next) => c.req.path === '/api/files' ? next() : c.req.path === '/api/chat' ? chatSize(c, next) : c.req.path === '/api/voice/transcribe' ? voiceSize(c, next) : small(c, next));
 const signedIn = await setupAuth(app, config);
 // A paired wall display (wall.token) may make three reads, each held to the wall's own cards below, and nothing else
 const paired = config.auth.mode === 'none' ? () => false : await setupWall(app, config, () => site.config.wall.token);
@@ -258,6 +261,8 @@ app.get('/api/page', c => {
     recap: config.recap, hero: { ...config.hero, scope: config.hero.scope === true ? scopeOf([...site.meta.values()].map(m => m.type)) : config.hero.scope || undefined }, labels: { ...LABELS, ...config.labels }, format: config.format,
     appearance, look,
     chat: config.chat,
+    // which halves of voice are on, never where they go
+    voice: sandbox.on ? undefined : voiceForPage(config),
     // the demo's model is scripted, and says so beside its name
     assistant: config.assistant ? { ...(agent ? { name: agent.name, model: agent.model, external: true } : { name: config.assistant.name, model: sandbox.on ? `${config.assistant.model} (demo)` : config.assistant.model,
         // assistant.models: what the chat's header offers, the default first; one model offers nothing. With `auto`, the
@@ -524,6 +529,16 @@ app.get('/api/models', async c => {
   const models = listed.models.map(m => ({ id: m.id, ...(m.id !== m.model ? { model: m.model } : {}), ...(m.label ? { label: m.label } : {}), group: m.group }));
   return c.json(JSON.parse(site.redact(JSON.stringify({ ok: listed.ok, at: listed.at, servers: listed.servers, models }))));
 });
+
+// Voice in the chat (voice:): the recording in, the words out; an answer in, MP3 out. Valet calls the speech server so
+// its address and key stay here. Wherever the chat is, so is voice, with no more than the chat may do; never in the demo.
+const voiceDeps = (c: Context) => ({
+  voice: voiceOf(site.config), redact: site.redact,
+  refusal: !site.config.assistant ? 'no assistant configured' : sandbox.on ? "This demo doesn't listen or speak" : null,
+  who: userOf(c) ?? clientIp((getConnInfo(c).remote.address ?? '?').replace(/^::ffff:/, ''), c.req.header('x-forwarded-for'), new Set(site.config.auth.proxy.trusted)),
+});
+app.post('/api/voice/transcribe', c => transcribe(c, voiceDeps(c)));
+app.post('/api/voice/speak', c => speak(c, voiceDeps(c)));
 
 // Notifications on this device (⌘K): Valet's own Web Push. Turning them on or off is acting on the page, so it needs what
 // a button needs; the demo and a read-only page say why not instead. Each browser is one subscription, kept with its account.

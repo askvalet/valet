@@ -43,6 +43,7 @@ Valet is locked down by default. Each protection below also says what it doesn't
 [Valet as an app](/start/app/) adds a service worker and Valet's own push notifications.
 
 - **The service worker keeps one page.** It caches only the "Valet can't be reached" page. The page itself, its data and anything behind sign-in always come from the server, so an update shows on the next load and a signed-out visitor never sees what someone else saw. It never touches `/api/`.
+- **Voice goes where the chat goes.** `/api/voice/transcribe` and `/api/voice/speak` need a session like the chat, are off in the demo, and hand the speech server's address and key to no one. Recordings aren't stored. See [Voice](/assistant/voice/#privacy-and-limits).
 - **Turning notifications on is acting.** `/api/push` needs a session from Valet's own origin, like a button, and a read-only page or a demo refuses it. Each browser is one subscription, kept with the account that turned it on. Only that account can turn it off, signing out from ⌘K turns it off, and **Sign out everywhere** turns off every device of that account.
 - **The push service can't read them.** Each notification is encrypted for one browser (RFC 8291), and signed with Valet's own key (RFC 8292), so Google, Apple, Mozilla or Microsoft carry it without reading it. They do see when one is sent, how big it is, and that it came from your server. Secrets are redacted from the words first, as everywhere.
 - **Valet only posts to real push services.** A subscription is a URL that Valet will post to, so it must be on Google's, Apple's, Mozilla's or Microsoft's push service (`notify.webPush.services`), over HTTPS. It can't point Valet at something on your network.
@@ -101,6 +102,7 @@ Self-hosters like to know what leaves the box.
 
 - Your services, as configured.
 - The model, if you configured one.
+- The speech server, if you configured [voice](/assistant/voice/): a recording or an answer's words, when someone uses the mic or the speaker.
 - App icons: `/api/icon/` fetches from `cdn.jsdelivr.net` once and keeps them in `data/icons`. Files you put there win.
 - Favicons for links: `/api/favicon/` fetches from `icons.duckduckgo.com`, which tells it the link's hostname, and keeps the result.
 - Your notification channels, if any.

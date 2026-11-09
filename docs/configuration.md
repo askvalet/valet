@@ -384,6 +384,34 @@ it. `valet.rules` lists them with Pause and Remove; they live in `data/rules.jso
 **Several changes at once.** The assistant can propose a plan: every step listed, one approval, stopping at the first
 failure. Each step is still a tool its access level allows.
 
+## `voice`
+
+Talk to the chat and hear it answer, through the OpenAI audio API: OpenAI itself, or a speech server on your own network
+([Speaches](https://github.com/speaches-ai/speaches), LocalAI, anything with `/audio/transcriptions` and `/audio/speech`).
+Off unless set; either half works alone. It needs an `assistant`.
+
+```yaml
+voice:
+  stt: { baseURL: http://speaches:8000/v1, model: Systran/faster-distil-whisper-small.en, language: en }   # the mic
+  tts: { model: speaches-ai/Kokoro-82M-v1.0-ONNX, voice: af_heart }                                    # answers read aloud
+  speakReplies: false
+```
+
+| Option | Default | |
+|---|---|---|
+| `stt` | off | speech to text, `POST {baseURL}/audio/transcriptions`: a mic in the chat's message box. `baseURL`, `apiKey` (use `${NAME}`), `model` (`whisper-1`), `language` (a code like `en`; default: the server works it out) |
+| `tts` | off | text to speech, `POST {baseURL}/audio/speech`, MP3: a speaker toggle under the message box. `baseURL`, `apiKey`, `model` (`tts-1`), `voice` (`alloy`), `speed` (0.25–4, `1`) |
+| `speakReplies` | `false` | whether the speaker starts on; each browser remembers its own choice |
+| `autoSend` | `false` | send what was heard straight away. Off, the words go in the box for you to check and send |
+
+A half without `baseURL` uses the other half's, then the assistant's (an OpenAI-compatible one); `apiKey` only ever goes to
+the address it was written for. Valet calls the speech server itself, so the address and key never reach the browser.
+A recording is at most two minutes (10 MB), a reading at most 2,000 characters (the page sends the start of an answer, up
+to 1,500, without markdown, tables or code), and each person gets 20 recordings and 30 readings a minute. Nothing is
+stored: audio passes through memory, and the log gets sizes and timings only. Voice changes no permissions: a spoken
+question is a typed one, with the same access and approvals, and an approval still takes a click. The demo (`sandbox`)
+has no voice.
+
 ## `chat`
 
 The assistant's window. Its name is `assistant.name`.

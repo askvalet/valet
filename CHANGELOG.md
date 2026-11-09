@@ -14,6 +14,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 - Discovered lists leave out models that clearly aren't for chat: embeddings, speech and transcription, image models, moderation, rerankers, legacy completion models, and OpenRouter models that don't write text.
 - A Reasoning menu in the chat (Auto, Off, Low, Medium, High) sets how much the model thinks for that chat, over the config; a new chat is back on Auto. Background calls are unaffected, and so are access and approvals.
 - `reasoning: medium`, for the assistant and each of `models`.
+- `voice`: talk to the chat and hear it answer, over the OpenAI audio API (OpenAI, or a local server like Speaches). `voice.stt` adds a mic to the message box: tap to start and tap to stop, or hold and let go, with a level and a timer while it listens; the words go in the box to check (`autoSend` sends them). `voice.tts` adds a speaker toggle under the box that reads each finished answer aloud (the start of it, without markdown or cards), with a stop while it talks; each browser remembers it, `speakReplies` sets where it starts. Valet calls the speech server through `POST /api/voice/transcribe` and `/api/voice/speak`, behind sign-in like the chat, so the address and key stay on the server; recordings up to two minutes, readings up to 2,000 characters, a per-person limit each minute, nothing stored. Voice changes no permissions. `config check` validates the block. Off unless set.
 
 ### Changed
 

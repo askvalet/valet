@@ -44,7 +44,8 @@ links and a status dot, Valet is meant to be powerful and actionable.
 
 Ask Valet anything about your homelab. Use a local model or a hosted one. Valet knows
 its own documentation, so you can use it to build itself! Anything it changes waits for your approval, and Valet
-works just fine with the AI switched off.
+works just fine with the AI switched off. You can [talk to it, too](https://askvalet.dev/assistant/voice/), with a speech server
+on your own network or OpenAI's.
 
 <table><tr>
 <td width="50%" valign="top"><img src="docs/images/ask-chat.webp" alt="Asking who's watching shows the now-playing card, asking what to watch shows the most-watched list with posters, and pausing Pi-hole waits for approval, then shows its chart"><br><sub>"Who's watching?" "What should we watch tonight?" Then "Pause Pi-hole", which waits for your approval.</sub></td>

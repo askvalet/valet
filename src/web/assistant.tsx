@@ -21,6 +21,7 @@ import { Tick } from './feel.tsx';
 import { label, num } from './format.ts';
 import { play } from './sound.ts';
 import { ModelPicker, ReasoningPicker, type Choice, type Thinking } from './models.tsx';
+import { Listening, MicButton, SpeakerToggle, useRecorder, useSpeaker, type VoiceUi } from './voice.tsx';
 
 /** What `chat:` says about the window. */
 export interface ChatUi { followUps?: string[]; review?: string; steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string; beam?: 'off' | 'always' | 'focus' | 'thinking' | 'once'; beamColor?: 'colorful' | 'mono' | 'ocean' | 'sunset'; beamStrength?: number }
@@ -340,13 +341,14 @@ function ContextMeter({ used, total, auto, fresh }: { used: number; total?: numb
   );
 }
 
-export default function Assistant({ name, model, models, discover, ask, suggestions, tools = {}, external, onAsk, onClose, onDismiss, ui = { steps: true, thinking: 'collapsed', send: 'enter' }, attach: canAttach = true }: {
+export default function Assistant({ name, model, models, discover, ask, suggestions, tools = {}, external, onAsk, onClose, onDismiss, ui = { steps: true, thinking: 'collapsed', send: 'enter' }, attach: canAttach = true, voice }: {
   name: string; model: string; models?: Choice[]; discover?: boolean; ask: { text: string; n: number } | null; suggestions: string[]; tools?: Record<string, ToolInfo>; onAsk: (t: string) => void;
   external?: boolean;   // the chat is another agent's (assistant.agent), with tools of its own
   onClose?: () => void;   // shown as a phone sheet: a grabber to drag it away, and room for fingers and the keyboard
   onDismiss?: () => void;   // a panel or a full page: a plain close button, there being no outside to click
   ui?: ChatUi;
   attach?: boolean;   // a read-only page takes no files
+  voice?: VoiceUi;   // voice: which of the mic and the speaker are on
 }) {
   const sheet = !!onClose;
   // dragging the header pulls the sheet down with the finger; far or fast enough lets it go, otherwise it rides back
@@ -436,12 +438,29 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
   }, []);
 
   const ready = files.filter(f => f.id), uploading = files.some(f => !f.id && !f.error);
-  const submit = () => {
-    if ((!draft.trim() && !ready.length) || busy || uploading) return;
+  // voice: what's heard goes in the box to check (or, with voice.autoSend, is sent as if typed); answers can be read aloud
+  const [voiceNote, setVoiceNote] = useState<string | null>(null);
+  const speaker = useSpeaker(!!voice?.speakReplies, setVoiceNote);
+  const rec = useRecorder({ onError: setVoiceNote, onText: t => { setVoiceNote(null); if (voice?.autoSend && !busy && !uploading) submit(t); else setDraft(d => d.trim() ? `${d.trimEnd()} ${t}` : t); } });
+  const submit = (heard?: string) => {
+    const text = heard ?? draft;
+    if ((!text.trim() && !ready.length) || busy || uploading) return;
     const lines = ready.map(f => `[attached: ${f.name} (file id ${f.id})]`);
-    following.current = true; play('send'); setSent(n => n + 1);
-    sendMessage({ text: [draft.trim() || 'File this.', ...lines].join('\n') }); setDraft(''); setFiles([]);
+    following.current = true; play('send'); setSent(n => n + 1); setVoiceNote(null);
+    if (voice?.speak) { speaker.stop(); if (speaker.on) speaker.unlock(); }
+    sendMessage({ text: [text.trim() || 'File this.', ...lines].join('\n') }); if (heard === undefined) setDraft(''); setFiles([]);
   };
+  // a finished answer is read aloud when the speaker is on; one waiting for approval isn't finished, and the click still decides
+  const answering = useRef(false);
+  useEffect(() => {
+    if (busy) { answering.current = true; return; }
+    if (!answering.current) return;
+    answering.current = false;
+    const last = messages.at(-1);
+    if (!voice?.speak || !speaker.on || error || last?.role !== 'assistant' || last.parts.some((p: any) => p.state === 'approval-requested')) return;
+    const text = last.parts.filter((p: any) => p.type === 'text').map((p: any) => splitThink(p.text).said).join('\n\n').trim();
+    if (text) void speaker.say(text);
+  }, [busy]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // what's offered next: three at a time, nothing already asked
   const said = new Set(messages.filter((m: any) => m.role === 'user').flatMap((m: any) => m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text.trim())));
@@ -514,10 +533,11 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
         <div className={cn('composer flex items-end gap-2 rounded-surface border bg-card px-3 py-2 shadow-card', over && 'ring-2 ring-primary/60')}>
           <input ref={filePicker} type="file" multiple hidden onChange={e => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
  {canAttach && <button type="button" onClick={() => filePicker.current?.click()} aria-label="Attach a file" className={cn('press grid shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-fill-2 hover:text-foreground', sheet ? 'mb-[3px] size-8' : 'mb-1 size-7')}><Paperclip className="size-icon" /></button>}
-          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={label(sheet || external || !canAttach ? 'message' : 'messageHint', { name })} aria-label="Message"
+          {rec.phase === 'recording' || rec.phase === 'sending' ? <Listening rec={rec} /> : <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={label(sheet || external || !canAttach ? 'message' : 'messageHint', { name })} aria-label="Message"
             onKeyDown={e => { if (e.key === 'Enter' && (ui.send === 'enter' ? !e.shiftKey : e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
             onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
-            className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-[16px] leading-[22px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-title" autoFocus={!sheet} />
+            className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-[16px] leading-[22px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-title" autoFocus={!sheet} />}
+          {voice?.listen && <MicButton rec={rec} sheet={sheet} />}
           {busy
             ? <Button type="button" size="icon" variant="secondary" className="relative mb-[3px] size-8 overflow-hidden rounded-sm" onClick={stop} aria-label="Stop"><Square className="morph size-3 fill-current" />{sent > 0 && <ArrowUp key={sent} className="send-lift absolute inset-0 m-auto" aria-hidden />}</Button>
             : <Button type="submit" size="icon" className="mb-[3px] size-8 rounded-sm bg-foreground text-(--card-tint) hover:bg-foreground/90 disabled:bg-foreground/20 disabled:text-foreground disabled:opacity-100" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
@@ -526,6 +546,8 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
         {/* under the box, on the right: the model, how much it thinks, and how full the window is. Always there (a single
             model just isn't a menu), so nothing moves when a menu or the meter appears; their menus open upward */}
         <div className="mt-1.5 flex min-w-0 items-center justify-end gap-2.5 px-1 text-meta leading-4 text-muted-foreground">
+          {voiceNote && <button type="button" role="alert" title={voiceNote} onClick={() => setVoiceNote(null)} className="mr-auto min-w-0 cursor-pointer truncate text-left text-bad first-letter:uppercase">{voiceNote}</button>}
+          {voice?.speak && <SpeakerToggle speaker={speaker} />}
           {models && (models.length > 1 || discover) && !external
             ? <ModelPicker models={[{ ...models[0], model }, ...models.slice(1)]} discover={discover} value={choice} onChange={choose} />
             : model && <span className="min-w-0 truncate">{model}</span>}

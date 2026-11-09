@@ -32,6 +32,7 @@ import { loadPins, pinsInstance, savePins, type Pin } from './pins.ts';
 import { setupTools } from './setup.ts';
 import { sandbox } from './sandbox.ts';
 import { wallPages, wallProblems, wallWidgets } from './wall.ts';
+import { voiceProblems } from './voice.ts';
 import { choices, servers } from './model.ts';
 
 export interface Site {
@@ -104,6 +105,7 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   // the wall's own cards are polled too, while a wall is open; its typos name the wall
   const has = (key: string) => { const [inst, w] = key.split('.'); return inst === 'valet' || !!instances.get(inst)?.widgets[w]; };
   problems.push(...wallProblems(config, has));
+  problems.push(...voiceProblems(config));
   // a view the widget's card can't take is ignored on the page; say so here, with the ones it can
   const drawn = [...config.layout.flatMap(s => s.widgets.map(w => ({ ...w, where: 'layout' }))), ...wallPages(config).flatMap(p => p.layout.flatMap(s => s.widgets.map(w => ({ ...w, where: 'wall' }))))];
   for (const { widget, view, where } of drawn) {
