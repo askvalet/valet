@@ -899,13 +899,15 @@ section + section[data-plain] { margin-top: calc(var(--card-gap) - var(--section
 @media (min-width: 80rem) { main:has(> header .hero-title) { --chat-top: calc(101px + 1.5rem); } }
 
 /* Menus that open over the chat's own text (the / and @ menus, the model picker, the reasoning menu, the context ring's
-   card): nearly solid over a wallpaper, so the answer behind them doesn't read through the items. Tripled so it outranks
-   the glass rules above (liquid, frosted, light) without !important; the page's other glass is unchanged. */
+   card): nearly solid over a wallpaper, so the answer behind them doesn't read through the items. The blur only frosts
+   the wallpaper: the chat panel is glass itself, and the text inside it showed through sharp at .94, so the tint carries
+   it. Tripled so it outranks the glass rules above (liquid, frosted, light) without !important; the page's other glass
+   is unchanged. */
 .has-wallpaper [data-chat-menu][data-chat-menu][data-chat-menu] {
-  background: rgb(22 22 26 / .94);
+  background: rgb(22 22 26 / .985);
   -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
 }
-.has-wallpaper.glass-light [data-chat-menu][data-chat-menu][data-chat-menu] { background: rgb(255 255 255 / .95); }
+.has-wallpaper.glass-light [data-chat-menu][data-chat-menu][data-chat-menu] { background: rgb(255 255 255 / .985); }
 @media (prefers-reduced-transparency: reduce) {
   .has-wallpaper [data-chat-menu][data-chat-menu][data-chat-menu] { background: rgb(20 20 24); backdrop-filter: none; }
   .has-wallpaper.glass-light [data-chat-menu][data-chat-menu][data-chat-menu] { background: #fff; }
