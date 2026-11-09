@@ -39,6 +39,19 @@ const ModelChoice = z.object({
   options: Sampling.optional(),
 }).strict();
 
+// `{ auto: true, ... }`: every model one server lists, that server filled in from the main settings by the same rules as a
+// choice. Bare `auto` is the main server's list.
+const AutoServer = z.object({
+  auto: z.literal(true),
+  name: z.string().min(1).optional(),      // the menu's heading for this server's models; default: its host
+  provider: z.enum(['openai-compatible', 'anthropic']).optional(),
+  baseURL: z.string().optional(),
+  apiKey: z.string().optional(),
+  reasoning: Reasoning.optional(),
+  options: Sampling.optional(),
+}).strict();
+export type AutoServer = z.infer<typeof AutoServer>;
+
 export const AssistantConfig = z.object({
   // any OpenAI-compatible server (Ollama, llama.cpp, vLLM, OpenRouter, OpenAI…) or Anthropic
   provider: z.enum(['openai-compatible', 'anthropic']).default('openai-compatible'),
@@ -71,13 +84,20 @@ export const AssistantConfig = z.object({
   // questions offered on an empty chat and in ⌘K
   suggestions: z.array(z.string()).default(['Is anything down?', 'How are my downloads doing?', "What's playing on Plex?", 'Show me the GPU and Plex side by side']),
   // more models to pick from in the chat (under the message box), for one chat at a time; the main model above stays the default and
-  // does everything in the background. `auto` (an item, or `models: auto` alone) adds every model the main server lists
-  models: z.union([z.literal('auto').transform(() => ['auto' as const]), z.array(z.union([z.literal('auto'), ModelChoice]))]).default([]),
+  // does everything in the background. `auto` (an item, or `models: auto` alone) adds every model the main server lists,
+  // and `{ auto: true, baseURL, apiKey, provider, name }` every model another server lists
+  models: z.union([z.literal('auto').transform(() => ['auto' as const]), z.array(z.union([z.literal('auto'), AutoServer, ModelChoice]))]).default([]),
 }).strict().superRefine((a, ctx) => {
   // each choice is known by its name (or model id), and the main model by its model id
-  const seen = new Set([a.model]);
+  const seen = new Set([a.model]), heads = new Set<string>();
   a.models.forEach((m, i) => {
     if (m === 'auto') return;
+    if ('auto' in m) {
+      // a server's name heads its models in the menu and tells two servers' same model apart
+      if (m.name && heads.has(m.name)) ctx.addIssue({ code: 'custom', path: ['models', i, 'name'], message: `"${m.name}" already names a server: give this one a name of its own` });
+      if (m.name) heads.add(m.name);
+      return;
+    }
     const id = m.name ?? m.model;
     if (seen.has(id)) ctx.addIssue({ code: 'custom', path: ['models', i, m.name ? 'name' : 'model'], message: `"${id}" is already a choice: give this one a name of its own` });
     seen.add(id);

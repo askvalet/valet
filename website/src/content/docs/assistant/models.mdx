@@ -132,7 +132,7 @@ The page only ever sends the name of a choice. The server checks it against this
 
 ### Everything the server offers
 
-A server with many models (Ollama, llama.cpp, vLLM, LM Studio, a router like LiteLLM or OpenRouter) lists them at `GET /models`. Add `auto` to `models` and the chat offers all of them, after the ones you named:
+A server with many models (Ollama, llama.cpp, vLLM, LM Studio, a router like LiteLLM or OpenRouter, Anthropic) lists them. Add `auto` to `models` and the chat offers all of them, after the ones you named:
 
 ```yaml title="config.yaml"
 assistant:
@@ -146,9 +146,30 @@ assistant:
 
 `models: auto` on its own is the same as a list with only `auto` in it. Valet asks the main server (`baseURL`, with its `apiKey`) from its own side, so the key never reaches the browser, and keeps the list for five minutes; the menu has a **Refresh the list** row to ask again. A model found this way is on the main server, so it uses the main settings, with its own window when the list gives one (`max_model_len`, `context_length` and the like) and none otherwise. Models you named, and the main model, aren't listed twice.
 
-Past eight choices the menu becomes a list you can type into: the models you named first, then the ones you picked lately in this browser, then the rest, narrowed as you type (arrows and Enter pick, Esc closes). It shows a hundred matches at a time, so a router with hundreds of models stays quick. If the server doesn't answer, the menu says so and keeps the models you named.
+#### More than one server
 
-The server still decides: a chat can name the main model, one you named, or one in the latest list (asked again once if it isn't there), and nothing else. A server address or key in a request is never read. Only an OpenAI-compatible server is asked; with `provider: anthropic`, `auto` adds nothing and `config check` says so.
+`auto` lists the main server. To list another one too, add an entry with `auto: true` and that server's settings. Add as many as you like:
+
+```yaml title="config.yaml"
+assistant:
+  model: qwen3.8-27b
+  models:
+    - auto                                                          # the local server
+    - { auto: true, name: OpenRouter, baseURL: https://openrouter.ai/api/v1, apiKey: "${OPENROUTER_KEY}" }
+    - { auto: true, name: Claude, provider: anthropic, apiKey: "${ANTHROPIC_API_KEY}" }
+```
+
+An `auto: true` entry can set `name`, `provider`, `baseURL`, `apiKey`, `reasoning` and `options`, and fills in the rest from the main settings by the same rules as a model you named: `baseURL` only from the same provider, `apiKey` only for the same server. A model it finds runs on that server, with that server's key, and no other. `name` heads the server's models in the menu (left out, the server's host, like `openrouter.ai`; the main server's are "On the server").
+
+Each model keeps its own id unless another choice already has it: the main model, one you named, or one an earlier server in the list offers. Then it's told apart by its server's name or host, as in `OpenRouter/qwen3.8-27b`.
+
+Valet asks an OpenAI-compatible server `GET {baseURL}/models` with the key as a bearer token. With `provider: anthropic` it asks Anthropic's `GET /v1/models` (at `https://api.anthropic.com`, or `{baseURL}/models` with the same `baseURL` the chat uses) with the key in `x-api-key`, follows the pages (at most ten), and shows each model's display name.
+
+Lists mix in models you can't chat with, so Valet leaves out the ones whose id says what they are (embeddings, Whisper, text-to-speech, transcription, image models like DALL·E and gpt-image, moderation, rerankers and the old `davinci-002` and `babbage-002`), and OpenRouter's models that don't write text. A model it can't tell about stays.
+
+Past eight choices the menu becomes a list you can type into: the models you named first, then the ones you picked lately in this browser, then each server's, under its own heading, narrowed as you type (arrows and Enter pick, Esc closes). The search covers every server, and it shows a hundred matches at a time, so a router with hundreds of models stays quick. If a server doesn't answer, the menu says which and keeps the rest.
+
+The server still decides: a chat can name the main model, one you named, or one in the latest lists (asked again once if it isn't there), and nothing else. A server address or key in a request is never read. `config check` names an Anthropic `auto` entry without a key.
 
 ## Background use
 

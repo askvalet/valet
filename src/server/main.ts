@@ -16,7 +16,7 @@ import { UPLOAD_DIR, LOGO, hearBrowser } from './core.ts';
 import { parseSuggestions, scopeOf, statusLine, suggestPrompt, troubles } from './insight.ts';
 import { loadPins, newPin, pinnedCard, savePins } from './pins.ts';
 import { loadPlugins } from './plugins.ts';
-import { chatAgent, choices, discovery, offered } from './model.ts';
+import { chatAgent, choices, discovery } from './model.ts';
 import { buildRecap, recapYear } from './recap.ts';
 import { discover } from './discover.ts';
 import { mcpServer } from './mcpserver.ts';
@@ -261,7 +261,7 @@ app.get('/api/page', c => {
     // the demo's model is scripted, and says so beside its name
     assistant: config.assistant ? { ...(agent ? { name: agent.name, model: agent.model, external: true } : { name: config.assistant.name, model: sandbox.on ? `${config.assistant.model} (demo)` : config.assistant.model,
         // assistant.models: what the chat's header offers, the default first; one model offers nothing. With `auto`, the
-        // rest of the main server's list comes from /api/models when the menu opens
+        // rest of each listed server's models come from /api/models when the menu opens
         ...(config.assistant.models.length ? { models: choices(config.assistant).map(c => ({ id: c.id, model: c.settings.model })), ...(discovery(config.assistant).on && !sandbox.on ? { discover: true } : {}) } : {}) }), suggestions: config.assistant.suggestions,
       // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>")
       tools: Object.fromEntries([...instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {})
@@ -514,13 +514,15 @@ app.post('/api/chat', async c => {
   return chat(c);
 });
 
-// `auto` in assistant.models: the main server's list, asked from here so its key stays here, and kept five minutes
-// (`?fresh=1` asks again). What fails says so quietly, and the configured choices still work.
+// `auto` in assistant.models: each server's list, asked from here so its key stays here, and kept five minutes
+// (`?fresh=1` asks again). What fails says so quietly, and the configured choices still work. The page gets each model's
+// id, its name where the server gives one, and its server's heading: never an address or a key.
 app.get('/api/models', async c => {
   const a = site.config.assistant;
-  if (!a || sandbox.on || chatAgent(a, site.acting)) return c.json({ models: [], ok: true });
+  if (!a || sandbox.on || chatAgent(a, site.acting)) return c.json({ models: [], servers: [], ok: true });
   const listed = await discovery(a).list(c.req.query('fresh') === '1');
-  return c.json(JSON.parse(site.redact(JSON.stringify({ ok: listed.ok, at: listed.at, models: offered(a, listed) }))));
+  const models = listed.models.map(m => ({ id: m.id, ...(m.id !== m.model ? { model: m.model } : {}), ...(m.label ? { label: m.label } : {}), group: m.group }));
+  return c.json(JSON.parse(site.redact(JSON.stringify({ ok: listed.ok, at: listed.at, servers: listed.servers, models }))));
 });
 
 // Notifications on this device (⌘K): Valet's own Web Push. Turning them on or off is acting on the page, so it needs what

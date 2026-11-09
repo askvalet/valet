@@ -185,8 +185,44 @@ test('assistant.models: auto, as an item or alone, asks the main server for the 
   // from YAML, both spellings
   assert.deepEqual(parseConfig('assistant:\n  model: qwen\n  models: auto\n').assistant!.models, ['auto']);
   assert.deepEqual(parseConfig('assistant:\n  model: qwen\n  models:\n    - { name: "Fast", model: small }\n    - auto\n').assistant!.models, [{ name: 'Fast', model: 'small' }, 'auto']);
-  // Anthropic doesn't serve an OpenAI-style list: the checker says auto adds nothing
+  // Anthropic lists its models too, so auto there is fine; it only needs a key
   const anthropic = Config.parse({ assistant: { model: 'claude-sonnet-5-5', provider: 'anthropic', apiKey: 'k', models: 'auto' } });
-  assert.ok(check(anthropic, registry).problems.some(p => /auto lists an OpenAI-compatible/.test(p)));
+  assert.ok(!check(anthropic, registry).problems.some(p => p.includes('assistant.models')));
+  assert.ok(discovery(anthropic.assistant!).on);
   assert.ok(!check(Config.parse({ assistant: { model: 'qwen', models: 'auto' } }), registry).problems.some(p => p.includes('assistant.models')));
+  const had = process.env.ANTHROPIC_API_KEY; delete process.env.ANTHROPIC_API_KEY;
+  try {
+    const keyless = Config.parse({ assistant: { model: 'qwen', models: ['auto', { auto: true, name: 'Claude', provider: 'anthropic' }] } });
+    assert.ok(check(keyless, registry).problems.some(p => /auto on Claude needs an apiKey/.test(p)));
+  } finally { if (had !== undefined) process.env.ANTHROPIC_API_KEY = had; }
+});
+
+test('assistant.models: { auto: true } lists another server, filled in by the same rules as a choice', async () => {
+  const { servers, choices } = await import('../src/server/model.ts');
+  const a = parseConfig(`assistant:
+  model: qwen3.8-27b
+  baseURL: http://gpu:8000/v1
+  apiKey: local-key
+  reasoning: off
+  models:
+    - auto
+    - { auto: true, name: OpenRouter, baseURL: https://openrouter.ai/api/v1, apiKey: or-key, reasoning: high }
+    - { auto: true, name: Claude, provider: anthropic, apiKey: ant-key }
+    - { auto: true, baseURL: http://other:9000/v1 }
+    - { auto: true }
+`).assistant!;
+  assert.deepEqual(choices(a).map(c => c.id), ['qwen3.8-27b']);           // auto items are no choice of their own
+  const s = servers(a);
+  // { auto: true } with nothing of its own is the main server again, listed once
+  assert.deepEqual(s.map(x => x.title), ['On the server', 'OpenRouter', 'Claude', 'other:9000']);
+  assert.equal(s[0].settings, a);
+  assert.deepEqual([s[1].settings.baseURL, s[1].settings.apiKey, s[1].settings.reasoning], ['https://openrouter.ai/api/v1', 'or-key', 'high']);
+  // another provider gets neither the main address nor its key; another address on the same provider, not the key
+  assert.deepEqual([s[2].settings.provider, s[2].settings.baseURL, s[2].settings.apiKey, s[2].settings.reasoning], ['anthropic', undefined, 'ant-key', 'off']);
+  assert.deepEqual([s[3].settings.baseURL, s[3].settings.apiKey], ['http://other:9000/v1', undefined]);
+  // a server's name is its own, and an auto entry takes only what it can use
+  assert.equal(Config.safeParse({ assistant: { model: 'q', models: [{ auto: true, name: 'X' }, { auto: true, name: 'X', baseURL: 'http://y/v1' }] } }).success, false);
+  assert.equal(Config.safeParse({ assistant: { model: 'q', models: [{ auto: true, model: 'x' }] } }).success, false);
+  assert.equal(Config.safeParse({ assistant: { model: 'q', models: [{ auto: false }] } }).success, false);
+  assert.equal(Config.safeParse({ assistant: { model: 'q', models: [{ auto: true, contextWindow: 9000 }] } }).success, false);
 });

@@ -32,7 +32,7 @@ import { loadPins, pinsInstance, savePins, type Pin } from './pins.ts';
 import { setupTools } from './setup.ts';
 import { sandbox } from './sandbox.ts';
 import { wallPages, wallProblems, wallWidgets } from './wall.ts';
-import { choices } from './model.ts';
+import { choices, servers } from './model.ts';
 
 export interface Site {
   config: Config;
@@ -98,7 +98,8 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   }
   // a choice on Anthropic with no key of its own (the main server's isn't passed to another provider) can't answer
   if (config.assistant) for (const c of choices(config.assistant).slice(1)) if (c.settings.provider === 'anthropic' && !c.settings.apiKey && !process.env.ANTHROPIC_API_KEY) problems.push(`assistant.models: "${c.id}" needs an apiKey, e.g. apiKey: \${ANTHROPIC_API_KEY} with the key in .env`);
-  if (config.assistant?.models.includes('auto') && config.assistant.provider !== 'openai-compatible') problems.push('assistant.models: auto lists an OpenAI-compatible server\'s models; the main provider is anthropic, so it adds nothing');
+  // the same for a server `auto` lists: Anthropic's list needs a key too
+  if (config.assistant) for (const s of servers(config.assistant)) if (s.settings.provider === 'anthropic' && !s.settings.apiKey && !process.env.ANTHROPIC_API_KEY) problems.push(`assistant.models: auto on ${s.title} needs an apiKey, e.g. apiKey: \${ANTHROPIC_API_KEY} with the key in .env`);
   for (const [id] of Object.entries(config.assistant?.access ?? {})) if (!id.includes('.') && !['default', 'config', 'valet'].includes(id) && !instances.has(id)) problems.push(`assistant.access.${id}: no such integration`);
   // the wall's own cards are polled too, while a wall is open; its typos name the wall
   const has = (key: string) => { const [inst, w] = key.split('.'); return inst === 'valet' || !!instances.get(inst)?.widgets[w]; };

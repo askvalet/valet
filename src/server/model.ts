@@ -37,55 +37,106 @@ export function makeModel(a: NonNullable<Config['assistant']>) {
 }
 
 type Assistant = NonNullable<Config['assistant']>;
+type Item = Exclude<Assistant['models'][number], 'auto'>;
+/** An entry's settings, filled in from the main ones. The main server's address only goes to the same provider and its key
+ *  only to the same server, so a key never reaches a host it wasn't written for; a window is the model's own. */
+function inherit(a: Assistant, m: Item, model: string): Assistant {
+  const provider = m.provider ?? a.provider, baseURL = m.baseURL ?? (provider === a.provider ? a.baseURL : undefined);
+  const apiKey = m.apiKey ?? (provider === a.provider && baseURL === a.baseURL ? a.apiKey : undefined);
+  return { ...a, provider, baseURL, apiKey, model, contextWindow: 'auto' in m ? undefined : m.contextWindow,
+    reasoning: m.reasoning ?? a.reasoning, options: { ...a.options, ...m.options } };
+}
 /** What the chat may run on: the main settings first (the default), then each of `assistant.models`, known by its name or
- *  model id, filled in from the main settings. The main server's address only goes to the same provider and its key only
- *  to the same server, so a key never reaches a host it wasn't written for; a window is the model's own. */
+ *  model id, filled in from the main settings. */
 export function choices(a: Assistant): { id: string; settings: Assistant }[] {
-  return [{ id: a.model, settings: a }, ...a.models.flatMap(m => m === 'auto' ? [] : [m]).map(m => {
-    const provider = m.provider ?? a.provider, baseURL = m.baseURL ?? (provider === a.provider ? a.baseURL : undefined);
-    const apiKey = m.apiKey ?? (provider === a.provider && baseURL === a.baseURL ? a.apiKey : undefined);
-    return { id: m.name ?? m.model, settings: { ...a, provider, baseURL, apiKey, model: m.model, contextWindow: m.contextWindow,
-      reasoning: m.reasoning ?? a.reasoning, options: { ...a.options, ...m.options } } };
-  })];
+  return [{ id: a.model, settings: a }, ...a.models.flatMap(m => m === 'auto' || 'auto' in m ? [] : [{ id: m.name ?? m.model, settings: inherit(a, m, m.model) }])];
 }
 
-const base = (a: Assistant) => (a.baseURL ?? 'http://localhost:11434/v1').replace(/\/$/, '');
+const ANTHROPIC = 'https://api.anthropic.com/v1';
+const base = (a: Assistant) => (a.baseURL ?? (a.provider === 'anthropic' ? ANTHROPIC : 'http://localhost:11434/v1')).replace(/\/$/, '').replace(/^https:\/\/api\.anthropic\.com$/, ANTHROPIC);
 const authed = (a: Assistant) => ({ 'User-Agent': 'Valet', ...(a.apiKey ? { Authorization: `Bearer ${a.apiKey}` } : {}) });
+const host = (a: Assistant) => { try { return new URL(base(a)).host; } catch { return base(a); } };
+/** the same server: one provider at one address */
+const where = (a: Assistant) => `${a.provider} ${base(a)}`;
 
-/** What `auto` in `assistant.models` found on the main server: every model its `/models` list names, with a window where
- *  the list gives one. `ok: false` means the last ask failed, and `models` is then what the one before found, if anything. */
-export interface Listed { at: number; ok: boolean; models: { id: string; window?: number }[] }
+/** Whether a listed model is one you can chat with. Lists mix in embedders, speech, image and moderation models, which only
+ *  fail in a chat, so those go: by an id that says so, or by OpenRouter's `architecture.output_modalities` leaving out text.
+ *  Anything it can't tell about stays. */
+export function chatModel(entry: { id: string; architecture?: { output_modalities?: unknown } }): boolean {
+  const id = entry.id.toLowerCase(), out = entry.architecture?.output_modalities;
+  if (Array.isArray(out) && out.length && !out.includes('text')) return false;
+  if (/embed|whisper|transcri|speech|dall-?e|gpt-image|moderation|rerank/.test(id)) return false;
+  if (/(^|[^a-z0-9])(tts|image|audio-only)([^a-z0-9]|$)/.test(id)) return false;
+  return !/(^|\/)(davinci|babbage)-002$/.test(id);
+}
+
+/** One server's own list: every chat model it names, with a window where the list gives one (and Anthropic's display name).
+ *  `ok: false` means the last ask failed, and `models` is then what the one before found, if anything. */
+export interface Listed { at: number; ok: boolean; models: { id: string; label?: string; window?: number }[] }
 export const LIST_FOR = 5 * 6e4;   // a list is kept this long
 const AGAIN_AFTER = 5000;          // asked again on purpose (refresh, a model it doesn't have), at most this often
+const PAGES = 10;                  // Anthropic's list comes in pages; this many at most
 const lists = new Map<string, { listed?: Listed; asking?: Promise<Listed> }>();
 
-/** `auto` in `assistant.models`: the main server's own list, asked from here only (its key never reaches the page), kept
- *  five minutes and shared by every chat. Discovered models are on the main server, so they take the main settings, with
- *  their own window. Only an OpenAI-compatible server is asked. */
-export function discovery(a: Assistant, o: { fetch?: typeof fetch; now?: () => number } = {}) {
-  const on = a.models.includes('auto') && a.provider === 'openai-compatible';
-  const now = o.now ?? Date.now, get = o.fetch ?? fetch;
-  const key = `${base(a)} ${a.apiKey ?? ''}`;
+/** A server that `auto` asks: its settings, the menu's heading for it, and what tells its models apart from another's. */
+export interface Server { settings: Assistant; title: string; prefix: string }
+/** Every server `auto` lists, in config order and once each: bare `auto` (or an entry naming nothing new) is the main one. */
+export function servers(a: Assistant): Server[] {
+  const out: Server[] = [], seen = new Set<string>();
+  for (const m of a.models) {
+    if (m !== 'auto' && !('auto' in m)) continue;
+    const settings = m === 'auto' ? a : inherit(a, m, a.model), main = where(settings) === where(a) && settings.apiKey === a.apiKey;
+    const key = `${where(settings)} ${settings.apiKey ?? ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const name = m === 'auto' ? undefined : m.name;
+    out.push({ settings, title: name ?? (main ? 'On the server' : host(settings)), prefix: name ?? host(settings) });
+  }
+  return out;
+}
+
+async function readList(a: Assistant, get: typeof fetch): Promise<Listed['models']> {
+  const seen = new Set<string>(), models: Listed['models'] = [];
+  const add = (d: any, label?: unknown) => {
+    const id = d?.id;
+    if (typeof id !== 'string' || !id || id.length > 200 || seen.has(id) || !chatModel(d)) return;
+    seen.add(id);
+    models.push({ id, ...(typeof label === 'string' && label && label.length <= 200 && label !== id ? { label } : {}), window: windowOfEntry(d) });
+  };
+  if (a.provider === 'anthropic') {
+    // GET /v1/models: { data: [{ id, display_name, max_input_tokens, … }], has_more, last_id }, the next page by after_id
+    const key = a.apiKey ?? process.env.ANTHROPIC_API_KEY;
+    const headers = { 'User-Agent': 'Valet', 'anthropic-version': '2023-06-01', ...(key ? { 'x-api-key': key } : {}) };
+    let after: string | undefined;
+    for (let page = 0; page < PAGES; page++) {
+      const r = await get(`${base(a)}/models?limit=1000${after ? `&after_id=${encodeURIComponent(after)}` : ''}`, { headers, signal: AbortSignal.timeout(5000) });
+      if (!r.ok) throw new Error(String(r.status));
+      const body = await r.json() as { data?: unknown; has_more?: unknown; last_id?: unknown };
+      if (!Array.isArray(body?.data)) throw new Error('no list');
+      for (const d of body.data as any[]) add(d, d?.display_name);
+      if (body.has_more !== true || typeof body.last_id !== 'string' || !body.last_id || body.last_id === after) break;
+      after = body.last_id;
+    }
+    return models;
+  }
+  const r = await get(`${base(a)}/models`, { headers: authed(a), signal: AbortSignal.timeout(5000) });
+  if (!r.ok) throw new Error(String(r.status));
+  const body = await r.json() as { data?: unknown };
+  if (!Array.isArray(body?.data)) throw new Error('no list');
+  for (const d of body.data as any[]) add(d);
+  return models;
+}
+
+/** One server's list, asked from here only (its key never reaches the page), kept five minutes and shared by every chat. */
+function lister(a: Assistant, now: () => number, get: typeof fetch) {
+  const key = `${where(a)} ${a.apiKey ?? ''}`;
   const ask = async (): Promise<Listed> => {
     const was = lists.get(key)?.listed;
-    try {
-      const r = await get(`${base(a)}/models`, { headers: authed(a), signal: AbortSignal.timeout(5000) });
-      if (!r.ok) throw new Error(String(r.status));
-      const body = await r.json() as { data?: unknown };
-      if (!Array.isArray(body?.data)) throw new Error('no list');
-      const seen = new Set<string>(), models: Listed['models'] = [];
-      for (const d of body.data as any[]) {
-        const id = d?.id;
-        if (typeof id !== 'string' || !id || id.length > 200 || seen.has(id)) continue;
-        seen.add(id); models.push({ id, window: windowOfEntry(d) });
-      }
-      return { at: now(), ok: true, models };
-    } catch { return { at: now(), ok: false, models: was?.models ?? [] }; }
+    try { return { at: now(), ok: true, models: await readList(a, get) }; } catch { return { at: now(), ok: false, models: was?.models ?? [] }; }
   };
   /** the list, asked again when it's older than five minutes (a failure, after a minute), or when `fresh` (the menu's
    *  refresh, a request naming a model it doesn't have), but never more than once in five seconds */
-  const list = (fresh = false): Promise<Listed> => {
-    if (!on) return Promise.resolve({ at: now(), ok: true, models: [] });
+  return (fresh = false): Promise<Listed> => {
     const held = lists.get(key) ?? {};
     lists.set(key, held);
     const l = held.listed, age = l ? now() - l.at : Infinity;
@@ -93,22 +144,51 @@ export function discovery(a: Assistant, o: { fetch?: typeof fetch; now?: () => n
     // two chats asking at once share one request
     return held.asking ??= ask().then(x => { held.listed = x; return x; }).finally(() => { held.asking = undefined; });
   };
+}
+
+/** A model `auto` found: the id the page and the chat know it by, the server's own id, and which server it's on. */
+export interface Found { id: string; model: string; label?: string; window?: number; group: string; server: number }
+/** Everything the servers list, as the page is offered it: each model known by its own id, unless that's taken (the main
+ *  model, a configured choice, or one an earlier server listed), and then by `<server name or host>/<id>`. A model that's
+ *  already the main one or a configured choice on the same server isn't listed again. */
+export function combine(a: Assistant, all: Server[], listed: Listed[]): Found[] {
+  const configured = choices(a), taken = new Set(configured.map(c => c.id)), out: Found[] = [];
+  all.forEach((s, server) => {
+    const here = new Set(configured.filter(c => where(c.settings) === where(s.settings)).flatMap(c => [c.id, c.settings.model]));
+    for (const m of listed[server]?.models ?? []) {
+      if (here.has(m.id)) continue;
+      const id = taken.has(m.id) ? `${s.prefix}/${m.id}` : m.id;
+      if (taken.has(id)) continue;
+      taken.add(id);
+      out.push({ id, model: m.id, label: m.label, window: m.window, group: s.title, server });
+    }
+  });
+  return out;
+}
+
+/** `auto` in `assistant.models`: each server's own list, asked from here only. A model found this way runs on its own
+ *  server's settings, with its own window. */
+export function discovery(a: Assistant, o: { fetch?: typeof fetch; now?: () => number } = {}) {
+  const all = servers(a), on = all.length > 0;
+  const now = o.now ?? Date.now, get = o.fetch ?? fetch;
+  const asks = all.map(s => lister(s.settings, now, get));
+  const list = async (fresh = false) => {
+    const listed = await Promise.all(asks.map(ask => ask(fresh)));
+    return { at: Math.min(now(), ...listed.map(l => l.at)), ok: listed.every(l => l.ok), models: combine(a, all, listed),
+      servers: all.map((s, i) => ({ title: s.title, ok: listed[i].ok })) };
+  };
   return {
     on, list,
-    /** what a request naming `id` runs on: a model in the latest list, which is asked again once when it isn't there */
-    async find(id: string): Promise<Assistant | undefined> {
+    /** what a request naming `id` runs on: a model in the latest lists, which are asked again once when it isn't there */
+    async find(id: string): Promise<(Assistant & { server: string }) | undefined> {
       if (!on) return undefined;
       let l = await list();
       if (!l.models.some(m => m.id === id)) l = await list(true);
       const m = l.models.find(x => x.id === id);
-      return m && { ...a, model: m.id, contextWindow: m.window };
+      const s = m && all[m.server].settings;
+      return m && s && { ...s, model: m.model, contextWindow: m.window, server: `${where(s)} ${s.apiKey ?? ''}` };
     },
   };
-}
-/** What the page offers from the list: what isn't already the main model or a configured choice on the same server. */
-export function offered(a: Assistant, l: Listed) {
-  const taken = new Set(choices(a).flatMap(c => c.settings === a || (c.settings.provider === a.provider && c.settings.baseURL === a.baseURL) ? [c.id, c.settings.model] : [c.id]));
-  return l.models.filter(m => !taken.has(m.id));
 }
 
 /** What `assistant.reasoning` and `assistant.options` add to a chat call. Left out (`auto`, no options), nothing: the model
@@ -147,7 +227,7 @@ export function windowOf(model: string): number | undefined {
   return v >= (family === 'haiku' ? 5 : 4.6) ? 1_000_000 : 200_000;
 }
 /** A model's window as an OpenAI-style `/models` list reports it: vLLM and NInfer say `max_model_len`, others
- *  `context_length`, `context_window` or `max_context_length`, and llama.cpp's own server `meta.n_ctx_train`. */
+ *  `context_length`, `context_window` or `max_context_length`, Anthropic `max_input_tokens`, and llama.cpp's own server `meta.n_ctx_train`. */
 export function windowFromModels(list: unknown, model: string): number | undefined {
   const data = (list as { data?: unknown[] })?.data;
   if (!Array.isArray(data)) return undefined;
@@ -155,7 +235,7 @@ export function windowFromModels(list: unknown, model: string): number | undefin
 }
 function windowOfEntry(m: any): number | undefined {
   if (!m) return undefined;
-  for (const v of [m.max_model_len, m.context_length, m.context_window, m.max_context_length, m.meta?.n_ctx_train]) {
+  for (const v of [m.max_model_len, m.context_length, m.context_window, m.max_context_length, m.max_input_tokens, m.meta?.n_ctx_train]) {
     if (typeof v === 'number' && Number.isFinite(v) && v >= 1000 && v <= 10_000_000) return Math.round(v);
   }
   return undefined;

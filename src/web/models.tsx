@@ -1,6 +1,7 @@
-// The chat header's pickers: which model this chat is on (assistant.models) and how much it thinks first. A few models
-// are a plain menu; many (a router's hundreds, with `auto`) become a list you type to narrow, with what you've picked
-// lately near the top. The server says which models there are and refuses anything else, so this only offers.
+// The pickers under the message box: which model this chat is on (assistant.models) and how much it thinks first. A few
+// models are a plain menu; many (a router's hundreds, with `auto`) become a list you type to narrow, with what you've
+// picked lately near the top and each listed server's models under its own heading. The server says which models there
+// are and refuses anything else, so this only offers.
 import { ChevronDown, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Popover } from 'radix-ui';
@@ -8,10 +9,13 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export interface Choice { id: string; model: string }
+/** A model a server listed: the id the chat knows it by, the server's own id when that differs, a name the server gave it,
+ *  and its server's heading. */
+export interface Listed { id: string; model?: string; label?: string; group: string }
 
 /** Past this many choices the menu becomes a list you can search. */
 export const SEARCH_FROM = 8;
-/** At most this many of the server's models are drawn at once; typing narrows the rest. */
+/** At most this many of the servers' models are drawn at once, all headings together; typing narrows the rest. */
 export const SHOWN = 100;
 const RECENT = 'valet-models-recent', KEEP = 5;
 
@@ -25,7 +29,7 @@ const ITEM = 'cursor-pointer';
 /** What a choice is called: the default by its model, a configured one by its name. */
 const nameOf = (c: Choice, i: number) => i ? c.id : c.model;
 
-/** The model menu. `models` is the default first, then the configured choices; `discover` adds the main server's list. */
+/** The model menu. `models` is the default first, then the configured choices; `discover` adds what the servers list. */
 export function ModelPicker({ models, discover, value, onChange }: { models: Choice[]; discover?: boolean; value?: string; onChange: (id: string) => void }) {
   const current = value ?? models[0].id;
   if (!discover && models.length <= SEARCH_FROM) return (
@@ -39,7 +43,7 @@ export function ModelPicker({ models, discover, value, onChange }: { models: Cho
 
 function SearchPicker({ models, discover, current, onChange }: { models: Choice[]; discover?: boolean; current: string; onChange: (id: string) => void }) {
   const [open, setOpen] = useState(false), [query, setQuery] = useState('');
-  const [found, setFound] = useState<{ ids: string[]; ok: boolean; loading: boolean }>({ ids: [], ok: true, loading: false });
+  const [found, setFound] = useState<{ list: Listed[]; failed: string[]; ok: boolean; loading: boolean }>({ list: [], failed: [], ok: true, loading: false });
   const [lately, setLately] = useState<string[]>([]);
   const asking = useRef(0);
   const load = (fresh = false) => {
@@ -47,25 +51,38 @@ function SearchPicker({ models, discover, current, onChange }: { models: Choice[
     const n = ++asking.current;
     setFound(f => ({ ...f, loading: true }));
     fetch(`/api/models${fresh ? '?fresh=1' : ''}`).then(r => r.ok ? r.json() : Promise.reject(new Error(String(r.status))))
-      .then((j: { ok: boolean; models: { id: string }[] }) => { if (n === asking.current) setFound({ ids: j.models.map(m => m.id), ok: j.ok, loading: false }); })
+      .then((j: { ok: boolean; models: Listed[]; servers?: { title: string; ok: boolean }[] }) => {
+        if (n === asking.current) setFound({ list: j.models, failed: (j.servers ?? []).filter(s => !s.ok).map(s => s.title), ok: j.ok, loading: false });
+      })
       .catch(() => { if (n === asking.current) setFound(f => ({ ...f, ok: false, loading: false })); });
   };
   useEffect(() => { if (open) { load(); setLately(recent()); setQuery(''); } }, [open]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const pinned = new Set(models.map(m => m.id));
-  const known = new Set([...pinned, ...found.ids]);
-  const many = models.length + found.ids.length > SEARCH_FROM;
-  const q = query.trim().toLowerCase(), hit = (s: string) => !q || s.toLowerCase().includes(q);
+  const byId = useMemo(() => new Map(found.list.map(m => [m.id, m])), [found.list]);
+  const many = models.length + found.list.length > SEARCH_FROM;
+  // one server's own heading; several get one each (On the server, openrouter.ai, Claude…)
+  const titled = many || new Set(found.list.map(m => m.group)).size > 1;
+  const q = query.trim().toLowerCase(), hit = (s?: string) => !q || (!!s && s.toLowerCase().includes(q));
+  const hits = (m: Listed) => hit(m.id) || hit(m.model) || hit(m.label);
   const shown = useMemo(() => {
     const configured = models.map((m, i) => ({ m, i })).filter(({ m, i }) => hit(m.id) || hit(m.model) || hit(nameOf(m, i)));
-    const recents = many ? lately.filter(id => !pinned.has(id) && known.has(id) && hit(id)) : [];
-    const skip = new Set(recents), rest: string[] = [];
-    let more = 0;
-    for (const id of found.ids) if (!skip.has(id) && hit(id)) { if (rest.length < SHOWN) rest.push(id); else more++; }
-    return { configured, recents, rest, more };
-  }, [models, found.ids, lately, q, many]);   // eslint-disable-line react-hooks/exhaustive-deps
-  // a choice from the server's list shows its id; the trigger keeps its place while the list loads
-  const label = (() => { const i = models.findIndex(m => m.id === current); return i >= 0 ? nameOf(models[i], i) : current; })();
+    const recents = many ? lately.flatMap(id => { const m = byId.get(id); return m && !pinned.has(id) && hits(m) ? [m] : []; }) : [];
+    const skip = new Set(recents.map(m => m.id)), groups = new Map<string, Listed[]>();
+    let drawn = 0, more = 0;
+    for (const m of found.list) {
+      if (skip.has(m.id) || !hits(m)) continue;
+      if (drawn >= SHOWN) { more++; continue; }
+      drawn++;
+      const g = groups.get(m.group) ?? [];
+      groups.set(m.group, g);
+      g.push(m);
+    }
+    return { configured, recents, groups: [...groups], more };
+  }, [models, found.list, lately, q, many]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // a listed model shows its name (or its own id; the heading says which server); the trigger keeps its place while the list loads
+  const words = (m: Listed) => m.label ?? m.model ?? m.id;
+  const label = (() => { const i = models.findIndex(m => m.id === current); if (i >= 0) return nameOf(models[i], i); const m = byId.get(current); return m ? words(m) : current; })();
   const pick = (id: string) => { remember(id); onChange(id); setOpen(false); };
   const item = (id: string, words: string, hint?: string) => (
     <CommandItem key={id} value={id} onSelect={() => pick(id)} data-current={id === current || undefined} className={`${ITEM} data-[current]:font-medium`}>
@@ -92,11 +109,13 @@ function SearchPicker({ models, discover, current, onChange }: { models: Choice[
               {!!shown.configured.length && <CommandGroup heading={many ? 'Configured' : undefined}>
                 {shown.configured.map(({ m, i }) => item(m.id, nameOf(m, i), i && m.id !== m.model ? m.model : !i ? 'default' : undefined))}
               </CommandGroup>}
-              {!!shown.recents.length && <CommandGroup heading="Recent">{shown.recents.map(id => item(id, id))}</CommandGroup>}
-              {!!shown.rest.length && <CommandGroup heading={many ? 'On the server' : undefined}>{shown.rest.map(id => item(id, id))}</CommandGroup>}
+              {!!shown.recents.length && <CommandGroup heading="Recent">{shown.recents.map(m => item(m.id, words(m), titled ? m.group : undefined))}</CommandGroup>}
+              {shown.groups.map(([group, list]) => <CommandGroup key={`g:${group}`} heading={titled ? group : undefined}>{list.map(m => item(m.id, words(m), m.label ? m.model ?? m.id : undefined))}</CommandGroup>)}
               {shown.more > 0 && <p className="px-3 pt-1 pb-2 text-meta text-muted-foreground">{shown.more} more. Keep typing to narrow it down.</p>}
               {discover && <CommandGroup className="border-t">
-                {!found.ok && <p className="px-2 pt-1 pb-1.5 text-meta text-muted-foreground">Couldn't get the server's list, so only the configured models are here.</p>}
+                {!found.ok && <p className="px-2 pt-1 pb-1.5 text-meta text-muted-foreground">{found.failed.length
+                  ? `Couldn't get the list from ${found.failed.join(', ')}, so ${found.failed.length > 1 ? 'their' : 'its'} models may be missing.`
+                  : "Couldn't get the server's list, so only the configured models are here."}</p>}
                 <CommandItem value="valet:refresh" onSelect={() => load(true)} className={`${ITEM} text-muted-foreground`}>
                   <RotateCcw className={found.loading ? 'animate-spin' : undefined} />Refresh the list
                 </CommandItem>

@@ -36,10 +36,11 @@ assistant:
   # what it may use, per integration: none | read | write (adds things, like saving a link) | control (changes or removes them). Both ask you first
   access: { default: read, downloads: control, docs: write, bookmarks: write }
   # more models to pick from under the chat's message box, one chat at a time; the one above stays the default.
-  # auto adds everything the server above lists (searchable when there are many)
+  # auto adds everything the server above lists (searchable when there are many); { auto: true, ... } lists another server
   # models:
   #   - { name: Claude, provider: anthropic, model: claude-sonnet-5-5, apiKey: "${ANTHROPIC_API_KEY}" }
   #   - auto
+  #   - { auto: true, name: OpenRouter, baseURL: https://openrouter.ai/api/v1, apiKey: "${OPENROUTER_KEY}" }
 
 integrations:
   docs:

@@ -29,13 +29,15 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   const model = safety.model ?? makeModel(a);
   // assistant.models: a chat may name one of these by id, and nothing else; each is made once, on its first use
   const picks = new Map(choices(a).map(c => [c.id, { s: c.settings, model: c.settings === a ? model : safety.models?.[c.id] }]));
-  // `auto`: or one the main server lists (asked again once if it isn't there), made on its first use and kept a while
+  // `auto`: or one a listed server has (asked again once if it isn't there), on that server's own settings, made on its
+  // first use and kept a while (by server and model, so an id that comes to mean another server's model gets its own)
   const listed = discovery(a, { fetch: safety.fetch }), found = new Map<string, LanguageModel>();
   const discovered = async (id: string) => {
-    const s = await listed.find(id);
-    if (!s) return undefined;
-    let llm = found.get(id) ?? safety.models?.[id];
-    if (!llm) { llm = makeModel(s); found.set(id, llm); if (found.size > 50) found.delete(found.keys().next().value!); }
+    const hit = await listed.find(id);
+    if (!hit) return undefined;
+    const { server, ...s } = hit, key = `${server} ${s.model}`;
+    let llm = found.get(key) ?? safety.models?.[id];
+    if (!llm) { llm = makeModel(s); found.set(key, llm); if (found.size > 50) found.delete(found.keys().next().value!); }
     return { s, model: llm };
   };
   // Valet's own tools (what happened, reminders, rules) work without being granted; read-only pages still cap them

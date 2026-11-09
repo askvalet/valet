@@ -425,7 +425,7 @@ test('models: auto: the list is kept five minutes, asked again on a miss, and an
 });
 
 test('models: auto: a server that fails leaves the configured choices working, and lists nothing new', async () => {
-  const { discovery, offered } = await import('../src/server/model.ts');
+  const { discovery } = await import('../src/server/model.ts');
   const list = lister(['router/big']);
   list.state.fail = true;
   const r = await ask({ model: 'Fast' }, { list, models: [{ name: 'Fast', model: 'tiny' }, 'auto'] });
@@ -439,16 +439,173 @@ test('models: auto: a server that fails leaves the configured choices working, a
   const d = discovery(a, { fetch: good.fetch, now: () => now });
   assert.equal((await d.list()).ok, true);
   // what the page is offered leaves out the main model and the configured ones (by name and by model on the same server)
-  assert.deepEqual(offered(a, await d.list()).map(m => m.id), ['router/big']);
+  assert.deepEqual((await d.list()).models.map(m => m.id), ['router/big']);
   good.state.fail = true; now += 6 * 60_000;
   const failed = await d.list();
-  assert.deepEqual([failed.ok, failed.models.map(m => m.id)], [false, ['m', 'tiny', 'router/big', 'Fast']]);
+  assert.deepEqual([failed.ok, failed.models.map(m => m.id), failed.servers], [false, ['router/big'], [{ title: 'On the server', ok: false }]]);
   // without auto nothing is ever asked
   const none = lister(['router/big']);
   assert.equal((await ask({ model: 'router/big' }, { list: none, models: [{ name: 'Fast', model: 'tiny' }] })).status, 400);
   assert.equal(none.seen.length, 0);
-  // and an Anthropic main model doesn't list
-  assert.equal(discovery(Config.parse({ assistant: { model: 'claude-sonnet-5-5', provider: 'anthropic', models: 'auto' } }).assistant!).on, false);
+  // an Anthropic main model lists Anthropic's
+  assert.equal(discovery(Config.parse({ assistant: { model: 'claude-sonnet-5-5', provider: 'anthropic', models: 'auto' } }).assistant!).on, true);
+});
+
+// ---- auto on several servers: each its own list, its own key, and its models routed back to it ---------------------
+/** Fake servers by host: an OpenAI-style list (with things that aren't chat models), OpenRouter's (with architecture) and
+ *  Anthropic's (paged, with display names). Each records who asked it, and with which key. */
+function fleet() {
+  const seen: { url: string; auth?: string; xkey?: string; version?: string }[] = [];
+  const json = (b: unknown) => new Response(JSON.stringify(b), { headers: { 'Content-Type': 'application/json' } });
+  const ant = [
+    { id: 'claude-sonnet-5-5', display_name: 'Claude Sonnet 5.5', max_input_tokens: 1_000_000, type: 'model' },
+    { id: 'claude-haiku-5', display_name: 'Claude Haiku 5', type: 'model' },
+    { id: 'shared-model', display_name: 'Shared, on Anthropic', type: 'model' },
+  ];
+  const fetch = (async (url: string, init?: RequestInit) => {
+    const h = (init?.headers ?? {}) as Record<string, string>, u = new URL(String(url));
+    seen.push({ url: String(url), auth: h.Authorization, xkey: h['x-api-key'], version: h['anthropic-version'] });
+    if (u.host === 'local:8000') return json({ object: 'list', data: ['qwen-local', 'shared-model', 'nomic-embed-text', 'text-embedding-3-small', 'gpt-4o-mini-tts', 'whisper-1', 'dall-e-3', 'omni-moderation-latest', 'bge-reranker-v2', 'babbage-002'].map(id => ({ id, object: 'model' })) });
+    if (u.host === 'openrouter.ai') return json({ data: [
+      { id: 'meta/llama-big', context_length: 131072, architecture: { input_modalities: ['text'], output_modalities: ['text'] } },
+      { id: 'shared-model', architecture: { output_modalities: ['text'] } },
+      { id: 'qwen3.8-27b', architecture: { output_modalities: ['text'] } },
+      { id: 'some/painter', architecture: { input_modalities: ['text'], output_modalities: ['image'] } },
+    ] });
+    if (u.host === 'api.anthropic.com') {
+      const after = u.searchParams.get('after_id'), from = after ? ant.findIndex(m => m.id === after) + 1 : 0, page = ant.slice(from, from + 2);
+      return json({ data: page, has_more: from + 2 < ant.length, first_id: page[0]?.id ?? null, last_id: page.at(-1)?.id ?? null });
+    }
+    return new Response('no', { status: 404 });
+  }) as typeof globalThis.fetch;
+  return { fetch, seen };
+}
+// lists are kept per server and key for every chat, so each test has keys of its own
+let fleets = 0;
+function fleetConfig(extra: object = {}) {
+  const n = ++fleets;
+  const models = ['auto', { auto: true, name: 'OpenRouter', baseURL: 'https://openrouter.ai/api/v1', apiKey: `or-key-${n}` }, { auto: true, name: 'Claude', provider: 'anthropic', apiKey: `ant-key-${n}` }];
+  return { n, config: Config.parse({ assistant: { model: 'qwen3.8-27b', baseURL: 'http://local:8000/v1', apiKey: `local-key-${n}`, models, ...extra } }) };
+}
+
+test('chat models: the filter drops what clearly isn\'t a chat model and keeps what it can\'t tell about', async () => {
+  const { chatModel } = await import('../src/server/model.ts');
+  const table: [string, boolean, object?][] = [
+    ['qwen3.8-27b', true], ['llama3.2:3b', true], ['gpt-4o', true], ['claude-sonnet-5-5', true], ['meta/llama-big', true],
+    ['gpt-4o-audio-preview', true], ['llava:13b', true], ['imagen-ish-chat', true], ['bge-m3', true], ['mystery', true],
+    ['nomic-embed-text', false], ['text-embedding-3-small', false], ['mxbai-embed-large:latest', false], ['embeddinggemma', false],
+    ['whisper-1', false], ['openai/whisper-large-v3', false], ['tts-1', false], ['gpt-4o-mini-tts', false], ['gpt-4o-transcribe', false],
+    ['speech-02-hd', false], ['some-audio-only-model', false], ['dall-e-3', false], ['dall-e-2', false], ['gpt-image-1', false], ['qwen-image', false],
+    ['omni-moderation-latest', false], ['text-moderation-stable', false], ['bge-reranker-v2-m3', false], ['jina-rerank', false],
+    ['davinci-002', false], ['babbage-002', false], ['openai/davinci-002', false],
+    ['some/painter', false, { architecture: { output_modalities: ['image'] } }],
+    ['some/talker', true, { architecture: { output_modalities: ['text', 'audio'] } }],
+    ['some/unknown', true, { architecture: {} }],
+  ];
+  for (const [id, keep, extra] of table) assert.equal(chatModel({ id, ...extra }), keep, id);
+});
+
+test('auto on several servers: each lists its own, with its own key, filtered, paged and told apart', async () => {
+  const { discovery } = await import('../src/server/model.ts');
+  const net = fleet(), { n, config: { assistant: a } } = fleetConfig();
+  const l = await discovery(a, { fetch: net.fetch }).list();
+  assert.equal(l.ok, true);
+  assert.deepEqual(l.servers, [{ title: 'On the server', ok: true }, { title: 'OpenRouter', ok: true }, { title: 'Claude', ok: true }]);
+  assert.deepEqual(l.models.map(m => [m.id, m.group]), [
+    ['qwen-local', 'On the server'], ['shared-model', 'On the server'],
+    // the main model's id and one the local server lists: OpenRouter's are told apart by its name
+    ['meta/llama-big', 'OpenRouter'], ['OpenRouter/shared-model', 'OpenRouter'], ['OpenRouter/qwen3.8-27b', 'OpenRouter'],
+    ['claude-sonnet-5-5', 'Claude'], ['claude-haiku-5', 'Claude'], ['Claude/shared-model', 'Claude'],
+  ]);
+  const by = new Map(l.models.map(m => [m.id, m]));
+  assert.equal(by.get('claude-sonnet-5-5')!.label, 'Claude Sonnet 5.5');
+  assert.equal(by.get('claude-sonnet-5-5')!.window, 1_000_000);
+  assert.equal(by.get('meta/llama-big')!.window, 131072);
+  assert.equal(by.get('Claude/shared-model')!.model, 'shared-model');
+  // each server was asked with its own key and nothing else's: Anthropic's way, page by page
+  const local = net.seen.filter(s => s.url.startsWith('http://local')), or = net.seen.filter(s => s.url.includes('openrouter')), ant = net.seen.filter(s => s.url.includes('anthropic'));
+  assert.deepEqual(local.map(s => [s.url, s.auth, s.xkey]), [['http://local:8000/v1/models', `Bearer local-key-${n}`, undefined]]);
+  assert.deepEqual(or.map(s => [s.url, s.auth]), [['https://openrouter.ai/api/v1/models', `Bearer or-key-${n}`]]);
+  assert.deepEqual(ant.map(s => [s.url, s.auth, s.xkey, s.version]), [
+    ['https://api.anthropic.com/v1/models?limit=1000', undefined, `ant-key-${n}`, '2023-06-01'],
+    ['https://api.anthropic.com/v1/models?limit=1000&after_id=claude-haiku-5', undefined, `ant-key-${n}`, '2023-06-01'],
+  ]);
+  // without a name the heading and the prefix are the host
+  const hosted = Config.parse({ assistant: { model: 'qwen3.8-27b', baseURL: 'http://local:8000/v1', apiKey: `local-key-${n}`, models: ['auto', { auto: true, baseURL: 'https://openrouter.ai/api/v1', apiKey: `or-key-${n}` }] } }).assistant!;
+  const h = await discovery(hosted, { fetch: fleet().fetch }).list();
+  assert.ok(h.models.some(m => m.id === 'openrouter.ai/shared-model' && m.group === 'openrouter.ai'));
+});
+
+test('auto on several servers: Anthropic\'s pages stop at a cap, and a server that fails leaves the others', async () => {
+  const { discovery } = await import('../src/server/model.ts');
+  let pages = 0;
+  const endless = (async (url: string) => { pages++; return new Response(JSON.stringify({ data: [{ id: `claude-x-${pages}` }], has_more: true, last_id: `claude-x-${pages}` })); }) as typeof fetch;
+  const a = Config.parse({ assistant: { model: 'claude-sonnet-5-5', provider: 'anthropic', apiKey: 'k', baseURL: `https://ant-${++fleets}.example/v1`, models: 'auto' } }).assistant!;
+  const l = await discovery(a, { fetch: endless }).list();
+  assert.equal(pages, 10);
+  assert.equal(l.models.length, 10);
+  assert.equal(l.models[0].label, undefined);                 // no display_name: its id
+  // OpenRouter down: the local and Anthropic lists still come through, and the page is told which failed
+  const net = fleet();
+  const down = (async (url: string, init?: RequestInit) => String(url).includes('openrouter') ? Promise.reject(new Error('down')) : net.fetch(url, init)) as typeof fetch;
+  const r = await discovery(fleetConfig().config.assistant!, { fetch: down }).list();
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.servers.map(s => s.ok), [true, false, true]);
+  assert.ok(r.models.some(m => m.id === 'qwen-local') && r.models.some(m => m.id === 'claude-haiku-5') && !r.models.some(m => m.group === 'OpenRouter'));
+});
+
+test('auto on several servers: a chosen model is asked of its own server, with its own key, and nothing else is accepted', async () => {
+  const net = fleet();
+  const calls: { url: string; auth?: string; xkey?: string; body: any }[] = [];
+  // the chat's real model calls, to the fake servers: what each one is sent, and with which key
+  const wire = (async (url: string, init?: RequestInit) => {
+    if (String(url).endsWith('/models') || String(url).includes('/models?')) return net.fetch(url, init);
+    const h = new Headers(init?.headers);
+    calls.push({ url: String(url), auth: h.get('authorization') ?? undefined, xkey: h.get('x-api-key') ?? undefined, body: JSON.parse(String(init?.body)) });
+    return new Response(JSON.stringify({ error: { message: 'nope' } }), { status: 400, headers: { 'Content-Type': 'application/json' } });   // not retried
+  }) as typeof fetch;
+  const real = globalThis.fetch;
+  globalThis.fetch = wire;
+  try {
+    const { n, config } = fleetConfig({ access: { default: 'read', secret: 'none' } });
+    const app = new Hono();
+    app.post('/chat', chatRoute(config, home(), meta(), { acting: true, redact, model: scripted('main') as any, fetch: wire }) as any);
+    const send = async (model: unknown) => { const r = await app.request('/chat', { method: 'POST', body: JSON.stringify({ messages: say('hi'), model }) }); await r.text(); return r.status; };
+    const expect: [string, string, string, 'auth' | 'xkey', string][] = [
+      ['qwen-local', 'http://local:8000/v1/chat/completions', 'qwen-local', 'auth', `Bearer local-key-${n}`],
+      ['shared-model', 'http://local:8000/v1/chat/completions', 'shared-model', 'auth', `Bearer local-key-${n}`],
+      ['meta/llama-big', 'https://openrouter.ai/api/v1/chat/completions', 'meta/llama-big', 'auth', `Bearer or-key-${n}`],
+      ['OpenRouter/shared-model', 'https://openrouter.ai/api/v1/chat/completions', 'shared-model', 'auth', `Bearer or-key-${n}`],
+      ['OpenRouter/qwen3.8-27b', 'https://openrouter.ai/api/v1/chat/completions', 'qwen3.8-27b', 'auth', `Bearer or-key-${n}`],
+      ['claude-haiku-5', 'https://api.anthropic.com/v1/messages', 'claude-haiku-5', 'xkey', `ant-key-${n}`],
+      ['Claude/shared-model', 'https://api.anthropic.com/v1/messages', 'shared-model', 'xkey', `ant-key-${n}`],
+    ];
+    const toolsOf = (b: any) => (b.tools ?? []).map((t: any) => t.function?.name ?? t.name).sort();
+    let sameTools: string[] | undefined;
+    for (const [id, url, model, how, key] of expect) {
+      calls.length = 0;
+      assert.equal(await send(id), 200, id);
+      assert.ok(calls.length >= 1, id);
+      for (const c of calls) {
+        assert.equal(c.url, url, id);
+        assert.equal(c.body.model, model, id);
+        assert.equal(c[how], key, id);
+        // never another server's key
+        const other = how === 'auth' ? c.xkey : c.auth;
+        assert.equal(other, undefined, id);
+        // and every server is offered the same tools: access doesn't depend on where the model is
+        sameTools ??= toolsOf(c.body);
+        assert.deepEqual(toolsOf(c.body), sameTools, id);
+      }
+    }
+    assert.ok(sameTools!.includes('dl__status') && !sameTools!.includes('dl__pause') && !sameTools!.includes('secret__peek'));
+    // the filtered, the unlisted and the made-up are refused before any model is asked
+    for (const bad of ['nomic-embed-text', 'whisper-1', 'some/painter', 'Claude/qwen-local', 'OpenRouter/claude-haiku-5', 'made-up', { model: 'x', baseURL: 'http://evil/v1' }]) {
+      calls.length = 0;
+      assert.equal(await send(bad), 400, JSON.stringify(bad));
+      assert.equal(calls.length, 0);
+    }
+  } finally { globalThis.fetch = real; }
 });
 
 test('reasoning: the chat\'s level overrides the model\'s for that request, auto keeps it, and nothing else is accepted', async () => {
