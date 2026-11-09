@@ -352,7 +352,7 @@ function ContextMeter({ used, total, auto, fresh }: { used: number; total?: numb
         {total ? <circle cx="7" cy="7" r={r} fill="none" stroke="currentColor" strokeWidth={r * 2} strokeDasharray={c} strokeDashoffset={c * (1 - Math.max(.04, pct))} className="ctx-arc" />
           : <circle cx="7" cy="7" r="1.6" fill="currentColor" />}
       </svg>
-      <span className="ctx-pop glass-pop">
+      <span className="ctx-pop glass-pop" data-chat-menu="">
         <span className="block text-body font-medium text-foreground tabular">{words}</span>
         {total && <span className="block text-meta text-muted-foreground tabular">{num(pct, { style: 'percent' })}</span>}
         {full && <><span className="mt-1.5 block text-meta leading-snug text-muted-foreground">{label(auto ? 'contextAuto' : 'contextFull')}</span>
@@ -503,12 +503,9 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
   /** A built-in, run; true if `text` was one (or a name that isn't anything). */
   const command = (text: string) => runSlash(text, {
     commands: ui.commands ?? [], busy, external: external ? name : undefined, model, models: offered, hasPicker, discover,
-    asked: messages.some(m => m.role === 'user'), say, choose, think, startOver,
+    say, choose, think, startOver,
     openModels: () => setModelMenu(true), openReasoning: () => setThinkMenu(true), findListed: q => void findListed(q),
     compact: () => void compact(),
-    retry: () => { following.current = true; void regenerate(); },
-    // the config's own undo, through the chat: its card asks first, as it always does
-    undo: () => { following.current = true; play('send'); setSent(n => n + 1); void sendMessage({ text: '/undo' }); },
   });
   const box = useRef<HTMLTextAreaElement>(null);
   const menu = useComposerMenu({ draft, setDraft, box, commands: ui.commands ?? [], integrations: external ? [] : integrations,

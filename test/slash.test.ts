@@ -1,5 +1,5 @@
-// The chat's commands and mentions: the menu, each built-in, custom commands from the config, @mentions, /compact and
-// /undo. Driven with a scripted model like chat.test.ts. A command or a mention never grants anything: what the model is
+// The chat's commands and mentions: the menu, each built-in, custom commands from the config, @mentions and /compact.
+// Driven with a scripted model like chat.test.ts. A command or a mention never grants anything: what the model is
 // offered and what asks first are exactly what assistant.access says, whatever was typed.
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
@@ -17,7 +17,7 @@ const { check } = await import('../src/server/site.ts');
 const { registry } = await import('../src/integrations/index.ts');
 const { setupTools, validate } = await import('../src/server/setup.ts');
 const { forgetSummaries } = await import('../src/server/compact.ts');
-const { BUILTINS, expand, filterMenu, matchModel, mentionsIn, parseSlash } = await import('../src/shared/slash.ts');
+const { BUILTINS, RESERVED, expand, filterMenu, matchModel, mentionsIn, parseSlash } = await import('../src/shared/slash.ts');
 const { menuFor, runSlash } = await import('../src/web/slash.tsx');
 
 const usage = { inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 1, text: 1, reasoning: 0 } };
@@ -125,10 +125,10 @@ test('parsing: a command is a name at the start; {input} is what follows it; @ i
 function chatFor(o: Partial<Parameters<typeof runSlash>[1]> = {}) {
   const did: string[] = [], said: any[] = [];
   const c = {
-    commands: [{ name: 'morning' }], busy: false, model: 'qwen', models: [{ id: 'm', model: 'qwen', label: 'qwen' }, { id: 'Deep', model: 'big', label: 'Deep' }], hasPicker: true, asked: true,
+    commands: [{ name: 'morning' }], busy: false, model: 'qwen', models: [{ id: 'm', model: 'qwen', label: 'qwen' }, { id: 'Deep', model: 'big', label: 'Deep' }], hasPicker: true,
     say: (n: any) => said.push(n), choose: (id: string) => did.push(`choose ${id}`), think: (v: string) => did.push(`think ${v}`), startOver: () => did.push('new'),
     openModels: () => did.push('open models'), openReasoning: () => did.push('open reasoning'), findListed: (q: string) => did.push(`find ${q}`),
-    compact: () => did.push('compact'), retry: () => did.push('retry'), undo: () => did.push('undo'), ...o,
+    compact: () => did.push('compact'), ...o,
   };
   return { c, did, said, run: (t: string) => runSlash(t, c) };
 }
@@ -146,12 +146,11 @@ test('built-ins: each does its one thing here, and says so in a line the model n
   x = chatFor(); x.run('/reasoning'); assert.deepEqual(x.did, ['open reasoning']);
   for (const n of ['/new', '/clear']) { x = chatFor(); x.run(n); assert.deepEqual(x.did, ['new']); }
   x = chatFor(); x.run('/compact'); assert.deepEqual(x.did, ['compact']);
-  x = chatFor(); x.run('/retry'); assert.deepEqual(x.did, ['retry']);
-  x = chatFor({ asked: false }); x.run('/retry'); assert.deepEqual(x.did, []); assert.match(x.said[0].text, /no question/);
-  x = chatFor(); x.run('/undo'); assert.deepEqual(x.did, ['undo']);
+  // there's no /undo or /retry: typed, each is a name that's nothing (undo is asked for in words, retry is the answer's button)
+  for (const n of ['undo', 'retry']) { x = chatFor(); assert.equal(x.run(`/${n}`), true); assert.deepEqual(x.did, []); assert.match(x.said[0].text, new RegExp(`no /${n} command`)); }
   x = chatFor(); x.run('/help'); assert.deepEqual(x.said, [{ help: true }]);
   // while it answers, nothing that would talk over it
-  for (const n of ['/retry', '/compact', '/undo']) { x = chatFor({ busy: true }); x.run(n); assert.deepEqual(x.did, [], n); assert.match(x.said[0].text, /still answering/); }
+  for (const n of ['/compact']) { x = chatFor({ busy: true }); x.run(n); assert.deepEqual(x.did, [], n); assert.match(x.said[0].text, /still answering/); }
   // a custom command goes as typed; a name that's nothing says so and sends nothing; a path is just words
   x = chatFor(); assert.equal(x.run('/morning'), false); assert.deepEqual(x.did, []);
   x = chatFor(); assert.equal(x.run('/nope'), true); assert.match(x.said[0].text, /no \/nope command/);
@@ -244,33 +243,7 @@ test('mentions: an unknown integration, or one the assistant may not use here, i
   assert.deepEqual(ran, []);
 });
 
-// ---- /undo and /compact -------------------------------------------------------------------------------------------------
-
-test('/undo: the config\'s own undo, with its approval, and no model; without config access it only says so', async () => {
-  const r = await talk(say('/undo'));
-  assert.equal(r.model.doStreamCalls.length, 0);
-  const asked = r.events.find(e => e.type === 'tool-approval-request');
-  assert.ok(asked);
-  assert.equal(r.events.find(e => e.type === 'tool-input-available')?.toolName, 'config__config_undo');
-  assert.deepEqual(ran, []);
-  const reply = (approved: boolean) => [...say('/undo'), { id: 'a1', role: 'assistant', parts: [{ type: 'step-start' }, { type: 'tool-config__config_undo', toolCallId: asked.toolCallId, state: 'approval-responded', input: {}, approval: { id: asked.approvalId, approved, signature: asked.signature } }] }];
-  // approved: it runs, and the line says how it went
-  const done = await talk(reply(true));
-  assert.equal(done.model.doStreamCalls.length, 0);
-  assert.deepEqual(ran, ['config_undo']);
-  assert.match(done.text, /Undone/);
-  // a denial runs nothing
-  const no = await talk(reply(false));
-  assert.deepEqual(ran, []);
-  assert.match(no.text, /stays as it is/);
-  // no config access, or a read-only page: no tool, just words
-  for (const o of [{ access: { config: 'read' } }, { acting: false }]) {
-    const x = await talk(say('/undo'), o);
-    assert.ok(!x.events.some(e => e.type === 'tool-approval-request'));
-    assert.match(x.text, /can't change the config from here/);
-    assert.deepEqual(ran, []);
-  }
-});
+// ---- /compact -----------------------------------------------------------------------------------------------------------
 
 test('/compact: the conversation so far is summarised now, and the next question goes behind the summary', async () => {
   forgetSummaries();
@@ -302,6 +275,9 @@ test('config: names, clashes with built-ins, unknown integrations and models, an
   for (const bad of [{ Morning: 'x' }, { 'two words': 'x' }, { '-x': 'x' }, { new: 'x' }, { clear: 'x' }, { help: 'x' }, { x: '' }, { x: { prompt: 'x', reasoning: 'max' } }, { x: { prompt: 'x', other: 1 } }, { x: { description: 'no prompt' } }])
     assert.equal(Config.safeParse({ chat: { commands: bad } }).success, false, JSON.stringify(bad));
   assert.match(Config.safeParse({ chat: { commands: { new: 'x' } } }).error!.issues[0].message, /built in/);
+  // the reserved names are the built-ins exactly: undo and retry are free to take
+  assert.deepEqual([...RESERVED].sort(), ['clear', 'compact', 'help', 'model', 'new', 'reasoning']);
+  assert.equal(Config.safeParse({ chat: { commands: { undo: 'Undo the last config change', retry: 'Ask that again' } } }).success, true);
   const problems = (commands: object, o: object = {}) => check(Config.parse({ ...base, ...o, chat: { commands } }), registry).problems;
   assert.match(problems({ x: { prompt: 'x', tools: ['plex'] } })[0], /chat\.commands\.x\.tools: no integration "plex"/);
   assert.match(problems({ x: { prompt: 'x', tools: ['news'] } })[0], /may not use news/);

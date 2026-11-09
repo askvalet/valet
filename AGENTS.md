@@ -31,10 +31,9 @@ https://askvalet.dev.
   that isn't `read` needs the user's approval; `write` and `control` differ only in what's granted (adds, or changes and
   removes). Access is set per integration in YAML. Every tool has a `label` (its chip in chat) and may offer `followUps`.
 - **Chat commands are shortcuts, never permissions** (`src/shared/slash.ts`, `src/server/slash.ts`, `src/web/slash.tsx`). Built-ins
-  (`/model`, `/new`, `/compact`…) are the page's own and reach no model; `/undo` runs the config's undo tool through the chat, so
-  its card still asks. A `chat.commands` entry is a prompt sent as if typed, and a mention (or a command's `tools`) only picks
-  which integrations' tools go first; the server refuses a mention the assistant may not use. Neither changes what's offered or
-  what asks first.
+  (`/model`, `/new`, `/compact`…) are the page's own and reach no model. A `chat.commands` entry is a prompt sent as if
+  typed, and a mention (or a command's `tools`) only picks which integrations' tools go first; the server refuses a mention
+  the assistant may not use. Neither changes what's offered or what asks first.
 - **A rule is the only standing approval** (`src/server/rules.ts`). Approved once, it runs one integration tool with no
   model, so what it may do lives in code, not in the card: never `config`, `valet` or `pins` tools, plans or MCP; its
   card is built from the widget's title and the action tool's own `confirm`, never the model's words; and before every

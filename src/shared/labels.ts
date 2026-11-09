@@ -3,7 +3,7 @@
 export const LABELS = {
   homelab: "{name}'s homelab", yourHomelab: 'Your homelab', goodMorning: 'Good morning', goodAfternoon: 'Good afternoon', goodEvening: 'Good evening', goodNight: 'Good night',
   overview: 'Overview', search: 'Type a command, or search services', review: 'Your {year} in review', reviewMore: 'What your homelab got up to this year, in a few screens', reviewGo: 'Play',
-  ask: 'Ask {name}', askAnything: 'Ask {name} anything', askAbout: 'Ask about {scope}', allOf: 'All {n}', dismiss: 'Dismiss', message: 'Message {name}', messageHint: 'Message {name}, paste a link or drop a file',
+  ask: 'Ask {name}', askAnything: 'Ask {name} anything', askAbout: 'Ask about {scope}', allOf: 'All {n}', dismiss: 'Dismiss', message: 'Type / for commands', messageHint: 'Type / for commands',
   chatTitle: 'Talk to your homelab',
   working: 'Working', thinking: 'Thinking', writing: 'Writing', thought: 'Thought', thoughtFor: 'Thought for {n}s', steps: '{n} steps', worked: 'Worked for {n}s',
   allow: 'Allow', notNow: 'Not now',

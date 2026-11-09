@@ -1,7 +1,7 @@
 // The chat's own commands and mentions: `/model`, `/new`, a `/morning` of your own, `@plex`. The page and the server read
-// them the same way. Built-ins are Valet's and never reach the model (except /undo, which goes through the config's own
-// undo and its approval). A custom command is only words: its prompt goes through the normal chat, with the same access
-// and approvals as anything typed. A mention only says what a question is about; it never grants anything.
+// them the same way. Built-ins are Valet's and never reach the model. A custom command is only words: its prompt goes
+// through the normal chat, with the same access and approvals as anything typed. A mention only says what a question is
+// about; it never grants anything.
 
 export interface Builtin { name: string; aliases?: string[]; args?: string; description: string }
 export const BUILTINS: Builtin[] = [
@@ -9,8 +9,6 @@ export const BUILTINS: Builtin[] = [
   { name: 'reasoning', args: 'off|low|medium|high|auto', description: 'How much it thinks first, for this chat' },
   { name: 'new', aliases: ['clear'], description: 'Start a new chat' },
   { name: 'compact', description: 'Summarise the conversation so far, to make room' },
-  { name: 'retry', description: 'Ask the last question again' },
-  { name: 'undo', description: 'Undo the last config change, after you confirm' },
   { name: 'help', description: 'List the commands' },
 ];
 /** Every name a built-in answers to: a custom command can't take one. */

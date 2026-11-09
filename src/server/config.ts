@@ -278,7 +278,7 @@ const ChatCommands = z.record(z.string(), ChatCommand).superRefine((all, ctx) =>
     if (!NAME.test(name)) ctx.addIssue({ code: 'custom', path: [name], message: 'a command\'s name is lowercase letters, digits and dashes, like morning or check-disks' });
     else if (RESERVED.has(name)) ctx.addIssue({ code: 'custom', path: [name], message: `/${name} is built in: give yours another name` });
   }
-}).describe('Your own chat commands: /name runs its prompt. A plain string is the prompt. Example: { morning: "Sum up overnight and what is down", watch: { prompt: "Add {input} to my watchlist", reasoning: low } }');
+}).describe('Your own chat commands: /name runs its prompt. A plain string is the prompt. Example: { morning-brief: "What happened overnight, today\'s calendar and Hacker News", watch: { prompt: "Add {input} to my watchlist", reasoning: low } }');
 
 // The assistant's window on the page. What it knows and may do is `assistant`; this is how it looks.
 export const ChatView = z.object({

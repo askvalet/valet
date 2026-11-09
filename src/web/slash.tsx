@@ -15,14 +15,12 @@ const LEVEL_WORDS: Record<string, string> = { auto: 'As the config says', off: '
 /** What a built-in needs from the chat it runs in. */
 export interface SlashChat {
   commands: Slash[]; busy: boolean; external?: string; model: string; models: { id: string; model: string; label: string }[]; hasPicker: boolean; discover?: boolean;
-  asked: boolean;   // a question has been asked in this chat
   say: (n: { text?: string; help?: boolean }) => unknown; choose: (id: string) => void; think: (v: typeof LEVELS[number]) => void; startOver: () => void;
-  openModels: () => void; openReasoning: () => void; findListed: (q: string) => void; compact: () => void; retry: () => void; undo: () => void;
+  openModels: () => void; openReasoning: () => void; findListed: (q: string) => void; compact: () => void;
 }
 
 /** A built-in, run: true if `text` was one, or a command name that isn't anything (which says so). A custom command is
- *  false: it goes as typed, and the server sends its prompt. Nothing here acts on anything but this chat, except /undo,
- *  which only asks the chat to run the config's own undo, with its approval. */
+ *  false: it goes as typed, and the server sends its prompt. Nothing here acts on anything but this chat. */
 export function runSlash(text: string, c: SlashChat): boolean {
   const s = parseSlash(text);
   if (!s) return false;
@@ -52,12 +50,7 @@ export function runSlash(text: string, c: SlashChat): boolean {
       else { c.think(v); c.say({ text: v === 'auto' ? 'Reasoning is back to what the config says.' : `Reasoning is ${v} for this chat.` }); }
       break;
     }
-    case 'retry':
-      if (waiting()) break;
-      if (!c.asked) c.say({ text: 'There is no question to ask again yet.' }); else c.retry();
-      break;
     case 'compact': if (!waiting()) c.compact(); break;
-    case 'undo': if (!waiting()) c.undo(); break;
   }
   return true;
 }
@@ -144,7 +137,7 @@ export function ComposerMenu({ m }: { m: ReturnType<typeof useComposerMenu> }) {
   return (
     <div className="absolute right-0 bottom-full left-0 z-30 mb-2 flex justify-start">
       <div ref={list} id={m.id} role="listbox" aria-label={kind === 'mention' ? 'Integrations' : kind === 'arg' ? 'Choices' : 'Commands'}
-        className="composer-menu max-h-64 w-[min(24rem,100%)] overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 duration-(--dur-pop)">
+        data-chat-menu="" className="composer-menu max-h-64 w-[min(24rem,100%)] overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 duration-(--dur-pop)">
         {items.map((it, i) => (
           <div key={it.key} id={`${m.id}-${i}`} role="option" aria-selected={i === m.index} data-selected={i === m.index || undefined}
             onPointerMove={() => m.setIndex(i)} onPointerDown={e => e.preventDefault()} onClick={() => m.choose(it, 'enter')}

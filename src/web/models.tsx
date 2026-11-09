@@ -38,7 +38,7 @@ export function ModelPicker({ models, discover, value, onChange, open, onOpenCha
   if (!discover && models.length <= SEARCH_FROM) return (
     <Select value={current} onValueChange={onChange} open={open} onOpenChange={onOpenChange}>
       <SelectTrigger aria-label="Model" className={TRIGGER}><SelectValue /></SelectTrigger>
-      <SelectContent position="popper" side="top" align="end">{models.map((m, i) => <SelectItem key={m.id} value={m.id} className={ITEM}>{nameOf(m, i)}</SelectItem>)}</SelectContent>
+      <SelectContent data-chat-menu="" position="popper" side="top" align="end">{models.map((m, i) => <SelectItem key={m.id} value={m.id} className={ITEM}>{nameOf(m, i)}</SelectItem>)}</SelectContent>
     </Select>
   );
   return <SearchPicker models={models} discover={discover} current={current} onChange={onChange} open={open} onOpenChange={onOpenChange} />;
@@ -101,7 +101,7 @@ function SearchPicker({ models, discover, current, onChange, ...told }: { models
         <span className="min-w-0 truncate">{label}</span><ChevronDown className="opacity-50" />
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content data-slot="popover-content" side="top" align="end" sideOffset={6} collisionPadding={12}
+        <Popover.Content data-slot="popover-content" data-chat-menu="" side="top" align="end" sideOffset={6} collisionPadding={12}
           // keys go to the list: its search field when there is one, else the list itself (arrows, Enter)
           onOpenAutoFocus={e => { e.preventDefault(); (e.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>('[cmdk-input], [cmdk-root]')?.focus(); }}
           className="z-50 w-[min(22rem,calc(100vw-24px))] origin-(--radix-popover-content-transform-origin) overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
@@ -140,7 +140,7 @@ export function ReasoningPicker({ value, onChange, open, onOpenChange }: { value
   return (
     <Select value={value} onValueChange={v => onChange(v as Thinking)} open={open} onOpenChange={onOpenChange}>
       <SelectTrigger aria-label="Reasoning" title="Reasoning" className={`${TRIGGER} shrink-0 text-muted-foreground/70`}><SelectValue>{LEVELS.find(l => l[0] === value)?.[1]}</SelectValue></SelectTrigger>
-      <SelectContent position="popper" side="top" align="end">
+      <SelectContent data-chat-menu="" position="popper" side="top" align="end">
         <SelectGroup><SelectLabel>Reasoning</SelectLabel>
           {LEVELS.map(([v, words]) => <SelectItem key={v} value={v} className={ITEM}>{words}</SelectItem>)}</SelectGroup>
       </SelectContent>

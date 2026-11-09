@@ -5,7 +5,7 @@ import {
   type LanguageModel, type ToolSet, type UIMessage,
 } from 'ai';
 import { TARGET, TOO_LONG_ANSWER, calibrate, compactNow, fit, pinnedIn, retryShorter, size, squeezeSteps, summariser, tokensOf, tooLong } from './compact.ts';
-import { UNDO_TOOL, checkMentions, commandsOf, expanded, focusLine, readAsk, undoModel } from './slash.ts';
+import { checkMentions, commandsOf, expanded, focusLine, readAsk } from './slash.ts';
 import { splitThink } from '../shared/think.ts';
 import { skipUnanswered } from '../shared/approvals.ts';
 import { randomBytes } from 'node:crypto';
@@ -288,15 +288,14 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     let squeezed = false;   // the provider said it was too long, and it went again cut right down
     const lastStep = `${prompt}\n\nYou have no more lookups. Answer now in plain words from what you already found. If it doesn't settle the question, say what you checked and that you can't tell. Do not write tool calls.`;
     const result = streamText({
-      // /undo is answered without a model: the undo tool, its approval, and a line on how it went
-      model: wrapLanguageModel({ model: (ask.undo ? undoModel(!!all[UNDO_TOOL]) : llm) as Parameters<typeof wrapLanguageModel>[0]['model'], middleware: retryShorter(() => { squeezed = true; }) }),
+      model: wrapLanguageModel({ model: llm as Parameters<typeof wrapLanguageModel>[0]['model'], middleware: retryShorter(() => { squeezed = true; }) }),
       abortSignal: c.req.raw.signal,   // Stop (or closing the chat) ends generation and any tools still running
       system: prompt,
       messages: await convertToModelMessages(messages, { tools: all }),
       tools: all,
       toolApproval: approvals,
       experimental_toolApprovalSecret: APPROVALS,
-      stopWhen: isStepCount(ask.undo ? 2 : a.maxSteps),
+      stopWhen: isStepCount(a.maxSteps),
       ...callSettings(s, thinking),   // the chat's reasoning, else assistant.reasoning, and assistant.options; nothing when they're left out
       ...(lazy ? { activeTools: activeFor(new Set()), toolOrder: activeFor(new Set()) } : {}),
       prepareStep: ({ stepNumber, messages: now, steps: done }) => {

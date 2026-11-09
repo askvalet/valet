@@ -227,8 +227,8 @@ services and the assistant write is theirs, and the status sentence is built fro
 | `askAbout` | Ask about {scope} |
 | `allOf` | All {n} |
 | `dismiss` | Dismiss |
-| `message` | Message {name} |
-| `messageHint` | Message {name}, paste a link or drop a file |
+| `message` | Type / for commands |
+| `messageHint` | Type / for commands |
 | `chatTitle` | Talk to your homelab |
 | `working` | Working |
 | `thinking` | Thinking |
@@ -443,7 +443,12 @@ if you'd typed it: the same access, the same approvals. The chat shows what you 
 ```yaml
 chat:
   commands:
-    morning: Sum up overnight, what finished downloading, anything down, and today's calendar.
+    morning-brief:
+      description: Last night, today's calendar and Hacker News
+      prompt: >-
+        Give me my morning brief: what happened overnight (anything that went down, downloads that finished,
+        new episodes), what's on my calendar today, and the Hacker News stories worth reading. Keep it short,
+        problems first.
     watch: { prompt: "Add {input} to my watchlist and tell me when it's out", reasoning: low }
     lab: { prompt: "Full health check of the lab, worst problems first", model: Deep, reasoning: high }
     blocks: { prompt: "Who's blocking the most today?", tools: [dns] }
@@ -458,9 +463,9 @@ chat:
 | `tools` | none | integration ids whose tools it uses from the first step, as an `@mention` does. They must be ones `assistant.access` lets it use: a command never grants more |
 
 Names are lowercase letters, digits and dashes, and can't be a built-in's (`model`, `reasoning`, `new`, `clear`, `compact`,
-`retry`, `undo`, `help`). `config check` also names a `model` that isn't a choice, an integration in `tools` that isn't there
-or that the assistant may not use, and commands without an `assistant` block. The assistant can add one for you
-("make me a /morning command that…"): it's a config edit like any other, shown first and saved only once you approve.
+`help`). `config check` also names a `model` that isn't a choice, an integration in `tools` that isn't there or that the
+assistant may not use, and commands without an `assistant` block. The assistant can add one for you
+("make me a /morning-brief command that…"): it's a config edit like any other, shown first and saved only once you approve.
 
 ## `notify`
 

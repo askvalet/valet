@@ -27,7 +27,7 @@ location: Toronto, Canada          # gives the assistant local context
 #   followUps: offered under each answer, in place of what the tool suggests
 #   commands: your own /commands in the chat, ⌘K and /help. A string is the prompt; {input} is what's typed after the name
 #     commands:
-#       morning: Sum up overnight, what finished downloading, anything down, and today's calendar.
+#       morning-brief: "Give me my morning brief: what happened overnight, today's calendar, and the Hacker News stories worth reading"
 #       watch: { prompt: "Add {input} to my watchlist and tell me when it's out", reasoning: low }
 #       blocks: { prompt: "Who's blocking the most today?", tools: [dns] }   # tools: integration ids, as an @mention
 # format: { clock: 24h, temperature: c }
