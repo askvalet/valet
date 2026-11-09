@@ -5,6 +5,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-09
+
 ### Added
 
 - `assistant.models`: more models to pick from in the chat, for one chat at a time. Each entry needs only `model`; what it leaves out comes from the main settings (the address only to the same provider, the key only to the same server). The server accepts only a configured choice, the context meter follows the chosen model's window, and background calls stay on the main model. `config check` names duplicate names and an Anthropic choice without a key. Without `models` nothing changes.
@@ -291,7 +293,8 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/askvalet/valet/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/askvalet/valet/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/askvalet/valet/compare/v0.1.8...v0.2.0
 [0.1.8]: https://github.com/askvalet/valet/compare/v0.1.7...v0.1.8
