@@ -21,7 +21,7 @@ function lab(access: object = { default: 'control' }, o: { acting?: boolean; hol
   const instances = new Map<string, any>([
     ['dl', { widgets: {}, tools: { status: tool('status', 'read'), add: tool('add', 'write'), pause: tool('pause', 'control', { confirm: ({ name }: { name: string }) => ({ title: `Pause ${name}?`, detail: `It holds ${SECRET}`, verb: 'Pause' }) }), boom: { ...tool('boom', 'control'), run: async () => { throw new Error(`failed ${SECRET}`); } } } }],
     ['config', { widgets: {}, tools: { config_read: tool('config_read', 'read'), config_apply: tool('config_apply', 'control') } }],
-    ['valet', { widgets: {}, tools: { rule_list: tool('rule_list', 'read'), rule_add: tool('rule_add', 'control') } }],
+    ['valet', { widgets: {}, tools: { rule_list: tool('rule_list', 'read'), rule_add: tool('rule_add', 'control'), web_search: tool('web_search', 'read'), web_read: tool('web_read', 'read') } }],
     ['pins', { widgets: {}, tools: { pin_remove: tool('pin_remove', 'control') } }],
   ]);
   const site: any = { config: Config.parse({ mcpServer: { token: TOKEN, access } }), instances, meta: new Map([...instances.keys()].map(id => [id, { type: id, name: id }])),
@@ -139,4 +139,11 @@ test('config: access takes the assistant\'s levels, read by default', () => {
   assert.deepEqual(Config.parse({ mcpServer: { token: TOKEN } }).mcpServer!.access, { default: 'read' });
   assert.equal(Config.safeParse({ mcpServer: { token: TOKEN, access: { dl: 'control', docs: 'write', x: 'none' } } }).success, true);
   assert.equal(Config.safeParse({ mcpServer: { token: TOKEN, access: { dl: 'admin' } } }).success, false);
+});
+
+test('the web tools are the chat\'s alone: never listed for a client, and not callable by name', async () => {
+  const l = lab({ default: 'control', valet: 'control' });
+  assert.ok(!(await l.names()).some(n => n.includes('web_')));
+  const r = await l.rpc('tools/call', { name: 'valet__web_search', arguments: { name: 'anything' } });
+  assert.ok(r.error || r.result?.isError); assert.deepEqual(l.ran, []);
 });

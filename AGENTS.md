@@ -68,6 +68,10 @@ https://askvalet.dev.
   lines through `shared/plain.ts`, approvals as buttons with the tool's words from `confirm.ts`); an MCP client's change
   (`mcpserver.ts`) waits in `asks.ts` for a signed-in person, one exact call at a time. A new surface does the same: it
   never decides what's allowed, and it never runs a tool that changes something without a person's yes for that call.
+- **One door to an address Valet didn't choose** (`src/server/public.ts`, used by the assistant's `web_read`): public addresses only, every
+  answer of the name checked, the socket pinned to the checked one, each redirect checked again, no cookies or keys, time, size
+  and type capped. Anything new that fetches a URL from a model or a stranger goes through it. The web tools (`web.ts`) are
+  Valet's own, only with `assistant.webSearch`, and never an MCP client's.
 - **Server stays small.** Hono + node-server, bundled with esbuild (dependencies included, so the image ships no
   `node_modules`) into `dist/server/`. No database: state lives in the services Valet talks to.
 - **A config is a Site** (`src/server/site.ts`): `check()` turns a config into instances and the list of problems
@@ -300,7 +304,7 @@ literal; a new size or corner is a new token with a role, argued for here.
   fake secret and a stand-in for the attacker's server (`test/lab/`). Nothing may change without approval, and no secret
   may leave or power grow even with every approval clicked. A new tool that changes something gets a case there, and a
   rule that could use it is covered by `test/rules.test.ts`'s forbidden list.
-- `npm run eval:inject` runs poisoned pages, feeds and bookmarks past your real model (from your config), blatant and
+- `npm run eval:inject` runs poisoned pages, feeds, bookmarks and web results past your real model (from your config), blatant and
   hidden in what you ask for. It fails only on a guardrail, never on what the model chose; `EVAL_APPROVE=1` clicks every
   approval too.
 - `npm run test:live` checks every widget in your `config.yaml` against your real services. `/#gallery` shows the whole

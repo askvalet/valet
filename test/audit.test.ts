@@ -13,6 +13,7 @@ const { bindings, guard, refused, setupTools } = await import('../src/server/set
 const { registry } = await import('../src/integrations/index.ts');
 const { parseFeed } = await import('../src/integrations/rss.ts');
 const { text } = await import('../src/server/xml.ts');
+const { pageText } = await import('../src/server/public.ts');
 const { scrub } = await import('../src/server/guide.ts');
 const { allowed, backHere, nameOf } = await import('../src/server/oidc.ts');
 const { headers } = await import('../src/server/security.ts');
@@ -105,6 +106,18 @@ test('a hostile feed takes no longer than a normal one', () => {
   }
   assert.equal(text('a<b>c</b> d'), 'a c d');
   assert.equal(parseFeed('<rss><channel><item><title>T</title><description><![CDATA[<p><img class="x" src="https://a/b.jpg"> hi</p>]]></description></item></channel></rss>')[0].image, 'https://a/b.jpg');
+});
+
+test('a hostile web page takes no longer to read than a normal one', () => {
+  // web_read's pages are written by strangers too: the same measure as the feed above
+  const para = '<div class="post"><h2>Home server tips &amp; more</h2><p>Some <b>words</b> <img src="https://a/b.jpg"> here, and <a href="/x">a link</a>.</p></div>';
+  const time = (page: string) => { const t = performance.now(); pageText(page); return performance.now() - t; };
+  for (const bomb of ['<'.repeat(2e6), '<a '.repeat(7e5), '<script>'.repeat(3e5), '<!--'.repeat(5e5), '</'.repeat(1e6), '&'.repeat(2e6), '&#x'.repeat(7e5), '<title>'.repeat(3e5), `<p>${' \n'.repeat(1e6)}</p>`, '<script></script '.repeat(2e5), `<svg>${'<svg>'.repeat(4e5)}`]) {
+    const normal = `<html><body>${para.repeat(Math.ceil(bomb.length / para.length))}</body></html>`;
+    let took = 0, usual = 0;
+    for (let i = 0; i < 3 && (!i || took > 10 * usual); i++) { usual = time(normal); took = time(bomb); }
+    assert.ok(took < 10 * usual, `${bomb.slice(0, 12)} took ${took.toFixed(0)} ms, a normal page that size ${usual.toFixed(0)} ms`);
+  }
 });
 
 test('a reply past the limit is refused, not held in memory', async () => {
