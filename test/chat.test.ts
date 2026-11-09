@@ -341,3 +341,176 @@ test('models: anything but a configured choice is refused before a model is aske
   const sneaky = await choose({ baseURL: 'http://evil/v1', apiKey: 'x', provider: 'anthropic' }, {});
   assert.deepEqual([sneaky.status, sneaky.main.length], [200, 1]);
 });
+
+// ---- auto: the main server's own list, asked from the server, kept a while, and still nothing but what it lists -----------
+/** A stand-in for the main server's GET /models: what it lists can change, and it can fail. */
+function lister(ids: string[], extra: Record<string, object> = {}) {
+  const seen: { url: string; auth?: string }[] = [];
+  const state = { ids, fail: false };
+  const fetch = (async (url: string, init?: RequestInit) => {
+    seen.push({ url: String(url), auth: (init?.headers as Record<string, string>)?.Authorization });
+    if (state.fail) throw new Error('connect ECONNREFUSED');
+    return new Response(JSON.stringify({ object: 'list', data: state.ids.map(id => ({ id, object: 'model', ...extra[id] })) }), { headers: { 'Content-Type': 'application/json' } });
+  }) as typeof globalThis.fetch;
+  return { fetch, seen, state };
+}
+let servers = 0;
+async function ask(body: object, o: { models?: unknown; list: ReturnType<typeof lister>; access?: object; baseURL?: string; reasoning?: string; provider?: string }) {
+  const main = scripted('from the main model'), others: Record<string, MockLanguageModelV4> = {};
+  for (const id of ['router/big', 'router/small', 'late-arrival', 'Fast']) others[id] = scripted(`from ${id}`);
+  const config = Config.parse({ assistant: { model: 'm', baseURL: o.baseURL ?? `http://router-${++servers}:4000/v1`, apiKey: 'router-key', models: o.models ?? ['auto'],
+    ...(o.reasoning ? { reasoning: o.reasoning } : {}), ...(o.provider ? { provider: o.provider } : {}),
+    access: { default: 'read', dl: 'control', links: 'write', secret: 'none', config: 'control', ...o.access } } });
+  const app = new Hono();
+  app.post('/chat', chatRoute(config, home(), meta(), { acting: true, redact, model: main as any, models: others as any, fetch: o.list.fetch }) as any);
+  const r = await app.request('/chat', { method: 'POST', body: JSON.stringify({ messages: say('hi'), ...body }) });
+  const text = await r.text();
+  const events = text.split('\n').filter(l => l.startsWith('data: {')).map(l => JSON.parse(l.slice(6)));
+  const ran_ = Object.entries({ m: main, ...others }).filter(([, x]) => x.doStreamCalls.length).map(([k]) => k);
+  const call = (Object.values({ m: main, ...others }).find(x => x.doStreamCalls.length)?.doStreamCalls[0]) as any;
+  return { status: r.status, text, ran: ran_, call, offered: (call?.tools ?? []).map((t: any) => t.name).sort(), context: events.filter(e => e.type === 'message-metadata').at(-1)?.messageMetadata?.context, config };
+}
+
+test('models: auto: a model the main server lists answers, on the main server\'s settings and its own window', async () => {
+  const list = lister(['router/big', 'router/small'], { 'router/big': { max_model_len: 131072 } });
+  const r = await ask({ model: 'router/big' }, { list });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.ran, ['router/big']);
+  assert.equal(r.context.window, 131072);
+  // asked from the server, of the main server, with its key, and never of anything the request names
+  assert.equal(list.seen.length, 1);
+  assert.match(list.seen[0].url, /^http:\/\/router-\d+:4000\/v1\/models$/);
+  assert.equal(list.seen[0].auth, 'Bearer router-key');
+  const small = await ask({ model: 'router/small' }, { list: lister(['router/small']) });
+  assert.deepEqual([small.status, small.ran, small.context.window], [200, ['router/small'], undefined]);   // no window listed: unknown
+  // `models: auto` alone is the same as [auto]
+  assert.equal((await ask({ model: 'router/small' }, { list: lister(['router/small']), models: 'auto' })).status, 200);
+});
+
+test('models: auto: the list is kept five minutes, asked again on a miss, and anything still not listed is refused', async () => {
+  const { discovery } = await import('../src/server/model.ts');
+  const list = lister(['router/big']);
+  let now = 1_000_000;
+  const a = Config.parse({ assistant: { model: 'm', baseURL: `http://router-${++servers}:4000/v1`, models: ['auto'] } }).assistant!;
+  const d = discovery(a, { fetch: list.fetch, now: () => now });
+  assert.deepEqual((await d.list()).models.map(m => m.id), ['router/big']);
+  await d.list(); now += 60_000; await d.list();
+  assert.equal(list.seen.length, 1, 'kept');
+  now += 5 * 60_000; await d.list();
+  assert.equal(list.seen.length, 2, 'asked again after five minutes');
+  // a model added since: one more ask finds it
+  list.state.ids = ['router/big', 'late-arrival'];
+  now += 10_000;
+  assert.equal((await d.find('late-arrival'))?.model, 'late-arrival');
+  assert.equal(list.seen.length, 3);
+  // a miss straight after asks nothing more (a burst of made-up names is one request at most every five seconds)
+  assert.equal(await d.find('made-up'), undefined);
+  assert.equal(list.seen.length, 3);
+  now += 6000;
+  assert.equal(await d.find('made-up'), undefined);
+  assert.equal(list.seen.length, 4);
+  // the chat refuses what isn't listed, and asks nothing of any model
+  for (const body of [{ model: 'made-up' }, { model: { model: 'router/big', baseURL: 'http://evil/v1' } }, { model: 'router/big', baseURL: 'http://evil/v1', apiKey: 'x' }]) {
+    const l = lister(['router/big']);
+    const r = await ask(body, { list: l });
+    if ('baseURL' in body && typeof body.model === 'string') {
+      // a baseURL beside a listed model is never read: it goes to the main server, and the list is asked there
+      assert.equal(r.status, 200);
+      assert.ok(l.seen.every(s => !s.url.includes('evil')));
+    } else {
+      assert.equal(r.status, 400, JSON.stringify(body));
+      assert.deepEqual(r.ran, []);
+    }
+  }
+});
+
+test('models: auto: a server that fails leaves the configured choices working, and lists nothing new', async () => {
+  const { discovery, offered } = await import('../src/server/model.ts');
+  const list = lister(['router/big']);
+  list.state.fail = true;
+  const r = await ask({ model: 'Fast' }, { list, models: [{ name: 'Fast', model: 'tiny' }, 'auto'] });
+  assert.deepEqual([r.status, r.ran], [200, ['Fast']]);
+  assert.equal((await ask({ model: 'router/big' }, { list })).status, 400);
+  assert.equal((await ask({}, { list })).status, 200);   // the default too
+  // a failure keeps what was listed before, and says so
+  let now = 0;
+  const a = Config.parse({ assistant: { model: 'm', baseURL: `http://router-${++servers}:4000/v1`, models: [{ name: 'Fast', model: 'tiny' }, 'auto'] } }).assistant!;
+  const good = lister(['m', 'tiny', 'router/big', 'Fast']);
+  const d = discovery(a, { fetch: good.fetch, now: () => now });
+  assert.equal((await d.list()).ok, true);
+  // what the page is offered leaves out the main model and the configured ones (by name and by model on the same server)
+  assert.deepEqual(offered(a, await d.list()).map(m => m.id), ['router/big']);
+  good.state.fail = true; now += 6 * 60_000;
+  const failed = await d.list();
+  assert.deepEqual([failed.ok, failed.models.map(m => m.id)], [false, ['m', 'tiny', 'router/big', 'Fast']]);
+  // without auto nothing is ever asked
+  const none = lister(['router/big']);
+  assert.equal((await ask({ model: 'router/big' }, { list: none, models: [{ name: 'Fast', model: 'tiny' }] })).status, 400);
+  assert.equal(none.seen.length, 0);
+  // and an Anthropic main model doesn't list
+  assert.equal(discovery(Config.parse({ assistant: { model: 'claude-sonnet-5-5', provider: 'anthropic', models: 'auto' } }).assistant!).on, false);
+});
+
+test('reasoning: the chat\'s level overrides the model\'s for that request, auto keeps it, and nothing else is accepted', async () => {
+  const list = lister(['router/big']);
+  const pick = async (reasoning: unknown, o: { reasoning?: string; provider?: string } = {}) => (await ask({ model: 'router/big', ...(reasoning !== undefined ? { reasoning } : {}) }, { list, ...o }));
+  assert.equal((await pick('low')).call.reasoning, 'low');
+  assert.equal((await pick('medium')).call.reasoning, 'medium');
+  assert.equal((await pick('high', { reasoning: 'off' })).call.reasoning, 'high');
+  const off = (await pick('off', { reasoning: 'high' })).call;
+  assert.deepEqual(off.providerOptions.assistant, { chat_template_kwargs: { enable_thinking: false } });
+  // auto, or left out: the config's
+  assert.equal((await pick('auto', { reasoning: 'high' })).call.reasoning, 'high');
+  assert.equal((await pick(undefined, { reasoning: 'low' })).call.reasoning, 'low');
+  const plain = (await pick(undefined)).call;
+  assert.ok(plain.reasoning == null || plain.reasoning === 'provider-default');
+  assert.equal(plain.providerOptions?.assistant, undefined);
+  for (const bad of ['max', 'xhigh', 'none', 3, { effort: 'high' }, '']) assert.equal((await pick(bad)).status, 400, JSON.stringify(bad));
+  // a configured choice and the default take it too
+  assert.equal((await ask({ reasoning: 'medium' }, { list })).call.reasoning, 'medium');
+  assert.equal((await ask({ model: 'Fast', reasoning: 'medium' }, { list, models: [{ name: 'Fast', model: 'tiny', reasoning: 'off' }] })).call.reasoning, 'medium');
+  // config takes medium
+  assert.equal(Config.parse({ assistant: { model: 'm', reasoning: 'medium' } }).assistant!.reasoning, 'medium');
+});
+
+test('reasoning: medium reaches the wire as each provider spells it', async () => {
+  const { createOpenAICompatible } = await import('@ai-sdk/openai-compatible');
+  const { createAnthropic } = await import('@ai-sdk/anthropic');
+  const { generateText } = await import('ai');
+  const { callSettings } = await import('../src/server/model.ts');
+  const bodies: any[] = [];
+  const capture = (async (_: string, init?: RequestInit) => { bodies.push(JSON.parse(String(init?.body))); return new Response('{}', { status: 500 }); }) as typeof fetch;
+  const a = Config.parse({ assistant: { model: 'qwen', reasoning: 'off' } }).assistant!;
+  const oc = createOpenAICompatible({ name: 'assistant', baseURL: 'http://x/v1', fetch: capture })('qwen');
+  await generateText({ model: oc, prompt: 'hi', maxRetries: 0, ...callSettings(a, 'medium') }).catch(() => {});
+  assert.equal(bodies.at(-1).reasoning_effort, 'medium');
+  assert.equal(bodies.at(-1).chat_template_kwargs, undefined);   // thinking stays on
+  const an = createAnthropic({ apiKey: 'k', baseURL: 'http://x/v1', fetch: capture })('claude-sonnet-4-5');
+  const c = Config.parse({ assistant: { model: 'claude-sonnet-4-5', provider: 'anthropic' } }).assistant!;
+  for (const level of ['low', 'medium', 'high'] as const) await generateText({ model: an, prompt: 'hi', maxRetries: 0, ...callSettings(c, level) }).catch(() => {});
+  const budgets = bodies.slice(-3).map(b => b.thinking?.budget_tokens ?? b.output_config?.effort ?? b.thinking?.type);
+  assert.equal(budgets.length, 3);
+  assert.ok(budgets.every(b => b != null), JSON.stringify(bodies.slice(-3)));
+  // Anthropic: a thinking budget between low's and high's
+  assert.ok(budgets[0] < budgets[1] && budgets[1] < budgets[2], JSON.stringify(budgets));
+});
+
+test('models and reasoning never change which tools are offered or which ask first', async () => {
+  const list = lister(['router/big']);
+  const base = await ask({}, { list, models: [{ name: 'Fast', model: 'tiny', reasoning: 'off' }, 'auto'] });
+  for (const body of [{ model: 'router/big' }, { model: 'Fast' }, { model: 'router/big', reasoning: 'high' }, { reasoning: 'off' }, { model: 'Fast', reasoning: 'medium' }]) {
+    const r = await ask(body, { list, models: [{ name: 'Fast', model: 'tiny', reasoning: 'off' }, 'auto'] });
+    assert.equal(r.status, 200, JSON.stringify(body));
+    assert.deepEqual(r.offered, base.offered, JSON.stringify(body));
+    assert.ok(!r.offered.includes('secret__peek'));
+  }
+  // and what asks first still asks: a chosen model calling a control tool gets an approval request, and nothing runs
+  ran.length = 0;
+  const pauser = scripted([['dl__pause', {}]]);
+  const config = Config.parse({ assistant: { model: 'm', baseURL: `http://router-${++servers}:4000/v1`, models: ['auto'], access: { default: 'read', dl: 'control' } } });
+  const app = new Hono();
+  app.post('/chat', chatRoute(config, home(), meta(), { acting: true, redact, model: scripted('x') as any, models: { 'router/big': pauser as any }, fetch: list.fetch }) as any);
+  const text = await (await app.request('/chat', { method: 'POST', body: JSON.stringify({ messages: say('pause'), model: 'router/big', reasoning: 'high' }) })).text();
+  assert.match(text, /tool-approval-request/);
+  assert.deepEqual(ran, []);
+});

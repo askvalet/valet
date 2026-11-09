@@ -16,6 +16,8 @@ export function validZone(tz: string) { try { new Intl.DateTimeFormat('en', { ti
 const validLocale = (l: string) => { try { new Intl.Locale(l); return true; } catch { return false; } };
 
 const Access = z.enum(['none', 'read', 'write', 'control']);   // write: may add things (save a link, file a doc) · control: may change or remove them. Both ask first
+/** how much the model thinks first: auto leaves it to the model and its server */
+export const Reasoning = z.enum(['auto', 'off', 'low', 'medium', 'high']);
 
 // sampling, passed to the model as is
 const Sampling = z.object({
@@ -33,7 +35,7 @@ const ModelChoice = z.object({
   baseURL: z.string().optional(),
   apiKey: z.string().optional(),
   contextWindow: z.number().int().min(1000).max(10_000_000).optional(),
-  reasoning: z.enum(['auto', 'off', 'low', 'high']).optional(),
+  reasoning: Reasoning.optional(),
   options: Sampling.optional(),
 }).strict();
 
@@ -49,8 +51,8 @@ export const AssistantConfig = z.object({
   access: z.record(z.string(), Access).default({ default: 'read' }),
   maxSteps: z.number().int().min(1).max(20).default(6),
   // how much the model thinks before it answers, in the chat: auto leaves it to the model and its server. off turns a Qwen-style
-  // model's thinking off (chat_template_kwargs.enable_thinking), low and high ask for that effort; Anthropic maps them to a thinking budget
-  reasoning: z.enum(['auto', 'off', 'low', 'high']).default('auto'),
+  // model's thinking off (chat_template_kwargs.enable_thinking), low, medium and high ask for that effort; Anthropic maps them to a thinking budget
+  reasoning: Reasoning.default('auto'),
   // sampling, passed to the model as is: leave out for the server's defaults
   options: Sampling.default({}),
   // which tools each request offers: all of them, or (lazy) Valet's own plus a line per integration, whose tools it loads
@@ -69,12 +71,13 @@ export const AssistantConfig = z.object({
   // questions offered on an empty chat and in ⌘K
   suggestions: z.array(z.string()).default(['Is anything down?', 'How are my downloads doing?', "What's playing on Plex?", 'Show me the GPU and Plex side by side']),
   // more models to pick from in the chat's header, for one chat at a time; the main model above stays the default and
-  // does everything in the background
-  models: z.array(ModelChoice).default([]),
+  // does everything in the background. `auto` (an item, or `models: auto` alone) adds every model the main server lists
+  models: z.union([z.literal('auto').transform(() => ['auto' as const]), z.array(z.union([z.literal('auto'), ModelChoice]))]).default([]),
 }).strict().superRefine((a, ctx) => {
   // each choice is known by its name (or model id), and the main model by its model id
   const seen = new Set([a.model]);
   a.models.forEach((m, i) => {
+    if (m === 'auto') return;
     const id = m.name ?? m.model;
     if (seen.has(id)) ctx.addIssue({ code: 'custom', path: ['models', i, m.name ? 'name' : 'model'], message: `"${id}" is already a choice: give this one a name of its own` });
     seen.add(id);

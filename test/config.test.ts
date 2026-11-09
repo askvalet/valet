@@ -168,3 +168,25 @@ test('assistant.models: names are unique, providers known, keys from the environ
     assert.ok(!check(keyed, registry).problems.some(p => p.includes('assistant.models')));
   } finally { if (had !== undefined) process.env.ANTHROPIC_API_KEY = had; }
 });
+
+test('assistant.models: auto, as an item or alone, asks the main server for the rest; the choices skip it', async () => {
+  const { choices, discovery } = await import('../src/server/model.ts');
+  const parse = (models: unknown) => Config.parse({ assistant: { model: 'qwen', models } }).assistant!;
+  assert.deepEqual(parse('auto').models, ['auto']);
+  const mixed = parse([{ name: 'Fast', model: 'small' }, { name: 'Deep', model: 'big', reasoning: 'high' }, 'auto']);
+  assert.deepEqual(choices(mixed).map(c => c.id), ['qwen', 'Fast', 'Deep']);
+  assert.equal(choices(mixed)[2].settings.reasoning, 'high');
+  assert.ok(discovery(mixed).on);
+  assert.equal(discovery(parse([{ model: 'small' }])).on, false);
+  assert.equal(discovery(parse([])).on, false);
+  assert.equal(Config.safeParse({ assistant: { model: 'qwen', models: 'all' } }).success, false);
+  assert.equal(Config.safeParse({ assistant: { model: 'qwen', models: ['everything'] } }).success, false);
+  assert.equal(parse([{ model: 'x', reasoning: 'medium' }]).models.length, 1);
+  // from YAML, both spellings
+  assert.deepEqual(parseConfig('assistant:\n  model: qwen\n  models: auto\n').assistant!.models, ['auto']);
+  assert.deepEqual(parseConfig('assistant:\n  model: qwen\n  models:\n    - { name: "Fast", model: small }\n    - auto\n').assistant!.models, [{ name: 'Fast', model: 'small' }, 'auto']);
+  // Anthropic doesn't serve an OpenAI-style list: the checker says auto adds nothing
+  const anthropic = Config.parse({ assistant: { model: 'claude-sonnet-5-5', provider: 'anthropic', apiKey: 'k', models: 'auto' } });
+  assert.ok(check(anthropic, registry).problems.some(p => /auto lists an OpenAI-compatible/.test(p)));
+  assert.ok(!check(Config.parse({ assistant: { model: 'qwen', models: 'auto' } }), registry).problems.some(p => p.includes('assistant.models')));
+});

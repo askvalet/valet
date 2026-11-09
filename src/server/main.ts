@@ -16,7 +16,7 @@ import { UPLOAD_DIR, LOGO, hearBrowser } from './core.ts';
 import { parseSuggestions, scopeOf, statusLine, suggestPrompt, troubles } from './insight.ts';
 import { loadPins, newPin, pinnedCard, savePins } from './pins.ts';
 import { loadPlugins } from './plugins.ts';
-import { chatAgent, choices } from './model.ts';
+import { chatAgent, choices, discovery, offered } from './model.ts';
 import { buildRecap, recapYear } from './recap.ts';
 import { discover } from './discover.ts';
 import { mcpServer } from './mcpserver.ts';
@@ -260,8 +260,9 @@ app.get('/api/page', c => {
     chat: config.chat,
     // the demo's model is scripted, and says so beside its name
     assistant: config.assistant ? { ...(agent ? { name: agent.name, model: agent.model, external: true } : { name: config.assistant.name, model: sandbox.on ? `${config.assistant.model} (demo)` : config.assistant.model,
-        // assistant.models: what the chat's header offers, the default first; one model offers nothing
-        ...(config.assistant.models.length ? { models: choices(config.assistant).map(c => c.id) } : {}) }), suggestions: config.assistant.suggestions,
+        // assistant.models: what the chat's header offers, the default first; one model offers nothing. With `auto`, the
+        // rest of the main server's list comes from /api/models when the menu opens
+        ...(config.assistant.models.length ? { models: choices(config.assistant).map(c => ({ id: c.id, model: c.settings.model })), ...(discovery(config.assistant).on && !sandbox.on ? { discover: true } : {}) } : {}) }), suggestions: config.assistant.suggestions,
       // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>")
       tools: Object.fromEntries([...instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {})
         .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access, live: t.live }]))) } : null,
@@ -511,6 +512,15 @@ app.post('/api/chat', async c => {
   let chat = chats.get(key);
   if (!chat) chats.set(key, chat = (await import('./chat.ts')).chatRoute(site.config, site.instances, site.meta, { acting: site.acting, redact: site.redact, activity: site.activity }));
   return chat(c);
+});
+
+// `auto` in assistant.models: the main server's list, asked from here so its key stays here, and kept five minutes
+// (`?fresh=1` asks again). What fails says so quietly, and the configured choices still work.
+app.get('/api/models', async c => {
+  const a = site.config.assistant;
+  if (!a || sandbox.on || chatAgent(a, site.acting)) return c.json({ models: [], ok: true });
+  const listed = await discovery(a).list(c.req.query('fresh') === '1');
+  return c.json(JSON.parse(site.redact(JSON.stringify({ ok: listed.ok, at: listed.at, models: offered(a, listed) }))));
 });
 
 // Notifications on this device (⌘K): Valet's own Web Push. Turning them on or off is acting on the page, so it needs what

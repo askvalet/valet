@@ -10,10 +10,10 @@ import { randomBytes } from 'node:crypto';
 import type { Context as HonoContext } from 'hono';
 import { z } from 'zod';
 import type { Activity } from './activity.ts';
-import type { Config } from './config.ts';
+import { Reasoning, type Config } from './config.ts';
 import type { Instance, Integration } from './core.ts';
 import { mcpTools } from './mcp.ts';
-import { callSettings, chatAgent, choices, contextWindow, lastStepSettings, makeAgentModel, makeModel } from './model.ts';
+import { callSettings, chatAgent, choices, contextWindow, discovery, lastStepSettings, makeAgentModel, makeModel } from './model.ts';
 import { checkCard } from '../shared/cards.schema.ts';
 import { accessOf as granted, asker, rank, runTool as run, toolAccess, who } from './run.ts';
 import { CORE, LAZY_BELOW, askedFor, groupOf, indexLine, resolve, usedBefore, type Group } from './lazy.ts';
@@ -24,11 +24,20 @@ export { trimHistory } from './compact.ts';
 const APPROVALS = randomBytes(32);
 
 export function chatRoute(config: Config, instances: Map<string, Instance>, meta: Map<string, { type: string; name: string; integration: Integration }>,
-  safety: { acting: boolean; redact: (s: string) => string; activity?: Activity; model?: LanguageModel; models?: Record<string, LanguageModel> } = { acting: true, redact: s => s }) {
+  safety: { acting: boolean; redact: (s: string) => string; activity?: Activity; model?: LanguageModel; models?: Record<string, LanguageModel>; fetch?: typeof fetch } = { acting: true, redact: s => s }) {
   const a = config.assistant!;
   const model = safety.model ?? makeModel(a);
   // assistant.models: a chat may name one of these by id, and nothing else; each is made once, on its first use
   const picks = new Map(choices(a).map(c => [c.id, { s: c.settings, model: c.settings === a ? model : safety.models?.[c.id] }]));
+  // `auto`: or one the main server lists (asked again once if it isn't there), made on its first use and kept a while
+  const listed = discovery(a, { fetch: safety.fetch }), found = new Map<string, LanguageModel>();
+  const discovered = async (id: string) => {
+    const s = await listed.find(id);
+    if (!s) return undefined;
+    let llm = found.get(id) ?? safety.models?.[id];
+    if (!llm) { llm = makeModel(s); found.set(id, llm); if (found.size > 50) found.delete(found.keys().next().value!); }
+    return { s, model: llm };
+  };
   // Valet's own tools (what happened, reminders, rules) work without being granted; read-only pages still cap them
   const accessOf = (id: string) => granted(a, id);
   // one tool's level: its own dotted key (`plex.plex_stop_stream: control`), else its integration's; a read-only Valet only looks
@@ -185,10 +194,13 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   ].join('\n');
 
   return async (c: HonoContext) => asker.run((c.get as (k: string) => string | undefined)('user') ?? 'you', async () => {
-    const { messages: all_, model: asked } = await c.req.json<{ messages: UIMessage[]; model?: unknown }>();
+    const { messages: all_, model: asked, reasoning: level } = await c.req.json<{ messages: UIMessage[]; model?: unknown; reasoning?: unknown }>();
     // the page sends a choice's id, never a model or a server: anything else is refused
-    const pick = asked == null ? picks.get(a.model) : typeof asked === 'string' ? picks.get(asked) : undefined;
+    const pick = asked == null ? picks.get(a.model) : typeof asked === 'string' ? picks.get(asked) ?? await discovered(asked) : undefined;
     if (!pick) return c.json({ error: 'That model is not one of the choices in assistant.models.' }, 400);
+    // and how much it thinks, for this chat: one of the levels, or the model's own (auto, or left out)
+    const thinking = level == null ? undefined : Reasoning.safeParse(level).data;
+    if (level != null && !thinking) return c.json({ error: 'reasoning is one of auto, off, low, medium, high.' }, 400);
     const s = pick.s, llm = pick.model ??= makeModel(s);
     const other = chatAgent(a, safety.acting);
     if (other) {
@@ -258,7 +270,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       toolApproval: approvals,
       experimental_toolApprovalSecret: APPROVALS,
       stopWhen: isStepCount(a.maxSteps),
-      ...callSettings(s),   // assistant.reasoning and assistant.options; nothing when they're left out
+      ...callSettings(s, thinking),   // the chat's reasoning, else assistant.reasoning, and assistant.options; nothing when they're left out
       ...(lazy ? { activeTools: activeFor(new Set()), toolOrder: activeFor(new Set()) } : {}),
       prepareStep: ({ stepNumber, messages: now, steps: done }) => {
         // a turn whose tool results pile up: earlier steps' results shrink before the next step, so one turn can't fill the window
