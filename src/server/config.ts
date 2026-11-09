@@ -70,7 +70,7 @@ export const AssistantConfig = z.object({
   background: z.object({ watch: z.boolean().default(true), brief: z.boolean().default(true), suggest: z.boolean().default(true), perDay: z.number().int().min(1).max(500).default(100) }).default({ watch: true, brief: true, suggest: true, perDay: 100 }),
   // questions offered on an empty chat and in ⌘K
   suggestions: z.array(z.string()).default(['Is anything down?', 'How are my downloads doing?', "What's playing on Plex?", 'Show me the GPU and Plex side by side']),
-  // more models to pick from in the chat's header, for one chat at a time; the main model above stays the default and
+  // more models to pick from in the chat (under the message box), for one chat at a time; the main model above stays the default and
   // does everything in the background. `auto` (an item, or `models: auto` alone) adds every model the main server lists
   models: z.union([z.literal('auto').transform(() => ['auto' as const]), z.array(z.union([z.literal('auto'), ModelChoice]))]).default([]),
 }).strict().superRefine((a, ctx) => {

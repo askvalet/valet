@@ -7,10 +7,14 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Added
 
-- `assistant.models`: more models to pick from in the chat's header, for one chat at a time. Each entry needs only `model`; what it leaves out comes from the main settings (the address only to the same provider, the key only to the same server). The server accepts only a configured choice, the context meter follows the chosen model's window, and background calls stay on the main model. `config check` names duplicate names and an Anthropic choice without a key. Without `models` nothing changes.
+- `assistant.models`: more models to pick from in the chat, for one chat at a time. Each entry needs only `model`; what it leaves out comes from the main settings (the address only to the same provider, the key only to the same server). The server accepts only a configured choice, the context meter follows the chosen model's window, and background calls stay on the main model. `config check` names duplicate names and an Anthropic choice without a key. Without `models` nothing changes.
 - `auto` in `assistant.models` (or `models: auto`): the chat also offers every model the main server lists at `/models`. Valet asks the server itself, so its key stays on the server, and keeps the list five minutes, with a refresh in the menu; if the server doesn't answer, the configured models still work and the menu says so. A request may name only the default, a configured model or one in the latest list (asked again once before it's refused). Past eight choices the menu becomes a list you type to narrow: configured models first, then the ones picked lately in this browser, then the rest, a hundred at a time.
-- A Reasoning menu in the chat's header (Auto, Off, Low, Medium, High) sets how much the model thinks for that chat, over the config; a new chat is back on Auto. Background calls are unaffected, and so are access and approvals.
+- A Reasoning menu in the chat (Auto, Off, Low, Medium, High) sets how much the model thinks for that chat, over the config; a new chat is back on Auto. Background calls are unaffected, and so are access and approvals.
 - `reasoning: medium`, for the assistant and each of `models`.
+
+### Changed
+
+- The model, the reasoning level and the context meter moved from the chat's header to a quiet row under the message box, on the right; their menus open upward. The header shows just the assistant's name.
 - Pi-hole's `adblock_status` also lists the devices with the most blocked queries, by name where Pi-hole or its local DNS records know one, and takes an optional `domain` (a plain name matches anywhere, `*` as in Pi-hole) to say which devices looked it up lately.
 
 ## [0.3.0] - 2026-11-07

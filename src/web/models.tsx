@@ -5,7 +5,7 @@ import { ChevronDown, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Popover } from 'radix-ui';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export interface Choice { id: string; model: string }
 
@@ -18,7 +18,9 @@ const RECENT = 'valet-models-recent', KEEP = 5;
 const recent = (): string[] => { try { const r = JSON.parse(localStorage.getItem(RECENT) ?? '[]'); return Array.isArray(r) ? r.filter(x => typeof x === 'string').slice(0, KEEP) : []; } catch { return []; } };
 const remember = (id: string) => { try { localStorage.setItem(RECENT, JSON.stringify([id, ...recent().filter(x => x !== id)].slice(0, KEEP))); } catch { /* private mode: nothing kept */ } };
 
-const TRIGGER = 'h-auto min-w-0 gap-1 rounded-sm border-0 bg-transparent p-0 text-meta leading-4 text-muted-foreground shadow-none hover:text-foreground dark:bg-transparent dark:hover:bg-transparent [&_svg]:size-3';
+// plain words under the message box: no box, the small print's size, a pointer, and the ink on hover
+const TRIGGER = 'h-auto min-w-0 cursor-pointer gap-1 rounded-sm border-0 bg-transparent p-0 text-meta leading-4 text-muted-foreground shadow-none hover:text-foreground focus-visible:text-foreground dark:bg-transparent dark:hover:bg-transparent [&_svg]:size-3';
+const ITEM = 'cursor-pointer';
 
 /** What a choice is called: the default by its model, a configured one by its name. */
 const nameOf = (c: Choice, i: number) => i ? c.id : c.model;
@@ -29,7 +31,7 @@ export function ModelPicker({ models, discover, value, onChange }: { models: Cho
   if (!discover && models.length <= SEARCH_FROM) return (
     <Select value={current} onValueChange={onChange}>
       <SelectTrigger aria-label="Model" className={TRIGGER}><SelectValue /></SelectTrigger>
-      <SelectContent position="popper" align="start">{models.map((m, i) => <SelectItem key={m.id} value={m.id}>{nameOf(m, i)}</SelectItem>)}</SelectContent>
+      <SelectContent position="popper" side="top" align="end">{models.map((m, i) => <SelectItem key={m.id} value={m.id} className={ITEM}>{nameOf(m, i)}</SelectItem>)}</SelectContent>
     </Select>
   );
   return <SearchPicker models={models} discover={discover} current={current} onChange={onChange} />;
@@ -66,7 +68,7 @@ function SearchPicker({ models, discover, current, onChange }: { models: Choice[
   const label = (() => { const i = models.findIndex(m => m.id === current); return i >= 0 ? nameOf(models[i], i) : current; })();
   const pick = (id: string) => { remember(id); onChange(id); setOpen(false); };
   const item = (id: string, words: string, hint?: string) => (
-    <CommandItem key={id} value={id} onSelect={() => pick(id)} data-current={id === current || undefined} className="data-[current]:font-medium">
+    <CommandItem key={id} value={id} onSelect={() => pick(id)} data-current={id === current || undefined} className={`${ITEM} data-[current]:font-medium`}>
       <span className="min-w-0 truncate">{words}</span>
       {hint && <span className="ml-auto min-w-0 shrink truncate text-meta text-muted-foreground">{hint}</span>}
     </CommandItem>
@@ -74,11 +76,11 @@ function SearchPicker({ models, discover, current, onChange }: { models: Choice[
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger aria-label="Model" className={`flex w-fit items-center whitespace-nowrap outline-hidden focus-visible:text-foreground ${TRIGGER}`}>
+      <Popover.Trigger aria-label="Model" className={`flex w-fit items-center whitespace-nowrap outline-hidden ${TRIGGER}`}>
         <span className="min-w-0 truncate">{label}</span><ChevronDown className="opacity-50" />
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content data-slot="popover-content" align="start" sideOffset={4} collisionPadding={12}
+        <Popover.Content data-slot="popover-content" side="top" align="end" sideOffset={6} collisionPadding={12}
           // keys go to the list: its search field when there is one, else the list itself (arrows, Enter)
           onOpenAutoFocus={e => { e.preventDefault(); (e.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>('[cmdk-input], [cmdk-root]')?.focus(); }}
           className="z-50 w-[min(22rem,calc(100vw-24px))] origin-(--radix-popover-content-transform-origin) overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
@@ -95,7 +97,7 @@ function SearchPicker({ models, discover, current, onChange }: { models: Choice[
               {shown.more > 0 && <p className="px-3 pt-1 pb-2 text-meta text-muted-foreground">{shown.more} more. Keep typing to narrow it down.</p>}
               {discover && <CommandGroup className="border-t">
                 {!found.ok && <p className="px-2 pt-1 pb-1.5 text-meta text-muted-foreground">Couldn't get the server's list, so only the configured models are here.</p>}
-                <CommandItem value="valet:refresh" onSelect={() => load(true)} className="text-muted-foreground">
+                <CommandItem value="valet:refresh" onSelect={() => load(true)} className={`${ITEM} text-muted-foreground`}>
                   <RotateCcw className={found.loading ? 'animate-spin' : undefined} />Refresh the list
                 </CommandItem>
               </CommandGroup>}
@@ -114,8 +116,11 @@ const LEVELS: [Thinking, string][] = [['auto', 'Auto'], ['off', 'Off'], ['low', 
 export function ReasoningPicker({ value, onChange }: { value: Thinking; onChange: (v: Thinking) => void }) {
   return (
     <Select value={value} onValueChange={v => onChange(v as Thinking)}>
-      <SelectTrigger aria-label="Reasoning" className={TRIGGER}><SelectValue>Reasoning: {LEVELS.find(l => l[0] === value)?.[1]}</SelectValue></SelectTrigger>
-      <SelectContent position="popper" align="start">{LEVELS.map(([v, words]) => <SelectItem key={v} value={v}>{words}</SelectItem>)}</SelectContent>
+      <SelectTrigger aria-label="Reasoning" title="Reasoning" className={`${TRIGGER} shrink-0 text-muted-foreground/70`}><SelectValue>{LEVELS.find(l => l[0] === value)?.[1]}</SelectValue></SelectTrigger>
+      <SelectContent position="popper" side="top" align="end">
+        <SelectGroup><SelectLabel>Reasoning</SelectLabel>
+          {LEVELS.map(([v, words]) => <SelectItem key={v} value={v} className={ITEM}>{words}</SelectItem>)}</SelectGroup>
+      </SelectContent>
     </Select>
   );
 }

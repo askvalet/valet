@@ -72,7 +72,7 @@ If that matters to you, use a local model, or set sensitive integrations to `non
 | `background` | see below | What it does on its own. |
 | `suggestions` | four questions | Offered on an empty chat and in the palette. |
 
-A small pie beside the model's name in the chat shows how full its context is, from the tokens the model reported for its last step. Hover or tap it for the numbers. Past three quarters it says that Valet summarises the oldest messages when it fills up, and offers a fresh chat, which starts clean and answers faster. Claude models know their window. For other models Valet asks the server's model list, which vLLM, llama.cpp and similar servers answer with the model's context length (`max_model_len`, `context_length`). If yours doesn't say, as Ollama's doesn't, set `contextWindow` to the length your server runs it with (Ollama's `num_ctx`, say), or the meter shows only the tokens used.
+A small pie under the message box, at the right after the model's name, shows how full its context is, from the tokens the model reported for its last step. Hover or tap it for the numbers. Past three quarters it says that Valet summarises the oldest messages when it fills up, and offers a fresh chat, which starts clean and answers faster. Claude models know their window. For other models Valet asks the server's model list, which vLLM, llama.cpp and similar servers answer with the model's context length (`max_model_len`, `context_length`). If yours doesn't say, as Ollama's doesn't, set `contextWindow` to the length your server runs it with (Ollama's `num_ctx`, say), or the meter shows only the tokens used.
 
 The chat window has its own options under [`chat`](/reference/configuration/#chat). Tool results from older turns shrink to a preview, so a long chat doesn't get slower with every turn.
 
@@ -80,7 +80,7 @@ The chat window has its own options under [`chat`](/reference/configuration/#cha
 
 A model that thinks before it answers, like Qwen 3, is slower. `reasoning: off` turns the thinking off. To an OpenAI-compatible server (vLLM, llama.cpp, SGLang) Valet sends `chat_template_kwargs: { enable_thinking: false }`, which Qwen-style chat templates read; a server that doesn't know it ignores it. `low`, `medium` and `high` send `reasoning_effort`, for models and servers that take it, and leave the thinking on. With Anthropic, `off` turns extended thinking off and `low`, `medium` and `high` set its budget.
 
-It applies to the chat. Background calls and the summary of a long chat keep the model's own default. The chat's header has a **Reasoning** menu too (Auto, Off, Low, Medium, High): it sets the level for that chat only, over what the config says for the model, and a new chat starts on Auto again, which is whatever the config says.
+It applies to the chat. Background calls and the summary of a long chat keep the model's own default. Under the message box, beside the model's name, a **Reasoning** menu (Auto, Off, Low, Medium, High): it sets the level for that chat only, over what the config says for the model, and a new chat starts on Auto again, which is whatever the config says.
 
 ```yaml title="config.yaml"
 assistant:
@@ -111,7 +111,7 @@ Every integration you connect adds its tools to every message the assistant send
 
 ## More than one model
 
-`assistant.models` lists other models the chat can use. With it, the model's name in the chat's header becomes a menu. The choice holds for that chat, and a new chat starts on the main model again.
+`assistant.models` lists other models the chat can use. With it, the model's name under the message box becomes a menu. The choice holds for that chat, and a new chat starts on the main model again.
 
 ```yaml title="config.yaml"
 assistant:

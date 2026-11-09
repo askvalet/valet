@@ -567,10 +567,11 @@
 /* "new messages below": a pill that floats up when the person has scrolled away from the latest reply */
 .to-latest { animation: to-latest var(--dur-pop) var(--ease-out) backwards; }
 @keyframes to-latest { from { opacity: 0; transform: translateY(8px) scale(.95); } }
-/* the context meter beside the model's name: a ring that fills as the chat does, the numbers on hover or a tap */
+/* the context meter under the message box, at its right end: a ring that fills as the chat does, the numbers on hover or
+   a tap, opening upward */
 .ctx { width: 20px; height: 20px; border-radius: 99px; }
 .ctx-arc { transition: stroke-dashoffset var(--dur-move) var(--ease-out); }
-.ctx-pop { position: absolute; top: calc(100% + 6px); left: -10px; z-index: 30; width: 232px; padding: 10px 12px; text-align: left; white-space: normal; visibility: hidden; opacity: 0; translate: 0 -3px; scale: .97; transform-origin: 18px 0;
+.ctx-pop { position: absolute; bottom: calc(100% + 6px); right: -6px; z-index: 30; width: 232px; padding: 10px 12px; text-align: left; white-space: normal; visibility: hidden; opacity: 0; translate: 0 3px; scale: .97; transform-origin: calc(100% - 16px) 100%;
   transition: opacity var(--dur-pop) var(--ease-out), translate var(--dur-pop) var(--ease-out), scale var(--dur-pop) var(--ease-out), visibility 0s linear var(--dur-pop); }
 .ctx:focus-within .ctx-pop { visibility: visible; opacity: 1; translate: 0; scale: 1; transition-delay: 0s; }
 @media (hover: hover) and (pointer: fine) { .ctx:hover .ctx-pop { visibility: visible; opacity: 1; translate: 0; scale: 1; transition-delay: 0s; } }

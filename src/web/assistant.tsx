@@ -447,19 +447,9 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
       <header {...(sheet ? grab : {})} className={cn('relative z-20 flex items-center gap-2.5 px-5', sheet ? 'border-b ' : '', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'pt-4 pb-3')}>
         {sheet && <span className="sheet-grip absolute top-[max(.4rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2" aria-hidden />}
         {ui.icon && <span className="icon-tile"><Icon name={ui.icon} /></span>}
-        {/* one line: the name, then the model and its context meter beside it. The meter's place is kept from the start,
-            so nothing moves when the first answer brings the numbers in */}
+        {/* the name alone: the model, how much it thinks and the context meter sit under the message box */}
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
-          <span className="shrink-0 text-title font-semibold">{name}</span>
-          {/* the model and its meter as one inline group: the group sits on the name's baseline, the meter centred on the model's line */}
-          {/* on a phone the header drags the sheet: a press on a menu here is the menu's */}
-          <span onPointerDown={e => e.stopPropagation()} className="inline-flex min-w-0 items-center gap-1.5 text-meta leading-4 text-muted-foreground">
-            {models && (models.length > 1 || discover) && !external
-              ? <ModelPicker models={[{ ...models[0], model }, ...models.slice(1)]} discover={discover} value={choice} onChange={choose} />
-              : model && <span className="min-w-0 truncate">{model}</span>}
-            {!external && <span className="relative size-3.5 shrink-0 [&>.ctx]:absolute [&>.ctx]:top-1/2 [&>.ctx]:left-1/2 [&>.ctx]:-translate-x-1/2 [&>.ctx]:-translate-y-1/2">{context && <ContextMeter used={context.used} total={context.window} auto={context.auto} fresh={() => { stop(); setMessages([]); setTook({}); choose(); think('auto'); }} />}</span>}
-            {!external && <span className="shrink-0"><ReasoningPicker value={level} onChange={think} /></span>}
-          </span>
+          <span className="min-w-0 truncate text-title font-semibold">{name}</span>
         </div>
         {sheet && <button onClick={onClose} onPointerDown={e => e.stopPropagation()} aria-label="Close" className="press grid size-9 place-items-center rounded-full bg-fill-1"><ChevronDown className="size-icon-lg" /></button>}
         {onDismiss && <button onClick={onDismiss} aria-label="Close" className="chat-icon text-muted-foreground"><X className="size-icon" /></button>}
@@ -529,6 +519,15 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
             : <Button type="submit" size="icon" className="mb-[3px] size-8 rounded-sm bg-foreground text-(--card-tint) hover:bg-foreground/90 disabled:bg-foreground/20 disabled:text-foreground disabled:opacity-100" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
         </div>
         </ChatBeam>
+        {/* under the box, on the right: the model, how much it thinks, and how full the window is. Always there (a single
+            model just isn't a menu), so nothing moves when a menu or the meter appears; their menus open upward */}
+        <div className="mt-1.5 flex min-w-0 items-center justify-end gap-2.5 px-1 text-meta leading-4 text-muted-foreground">
+          {models && (models.length > 1 || discover) && !external
+            ? <ModelPicker models={[{ ...models[0], model }, ...models.slice(1)]} discover={discover} value={choice} onChange={choose} />
+            : model && <span className="min-w-0 truncate">{model}</span>}
+          {!external && <ReasoningPicker value={level} onChange={think} />}
+          {!external && <span className="relative size-3.5 shrink-0 [&>.ctx]:absolute [&>.ctx]:top-1/2 [&>.ctx]:left-1/2 [&>.ctx]:-translate-x-1/2 [&>.ctx]:-translate-y-1/2">{context && <ContextMeter used={context.used} total={context.window} auto={context.auto} fresh={() => { stop(); setMessages([]); setTook({}); choose(); think('auto'); }} />}</span>}
+        </div>
       </form>
     </div></Ui.Provider>
   );
