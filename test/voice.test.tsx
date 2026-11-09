@@ -13,8 +13,8 @@ process.env.VALET_DATA = await mkdtemp(join(tmpdir(), 'valet-voice-'));
 const { Config, parseConfig } = await import('../src/server/config.ts');
 const { MAX_AUDIO, MAX_SPEECH, PER_MINUTE, speak, transcribe, voiceForPage, voiceOf, voiceProblems } = await import('../src/server/voice.ts');
 const { setupAuth } = await import('../src/server/auth.ts');
-const { recordingType, speakable } = await import('../src/web/voice.tsx');
-const { default: Assistant } = await import('../src/web/assistant.tsx');
+const { fetchSpeech, recordingType, speakable } = await import('../src/web/voice.tsx');
+const { default: Assistant, MessageRow } = await import('../src/web/assistant.tsx');
 
 const KEY = 'sk-made-up-voice-key-0123456789';
 const assistant = { provider: 'openai-compatible', baseURL: 'http://llm.lan:8080/v1', apiKey: 'llm-key-abcdef', model: 'm' };
@@ -203,14 +203,66 @@ test('recording: the first container the browser can make, Safari\'s mp4 when th
   assert.equal(recordingType(() => false), '');
 });
 
-test('UI: the mic and the speaker show only when voice is configured', () => {
+test('UI: the mic shows only with stt, and the box has no speaker toggle any more', () => {
   const base = { name: 'Valet', model: 'm', ask: null, suggestions: [], onAsk: () => {} };
   const none = renderToString(<Assistant {...base} />);
-  assert.doesNotMatch(none, /aria-label="Speak"|Read answers aloud|Stop reading answers aloud/);
-  const both = renderToString(<Assistant {...base} voice={{ listen: true, speak: true, speakReplies: false, autoSend: false }} />);
+  assert.doesNotMatch(none, /aria-label="Speak"|Read aloud|Stop reading/);
+  const both = renderToString(<Assistant {...base} voice={{ listen: true, speak: true, speakReplies: true, autoSend: false }} />);
   assert.match(both, /aria-label="Speak"/);
-  assert.match(both, /aria-label="Read answers aloud"/);
+  assert.doesNotMatch(both, /aloud|Stop reading/, 'nothing about reading under the box');
   const listenOnly = renderToString(<Assistant {...base} voice={{ listen: true, speak: false, speakReplies: false, autoSend: false }} />);
   assert.match(listenOnly, /aria-label="Speak"/);
-  assert.doesNotMatch(listenOnly, /answers aloud/);
+});
+
+const answer = { id: 'a1', role: 'assistant', parts: [{ type: 'text', text: '**Plex** is up. See [the dashboard](https://x.lan/a).' }] };
+const acts = { approve: () => {}, regenerate: () => {}, ask: () => {} };
+const row = (props: object = {}) => renderToString(<MessageRow m={answer} isLast busy={false} fresh={false} since={0} tools={{}} act={acts} {...props} />);
+const actionRow = (html: string) => html.match(/<div class="chat-actions[^"]*">(.*?)<\/div>/)?.[1] ?? '';
+
+test('UI: an answer has a read aloud button beside copy only when tts is set, and a stop while it plays', () => {
+  assert.doesNotMatch(row(), /Read aloud/, 'no tts: no speaker');
+  const read: [string, string][] = [];
+  const withTts = row({ act: { ...acts, read: (id: string, t: string) => read.push([id, t]), silence: () => {} } });
+  const buttons = actionRow(withTts);
+  assert.match(buttons, /aria-label="Copy"/);
+  assert.match(buttons, /<button type="button" aria-label="Read aloud" title="Read aloud" class="chat-icon cursor-pointer">/);
+  const playing = actionRow(row({ act: { ...acts, read: () => {}, silence: () => {} }, reading: true }));
+  assert.match(playing, /aria-label="Stop reading"/);
+  assert.doesNotMatch(playing, /Read aloud/);
+});
+
+test('UI: the action row hides until hover, the latest answer is marked for touch screens, and suggestions always show', () => {
+  const html = row({ next: 'Is Sonarr up?\nWhat is downloading?' });
+  assert.match(html, /class="chat-msg space-y-3 chat-latest"/);
+  assert.match(html, /<div class="chat-actions /);
+  assert.ok(!actionRow(html).includes('Is Sonarr up?'), 'suggestions are not inside the hidden row');
+  assert.match(html, /Is Sonarr up\?/);
+  assert.doesNotMatch(row({ isLast: false, latest: false }), /chat-latest/);
+});
+
+test('UI: the wait says Working, and Thinking only while reasoning streams in', () => {
+  const waiting = renderToString(<MessageRow m={{ id: 'a2', role: 'assistant', parts: [] }} isLast busy fresh={false} since={0} tools={{}} act={acts} />);
+  assert.match(waiting, />Working</);
+  assert.doesNotMatch(waiting, /Thinking/);
+  const reasoning = renderToString(<MessageRow m={{ id: 'a3', role: 'assistant', parts: [{ type: 'reasoning', text: 'Hmm', state: 'streaming' }] }} isLast busy fresh={false} since={0} tools={{}} act={acts} />);
+  assert.match(reasoning, />Thinking</);
+  assert.doesNotMatch(reasoning, /Working/);
+});
+
+test('read aloud: posts the answer\'s plain words to /api/voice/speak and returns the audio', async () => {
+  const calls: { url: string; init: RequestInit }[] = [];
+  const stub = (async (url: string, init: RequestInit) => { calls.push({ url, init }); return new Response(new Uint8Array([0xff, 0xfb]), { headers: { 'Content-Type': 'audio/mpeg' } }); }) as unknown as typeof fetch;
+  const blob = await fetchSpeech(answer.parts[0].text, stub);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, '/api/voice/speak');
+  assert.equal(calls[0].init.method, 'POST');
+  assert.deepEqual(JSON.parse(calls[0].init.body as string), { text: 'Plex is up. See the dashboard.' });
+  assert.equal(blob?.size, 2);
+  const long = Array.from({ length: 200 }, (_, i) => `Sentence number ${i} is here.`).join(' ');
+  await fetchSpeech(long, stub);
+  assert.ok(JSON.parse(calls[1].init.body as string).text.length <= 1500, 'capped like before');
+  assert.equal(await fetchSpeech('```\nonly code\n```', stub), null, 'nothing to say, nothing sent');
+  assert.equal(calls.length, 2);
+  const refused = (async () => new Response(JSON.stringify({ error: 'Too many readings' }), { status: 429 })) as unknown as typeof fetch;
+  await assert.rejects(fetchSpeech('Hi.', refused), /Too many readings/);
 });

@@ -456,7 +456,13 @@
 .chat-dots { display: grid; grid-template-columns: repeat(3, 3px); gap: 2px; }
 .chat-dots i { width: 3px; height: 3px; border-radius: 1px; background: var(--primary); animation: chat-dot 1.2s ease-in-out infinite; }
 @keyframes chat-dot { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
-.chat-icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: var(--radius-chip); }
+.chat-icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: var(--radius-chip); cursor: pointer; }
+/* an answer's copy, ask again, read aloud and time: there (their space kept) but shown only while the pointer is over that
+   answer or one of them has focus. Touch screens have no hover: the latest answer keeps them, others show them on a tap */
+.chat-actions { transition: opacity 120ms var(--ease-out); }
+@media (hover: hover) { .chat-msg:not(:hover) > .chat-actions:not(:focus-within) { opacity: 0; pointer-events: none; } }
+@media (hover: none) { .chat-msg:not(.chat-latest, .chat-tapped) > .chat-actions:not(:focus-within) { opacity: 0; pointer-events: none; } }
+@media (prefers-reduced-motion: reduce) { .chat-actions { transition: none; } }
 @media (hover: hover) and (pointer: fine) { .chat-icon:hover { background: var(--fill-1); color: var(--foreground); } }
 /* sign-in and first run: seen once, so they may settle in. Tabs and sections don't: they're opened all day. */
 .settle { animation: settle var(--dur-move) var(--ease-out) backwards; }

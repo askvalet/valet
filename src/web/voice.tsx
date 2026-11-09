@@ -1,9 +1,9 @@
-// Voice in the chat (`voice:` in the config): a mic in the message box and a speaker under it. The mic records in
+// Voice in the chat (`voice:` in the config): a mic in the message box and a speaker under each answer. The mic records in
 // whatever the browser makes (Safari mp4, Chrome and Firefox webm/opus), sends it to Valet, and puts the words in the
-// box to check; the speaker reads finished answers aloud. Valet does the talking to the speech server, so its address and
+// box to check; the speaker reads an answer aloud. Valet does the talking to the speech server, so its address and
 // key never reach the page. Nothing here sends a message on its own unless voice.autoSend says so, and nothing here
 // approves anything: a spoken question is a typed one.
-import { Mic, Square, Volume2, VolumeOff, X } from 'lucide-react';
+import { Mic, Square, Volume2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { label } from './format.ts';
@@ -146,9 +146,6 @@ export function Listening({ rec }: { rec: ReturnType<typeof useRecorder> }) {
   );
 }
 
-const KEY = 'valet-speak';
-const remembered = (fallback: boolean) => { try { const v = localStorage.getItem(KEY); return v === null ? fallback : v === '1'; } catch { return fallback; } };
-
 /** A few milliseconds of silence, played from a tap so Safari lets the same player speak later, when an answer is done. */
 function silence() {
   const n = 800, b = new DataView(new ArrayBuffer(44 + n * 2)), w = (o: number, s: string) => [...s].forEach((ch, i) => b.setUint8(o + i, ch.charCodeAt(0)));
@@ -157,50 +154,53 @@ function silence() {
   return URL.createObjectURL(new Blob([b.buffer], { type: 'audio/wav' }));
 }
 
-/** Answers read aloud: on or off per browser, one at a time, stopped by a tap or a new question. */
-export function useSpeaker(fallback: boolean, onError: (e: string) => void) {
-  const [on, setOn] = useState(() => remembered(fallback)), [speaking, setSpeaking] = useState(false);
+/** The answer read aloud, as Valet's speech route returns it: MP3, from the answer's speakable words. */
+export async function fetchSpeech(text: string, get: typeof fetch = fetch) {
+  const words = speakable(text); if (!words) return null;
+  const r = await get('/api/voice/speak', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: words }) });
+  if (!r.ok) throw new Error(await said(r));
+  return r.blob();
+}
+
+/** Answers read aloud, one at a time: from an answer's own speaker button, or each finished answer with
+ *  voice.speakReplies. `playing` is the message being read; another one, or a new question, stops it. */
+export function useSpeaker(onError: (e: string) => void) {
+  const [playing, setPlaying] = useState<string | null>(null);
   const player = useRef<HTMLAudioElement | null>(null), turn = useRef(0), url = useRef<string | null>(null);
   const cb = useRef(onError); cb.current = onError;
   const el = () => player.current ??= new Audio();
   const drop = () => { if (url.current) { URL.revokeObjectURL(url.current); url.current = null; } };
   /** from a tap or a key: lets this player make sound later without one */
   const unlock = () => { const a = el(); if (a.src && !a.paused) return; const s = silence(); a.src = s; a.play().catch(() => {}).finally(() => URL.revokeObjectURL(s)); };
-  const stop = () => { turn.current++; const a = player.current; if (a) { a.pause(); a.removeAttribute('src'); a.load(); } drop(); setSpeaking(false); };
-  const say = async (text: string) => {
-    const words = speakable(text); if (!words) return;
-    stop(); const n = turn.current; setSpeaking(true);
+  const stop = () => { turn.current++; const a = player.current; if (a) { a.pause(); a.removeAttribute('src'); a.load(); } drop(); setPlaying(null); };
+  const say = async (text: string, id: string) => {
+    if (!speakable(text)) return;
+    stop(); const n = turn.current; setPlaying(id);
     try {
-      const r = await fetch('/api/voice/speak', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: words }) });
-      if (!r.ok) throw new Error(await said(r));
-      const blob = await r.blob();
-      if (n !== turn.current) return;
+      const blob = await fetchSpeech(text);
+      if (n !== turn.current || !blob) return;
       const a = el(); drop(); url.current = URL.createObjectURL(blob); a.src = url.current;
-      a.onended = () => { if (n === turn.current) { drop(); setSpeaking(false); } };
+      a.onended = () => { if (n === turn.current) { drop(); setPlaying(null); } };
       await a.play();
     } catch (e) {
       if (n !== turn.current) return;
-      setSpeaking(false);
       const name = (e as Error).name;
-      cb.current(name === 'NotAllowedError' ? 'The browser blocked the sound. Tap the speaker once, then ask again.' : (e as Error).message === 'Failed to fetch' ? "Can't reach Valet." : `Couldn't read it aloud: ${(e as Error).message}`);
+      // something else on the page (an extension, say) restarted the same player: it's still talking, so it's no error
+      if (name === 'AbortError' && player.current && !player.current.paused) return;
+      setPlaying(null);
+      cb.current(name === 'NotAllowedError' ? 'The browser blocked the sound. Press the speaker under the answer to hear it.' : (e as Error).message === 'Failed to fetch' ? "Can't reach Valet." : `Couldn't read it aloud: ${(e as Error).message}`);
     }
   };
-  const toggle = () => {
-    const next = !on; setOn(next);
-    try { localStorage.setItem(KEY, next ? '1' : '0'); } catch { /* private mode: for this visit only */ }
-    if (next) unlock(); else stop();
-  };
   useEffect(() => () => { turn.current++; player.current?.pause(); drop(); }, []);
-  return { on, speaking, toggle, say, stop, unlock };
+  return { playing, say, stop, unlock };
 }
 
-/** The speaker under the message box, as quiet as the model's name beside it; a stop while it talks. */
-export function SpeakerToggle({ speaker }: { speaker: ReturnType<typeof useSpeaker> }) {
-  const words = speaker.speaking ? label('voiceSilence') : speaker.on ? label('voiceSpeakOff') : label('voiceSpeakOn');
+/** Under an answer, beside copy: read it aloud, and while it talks, stop. */
+export function ReadAloud({ playing, onRead, onStop }: { playing: boolean; onRead: () => void; onStop: () => void }) {
+  const words = playing ? label('voiceSilence') : label('voiceRead');
   return (
-    <button type="button" onClick={speaker.speaking ? speaker.stop : speaker.toggle} aria-label={words} title={words} aria-pressed={speaker.speaking ? undefined : speaker.on}
-      className={cn('grid size-3.5 shrink-0 cursor-pointer place-items-center transition-colors hover:text-foreground focus-visible:text-foreground', speaker.on ? 'text-muted-foreground' : 'text-muted-foreground/70')}>
-      {speaker.speaking ? <Square className="size-2.5 fill-current" /> : speaker.on ? <Volume2 className="size-3.5" /> : <VolumeOff className="size-3.5" />}
+    <button type="button" onClick={playing ? onStop : onRead} aria-label={words} title={words} className="chat-icon cursor-pointer">
+      {playing ? <Square className="size-2.5 fill-current" /> : <Volume2 className="size-icon-sm" />}
     </button>
   );
 }

@@ -21,7 +21,7 @@ import { Tick } from './feel.tsx';
 import { label, num } from './format.ts';
 import { play } from './sound.ts';
 import { ModelPicker, ReasoningPicker, type Choice, type Thinking } from './models.tsx';
-import { Listening, MicButton, SpeakerToggle, useRecorder, useSpeaker, type VoiceUi } from './voice.tsx';
+import { Listening, MicButton, ReadAloud, useRecorder, useSpeaker, type VoiceUi } from './voice.tsx';
 
 /** What `chat:` says about the window. */
 export interface ChatUi { followUps?: string[]; review?: string; steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string; beam?: 'off' | 'always' | 'focus' | 'thinking' | 'once'; beamColor?: 'colorful' | 'mono' | 'ocean' | 'sunset'; beamStrength?: number }
@@ -63,8 +63,8 @@ function TextView({ text, live }: { text: string; live?: boolean }) {
 
 const Text = memo(TextView);
 
-/** "Thinking" with a light sweeping across it and the seconds ticking, like a model that's actually working. */
-function Pending({ since, label: text = label('thinking') }: { since: number; label?: string }) {
+/** "Working" (or "Thinking", while reasoning streams) with a light sweeping across it and the seconds ticking. */
+function Pending({ since, label: text = label('working') }: { since: number; label?: string }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 100); return () => clearInterval(t); }, []);
   return (
@@ -242,8 +242,9 @@ export function InlineAnswer({ text, tools, onMore, ui }: { text: string; tools:
 }
 
 /** One message. Memoised, so a reply streaming in doesn't re-render everything above it. */
-const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, since, tools, act, next }: { m: any; isLast: boolean; next?: string; busy: boolean; tookMs?: number; fresh: boolean; since: number; tools: Record<string, ToolInfo>; act: { approve: (id: string, ok: boolean) => void; regenerate: () => void; ask: (t: string) => void } }) {
-  const [copied, setCopied] = useState<boolean | null>(null), ui = useContext(Ui);
+export interface RowActs { approve: (id: string, ok: boolean) => void; regenerate: () => void; ask: (t: string) => void; read?: (id: string, text: string) => void; silence?: () => void }
+export const MessageRow = memo(function MessageRow({ m, isLast, latest = isLast, busy, tookMs, fresh, since, tools, act, next, reading }: { m: any; isLast: boolean; latest?: boolean; next?: string; busy: boolean; tookMs?: number; fresh: boolean; since: number; tools: Record<string, ToolInfo>; act: RowActs; reading?: boolean }) {
+  const [copied, setCopied] = useState<boolean | null>(null), [tapped, setTapped] = useState(false), ui = useContext(Ui);
   if (m.role === 'user') return (
     <div className="chat-msg flex justify-end">
       <div className="chat-in chat-bubble max-w-[85%] rounded-surface rounded-br-md px-3.5 py-2 text-item">
@@ -283,14 +284,18 @@ const MessageRow = memo(function MessageRow({ m, isLast, busy, tookMs, fresh, si
   const waiting = m.parts.some((p: any) => p.state === 'approval-requested');
   const follow = !isLast || busy || waiting ? [] : next ? next.split('\n') : ui.followUps ? [] : used.map((t: string) => tools[t]?.followUps).filter(Boolean).at(-1)?.slice(0, 2) ?? [];
   return (
-    <div className="chat-msg space-y-3">
+    // a tap on the answer (not on a link or a button in it) shows its actions on a touch screen
+    <div className={cn('chat-msg space-y-3', latest && 'chat-latest', tapped && 'chat-tapped')} onClick={e => { if (!(e.target as Element).closest('a, button, input, textarea, select, summary, [role="button"]')) setTapped(t => !t); }}>
       {blocks}
-      {live && !text && !m.parts.some((p: any) => (ui.steps && (p.type.startsWith('tool-') || p.type === 'dynamic-tool') && p.state !== 'output-available') || (ui.thinking !== 'hidden' && p.type === 'reasoning' && p.state === 'streaming')) && !thinking && <Pending since={since || Date.now()} label={label(m.parts.length ? 'writing' : 'thinking')} />}
+      {/* "Working" while it waits for the model or between steps; "Thinking" only while reasoning is coming in (shown
+          here when the reasoning itself is hidden; otherwise its own row says so) */}
+      {live && !text && !m.parts.some((p: any) => (ui.steps && (p.type.startsWith('tool-') || p.type === 'dynamic-tool') && p.state !== 'output-available') || (ui.thinking !== 'hidden' && p.type === 'reasoning' && p.state === 'streaming')) && !thinking && <Pending since={since || Date.now()} label={label(m.parts.some((p: any) => p.type === 'reasoning' && p.state === 'streaming') ? 'thinking' : 'working')} />}
       {!live && text && (
-        <div className="flex items-center gap-1 text-muted-foreground animate-in fade-in duration-(--dur-pop)">
+        <div className="chat-actions flex items-center gap-1 text-muted-foreground">
           <button aria-label="Copy" title="Copy" onClick={() => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1400); }}
             className="chat-icon">{copied ? <Tick draw className="morph size-3.5 text-good" /> : <Copy className={cn('size-icon-sm', copied === false && 'morph')} />}</button>
           {isLast && <button aria-label="Ask again" title="Ask again" onClick={act.regenerate} className="chat-icon"><RotateCcw className="size-icon-sm" /></button>}
+          {act.read && <ReadAloud playing={!!reading} onRead={() => act.read!(m.id, text)} onStop={() => act.silence?.()} />}
           {tookMs != null && tookMs >= 1000 && <span className="ml-1 text-meta tabular">{label('worked', { n: (tookMs / 1000).toFixed(tookMs < 10_000 ? 1 : 0) })}</span>}
         </div>
       )}
@@ -393,8 +398,10 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
   }, [busyNow, messages]);
   const [draft, setDraft] = useState(''), [sent, setSent] = useState(0);
   // the same three functions for every message, whatever else changes, so finished messages don't re-render
-  const latest = useRef({ addToolApprovalResponse, regenerate, onAsk }); latest.current = { addToolApprovalResponse, regenerate, onAsk };
+  const latest = useRef({ addToolApprovalResponse, regenerate, onAsk, read: (_id: string, _t: string) => {}, silence: () => {} }); Object.assign(latest.current, { addToolApprovalResponse, regenerate, onAsk });
   const act = useRef({ approve: (id: string, ok: boolean) => { latest.current.addToolApprovalResponse({ id, approved: ok }); }, regenerate: () => { latest.current.regenerate(); }, ask: (t: string) => latest.current.onAsk(t) }).current;
+  // read aloud is on the answers only when voice.tts is set; the functions stay put, so the rows don't re-render for it
+  const reader = useRef({ ...act, read: (id: string, t: string) => latest.current.read(id, t), silence: () => latest.current.silence() }).current;
   // files pasted, dropped or picked: uploaded right away, then named in the message so a tool can file them
   const [files, setFiles] = useState<{ key: number; name: string; id?: string; error?: string }[]>([]);
   const [over, setOver] = useState(false);
@@ -440,31 +447,33 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
   const ready = files.filter(f => f.id), uploading = files.some(f => !f.id && !f.error);
   // voice: what's heard goes in the box to check (or, with voice.autoSend, is sent as if typed); answers can be read aloud
   const [voiceNote, setVoiceNote] = useState<string | null>(null);
-  const speaker = useSpeaker(!!voice?.speakReplies, setVoiceNote);
+  const speaker = useSpeaker(setVoiceNote);
+  latest.current.read = (id, t) => { speaker.unlock(); void speaker.say(t, id); }; latest.current.silence = speaker.stop;
   const rec = useRecorder({ onError: setVoiceNote, onText: t => { setVoiceNote(null); if (voice?.autoSend && !busy && !uploading) submit(t); else setDraft(d => d.trim() ? `${d.trimEnd()} ${t}` : t); } });
   const submit = (heard?: string) => {
     const text = heard ?? draft;
     if ((!text.trim() && !ready.length) || busy || uploading) return;
     const lines = ready.map(f => `[attached: ${f.name} (file id ${f.id})]`);
     following.current = true; play('send'); setSent(n => n + 1); setVoiceNote(null);
-    if (voice?.speak) { speaker.stop(); if (speaker.on) speaker.unlock(); }
+    if (voice?.speak) { speaker.stop(); if (voice.speakReplies) speaker.unlock(); }
     sendMessage({ text: [text.trim() || 'File this.', ...lines].join('\n') }); if (heard === undefined) setDraft(''); setFiles([]);
   };
-  // a finished answer is read aloud when the speaker is on; one waiting for approval isn't finished, and the click still decides
+  // with voice.speakReplies each finished answer is read aloud; one waiting for approval isn't finished, and the click still decides
   const answering = useRef(false);
   useEffect(() => {
     if (busy) { answering.current = true; return; }
     if (!answering.current) return;
     answering.current = false;
     const last = messages.at(-1);
-    if (!voice?.speak || !speaker.on || error || last?.role !== 'assistant' || last.parts.some((p: any) => p.state === 'approval-requested')) return;
+    if (!voice?.speak || !voice.speakReplies || error || last?.role !== 'assistant' || last.parts.some((p: any) => p.state === 'approval-requested')) return;
     const text = last.parts.filter((p: any) => p.type === 'text').map((p: any) => splitThink(p.text).said).join('\n\n').trim();
-    if (text) void speaker.say(text);
+    if (text) void speaker.say(text, last.id);
   }, [busy]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // what's offered next: three at a time, nothing already asked
   const said = new Set(messages.filter((m: any) => m.role === 'user').flatMap((m: any) => m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text.trim())));
   const nextUp = ui.followUps?.filter(f => !said.has(f)).slice(0, 3).join('\n');
+  const lastAnswer = messages.findLastIndex((m: any) => m.role === 'assistant');
   return (
     <Ui.Provider value={ui}><div className="relative flex h-full flex-col">
       <header {...(sheet ? grab : {})} className={cn('relative z-20 flex items-center gap-2.5 px-5', sheet ? 'border-b ' : '', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'pt-4 pb-3')}>
@@ -496,7 +505,7 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
           {/* what the model was sent got smaller here; the page still has all of it, above. The answer carries the flag, and
               the rule goes above the question it answered */}
           {compactedAt(messages, mi) && <Compacted kind={compactedAt(messages, mi)!} />}
-          <MessageRow key={m.id} m={m} isLast={mi === messages.length - 1} next={mi === messages.length - 1 ? nextUp : undefined} busy={busy} tookMs={took[m.id]} fresh={mi >= messages.length - 4} since={started.current} tools={tools} act={act} />
+          <MessageRow key={m.id} m={m} isLast={mi === messages.length - 1} latest={mi === lastAnswer} next={mi === messages.length - 1 ? nextUp : undefined} busy={busy} tookMs={took[m.id]} fresh={mi >= messages.length - 4} since={started.current} tools={tools} act={voice?.speak ? reader : act} reading={speaker.playing === m.id} />
           </Fragment>
         ))}
         {status === 'submitted' && messages.at(-1)?.role === 'user' && <Pending since={started.current || Date.now()} />}
@@ -547,7 +556,6 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
             model just isn't a menu), so nothing moves when a menu or the meter appears; their menus open upward */}
         <div className="mt-1.5 flex min-w-0 items-center justify-end gap-2.5 px-1 text-meta leading-4 text-muted-foreground">
           {voiceNote && <button type="button" role="alert" title={voiceNote} onClick={() => setVoiceNote(null)} className="mr-auto min-w-0 cursor-pointer truncate text-left text-bad first-letter:uppercase">{voiceNote}</button>}
-          {voice?.speak && <SpeakerToggle speaker={speaker} />}
           {models && (models.length > 1 || discover) && !external
             ? <ModelPicker models={[{ ...models[0], model }, ...models.slice(1)]} discover={discover} value={choice} onChange={choose} />
             : model && <span className="min-w-0 truncate">{model}</span>}

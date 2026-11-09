@@ -230,6 +230,7 @@ services and the assistant write is theirs, and the status sentence is built fro
 | `message` | Message {name} |
 | `messageHint` | Message {name}, paste a link or drop a file |
 | `chatTitle` | Talk to your homelab |
+| `working` | Working |
 | `thinking` | Thinking |
 | `writing` | Writing |
 | `thought` | Thought |
@@ -400,8 +401,8 @@ voice:
 | Option | Default | |
 |---|---|---|
 | `stt` | off | speech to text, `POST {baseURL}/audio/transcriptions`: a mic in the chat's message box. `baseURL`, `apiKey` (use `${NAME}`), `model` (`whisper-1`), `language` (a code like `en`; default: the server works it out) |
-| `tts` | off | text to speech, `POST {baseURL}/audio/speech`, MP3: a speaker toggle under the message box. `baseURL`, `apiKey`, `model` (`tts-1`), `voice` (`alloy`), `speed` (0.25–4, `1`) |
-| `speakReplies` | `false` | whether the speaker starts on; each browser remembers its own choice |
+| `tts` | off | text to speech, `POST {baseURL}/audio/speech`, MP3: a speaker under each answer. `baseURL`, `apiKey`, `model` (`tts-1`), `voice` (`alloy`), `speed` (0.25–4, `1`) |
+| `speakReplies` | `false` | read each finished answer aloud without a press (every answer has its own speaker either way) |
 | `autoSend` | `false` | send what was heard straight away. Off, the words go in the box for you to check and send |
 
 A half without `baseURL` uses the other half's, then the assistant's (an OpenAI-compatible one); `apiKey` only ever goes to

@@ -122,7 +122,7 @@ export const VoiceConfig = z.object({
     voice: z.string().min(1).default('alloy'),
     speed: z.number().min(.25).max(4).default(1),
   }).strict().optional(),
-  speakReplies: z.boolean().default(false),   // the speaker toggle's default; each browser remembers its own choice
+  speakReplies: z.boolean().default(false),   // read each finished answer aloud without a press; every answer has its own speaker either way
   autoSend: z.boolean().default(false),       // send what was heard straight away, rather than leaving it in the box to check
 }).strict();
 

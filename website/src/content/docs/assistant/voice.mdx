@@ -4,7 +4,7 @@ description: Talk to the chat and hear it answer, with OpenAI or a speech server
 sidebar: { order: 4.5 }
 ---
 
-With a `voice` block the chat gets a mic in its message box and a speaker toggle under it. Valet uses the OpenAI audio API (`/audio/transcriptions` and `/audio/speech`), so it works with OpenAI itself or with any server that speaks the same API. Leave the block out and nothing changes.
+With a `voice` block the chat gets a mic in its message box and a speaker under each answer. Valet uses the OpenAI audio API (`/audio/transcriptions` and `/audio/speech`), so it works with OpenAI itself or with any server that speaks the same API. Leave the block out and nothing changes.
 
 Each half works alone: `stt` for the mic, `tts` for reading answers aloud.
 
@@ -46,7 +46,7 @@ voice:
 ## Using it
 
 - **Speak.** Tap the mic, talk, tap again. Or hold it down and let go when you're done. A level and a timer show it's listening, and the cross throws a recording away. The words go in the box so you can check them before sending. `autoSend: true` sends them straight away.
-- **Hear answers.** The speaker under the box turns reading aloud on or off for this browser. Each finished answer is read: its words without markdown, tables, code or cards, up to about 1,500 characters. Tap the square to stop. `speakReplies: true` starts the speaker on, until someone turns it off.
+- **Hear an answer.** Press the speaker under an answer, beside copy, to have it read: its words without markdown, tables, code or cards, up to about 1,500 characters. While it talks the speaker is a square: press it to stop. Starting another answer, or asking something new, stops the one playing. `speakReplies: true` reads each finished answer aloud without a press.
 
 Safari records MP4 and Chrome and Firefox record WebM. Valet passes either on as it is. The mic needs a secure page (HTTPS, or `localhost`), and the browser asks for permission the first time.
 
@@ -72,7 +72,7 @@ Safari records MP4 and Chrome and Firefox record WebM. Valet passes either on as
 | `tts.model` | `tts-1` | |
 | `tts.voice` | `alloy` | The server's voice name, like `af_heart` for Kokoro. |
 | `tts.speed` | `1` | 0.25 to 4. |
-| `speakReplies` | `false` | Whether the speaker starts on. |
+| `speakReplies` | `false` | Read each finished answer aloud without a press. |
 | `autoSend` | `false` | Send what was heard without waiting for you. |
 
 `config check` names a missing address, a bad language code and a voice block without an assistant.
