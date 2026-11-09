@@ -12,6 +12,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 - An MCP client can ask to change things, with your approval each time. `mcpServer.access` takes `write` and `control` per integration (still `read` by default), and those integrations' tools that add or change things are then offered. A call waits for a signed-in person to approve it on the page: the same approval card as the chat's, in the tool's own words, with a notification. A yes covers one exact call, once; the client waits about 45 seconds and is told to ask again after that, and an answer keeps for ten minutes. Five can wait at once. Valet's config, rules and pins can't be changed this way, and a read-only page offers only tools that look.
 - An integration's search tool can say `nearest: true` when it always finds something, however far off (photos by what's in them): its rows then sit under the ones found by the words themselves. Immich's does.
 
+### Changed
+
+- ⌘K opens at once. Its code is fetched when the page goes quiet instead of on the first press, and opening it no longer restyles the whole page behind it (twice on open, once on close). On a busy page the first open went from about 370 ms to 14 ms and every later one from about 56 ms to 9 ms. It's the same palette: the page behind is still dimmed and still, Escape and a click outside close it, and Tab stays inside it.
+
 ## [0.4.0] - 2026-11-09
 
 ### Added

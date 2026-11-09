@@ -4,7 +4,8 @@ import { ArrowUp, Bell, BellOff, CornerDownLeft, Droplet, Globe, LayoutGrid, Log
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { defaultFilter } from 'cmdk';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog as Layer } from 'radix-ui';
+import { Dialog, DialogDescription, DialogHeader, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { stateOf, type Card, type Confirm, type StatusItem } from '../shared/cards.ts';
 import { clear, match, type Match, type Phrase } from '../shared/commands.ts';
@@ -58,6 +59,10 @@ export function rank(value: string, query: string, names: string[] = []) {
 }
 // the look shadcn's CommandDialog gives it; that one can't take a filter
 const SHELL = '**:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5';
+
+// the page behind stays where it is while the palette is open (kept out of the component, so it's attached once)
+const stop = (e: Event) => e.preventDefault();
+const still = (el: HTMLDivElement | null) => { el?.addEventListener('wheel', stop, { passive: false }); el?.addEventListener('touchmove', stop, { passive: false }); };
 
 export default function Palette({ palette, setPalette, assistantName, ask, actions, runAction, services, SUGGESTIONS, setView, nav, sectionIcon, search, find, account, tools, openChat, placeholder, ui, device }: PaletteProps) {
   const [query, setQuery] = useState('');
@@ -195,11 +200,22 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
   // loosely matches. Its rows arrive a moment later, so nothing above them ever moves
   groups.push([FOUND_SCORE, found.length > 0 && <FoundGroups key="found" found={found} show={setShown} close={() => setPalette(false)} />]);
   groups.sort((x, y) => y[0] - x[0]);
+  // Tab goes round what's in the palette and never out to the page behind
+  const loop = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Tab') return;
+    const all = [...e.currentTarget.querySelectorAll<HTMLElement>('input, button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')].filter(x => x.offsetParent !== null);
+    const i = all.indexOf(document.activeElement as HTMLElement), next = all.length ? all[(i + (e.shiftKey ? -1 : 1) + all.length) % all.length] : null;
+    e.preventDefault(); next?.focus();
+  };
   const lead = (groups.find(g => g[1])?.[1] as React.ReactElement | undefined)?.key === 'run';
   return (
-        <Dialog open={palette} onOpenChange={setPalette}>
+        // Not a modal dialog, on purpose: a modal one sets pointer-events on the body, which restyles every element on the
+        // page when it opens and again when it closes. The dim layer, the scroll lock and the Tab loop below do what it did.
+        <Dialog open={palette} onOpenChange={setPalette} modal={false}>
           <DialogHeader className="sr-only"><DialogTitle>{assistantName ? `Ask ${assistantName}` : 'Search'}</DialogTitle><DialogDescription>Run a command, ask a question or jump to a section</DialogDescription></DialogHeader>
-          <DialogContent showCloseButton={false} className="palette-pop top-[18%] translate-y-0 overflow-hidden rounded-popover p-0 sm:max-w-[600px]">
+          <DialogPortal>
+          <div ref={still} data-slot="dialog-overlay" className="fixed inset-0 z-50 bg-black/50" />
+          <Layer.Content data-slot="dialog-content" onKeyDown={loop} className="palette-pop fixed top-[18%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] overflow-hidden rounded-popover border bg-background p-0 shadow-lg outline-none sm:max-w-[600px]">
           <Command filter={(v, q, k) => v.startsWith('cmd ') ? scores.get(v) ?? 0 : isDoc(v) ? DOCS_SCORE : isFound(v) ? FOUND_SCORE : rank(v, q, k)} className={SHELL}>
           <CommandInput placeholder={placeholder ?? assistantName ? placeholder ?? `Ask ${assistantName} anything about your homelab…` : 'Type a command, or search services and pages…'} value={query} onValueChange={setQuery}
             onKeyDown={e => {
@@ -238,7 +254,8 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
           </CommandList>
           )}
           </Command>
-          </DialogContent>
+          </Layer.Content>
+          </DialogPortal>
         </Dialog>
   );
 }

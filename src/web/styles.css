@@ -499,7 +499,7 @@
 .wallpaper img { opacity: 0; transition: opacity var(--dur-scene) var(--ease-out); }
 .wallpaper img.is-on { opacity: 1; }
 /* ⌘K opens from the keyboard all day, so it appears and follows the typing at once */
-.palette-pop, [data-slot="dialog-overlay"]:has(+ .palette-pop) { animation: none !important; }
+.palette-pop { animation: none !important; }
 [cmdk-list] { height: min(var(--cmdk-list-height), 340px); max-height: 340px; }
 [cmdk-item] { border-radius: var(--radius-control); }
 /* a row of chips that scrolls sideways fades out at the edge instead of being cut off */

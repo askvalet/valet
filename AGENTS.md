@@ -364,6 +364,13 @@ literal; a new size or corner is a new token with a role, argued for here.
 - **The static demo's voice is recorded.** Its read-aloud clips (`demo/voices/`) are named by a hash of the speakable words, so changing an answer in `demo/mock-model.mjs` or `speakable()` needs `npm run demo:voices` (the demo README says how); `test/demo-voice.test.tsx` names what's missing.
 - **A screenshot beyond the viewport closes menus.** `captureBeyondViewport` lays the page out again, and Radix closes an open select or popover on that resize; the scenes capture beyond only when the box is.
 
+- **Three things restyle every element on the page, each about a frame on a big page** (found opening ⌘K, which went from
+  ~56 ms to ~9 ms, and its first open from ~370 ms to ~14 ms): (1) a modal Radix dialog sets `pointer-events` on the body, which is
+  inherited, on open and again on close: the palette is `modal={false}` with its own dim layer, scroll lock and Tab loop;
+  (2) `#root` being the body's only child, then not (the first portal added, the last one removed): `#layers` in
+  `index.html` is a second child that's always there; (3) Suspense holds back a boundary that resolves at once by ~300 ms,
+  so something fetched ahead of time is drawn directly once it has arrived (`PaletteNow` in `app.tsx`), never through
+  `lazy`. Before adding a dialog that opens from the keyboard, trace it (`UpdateLayoutTree` with the page's whole element count is the tell).
 - **cmdk 1.1.1 doesn't reorder groups.** Its `filter` orders the items inside a group and never the groups themselves, so
   `palette.tsx` scores each group with `rank` and sorts them itself. A new group goes in that list, not straight into the JSX.
 - **Two small libraries from libraries.dev are in on purpose**, pinned exactly: `thinking-orbs` (the chat's working states and the

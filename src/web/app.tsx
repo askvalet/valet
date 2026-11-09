@@ -27,7 +27,11 @@ import { ClockMonth, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, sha
 const Assistant = lazy(() => import('./assistant.tsx'));
 import type { ChatUi, ToolInfo } from './assistant.tsx';
 import type { VoiceUi } from './voice.tsx';
-const Palette = lazy(() => import('./palette.tsx'));
+// ⌘K: once its code has arrived (it's fetched when the page goes quiet) it's drawn directly, not through Suspense, which
+// holds back a boundary that resolves at once by about 300 ms. Until then, the lazy one.
+let PaletteNow: typeof import('./palette.tsx').default | undefined;
+const loadPalette = () => import('./palette.tsx').then(m => { PaletteNow = m.default; return m; });
+const Palette = lazy(loadPalette);
 const Asks = lazy(() => import('./asks.tsx'));
 const RecapStory = lazy(() => import('./recap.tsx'));
 
@@ -446,6 +450,8 @@ function Home({ account }: { account: boolean }) {
   const wall = walls.length > 0, themeName = page?.look.theme;
   useEffect(() => { if (themeName) applyTheme(themeName, wall); }, [themeName, wall]);
   useEffect(adaptInk, []);
+  // ⌘K's code is fetched once the page is quiet, so the first press opens as fast as any other
+  useEffect(() => { const warm = () => void loadPalette(); const id = 'requestIdleCallback' in window ? requestIdleCallback(warm, { timeout: 4000 }) : setTimeout(warm, 2000); return () => { 'cancelIdleCallback' in window ? cancelIdleCallback(id as number) : clearTimeout(id); }; }, []);
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === 'k' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setPalette(p => !p); } };
     addEventListener('keydown', k); return () => removeEventListener('keydown', k);
@@ -795,9 +801,9 @@ function Home({ account }: { account: boolean }) {
       {asks.length > 0 && <Suspense fallback={null}><Asks asks={asks} /></Suspense>}
       {recap && page?.recap !== false && <Suspense fallback={null}><RecapStory onClose={closeRecap} wallpaper={page?.appearance.walls.find(w => w.image)?.image} /></Suspense>}
       {page && palette && (
-        <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} placeholder={page.assistant && (page.chat.placeholder || page.hero.scope?.length) ? placeholder : undefined} ui={ui} ask={ask} actions={actions} account={account} tools={page.assistant?.tools}
+        <Suspense fallback={null}>{(P => <P palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} placeholder={page.assistant && (page.chat.placeholder || page.hero.scope?.length) ? placeholder : undefined} ui={ui} ask={ask} actions={actions} account={account} tools={page.assistant?.tools}
           openChat={() => { setPalette(false); if (phone || !(chatTab && view === chatTab)) setChatOpen(true); }}
-          runAction={runAction} services={services} SUGGESTIONS={questions} setView={go} nav={nav} sectionIcon={sectionIcon} search={page.search} find={page.find} device={{ sandbox: page.sandbox, canAct: page.canAct !== false }} /></Suspense>
+          runAction={runAction} services={services} SUGGESTIONS={questions} setView={go} nav={nav} sectionIcon={sectionIcon} search={page.search} find={page.find} device={{ sandbox: page.sandbox, canAct: page.canAct !== false }} />)(PaletteNow ?? Palette)}</Suspense>
       )}
 
       {page?.assistant && (
