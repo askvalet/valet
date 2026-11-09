@@ -6,7 +6,7 @@ import {
   Activity, ArrowDown, ArrowUp, Bookmark, Check, ChevronDown, ChevronRight, Copy, CornerDownRight, FileText, Lightbulb, Loader2, Paperclip, RotateCcw,
   Pin, Search, Square, X, Zap,
 } from 'lucide-react';
-import { createContext, Fragment, memo, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, Fragment, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { ChatBeam } from './beam.tsx';
 import { Button } from '@/components/ui/button';
@@ -22,9 +22,11 @@ import { label, num } from './format.ts';
 import { play } from './sound.ts';
 import { ModelPicker, ReasoningPicker, type Choice, type Thinking } from './models.tsx';
 import { Listening, MicButton, ReadAloud, useRecorder, useSpeaker, type VoiceUi } from './voice.tsx';
+import { ComposerMenu, HelpNote, Mentions, Note, WithMentions, runSlash, useComposerMenu, type Mentionable, type Slash } from './slash.tsx';
+import { matchModel, mentionsIn } from '../shared/slash.ts';
 
 /** What `chat:` says about the window. */
-export interface ChatUi { followUps?: string[]; review?: string; steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string; beam?: 'off' | 'always' | 'focus' | 'thinking' | 'once'; beamColor?: 'colorful' | 'mono' | 'ocean' | 'sunset'; beamStrength?: number }
+export interface ChatUi { commands?: Slash[]; followUps?: string[]; review?: string; steps: boolean; thinking: 'collapsed' | 'open' | 'hidden'; send: 'enter' | 'mod-enter'; icon?: string; beam?: 'off' | 'always' | 'focus' | 'thinking' | 'once'; beamColor?: 'colorful' | 'mono' | 'ocean' | 'sunset'; beamStrength?: number }
 const Ui = createContext<ChatUi>({ steps: true, thinking: 'collapsed', send: 'enter' });
 
 // One conversation for the whole page session, so closing and reopening the panel keeps it.
@@ -32,7 +34,21 @@ const Ui = createContext<ChatUi>({ steps: true, thinking: 'collapsed', send: 'en
 // and the model this chat is on, if it isn't the default (assistant.models), and how much it thinks if that isn't left to
 // the config: kept with the chat, back to the defaults for a new one
 let picked: string | undefined, thinking: Thinking = 'auto';
-const lastOnly = ({ messages, body, id }: any) => ({ body: { ...body, id, messages: messages.slice(-24), ...(picked ? { model: picked } : {}), ...(thinking !== 'auto' ? { reasoning: thinking } : {}) } });
+// what the chat's commands left behind, kept with the chat: Valet's own lines (/help, "Switched to…"), which the model never
+// sees, and where /compact summarised up to, which then goes with every question so the server finds its summary
+type Said = { key: number; after?: string; text?: string; help?: boolean; busy?: boolean };
+let notes: Said[] = [], compactedAfter: string | undefined, mentionable: string[] = [];
+const sendable = (messages: UIMessage[]) => {
+  const at = compactedAfter ? messages.findIndex(m => m.id === compactedAfter) : -1;
+  if (at < 0) return messages.slice(-24);
+  const from = messages.slice(at);
+  return from.length > 24 ? [messages[at], ...messages.slice(-23)] : from;
+};
+const lastOnly = ({ messages, body, id }: any) => {
+  const asked = (messages as UIMessage[]).findLast(m => m.role === 'user')?.parts.find((p: any) => p.type === 'text') as { text?: string } | undefined;
+  const mentions = mentionsIn(asked?.text ?? '', mentionable);
+  return { body: { ...body, id, messages: sendable(messages), ...(picked ? { model: picked } : {}), ...(thinking !== 'auto' ? { reasoning: thinking } : {}), ...(mentions.length ? { mentions } : {}) } };
+};
 // the last question from `ask` already sent; kept with the chat because the panel remounts on every navigation
 let lastAsk = 0;
 const chat = new Chat({
@@ -248,7 +264,7 @@ export const MessageRow = memo(function MessageRow({ m, isLast, latest = isLast,
   if (m.role === 'user') return (
     <div className="chat-msg flex justify-end">
       <div className="chat-in chat-bubble max-w-[85%] rounded-surface rounded-br-md px-3.5 py-2 text-item">
-        {m.parts.map((p: any, i: number) => p.type === 'text' ? <span key={i} className="whitespace-pre-wrap">{p.text.replace(/\n?\[attached: ([^(\]]+) \(file id [a-f0-9]+\)\]/g, '\n📎 $1')}</span> : null)}
+        {m.parts.map((p: any, i: number) => p.type === 'text' ? <span key={i} className="whitespace-pre-wrap"><WithMentions text={p.text.replace(/\n?\[attached: ([^(\]]+) \(file id [a-f0-9]+\)\]/g, '\n📎 $1')} /></span> : null)}
       </div>
     </div>
   );
@@ -318,7 +334,7 @@ const compactedAt = (ms: UIMessage[], i: number) =>
 function Compacted({ kind }: { kind: string }) {
   return (
     <div className="chat-compacted flex items-center gap-3 text-meta text-muted-foreground" role="note">
-      <span className="h-px flex-1 bg-current opacity-20" /><span className="shrink-0">{label(kind === 'summary' ? 'compacted' : 'compactedOut')}</span><span className="h-px flex-1 bg-current opacity-20" />
+      <span className="h-px flex-1 bg-current opacity-20" /><span className="shrink-0">{label(kind === 'summary' ? 'compacted' : kind === 'now' ? 'compactedNow' : 'compactedOut')}</span><span className="h-px flex-1 bg-current opacity-20" />
     </div>
   );
 }
@@ -346,8 +362,9 @@ function ContextMeter({ used, total, auto, fresh }: { used: number; total?: numb
   );
 }
 
-export default function Assistant({ name, model, models, discover, ask, suggestions, tools = {}, external, onAsk, onClose, onDismiss, ui = { steps: true, thinking: 'collapsed', send: 'enter' }, attach: canAttach = true, voice }: {
+export default function Assistant({ name, model, models, discover, ask, suggestions, tools = {}, integrations = [], external, onAsk, onClose, onDismiss, ui = { steps: true, thinking: 'collapsed', send: 'enter' }, attach: canAttach = true, voice }: {
   name: string; model: string; models?: Choice[]; discover?: boolean; ask: { text: string; n: number } | null; suggestions: string[]; tools?: Record<string, ToolInfo>; onAsk: (t: string) => void;
+  integrations?: Mentionable[];   // what @ offers: integrations this chat may use
   external?: boolean;   // the chat is another agent's (assistant.agent), with tools of its own
   onClose?: () => void;   // shown as a phone sheet: a grabber to drag it away, and room for fingers and the keyboard
   onDismiss?: () => void;   // a panel or a full page: a plain close button, there being no outside to click
@@ -450,8 +467,56 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
   const speaker = useSpeaker(setVoiceNote);
   latest.current.read = (id, t) => { speaker.unlock(); void speaker.say(t, id); }; latest.current.silence = speaker.stop;
   const rec = useRecorder({ onError: setVoiceNote, onText: t => { setVoiceNote(null); if (voice?.autoSend && !busy && !uploading) submit(t); else setDraft(d => d.trim() ? `${d.trimEnd()} ${t}` : t); } });
+  // the chat's commands (shared/slash.ts): Valet's own run here and say what they did in a line the model never sees;
+  // a custom one goes as typed, and the server sends its prompt
+  const [lines, setLines] = useState<Said[]>(notes), [cut, setCut] = useState(compactedAfter);
+  const say = (n: Omit<Said, 'key' | 'after'>) => { const key = Date.now() + Math.random(); notes = [...notes, { key, after: messages.at(-1)?.id ?? '', ...n }]; setLines(notes); return key; };
+  const unsay = (key: number) => { notes = notes.filter(n => n.key !== key); setLines(notes); };
+  const [modelMenu, setModelMenu] = useState(false), [thinkMenu, setThinkMenu] = useState(false);
+  const offered = models ? [{ ...models[0], model }, ...models.slice(1)].map((c, i) => ({ id: c.id, model: c.model, label: i ? c.id : c.model })) : [];
+  const hasPicker = !!models && (models.length > 1 || !!discover) && !external;
+  mentionable = external ? [] : integrations.map(i => i.id);
+  const known = useMemo(() => new Set(mentionable), [mentionable.join(' ')]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const startOver = () => { stop(); setMessages([]); setTook({}); choose(); think('auto'); notes = []; setLines([]); compactedAfter = undefined; setCut(undefined); };
+  const findListed = async (q: string) => {
+    const key = say({ text: 'Looking for that model…', busy: true });
+    try {
+      const j = await fetch('/api/models').then(r => r.json()) as { models?: { id: string; model?: string; label?: string }[] };
+      const hit = matchModel(q, j.models ?? []);
+      unsay(key);
+      if (hit) { choose(hit.id); say({ text: `This chat is on ${hit.label ?? hit.model ?? hit.id} now.` }); }
+      else say({ text: `No model matches “${q}”. /model on its own lists them.` });
+    } catch { unsay(key); say({ text: "Couldn't get the list of models." }); }
+  };
+  const compact = async () => {
+    if (!messages.some(m => m.role === 'assistant')) { say({ text: 'There is nothing to summarise yet.' }); return; }
+    const key = say({ text: 'Summarising the conversation…', busy: true });
+    try {
+      const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ compact: true, id: chat.id, messages: sendable(messages), ...(picked ? { model: picked } : {}) }) });
+      const j = await r.json().catch(() => ({})) as { error?: string };
+      unsay(key);
+      if (!r.ok) { say({ text: j.error ?? "Couldn't summarise it." }); return; }
+      compactedAfter = messages.at(-1)?.id; setCut(compactedAfter);
+    } catch { unsay(key); say({ text: "Couldn't reach Valet to summarise it." }); }
+  };
+  /** A built-in, run; true if `text` was one (or a name that isn't anything). */
+  const command = (text: string) => runSlash(text, {
+    commands: ui.commands ?? [], busy, external: external ? name : undefined, model, models: offered, hasPicker, discover,
+    asked: messages.some(m => m.role === 'user'), say, choose, think, startOver,
+    openModels: () => setModelMenu(true), openReasoning: () => setThinkMenu(true), findListed: q => void findListed(q),
+    compact: () => void compact(),
+    retry: () => { following.current = true; void regenerate(); },
+    // the config's own undo, through the chat: its card asks first, as it always does
+    undo: () => { following.current = true; play('send'); setSent(n => n + 1); void sendMessage({ text: '/undo' }); },
+  });
+  const box = useRef<HTMLTextAreaElement>(null);
+  const menu = useComposerMenu({ draft, setDraft, box, commands: ui.commands ?? [], integrations: external ? [] : integrations,
+    models: hasPicker ? offered.map(o => ({ id: o.id, label: o.label })) : [],
+    run: t => { if (command(t)) { setDraft(''); return; } if (busy || uploading) { setDraft(t); return; } submit(t); setDraft(''); } });
   const submit = (heard?: string) => {
     const text = heard ?? draft;
+    if (heard === undefined && !ready.length && command(text.trim())) { setDraft(''); return; }
     if ((!text.trim() && !ready.length) || busy || uploading) return;
     const lines = ready.map(f => `[attached: ${f.name} (file id ${f.id})]`);
     following.current = true; play('send'); setSent(n => n + 1); setVoiceNote(null);
@@ -475,7 +540,7 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
   const nextUp = ui.followUps?.filter(f => !said.has(f)).slice(0, 3).join('\n');
   const lastAnswer = messages.findLastIndex((m: any) => m.role === 'assistant');
   return (
-    <Ui.Provider value={ui}><div className="relative flex h-full flex-col">
+    <Ui.Provider value={ui}><Mentions.Provider value={known}><div className="relative flex h-full flex-col">
       <header {...(sheet ? grab : {})} className={cn('relative z-20 flex items-center gap-2.5 px-5', sheet ? 'border-b ' : '', sheet ? 'touch-none pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 select-none' : 'pt-4 pb-3')}>
         {sheet && <span className="sheet-grip absolute top-[max(.4rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2" aria-hidden />}
         {ui.icon && <span className="icon-tile"><Icon name={ui.icon} /></span>}
@@ -500,14 +565,19 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
             </div>
           </div>
         )}
+        {/* what was said before the first question stays above it */}
+        {lines.filter(n => n.after === '').map(n => <Line key={n.key} n={n} commands={ui.commands ?? []} />)}
         {messages.map((m, mi) => (
           <Fragment key={m.id}>
           {/* what the model was sent got smaller here; the page still has all of it, above. The answer carries the flag, and
               the rule goes above the question it answered */}
           {compactedAt(messages, mi) && <Compacted kind={compactedAt(messages, mi)!} />}
           <MessageRow key={m.id} m={m} isLast={mi === messages.length - 1} latest={mi === lastAnswer} next={mi === messages.length - 1 ? nextUp : undefined} busy={busy} tookMs={took[m.id]} fresh={mi >= messages.length - 4} since={started.current} tools={tools} act={voice?.speak ? reader : act} reading={speaker.playing === m.id} />
+          {lines.filter(n => n.after === m.id).map(n => <Line key={n.key} n={n} commands={ui.commands ?? []} />)}
+          {cut === m.id && <Compacted kind="now" />}
           </Fragment>
         ))}
+        {lines.filter(n => n.after !== '' && !messages.some(m => m.id === n.after)).map(n => <Line key={n.key} n={n} commands={ui.commands ?? []} />)}
         {status === 'submitted' && messages.at(-1)?.role === 'user' && <Pending since={started.current || Date.now()} />}
         {error && (
           <div className="chat-error flex items-center gap-3 rounded-surface border border-bad/20 bg-bad/[.06] px-4 py-3 text-item">
@@ -538,12 +608,15 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
             ))}
           </div>
         )}
+        <div className="relative">
+        <ComposerMenu m={menu} />
         <ChatBeam ui={ui} busy={busy}>
         <div className={cn('composer flex items-end gap-2 rounded-surface border bg-card px-3 py-2 shadow-card', over && 'ring-2 ring-primary/60')}>
           <input ref={filePicker} type="file" multiple hidden onChange={e => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
  {canAttach && <button type="button" onClick={() => filePicker.current?.click()} aria-label="Attach a file" className={cn('press grid shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-fill-2 hover:text-foreground', sheet ? 'mb-[3px] size-8' : 'mb-1 size-7')}><Paperclip className="size-icon" /></button>}
-          {rec.phase === 'recording' || rec.phase === 'sending' ? <Listening rec={rec} /> : <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1} placeholder={label(sheet || external || !canAttach ? 'message' : 'messageHint', { name })} aria-label="Message"
-            onKeyDown={e => { if (e.key === 'Enter' && (ui.send === 'enter' ? !e.shiftKey : e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
+          {rec.phase === 'recording' || rec.phase === 'sending' ? <Listening rec={rec} /> : <textarea ref={box} value={draft} onChange={e => { setDraft(e.target.value); menu.sync(); }} onSelect={menu.sync} rows={1}
+            aria-expanded={!!menu.menu} aria-controls={menu.menu ? menu.id : undefined} aria-activedescendant={menu.menu ? `${menu.id}-${menu.index}` : undefined} aria-autocomplete="list" placeholder={label(sheet || external || !canAttach ? 'message' : 'messageHint', { name })} aria-label="Message"
+            onKeyDown={e => { if (menu.onKey(e)) return; if (e.key === 'Enter' && (ui.send === 'enter' ? !e.shiftKey : e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
             onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); attach(e.clipboardData.files); } }}
             className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-[16px] leading-[22px] outline-none field-sizing-content placeholder:text-muted-foreground sm:text-title" autoFocus={!sheet} />}
           {voice?.listen && <MicButton rec={rec} sheet={sheet} />}
@@ -552,17 +625,22 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
             : <Button type="submit" size="icon" className="mb-[3px] size-8 rounded-sm bg-foreground text-(--card-tint) hover:bg-foreground/90 disabled:bg-foreground/20 disabled:text-foreground disabled:opacity-100" disabled={(!draft.trim() && !ready.length) || uploading} aria-label="Send"><ArrowUp className="morph" /></Button>}
         </div>
         </ChatBeam>
+        </div>
         {/* under the box, on the right: the model, how much it thinks, and how full the window is. Always there (a single
             model just isn't a menu), so nothing moves when a menu or the meter appears; their menus open upward */}
         <div className="mt-1.5 flex min-w-0 items-center justify-end gap-2.5 px-1 text-meta leading-4 text-muted-foreground">
           {voiceNote && <button type="button" role="alert" title={voiceNote} onClick={() => setVoiceNote(null)} className="mr-auto min-w-0 cursor-pointer truncate text-left text-bad first-letter:uppercase">{voiceNote}</button>}
           {models && (models.length > 1 || discover) && !external
-            ? <ModelPicker models={[{ ...models[0], model }, ...models.slice(1)]} discover={discover} value={choice} onChange={choose} />
+            ? <ModelPicker models={[{ ...models[0], model }, ...models.slice(1)]} discover={discover} value={choice} onChange={choose} open={modelMenu} onOpenChange={setModelMenu} />
             : model && <span className="min-w-0 truncate">{model}</span>}
-          {!external && <ReasoningPicker value={level} onChange={think} />}
-          {!external && <span className="relative size-3.5 shrink-0 [&>.ctx]:absolute [&>.ctx]:top-1/2 [&>.ctx]:left-1/2 [&>.ctx]:-translate-x-1/2 [&>.ctx]:-translate-y-1/2">{context && <ContextMeter used={context.used} total={context.window} auto={context.auto} fresh={() => { stop(); setMessages([]); setTook({}); choose(); think('auto'); }} />}</span>}
+          {!external && <ReasoningPicker value={level} onChange={think} open={thinkMenu} onOpenChange={setThinkMenu} />}
+          {!external && <span className="relative size-3.5 shrink-0 [&>.ctx]:absolute [&>.ctx]:top-1/2 [&>.ctx]:left-1/2 [&>.ctx]:-translate-x-1/2 [&>.ctx]:-translate-y-1/2">{context && <ContextMeter used={context.used} total={context.window} auto={context.auto} fresh={startOver} />}</span>}
         </div>
       </form>
-    </div></Ui.Provider>
+    </div></Mentions.Provider></Ui.Provider>
   );
+}
+
+function Line({ n, commands }: { n: Said; commands: Slash[] }) {
+  return <Note busy={n.busy}>{n.help ? <HelpNote commands={commands} /> : n.text}</Note>;
 }

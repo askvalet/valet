@@ -27,7 +27,9 @@ import { Reminders } from './reminders.ts';
 import { Timeline } from './timeline.ts';
 import { loadWatches, Watches } from './watches.ts';
 import { loadRules, Rules } from './rules.ts';
-import { runTool, toolAccess } from './run.ts';
+import { accessOf as granted, rank, runTool, toolAccess } from './run.ts';
+import { customs } from '../shared/slash.ts';
+import { CORE } from './lazy.ts';
 import { loadPins, pinsInstance, savePins, type Pin } from './pins.ts';
 import { setupTools } from './setup.ts';
 import { sandbox } from './sandbox.ts';
@@ -125,7 +127,27 @@ export function check(config: Config, registry: Record<string, Integration>, fro
     if (id !== 'valet' && id !== 'config' && !instances.has(id)) problems.push(`assistant.access: "${key}" names no integration ${id}`);
     else if (!names.includes(name)) problems.push(`assistant.access: ${id} has no tool "${name}" (it has: ${names.join(', ') || 'none'})`);
   }
+  problems.push(...commandProblems(config, instances));
   return { problems, instances, meta, placed };
+}
+
+/** chat.commands that couldn't do what they say: no assistant, a model that isn't a choice, an integration that isn't there
+ *  or that the assistant may not use (a command never grants more than assistant.access). */
+function commandProblems(config: Config, instances: Map<string, Instance>) {
+  const list = customs(config.chat.commands), a = config.assistant, out: string[] = [];
+  if (!list.length) return out;
+  if (!a) return [`chat.commands: they need an assistant: block to answer them`];
+  const ids = choices(a).map(c => c.id), listed = servers(a).length > 0;
+  for (const c of list) {
+    const at = `chat.commands.${c.name}`;
+    if (c.model && !ids.includes(c.model) && !listed) out.push(`${at}.model: "${c.model}" isn't a model choice (they are: ${ids.join(', ')})`);
+    for (const id of c.tools ?? []) {
+      if (CORE.has(id)) out.push(`${at}.tools: ${id} is Valet's own and always there; list integrations`);
+      else if (!instances.has(id)) out.push(`${at}.tools: no integration "${id}"${instances.size ? ` (there are: ${[...instances.keys()].join(', ')})` : ''}`);
+      else if (granted(a, id) < rank.read || !Object.keys(instances.get(id)!.tools ?? {}).some(n => toolAccess(a, id, n) > rank.none)) out.push(`${at}.tools: the assistant may not use ${id} (assistant.access), and a command can't change that`);
+    }
+  }
+  return out;
 }
 
 export async function buildSite(config: Config, registry: Record<string, Integration>, fromPlugins: Set<string>, opts: { path: string; rebuild: () => Promise<void> }, previous?: Site): Promise<Site> {

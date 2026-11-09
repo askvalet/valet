@@ -10,7 +10,7 @@ export const LABELS = {
   wall: 'Wall display', paused: 'Paused',
   context: '{used} of {total} tokens', contextUsed: '{used} tokens so far', contextFull: 'Long chats get slower and lose track of how they started.',
   contextAuto: 'When it fills up, the oldest messages are summarised to make room. A new chat starts clean and answers faster.', newChat: 'Start a new chat',
-  compacted: 'Earlier messages summarised to make room', compactedOut: 'Earlier messages left out to make room',
+  compacted: 'Earlier messages summarised to make room', compactedOut: 'Earlier messages left out to make room', compactedNow: 'Earlier messages summarised',
   voiceStart: 'Speak', voiceStop: 'Stop and write it down', voiceListening: 'Listening', voiceWriting: 'Writing it down', voiceCancel: 'Cancel',
   voiceRead: 'Read aloud', voiceSilence: 'Stop reading',
 };

@@ -1,6 +1,6 @@
 // The ⌘K palette: run a plain command, ask, do a card's action, open a service, jump to a tab. Loaded the first time it opens.
 // Commands come first and need no model: they're matched here as you type and run by the server (src/server/commands.ts).
-import { ArrowUp, Bell, BellOff, CornerDownLeft, Droplet, Globe, LayoutGrid, LogOut, Monitor, Search, Volume2, VolumeX, Zap } from 'lucide-react';
+import { ArrowUp, Bell, BellOff, CornerDownLeft, Droplet, Globe, LayoutGrid, LogOut, Monitor, Search, Slash, Volume2, VolumeX, Zap } from 'lucide-react';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { defaultFilter } from 'cmdk';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
@@ -113,6 +113,9 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
   const going = (key: string) => ({ value: `go ${key}`, keywords: [key] });
   const best = (items: { value: string; keywords?: string[] }[]) => query.trim() ? Math.max(0, ...items.map(i => rank(i.value, query, i.keywords))) : 0;
   const pages = [{ key: 'Overview' }, ...nav, { key: label('wall') }];
+  // chat.commands: each answers right here, as if typed in the chat; what's typed after its name is its input
+  const slashes = assistantName ? ui?.commands ?? [] : [], typed = query.trim();
+  const slashing = (c: { name: string; description?: string }) => ({ value: `slash ${c.name}`, keywords: [`/${c.name}`, c.name, ...(c.description ? [c.description] : []), ...(typed.startsWith(`/${c.name} `) ? [typed] : [])] });
   // best match first; with nothing typed they all tie and stay in this order
   const run: [number, React.ReactNode] = [matches.length ? matches[0].score : 0, matches.length > 0 && (
     <CommandGroup key="run" heading={tied ? 'Commands · pick one' : 'Commands'}>
@@ -149,6 +152,12 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
       {search && <CommandItem value="search web" onSelect={web}><Globe className="text-muted-foreground" />Search the web for “{query}”</CommandItem>}</CommandGroup>],
     [best(SUGGESTIONS.map(value => ({ value }))), SUGGESTIONS.length > 0 && <CommandGroup key="suggest" heading="Suggestions">
       {SUGGESTIONS.map(s => <CommandItem key={s} value={s} onSelect={() => answer(s)}><CornerDownLeft className="text-muted-foreground" />{s}</CommandItem>)}
+    </CommandGroup>],
+    [best(slashes.map(slashing)), slashes.length > 0 && <CommandGroup key="slash" heading="Chat commands">
+      {slashes.map(c => <CommandItem key={c.name} {...slashing(c)} onSelect={() => {
+        const said = typed.startsWith(`/${c.name} `) ? typed : `/${c.name}`;
+        if (c.input && said === `/${c.name}`) setQuery(`/${c.name} `); else answer(said);
+      }}><Slash className="text-muted-foreground" />/{c.name}{c.description && <span className="min-w-0 truncate text-muted-foreground">· {c.description}</span>}</CommandItem>)}
     </CommandGroup>],
     [best(pages.map(p => going(p.key))), <CommandGroup key="go" heading="Go to">
       <CommandItem {...going('Overview')} onSelect={() => { setView('all'); setPalette(false); }}><LayoutGrid />Overview</CommandItem>

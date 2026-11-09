@@ -9,6 +9,7 @@ import { isPaint } from '../shared/look.ts';
 import { Channel } from './notify.ts';
 import { STARTER } from './starter.ts';
 import { VIEWS } from '../shared/views.ts';
+import { NAME, RESERVED } from '../shared/slash.ts';
 
 /** an IANA name Node knows, e.g. America/Toronto */
 export function validZone(tz: string) { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch { return false; } }
@@ -260,6 +261,25 @@ export const Hero = z.object({
   scope: z.union([z.boolean(), z.array(z.string().min(1)).min(1).max(6)]).optional(),
 }).strict();
 
+// The chat's own /commands: each sends its prompt through the normal chat, with the same access and approvals as typing it.
+// `{input}` is what's typed after the name. model, reasoning and tools (integration ids, as an @mention) apply to that question.
+const ChatCommand = z.union([
+  z.string().min(1).describe('the prompt it sends; {input} is what is typed after the command'),
+  z.object({
+    prompt: z.string().min(1).describe('the prompt it sends; {input} is what is typed after the command'),
+    description: z.string().max(80).optional().describe('shown beside it in the / menu and /help'),
+    model: z.string().min(1).optional().describe('a model choice from assistant.models, by name, for this command'),
+    reasoning: Reasoning.optional(),
+    tools: z.array(z.string()).min(1).max(8).optional().describe('integration ids whose tools it uses from the first step, as an @mention'),
+  }).strict(),
+]);
+const ChatCommands = z.record(z.string(), ChatCommand).superRefine((all, ctx) => {
+  for (const name of Object.keys(all)) {
+    if (!NAME.test(name)) ctx.addIssue({ code: 'custom', path: [name], message: 'a command\'s name is lowercase letters, digits and dashes, like morning or check-disks' });
+    else if (RESERVED.has(name)) ctx.addIssue({ code: 'custom', path: [name], message: `/${name} is built in: give yours another name` });
+  }
+}).describe('Your own chat commands: /name runs its prompt. A plain string is the prompt. Example: { morning: "Sum up overnight and what is down", watch: { prompt: "Add {input} to my watchlist", reasoning: low } }');
+
 // The assistant's window on the page. What it knows and may do is `assistant`; this is how it looks.
 export const ChatView = z.object({
   open: z.enum(['center', 'right', 'left', 'bottom', 'page']).default('center'),   // phones always get the full sheet
@@ -277,6 +297,8 @@ export const ChatView = z.object({
   beamColor: z.enum(['colorful', 'mono', 'ocean', 'sunset']).default('mono'),
   beamStrength: z.number().min(0).max(1).default(.45),   // how bright: a hint by default
   icon: z.string().optional(),             // an icon name, or an image path or URL, on its buttons and header
+  // your own /commands in the chat: a name and the prompt it sends, or { prompt, description, model, reasoning, tools }
+  commands: ChatCommands.default({}),
 }).strict();
 
 // How things are written. auto follows the browser.

@@ -60,7 +60,7 @@ const SUMMARY_CLOSE = '\n</summary>\n[The conversation continues:]';
 // summaries by the conversation they cover (a hash of every message up to the cut), newest last; a few hundred at most
 const summaries = new Map<string, string>();
 const remember = (key: string, s: string) => { summaries.delete(key); summaries.set(key, s); while (summaries.size > 300) summaries.delete(summaries.keys().next().value!); };
-export const forgetSummaries = () => summaries.clear();
+export const forgetSummaries = () => { summaries.clear(); pins.clear(); };
 
 /** One hash per prefix: hashes[i] covers messages[0..i). Only what was said counts, not ids or metadata. */
 function prefixes(messages: UIMessage[]) {
@@ -80,7 +80,13 @@ export interface Fit {
  *  less the system prompt and tools); without one, the last KEEP messages go with a note if any were left out. Within the
  *  budget nothing changes. Over it, everything before a user message is summarised (reusing a cached summary when one
  *  covers a prefix and the rest fits), keeping the newest turns whole; the cut leaves room so the next turns reuse it. */
-export async function fit(all: UIMessage[], o: { budget?: number; cost: (m: UIMessage) => number; summarise?: Summarise }): Promise<Fit> {
+export async function fit(all: UIMessage[], o: { budget?: number; cost: (m: UIMessage) => number; summarise?: Summarise; pinned?: Pinned }): Promise<Fit> {
+  // `/compact` summarised everything up to a message: what came after goes behind that summary, and the rest is fitted as usual
+  if (o.pinned && o.pinned.at > 0 && o.pinned.at < all.length && isAsk(all[o.pinned.at])) {
+    const rest = all.slice(o.pinned.at);
+    const out = await fit([lead(rest[0], `${SUMMARY_OPEN}${fence(o.pinned.summary)}${SUMMARY_CLOSE}`), ...rest.slice(1)], { ...o, pinned: undefined });
+    return out;
+  }
   const trimmed = trimHistory(all);
   if (o.budget === undefined) {
     if (trimmed.length <= KEEP) return { messages: trimmed };
@@ -111,6 +117,31 @@ export async function fit(all: UIMessage[], o: { budget?: number; cost: (m: UIMe
   remember(hashes[cut], summary);
   return { messages: send(trimmed.slice(cut), wrap(summary), o), compacted: 'summary' };
 }
+// `/compact`: a summary asked for, by who asked and the last message it covers, so it's found again on the next question
+// however many messages that request carries. In memory, a few hundred at most; after a restart the chat is fitted as usual.
+export type Pinned = { at: number; summary: string };
+const pins = new Map<string, string>();
+const pinKey = (who: string, id: string) => `${who}\n${id}`;
+export function pinSummary(who: string, last: UIMessage, summary: string) {
+  const k = pinKey(who, last.id); pins.delete(k); pins.set(k, summary);
+  while (pins.size > 300) pins.delete(pins.keys().next().value!);
+}
+/** The newest message this person compacted at, in this conversation: what follows it is what's new. */
+export function pinnedIn(all: UIMessage[], who: string): Pinned | undefined {
+  for (let i = all.length - 2; i >= 0; i--) { const s = pins.get(pinKey(who, all[i].id)); if (s) return { at: i + 1, summary: s }; }
+  return undefined;
+}
+/** `/compact`: everything so far becomes one summary, by the same summariser the automatic path uses. */
+export async function compactNow(all: UIMessage[], who: string, summarise: Summarise): Promise<'summary' | 'nothing' | 'failed'> {
+  const before = pinnedIn([...all, { id: '', role: 'user', parts: [] }], who);
+  const older = before ? all.slice(before.at) : all;
+  if (!older.some(isAsk) || !older.some(m => m.role === 'assistant')) return 'nothing';
+  const summary = await summarise(older, before?.summary);
+  if (!summary) return 'failed';
+  pinSummary(who, all.at(-1)!, summary);
+  return 'summary';
+}
+
 /** A summary can't close its own fence or pass for a note from Valet, whatever the transcript talked it into writing. */
 const fence = (s: string) => s.replace(/<\/?\s*summary\s*>/gi, '').replaceAll('[Valet', '(Valet').replaceAll('[The conversation continues', '(The conversation continues');
 function send(kept: UIMessage[], note: string, o: { budget?: number; cost: (m: UIMessage) => number }) {

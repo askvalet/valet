@@ -4,7 +4,8 @@ import {
   asSchema, convertToModelMessages, createUIMessageStreamResponse, isStepCount, streamText, tool, toUIMessageStream, wrapLanguageModel,
   type LanguageModel, type ToolSet, type UIMessage,
 } from 'ai';
-import { TARGET, TOO_LONG_ANSWER, calibrate, fit, retryShorter, size, squeezeSteps, summariser, tokensOf, tooLong } from './compact.ts';
+import { TARGET, TOO_LONG_ANSWER, calibrate, compactNow, fit, pinnedIn, retryShorter, size, squeezeSteps, summariser, tokensOf, tooLong } from './compact.ts';
+import { UNDO_TOOL, checkMentions, commandsOf, expanded, focusLine, readAsk, undoModel } from './slash.ts';
 import { splitThink } from '../shared/think.ts';
 import { skipUnanswered } from '../shared/approvals.ts';
 import { randomBytes } from 'node:crypto';
@@ -185,7 +186,7 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     'When asked to do something every time something happens, or every day at a time ("when a download finishes, pause the rest", "every morning at 7 tell me what is down"), set up a rule with rule_add: it then runs by itself, with no model. One action per rule, and never for a one-off.',
     `You are part of Valet, the software behind this page. For any question about Valet itself, what it can do or how to set something up, search its docs with docs_search and answer from them, never from memory.`,
     instances.has('config')
-      ? 'You can change Valet: any page, tab, card, widget, integration, its look, words and layout are its config, and config_* tools edit it. Read with config_read, look up what a section accepts with config_options or the docs, check it with config_preview and fix what it reports, then save with config_apply, which asks the person. It applies at once. config_undo takes the last save back. Do several edits as one set of ops.'
+      ? 'You can change Valet: any page, tab, card, widget, integration, its look, words and layout are its config, and config_* tools edit it. Read with config_read, look up what a section accepts with config_options or the docs, check it with config_preview and fix what it reports, then save with config_apply, which asks the person. It applies at once. config_undo takes the last save back. Do several edits as one set of ops. The person\'s own chat commands (/morning) are chat.commands: a name and the prompt it sends.'
       : 'You cannot change Valet from here: tell them the page, cards and look are in config.yaml, or that `assistant.access: { config: control }` lets you edit it with their approval.',
     'What you can never change, so say so plainly and point to the docs: sign-in, allowed hosts, plugins, MCP, notifications, your own access, model or instructions, files on disk, and secrets, which go in .env by hand. You cannot change Valet\'s code, install anything, or restart it.',
     'If something looks like a bug in Valet itself, not a service that is down, say so and use report_issue to give them a filled-in GitHub issue to read and submit. Also use it when they ask for a feature or an integration Valet lacks.',
@@ -196,10 +197,20 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     a.instructions ?? '',
   ].join('\n');
 
+  // chat.commands, and what a question may be about: an integration whose tools this chat may use
+  const commands = commandsOf(config), mentionable = new Set(groups.keys());
+
   return async (c: HonoContext) => asker.run((c.get as (k: string) => string | undefined)('user') ?? 'you', async () => {
-    const { messages: sent_, model: asked, reasoning: level } = await c.req.json<{ messages: UIMessage[]; model?: unknown; reasoning?: unknown }>();
+    const body = await c.req.json<{ messages: UIMessage[]; model?: unknown; reasoning?: unknown; mentions?: unknown; compact?: unknown }>();
     // an approval card left unanswered when they asked something else is a no: it never ran, and the model hears so
-    const all_ = skipUnanswered(sent_);
+    const skipped = skipUnanswered(body.messages);
+    // a custom command runs on its own model and reasoning, when it names them, and is about the integrations it lists;
+    // the model reads its prompt where the page shows what was typed
+    const ask = readAsk(skipped, commands, mentionable), all_ = expanded(skipped, commands);
+    const named = checkMentions(body.mentions, mentionable);
+    if ('error' in named) return c.json({ error: named.error }, 400);
+    const focus = [...new Set([...named.ok, ...ask.mentions])];
+    const asked = ask.custom?.model ?? body.model, level = ask.custom?.reasoning ?? body.reasoning;
     // the page sends a choice's id, never a model or a server: anything else is refused
     const pick = asked == null ? picks.get(a.model) : typeof asked === 'string' ? picks.get(asked) ?? await discovered(asked) : undefined;
     if (!pick) return c.json({ error: 'That model is not one of the choices in assistant.models.' }, 400);
@@ -208,6 +219,13 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     if (level != null && !thinking) return c.json({ error: 'reasoning is one of auto, off, low, medium, high.' }, 400);
     const s = pick.s, llm = pick.model ??= makeModel(s);
     const other = chatAgent(a, safety.acting);
+    // /compact: the conversation so far becomes one summary now, by the same summariser the automatic path uses
+    if (body.compact === true) {
+      if (other) return c.json({ error: `${other.name} keeps its own conversation.` }, 400);
+      const window = await contextWindow(s);
+      const done = await compactNow(all_, who(), summariser(llm, { redact: safety.redact, signal: c.req.raw.signal, chars: window ? Math.floor(window * .4 * 3) : undefined }));
+      return done === 'summary' ? c.json({ compacted: 'summary' }) : c.json({ error: done === 'nothing' ? 'There is nothing new to summarise yet.' : "The model couldn't summarise it. Try again, or start a new chat." }, done === 'nothing' ? 400 : 502);
+    }
     if (other) {
       const plain = all_.slice(-24).filter(m => m.role !== 'system')
         .map(m => ({ ...m, parts: m.parts.flatMap((p: any) => p.type === 'text' && splitThink(p.text).said ? [{ type: 'text' as const, text: splitThink(p.text).said }] : []) }))
@@ -251,30 +269,34 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     }
     const core = lazy ? Object.keys(all).filter(k => { const g = groupOf(k); return !g || !lazy.has(g); }) : undefined;
     const before = lazy ? usedBefore(all_, lazy) : undefined;
+    // what the question is about is loaded from the first step, so there's no step spent asking for it
+    if (lazy) for (const id of focus) if (lazy.has(id)) before!.add(id);
     // Valet's own first, then integrations in the order they were loaded, so each step's tools start like the last one's
     // (a server's prompt cache keeps the part that didn't change)
     const activeFor = (more: Set<string>) => [...core!, ...[...new Set([...before!, ...more])].flatMap(id => lazy!.get(id)?.keys ?? [])];
-    const prompt = system(m.catalog, lazy && [...lazy.values()].map(g => indexLine(g)));
+    const about = focusLine(focus, id => meta.get(id)?.name ?? id, !!lazy);
+    const prompt = system(m.catalog, lazy && [...lazy.values()].map(g => indexLine(g))) + (about ? `\n${about}` : '');
     // what's sent is sized against the window: the system prompt and tools are fixed, the history gets the rest of the
     // target, and what doesn't fit is summarised (or, without a window, the last 24 messages go as they always have).
     // Lazy loading still reserves room for every tool, since any of them may be loaded during the answer.
     const window = await contextWindow(s), auto = a.compact && !!window;
     const fixed = size(prompt) + sum(Object.keys(all));
     const budget = auto ? Math.max(0, Math.floor(window! * TARGET) - tokens(fixed)) : undefined;
-    const fitted = await fit(all_, { budget, cost: msg => tokens(chars(msg)),
+    const fitted = await fit(all_, { budget, cost: msg => tokens(chars(msg)), pinned: pinnedIn(all_, who()),
       summarise: summariser(llm, { redact: safety.redact, signal: c.req.raw.signal, chars: window ? Math.floor(window * .4 * 3) : undefined }) });
     const messages = fitted.messages, sent = (lazy ? size(prompt) + sum(activeFor(new Set())) : fixed) + chars(messages);
     let squeezed = false;   // the provider said it was too long, and it went again cut right down
     const lastStep = `${prompt}\n\nYou have no more lookups. Answer now in plain words from what you already found. If it doesn't settle the question, say what you checked and that you can't tell. Do not write tool calls.`;
     const result = streamText({
-      model: wrapLanguageModel({ model: llm as Parameters<typeof wrapLanguageModel>[0]['model'], middleware: retryShorter(() => { squeezed = true; }) }),
+      // /undo is answered without a model: the undo tool, its approval, and a line on how it went
+      model: wrapLanguageModel({ model: (ask.undo ? undoModel(!!all[UNDO_TOOL]) : llm) as Parameters<typeof wrapLanguageModel>[0]['model'], middleware: retryShorter(() => { squeezed = true; }) }),
       abortSignal: c.req.raw.signal,   // Stop (or closing the chat) ends generation and any tools still running
       system: prompt,
       messages: await convertToModelMessages(messages, { tools: all }),
       tools: all,
       toolApproval: approvals,
       experimental_toolApprovalSecret: APPROVALS,
-      stopWhen: isStepCount(a.maxSteps),
+      stopWhen: isStepCount(ask.undo ? 2 : a.maxSteps),
       ...callSettings(s, thinking),   // the chat's reasoning, else assistant.reasoning, and assistant.options; nothing when they're left out
       ...(lazy ? { activeTools: activeFor(new Set()), toolOrder: activeFor(new Set()) } : {}),
       prepareStep: ({ stepNumber, messages: now, steps: done }) => {

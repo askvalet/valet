@@ -30,19 +30,23 @@ const ITEM = 'cursor-pointer';
 const nameOf = (c: Choice, i: number) => i ? c.id : c.model;
 
 /** The model menu. `models` is the default first, then the configured choices; `discover` adds what the servers list. */
-export function ModelPicker({ models, discover, value, onChange }: { models: Choice[]; discover?: boolean; value?: string; onChange: (id: string) => void }) {
+/** `open` and `onOpenChange` let /model open it from the message box. */
+export interface Opened { open?: boolean; onOpenChange?: (open: boolean) => void }
+
+export function ModelPicker({ models, discover, value, onChange, open, onOpenChange }: { models: Choice[]; discover?: boolean; value?: string; onChange: (id: string) => void } & Opened) {
   const current = value ?? models[0].id;
   if (!discover && models.length <= SEARCH_FROM) return (
-    <Select value={current} onValueChange={onChange}>
+    <Select value={current} onValueChange={onChange} open={open} onOpenChange={onOpenChange}>
       <SelectTrigger aria-label="Model" className={TRIGGER}><SelectValue /></SelectTrigger>
       <SelectContent position="popper" side="top" align="end">{models.map((m, i) => <SelectItem key={m.id} value={m.id} className={ITEM}>{nameOf(m, i)}</SelectItem>)}</SelectContent>
     </Select>
   );
-  return <SearchPicker models={models} discover={discover} current={current} onChange={onChange} />;
+  return <SearchPicker models={models} discover={discover} current={current} onChange={onChange} open={open} onOpenChange={onOpenChange} />;
 }
 
-function SearchPicker({ models, discover, current, onChange }: { models: Choice[]; discover?: boolean; current: string; onChange: (id: string) => void }) {
-  const [open, setOpen] = useState(false), [query, setQuery] = useState('');
+function SearchPicker({ models, discover, current, onChange, ...told }: { models: Choice[]; discover?: boolean; current: string; onChange: (id: string) => void } & Opened) {
+  const [own, setOwn] = useState(false), [query, setQuery] = useState('');
+  const open = told.open ?? own, setOpen = (v: boolean) => { setOwn(v); told.onOpenChange?.(v); };
   const [found, setFound] = useState<{ list: Listed[]; failed: string[]; ok: boolean; loading: boolean }>({ list: [], failed: [], ok: true, loading: false });
   const [lately, setLately] = useState<string[]>([]);
   const asking = useRef(0);
@@ -132,9 +136,9 @@ export type Thinking = 'auto' | 'off' | 'low' | 'medium' | 'high';
 const LEVELS: [Thinking, string][] = [['auto', 'Auto'], ['off', 'Off'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']];
 
 /** How much the model thinks first, for this chat. Auto is whatever the config says for the model. */
-export function ReasoningPicker({ value, onChange }: { value: Thinking; onChange: (v: Thinking) => void }) {
+export function ReasoningPicker({ value, onChange, open, onOpenChange }: { value: Thinking; onChange: (v: Thinking) => void } & Opened) {
   return (
-    <Select value={value} onValueChange={v => onChange(v as Thinking)}>
+    <Select value={value} onValueChange={v => onChange(v as Thinking)} open={open} onOpenChange={onOpenChange}>
       <SelectTrigger aria-label="Reasoning" title="Reasoning" className={`${TRIGGER} shrink-0 text-muted-foreground/70`}><SelectValue>{LEVELS.find(l => l[0] === value)?.[1]}</SelectValue></SelectTrigger>
       <SelectContent position="popper" side="top" align="end">
         <SelectGroup><SelectLabel>Reasoning</SelectLabel>

@@ -23,6 +23,8 @@ import { mcpServer } from './mcpserver.ts';
 import { listCommands, runCommand } from './commands.ts';
 import { buildSite, type Site } from './site.ts';
 import { rank, toolAccess } from './run.ts';
+import { customs } from '../shared/slash.ts';
+import { CORE } from './lazy.ts';
 import { registry } from '../integrations/index.ts';
 import { LABELS } from '../shared/labels.ts';
 import { cardLook, isBoth, isPaint, listOf, lookOf, type Both } from '../shared/look.ts';
@@ -260,7 +262,8 @@ app.get('/api/page', c => {
     welcome: config.welcome ? { path: CONFIG, saved, setup: site.acting && instances.has('config') } : undefined,
     recap: config.recap, hero: { ...config.hero, scope: config.hero.scope === true ? scopeOf([...site.meta.values()].map(m => m.type)) : config.hero.scope || undefined }, labels: { ...LABELS, ...config.labels }, format: config.format,
     appearance, look,
-    chat: config.chat,
+    // the chat's own commands, by name and what they're for: the prompt is the server's to send
+    chat: { ...config.chat, commands: config.assistant ? customs(config.chat.commands).map(c => ({ name: c.name, description: c.description ?? (c.prompt.length > 70 ? `${c.prompt.slice(0, 68)}…` : c.prompt), ...(c.prompt.includes('{input}') ? { input: true } : {}) })) : [] },
     // which halves of voice are on, never where they go
     voice: sandbox.on ? undefined : voiceForPage(config),
     // the demo's model is scripted, and says so beside its name
@@ -270,7 +273,10 @@ app.get('/api/page', c => {
         ...(config.assistant.models.length ? { models: choices(config.assistant).map(c => ({ id: c.id, model: c.settings.model })), ...(discovery(config.assistant).on && !sandbox.on ? { discover: true } : {}) } : {}) }), suggestions: config.assistant.suggestions,
       // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>")
       tools: Object.fromEntries([...instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {})
-        .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access, live: t.live }]))) } : null,
+        .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access, live: t.live }]))),
+      // what @ offers: integrations with a tool the chat may use here, as the chat itself decides (chat.ts)
+      integrations: [...instances].filter(([id, inst]) => !CORE.has(id) && Object.entries(inst.tools ?? {}).some(([n, t]) => rank[t.access] <= Math.min(toolAccess(config.assistant, id, n), site.acting ? rank.control : rank.read)))
+        .map(([id]) => ({ id, name: site.meta.get(id)?.name ?? id })) } : null,
     menubar: { ...config.menubar, widgets: config.menubar.widgets.filter(k => hub.widget(k)) },
     nav: config.nav,
     live: config.live && { activities: config.live.activities.filter(k => hub.widget(k)) },
