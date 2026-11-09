@@ -48,6 +48,10 @@ assistant:
   #   - auto
   #   - { auto: true, name: OpenRouter, baseURL: https://openrouter.ai/api/v1, apiKey: "${OPENROUTER_KEY}" }
 
+# The same chat in Telegram: a bot of its own from @BotFather, and the Telegram user ids that may talk to it (private chats only).
+# Same access and approvals as the page. Under assistant:
+#   telegram: { token: "${TELEGRAM_BOT_TOKEN}", users: [123456789] }
+
 # Talk to the chat and hear it answer: any server with the OpenAI audio API (OpenAI, or Speaches on your own network).
 # Either half alone works; tts here borrows stt's address. Off unless set.
 # voice:

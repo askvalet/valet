@@ -1,0 +1,47 @@
+---
+title: Telegram
+description: Talk to the assistant from Telegram, with the same access and the same approvals as on the page.
+sidebar: { order: 4.7 }
+---
+
+The assistant can answer in Telegram as well as on the page. It's the same chat: the same tools, the same access, and anything that changes something still asks first, with two buttons under the message.
+
+```yaml title="config.yaml"
+assistant:
+  model: qwen3:14b
+  telegram:
+    token: ${TELEGRAM_BOT_TOKEN}
+    users: [123456789]
+```
+
+## Set it up
+
+1. In Telegram, message [@BotFather](https://t.me/BotFather), send `/newbot` and follow it. It gives you a token.
+2. Put the token in `.env` as `TELEGRAM_BOT_TOKEN`, and add the block above with an empty guess for your id, such as `users: [1]`.
+3. Message your new bot once. Valet's log names the id it ignored: `telegram: ignored a message from user 123456789`. Put that number in `users`.
+
+Valet asks Telegram for new messages itself, so nothing has to reach Valet from the internet and there's no port to open. Use a bot of its own: Telegram hands a bot's messages to one reader only, so a token another program is already listening on won't work for both.
+
+## What it does
+
+- **Answers** come as plain messages. A card becomes a few lines: its title and its first rows.
+- **Approvals** are a message in the tool's own words with two buttons. Nothing runs until you press the first. Asking something else instead is a no, as on the page.
+- `/new` starts a fresh conversation. One left alone for twelve hours starts fresh by itself.
+- A message that waited while Valet was down for more than two minutes isn't acted on. It asks you to send it again.
+
+## What to know
+
+- **Only the ids in `users` are heard, and only in a private chat.** Anyone else, and any group, gets no answer at all, so nobody learns the bot is a Valet.
+- **It can do what the chat can do, no more.** `assistant.access` decides, per integration and per tool. A [read-only page](/start/sign-in/) is read-only here too.
+- **What you ask and what it answers pass through Telegram.** Bot chats aren't end-to-end encrypted, so Telegram's servers can read them. Answers go through the [redactor](/security/secrets/) first, like everything else. If something shouldn't leave your network, set that integration's access to `none` or keep to the page.
+- **Whoever holds your Telegram account holds the bot.** Approvals are buttons in that chat. Lock Telegram on your phone if the assistant has `control` over anything that matters.
+- **Everything it changes is in the activity log**, under your Telegram name with "(Telegram)" after it.
+- **It can't be set up from chat.** `assistant.telegram` is the owner's to edit by hand, like the rest of the assistant's access.
+- Voice messages, photos and files aren't read. It says so.
+
+## Options
+
+| Option | What it does |
+|---|---|
+| `token` | The bot's token from @BotFather. Keep it in `.env`. |
+| `users` | The numeric Telegram user ids that may talk to it. At least one. |

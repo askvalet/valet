@@ -88,6 +88,12 @@ export const AssistantConfig = z.object({
   // does everything in the background. `auto` (an item, or `models: auto` alone) adds every model the main server lists,
   // and `{ auto: true, baseURL, apiKey, provider, name }` every model another server lists
   models: z.union([z.literal('auto').transform(() => ['auto' as const]), z.array(z.union([z.literal('auto'), AutoServer, ModelChoice]))]).default([]),
+  // the same chat in Telegram: a bot's token from @BotFather (in .env), and the Telegram user ids that may talk to it, in a
+  // private chat only. Same access and approvals as the page (approvals are two buttons); nobody else gets an answer
+  telegram: z.object({
+    token: z.string().min(20, 'a bot token from @BotFather, from .env'),
+    users: z.array(z.union([z.number().int().positive(), z.string().regex(/^\d+$/, 'a numeric Telegram user id').transform(Number)])).min(1, 'list the Telegram user ids that may talk to it'),
+  }).strict().optional(),
 }).strict().superRefine((a, ctx) => {
   // each choice is known by its name (or model id), and the main model by its model id
   const seen = new Set([a.model]), heads = new Set<string>();

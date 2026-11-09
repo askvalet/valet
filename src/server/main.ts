@@ -22,6 +22,7 @@ import { discover } from './discover.ts';
 import { mcpServer } from './mcpserver.ts';
 import { listCommands, runCommand } from './commands.ts';
 import { findersOf, search } from './search.ts';
+import { confirmWords } from './confirm.ts';
 import { buildSite, type Site } from './site.ts';
 import { rank, toolAccess } from './run.ts';
 import { customs } from '../shared/slash.ts';
@@ -73,6 +74,7 @@ async function swap(next: Config) {
   const old = base;
   base = await buildSite(next, registry, fromPlugins, opts, old); chats = new WeakMap();
   stopSite(old);
+  void syncBot();
   for (const tell of sseClients) tell();
 }
 for (const sig of ['SIGTERM', 'SIGINT'] as const) process.once(sig, async () => { try { await site.history?.save(); } finally { process.exit(0); } });
@@ -399,29 +401,7 @@ app.get('/api/image/:inst', async c => {
 // The approval card's words: what this action is about to do. It only reads, and nothing runs until the person says so.
 app.post('/api/confirm', async c => {
   const { tool, input } = await c.req.json().catch(() => ({} as any));
-  const [inst, name] = String(tool ?? '').split('__'), t = name ? site.instances.get(inst)?.tools?.[name] : undefined;
-  const type = site.config.integrations[inst]?.type, logo = type ? `/api/icon/${type}` : undefined;
-  // the same doors the chat has: a page that can't act gets no words, and a tool only ever sees checked input
-  const may = (id: string, n: string) => toolAccess(site.config.assistant, id, n) > rank.none;
-  if (!site.acting) return c.json({ logo });
-  const words = async (id: string, n: string, step: NonNullable<typeof t>, raw: unknown) => {
-    const args = step.input.safeParse(raw ?? {});
-    if (!args.success || !step.confirm || !may(id, n)) return null;
-    return step.confirm(args.data);
-  };
-  try {
-    if (tool === 'plan' && Array.isArray(input?.steps)) {
-      // each step in the service's own words, so what's approved is what the tool says, not what the model wrote beside it
-      const steps = await Promise.all(input.steps.map(async (s: any) => {
-        const [id, n] = String(s?.tool ?? '').split('__'), step = site.instances.get(id)?.tools?.[n];
-        return step ? await words(id, n, step, s.input).catch(() => null) : null;
-      }));
-      return c.json(JSON.parse(site.redact(JSON.stringify({ steps, danger: steps.some(s => s?.danger) || undefined }))));
-    }
-    if (!t?.confirm) return c.json({ logo });
-    const said = await words(inst, name, t, input);
-    return c.json(said ? JSON.parse(site.redact(JSON.stringify({ logo, ...said }))) : { logo });
-  } catch { return c.json({ logo }); }
+  return c.json(await confirmWords(site, tool, input));
 });
 
 // the page has just opened, so give its widgets a moment to report in
@@ -518,7 +498,7 @@ app.post('/api/live', async c => {
 
 // The AI SDK, providers and MCP client load on the first question, so an unused assistant costs no memory.
 let chats = new WeakMap<Site, (c: any) => Promise<Response>>();
-app.post('/api/chat', async c => {
+const answer = async (c: Context) => {
   if (!site.config.assistant) return c.json({ error: 'no assistant configured' }, 404);
   const key = own.getStore() ?? base;
   // whatever watches the assistant at work gets told, and shows it straight away
@@ -526,7 +506,27 @@ app.post('/api/chat', async c => {
   let chat = chats.get(key);
   if (!chat) chats.set(key, chat = (await import('./chat.ts')).chatRoute(site.config, site.instances, site.meta, { acting: site.acting, redact: site.redact, activity: site.activity }));
   return chat(c);
-});
+};
+app.post('/api/chat', answer);
+
+// The same chat from Telegram (assistant.telegram, telegram.ts): its messages go through the chat's own handler, on an app
+// nothing outside can reach, so there is one set of rules. Loaded only when it's configured, and never in the demo.
+const fromTelegram = new Hono().post('/', c => { (c.set as (k: string, v: unknown) => void)('user', c.req.header('x-valet-user')); return answer(c); });
+let bot: { key: string; stop(): void } | undefined;
+async function syncBot() {
+  const a = sandbox.on ? undefined : base.config.assistant, t = a?.telegram;
+  const { Telegram } = t ? await import('./telegram.ts') : { Telegram: undefined };
+  const next = t && Telegram ? new Telegram({
+    token: t.token, users: t.users, name: a!.name, redact: s => site.redact(s), api: process.env.VALET_TELEGRAM_API,   // the address only for a test's stand-in
+    chat: (messages, who, signal) => Promise.resolve(fromTelegram.request('/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-valet-user': who }, body: JSON.stringify({ messages }), signal })),
+    confirm: (tool, input) => confirmWords(site, tool, input),
+    label: tool => { const [inst, name] = tool.split('__'); return site.instances.get(inst)?.tools?.[name]?.label; },
+  }) : undefined;
+  if (next?.key === bot?.key) return;   // the same bot for the same people: a reload leaves its conversations alone
+  bot?.stop(); bot = next;
+  void next?.start();
+}
+void syncBot();
 
 // `auto` in assistant.models: each server's list, asked from here so its key stays here, and kept five minutes
 // (`?fresh=1` asks again). What fails says so quietly, and the configured choices still work. The page gets each model's
