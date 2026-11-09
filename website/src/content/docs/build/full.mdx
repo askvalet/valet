@@ -103,7 +103,8 @@ An action may return `{ done: 'Archived a saved link' }`. That's what the activi
 | `run(args)` | yes | Returns `{ data, card }`. `data` goes to the model. `card` is what the person sees. |
 | `label` | | What it did, past tense, for its chip in chat: "Searched documents". |
 | `followUps` | | A couple of next questions to offer. |
-| `find` | | The input field that takes search words. The tool then joins `search_everything`. |
+| `find` | | The input field that takes search words. The tool then joins `search_everything` and ⌘K's search as you type, which draws its rows from the card: give items an `href` to open. |
+| `nearest` | | With `find`: it always finds something, however far off (a search by likeness). Its rows go under the others' in ⌘K. |
 | `live` | | Its card stays current in chat. Only for cheap, look-only tools whose answer changes by itself. |
 | `confirm(input)` | | What the approval card says. See [confirm words](/build/confirm/). |
 | `undo` | | The tool that reverses this one, given the same input. |

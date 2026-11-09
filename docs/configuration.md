@@ -49,6 +49,7 @@ In Docker, prefix these with `docker exec -it valet`.
 | `weather` | none | a widget key (e.g. `weather.now`) shown as a ring beside the clock |
 | `calendar` | none | a calendar widget (e.g. `family.agenda`) whose events appear when you hover the clock |
 | `search` | none | web search from ⌘K: `duckduckgo`, `google`, `kagi`, `brave`, `startpage`, `searxng`, or a URL with `{q}` |
+| `find` | `true` | ⌘K also searches inside your services as you type (documents, saved links, the library, photos…). `false` turns it off; a list keeps it to those integrations, e.g. `[docs, bookmarks]` |
 | `links` | `{}` | bookmarks by group, each group a widget `links.<group-slug>`: `Media: [{ name, url, icon?, note? }]`. Without `icon`, the site's favicon (fetched by Valet) |
 | `notify` | `{ channels: [] }` | where reminders go when you're not looking: see below. `insights: true` also pushes the shared-cause line. `webPush` is Valet's own notifications, to each device that turns them on in ⌘K |
 | `reload` | `true` | watch the file and apply edits live |
@@ -365,6 +366,13 @@ It sends nothing itself.
 "pause ads 10 min") without asking the model. They follow `access` like the chat: a command that uses a `control` tool
 needs `control` for that integration and still shows the approval card. With no `assistant` block, commands run page
 actions and tools that only look. See [integrations.md](integrations.md#the-parts) for writing them.
+
+**Search, with no model.** As you type in ⌘K, Valet also asks every service that can be searched (documents, saved
+links, the library, photos, games, recipes, feeds, the calendar, the house), all at once, and lists what each found in
+its own group as it answers. A row with an address opens it; one without shows the service's card in place. It uses the
+tools the assistant would (`find` on a tool that only looks), so `access: none` for an integration or for one tool takes
+it out of the search too, and with no `assistant` block every searchable service is included. Nothing is asked until
+the typing rests, two letters at least, and an answer is kept for half a minute. `find: false` turns it off.
 
 **On the page, not in chat:** A summary when you hover the status sentence, ⌘K answers and approvals in
 place, and pin on a chat card to keep it on the page. A pin re-runs the same tool, so no model is involved after that;

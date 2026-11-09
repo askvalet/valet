@@ -18,6 +18,8 @@ import { signOut } from './signin.tsx';
 import { play, toggleSounds, useSounds } from './sound.ts';
 import { cannot, checkPush, disablePush, enablePush, usePush } from './push.ts';
 import { DOCS_SCORE, DocsGroup, isDoc } from './palette-docs.tsx';
+import { FOUND_SCORE, FoundGroups, isFound, useFound } from './palette-search.tsx';
+import type { Found } from '../shared/search.ts';
 
 const InlineAnswer = lazy(() => import('./assistant.tsx').then(m => ({ default: m.InlineAnswer })));
 
@@ -28,6 +30,7 @@ export interface PaletteProps {
   services: StatusItem[]; SUGGESTIONS: string[]; setView: (v: string) => void;
   nav: { key: string; chat?: boolean; icon?: string }[]; sectionIcon: (s: any) => string | undefined;
   search?: string;   // a provider name or a URL with {q}
+  find?: boolean;    // some service here can be searched as you type
   placeholder?: string; ui?: ChatUi;
   device: { sandbox?: boolean; canAct: boolean };   // whether this page could turn notifications on at all
 }
@@ -56,7 +59,7 @@ export function rank(value: string, query: string, names: string[] = []) {
 // the look shadcn's CommandDialog gives it; that one can't take a filter
 const SHELL = '**:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5';
 
-export default function Palette({ palette, setPalette, assistantName, ask, actions, runAction, services, SUGGESTIONS, setView, nav, sectionIcon, search, account, tools, openChat, placeholder, ui, device }: PaletteProps) {
+export default function Palette({ palette, setPalette, assistantName, ask, actions, runAction, services, SUGGESTIONS, setView, nav, sectionIcon, search, find, account, tools, openChat, placeholder, ui, device }: PaletteProps) {
   const [query, setQuery] = useState('');
   // a question is answered right here; approvals too. Only a longer conversation needs the chat.
   const [inline, setInline] = useState<{ text: string; n: number } | null>(null);
@@ -89,7 +92,9 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
   const sure = clear(matches), tied = matches.filter(m => m.exact).length > 1;
   // two commands with the same words: Enter waits until one is picked, by arrow or pointer
   const picked = useRef(false);
-  useEffect(() => { picked.current = false; setRan(null); }, [query]);
+  // what the services found for what's typed, and one service's card when a row without an address is picked
+  const found = useFound(inline ? '' : query, !!find), [shown, setShown] = useState<Found | null>(null);
+  useEffect(() => { picked.current = false; setRan(null); setShown(null); }, [query]);
   const command = async (m: Match, go = false) => {
     const c = byId.get(m.id)!;
     setRan({ m, c, busy: true, said: go ? ran?.said : undefined });
@@ -186,18 +191,21 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
       <CommandItem value="sign out everywhere" onSelect={() => signOut(true)}><LogOut />Sign out everywhere</CommandItem>
     </CommandGroup>],
   ];
+  // inside the services: under a page, service or command named outright and under asking, above anything that only
+  // loosely matches. Its rows arrive a moment later, so nothing above them ever moves
+  groups.push([FOUND_SCORE, found.length > 0 && <FoundGroups key="found" found={found} show={setShown} close={() => setPalette(false)} />]);
   groups.sort((x, y) => y[0] - x[0]);
   const lead = (groups.find(g => g[1])?.[1] as React.ReactElement | undefined)?.key === 'run';
   return (
         <Dialog open={palette} onOpenChange={setPalette}>
           <DialogHeader className="sr-only"><DialogTitle>{assistantName ? `Ask ${assistantName}` : 'Search'}</DialogTitle><DialogDescription>Run a command, ask a question or jump to a section</DialogDescription></DialogHeader>
           <DialogContent showCloseButton={false} className="palette-pop top-[18%] translate-y-0 overflow-hidden rounded-popover p-0 sm:max-w-[600px]">
-          <Command filter={(v, q, k) => v.startsWith('cmd ') ? scores.get(v) ?? 0 : isDoc(v) ? DOCS_SCORE : rank(v, q, k)} className={SHELL}>
+          <Command filter={(v, q, k) => v.startsWith('cmd ') ? scores.get(v) ?? 0 : isDoc(v) ? DOCS_SCORE : isFound(v) ? FOUND_SCORE : rank(v, q, k)} className={SHELL}>
           <CommandInput placeholder={placeholder ?? assistantName ? placeholder ?? `Ask ${assistantName} anything about your homelab…` : 'Type a command, or search services and pages…'} value={query} onValueChange={setQuery}
             onKeyDown={e => {
               if (e.key === 'ArrowDown' || e.key === 'ArrowUp') picked.current = true;
               if (e.key !== 'Enter') return;
-              if (ran) { e.preventDefault(); return; }
+              if (ran || shown) { e.preventDefault(); return; }
               // a command said exactly runs, even under an answer: no model for what a rule can do
               if (inline && sure) { e.preventDefault(); setInline(null); void command(sure); return; }
               const on = document.querySelector('[cmdk-item][data-selected="true"]');
@@ -213,6 +221,8 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
               {ran.card && <ChatCard first={ran.card} name={ran.tool ?? ''} input={ran.input} tools={tools ?? {}} fresh />}
               {ran.error && <div className="text-item text-bad">{ran.error}</div>}
             </div></div>
+          ) : shown?.card ? (
+            <div className="max-h-[440px] overflow-y-auto p-4"><ChatCard first={shown.card} name={shown.id} input={{}} tools={tools ?? {}} /></div>
           ) : inline ? (
             <div className="max-h-[440px] overflow-y-auto p-4">
               <Suspense fallback={null}><InlineAnswer key={inline.n} text={inline.text} tools={tools ?? {}} ui={ui} onMore={openChat} /></Suspense>

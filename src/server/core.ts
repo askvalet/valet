@@ -40,6 +40,9 @@ export interface Tool<A = any> {
   followUps?: string[];
   /** The input field that takes search words, if this tool searches: it then joins the assistant's search_everything. */
   find?: string;
+  /** With `find`: it always finds something, however far off (a search by likeness, such as photos by what's in them),
+   *  so in ⌘K its rows sit under the ones other services found by the words themselves. */
+  nearest?: boolean;
   /** Its card stays current in the chat: the page re-runs it every few seconds while it's on screen. Only for cheap,
    *  look-only tools whose answer changes by itself. */
   live?: boolean;

@@ -31,6 +31,7 @@ location: Toronto, Canada          # gives the assistant local context
 #       watch: { prompt: "Add {input} to my watchlist and tell me when it's out", reasoning: low }
 #       blocks: { prompt: "Who's blocking the most today?", tools: [dns] }   # tools: integration ids, as an @mention
 # format: { clock: 24h, temperature: c }
+# find: false                      # ⌘K searches inside your services as you type; false turns it off, a list keeps it to those: [docs, bookmarks]
 
 # The assistant. Any OpenAI-compatible server (Ollama, llama.cpp, vLLM, LM Studio, OpenRouter, OpenAI) or Anthropic.
 assistant:

@@ -38,6 +38,12 @@ Type a plain command in the palette and it runs straight away, with no model: "p
 
 With no assistant, commands do what the page can already do: its actions (when [sign-in](/start/sign-in/) allows them) and tools that only look, which show their card in the palette. Anything that would need a tool to add or change something waits for an assistant, and then follows `assistant.access` like the chat does, approval card included. On a read-only page commands only look. Nothing on this path ever calls a model, with an assistant or without.
 
+## Search inside your services
+
+As you type in the palette, Valet also searches the services that can be searched: documents, saved links, the library, photos, games, recipes, feeds, the calendar and the house. Each has its own group, and its rows arrive as it answers, so a slow service never holds up a fast one. A row with an address opens it. One without, like a light or a show in the library, shows the service's card right there, switches included.
+
+No model is involved. With an assistant, `access: none` for an integration takes it out of the search as well. `find: false` in the config turns the search off, and `find: [docs, bookmarks]` keeps it to those.
+
 ## What goes
 
 - The chat, and its button on the page. The ask box becomes a search box.

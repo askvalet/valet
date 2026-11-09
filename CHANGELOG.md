@@ -5,6 +5,11 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- ⌘K searches inside your services as you type: documents, saved links, the library, photos, games, recipes, feeds, the calendar and the house, each in its own group under the page's own things. It uses the search tools the assistant already has (any tool with `find`), all at once and with no model; each service's rows arrive as it answers, so a slow one never holds up a fast one, and the same words ask a service once for half a minute. A row with an address opens it; one without (a light, a show in the library) shows the service's card right there, switches and all. It follows `assistant.access` like a command does, and every answer passes the redactor. `find: false` turns it off, and a list keeps it to those integrations.
+- An integration's search tool can say `nearest: true` when it always finds something, however far off (photos by what's in them): its rows then sit under the ones found by the words themselves. Immich's does.
+
 ## [0.4.0] - 2026-11-09
 
 ### Added

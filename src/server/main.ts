@@ -21,6 +21,7 @@ import { buildRecap, recapYear } from './recap.ts';
 import { discover } from './discover.ts';
 import { mcpServer } from './mcpserver.ts';
 import { listCommands, runCommand } from './commands.ts';
+import { findersOf, search } from './search.ts';
 import { buildSite, type Site } from './site.ts';
 import { rank, toolAccess } from './run.ts';
 import { customs } from '../shared/slash.ts';
@@ -256,7 +257,7 @@ app.get('/api/page', c => {
   }))));
   const agent = config.assistant && chatAgent(config.assistant, site.acting);
   return c.json(JSON.parse(site.redact(JSON.stringify({
-    title: config.title, greeting: config.greeting, notice: config.notice, location: config.location, canAct: site.acting, sandbox: sandbox.on, search: config.search,
+    title: config.title, greeting: config.greeting, notice: config.notice, location: config.location, canAct: site.acting, sandbox: sandbox.on, search: config.search, find: findersOf(site).length > 0,
     // everyone learns an edit didn't apply; the error itself can quote the file, so only people who can change things see it
     configError: configError ? { message: site.acting ? site.redact(configError.message).slice(0, 600) : undefined, at: configError.at } : undefined,
     welcome: config.welcome ? { path: CONFIG, saved, setup: site.acting && instances.has('config') } : undefined,
@@ -373,6 +374,8 @@ app.post('/api/action/:inst/:action', async c => {
 // ⌘K's plain commands ("pause downloads"): run by rule, never by a model, through the same doors as the chat (commands.ts)
 app.get('/api/commands', c => listCommands(c, site));
 app.post('/api/command', c => runCommand(c, site));
+// ⌘K's search inside the services: every search tool at once, each answer sent as it arrives (search.ts)
+app.get('/api/search', c => search(c, site));
 // ⌘K's docs: Valet's own pages, searched here from the copy it ships, so it works offline. Read-only and public
 // knowledge, so a read-only page gets it too; titles, paths and a line each, never a file.
 app.get('/api/docs', async c => c.json({ docs: await paletteDocs(c.req.query('q') ?? '', registry) }));

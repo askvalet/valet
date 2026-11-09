@@ -446,6 +446,9 @@ export const Config = z.object({
   calendar: z.string().optional(),              // a calendar widget (e.g. family.agenda) whose events appear when you hover the clock
   // web search from ⌘K: a provider name, or a URL with {q} for the words
   search: z.union([z.enum(['duckduckgo', 'google', 'kagi', 'brave', 'startpage', 'searxng']), z.string().url()]).optional(),
+  // ⌘K also searches inside your services as you type (documents, saved links, the library, photos…), through the same
+  // search tools the assistant has; false turns it off, a list keeps it to those integrations, e.g. [paperless, karakeep]
+  find: z.union([z.boolean(), z.array(z.string())]).default(true),
   // links on the page, grouped: `links.<group>` is a widget key, e.g. links: { Media: [{ name: Plex, url: https://… }] }
   links: z.record(z.string(), z.array(z.object({ name: z.string(), url: z.string().url(), icon: z.string().optional(), note: z.string().optional() }))).default({}),
   // where "tell me when" reminders go when you're not looking (ntfy, gotify, telegram, discord, slack, pushover, apprise,

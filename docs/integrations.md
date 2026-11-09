@@ -78,7 +78,10 @@ A tool can also carry:
 - `confirm(input)`: what the approval card says, `{ title, detail, image, icon, verb, danger }`. `danger` makes the button
   red. It may look things up but never change them, and should show what the service says, not what the model typed.
 - `undo`: the tool that reverses this one, given the same input. It adds Undo in the activity log.
-- `find`: the input field that takes search words, which puts the tool in the assistant's `search_everything`.
+- `find`: the input field that takes search words, which puts the tool in the assistant's `search_everything` and in
+  ⌘K's search as you type. ⌘K draws its rows from the card (titles, a second line, pictures, and each item's `href` to
+  open), so give items an `href` where the service has a page for them. Add `nearest: true` if it always finds something,
+  however far off (a search by likeness): its rows go under the others'.
 - `live: true`, on a cheap look-only tool whose answer changes by itself: its card keeps itself current in chat.
 
 **`commands`** are plain words for ⌘K that run an action or a tool by rule, with no model: "pause downloads",

@@ -43,6 +43,7 @@ export interface Page {
   assistant: { name: string; model: string; models?: { id: string; model: string }[]; discover?: boolean; suggestions: string[]; tools: Record<string, ToolInfo>; external?: boolean; integrations?: { id: string; name: string }[] } | null;
   voice?: VoiceUi;   // voice: whether the chat has a mic and a speaker
   search?: string;
+  find?: boolean;
   insight?: string;
   welcome?: { path: string; saved: boolean; setup?: boolean };
   configError?: { message?: string; at: number };
@@ -791,7 +792,7 @@ function Home({ account }: { account: boolean }) {
       {page && palette && (
         <Suspense fallback={null}><Palette palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} placeholder={page.assistant && (page.chat.placeholder || page.hero.scope?.length) ? placeholder : undefined} ui={ui} ask={ask} actions={actions} account={account} tools={page.assistant?.tools}
           openChat={() => { setPalette(false); if (phone || !(chatTab && view === chatTab)) setChatOpen(true); }}
-          runAction={runAction} services={services} SUGGESTIONS={questions} setView={go} nav={nav} sectionIcon={sectionIcon} search={page.search} device={{ sandbox: page.sandbox, canAct: page.canAct !== false }} /></Suspense>
+          runAction={runAction} services={services} SUGGESTIONS={questions} setView={go} nav={nav} sectionIcon={sectionIcon} search={page.search} find={page.find} device={{ sandbox: page.sandbox, canAct: page.canAct !== false }} /></Suspense>
       )}
 
       {page?.assistant && (
