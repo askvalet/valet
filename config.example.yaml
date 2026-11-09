@@ -25,6 +25,11 @@ location: Toronto, Canada          # gives the assistant local context
 #   open: center, right, left, bottom, page
 #   beam: a light around the ask box: off, always, focus (while typing), thinking, once (a lap on load, then while typing)
 #   followUps: offered under each answer, in place of what the tool suggests
+#   commands: your own /commands in the chat, ⌘K and /help. A string is the prompt; {input} is what's typed after the name
+#     commands:
+#       morning: Sum up overnight, what finished downloading, anything down, and today's calendar.
+#       watch: { prompt: "Add {input} to my watchlist and tell me when it's out", reasoning: low }
+#       blocks: { prompt: "Who's blocking the most today?", tools: [dns] }   # tools: integration ids, as an @mention
 # format: { clock: 24h, temperature: c }
 
 # The assistant. Any OpenAI-compatible server (Ollama, llama.cpp, vLLM, LM Studio, OpenRouter, OpenAI) or Anthropic.

@@ -186,6 +186,17 @@ test('demo: a question it has no answer for says so, and never gets the nearest 
   assert.ok(ask('What colour is the lamp?', [{ role: 'user', content: 'How are the downloads?' }, { role: 'assistant', content: 'Two going.' }]).text!.includes(can));
 });
 
+test('demo: its own /commands are answered by the script, from real tools', async () => {
+  const { customs, expand } = await import('../src/shared/slash.ts');
+  const list = customs(Config.parse(parse(readFileSync('demo/config.yaml', 'utf8'))).chat.commands);
+  assert.deepEqual(list.map(c => c.name), ['morning', 'downloads']);
+  // the server sends the prompt, so that's what the script reads
+  const said = Object.fromEntries(await Promise.all(list.map(async c => [c.name, await carry(expand(c.prompt, ''))])));
+  assert.match(said.morning, /Mealie ran out of memory/);
+  assert.match(said.downloads, /going at [\d.]+ MB\/s/);
+  for (const c of list) assert.ok(ask(expand(c.prompt, '')).call, c.name);
+});
+
 test('demo: every scenario the README promises works from start to finish', async () => {
   // real Valet reads Docker but can't restart it, so the demo says what to change (without dwelling on what it can't do), rather than offering to
   assert.match(await carry('Why is Mealie down?'), /out of memory at 3:12 AM.*mem_limit/);

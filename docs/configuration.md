@@ -433,6 +433,34 @@ The assistant's window. Its name is `assistant.name`.
 | `beamColor` | `mono` | `colorful`, `mono`, `ocean` or `sunset`. With `thinking`, `colorful` is the accent |
 | `beamStrength` | `0.45` | how bright the beam is, 0 to 1 |
 | `icon` | a speech bubble | an icon name from docs/integrations.md, or an image path or URL, on its buttons and header |
+| `commands` | none | your own `/commands`: a name and the prompt it sends. See below |
+
+### `chat.commands`
+
+Your own commands for the chat. Each appears in the `/` menu, in ⌘K and in `/help`, and sends its prompt through the chat as
+if you'd typed it: the same access, the same approvals. The chat shows what you typed; the model reads the prompt.
+
+```yaml
+chat:
+  commands:
+    morning: Sum up overnight, what finished downloading, anything down, and today's calendar.
+    watch: { prompt: "Add {input} to my watchlist and tell me when it's out", reasoning: low }
+    lab: { prompt: "Full health check of the lab, worst problems first", model: Deep, reasoning: high }
+    blocks: { prompt: "Who's blocking the most today?", tools: [dns] }
+```
+
+| Field | | |
+|---|---|---|
+| `prompt` | required | what it sends. A plain string is the prompt. `{input}` is what's typed after the command (`/watch Dune`); without `{input}`, anything typed after goes on the end |
+| `description` | the prompt | beside it in the menu and `/help`, up to 80 characters |
+| `model` | the chat's | a choice from `assistant.models`, by name, for that question only |
+| `reasoning` | the chat's | `off`, `low`, `medium`, `high` or `auto`, for that question only |
+| `tools` | none | integration ids whose tools it uses from the first step, as an `@mention` does. They must be ones `assistant.access` lets it use: a command never grants more |
+
+Names are lowercase letters, digits and dashes, and can't be a built-in's (`model`, `reasoning`, `new`, `clear`, `compact`,
+`retry`, `undo`, `help`). `config check` also names a `model` that isn't a choice, an integration in `tools` that isn't there
+or that the assistant may not use, and commands without an `assistant` block. The assistant can add one for you
+("make me a /morning command that…"): it's a config edit like any other, shown first and saved only once you approve.
 
 ## `notify`
 

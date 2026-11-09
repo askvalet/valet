@@ -42,7 +42,11 @@ const asOpenAi = (prompt: any[]) => prompt.flatMap(m => m.role !== 'tool' ? [m] 
   role: 'tool', content: JSON.stringify(/denied/.test(p.output?.type ?? '') ? { denied: true } : p.output?.value ?? {}) })));
 const model = {
   specificationVersion: 'v4', provider: 'demo', modelId: 'qwen3.8-27b', supportedUrls: {},
-  async doGenerate() { throw new Error('the demo only streams'); },
+  // one call without tools: the summary Valet writes when a chat is long, or when /compact asks
+  async doGenerate({ prompt }: any) {
+    const r: any = reply({ messages: asOpenAi(prompt) }), text = String(r.text ?? '');
+    return { content: [{ type: 'text', text }], finishReason: { unified: 'stop', raw: 'stop' }, usage: usageOf(prompt, [], tokens(text)), warnings: [] };
+  },
   async doStream({ prompt, tools = [] }: any) {
     const r: any = reply({ messages: asOpenAi(prompt), tools: tools.map((t: any) => ({ function: { name: t.name } })) });
     return { stream: new ReadableStream({ async start(c) {
@@ -150,7 +154,7 @@ async function answer(path: string, method: string, body: any, signal?: AbortSig
     await start(); (valet.tools as Record<string, unknown>).watch_add ??= remind();
     chat ??= chatRoute(config, instances as any, new Map<string, any>([['lab', { type: 'demo-homelab', name: integration.name, integration }], ['valet', { type: 'valet', name: 'Valet', integration: { type: 'valet', name: 'Valet' } }]]), { acting: true, redact: s => s, model: model as any, models, fetch: listing });
     lab.onChat?.(); void refresh('lab.ai');
-    return chat({ req: { json: async () => body, raw: { signal } }, get: () => 'you' });
+    return chat({ req: { json: async () => body, raw: { signal } }, get: () => 'you', json });   // json: /compact's answer, and a refusal
   }
   if (route === 'models') {
     // as the server's /api/models: each model's id, a name where there is one, and its heading
