@@ -134,15 +134,21 @@ export function reply(body) {
   return name ? { call: { name, args: JSON.stringify(typeof input === 'function' ? input(said, re.exec(said)) : input) } } : offScript();
 }
 
+// what the stand-in's server lists at /v1/models, so `auto` in the demo's models has a list to offer. Whichever is picked,
+// the same script answers, and how much it's asked to think changes nothing
+export const MODELS = ['qwen3.8-27b', 'qwen3.8-4b', 'qwen3.8-235b-a22b', 'gemma-4-27b', 'gemma-4-12b', 'llama-4.2-70b', 'mistral-small-4', 'phi-5-mini', 'deepseek-v4-lite', 'olmo-3-32b', 'nomic-embed-text-v2'];
+export const modelList = () => ({ object: 'list', data: MODELS.map(id => ({ id, object: 'model', created: 1767225600, owned_by: 'demo' })) });
+
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const between = (lo, hi) => lo + Math.random() * (hi - lo);
 const server = createServer((req, res) => {
+  if (req.method === 'GET' && req.url.replace(/\?.*$/, '').endsWith('/models')) { res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(modelList())); return; }
   if (req.method !== 'POST' || !req.url.endsWith('/chat/completions')) { res.writeHead(404).end(); return; }
   let raw = '', size = 0;
   req.on('data', c => { size += c.length; if (size > 9e6) req.destroy(); else raw += c; });
   req.on('end', async () => {
     let body; try { body = JSON.parse(raw); } catch { res.writeHead(400).end(); return; }
-    const r = reply(body), base = { id: 'demo', object: 'chat.completion', created: Math.floor(Date.now() / 1000), model: 'qwen3.8-27b' };
+    const r = reply(body), base = { id: 'demo', object: 'chat.completion', created: Math.floor(Date.now() / 1000), model: typeof body.model === 'string' && MODELS.includes(body.model) ? body.model : 'qwen3.8-27b' };
     // about a token for every four characters, so the chat's context meter fills as it would with a real model
     const given = Math.round(JSON.stringify([body.messages, body.tools]).length / 4), said = Math.round(JSON.stringify(r.text ?? r.call ?? '').length / 4);
     const usage = { prompt_tokens: given, completion_tokens: said, total_tokens: given + said };

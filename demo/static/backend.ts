@@ -10,7 +10,8 @@ import { ownInstance } from '../../src/server/own.ts';
 import { Watches } from '../../src/server/watches.ts';
 import { findDocs, type DocIndex } from '../../src/shared/docs.ts';
 import plugin from '../integrations/homelab.mjs';
-import { reply, suggestions } from '../mock-model.mjs';
+import { modelList, reply, suggestions } from '../mock-model.mjs';
+import { discovery } from '../../src/server/model.ts';
 
 const snapshot = (name: string) => realFetch(`/snapshot/${name}.json`).then(r => r.json());
 const realFetch = window.fetch.bind(window), json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -103,6 +104,11 @@ class Events {
 }
 (window as any).EventSource = Events;
 
+// assistant.models: every choice, configured or listed, is the same scripted model; the stand-in's server list is answered
+// here, so `auto` lists what it would and the menu is the searchable one
+const models = new Proxy({}, { get: () => model }) as Record<string, any>;
+const listing = (async (u: RequestInfo | URL) => /\/models(\?|$)/.test(String(u instanceof Request ? u.url : u)) ? json(modelList()) : json({ error: 'no network in the demo' }, 404)) as typeof fetch;
+let listed: ReturnType<typeof discovery> | undefined;
 let chat: ((c: any) => Promise<Response>) | undefined, docs: Promise<DocIndex> | undefined;
 async function answer(path: string, method: string, body: any, signal?: AbortSignal | null): Promise<Response> {
   const [, , route, a, b] = path.split('?')[0].split('/');
@@ -142,9 +148,15 @@ async function answer(path: string, method: string, body: any, signal?: AbortSig
   if (route === 'chat') {
     const config = await snapshot('config');
     await start(); (valet.tools as Record<string, unknown>).watch_add ??= remind();
-    chat ??= chatRoute(config, instances as any, new Map<string, any>([['lab', { type: 'demo-homelab', name: integration.name, integration }], ['valet', { type: 'valet', name: 'Valet', integration: { type: 'valet', name: 'Valet' } }]]), { acting: true, redact: s => s, model: model as any });
+    chat ??= chatRoute(config, instances as any, new Map<string, any>([['lab', { type: 'demo-homelab', name: integration.name, integration }], ['valet', { type: 'valet', name: 'Valet', integration: { type: 'valet', name: 'Valet' } }]]), { acting: true, redact: s => s, model: model as any, models, fetch: listing });
     lab.onChat?.(); void refresh('lab.ai');
     return chat({ req: { json: async () => body, raw: { signal } }, get: () => 'you' });
+  }
+  if (route === 'models') {
+    // as the server's /api/models: each model's id, a name where there is one, and its heading
+    listed ??= discovery((await snapshot('config')).assistant, { fetch: listing });
+    const l = await listed.list(new URLSearchParams(path.split('?')[1] ?? '').get('fresh') === '1');
+    return json({ ok: l.ok, at: l.at, servers: l.servers, models: l.models.map(m => ({ id: m.id, ...(m.id !== m.model ? { model: m.model } : {}), ...(m.label ? { label: m.label } : {}), group: m.group })) });
   }
   if (route === 'live') { const [inst, name] = String(body?.tool ?? '').split('__'), t = instances.get(inst)?.tools?.[name]; return t ? json({ card: (await t.run(body.input)).card }) : json({ error: 'not a live card' }, 403); }
   return json({ error: 'not in the demo' }, 404);

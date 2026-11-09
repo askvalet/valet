@@ -23,6 +23,12 @@ assistant:
   apiKey: demo
   model: qwen3.8-27b
   contextWindow: 32768   # what the scripted model claims to hold, so the chat's context meter has something to fill
+  # more to pick from under the message box: they're all the same scripted stand-in, so the answers don't change, and `auto`
+  # adds what the stand-in's server lists, which makes the menu the searchable one
+  models:
+    - { name: Fast, model: qwen3.8-4b, contextWindow: 32768, reasoning: off }
+    - { name: Deep, model: qwen3.8-235b-a22b, contextWindow: 131072, reasoning: high }
+    - auto
   name: Valet
   maxSteps: 4
   access: { default: control }

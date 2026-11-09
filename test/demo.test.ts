@@ -11,7 +11,9 @@ import { checkCard } from '../src/shared/cards.schema.ts';
 import { Backups, backupParts } from '../src/server/backups.ts';
 import { suggest } from '../src/web/suggest.ts';
 import plugin from '../demo/integrations/homelab.mjs';
-import { can, FALLBACK, reply, SCRIPT, suggestions, SUGGESTIONS } from '../demo/mock-model.mjs';
+import { can, FALLBACK, MODELS, modelList, reply, SCRIPT, suggestions, SUGGESTIONS } from '../demo/mock-model.mjs';
+import { choices, discovery } from '../src/server/model.ts';
+import { SEARCH_FROM } from '../src/web/models.tsx';
 import { setHouse } from '../src/server/core.ts';
 setHouse({ locale: 'en-US' });   // what the server writes follows a language; these read like a US one wherever they run
 
@@ -42,6 +44,20 @@ test('demo: the script only calls tools that exist, and answers from what they r
   const { data } = await inst.tools.service_status.run({});
   const r = reply({ tools, messages: [{ role: 'user', content: 'Is anything down?' }, { role: 'tool', content: JSON.stringify(data) }] });
   assert.match(r.text!, /Mealie is down/);
+});
+
+test('demo: the model menu has choices to open, and whichever is picked, at any reasoning, the script answers the same', async () => {
+  const a = Config.parse(parse(readFileSync('demo/config.yaml', 'utf8'))).assistant!;
+  const picked = choices(a);
+  assert.ok(picked.length >= 3 && a.models.includes('auto'), 'the main model, Fast and Deep, and what the server lists');
+  assert.deepEqual(picked.map(c => c.settings.baseURL), picked.map(() => a.baseURL), 'all on the scripted stand-in');
+  const listed = await discovery(a, { fetch: (async () => new Response(JSON.stringify(modelList()))) as typeof fetch }).list();
+  assert.ok(listed.ok && !listed.models.some(m => /embed/.test(m.id)), 'the server\'s list, chat models only');
+  assert.ok(picked.length + listed.models.length > SEARCH_FROM, 'enough to make it the searchable menu');
+  assert.ok(MODELS.includes(a.model));
+  const q = 'Pause Pi-hole';
+  for (const model of [a.model, ...MODELS]) for (const reasoning_effort of [undefined, 'low', 'high'])
+    assert.deepEqual(reply({ model, reasoning_effort, tools, messages: [{ role: 'user', content: q }] }), ask(q));
 });
 
 test('demo: the backups card leads with the overdue job and flags the shrunk one, and the script says so', async () => {
