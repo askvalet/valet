@@ -3,7 +3,7 @@
 import { Chat, useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses, type UIMessage } from 'ai';
 import {
-  Activity, ArrowDown, ArrowUp, Bookmark, Check, ChevronDown, ChevronRight, Copy, CornerDownRight, FileText, Lightbulb, Loader2, Paperclip, RotateCcw,
+  Activity, ArrowDown, ArrowUp, Bookmark, Check, ChevronDown, ChevronRight, Copy, CornerDownRight, FileText, Globe, Lightbulb, Loader2, Paperclip, RotateCcw,
   Pin, Search, Square, X, Zap,
 } from 'lucide-react';
 import { createContext, Fragment, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -121,6 +121,7 @@ const verbOf = (name: string, tools: Record<string, ToolInfo>) => {
   if (name === 'plan') return ['Made a plan', Zap] as const;
   if (name === 'present') return ['Laid it out', Lightbulb] as const;
   if (name === 'tools') return ['Picked tools', Search] as const;
+  if (name === 'valet__web_search' || name === 'valet__web_read') return [t?.label ?? toolLabel(name), Globe] as const;
   return [t?.label ?? toolLabel(name).replace(/^\w/, c => c.toUpperCase()), t ? ICON[t.access] : Activity] as const;
 };
 const argOf = (input: any) => {

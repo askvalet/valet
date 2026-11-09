@@ -1,0 +1,128 @@
+---
+title: Web search
+description: Let the assistant look things up on the web, through your own SearXNG, Brave or Tavily. Off unless you set it.
+sidebar: { order: 4.8 }
+---
+
+A local model knows nothing recent. With `assistant.webSearch` the assistant can search the web for what your homelab can't answer: a new release, a how-to, today's news. It's off unless you set it, and a config without it works as before.
+
+```yaml title="config.yaml"
+assistant:
+  model: qwen3:14b
+  webSearch:
+    provider: searxng
+    url: http://searxng:8080
+```
+
+This is not the top-level `search:` option. That one is a link ⌘K opens in your browser. This one gives the assistant two tools.
+
+## What it adds
+
+| Tool | What it does |
+|---|---|
+| `web_search` | Sends a few words to your provider and gets back titles, addresses, short snippets and dates. You get the same results as a card, each title a link. |
+| `web_read` | Opens one page that a search returned and reads its text, for when a snippet is too thin. |
+
+Both are `read` tools, so neither asks first. In chat they show as "Searched the web" and "Read a web page". They work in [Telegram](/assistant/telegram/) too, and on a [read-only page](/start/sign-in/), since they only look. An [MCP client](/assistant/mcp/) is never offered them.
+
+Turn either off by name, like any tool:
+
+```yaml title="config.yaml"
+assistant:
+  access:
+    valet.web_read: none      # or webSearch.read: false
+```
+
+## Providers
+
+### SearXNG
+
+[SearXNG](https://docs.searxng.org) runs on your own machine and asks the search engines for you. Nothing but the search words leaves, and they leave from SearXNG, not tied to an account. This is the one to pick if you can.
+
+Valet uses its JSON API, which is off by default. Turn it on in SearXNG's `settings.yml` and restart it:
+
+```yaml title="settings.yml"
+search:
+  formats: [html, json]
+```
+
+```yaml title="config.yaml"
+assistant:
+  webSearch: { provider: searxng, url: http://searxng:8080 }
+```
+
+If Valet says SearXNG answered 403, the JSON format is still off.
+
+### Brave
+
+Get a key from the [Brave Search API](https://brave.com/search/api/) and put it in `.env` as `BRAVE_SEARCH_KEY`.
+
+```yaml title="config.yaml"
+assistant:
+  webSearch: { provider: brave, apiKey: "${BRAVE_SEARCH_KEY}" }
+```
+
+### Tavily
+
+Get a key from [Tavily](https://tavily.com) and put it in `.env` as `TAVILY_KEY`.
+
+```yaml title="config.yaml"
+assistant:
+  webSearch: { provider: tavily, apiKey: "${TAVILY_KEY}" }
+```
+
+## Privacy
+
+- **What's searched for leaves your network.** With Brave or Tavily, each query goes to that company with your key. With SearXNG it goes to the engines your SearXNG asks, without a key.
+- **The model writes the query.** It's told to search only for what the homelab's own tools can't answer, and never to put anything private in a query: nothing from your documents, no names, addresses or hostnames. That's an instruction to a model, so it's a strong hint and not a guarantee. If the assistant can read things that must never leave, use SearXNG, or leave web search off.
+- **`web_read` contacts the page's own server.** That site sees a request from your address for that page, with no cookies and nothing about you.
+- **Keys stay on the server**, and are [redacted](/security/secrets/#the-redactor) from anything a provider sends back.
+- **Search words are not logged.** They are in the conversation, which your browser keeps.
+
+## What it reads is written by strangers
+
+A search result or a web page can say "ignore your instructions". Valet treats them like a feed or a saved page:
+
+- **Nothing changes without your press.** A page can make the model ask to do something. The approval card still comes to you, in the tool's own words.
+- **`web_read` opens only what a search returned.** The model can't make up an address, so a page can't talk it into sending what it read to a server of the page's choosing.
+- **`web_read` can't reach your network.** See below.
+- A page can still mislead the answer. The result card links every source, so you can check.
+- A page could get the model to search for something it read elsewhere in the chat. Those words go to your search provider, not to the page's author. `valet.web_search: none` takes that away.
+
+`npm run test:hostile` gives Valet a model that follows a poisoned result, and `npm run eval:inject` runs poisoned results past your own model.
+
+## How `web_read` is kept off your network
+
+Valet sits inside your network, so a tool that fetches an address is a way in if it's careless. `web_read`:
+
+- takes `http` and `https` only, and no address with a sign-in in it;
+- looks the name up and refuses it unless every address it has is public. Loopback, private ranges (`10/8`, `172.16/12`, `192.168/16`), link-local (`169.254/16`, `fe80::/10`), unique-local (`fc00::/7`), carrier NAT (`100.64/10`), multicast, reserved and unspecified addresses are all refused, also when an IPv4 address is written as IPv6;
+- connects to the address it checked, so a second lookup can't swap in another;
+- follows at most four redirects itself, and checks each one the same way;
+- sends a plain GET with no cookies and no keys;
+- gives up after 10 seconds, reads at most 2 MB, and takes only HTML and plain text;
+- hands the model the page's words only, at most 6,000 characters. Scripts, styles and menus are dropped.
+
+It doesn't run a page's scripts, so a page drawn by JavaScript reads as empty. It can't read PDFs.
+
+## Limits
+
+- **`perDay`** caps the searches sent to the provider in a day, 100 by default, counted from midnight and from when Valet started. Past it, the model is told to answer from what it has.
+- **The same search within an hour isn't sent again.** So a search pinned to the page costs at most one search an hour while the page is open.
+- **`results`** is how many each search hands the model, 5 by default and 10 at most. Fewer is cheaper for a small model.
+- One answer makes at most `assistant.maxSteps` tool calls, searches included.
+- It's off in a [sandbox](/recipes/#a-public-demo).
+
+## Options
+
+| Option | Default | What it does |
+|---|---|---|
+| `provider` | required | `searxng`, `brave` or `tavily`. |
+| `url` | none | SearXNG only: where yours is. |
+| `apiKey` | none | Brave and Tavily: the key, as `${NAME}` from `.env`. |
+| `results` | `5` | Results per search, 1 to 10. |
+| `safe` | `moderate` | Safe search: `off`, `moderate` or `strict`. SearXNG and Brave. Tavily has no such setting. |
+| `language` | none | Two letters, like `en` or `de`. SearXNG and Brave. |
+| `region` | none | A two-letter country, like `CA`. Brave; SearXNG uses it with `language` (`de-CH`). |
+| `read` | `true` | `false` leaves out `web_read`, so the assistant answers from snippets alone. |
+| `perDay` | `100` | Searches sent to the provider in a day. |

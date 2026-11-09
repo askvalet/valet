@@ -52,6 +52,12 @@ assistant:
 # Same access and approvals as the page. Under assistant:
 #   telegram: { token: "${TELEGRAM_BOT_TOKEN}", users: [123456789] }
 
+# Web search for the assistant, for what the homelab can't answer. Off unless set. A SearXNG of your own keeps it private
+# (turn on its json format: `search: { formats: [html, json] }` in its settings.yml); brave and tavily take a key from .env.
+# What's searched for goes to the provider. Under assistant:
+#   webSearch: { provider: searxng, url: "http://searxng:8080" }
+#   webSearch: { provider: brave, apiKey: "${BRAVE_SEARCH_KEY}", results: 5 }   # also: safe, language, region, read: false, perDay
+
 # Talk to the chat and hear it answer: any server with the OpenAI audio API (OpenAI, or Speaches on your own network).
 # Either half alone works; tts here borrows stt's address. Off unless set.
 # voice:

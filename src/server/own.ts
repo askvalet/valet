@@ -12,15 +12,16 @@ import type { Timeline } from './timeline.ts';
 import type { Watches } from './watches.ts';
 import { ruleTools, type Rules } from './rules.ts';
 import { backupParts, type Backups } from './backups.ts';
+import type { Tool } from './core.ts';
 
 // today needs no day
 const stamp = (t: number) => fmt.stamp(t), when = stamp;
 
 /** Every name `valet.<name>` can take in assistant.access: Valet's own tools and the chat's built-ins. */
 export const OWN_TOOLS = ['plan', 'show', 'present', 'search_everything', 'docs_search', 'docs_read', 'report_issue', 'rule_add', 'rule_list', 'rule_remove',
-  'watch_add', 'watch_list', 'watch_remove', 'year_in_review', 'timeline', 'metric_chart', 'activity_log', 'backups_status'];
+  'watch_add', 'watch_list', 'watch_remove', 'year_in_review', 'timeline', 'metric_chart', 'activity_log', 'backups_status', 'web_search', 'web_read'];
 
-export function ownInstance(o: { timeline: Timeline; activity: Activity; watches: Watches; rules: Rules; hub: () => Hub; widgets: string[]; history?: History; backups?: Backups; recap: (year?: number) => Promise<Recap>; undo: (id: number) => Promise<string> }): Instance {
+export function ownInstance(o: { timeline: Timeline; activity: Activity; watches: Watches; rules: Rules; hub: () => Hub; widgets: string[]; history?: History; backups?: Backups; web?: Record<string, Tool>; recap: (year?: number) => Promise<Recap>; undo: (id: number) => Promise<string> }): Instance {
   const log = () => {
     const list = o.activity.recent(12), undoable = list.find(e => e.undo && !e.undone);
     return { type: 'list' as const, title: 'Activity', icon: 'pulse', empty: 'Nothing changed yet', log: true,
@@ -44,6 +45,7 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
       ...guideTools(),
       ...ruleTools(o.rules, o.widgets),
       ...(bk ? { backups_status: bk.tool } : {}),
+      ...o.web,
       year_in_review: {
         label: 'Looked back over the year', followUps: ['What was my most watched thing?'],
         description: 'The year in review: the headline numbers from every service. Use for "my year", "wrapped", "year in review".',

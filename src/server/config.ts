@@ -53,6 +53,24 @@ const AutoServer = z.object({
 }).strict();
 export type AutoServer = z.infer<typeof AutoServer>;
 
+// The assistant's web search: where a question goes when the homelab can't answer it. The words searched for leave the
+// house for the provider, unless it's a SearXNG of your own.
+const WebSearch = z.object({
+  provider: z.enum(['searxng', 'brave', 'tavily']),
+  url: z.string().url().optional(),        // searxng: where yours is, e.g. http://searxng:8080; it needs the json format on (search.formats in its settings.yml)
+  apiKey: z.string().optional(),           // brave, tavily: the key, from .env
+  results: z.number().int().min(1).max(10).default(5),   // how many each search hands the model
+  safe: z.enum(['off', 'moderate', 'strict']).default('moderate'),   // searxng and brave; tavily has no such setting
+  language: z.string().regex(/^[a-z]{2}$/, 'a two-letter language, like en or de').optional(),   // searxng and brave
+  region: z.string().regex(/^[A-Za-z]{2}$/, 'a two-letter country, like CA or DE').optional(),   // brave; with a language, searxng too
+  read: z.boolean().default(true),         // web_read: open a page a search found, for its text; false keeps it to snippets
+  perDay: z.number().int().min(1).max(10_000).default(100),   // searches sent to the provider in a day; a repeat within the hour isn't sent again
+}).strict().superRefine((w, ctx) => {
+  if (w.provider === 'searxng' && !w.url) ctx.addIssue({ code: 'custom', path: ['url'], message: 'searxng needs the url of your instance' });
+  if (w.provider !== 'searxng' && !w.apiKey) ctx.addIssue({ code: 'custom', path: ['apiKey'], message: `${w.provider} needs an apiKey, from .env: "\${NAME}"` });
+  if (w.provider !== 'searxng' && w.url) ctx.addIssue({ code: 'custom', path: ['url'], message: `url is for searxng; ${w.provider} has one address` });
+});
+
 export const AssistantConfig = z.object({
   // any OpenAI-compatible server (Ollama, llama.cpp, vLLM, OpenRouter, OpenAI…) or Anthropic
   provider: z.enum(['openai-compatible', 'anthropic']).default('openai-compatible'),
@@ -88,6 +106,9 @@ export const AssistantConfig = z.object({
   // does everything in the background. `auto` (an item, or `models: auto` alone) adds every model the main server lists,
   // and `{ auto: true, baseURL, apiKey, provider, name }` every model another server lists
   models: z.union([z.literal('auto').transform(() => ['auto' as const]), z.array(z.union([z.literal('auto'), AutoServer, ModelChoice]))]).default([]),
+  // web search for the assistant, off unless set: { provider: searxng, url } or { provider: brave | tavily, apiKey }. It adds
+  // web_search and web_read to the chat; what's searched for goes to the provider
+  webSearch: WebSearch.optional(),
   // the same chat in Telegram: a bot's token from @BotFather (in .env), and the Telegram user ids that may talk to it, in a
   // private chat only. Same access and approvals as the page (approvals are two buttons); nobody else gets an answer
   telegram: z.object({

@@ -46,7 +46,7 @@ assistant:
     plex: read
     plex.plex_stop_stream: control   # this one tool may act; the rest of Plex only looks
     downloads.torrent_control: none  # the rest of qBittorrent keeps its level
-    valet.report_issue: none         # Valet's own tools too, and the built-ins: valet.plan, valet.show, valet.present, valet.search_everything
+    valet.report_issue: none         # Valet's own tools too, and the built-ins: valet.plan, valet.show, valet.present, valet.search_everything, valet.web_search, valet.web_read
 ```
 
 It uses the same levels, and a tool that acts still asks first. `none` takes the tool away everywhere: from the chat, the palette's commands, rules, plans, pins and live cards. A read-only page still caps it at `read`. Valet reports a dotted key that names no tool as a config problem, with the list of tools that instance has.

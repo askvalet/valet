@@ -44,6 +44,7 @@ mcp:
 ## What to watch
 
 - **`readOnlyHint` is the server's word.** Valet can't check it. A server that wrongly marks a tool read-only gets it run with no approval. With a server you don't trust, leave it at `read` and don't rely on the hint: list nothing, and check what its tools really do.
+- **Web search stays in the chat.** `web_search` and `web_read` are never offered to a client. It has a search of its own, and Valet doesn't fetch pages or spend your searches for it.
 - **Read tools can return anything.** An MCP result is untrusted text, like a document or a feed.
 - **The approval card shows the input.** Valet doesn't know what an MCP tool will do, so the card can't say it in plain words.
 - **A [read-only page](/start/sign-in/) offers only read-only tools**, even with `access: control`.

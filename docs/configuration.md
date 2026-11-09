@@ -344,10 +344,43 @@ layout:
 | `agent` | none | hand the chat to another agent: `{ name, baseURL, apiKey, model }`, anything OpenAI-compatible (Hermes Agent's API server, say). Remove it to go back. It runs its own tools, so access levels and approvals don't apply; it gets only the conversation, answers are plain text, and a read-only page stays on Valet's assistant. The brief and shared causes stay on `model` |
 | `models` | none | more models to switch to under the chat's message box, for that chat: each `{ name, model, provider, baseURL, apiKey, contextWindow, reasoning, options }`, with only `model` required. What an entry leaves out comes from the settings above, except that `baseURL` goes only to the same provider, `apiKey` only to the same server, and `contextWindow` is the model's own. `name` is what the menu shows (default: the model id) and must be unique. The main `model` stays the default, and background calls always use it. `auto` as an item (or `models: auto` alone) also offers every model the main server lists at `GET /models`, asked by Valet with the main settings and kept five minutes; `{ auto: true, name, provider, baseURL, apiKey, reasoning, options }` does the same for another server (filled in by the same rules; Anthropic's `GET /v1/models` with `provider: anthropic`), its models run on that server with its key, and one whose id another choice already has is offered as `<name or host>/<id>`. Models that clearly aren't chat models (embeddings, speech, image, moderation, rerankers) are left out. Past eight choices the menu is searchable, with a heading per server. Without `models` there's no menu |
 | `telegram` | none | the same chat in Telegram: `{ token, users }`, a bot's token from @BotFather (in `.env`) and the numeric Telegram user ids that may talk to it, in a private chat only. Same access and approvals as the page; approvals are two buttons. Valet polls Telegram, so nothing needs to reach it from outside. Anyone not listed gets no answer; the log names the id it ignored, which is how you find yours |
+| `webSearch` | none | web search for the assistant, off unless set: see [below](#assistantwebsearch) |
 | `suggestions` | four examples | questions offered until the model has written its own, or if `background.suggest` is off |
 | `background` | `{ watch: true, brief: true, suggest: true, perDay: 100 }` | what it does unasked. `watch`: when two or more things break, say what they share, if the data shows it. `brief`: a short summary, shown when you hover the status sentence and rewritten every half hour while the page is in use. `suggest`: write the suggested questions from what's on the page, every half hour or when something changes (`suggestions` is the fallback). `perDay` caps the model calls all three make in a day. None of them get tools |
 
 What `assistant` sets is what it knows and may do. How it looks on the page is `chat`, below, apart from its name.
+
+### `assistant.webSearch`
+
+Lets the assistant look things up on the web when the homelab's own tools can't answer. Off unless set. It adds two tools
+that only look: `web_search` (titles, addresses, snippets) and `web_read` (the text of one page a search returned). This
+is not the top-level `search`, which is a link ⌘K opens in your browser.
+
+```yaml
+assistant:
+  webSearch: { provider: searxng, url: "http://searxng:8080" }      # your own; needs `search: { formats: [html, json] }` in its settings.yml
+  # webSearch: { provider: brave, apiKey: "${BRAVE_SEARCH_KEY}" }
+  # webSearch: { provider: tavily, apiKey: "${TAVILY_KEY}" }
+```
+
+| Option | Default | |
+|---|---|---|
+| `provider` | required | `searxng`, `brave` or `tavily` |
+| `url` | none | SearXNG: where yours is. Its JSON format must be on |
+| `apiKey` | none | Brave and Tavily: the key; use `${NAME}` |
+| `results` | `5` | results per search, 1–10 |
+| `safe` | `moderate` | `off`, `moderate` or `strict` (SearXNG and Brave) |
+| `language` | none | two letters, like `en` (SearXNG and Brave) |
+| `region` | none | a two-letter country, like `CA` (Brave; SearXNG with `language`) |
+| `read` | `true` | `false` leaves out `web_read` |
+| `perDay` | `100` | searches sent to the provider in a day; the same search within an hour isn't sent again |
+
+What's searched for leaves your network for the provider (with SearXNG, for the engines it asks). The model is told to
+search only for what the homelab can't answer and to keep anything private out of a query. Results and pages are text
+written by strangers: nothing in them can change anything without your approval. `web_read` opens only an address a
+search returned, only on the public internet, with no cookies or keys; it can't reach your own network. Turn either tool
+off with `access: { valet.web_search: none }` or `valet.web_read: none`. Neither is offered to an MCP client, and both
+are off in a sandbox.
 
 **Setting up by talking.** With `access: { config: control }` you can change the page from chat: "move Plex above the
 weather", "make the cards more compact", "add a card for http://box/status". It reads this file and what a section or

@@ -42,20 +42,21 @@ The cards are real. The sentence beside a card is the model's reading of it. Whe
 
 ## Prompt injection
 
-The assistant reads text written by strangers: feed titles, web pages saved to Karakeep, documents, logs. Any of that can say "ignore your instructions". A model might listen. Valet assumes it might, and works on what happens next.
+The assistant reads text written by strangers: feed titles, web pages saved to Karakeep, documents, logs, and with [web search](/assistant/web-search/) on, search results and the pages they lead to. Any of that can say "ignore your instructions". A model might listen. Valet assumes it might, and works on what happens next.
 
 - **Anything that isn't a read needs your press.** A poisoned document can make the model *ask*. You still see the card.
 - **A rule's card isn't the model's.** A poisoned page can make the model propose a rule. Its card names the trigger by the card's real title and the action in the tool's own words, so what you approve is what will run.
 - **Background calls have no tools.** The brief, the suggestions and the shared-cause line call the model with no tools at all. A poisoned feed title can make it say something odd, and nothing more.
 - **Suggestions can't carry a stranger's words.** A tapped suggestion goes out as your own message. So the model writes suggestions without seeing feeds, and any suggestion with a link in it is thrown away.
 - **A summary is a record, not orders.** When a long chat is summarised, the summary is written in a call with no tools, told that tool results in the transcript are data. The chat gets it marked as a record of what was said, and it can't pass for a note from Valet. Anything it leads the model to try still needs your press.
+- **A web page can't choose where the assistant goes.** `web_read` opens only an address a search returned, never one the model wrote, and never anything on your own network.
 - **A shared cause must be real.** The model's verdict is believed only if it names at least two of the actual problems.
 
 That leaves real gaps, and you should know them:
 
 - A poisoned page can still mislead the *answer*. It could tell the model to report that all is well.
 - An approval card written by a tool is reliable. A model's sentence asking you to approve it is not.
-- Read tools can move data into the model. With a hosted model, that data leaves your network. There's no way out from the model to anywhere else unless a tool offers one.
+- Read tools can move data into the model. With a hosted model, that data leaves your network. There's no way out from the model to anywhere else unless a tool offers one. [Web search](/assistant/web-search/) is one: the words of a search go to your search provider, and the model chooses them.
 
 ## Editing the config
 

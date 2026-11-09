@@ -21,6 +21,9 @@ const VERSION = (() => { for (const f of ['package.json', '../package.json']) { 
 const PRIVATE = new Set(['config']);
 // and nothing of Valet's own that changes something: a rule is a standing approval, and pins are the page's
 const OWN = new Set(['config', 'valet', 'pins']);
+// the web tools are the chat's: a client outside has a search of its own, and Valet won't fetch pages or spend the
+// owner's searches for it
+const CHAT_ONLY = new Set(['valet__web_search', 'valet__web_read']);
 /** how long a call stays on the line for an answer: under the minute most clients give a tool */
 export const HOLD = 45_000;
 type Tool = NonNullable<Instance['tools']>[string];
@@ -37,7 +40,7 @@ export function catalog(site: Site) {
     const level = Math.min(rank[cfg.access[id] ?? cfg.access.default ?? 'read'], site.acting && !OWN.has(id) ? rank.control : rank.read);
     if (PRIVATE.has(id) || level < rank.read) continue;
     for (const [name, t] of Object.entries(inst.tools ?? {})) {
-      if (rank[t.access] > level) continue;
+      if (rank[t.access] > level || CHAT_ONLY.has(`${id}__${name}`)) continue;
       const key = `${id}__${name}`.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64);
       out.set(key, { id, name, t, title: `${site.meta.get(id)?.name ?? id}: ${t.label ?? name}` });
     }

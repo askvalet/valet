@@ -22,6 +22,7 @@ import { troubles, Watcher } from './insight.ts';
 import { push, type Message } from './notify.ts';
 import { pushAll } from './webpush.ts';
 import { OWN_TOOLS, ownInstance } from './own.ts';
+import { webFor } from './web.ts';
 import { Backups, news } from './backups.ts';
 import { Reminders } from './reminders.ts';
 import { Timeline } from './timeline.ts';
@@ -245,7 +246,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     sendPush({ title: text, text: sub, link, device: r.device !== false, where: [...placed].find(k => k.startsWith(`${r.source}.`)) });
   };
 
-  instances.set('valet', ownInstance({ timeline, activity, watches, rules, hub: () => hub, widgets: [...placed], history, backups: bk ? backups : undefined, recap: year => buildRecap(instances, recapYear(year == null ? undefined : String(year))), undo }));
+  instances.set('valet', ownInstance({ timeline, activity, watches, rules, hub: () => hub, widgets: [...placed], history, backups: bk ? backups : undefined, web: webFor(config), recap: year => buildRecap(instances, recapYear(year == null ? undefined : String(year))), undo }));
   meta.set('valet', { type: 'valet', name: 'Valet', integration: { type: 'valet', name: 'Valet' } as Integration });
 
   const hub = new Hub(new Map([...instances].map(([id, i]) => [id, {
