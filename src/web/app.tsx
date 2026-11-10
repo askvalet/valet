@@ -61,18 +61,26 @@ export interface Page {
   sections: { title?: string; icon?: string; columns?: number; grid?: Grid; gap?: number; looks?: Record<string, CardOverride>; tabColumns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; sizes?: Record<string, Size>; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; favorites?: string[]; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
   // the wall display's own pages (/wall); none means it builds its default from the cards it hears
-  wall: { every: number; pause: number; scale?: number; night: false | { from: string; to: string; dim: number }; awake: boolean; pages: { title?: string; every?: number; clock: boolean; sections: Page['sections'] }[] };
+  // `touch`: the widgets a press may work there · `conditional`: its pages wait on the server's word (the `wall` event)
+  wall: { every: number; pause: number; scale?: number; night: false | { from: string; to: string; dim: number }; awake: boolean; screen?: string; conditional?: boolean; touch: Record<string, { hold?: boolean }>;
+    pages: { title?: string; every?: number; clock: boolean; takeover?: boolean; sections: Page['sections'] }[] };
 }
 
-export function useLive() {
+/** Which of a wall's pages may show now, as the server judges it: the ones taking turns and the one taking over. */
+export type WallNow = { pages: number[]; takeover?: number; ready: boolean };
+
+/** `wall`: the wall screen this page is ('' for /wall itself), which also asks to be told which of its pages may show. */
+export function useLive(wall?: string) {
   const [state, setState] = useState<Record<string, WidgetState>>({});
   const [online, setOnline] = useState(true);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [generation, setGeneration] = useState(0);   // bumps when the server's config was reloaded
   const [insight, setInsight] = useState<string | null | undefined>(undefined);   // undefined: nothing new since the page loaded
   const [asks, setAsks] = useState<import('./asks.tsx').Ask[]>([]);   // approvals asked from outside the chat, waiting for an answer here
+  const [wallNow, setWallNow] = useState<WallNow | null>(null);
   useEffect(() => {
-    const es = new EventSource('/api/events');
+    const es = new EventSource(wall === undefined ? '/api/events' : `/api/events?wall=${encodeURIComponent(wall)}`);
+    es.addEventListener('wall', e => setWallNow(JSON.parse((e as MessageEvent).data)));
     es.addEventListener('notice', e => {
       const n = JSON.parse((e as MessageEvent).data);
       if (n.key === 'insight') setInsight(n.text || null);     // what several problems have in common; empty once they've cleared
@@ -89,8 +97,8 @@ export function useLive() {
     es.onopen = () => setOnline(true);
     es.onerror = () => setOnline(false);
     return () => es.close();
-  }, [generation]);
-  return { state, online, notice, generation, insight, asks };
+  }, [generation, wall]);
+  return { state, online, notice, generation, insight, asks, wallNow };
 }
 
 function useClock() {
@@ -116,7 +124,7 @@ function useTheme() {
 
 const greet = (h: number) => label(h < 5 ? 'goodNight' : h < 12 ? 'goodMorning' : h < 17 ? 'goodAfternoon' : 'goodEvening');
 
-async function runAction(key: string, action: string, args?: Record<string, unknown>) {
+export async function runAction(key: string, action: string, args?: Record<string, unknown>) {
   acted();
   const r = await fetch(`/api/action/${key.split('.')[0]}/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(args ?? {}) });
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? r.statusText);
@@ -293,7 +301,9 @@ function useWide(query = '(min-width: 1280px)') {
 /** Signed in? Show the page; otherwise the sign-in screen (over the wallpaper, which needs no session). */
 const Gallery = lazy(() => import('./gallery.tsx'));
 const WallScreen = lazy(() => import('./wall.tsx'));
-const onWall = () => /^\/wall\/?$/.test(location.pathname);
+/** '' on /wall, a screen's name on /wall/<name>, and nothing anywhere else. */
+export const wallScreen = () => /^\/wall(?:\/([a-z0-9][a-z0-9-]{0,31}))?\/?$/.exec(location.pathname)?.[1] ?? (/^\/wall\/?$/.test(location.pathname) ? '' : undefined);
+const onWall = () => wallScreen() !== undefined;
 
 /** A screen that can't sign in can still show the wall, once it's paired with wall.token: /wall#key=… The key leaves the
  *  address bar at once, and the browser keeps a cookie that reads the wall and nothing else. */

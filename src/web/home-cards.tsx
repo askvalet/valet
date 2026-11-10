@@ -2,7 +2,7 @@
 // (the glass comes from WidgetView), read their own size, and stretch to fill a bento row without leaving a gap.
 import { clock as clockOf, day as dayOf, duration, firstDay, highLow, hourOf, withUnit, longDay as longDayOf, month as monthOf, range, weekday } from './format.ts';
 import { Armchair, ArrowUpDown, BedDouble, CalendarDays, ChevronLeft, ChevronRight, Droplets, Fan, Flame, House, Leaf, Minus, Moon, Plane, Plus, Power, Snowflake, Sparkles, Thermometer, Video, X, Zap, type LucideIcon } from 'lucide-react';
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
+import { useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import type { CalendarCard, CalendarEvent, ForecastCard, ThermostatCard, ThermostatMode } from '../shared/cards.ts';
 import { Metric } from './metric.tsx';
@@ -10,6 +10,7 @@ import { LinkButton } from './link-button.tsx';
 import { Cant } from './visuals/note.tsx';
 import { Empty } from './empty.tsx';
 import { HeadActions, headButton, Row, RowArrows, still } from './feel.tsx';
+import { Touch } from './touch.ts';
 import './home-cards.css';
 
 type Run = (action: string, args?: Record<string, unknown>) => Promise<void>;
@@ -560,12 +561,13 @@ const Zzz = ({ className }: { className?: string }) => (
 );
 const MODE_ICONS: Record<string, LucideIcon | typeof Zzz> = { off: Power, heat: Flame, cool: Snowflake, heat_cool: ArrowUpDown, auto: Sparkles, dry: Droplets, fan_only: Fan, home: House, sleep: Zzz, night: Moon, away: Plane, eco: Leaf, boost: Zap, comfort: Armchair, activity: BedDouble };
 
-function ModeButton({ m, on, press, disabled }: { m: ThermostatMode; on: boolean; press: () => void; disabled: boolean }) {
+function ModeButton({ m, on, press, disabled, big }: { m: ThermostatMode; on: boolean; press: () => void; disabled: boolean; big?: boolean }) {
   const I = MODE_ICONS[m.id];
-  return <button onClick={press} disabled={disabled} aria-pressed={on} title={m.label} className={cn('th-mode press flex h-11 min-w-0 flex-1 flex-col items-center justify-center rounded-control px-1', on && 'is-on')}>{I && <I className="size-icon-lg flex-none" />}<span className="max-w-full truncate text-caption leading-[1.3] font-medium">{m.label}</span></button>;
+  return <button onClick={press} disabled={disabled} aria-pressed={on} title={m.label} className={cn('th-mode press flex min-w-0 flex-1 flex-col items-center justify-center rounded-control px-1', big ? 'h-14' : 'h-11', on && 'is-on')}>{I && <I className="size-icon-lg flex-none" />}<span className="max-w-full truncate text-caption leading-[1.3] font-medium">{m.label}</span></button>;
 }
 
 export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: Run; dense?: boolean }) {
+  const finger = !!useContext(Touch);   // on the wall, for a finger: the steps and the modes grow
   const { min, max, step, unit } = card, grad = useId().replace(/[^a-zA-Z0-9]/g, ''), canSet = !!run && !!card.set && card.target != null;
   const [draft, setDraft] = useState<number | null>(null), [live, setLive] = useState<number | null>(null), [flip, setFlip] = useState<string | null>(null), [oops, setOops] = useState(false);
   const value = draft ?? card.target, drag = useRef<{ off: number; last: number } | null>(null), box = useRef<HTMLDivElement>(null), hit = useRef<SVGPathElement>(null);
@@ -642,13 +644,13 @@ export function Thermostat({ card, run, dense }: { card: ThermostatCard; run?: R
           </div>
           {canSet && (
             <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 gap-2">
-              <button aria-label="Cooler" disabled={(value ?? min) <= min} onClick={() => nudge(-1)} className="th-step press grid size-8 place-items-center rounded-full"><Minus className="size-icon" /></button>
-              <button aria-label="Warmer" disabled={(value ?? max) >= max} onClick={() => nudge(1)} className="th-step press grid size-8 place-items-center rounded-full"><Plus className="size-icon" /></button>
+              <button aria-label="Cooler" disabled={(value ?? min) <= min} onClick={() => nudge(-1)} className={cn('th-step press grid place-items-center rounded-full', finger ? 'size-12' : 'size-8')}><Minus className="size-icon" /></button>
+              <button aria-label="Warmer" disabled={(value ?? max) >= max} onClick={() => nudge(1)} className={cn('th-step press grid place-items-center rounded-full', finger ? 'size-12' : 'size-8')}><Plus className="size-icon" /></button>
             </div>
           )}
         </div>
       </div>
-      {!!card.modes?.length && <div className="flex w-full gap-1.5">{card.modes.map(m => <ModeButton key={m.id} m={m} on={flip === m.id ? !m.on : !!m.on} disabled={!run} press={() => pressMode(m)} />)}</div>}
+      {!!card.modes?.length && <div className="flex w-full gap-1.5">{card.modes.map(m => <ModeButton key={m.id} m={m} on={flip === m.id ? !m.on : !!m.on} disabled={!run} big={finger} press={() => pressMode(m)} />)}</div>}
       {!run ? <Cant className="w-full justify-center">View only: sign in to change this.</Cant> : !card.set && card.range ? <Cant className="w-full justify-center">Its range can't be set from here.</Cant> : null}
     </div>
   );

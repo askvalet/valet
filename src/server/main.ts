@@ -8,7 +8,7 @@ import { Hono, type Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { bodyLimit } from 'hono/body-limit';
 import { clientIp, sameOrigin, setupAuth, setupWall, userCommand } from './auth.ts';
-import { wallPages, wallReads, wallWidgets } from './wall.ts';
+import { judge, Presses, viewsFor, wallMayPress, wallReads, wallTokens, wallView, widgetsOf, type Mind, type WallView } from './wall.ts';
 import type { WidgetState } from '../shared/cards.ts';
 import { loadConfig, startConfig, validZone, type Config } from './config.ts';
 import { cleanCss, headers, hostGuard, served } from './security.ts';
@@ -144,17 +144,34 @@ app.use('/api/*', sameOrigin);                 // before the auth routes, so sig
 // can make the server buffer megabytes (sign-in routes included).
 app.use('/api/*', async (c, next) => c.req.path === '/api/files' ? next() : c.req.path === '/api/chat' ? chatSize(c, next) : c.req.path === '/api/voice/transcribe' ? voiceSize(c, next) : small(c, next));
 const signedIn = await setupAuth(app, config);
-// A paired wall display (wall.token) may make three reads, each held to the wall's own cards below, and nothing else
-const paired = config.auth.mode === 'none' ? () => false : await setupWall(app, config, () => site.config.wall.token);
+// A paired wall display (wall.token, or a screen's own) may make three reads, each held to its own screens' cards below,
+// and one kind of press: an action a card on its touch list offers now (wall.ts). Nothing else.
+const paired = config.auth.mode === 'none' ? () => undefined : await setupWall(app, config, () => wallTokens(site.config));
 const WALL_READS = (p: string) => p === '/api/page' || p === '/api/events' || /^\/api\/image\/[^/]+$/.test(p);
-const isWall = (c: Context) => !!(c.get as (k: string) => unknown)('wall');
+const WALL_PRESS = (p: string) => /^\/api\/action\/[^/]+\/[^/]+$/.test(p);
+/** The token a paired screen's request stands for; nothing for a person's. */
+const wallToken = (c: Context) => (c.get as (k: string) => string | undefined)('wall');
+const isWall = (c: Context) => !!wallToken(c);
+/** The screen a request is about, `?wall=<name>` (left out or empty: /wall itself). A paired one only among its token's own. */
+const screenOf = (c: Context) => { const view = wallView(site.config, c.req.query('wall') ?? ''), token = wallToken(c); return view && (!token || view.token === token) ? view : undefined; };
+const presses = new Presses();
+// which of a screen's pages may show now. What it remembers (wall.ts, `Mind`) belongs to the site, so every tab of a
+// screen agrees, a reconnect doesn't set off a takeover again, and a new config starts clean.
+const minds = new WeakMap<Site, Map<string, Mind>>();
+const wallNow = (view: WallView) => {
+  const key = own.getStore() ?? base, kept = minds.get(key) ?? minds.set(key, new Map()).get(key)!;
+  const { mind, ...now } = judge(view, site.config, Date.now(), site.hub.snapshot(), kept.get(view.name));
+  kept.set(view.name, mind);
+  return now;
+};
 app.use('/api/*', async (c, next) => {
   const p = c.req.path;
   if (p.startsWith('/api/auth/') || p.startsWith('/api/wallpaper') || p === '/api/custom.css' || p === '/api/font' || p.startsWith('/api/icon/')) return next();
   let person = false;
   const res = await signedIn(c, async () => { person = true; await next(); });
-  if (person || c.req.method !== 'GET' || !WALL_READS(p) || !paired(c)) return res;
-  (c.set as (k: string, v: unknown) => void)('wall', true);
+  const token = !person && (c.req.method === 'GET' ? WALL_READS(p) : c.req.method === 'POST' && WALL_PRESS(p)) ? paired(c) : undefined;
+  if (!token) return res;
+  (c.set as (k: string, v: unknown) => void)('wall', token);
   return next();
 });
 
@@ -235,10 +252,13 @@ const sectionsOf = (layout: Config['layout']) => layout.map(s => ({ title: s.tit
   widgets: s.widgets.map(w => w.widget).filter(k => site.hub.widget(k)),
   sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium').map(w => [w.widget, w.size])),
   looks: Object.fromEntries(s.widgets.filter(w => 'title' in w || 'icon' in w || 'header' in w || 'view' in w || 'rows' in w || 'cols' in w || cardLook(w)).map(w => [w.widget, { title: w.title, icon: w.icon, header: w.header, view: w.view, rows: w.rows, cols: w.cols, style: cardLook(w) }])) }));
-/** The wall's settings and pages; never its token. No pages: the browser builds the default one from the cards it hears. */
-const wallOf = (config: Config) => {
-  const { token: _, pages: __, layout: ___, ...wall } = config.wall;
-  return { ...wall, pages: wallPages(config).map(p => ({ title: p.title, every: p.every, clock: p.clock, sections: sectionsOf(p.layout).map(x => ({ ...x, chat: false })) })) };
+/** One screen's settings and pages; never a token, another screen, or what a `when` says (it can name people). No pages:
+ *  the browser builds the default one from the cards it hears. `touch` is what a press may work, and empty when nothing may. */
+const wallOf = (config: Config, view: WallView) => {
+  const { token: _, pages: __, layout: ___, touch: ____, people: _____, screens: ______, ...wall } = config.wall, shown = widgetsOf(view);
+  return { ...wall, screen: view.name || undefined, conditional: view.pages.some(p => p.when) || undefined,
+    touch: Object.fromEntries(site.acting ? view.touch.filter(t => shown.includes(t.widget)).map(t => [t.widget, { hold: t.hold || undefined }]) : []),
+    pages: view.pages.map(p => ({ title: p.title, every: p.every, clock: p.clock, takeover: p.takeover ? true : undefined, sections: sectionsOf(p.layout).map(x => ({ ...x, chat: false })) })) };
 };
 
 app.get('/api/page', c => {
@@ -255,10 +275,12 @@ app.get('/api/page', c => {
   const weather = config.weather && hub.widget(config.weather) ? config.weather : undefined;
   // a paired wall display learns how the page looks and the wall's own pages: no title, no assistant, nothing it could act
   // with, and no other card's name
+  const view = screenOf(c);
+  if (!view) return isWall(c) ? c.json({ error: 'not signed in' }, 401) : c.json({ error: `no wall screen "${(c.req.query('wall') ?? '').slice(0, 40)}"` }, 404);
   if (isWall(c)) return c.json(JSON.parse(site.redact(JSON.stringify({
     title: '', paired: true, canAct: false, sandbox: false, labels: { ...LABELS, ...config.labels }, format: config.format, look, weather,
-    appearance: { ...appearance, tabWalls: {}, light: appearance.light && { walls: appearance.light.walls, tabWalls: {} } }, wall: wallOf(config), sections: [],
-    widgets: Object.fromEntries([...wallWidgets(config), ...weather ? [weather] : []].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
+    appearance: { ...appearance, tabWalls: {}, light: appearance.light && { walls: appearance.light.walls, tabWalls: {} } }, wall: wallOf(config, view), sections: [],
+    widgets: Object.fromEntries([...widgetsOf(view), ...weather ? [weather] : []].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
   }))));
   const agent = config.assistant && chatAgent(config.assistant, site.acting);
   return c.json(JSON.parse(site.redact(JSON.stringify({
@@ -291,21 +313,25 @@ app.get('/api/page', c => {
     insight: site.watcher?.insight?.text,
     sections: [...(site.pins.length ? [{ widgets: site.pins.map(p => `pins.${p.id}`).filter(k => hub.widget(k)), display: 'cards', place: 'main', overview: true, sizes: {} }] : []), ...sectionsOf(config.layout)],
     widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
-    wall: wallOf(config),
+    wall: wallOf(config, view),
   }))));
 });
 
 // Live updates: the full current state on connect, then each change as it happens.
-app.get('/api/events', c => streamSSE(c, async stream => {
+app.get('/api/events', c => isWall(c) && !screenOf(c) ? c.json({ error: 'not signed in' }, 401) : streamSSE(c, async stream => {
   const { hub, redact, recent, noticeListeners } = site;
-  // a paired wall display hears the wall's cards and nothing else: no other widget, and no notices, which can name anything
-  const wall = isWall(c), config = site.config, heard = (s: WidgetState) => !wall || wallReads(config, s);
+  // a paired wall display hears its screen's cards and nothing else: no other widget, and no notices, which can name anything
+  const wall = isWall(c), config = site.config, view = wall || c.req.query('wall') !== undefined ? screenOf(c) : undefined, heard = (s: WidgetState) => !wall || wallReads(config, s, view);
+  // a wall whose pages wait on a `when` is told which may show, as that changes: on any card's news, and every few
+  // seconds for the clock and for what has to last before it counts. Which pages, never why.
+  let look = !!view?.pages.some(p => p.when), told = '', last = Date.now();
+  const clock = look ? setInterval(() => { look = true; wake?.(); }, 5000) : undefined, judged = look;
   // subscribe first so nothing changes unseen while the snapshot is written; a slow page keeps only the newest state
   // of each widget, so its queue can't grow without bound
   const queue = new Map<string, string>();
   let wake: (() => void) | null = null, reloaded = false;
   const notices: string[] = wall ? [] : recent.filter(n => Date.now() - n.at < 60_000).map(n => redact(JSON.stringify(n)));
-  const off = hub.subscribe(s => { if (!heard(s)) return; queue.delete(s.key); queue.set(s.key, redact(JSON.stringify(s))); wake?.(); });
+  const off = hub.subscribe(s => { if (judged) { look = true; wake?.(); } if (!heard(s)) return; queue.delete(s.key); queue.set(s.key, redact(JSON.stringify(s))); wake?.(); });
   for (const s of hub.snapshot()) if (heard(s) && !queue.has(s.key)) queue.set(s.key, redact(JSON.stringify(s)));
   const tell = (n: { at: number }) => { if (wall) return; notices.push(redact(JSON.stringify(n))); wake?.(); };
   const onReload = () => { reloaded = true; wake?.(); };
@@ -314,15 +340,17 @@ app.get('/api/events', c => streamSSE(c, async stream => {
   let asked = answers && asks.list().length > 0;
   const onAsk = () => { if (answers) { asked = true; wake?.(); } };
   noticeListeners.add(tell); sseClients.add(onReload); asks.listeners.add(onAsk);
-  const done = () => { off(); noticeListeners.delete(tell); sseClients.delete(onReload); asks.listeners.delete(onAsk); };
+  const done = () => { off(); clearInterval(clock); noticeListeners.delete(tell); sseClients.delete(onReload); asks.listeners.delete(onAsk); };
   stream.onAbort(done);
   while (!stream.aborted && !reloaded) {
+    if (look) { look = false; const now = JSON.stringify(wallNow(view!)); if (now !== told) { told = now; last = Date.now(); await stream.writeSSE({ event: 'wall', data: now }); } }
+    if (queue.size || notices.length || asked) last = Date.now();
     for (const [k, data] of queue) { queue.delete(k); await stream.writeSSE({ event: 'widget', data }); }
     while (notices.length) await stream.writeSSE({ event: 'notice', data: notices.shift()! });
     if (asked) { asked = false; await stream.writeSSE({ event: 'asks', data: redact(JSON.stringify(asks.list())) }); }
-    await Promise.race([new Promise<void>(r => (wake = r)), stream.sleep(25_000)]);
+    if (!look) await Promise.race([new Promise<void>(r => (wake = r)), stream.sleep(25_000)]);   // a card that reported while this was writing has already asked for another look
     wake = null;
-    if (!queue.size && !notices.length && !reloaded && !asked) await stream.writeSSE({ event: 'ping', data: '' });   // keeps proxies from closing it
+    if (!queue.size && !notices.length && !reloaded && !asked && Date.now() - last >= 24_000) { last = Date.now(); await stream.writeSSE({ event: 'ping', data: '' }); }   // keeps proxies from closing it
   }
   if (reloaded) await stream.writeSSE({ event: 'reload', data: '' });
   done();
@@ -361,14 +389,20 @@ app.post('/api/files', bodyLimit({ maxSize: 50 * 2 ** 20, onError: c => c.json({
 
 // Homepage controls: run an integration action, then refresh that integration's widgets right away.
 app.post('/api/action/:inst/:action', async c => {
-  const { instances, hub, redact } = site;
+  const { instances, hub, redact } = site, { inst, action } = c.req.param(), token = wallToken(c);
+  // a paired screen presses only what a card on its touch list offers now, with that card's own arguments, and not too
+  // fast; anything else is refused as a stranger's would be
+  if (token) {
+    if (!site.acting || !wallMayPress(viewsFor(site.config, token), hub.snapshot(), inst, action, await c.req.json().catch(() => null))) return c.json({ error: 'not signed in' }, 401);
+    if (!presses.allow(token, Date.now())) return c.json({ error: 'Too many presses. Wait a moment.' }, 429);
+  }
   if (!site.acting) return c.json({ error: 'Valet is read-only: sign-in is off (set auth.mode, or auth.trustNetwork if the network is private)' }, 403);
-  const { inst, action } = c.req.param();
   const a = instances.get(inst)?.actions?.[action];
   if (!a) return c.json({ error: `no action ${inst}.${action}` }, 404);
   const args = a.input.safeParse(await c.req.json().catch(() => ({})));
   if (!args.success) return c.json({ error: args.error.issues[0]?.message }, 400);
-  const who = (c.get as (k: string) => string | undefined)('user') ?? 'you', what = `${site.meta.get(inst)?.name ?? inst}: ${a.description ?? action}`;
+  const screen = token && screenOf(c)?.name;   // which screen says so only when its token is that screen's
+  const who = token ? `${site.config.labels.wall ?? LABELS.wall}${screen ? ` · ${screen}` : ''}` : (c.get as (k: string) => string | undefined)('user') ?? 'you', what = `${site.meta.get(inst)?.name ?? inst}: ${a.description ?? action}`;
   try {
     const result = await a.run(args.data);
     setTimeout(() => hub.refreshInstance(inst), 300);
@@ -406,7 +440,7 @@ app.get('/api/image/:inst', async c => {
   const inst = site.instances.get(c.req.param('inst'));
   const ref = c.req.query('ref');
   // a paired wall display sees only the pictures its cards show now
-  if (isWall(c) && (!ref || !site.hub.snapshot().some(s => wallReads(site.config, s) && JSON.stringify(s.card ?? null).includes(`/api/image/${encodeURIComponent(c.req.param('inst'))}?ref=${encodeURIComponent(ref)}`)))) return c.json({ error: 'not signed in' }, 401);
+  if (isWall(c) && (!ref || !site.hub.snapshot().some(s => viewsFor(site.config, wallToken(c)!).some(v => wallReads(site.config, s, v)) && JSON.stringify(s.card ?? null).includes(`/api/image/${encodeURIComponent(c.req.param('inst'))}?ref=${encodeURIComponent(ref)}`)))) return c.json({ error: 'not signed in' }, 401);
   if (!inst?.image || !ref) return c.notFound();
   try {
     const res = await inst.image(ref, c.req.header('range'));

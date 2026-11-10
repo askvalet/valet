@@ -1,6 +1,6 @@
 // Renders any card from the shared catalog with shadcn/ui primitives. The homepage and the assistant both use this,
 // so a generated card looks exactly like the widget it came from.
-import { Check, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
+import { Check, Plus, Minus, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
   Activity, Archive, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Thermometer, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Play, Shield, Wifi,
   Box, TriangleAlert, Video, Lock, LockOpen, Warehouse, DoorClosed, Zap, Droplets, BatteryMedium, User, WashingMachine, Fan, Power, type LucideIcon,
 } from 'lucide-react';
@@ -28,7 +28,8 @@ import { LinkButton } from './link-button.tsx';
 import { Meter } from './meter.tsx';
 import { Empty } from './empty.tsx';
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
-import { clock as clockOf, day as dayOf, duration, highLow, num as written, stamp, withUnit } from './format.ts';
+import { clock as clockOf, day as dayOf, duration, highLow, label, num as written, stamp, withUnit } from './format.ts';
+import { HOLD, Touch } from './touch.ts';
 import { stateOf } from '../shared/cards.ts';
 import type { ServiceState, Banner, Stall, ArticleCard, CodeCard, RankedCard, ShelfItem, StatusItem, TableCard, LinksCard, Card as CardT, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
@@ -992,6 +993,79 @@ function Table({ card }: { card: TableCard }) {
 export type RunAction = (action: string, args?: Record<string, unknown>) => Promise<void>;
 
 function Controls({ card, run }: { card: ControlsCard; run?: RunAction }) {
+  const touch = useContext(Touch);
+  if (touch && run) return <TouchControls card={card} run={run} hold={touch.hold} />;
+  return <ControlRows card={card} run={run} />;
+}
+
+/** A press that may need holding (`wall.touch`'s `hold`): the tile fills while it's held and acts when it's full; let go
+ *  early and nothing happens. From a keyboard it's a plain press. */
+function usePress(fire: () => void, hold?: boolean) {
+  const [holding, setHolding] = useState(false), timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const stop = () => { clearTimeout(timer.current); setHolding(false); };
+  useEffect(() => () => clearTimeout(timer.current), []);
+  if (!hold) return { onClick: fire };
+  return {
+    'data-holding': holding || undefined,
+    onPointerDown: () => { setHolding(true); clearTimeout(timer.current); timer.current = setTimeout(() => { setHolding(false); navigator.vibrate?.(8); fire(); }, HOLD); },
+    onPointerUp: stop, onPointerLeave: stop, onPointerCancel: stop,
+    onClick: (e: React.MouseEvent) => { if (e.detail === 0) fire(); },
+    onContextMenu: (e: React.MouseEvent) => e.preventDefault(),   // a long press on a tablet would open a menu
+  };
+}
+
+function TouchTile({ c, run, hold }: { c: Control; run: RunAction; hold?: boolean }) {
+  // what was pressed shows at once, and gives way to what the house says when it answers (or after a while, if it doesn't)
+  const [mine, setMine] = useState<Control['value']>(), [said, setSaid] = useState<'done' | 'no' | null>(null), timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => { setMine(undefined); }, [c.value]);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const value = mine ?? c.value, on = c.kind === 'toggle' && !!value;
+  const send = (extra: Record<string, unknown>, next?: Control['value']) => {
+    play('tap'); if (next !== undefined) setMine(next);
+    clearTimeout(timer.current);
+    void run(c.action!, { ...c.args, ...extra }).then(() => { if (c.kind === 'button') { play('done'); setSaid('done'); } timer.current = setTimeout(() => { setMine(undefined); setSaid(null); }, c.kind === 'button' ? 1600 : 8000); },
+      () => { play('no'); setMine(undefined); setSaid('no'); timer.current = setTimeout(() => setSaid(null), 3000); });
+  };
+  const press = usePress(() => c.kind === 'toggle' ? send({ value: !on }, !on) : send({}), hold);
+  const mark = c.icon ? <Icon name={c.icon} className="size-icon-lg" /> : c.color !== undefined ? <span className="size-3 rounded-full ring-1 ring-border" style={{ background: c.color ?? 'var(--muted)' }} /> : null;
+  const sub = [c.sub, hold && c.kind !== 'value' && label('hold')].filter(Boolean).join(' · ');
+  const words = <><span className="truncate text-item font-medium">{c.label}</span>{sub && <span className="truncate text-meta opacity-65">{sub}</span>}</>;
+  const state = (text: ReactNode) => <span className="flex min-h-5 items-center justify-between gap-2 text-meta">{mark ?? <span />}<span className={cn('truncate', said === 'no' ? 'text-bad' : 'opacity-65')}>{said === 'no' ? "Couldn't" : text}</span></span>;
+  if (c.kind === 'value' || !c.action) return <div className="touch-tile is-still">{state(<span className={cn('tabular', c.tone && c.tone !== 'neutral' && toneText[c.tone])}>{String(c.value ?? '–')}</span>)}<span className="flex min-w-0 flex-col">{words}</span></div>;
+  if (c.kind === 'toggle' || c.kind === 'button') return (
+    <button type="button" aria-pressed={c.kind === 'toggle' ? on : undefined} className={cn('touch-tile press', on && 'is-on')} {...press}>
+      {state(said === 'done' ? <Tick draw className="size-icon-sm text-good" /> : c.kind === 'toggle' ? label(on ? 'on' : 'off') : String(c.value ?? 'Run'))}<span className="flex min-w-0 flex-col">{words}</span>
+    </button>
+  );
+  // a level steps by a tenth of its range, a finger's worth; a choice is a row of its options
+  if (c.kind === 'slider') {
+    const min = c.min ?? 0, max = c.max ?? 100, by = Math.max(c.step ?? 1, (max - min) / 10), now = Number(value ?? min), to = (d: number) => { const v = Math.min(max, Math.max(min, Math.round((now + d * by) / (c.step ?? 1)) * (c.step ?? 1))); send({ value: v }, v); };
+    return (
+      <div className="touch-tile is-still col-span-2">
+        {state(<span className="tabular">{now}</span>)}
+        <span className="flex items-end justify-between gap-2"><span className="flex min-w-0 flex-col">{words}</span>
+          <span className="flex shrink-0 gap-2">
+            <button type="button" aria-label={`${c.label}: less`} disabled={now <= min} onClick={() => to(-1)} className="touch-step press"><Minus className="size-icon-lg" /></button>
+            <button type="button" aria-label={`${c.label}: more`} disabled={now >= max} onClick={() => to(1)} className="touch-step press"><Plus className="size-icon-lg" /></button>
+          </span></span>
+      </div>
+    );
+  }
+  const options = c.options ?? [];
+  return (
+    <div className="touch-tile is-still col-span-full">
+      {options.length > 6 || said === 'no' ? state(String(value ?? '–')) : null}{words}
+      {options.length <= 6 && <span className="mt-1 flex flex-wrap gap-2">{options.map(o => <button key={o} type="button" aria-pressed={o === value} onClick={() => send({ value: o }, o)} className={cn('touch-step press w-auto flex-1 px-4 text-item', o === value && 'is-on')}>{o}</button>)}</span>}
+    </div>
+  );
+}
+
+/** The same controls for a finger on the wall: everything that can be pressed is a tile, and what can't stays words. */
+function TouchControls({ card, run, hold }: { card: ControlsCard; run: RunAction; hold?: boolean }) {
+  return <div className="touch-grid">{card.items.map(c => <TouchTile key={c.id} c={c} run={run} hold={hold} />)}</div>;
+}
+
+function ControlRows({ card, run }: { card: ControlsCard; run?: RunAction }) {
   const fire = (c: Control, extra: Record<string, unknown>) => c.action && run?.(c.action, { ...c.args, ...extra });
   // a row someone just cleared away (a to-do that's done) leaves as dust; one that's only gone from the list just goes
   const dust = justActed(), rows = useRows(card.items, c => c.id, !!run, dust ? DUST_HOLD : undefined).filter(r => r.state !== 'out' || dust);

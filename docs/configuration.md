@@ -649,41 +649,85 @@ showing the headline.
 
 A full-screen page at `/wall` for a wall tablet or a spare monitor: the time and weather large across the top, then the
 cards you choose, sized to fill the screen. It's its own page, written like `layout`, so the main page doesn't change
-what it shows. It only shows: no chat, no ⌘K, no buttons or links, whoever is signed in. Left out, it shows the main
-page's services and what's playing or downloading.
+what it shows. No chat, no ⌘K, no links, whoever is signed in; the only things that can be pressed are the controls of the
+cards `touch` lists. Left out, it shows the main page's services and what's playing or downloading.
 
 ```yaml
 wall:
   every: 1m                         # how long each page stays
+  people: home.people               # who's home, for `when: { home }`
+  touch: [lights.living, home.thermostat]   # these cards' controls work on the wall
   pages:
-    - title: Now
+    - title: Morning
+      when: { time: "06:00-09:00", home: any }
       layout:
-        - widgets: [plex.streams, qbit.downloads]
-          columns: 2
+        - widgets: [weather.forecast, calendar.agenda]
     - title: House
-      every: 30s
       layout:
         - columns: { phone: 1, tablet: 2, desktop: 4 }
           widgets:
             - { widget: frigate.cameras, cols: 2, rows: 2 }
-            - { widget: ha.thermostat, rows: 2 }
-            - ha.people
-            - ha.doors
+            - { widget: home.thermostat, rows: 2 }
+            - lights.living
+            - home.doors
+    - title: Door
+      when: { event: frigate.cameras }
+      takeover: 60s
+      layout:
+        - widgets: [frigate.cameras]
+    - title: Away
+      when: { home: none }
+      layout:
+        - widgets: [services.status]
+  screens:
+    kitchen:                        # /wall/kitchen
+      touch: [lights.kitchen]
+      layout:
+        - widgets: [lights.kitchen, calendar.agenda]
 ```
 
 | Option | Default | |
 |---|---|---|
-| `pages` | the default page | pages that take turns; each has `layout` (sections, as in [`layout`](#layout), with `columns` per screen and a card's `cols` and `rows`), and optionally `title`, `every` and `clock: false` to drop the time and weather |
+| `pages` | the default page | pages that take turns; each has `layout` (sections, as in [`layout`](#layout), with `columns` per screen and a card's `cols` and `rows`), and optionally `title`, `every`, `clock: false` to drop the time and weather, `when` and `takeover` (below) |
 | `layout` | none | one page, written straight here instead of `pages` |
-| `every` | `1m` | how long each page stays: seconds, or `45s`, `2m` |
+| `every` | `1m` | how long each page stays: seconds, or `45s`, `2m`. A wall whose pages have a `when` holds each for at least 30 seconds |
 | `pause` | `2m` | after a touch, how long it stays on that page (and how long the night's dimming lifts) |
 | `scale` | grows with the screen | how big everything is, 0.6 to 3 |
 | `night` | sunset to sunrise | `{ from, to, dim }`: times like `22:00`, or `sunset`/`sunrise` from the weather (21:00 and 07:00 if it doesn't know); `dim` 0 to 0.95, default 0.9. `false`: never |
 | `awake` | `true` | keep the screen on while it's open, where the browser allows it (https or localhost) |
-| `token` | none | for a screen that can't sign in: at least 32 characters, from `.env`. Open `/wall#key=<token>` once and that browser can read the wall's cards and nothing else. Change it to unpair every screen |
+| `touch` | nothing | widgets whose controls work on the wall: `lights.living`, or `{ widget: home.locks, hold: true }` for one whose presses must be held for a moment. Only `controls` and `thermostat` cards have anything to press, and only on a wall page that shows them. Not on a read-only install |
+| `people` | none | the widget that says who's home, for `when: { home }`: a `controls` card whose rows are people (Home, a good tone, or switched on means home), or a `status` card whose rows are people (ok means home). Home Assistant's `cards:` with `person.` entities is one |
+| `screens` | none | more screens, each at `/wall/<name>` (lower case): its own `pages` or `layout`, its own `touch` (none if left out) and optionally its own `token` |
+| `token` | none | for a screen that can't sign in: at least 32 characters, from `.env`. Open `/wall#key=<token>` once and that browser can read the wall's cards, press what `touch` lists, and nothing else. Change it to unpair every screen |
 
-`/wall?page=House` keeps one page on screen. A section's `chat` and the main page's `tab`, `place`, `overview` and
-`favorites` mean nothing here. A card that isn't there is a problem `config check` names.
+A page's `when` says when it's among the pages taking turns. Every key given must hold:
+
+| Key | |
+|---|---|
+| `time` | `"06:00-09:00"`, or a list. `"22:00-06:00"` runs overnight. In `timezone` |
+| `days` | `weekdays`, `weekends`, or a list like `[sat, sun]`. An overnight range belongs to the day it starts: Friday's `22:00-06:00` runs into Saturday morning |
+| `home` | `any` (someone), `none` (nobody), or a list of names (all of them). With `only: true`, them and nobody else. Needs `people` |
+| `live` | `true`: something is live (a stream, a download, a robot cleaning: what the top bar's rings show); `false`: nothing is |
+| `playing` | `true`: something is playing and not paused; `false`: nothing is |
+| `meeting` | an online meeting (one with a way to join) starts within this long, like `10m`, or is on now. `true` is 10 minutes |
+| `event` | a widget, or a list: that widget has something live now, like a camera's event or a doorbell |
+| `any` | a list of these: at least one must hold too |
+
+A page with no `when` always may show. When none may, the wall shows the pages without a `when`, and with none of those,
+the default page. A change in who's home counts after it has lasted a minute, and something live counts at once and for
+half a minute after it stops, so a page doesn't come and go with a phone dropping off the wifi or a paused film. A page
+that may no longer show stays until its turn ends; one that may now show waits for the next turn.
+
+`takeover` (with `when`; a duration from `5s` to `1h`, or `true` for a minute) takes a page out of the turns: it
+interrupts the moment its `when` comes true, stays while it holds and for that long at most, then the wall goes back to the
+page it was on. It doesn't interrupt for something that was already happening when the wall opened, and waits a few
+seconds while someone is touching the screen.
+
+Conditions are judged on the server. The screen is told which pages may show now, never who is home or why.
+
+`/wall?page=House` keeps one page on screen while it may show. A section's `chat` and the main page's `tab`, `place`,
+`overview` and `favorites` mean nothing here. A card that isn't there, a `touch` card that isn't on that screen's pages,
+and a `when` that names a missing widget are problems `config check` names.
 
 ## Integrations
 
