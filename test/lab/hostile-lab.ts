@@ -36,7 +36,9 @@ export async function hostileModel() {
   return { url: `http://127.0.0.1:${portOf(server)}/v1`, will: (tool: string, input: unknown) => { next = [tool, input]; }, close: () => server.close() };
 }
 
-export async function startLab(o: { model: { provider?: string; baseURL: string; model: string; apiKey?: string }; poison: (attacker: string) => Poison }) {
+/** `member`: Valet behind a sign-in proxy, and every request as `sam`, whose profile gives the assistant all of
+ *  `watching` and the rest to read, and approves their own (`approve: self`). */
+export async function startLab(o: { model: { provider?: string; baseURL: string; model: string; apiKey?: string }; poison: (attacker: string) => Poison; member?: boolean }) {
   const hits: Hit[] = [];
   const attacker = await listen((q, r) => { let b = ''; q.on('data', d => b += d); q.on('end', () => { hits.push({ url: q.url!, method: q.method!, auth: q.headers.authorization, headers: JSON.stringify(q.headers), body: b.slice(0, 500) }); r.setHeader('content-type', 'application/json'); r.end('{"ok":true,"items":1}'); }); });
   const C = `http://127.0.0.1:${portOf(attacker)}`, P = o.poison(C), now = Math.floor(Date.now() / 1000);
@@ -78,7 +80,10 @@ export async function startLab(o: { model: { provider?: string; baseURL: string;
   });
   const S = `http://127.0.0.1:${portOf(svc)}`, dir = mkdtempSync(join(tmpdir(), 'valet-lab-')), file = join(dir, 'config.yaml');
   const CONFIG = `title: Test homelab
-auth: {mode: none, trustNetwork: true}
+${o.member ? `auth: {mode: proxy, proxy: {header: Remote-User, trusted: ["127.0.0.1"]}}
+profiles:
+  kids: {tabs: [Lab], assistant: {access: {default: read, watching: control, vault: read}, approve: self}}
+users: {sam: kids}` : 'auth: {mode: none, trustNetwork: true}'}
 assistant:
   name: Valet
   provider: ${o.model.provider ?? 'openai-compatible'}
@@ -97,7 +102,8 @@ integrations:
   servers: {type: proxmox, url: "${S}", key: "\${PVE_KEY}"}
   jobs: {type: healthchecks, url: "${S}", key: "\${HC_KEY}"}
 layout:
-  - widgets: [watching.watches, feeds.latest, bookmarks.recent, reader.unread, vault.data]
+  - { title: Lab, widgets: [watching.watches, feeds.latest, bookmarks.recent, reader.unread] }
+  - { title: Admin, widgets: [vault.data] }
 `;
   writeFileSync(file, CONFIG);
   const valet: ChildProcess = spawn('node', ['dist/server.js'], { env: { ...process.env, ...CANARY, LAB_MODEL_KEY: o.model.apiKey ?? '', VALET_CONFIG: file, VALET_DATA: dir, PORT: '0', HOST: '127.0.0.1' }, stdio: ['ignore', 'pipe', process.env.LAB_LOG ? 'inherit' : 'ignore'] });
@@ -114,10 +120,10 @@ layout:
   let seen = 0;   // reloads already accounted for when the last conversation began
   if (!await until(() => !!port || exited, 60_000)) throw new Error('Valet did not start');
   if (exited) throw new Error('Valet exited at start (is dist/ built? npm run build)');
-  const base = `http://127.0.0.1:${port}`;
+  const base = `http://127.0.0.1:${port}`, who: Record<string, string> = o.member ? { 'Remote-User': 'sam' } : {};
 
   async function send(messages: UIMessage[], continuing?: UIMessage) {
-    const raw = await (await fetch(`${base}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }) })).text();
+    const raw = await (await fetch(`${base}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...who }, body: JSON.stringify({ messages }) })).text();
     const chunks = raw.split('\n').filter(l => l.startsWith('data: ') && l !== 'data: [DONE]').flatMap(l => { try { return [JSON.parse(l.slice(6))]; } catch { return []; } });
     let msg = continuing;
     for await (const m of readUIMessageStream({ message: continuing && structuredClone(continuing), stream: new ReadableStream({ start(c) { for (const k of chunks) c.enqueue(k); c.close(); } }), terminateOnError: false })) msg = m as UIMessage;
@@ -148,7 +154,7 @@ layout:
         if (!pending.length) break;
         for (const p of pending) {
           const tool = p.type.replace(/^tool-/, '');
-          const card = await fetch(`${base}/api/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool, input: p.input }) }).then(r => r.json(), () => null);
+          const card = await fetch(`${base}/api/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...who }, body: JSON.stringify({ tool, input: p.input }) }).then(r => r.json(), () => null);
           asked.push({ tool, input: p.input, card });
           p.state = 'approval-responded'; p.approval = { ...p.approval, approved: approve };
         }

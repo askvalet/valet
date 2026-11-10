@@ -18,6 +18,7 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { Config } from './config.ts';
 import { sandbox } from './sandbox.ts';
 import { forgetUser } from './webpush.ts';
+import { noOwner, profileOf } from './people.ts';
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number, opts: object) => Promise<Buffer>;
 // OWASP's floor for scrypt is N=2^17,r=8,p=1 or the same work as N=2^15,r=8,p=3, which needs a quarter of the memory
@@ -54,10 +55,28 @@ async function secret() {
 }
 const validName = (n: string) => /^[a-zA-Z0-9._-]{1,32}$/.test(n);
 
-/** `node dist/server.js user add|passwd|remove|signout <name>` (asks for the password on the terminal) */
-export async function userCommand(args: string[]) {
+/** The local accounts, by name. */
+export const accounts = async () => (await load()).map(u => u.name);
+
+/** `node dist/server.js user list`: every account and what it is, an owner or its profile. `users` in the config may
+ *  name people who have no local account (they sign in through a proxy or OpenID Connect): those are listed too. */
+async function listUsers(config: Config) {
+  const local = await load(), named = Object.keys(config.users).filter(n => !local.some(u => u.name.toLowerCase() === n.trim().toLowerCase()));
+  const what = (n: string) => { const p = profileOf(config, n); return p === undefined ? 'owner' : Object.hasOwn(config.profiles, p) ? `profile: ${p}` : `profile: ${p} (not in profiles: sees nothing)`; };
+  if (!local.length && !named.length) console.log(config.auth.mode === 'local' ? 'no accounts yet: node dist/server.js user add <name>' : `no local accounts (auth.mode is ${config.auth.mode}), and users names nobody`);
+  const wide = Math.max(4, ...[...local.map(u => u.name), ...named].map(n => n.length));
+  for (const u of local) console.log(`${u.name.padEnd(wide)}  ${what(u.name)}`);
+  for (const n of named) console.log(`${n.padEnd(wide)}  ${what(n)}  (in users; ${config.auth.mode === 'local' ? 'no account yet' : `signs in through ${config.auth.mode === 'none' ? 'nothing: auth.mode is none' : config.auth.mode}`})`);
+  const no = noOwner(config, local.map(u => u.name));
+  if (no) console.log(`\n${no}`);
+  return 0;
+}
+
+/** `node dist/server.js user add|passwd|remove|signout <name>` (asks for the password on the terminal), and `user list` */
+export async function userCommand(args: string[], config?: () => Config) {
   const [cmd, name] = args;
-  if (!cmd || !name || !validName(name)) { console.log('usage: user add|passwd|remove|signout <name>'); return 1; }
+  if (cmd === 'list' && config) return listUsers(config());
+  if (!cmd || !name || !validName(name)) { console.log('usage: user list | user add|passwd|remove|signout <name>'); return 1; }
   const users = await load(), u = users.find(x => x.name === name);
   const ask = async () => {
     const { createInterface } = await import('node:readline/promises');
@@ -72,7 +91,7 @@ export async function userCommand(args: string[]) {
   else if (cmd === 'passwd') Object.assign(u, await hash(await ask()), { version: u.version + 1 });
   else if (cmd === 'signout') u.version++;
   else if (cmd === 'remove') users.splice(users.indexOf(u), 1);
-  else { console.log('usage: user add|passwd|remove|signout <name>'); return 1; }
+  else { console.log('usage: user list | user add|passwd|remove|signout <name>'); return 1; }
   await save(users);
   console.log(`${cmd}: ${name} done`);
   return 0;

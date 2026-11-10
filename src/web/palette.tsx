@@ -25,7 +25,7 @@ import type { Found } from '../shared/search.ts';
 const InlineAnswer = lazy(() => import('./assistant.tsx').then(m => ({ default: m.InlineAnswer })));
 
 export interface PaletteProps {
-  palette: boolean; setPalette: (open: boolean) => void; assistantName?: string; account: boolean; tools?: Record<string, any>; openChat: () => void; ask: (text: string) => void;
+  palette: boolean; setPalette: (open: boolean) => void; assistantName?: string; account: boolean; who?: string; tools?: Record<string, any>; openChat: () => void; ask: (text: string) => void;
   actions: { key: string; b: { label: string; action: string; args?: Record<string, unknown> }; card: string }[];
   runAction: (key: string, action: string, args?: Record<string, unknown>) => Promise<void>;
   services: StatusItem[]; SUGGESTIONS: string[]; setView: (v: string) => void;
@@ -33,7 +33,7 @@ export interface PaletteProps {
   search?: string;   // a provider name or a URL with {q}
   find?: boolean;    // some service here can be searched as you type
   placeholder?: string; ui?: ChatUi;
-  device: { sandbox?: boolean; canAct: boolean };   // whether this page could turn notifications on at all
+  device: { sandbox?: boolean; canAct: boolean; member?: boolean };   // whether this page could turn notifications on at all (they're the owners')
 }
 
 const PROVIDERS: Record<string, string> = { duckduckgo: 'https://duckduckgo.com/?q={q}', google: 'https://www.google.com/search?q={q}', kagi: 'https://kagi.com/search?q={q}',
@@ -64,7 +64,7 @@ const SHELL = '**:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]
 const stop = (e: Event) => e.preventDefault();
 const still = (el: HTMLDivElement | null) => { el?.addEventListener('wheel', stop, { passive: false }); el?.addEventListener('touchmove', stop, { passive: false }); };
 
-export default function Palette({ palette, setPalette, assistantName, ask, actions, runAction, services, SUGGESTIONS, setView, nav, sectionIcon, search, find, account, tools, openChat, placeholder, ui, device }: PaletteProps) {
+export default function Palette({ palette, setPalette, assistantName, ask, actions, runAction, services, SUGGESTIONS, setView, nav, sectionIcon, search, find, account, who, tools, openChat, placeholder, ui, device }: PaletteProps) {
   const [query, setQuery] = useState('');
   // a question is answered right here; approvals too. Only a longer conversation needs the chat.
   const [inline, setInline] = useState<{ text: string; n: number } | null>(null);
@@ -178,20 +178,20 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
     // after Open and Go to, so a service or tab with the same name as a command keeps Enter
     run,
     // this browser's say over appearance.sounds; it's remembered here and nowhere else
-    [best([sound, alerts, glass]), <CommandGroup key="feel" heading="This device">
+    [best([sound, ...(device.member ? [] : [alerts]), glass]), <CommandGroup key="feel" heading="This device">
       <CommandItem {...sound} onSelect={() => { const on = toggleSounds(); toast('sounds', { text: on ? 'Sounds on' : 'Sounds off' }, { ms: 2000 }); }}>
         {sounds.on ? <VolumeX /> : <Volume2 />}{sounds.on ? 'Turn sounds off' : 'Turn sounds on'}
       </CommandItem>
-      <CommandItem {...alerts} onSelect={() => void flipPush()} className={cn(asking && 'chat-shimmer')}>
+      {!device.member && <CommandItem {...alerts} onSelect={() => void flipPush()} className={cn(asking && 'chat-shimmer')}>
         {pushed === 'on' ? <Bell /> : <BellOff className="text-muted-foreground" />}Notifications on this device
         <span className="ml-auto text-meta text-muted-foreground">{pushed === 'on' ? 'On' : 'Off'}</span>
-      </CommandItem>
+      </CommandItem>}
       {glassy && <CommandItem {...glass} onSelect={() => { const on = toggleGlass(); setLiquid(on); toast('glass', { text: on ? 'Liquid glass on this device' : 'Frosted glass on this device' }, { ms: 2000 }); }}>
         <Droplet className={cn(!liquid && 'text-muted-foreground')} />Liquid glass
         <span className="ml-auto text-meta text-muted-foreground">{liquid ? 'On' : 'Off'}</span>
       </CommandItem>}
     </CommandGroup>],
-    [best([{ value: 'sign out' }, { value: 'sign out everywhere' }]), account && <CommandGroup key="account" heading="Account">
+    [best([{ value: 'sign out' }, { value: 'sign out everywhere' }]), account && <CommandGroup key="account" heading={who ? `Account · ${who}` : 'Account'}>
       <CommandItem value="sign out" onSelect={() => signOut()}><LogOut />Sign out</CommandItem>
       <CommandItem value="sign out everywhere" onSelect={() => signOut(true)}><LogOut />Sign out everywhere</CommandItem>
     </CommandGroup>],

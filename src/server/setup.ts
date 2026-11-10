@@ -160,7 +160,7 @@ export function setupTools(path: string, registry: Record<string, Integration>):
         const config = await readFile(path, 'utf8');
         return { data: { config, types: Object.values(registry).map(i => `${i.type} (${i.name})`), sections: Object.keys(Config.shape),
           widgets: Object.fromEntries([...validate(config, registry).instances].map(([id, inst]) => [id, Object.keys(inst.widgets).map(w => `${id}.${w}`)])),
-          changeable: [...EDITABLE, ...[...ASSISTANT].map(k => `assistant.${k}`)], ownerOnly: ['auth', 'allowedHosts', 'plugins', 'mcp', 'notify', 'sandbox', 'the rest of assistant'] } };
+          changeable: [...EDITABLE, ...[...ASSISTANT].map(k => `assistant.${k}`)], ownerOnly: ['auth', 'profiles', 'users', 'allowedHosts', 'plugins', 'mcp', 'notify', 'sandbox', 'the rest of assistant'] } };
       },
     },
     config_options: {

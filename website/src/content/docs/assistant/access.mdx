@@ -57,6 +57,10 @@ Dotted keys are optional. Without them, every tool gets its instance's level, as
 
 The palette's plain [commands](/concepts/layout/#the-palette) ("stop plex") follow the same levels, with no model. A command that uses a `control` tool on Plex needs `plex: control`, and still shows its approval card. With no `assistant` block, commands use only tools that look, plus the page's own actions.
 
+## Profiles only narrow
+
+Someone with a [profile](/start/people/) gets an assistant of their own: for each integration and tool, the lower of `assistant.access` and the profile's `access`. Their `default` covers the integrations on their tabs, and Valet's own tools (setup, rules, reminders, the log, plans, pins) and MCP servers aren't theirs. With `approve: owner`, what would ask them asks an owner instead.
+
 ## Read-only pages win
 
 Sign-in decides whether Valet may act at all. With `auth.mode: none` and no `auth.trustNetwork`, the assistant is capped at `read`, whatever `assistant.access` says. The same goes for MCP servers. See [sign-in and network safety](/start/sign-in/).

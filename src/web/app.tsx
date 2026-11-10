@@ -40,6 +40,7 @@ export type CardOverride = { title?: string; icon?: string; header?: boolean; vi
 
 export interface Page {
   title: string; greeting?: string; notice?: string; location?: string; canAct?: boolean; sandbox?: boolean;
+  member?: { name?: string; actions: string[] };   // someone with a profile: the page actions it lists, as <instance>.<action>
   appearance: { walls: Paper[]; tabWalls: Record<string, Paper[]>; light?: { walls: Paper[]; tabWalls: Record<string, Paper[]> }; rotate?: number; sizes: Partial<Record<Size, { cols?: number; rows?: number }>>; sounds?: Sounds };
   look: Look;
   hero: { greeting: boolean | string; status: boolean; search: boolean; review: boolean | 'end'; align: 'center' | 'left' | 'right'; scope?: string[] };
@@ -323,7 +324,7 @@ export function App() {
     <SignIn setup={!!me.setup} provider={me.provider} onDone={name => setMe({ ...me, user: { name } })}
       wallpaper={<div className="wallpaper" aria-hidden><Wall src="/api/wallpaper" style={{ filter: 'blur(6px)' }} /></div>} />
   );
-  return <Home account={me.mode !== 'none'} />;
+  return <Home account={me.mode !== 'none'} who={me.mode !== 'none' ? me.user.name : undefined} />;
 }
 
 // a card's own title and icon, from its layout entry: the same object for the same card, so memoised renderers stay still
@@ -340,7 +341,7 @@ export function dress(card?: CardData, o?: CardOverride) {
 const tabOf = (s: Page['sections'][number], i: number) => s.tab ?? s.title ?? `#${i}`;
 const hashNow = () => { try { return decodeURIComponent(location.hash); } catch { return location.hash; } };
 
-function Home({ account }: { account: boolean }) {
+function Home({ account, who }: { account: boolean; who?: string }) {
   const [page, setPage] = useState<Page | null>(null);
   const { state, notice, generation, insight: liveInsight, asks } = useLive();
   useEffect(() => { if (asks.length) play('notice'); }, [asks.length]);
@@ -478,7 +479,10 @@ function Home({ account }: { account: boolean }) {
   const chatMode = page?.chat.suggestions;
   const questions = !page?.assistant || chatMode === 'off' ? [] : chatMode === 'fixed' ? page.assistant.suggestions : stillTrue(suggest(state, page.assistant.suggestions, undefined, tailored?.list), tailored?.wrong ?? [], Object.values(state));
   // every card's quick actions, for ⌘K: "pause" finds "Pi-hole · Pause 5 min"
-  const actions = page?.canAct === false ? [] : Object.values(state).flatMap(w => (w.card?.buttons ?? []).map(b => ({ key: w.key, b, card: w.card!.title ?? page?.widgets[w.key]?.title ?? w.key })));
+  // someone with a profile presses only the actions it lists. The server holds that; here the page just doesn't offer the
+  // rest: no button in ⌘K, and a card of an integration they were given nothing on is read-only
+  const granted = page?.member?.actions, may = (key: string, action?: string) => !granted || granted.some(a => action ? a === `${key.split('.')[0]}.${action}` : a.startsWith(`${key.split('.')[0]}.`));
+  const actions = page?.canAct === false ? [] : Object.values(state).flatMap(w => (w.card?.buttons ?? []).filter(b => may(w.key, b.action)).map(b => ({ key: w.key, b, card: w.card!.title ?? page?.widgets[w.key]?.title ?? w.key })));
   // every service from the status cards, for ⌘K: type a name, open it
   const services = Object.values(state).flatMap(w => w.card?.type === 'status' ? w.card.items.filter(i => i.href) : []);
   // every item of a section's media cards, in the config's order: what's playing, then what's downloading…
@@ -633,7 +637,7 @@ function Home({ account }: { account: boolean }) {
                     const s = state[key], o = sec.looks?.[key], card = dress(asView(view === 'all' ? favorites(s?.card, sec.favorites) : s?.card, o?.view), o);
                     const body = <Shaped key={key} id={key} card={s?.card}><Widget large={large} fill={fill} card={card} kind={shapeOf(key)?.t} failed={s?.error} title={o?.title ?? page?.widgets[key]?.title} columns={aside ? sec.columns : undefined} minimal={dense || sec.variant === 'minimal' || (phone && view === 'all')} headless={o?.header === false || (o?.header !== true && sec.header === false)}
                       status={s?.error ? <span className="truncate text-meta text-warn" title={s.error}>{s.card ? 'stale' : s.error}</span> : null}
-                      run={page?.canAct === false ? undefined : runFor(key)} /></Shaped>;
+                      run={page?.canAct === false || !may(key) ? undefined : runFor(key)} /></Shaped>;
                     return o?.style ? <div key={key} className="card-look contents" style={o.style as React.CSSProperties}>{body}</div> : body;
                   };
                   const sized = page?.appearance.sizes ?? {};
@@ -801,9 +805,9 @@ function Home({ account }: { account: boolean }) {
       {asks.length > 0 && <Suspense fallback={null}><Asks asks={asks} /></Suspense>}
       {recap && page?.recap !== false && <Suspense fallback={null}><RecapStory onClose={closeRecap} wallpaper={page?.appearance.walls.find(w => w.image)?.image} /></Suspense>}
       {page && palette && (
-        <Suspense fallback={null}>{(P => <P palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} placeholder={page.assistant && (page.chat.placeholder || page.hero.scope?.length) ? placeholder : undefined} ui={ui} ask={ask} actions={actions} account={account} tools={page.assistant?.tools}
+        <Suspense fallback={null}>{(P => <P palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} placeholder={page.assistant && (page.chat.placeholder || page.hero.scope?.length) ? placeholder : undefined} ui={ui} ask={ask} actions={actions} account={account} who={who} tools={page.assistant?.tools}
           openChat={() => { setPalette(false); if (phone || !(chatTab && view === chatTab)) setChatOpen(true); }}
-          runAction={runAction} services={services} SUGGESTIONS={questions} setView={go} nav={nav} sectionIcon={sectionIcon} search={page.search} find={page.find} device={{ sandbox: page.sandbox, canAct: page.canAct !== false }} />)(PaletteNow ?? Palette)}</Suspense>
+          runAction={runAction} services={services} SUGGESTIONS={questions} setView={go} nav={nav} sectionIcon={sectionIcon} search={page.search} find={page.find} device={{ sandbox: page.sandbox, canAct: page.canAct !== false, member: !!page.member }} />)(PaletteNow ?? Palette)}</Suspense>
       )}
 
       {page?.assistant && (

@@ -2,7 +2,8 @@
 // needs to reach Valet from outside), hands each one to the chat exactly as the page would, and writes back the answer,
 // its cards as a few plain lines, and an approval as two buttons. Nothing here decides what the assistant may do: the
 // chat does, with the same access, approvals, redaction and activity log. Only the people listed in
-// `assistant.telegram.users` are heard, only in a private chat, and anyone else gets no answer at all.
+// `assistant.telegram.users` are heard, only in a private chat, and anyone else gets no answer at all. An id bound to an
+// account (`{ id, as: sam }`) talks as that account, so its profile holds here as it does on the page.
 import type { UIMessage } from 'ai';
 import type { Said } from './confirm.ts';
 import type { Card } from '../shared/cards.ts';
@@ -11,10 +12,12 @@ import { splitThink } from '../shared/think.ts';
 
 export interface TelegramDeps {
   token: string; users: number[]; name: string;
+  /** Telegram id → the account that person is (`users` in the config gives it its profile); an id not here is an owner */
+  as?: Map<number, string>;
   /** the chat, as the page would post to it: the whole conversation in, a UI message stream out */
-  chat(messages: UIMessage[], who: string, signal: AbortSignal): Promise<Response>;
+  chat(messages: UIMessage[], who: string, signal: AbortSignal, account?: string): Promise<Response>;
   /** an approval's words, from the tool itself */
-  confirm(tool: string, input: unknown): Promise<Said>;
+  confirm(tool: string, input: unknown, account?: string): Promise<Said>;
   /** a tool's own past-tense label, for an approval it has no words for */
   label(tool: string): string | undefined;
   redact(s: string): string;
@@ -58,7 +61,7 @@ export class Telegram {
   private d: Required<Pick<TelegramDeps, 'fetch' | 'log' | 'now' | 'api'>> & TelegramDeps;
   constructor(deps: TelegramDeps) { this.d = { ...deps, fetch: deps.fetch ?? fetch, log: deps.log ?? (l => console.log(l)), now: deps.now ?? Date.now, api: deps.api ?? 'https://api.telegram.org' }; }
   /** what makes it the same bot for the same people: a config reload that changes neither keeps it running */
-  get key() { return `${this.d.token} ${[...this.d.users].sort().join(',')}`; }
+  get key() { return `${this.d.token} ${[...this.d.users].sort().map(id => `${id}${this.d.as?.has(id) ? `=${this.d.as.get(id)}` : ''}`).join(',')}`; }
 
   async call<T = any>(method: string, body: object = {}, ms = 15_000): Promise<T> {
     const r = await this.d.fetch(`${this.d.api}/bot${this.d.token}/${method}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.any([this.stopped.signal, AbortSignal.timeout(ms)]) });
@@ -157,8 +160,10 @@ export class Telegram {
     beat.unref();
     let failed = '';
     try {
-      const who = `${(from.first_name ?? String(from.id)).replace(/[^\p{L}\p{N} ._-]/gu, '').slice(0, 32) || from.id} (Telegram)`;
-      const r = await this.d.chat(t.messages, who, this.stopped.signal);
+      // someone bound to an account is that account in the log; anyone else goes by their Telegram name
+      const account = this.d.as?.get(from.id);
+      const who = `${account ?? ((from.first_name ?? String(from.id)).replace(/[^\p{L}\p{N} ._-]/gu, '').slice(0, 32) || from.id)} (Telegram)`;
+      const r = await this.d.chat(t.messages, who, this.stopped.signal, account);
       if (!r.ok || !r.body) return void await this.say(chat, this.d.redact(String((await r.json().catch(() => ({})) as { error?: string }).error ?? 'The assistant couldn\'t answer just now.')));
       const { readUIMessageStream } = await import('ai');
       // an answer after an approval carries on the same reply, as it does on the page
@@ -168,7 +173,7 @@ export class Telegram {
       if (reply) {
         if (!reply.id) reply.id = `tg-a${t.n++}`;
         if (carried) t.messages[t.messages.length - 1] = reply; else t.messages.push(reply);
-        await this.tell(chat, t, reply);
+        await this.tell(chat, t, reply, account);
       }
       if (failed) await this.say(chat, this.d.redact(failed).slice(0, 500));
       else if (!reply) await this.say(chat, 'The assistant had nothing to say.');
@@ -182,7 +187,7 @@ export class Telegram {
     }
   }
 
-  private async tell(chat: number, t: Talk, reply: UIMessage) {
+  private async tell(chat: number, t: Talk, reply: UIMessage, account?: string) {
     const once = (key: string) => !t.told.has(key) && !!t.told.add(key);
     for (const [i, p] of (reply.parts as Part[]).entries()) {
       if (p.type === 'text' && p.state !== 'streaming') {
@@ -194,7 +199,7 @@ export class Telegram {
       } else if (isTool(p) && p.state === 'output-error') {
         if (once(`o:${p.toolCallId}`)) await this.say(chat, `Couldn't do that: ${this.d.redact(p.errorText ?? 'it failed')}`.slice(0, 500));
       } else if (asking(p) && once(`a:${p.toolCallId}`)) {
-        const tool = toolOf(p), said = await this.d.confirm(tool, p.input).catch(() => ({} as Said));
+        const tool = toolOf(p), said = await this.d.confirm(tool, p.input, account).catch(() => ({} as Said));
         const steps = said.steps ? (p.input?.steps as { why?: string }[] ?? []).map((s, n) => `${n + 1}. ${said.steps![n]?.title ?? s.why ?? 'a step'}`) : [];
         // with no words of the tool's own, say which tool and with what, so nobody approves blind
         const text = said.steps ? [p.input?.title ?? 'Do all of this?', ...steps].join('\n')

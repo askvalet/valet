@@ -113,7 +113,7 @@ export async function has(endpoint: string, user: string | undefined) { return (
 // ── sending
 
 export interface Note { title: string; body?: string; url?: string; urgent?: boolean; open?: string }   // url: a place in Valet · open: an https link a tap opens instead (a meeting)
-export interface PushOptions { contact: string; services: string[]; send?: typeof fetch }
+export interface PushOptions { contact: string; services: string[]; send?: typeof fetch; only?: (user?: string) => boolean }   // only: whose browsers hear it (owners')
 
 /** One push to one browser. Gone (404/410) means the browser dropped it, so it goes from the list too. */
 async function deliver(s: Saved, payload: Buffer, urgent: boolean, o: PushOptions) {
@@ -133,7 +133,7 @@ const fit = (n: Note) => Buffer.from(JSON.stringify({ title: n.title.slice(0, 20
 /** To every browser that turned notifications on, or only `to`. Failures are logged and never thrown: nothing here can
  *  break the page. */
 export async function pushAll(n: Note, o: PushOptions, to?: string) {
-  const list = (await load()).filter(s => !to || s.endpoint === to);
+  const list = (await load()).filter(s => to ? s.endpoint === to : !o.only || o.only(s.user));
   if (!list.length) return;
   const gone = new Set<string>(), payload = fit(n);
   await Promise.all(list.map(async s => {

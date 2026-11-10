@@ -20,6 +20,14 @@ assistant:
 2. Put the token in `.env` as `TELEGRAM_BOT_TOKEN`, and add the block above with an empty guess for your id, such as `users: [1]`.
 3. Message your new bot once. Valet's log names the id it ignored: `telegram: ignored a message from user 123456789`. Put that number in `users`.
 
+An id on its own is an owner. To give someone their own assistant, bind their id to their account, and their [profile](/start/people/) holds here as on the page:
+
+```yaml
+    users: [123456789, { id: 987654321, as: sam }]
+```
+
+With `approve: owner` in that profile, Sam gets no buttons: what needs a yes waits on an owner's page.
+
 Valet asks Telegram for new messages itself, so nothing has to reach Valet from the internet and there's no port to open. Use a bot of its own: Telegram hands a bot's messages to one reader only, so a token another program is already listening on won't work for both.
 
 ## What it does
@@ -32,10 +40,10 @@ Valet asks Telegram for new messages itself, so nothing has to reach Valet from 
 ## What to know
 
 - **Only the ids in `users` are heard, and only in a private chat.** Anyone else, and any group, gets no answer at all, so nobody learns the bot is a Valet.
-- **It can do what the chat can do, no more.** `assistant.access` decides, per integration and per tool. A [read-only page](/start/sign-in/) is read-only here too.
+- **It can do what the chat can do, no more.** `assistant.access` decides, per integration and per tool, narrowed by the profile of an account an id is bound to. A display name is only a name: only `as` makes someone that account. A [read-only page](/start/sign-in/) is read-only here too.
 - **What you ask and what it answers pass through Telegram.** Bot chats aren't end-to-end encrypted, so Telegram's servers can read them. Answers go through the [redactor](/security/secrets/) first, like everything else. If something shouldn't leave your network, set that integration's access to `none` or keep to the page.
 - **Whoever holds your Telegram account holds the bot.** Approvals are buttons in that chat. Lock Telegram on your phone if the assistant has `control` over anything that matters.
-- **Everything it changes is in the activity log**, under your Telegram name with "(Telegram)" after it.
+- **Everything it changes is in the activity log**, under your Telegram name (or the account an id is bound to) with "(Telegram)" after it.
 - **It can't be set up from chat.** `assistant.telegram` is the owner's to edit by hand, like the rest of the assistant's access.
 - Voice messages, photos and files aren't read. It says so.
 

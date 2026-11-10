@@ -7,7 +7,8 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono, type Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { bodyLimit } from 'hono/body-limit';
-import { clientIp, sameOrigin, setupAuth, setupWall, userCommand } from './auth.ts';
+import { accounts, clientIp, sameOrigin, setupAuth, setupWall, userCommand } from './auth.ts';
+import { noOwner, viaOwner, viewOf, type View } from './people.ts';
 import { wallPages, wallReads, wallWidgets } from './wall.ts';
 import type { WidgetState } from '../shared/cards.ts';
 import { loadConfig, startConfig, validZone, type Config } from './config.ts';
@@ -25,7 +26,7 @@ import { findersOf, search } from './search.ts';
 import { confirmWords } from './confirm.ts';
 import { Asks } from './asks.ts';
 import { buildSite, type Site } from './site.ts';
-import { rank, toolAccess } from './run.ts';
+import { accessOf, rank, toolAccess } from './run.ts';
 import { customs } from '../shared/slash.ts';
 import { CORE } from './lazy.ts';
 import { registry } from '../integrations/index.ts';
@@ -47,7 +48,7 @@ const HOST = process.env.HOST ?? '0.0.0.0';
 // `node dist/server.js user add <name>`, `config check` and friends run and exit
 if (process.argv[2] === 'new-integration') process.exit(await (await import('./plugins.ts')).scaffold(process.argv[3]));
 if (process.argv[2] === 'check-integration') process.exit(await (await import('./plugins.ts')).checkPlugin(process.argv[3]));
-if (process.argv[2] === 'user') process.exit(await userCommand(process.argv.slice(3)).catch(e => { console.error(String(e.message ?? e)); return 1; }));
+if (process.argv[2] === 'user') process.exit(await userCommand(process.argv.slice(3), () => loadConfig(CONFIG)).catch(e => { console.error(String(e.message ?? e)); return 1; }));
 if (process.argv[2] === 'config') process.exit(await (await import('./cli.ts')).configCommand(process.argv.slice(3), CONFIG, registry));
 
 const sseClients = new Set<() => void>();
@@ -69,6 +70,8 @@ let base: Site = await buildSite(config, registry, fromPlugins, opts);
 // In a sandbox each request runs against that visitor's own copy of the site; otherwise there's just the one.
 const own = new AsyncLocalStorage<Site>();
 const site = new Proxy({} as Site, { get: (_, k) => Reflect.get(own.getStore() ?? base, k), set: (_, k, v) => Reflect.set(own.getStore() ?? base, k, v) });
+// said at start and after each reload, loudly: with local accounts, a `users` that leaves no owner (people.ts)
+const ownerless = async () => { const no = noOwner(site.config, await accounts()); if (no) console.error(`config: ${no}`); };
 const stopSite = (s: Site) => { s.hub.dispose(); s.watcher?.stop(); s.watches.stop(); s.rules.stop(); s.stopBackups(); s.stopReminders(); };
 // A new site takes over from the old one, and every open page refetches and reconnects.
 async function swap(next: Config) {
@@ -96,6 +99,7 @@ if (config.reload) {
     if (JSON.stringify(next.auth) !== JSON.stringify(site.config.auth) || JSON.stringify(next.plugins) !== JSON.stringify(site.config.plugins)) console.log('config: auth and plugins changes take effect after a restart');
     if (next.timezone) { process.env.TZ = next.timezone; zoneKnown = true; }
     await swap(next);
+    void ownerless();
     console.log(`config: reloaded · ${site.instances.size} integrations · ${site.placed.size} widgets${site.problems.length ? ` · ${site.problems.length} problems` : ''}`);
   };
   // editors save by replacing the file, which some watchers see as a delete; watch the folder and settle for 300ms
@@ -144,6 +148,7 @@ app.use('/api/*', sameOrigin);                 // before the auth routes, so sig
 // can make the server buffer megabytes (sign-in routes included).
 app.use('/api/*', async (c, next) => c.req.path === '/api/files' ? next() : c.req.path === '/api/chat' ? chatSize(c, next) : c.req.path === '/api/voice/transcribe' ? voiceSize(c, next) : small(c, next));
 const signedIn = await setupAuth(app, config);
+void ownerless();
 // A paired wall display (wall.token) may make three reads, each held to the wall's own cards below, and nothing else
 const paired = config.auth.mode === 'none' ? () => false : await setupWall(app, config, () => site.config.wall.token);
 const WALL_READS = (p: string) => p === '/api/page' || p === '/api/events' || /^\/api\/image\/[^/]+$/.test(p);
@@ -157,6 +162,15 @@ app.use('/api/*', async (c, next) => {
   (c.set as (k: string, v: unknown) => void)('wall', true);
   return next();
 });
+
+// Who is asking (people.ts). With `profiles`, some accounts get a narrower Valet, and it's narrowed here, on the server:
+// every route below reads this view and answers with what that person may see and do, or refuses. A new route does the
+// same. (A paired wall is not a person; `isWall` is checked first wherever it can reach.)
+const userOf = (c: Context) => (c.get as (k: string) => string | undefined)('user');
+const viewFor = (c: Context): View => viewOf(site, (c.get as (k: string) => string | undefined)('account') ?? userOf(c));
+/** The site as this person's doors read it: their config (their assistant or none) and their integrations. */
+const siteFor = (v: View) => ({ config: v.config, instances: v.instances, meta: site.meta, acting: site.acting, redact: site.redact, activity: site.activity, hub: site.hub });
+const OWNERS = 'That belongs to the owners of this Valet.';
 
 // by number, so only what the config lists can be asked for
 const IMAGES: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.avif': 'image/avif' };
@@ -231,86 +245,100 @@ const fontOf = ({ appearance: { font } }: Config) => {
 };
 
 /** A layout's sections as the page draws them, for the main page and the wall's pages alike */
-const sectionsOf = (layout: Config['layout']) => layout.map(s => ({ title: s.title, icon: s.icon, columns: typeof s.columns === 'object' ? s.columns.desktop ?? s.columns.tablet ?? s.columns.phone : s.columns, grid: typeof s.columns === 'object' ? s.columns : undefined, gap: s.gap, tabColumns: s.tabColumns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat, favorites: s.favorites,
-  widgets: s.widgets.map(w => w.widget).filter(k => site.hub.widget(k)),
-  sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium').map(w => [w.widget, w.size])),
-  looks: Object.fromEntries(s.widgets.filter(w => 'title' in w || 'icon' in w || 'header' in w || 'view' in w || 'rows' in w || 'cols' in w || cardLook(w)).map(w => [w.widget, { title: w.title, icon: w.icon, header: w.header, view: w.view, rows: w.rows, cols: w.cols, style: cardLook(w) }])) }));
-/** The wall's settings and pages; never its token. No pages: the browser builds the default one from the cards it hears. */
-const wallOf = (config: Config) => {
+const sectionsOf = (layout: Config['layout'], sees: (key: string) => boolean = () => true) => layout.map(s => ({ title: s.title, icon: s.icon, columns: typeof s.columns === 'object' ? s.columns.desktop ?? s.columns.tablet ?? s.columns.phone : s.columns, grid: typeof s.columns === 'object' ? s.columns : undefined, gap: s.gap, tabColumns: s.tabColumns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat, favorites: s.favorites,
+  widgets: s.widgets.map(w => w.widget).filter(k => site.hub.widget(k) && sees(k)),
+  sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium' && sees(w.widget)).map(w => [w.widget, w.size])),
+  looks: Object.fromEntries(s.widgets.filter(w => sees(w.widget) && ('title' in w || 'icon' in w || 'header' in w || 'view' in w || 'rows' in w || 'cols' in w || cardLook(w))).map(w => [w.widget, { title: w.title, icon: w.icon, header: w.header, view: w.view, rows: w.rows, cols: w.cols, style: cardLook(w) }])) }));
+/** The wall's settings and pages; never its token. No pages: the browser builds the default one from the cards it hears.
+ *  For someone with a profile, the pages keep only the cards they see, and a page left with none is gone. */
+const wallOf = (config: Config, v?: View) => {
   const { token: _, pages: __, layout: ___, ...wall } = config.wall;
-  return { ...wall, pages: wallPages(config).map(p => ({ title: p.title, every: p.every, clock: p.clock, sections: sectionsOf(p.layout).map(x => ({ ...x, chat: false })) })) };
+  const pages = wallPages(config).map(p => ({ title: p.title, every: p.every, clock: p.clock, sections: sectionsOf(p.layout, v?.sees).map(x => ({ ...x, chat: false })).filter(x => !v || v.owner || x.widgets.length) }));
+  return { ...wall, pages: pages.filter(p => !v || v.owner || p.sections.length) };
 };
 
 app.get('/api/page', c => {
   const { config, instances, hub, placed } = site;
-  const tz = c.req.query('tz');
+  // someone with a profile gets the same page with less in it: their tabs, their cards, their assistant or none, and
+  // nothing that names the rest (a hidden tab's wallpaper, its place in the nav, a tool they can't use)
+  const wall = isWall(c), v = wall ? viewOf(site) : viewFor(c), mine = v.config, me = v.owner ? undefined : v;
+  const tz = v.owner && !wall ? c.req.query('tz') : undefined;
   if (!zoneKnown && tz && validZone(tz)) { process.env.TZ = tz; zoneKnown = true; console.log(`time zone: ${tz} (from the browser; set timezone in config.yaml to fix it)`); }
-  const lang = c.req.query('lang');
+  const lang = v.owner && !wall ? c.req.query('lang') : undefined;
   if (config.format.locale === 'auto' && lang && lang.length < 36 && hearBrowser(lang)) console.log(`language: ${lang} (from the browser; set format.locale in config.yaml to fix it)`);
   const look = { ...lookOf(config), theme: config.appearance.theme, css: site.cssVersion && `/api/custom.css?v=${site.cssVersion}`, font: fontOf(config) };
   // walls are dark's (or the only ones); light's come too when the config gives one for each theme
   const { wallpaper, wallpapers } = config.appearance, both = [wallpaper, ...Object.values(wallpapers)].some(w => isBoth(w));
-  const set = (light = false) => ({ walls: wallsOf(wallpaper, light), tabWalls: Object.fromEntries(Object.entries(wallpapers).map(([t, w]) => [t, wallsOf(w, light)])) });
+  const set = (light = false) => ({ walls: wallsOf(wallpaper, light), tabWalls: Object.fromEntries(Object.entries(wallpapers).filter(([t]) => v.tab(t)).map(([t, w]) => [t, wallsOf(w, light)])) });
   const appearance = { ...set(), light: both ? set(true) : undefined, rotate: config.appearance.rotate, sizes: config.appearance.sizes, sounds: config.appearance.sounds };
-  const weather = config.weather && hub.widget(config.weather) ? config.weather : undefined;
+  const weather = config.weather && hub.widget(config.weather) && v.sees(config.weather) ? config.weather : undefined;
   // a paired wall display learns how the page looks and the wall's own pages: no title, no assistant, nothing it could act
   // with, and no other card's name
-  if (isWall(c)) return c.json(JSON.parse(site.redact(JSON.stringify({
+  if (wall) return c.json(JSON.parse(site.redact(JSON.stringify({
     title: '', paired: true, canAct: false, sandbox: false, labels: { ...LABELS, ...config.labels }, format: config.format, look, weather,
     appearance: { ...appearance, tabWalls: {}, light: appearance.light && { walls: appearance.light.walls, tabWalls: {} } }, wall: wallOf(config), sections: [],
     widgets: Object.fromEntries([...wallWidgets(config), ...weather ? [weather] : []].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
   }))));
-  const agent = config.assistant && chatAgent(config.assistant, site.acting);
+  const a = mine.assistant, agent = a && chatAgent(a, site.acting), level = (id: string, n: string) => Math.min(toolAccess(a, id, n), site.acting ? rank.control : rank.read);
+  const gone = new Set(me ? config.layout.flatMap(s => s.tab ?? s.title ?? []).filter(t => !me.tab(t)) : []);
+  const sections = sectionsOf(config.layout.filter(s => v.tab(s.tab ?? s.title)), v.sees);
   return c.json(JSON.parse(site.redact(JSON.stringify({
-    title: config.title, greeting: config.greeting, notice: config.notice, location: config.location, canAct: site.acting, sandbox: sandbox.on, search: config.search, find: findersOf(site).length > 0,
+    title: config.title, greeting: config.greeting, notice: config.notice, location: config.location, canAct: site.acting, sandbox: sandbox.on, search: config.search, find: findersOf(siteFor(v)).length > 0,
+    // a profile: who this is and the page actions they were given, so the page offers no button the server would refuse
+    member: me && { name: me.name, actions: config.profiles[me.profile!]?.actions ?? [] },
     // everyone learns an edit didn't apply; the error itself can quote the file, so only people who can change things see it
-    configError: configError ? { message: site.acting ? site.redact(configError.message).slice(0, 600) : undefined, at: configError.at } : undefined,
-    welcome: config.welcome ? { path: CONFIG, saved, setup: site.acting && instances.has('config') } : undefined,
-    recap: config.recap, hero: { ...config.hero, scope: config.hero.scope === true ? scopeOf([...site.meta.values()].map(m => m.type)) : config.hero.scope || undefined }, labels: { ...LABELS, ...config.labels }, format: config.format,
+    configError: configError ? { message: site.acting && v.owner ? site.redact(configError.message).slice(0, 600) : undefined, at: configError.at } : undefined,
+    welcome: config.welcome && v.owner ? { path: CONFIG, saved, setup: site.acting && instances.has('config') } : undefined,
+    recap: config.recap && v.owner, hero: { ...config.hero, scope: config.hero.scope === true ? scopeOf([...site.meta].filter(([id]) => !me || [...placed].some(k => k.startsWith(`${id}.`) && me.sees(k))).map(([, m]) => m.type)) : config.hero.scope || undefined }, labels: { ...LABELS, ...config.labels }, format: config.format,
     appearance, look,
     // the chat's own commands, by name and what they're for: the prompt is the server's to send
-    chat: { ...config.chat, commands: config.assistant ? customs(config.chat.commands).map(c => ({ name: c.name, description: c.description ?? (c.prompt.length > 70 ? `${c.prompt.slice(0, 68)}…` : c.prompt), ...(c.prompt.includes('{input}') ? { input: true } : {}) })) : [] },
+    chat: { ...config.chat, commands: a ? customs(mine.chat.commands).map(c => ({ name: c.name, description: c.description ?? (c.prompt.length > 70 ? `${c.prompt.slice(0, 68)}…` : c.prompt), ...(c.prompt.includes('{input}') ? { input: true } : {}) })) : [] },
     // which halves of voice are on, never where they go
-    voice: sandbox.on ? undefined : voiceForPage(config),
+    voice: sandbox.on ? undefined : voiceForPage(mine),
     // the demo's model is scripted, and says so beside its name
-    assistant: config.assistant ? { ...(agent ? { name: agent.name, model: agent.model, external: true } : { name: config.assistant.name, model: sandbox.on ? `${config.assistant.model} (demo)` : config.assistant.model,
+    assistant: a ? { ...(agent ? { name: agent.name, model: agent.model, external: true } : { name: a.name, model: sandbox.on ? `${a.model} (demo)` : a.model,
         // assistant.models: what the chat's header offers, the default first; one model offers nothing. With `auto`, the
         // rest of each listed server's models come from /api/models when the menu opens
-        ...(config.assistant.models.length ? { models: choices(config.assistant).map(c => ({ id: c.id, model: c.settings.model })), ...(discovery(config.assistant).on && !sandbox.on ? { discover: true } : {}) } : {}) }), suggestions: config.assistant.suggestions,
-      // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>")
-      tools: Object.fromEntries([...instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {})
+        ...(a.models.length ? { models: choices(a).map(c => ({ id: c.id, model: c.settings.model })), ...(discovery(a).on && !sandbox.on ? { discover: true } : {}) } : {}) }), suggestions: a.suggestions,
+      // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>"); a profile's, only the ones it may use
+      tools: Object.fromEntries([...v.instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {}).filter(([n, t]) => !me || rank[t.access] <= level(id, n))
         .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access, live: t.live }]))),
       // what @ offers: integrations with a tool the chat may use here, as the chat itself decides (chat.ts)
-      integrations: [...instances].filter(([id, inst]) => !CORE.has(id) && Object.entries(inst.tools ?? {}).some(([n, t]) => rank[t.access] <= Math.min(toolAccess(config.assistant, id, n), site.acting ? rank.control : rank.read)))
+      integrations: [...v.instances].filter(([id, inst]) => !CORE.has(id) && Object.entries(inst.tools ?? {}).some(([n, t]) => rank[t.access] <= level(id, n)))
         .map(([id]) => ({ id, name: site.meta.get(id)?.name ?? id })) } : null,
-    menubar: { ...config.menubar, widgets: config.menubar.widgets.filter(k => hub.widget(k)) },
-    nav: config.nav,
-    live: config.live && { activities: config.live.activities.filter(k => hub.widget(k)) },
+    menubar: { ...config.menubar, widgets: config.menubar.widgets.filter(k => hub.widget(k) && v.sees(k)) },
+    nav: me ? { ...config.nav, hide: config.nav.hide.filter(t => !gone.has(t)), order: config.nav.order.filter(t => !gone.has(t)) } : config.nav,
+    live: config.live && { activities: config.live.activities.filter(k => hub.widget(k) && v.sees(k)) },
     weather,
-    calendar: config.calendar && hub.widget(config.calendar) ? config.calendar : undefined,
-    insight: site.watcher?.insight?.text,
-    sections: [...(site.pins.length ? [{ widgets: site.pins.map(p => `pins.${p.id}`).filter(k => hub.widget(k)), display: 'cards', place: 'main', overview: true, sizes: {} }] : []), ...sectionsOf(config.layout)],
-    widgets: Object.fromEntries([...placed].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
-    wall: wallOf(config),
+    calendar: config.calendar && hub.widget(config.calendar) && v.sees(config.calendar) ? config.calendar : undefined,
+    // what several problems have in common is about the whole homelab: owners only
+    insight: v.owner ? site.watcher?.insight?.text : undefined,
+    sections: me ? sections.map(x => ({ ...x, chat: x.chat && !!a })).filter(x => x.widgets.length || x.chat)
+      : [...(site.pins.length ? [{ widgets: site.pins.map(p => `pins.${p.id}`).filter(k => hub.widget(k)), display: 'cards', place: 'main', overview: true, sizes: {} }] : []), ...sections],
+    widgets: Object.fromEntries([...placed].filter(k => hub.widget(k) && v.sees(k)).map(k => [k, { title: hub.widget(k)!.title }])),
+    wall: wallOf(config, v),
   }))));
 });
 
 // Live updates: the full current state on connect, then each change as it happens.
 app.get('/api/events', c => streamSSE(c, async stream => {
   const { hub, redact, recent, noticeListeners } = site;
-  // a paired wall display hears the wall's cards and nothing else: no other widget, and no notices, which can name anything
-  const wall = isWall(c), config = site.config, heard = (s: WidgetState) => !wall || wallReads(config, s);
+  // a paired wall display hears the wall's cards and nothing else: no other widget, and no notices, which can name anything.
+  // Someone with a profile hears their own cards, and a notice only when it's the page's own about one of those cards:
+  // a reminder, a rule, backups and the insight are Valet's word to owners
+  const wall = isWall(c), config = site.config, v = wall ? viewOf(site) : viewFor(c), heard = (s: WidgetState) => wall ? wallReads(config, s) : v.sees(s.key);
+  const told = (n: { key?: string; owner?: true }) => !wall && (v.owner || (!n.owner && !!n.key && v.sees(n.key)));
   // subscribe first so nothing changes unseen while the snapshot is written; a slow page keeps only the newest state
   // of each widget, so its queue can't grow without bound
   const queue = new Map<string, string>();
   let wake: (() => void) | null = null, reloaded = false;
-  const notices: string[] = wall ? [] : recent.filter(n => Date.now() - n.at < 60_000).map(n => redact(JSON.stringify(n)));
+  const notices: string[] = recent.filter(n => told(n) && Date.now() - n.at < 60_000).map(n => redact(JSON.stringify(n)));
   const off = hub.subscribe(s => { if (!heard(s)) return; queue.delete(s.key); queue.set(s.key, redact(JSON.stringify(s))); wake?.(); });
   for (const s of hub.snapshot()) if (heard(s) && !queue.has(s.key)) queue.set(s.key, redact(JSON.stringify(s)));
-  const tell = (n: { at: number }) => { if (wall) return; notices.push(redact(JSON.stringify(n))); wake?.(); };
+  const tell = (n: { at: number; key?: string; owner?: true }) => { if (!told(n)) return; notices.push(redact(JSON.stringify(n))); wake?.(); };
   const onReload = () => { reloaded = true; wake?.(); };
   // approvals waiting from outside the chat: the whole (short) list whenever it changes, and on connect if there is one
-  const answers = !wall && site.acting;   // only a page that could answer one is shown any
+  const answers = !wall && site.acting && v.owner;   // only a page that could answer one is shown any: an owner's
   let asked = answers && asks.list().length > 0;
   const onAsk = () => { if (answers) { asked = true; wake?.(); } };
   noticeListeners.add(tell); sseClients.add(onReload); asks.listeners.add(onAsk);
@@ -340,6 +368,7 @@ async function sweepUploads() {
 if (!sandbox.on) { void sweepUploads(); setInterval(() => void sweepUploads(), 3_600_000).unref(); }
 app.post('/api/files', bodyLimit({ maxSize: 50 * 2 ** 20, onError: c => c.json({ error: 'files are limited to 50 MB' }, 413) }), async c => {
   if (!site.acting || sandbox.on) return c.json({ error: site.acting ? 'This demo keeps nothing, so it takes no files' : 'Valet is read-only: attaching files is off' }, 403);
+  if (!viewFor(c).config.assistant) return c.json({ error: 'Files are for the assistant, and your profile has none' }, 403);   // a profile with no chat has nowhere to send one
   // at most 500 MB waiting to be filed at once
   let held = 0;
   for (const f of await readdir(UPLOAD_DIR).catch(() => [] as string[])) held += (await stat(resolve(UPLOAD_DIR, f)).catch(() => ({ size: 0 }))).size;
@@ -364,11 +393,13 @@ app.post('/api/action/:inst/:action', async c => {
   const { instances, hub, redact } = site;
   if (!site.acting) return c.json({ error: 'Valet is read-only: sign-in is off (set auth.mode, or auth.trustNetwork if the network is private)' }, 403);
   const { inst, action } = c.req.param();
+  // a profile presses the actions it lists and no others; the answer is the same whether or not the action exists
+  if (!viewFor(c).presses(inst, action)) return c.json({ error: 'That isn\'t part of your profile. An owner can do it, or add it to your profile.' }, 403);
   const a = instances.get(inst)?.actions?.[action];
   if (!a) return c.json({ error: `no action ${inst}.${action}` }, 404);
   const args = a.input.safeParse(await c.req.json().catch(() => ({})));
   if (!args.success) return c.json({ error: args.error.issues[0]?.message }, 400);
-  const who = (c.get as (k: string) => string | undefined)('user') ?? 'you', what = `${site.meta.get(inst)?.name ?? inst}: ${a.description ?? action}`;
+  const who = userOf(c) ?? 'you', what = `${site.meta.get(inst)?.name ?? inst}: ${a.description ?? action}`;
   try {
     const result = await a.run(args.data);
     setTimeout(() => hub.refreshInstance(inst), 300);
@@ -381,32 +412,41 @@ app.post('/api/action/:inst/:action', async c => {
   }
 });
 
-// An approval asked from outside the chat (an MCP client's call): a signed-in person answers it here, like a button on
-// the page, so a read-only page can't. What runs is what was asked, never anything this request says.
+// An approval asked from outside the chat (an MCP client's call, or someone whose profile says approve: owner): an owner
+// answers it here, like a button on the page, so a read-only page can't, and neither can whoever asked. What runs is what
+// was asked, never anything this request says.
 app.post('/api/asks/:id', async c => {
   if (!site.acting) return c.json({ error: 'Valet is read-only: sign-in is off (set auth.mode, or auth.trustNetwork if the network is private)' }, 403);
+  if (!viewFor(c).owner) return c.json({ error: OWNERS }, 403);
   const { ok } = await c.req.json().catch(() => ({})) as { ok?: unknown };
   if (typeof ok !== 'boolean') return c.json({ error: 'ok: true or false' }, 400);
-  const ask = asks.answer(c.req.param('id'), ok);
+  const ask = asks.answer(c.req.param('id'), ok, userOf(c));
   if (!ask) return c.json({ error: 'That\'s no longer waiting.' }, 404);
   site.activity.add({ who: userOf(c) ?? 'you', via: 'page', what: `${ok ? 'Approved' : 'Declined'} for ${ask.from}: ${ask.said.title}`, ok: true });
   return c.json({ ok: true });
 });
 
 // ⌘K's plain commands ("pause downloads"): run by rule, never by a model, through the same doors as the chat (commands.ts)
-app.get('/api/commands', c => listCommands(c, site));
-app.post('/api/command', c => runCommand(c, site));
+// For a profile: the page actions it lists, and tools its own assistant may use that only look.
+const commandSite = (c: Context) => { const v = viewFor(c); return { ...siteFor(v), member: v.owner ? undefined : v }; };
+app.get('/api/commands', c => listCommands(c, commandSite(c)));
+app.post('/api/command', c => runCommand(c, commandSite(c)));
 // ⌘K's search inside the services: every search tool at once, each answer sent as it arrives (search.ts)
-app.get('/api/search', c => search(c, site));
+// a profile searches what its own assistant may read, and nothing without one
+app.get('/api/search', c => search(c, siteFor(viewFor(c))));
 // ⌘K's docs: Valet's own pages, searched here from the copy it ships, so it works offline. Read-only and public
-// knowledge, so a read-only page gets it too; titles, paths and a line each, never a file.
+// knowledge, so a read-only page and every profile get it too; titles, paths and a line each, never a file.
 app.get('/api/docs', async c => c.json({ docs: await paletteDocs(c.req.query('q') ?? '', registry) }));
 
 app.get('/api/image/:inst', async c => {
   const inst = site.instances.get(c.req.param('inst'));
   const ref = c.req.query('ref');
+  const shown = (ok: (s: WidgetState) => boolean) => !!ref && site.hub.snapshot().some(s => ok(s) && JSON.stringify(s.card ?? null).includes(`/api/image/${encodeURIComponent(c.req.param('inst'))}?ref=${encodeURIComponent(ref)}`));
   // a paired wall display sees only the pictures its cards show now
-  if (isWall(c) && (!ref || !site.hub.snapshot().some(s => wallReads(site.config, s) && JSON.stringify(s.card ?? null).includes(`/api/image/${encodeURIComponent(c.req.param('inst'))}?ref=${encodeURIComponent(ref)}`)))) return c.json({ error: 'not signed in' }, 401);
+  if (isWall(c)) { if (!shown(s => wallReads(site.config, s))) return c.json({ error: 'not signed in' }, 401); }
+  // and someone with a profile, the pictures their cards show now, or an integration's their own assistant may read (its
+  // answers carry pictures too). The same answer as for a picture that isn't there
+  else { const v = viewFor(c); if (!v.owner && !shown(s => v.sees(s.key)) && accessOf(v.config.assistant, c.req.param('inst')) < rank.read) return c.notFound(); }
   if (!inst?.image || !ref) return c.notFound();
   try {
     const res = await inst.image(ref, c.req.header('range'));
@@ -421,7 +461,8 @@ app.get('/api/image/:inst', async c => {
 // The approval card's words: what this action is about to do. It only reads, and nothing runs until the person says so.
 app.post('/api/confirm', async c => {
   const { tool, input } = await c.req.json().catch(() => ({} as any));
-  return c.json(await confirmWords(site, tool, input));
+  const v = viewFor(c);
+  return c.json(await confirmWords({ ...siteFor(v), strict: !v.owner }, tool, input));
 });
 
 // the page has just opened, so give its widgets a moment to report in
@@ -433,11 +474,13 @@ const OUTSIDE = new Set(['rss', 'hackernews', 'reddit', 'lobsters', 'changedetec
 let tailored: { at: number; mood: string; wrong: string; names: string[]; list: string[] | null } | undefined, tailoring: Promise<void> | undefined;
 // A fresh install's welcome card: what's running here that Valet could show. Only while that card is on.
 app.get('/api/discover', async c => {
-  if (!site.config.welcome) return c.json({ via: null, found: [] });
+  if (!site.config.welcome || !viewFor(c).owner) return c.json({ via: null, found: [] });
   return c.json(await discover(registry, Object.values(site.config.integrations).map((b: any) => ({ type: b.type, url: b.url }))));
 });
 
+// Written from every card on the page, and kept once for everyone: owners only. A profile's chips are its own `suggestions`.
 app.get('/api/suggest', async c => {
+  if (!viewFor(c).owner) return c.json({ list: null, wrong: [] });
   if (!site.ask || !site.config.assistant?.background.suggest || site.config.chat.suggestions !== 'ai') return c.json({ list: null });
   await settled();
   const states = site.hub.snapshot().filter(s => !OUTSIDE.has(site.meta.get(s.key.split('.')[0])?.type ?? ''));
@@ -457,6 +500,7 @@ app.get('/api/suggest', async c => {
   return c.json({ list: tailored?.list ? JSON.parse(site.redact(JSON.stringify(tailored.list))) : null, wrong: JSON.parse(site.redact(JSON.stringify(tailored?.names ?? []))) });
 });
 app.get('/api/brief', async c => {
+  if (!viewFor(c).owner) return c.json({ text: null });   // a line about the whole homelab
   if (!site.ask || !site.config.assistant?.background.brief) return c.json({ text: null });
   await settled();
   const b = await statusLine(site.ask, site.timeline.lines(8 * 36e5, 40, true), site.hub.snapshot());
@@ -464,7 +508,7 @@ app.get('/api/brief', async c => {
 });
 
 app.get('/api/recap', async c => {
-  if (!site.config.recap) return c.notFound();
+  if (!site.config.recap || !viewFor(c).owner) return c.notFound();   // a year of every service: owners only
   const recap = await buildRecap(site.instances, recapYear(c.req.query('year')));
   return c.json(JSON.parse(site.redact(JSON.stringify(recap))));
 });
@@ -472,6 +516,7 @@ app.get('/api/recap', async c => {
 // Keep a chat card on the page. It must really produce a card now, from a tool that only looks.
 app.post('/api/pins', async c => {
   if (!site.acting) return c.json({ error: 'Valet is read-only' }, 403);
+  if (!viewFor(c).owner) return c.json({ error: OWNERS }, 403);   // a pin changes the page for everyone
   const { tool, input } = await c.req.json().catch(() => ({} as any));
   if (typeof tool !== 'string' || !input || typeof input !== 'object') return c.json({ error: 'bad pin' }, 400);
   const a = site.config.assistant;
@@ -489,7 +534,7 @@ app.post('/api/pins', async c => {
   try {
     const card = await pinnedCard({ tool, input }, site.instances);
     await savePins([...pins, newPin(tool, input, card.title ?? 'Pinned')]);
-    site.activity.add({ who: (c.get as (k: string) => string | undefined)('user') ?? 'you', via: 'pin', what: `Pinned ${card.title ?? 'a card'}`, ok: true });
+    site.activity.add({ who: userOf(c) ?? 'you', via: 'pin', what: `Pinned ${card.title ?? 'a card'}`, ok: true });
     await swap(site.config);
     return c.json({ ok: true });
   } catch (e) { return c.json({ error: site.redact((e as Error).message) }, 400); }
@@ -498,18 +543,20 @@ app.post('/api/pins', async c => {
 // A chat card staying current: the same re-run a pin does, for tools that opted in, a few seconds apart at most.
 const liveCache = new Map<string, { at: number; card: unknown }>();
 app.post('/api/live', async c => {
-  const a = site.config.assistant, { tool, input } = await c.req.json().catch(() => ({} as any));
+  // a profile's cards re-run under its own assistant's access, and `show` only draws the cards on its tabs
+  const v = viewFor(c), instances = v.instances;
+  const a = v.config.assistant, { tool, input } = await c.req.json().catch(() => ({} as any));
   if (!a || typeof tool !== 'string' || !input || typeof input !== 'object') return c.json({ error: 'bad request' }, 400);
   const [inst, name] = tool.split('__');
   // its integration, and the tool by name (`plex.plex_streams: none`, `valet.show: none`), must still be reachable
   const allowed = (id: string) => (a.access[id] ?? a.access.default ?? 'read') !== 'none' && (tool === 'show' ? a.access['valet.show'] !== 'none' : toolAccess(a, id, name) > rank.none);
-  const ok = tool === 'show' ? Array.isArray(input.widgets) && input.widgets.every((k: unknown) => typeof k === 'string' && allowed(k.split('.')[0]))
-    : inst !== 'valet' ? !!site.instances.get(inst)?.tools?.[name]?.live && allowed(inst) : !!site.instances.get(inst)?.tools?.[name]?.live && a.access[`valet.${name}`] !== 'none';
+  const ok = tool === 'show' ? Array.isArray(input.widgets) && input.widgets.every((k: unknown) => typeof k === 'string' && allowed(k.split('.')[0]) && v.sees(k))
+    : inst !== 'valet' ? !!instances.get(inst)?.tools?.[name]?.live && allowed(inst) : v.owner && !!instances.get(inst)?.tools?.[name]?.live && a.access[`valet.${name}`] !== 'none';
   if (!ok) return c.json({ error: 'not a live card' }, 403);
-  const id = JSON.stringify([tool, input]), hit = liveCache.get(id);
+  const id = JSON.stringify([tool, input, v.profile ?? '']), hit = liveCache.get(id);
   if (hit && Date.now() - hit.at < 5000) return c.json({ card: hit.card });
   try {
-    const card = JSON.parse(site.redact(JSON.stringify(await pinnedCard({ tool, input }, site.instances))));
+    const card = JSON.parse(site.redact(JSON.stringify(await pinnedCard({ tool, input }, instances))));
     liveCache.set(id, { at: Date.now(), card });
     if (liveCache.size > 40) liveCache.delete(liveCache.keys().next().value!);
     return c.json({ card });
@@ -517,29 +564,42 @@ app.post('/api/live', async c => {
 });
 
 // The AI SDK, providers and MCP client load on the first question, so an unused assistant costs no memory.
-let chats = new WeakMap<Site, (c: any) => Promise<Response>>();
+// One chat per site and profile: a profile's is built from its own view (its assistant, its integrations), so what it's
+// offered is decided once, here, and nothing a request says can widen it.
+let chats = new WeakMap<Site, Map<string, (c: any) => Promise<Response>>>();
 const answer = async (c: Context) => {
   if (!site.config.assistant) return c.json({ error: 'no assistant configured' }, 404);
+  const v = viewFor(c);
+  if (!v.config.assistant) return c.json({ error: 'Your profile has no assistant.' }, 403);
   const key = own.getStore() ?? base;
   // whatever watches the assistant at work gets told, and shows it straight away
   for (const [id, inst] of site.instances) for (const w of inst.onChat?.() ?? []) void site.hub.refresh(`${id}.${w}`);
-  let chat = chats.get(key);
-  if (!chat) chats.set(key, chat = (await import('./chat.ts')).chatRoute(site.config, site.instances, site.meta, { acting: site.acting, redact: site.redact, activity: site.activity }));
+  let mine = chats.get(key);
+  if (!mine) chats.set(key, mine = new Map());
+  const id = v.owner ? '' : `profile ${v.profile}`;
+  let chat = mine.get(id);
+  if (!chat) mine.set(id, chat = (await import('./chat.ts')).chatRoute(v.config, v.instances, site.meta, { acting: site.acting, redact: site.redact, activity: site.activity,
+    member: v.owner ? undefined : { profile: v.profile!, sees: v.sees, viaOwner: v.approve === 'owner' ? viaOwner({ asks, meta: site.meta, redact: site.redact, activity: site.activity, push: m => site.push(m) }) : undefined } }));
   return chat(c);
 };
 app.post('/api/chat', answer);
 
 // The same chat from Telegram (assistant.telegram, telegram.ts): its messages go through the chat's own handler, on an app
 // nothing outside can reach, so there is one set of rules. Loaded only when it's configured, and never in the demo.
-const fromTelegram = new Hono().post('/', c => { (c.set as (k: string, v: unknown) => void)('user', c.req.header('x-valet-user')); return answer(c); });
+// A Telegram id bound to an account (`{ id, as: sam }`) is that account here too, profile and all; one that isn't is an owner.
+const fromTelegram = new Hono().post('/', c => {
+  const set = c.set as (k: string, v: unknown) => void;
+  set('user', decodeURIComponent(c.req.header('x-valet-user') ?? '') || undefined); set('account', decodeURIComponent(c.req.header('x-valet-account') ?? '') || undefined);
+  return answer(c);
+});
 let bot: { key: string; stop(): void } | undefined;
 async function syncBot() {
   const a = sandbox.on ? undefined : base.config.assistant, t = a?.telegram;
   const { Telegram } = t ? await import('./telegram.ts') : { Telegram: undefined };
   const next = t && Telegram ? new Telegram({
-    token: t.token, users: t.users, name: a!.name, redact: s => site.redact(s), api: process.env.VALET_TELEGRAM_API,   // the address only for a test's stand-in
-    chat: (messages, who, signal) => Promise.resolve(fromTelegram.request('/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-valet-user': who }, body: JSON.stringify({ messages }), signal })),
-    confirm: (tool, input) => confirmWords(site, tool, input),
+    token: t.token, users: t.users.map(u => typeof u === 'object' ? u.id : u), as: new Map(t.users.flatMap(u => typeof u === 'object' ? [[u.id, u.as] as const] : [])), name: a!.name, redact: s => site.redact(s), api: process.env.VALET_TELEGRAM_API,   // the address only for a test's stand-in
+    chat: (messages, who, signal, account) => Promise.resolve(fromTelegram.request('/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-valet-user': encodeURIComponent(who), 'x-valet-account': encodeURIComponent(account ?? '') }, body: JSON.stringify({ messages }), signal })),
+    confirm: (tool, input, account) => { const v = viewOf(site, account); return confirmWords({ ...siteFor(v), strict: !v.owner }, tool, input); },
     label: tool => { const [inst, name] = tool.split('__'); return site.instances.get(inst)?.tools?.[name]?.label; },
   }) : undefined;
   if (next?.key === bot?.key) return;   // the same bot for the same people: a reload leaves its conversations alone
@@ -553,7 +613,8 @@ void syncBot();
 // id, its name where the server gives one, and its server's heading: never an address or a key.
 app.get('/api/models', async c => {
   const a = site.config.assistant;
-  if (!a || sandbox.on || chatAgent(a, site.acting)) return c.json({ models: [], servers: [], ok: true });
+  // a profile's chat runs on the main model: which servers there are and what they hold is the owner's to know
+  if (!a || sandbox.on || chatAgent(a, site.acting) || !viewFor(c).owner) return c.json({ models: [], servers: [], ok: true });
   const listed = await discovery(a).list(c.req.query('fresh') === '1');
   const models = listed.models.map(m => ({ id: m.id, ...(m.id !== m.model ? { model: m.model } : {}), ...(m.label ? { label: m.label } : {}), group: m.group }));
   return c.json(JSON.parse(site.redact(JSON.stringify({ ok: listed.ok, at: listed.at, servers: listed.servers, models }))));
@@ -563,7 +624,7 @@ app.get('/api/models', async c => {
 // its address and key stay here. Wherever the chat is, so is voice, with no more than the chat may do; never in the demo.
 const voiceDeps = (c: Context) => ({
   voice: voiceOf(site.config), redact: site.redact,
-  refusal: !site.config.assistant ? 'no assistant configured' : sandbox.on ? "This demo doesn't listen or speak" : null,
+  refusal: !site.config.assistant ? 'no assistant configured' : sandbox.on ? "This demo doesn't listen or speak" : !viewFor(c).config.assistant ? 'Your profile has no assistant.' : null,
   who: userOf(c) ?? clientIp((getConnInfo(c).remote.address ?? '?').replace(/^::ffff:/, ''), c.req.header('x-forwarded-for'), new Set(site.config.auth.proxy.trusted)),
 });
 app.post('/api/voice/transcribe', c => transcribe(c, voiceDeps(c)));
@@ -571,16 +632,17 @@ app.post('/api/voice/speak', c => speak(c, voiceDeps(c)));
 
 // Notifications on this device (⌘K): Valet's own Web Push. Turning them on or off is acting on the page, so it needs what
 // a button needs; the demo and a read-only page say why not instead. Each browser is one subscription, kept with its account.
-const pushRefusal = () => sandbox.on ? 'demo' : !site.acting ? 'read-only' : !site.config.notify.webPush.enabled ? 'off' : null;
-const userOf = (c: Context) => (c.get as (k: string) => string | undefined)('user');
+// They're the owners': a notification can name anything, so someone with a profile can't turn them on, and a browser
+// subscribed before its account got a profile is skipped (site.ts). Turning one's own off is always allowed.
+const pushRefusal = (c: Context) => sandbox.on ? 'demo' : !site.acting ? 'read-only' : !site.config.notify.webPush.enabled ? 'off' : !viewFor(c).owner ? 'profile' : null;
 app.get('/api/push', async c => {
-  const why = pushRefusal();
+  const why = pushRefusal(c);
   if (why) return c.json({ ready: false, why });
   const endpoint = c.req.query('endpoint');
   return c.json({ ready: true, key: (await vapidKeys()).publicKey, on: endpoint ? await has(endpoint, userOf(c)) : undefined });
 });
 app.post('/api/push', async c => {
-  const why = pushRefusal();
+  const why = pushRefusal(c);
   if (why) return c.json({ error: why, why }, 403);
   const body = await c.req.json().catch(() => ({}));
   const sub = Subscription.safeParse(body?.subscription);

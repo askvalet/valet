@@ -6,17 +6,18 @@ import type { Instance, Tool } from './core.ts';
 import { rank, toolAccess } from './run.ts';
 import type { Confirm } from '../shared/cards.ts';
 
-export interface ConfirmSite { config: Config; instances: Map<string, Instance>; acting: boolean; redact: (s: string) => string }
+/** `strict`: for someone with a profile, words only for a tool their assistant could really call, since a tool's words may look things up. */
+export interface ConfirmSite { config: Config; instances: Map<string, Instance>; acting: boolean; redact: (s: string) => string; strict?: boolean }
 export type Said = Partial<Confirm> & { steps?: (Confirm | null)[] };
 
 export async function confirmWords(site: ConfirmSite, tool: unknown, input: any): Promise<Said> {
   const [inst, name] = String(tool ?? '').split('__'), t = name ? site.instances.get(inst)?.tools?.[name] : undefined;
   const type = site.config.integrations[inst]?.type, logo = type ? `/api/icon/${type}` : undefined;
-  const may = (id: string, n: string) => toolAccess(site.config.assistant, id, n) > rank.none;
+  const may = (id: string, n: string, step: Tool) => { const level = toolAccess(site.config.assistant, id, n); return level > rank.none && (!site.strict || rank[step.access] <= level); };
   if (!site.acting) return { logo };
   const words = async (id: string, n: string, step: Tool, raw: unknown) => {
     const args = step.input.safeParse(raw ?? {});
-    if (!args.success || !step.confirm || !may(id, n)) return null;
+    if (!args.success || !step.confirm || !may(id, n, step)) return null;
     return step.confirm(args.data);
   };
   const clean = <T>(x: T): T => JSON.parse(site.redact(JSON.stringify(x)));

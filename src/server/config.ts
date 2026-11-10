@@ -53,6 +53,8 @@ const AutoServer = z.object({
 }).strict();
 export type AutoServer = z.infer<typeof AutoServer>;
 
+const TelegramId = z.union([z.number().int().positive(), z.string().regex(/^\d+$/, 'a numeric Telegram user id').transform(Number)]);
+
 export const AssistantConfig = z.object({
   // any OpenAI-compatible server (Ollama, llama.cpp, vLLM, OpenRouter, OpenAI…) or Anthropic
   provider: z.enum(['openai-compatible', 'anthropic']).default('openai-compatible'),
@@ -92,7 +94,8 @@ export const AssistantConfig = z.object({
   // private chat only. Same access and approvals as the page (approvals are two buttons); nobody else gets an answer
   telegram: z.object({
     token: z.string().min(20, 'a bot token from @BotFather, from .env'),
-    users: z.array(z.union([z.number().int().positive(), z.string().regex(/^\d+$/, 'a numeric Telegram user id').transform(Number)])).min(1, 'list the Telegram user ids that may talk to it'),
+    // an id alone is an owner, as before; { id, as: sam } is the account sam, with sam's profile (`users` below)
+    users: z.array(z.union([TelegramId, z.object({ id: TelegramId, as: z.string().min(1).describe('the account this person is: their name in `users`') }).strict()])).min(1, 'list the Telegram user ids that may talk to it'),
   }).strict().optional(),
 }).strict().superRefine((a, ctx) => {
   // each choice is known by its name (or model id), and the main model by its model id
@@ -384,8 +387,28 @@ const WebPush = z.object({
     .describe('The push services Valet will post to. Browsers use these four; add a host or an origin only for a push server of your own.'),
 }).strict().describe('Notifications on this device: Web Push straight to the browsers that turn it on in ⌘K.');
 
+// What one kind of person may see and do (a child, a guest). It only ever narrows: what a profile leaves out isn't there
+// for them, on the page or on the server, and its assistant never has more than `assistant.access` gives.
+export const Profile = z.object({
+  tabs: z.array(z.string().min(1)).optional().describe('The tabs they see, by name as in layout. Left out: all of them.'),
+  actions: z.array(z.string().regex(/^[a-z0-9][a-z0-9_-]*\.[a-z0-9_-]+$/i, 'an action as <instance>.<action>, like requests.request')).default([])
+    .describe('Page actions they may press, as <instance>.<action>. Left out: none.'),
+  // left out or false: no assistant for them
+  assistant: z.union([z.literal(false), z.object({
+    access: z.record(z.string(), Access).default({ default: 'none' }).describe('As assistant.access, and never more than it: each integration and tool gets the lower of the two. default covers what is on their tabs.'),
+    instructions: z.string().optional().describe('Added to the assistant\'s instructions for them. Guidance only: what holds is access.'),
+    suggestions: z.array(z.string()).default([]).describe('Questions offered on their empty chat.'),
+    approve: z.enum(['owner', 'self']).default('owner').describe('owner: what asks first goes to an owner to approve. self: they approve their own.'),
+  }).strict()]).default(false),
+}).strict();
+export type Profile = z.infer<typeof Profile>;
+
 export const Config = z.object({
   auth: Auth,
+  // what each signed-in person may see and do: profiles by name, and which account has which. An account `users` doesn't
+  // name is an owner, exactly as without these. Owner-only by hand, like auth: the assistant can't edit either
+  profiles: z.record(z.string().regex(/^[a-z0-9][a-z0-9_-]*$/i, 'a profile\'s name is letters, numbers, - and _'), Profile).default({}),
+  users: z.record(z.string(), z.string()).default({}),   // account name → profile, e.g. { sam: kids }
   // the names Valet answers to besides localhost and IP addresses, e.g. [valet.example.com, "*.home.example.com"].
   // Anything else is refused, so a web page elsewhere can't reach it through your browser (DNS rebinding).
   allowedHosts: z.array(z.string()).default([]),
