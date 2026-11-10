@@ -34,7 +34,7 @@ export class Asks {
 
   /** Put the question on the page and wait up to `wait` ms for the answer. Asking again for the same call joins the
    *  question that's already there (`fresh` says whether this one put it there). */
-  request(o: { from: string; tool: string; hash: string; said: Ask['said'] }, wait: number): { fresh: boolean; answer: Promise<Answer> } {
+  request(o: { from: string; tool: string; hash: string; said: Ask['said'] }, wait: number): { fresh: boolean; id?: string; answer: Promise<Answer> } {
     this.sweep();
     let h = [...this.held.values()].find(x => x.hash === o.hash);
     const fresh = !h;
@@ -46,7 +46,7 @@ export class Asks {
       this.changed();
     }
     const mine = h;
-    return { fresh, answer: new Promise<Answer>(done => {
+    return { fresh, id: mine.ask.id, answer: new Promise<Answer>(done => {
       const t = setTimeout(() => { mine.waiters.delete(end); done('waiting'); }, wait);
       t.unref();
       const end = (a: Answer) => { clearTimeout(t); done(a); };

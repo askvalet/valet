@@ -35,10 +35,10 @@ const instances = () => new Map<string, any>([
   ['pins', { widgets: {}, tools: { pin_remove: t('pin_remove', 'control') } }],
 ]);
 const TITLES: Record<string, string> = { 'dl.active': 'Downloads', 'svc.status': 'Services', 'pc.gpu': 'GPU' };
-function env(o: { access?: Record<string, number>; acting?: boolean; act?: (r: Rule) => { ok: boolean; error?: string } } = {}) {
+function env(o: { access?: Record<string, number>; acting?: boolean; hooks?: string[]; act?: (r: Rule) => { ok: boolean; error?: string } } = {}) {
   const told: { text: string; sub?: string; tone: string }[] = [], acts: string[] = [];
   const e = {
-    instances, acting: () => o.acting ?? true, title: (w: string) => TITLES[w],
+    instances, acting: () => o.acting ?? true, title: (w: string) => TITLES[w], hooks: () => o.hooks ?? ['sonarr', 'kuma'],
     access: (id: string) => o.access?.[id] ?? (id === 'links' ? rank.write : rank.control),
     act: async (r: Rule, s: any) => { acts.push(`${s.id}__${s.name}`); return o.act?.(r) ?? { ok: true }; },
     tell: (n: any) => { told.push(n); },
@@ -253,4 +253,92 @@ test('stored in data/rules.json, and nothing at all in a sandbox', async () => {
   sandbox.on = false;
   await new Rules([], e).add({ at: '07:00', say: 'Morning', repeat: true, cooldown: 30 });
   assert.equal(existsSync(file), true);
+});
+
+// --- a hook as the trigger --------------------------------------------------------------------------------------------
+
+const hookRule = (o: Partial<Rule> = {}) => rule({ hook: 'sonarr', action: { tool: 'dl__pause_all', input: {}, does: 'Pause all downloads' }, ...o });
+
+test('when a hook fires: set up like any rule, one trigger, a hook the config names, and the card says which in Valet\'s words', async () => {
+  const { e } = env(), rules = new Rules([], e), { rule_add } = ruleTools(rules, []);
+  const ok = { hook: 'sonarr', tool: 'dl__pause_all', input: {}, say: 'Paused for the import', repeat: true, cooldown: 30 };
+  assert.ok('rule' in await rules.prepare(ok));
+  assert.match((await rules.prepare({ ...ok, at: '07:00' }) as any).error, /one trigger/);
+  assert.match((await rules.prepare({ ...ok, when: { widget: 'dl.active', on: 'ends', minutes: 0 } }) as any).error, /one trigger/);
+  assert.match((await rules.prepare({ ...ok, hook: 'radarr' }) as any).error, /no hook radarr in the config \(there are: sonarr, kuma\)/);
+  assert.match((await new Rules([], env({ hooks: [] }).e).prepare(ok) as any).error, /no hook sonarr in the config$/);
+  const { RuleInput } = await import('../src/server/rules.ts');
+  for (const bad of ['Sonarr', '../x', 'a b', 'x'.repeat(41), '']) assert.equal(RuleInput.safeParse({ ...ok, hook: bad }).success, false, bad);
+  const said = await rule_add.confirm!(ok);
+  assert.equal(said.title, 'When the "sonarr" hook fires, pause all downloads?');
+  assert.match(said.detail!, /Every time, at most once every 30 minutes, without asking again/);
+  assert.equal(trigger({ hook: 'kuma', onlyIf: { widget: 'svc.status', on: 'up', name: 'plex' } }, w => TITLES[w]), 'When the "kuma" hook fires, if "plex" on Services is up');
+  // what it keeps is the approved input, and nothing to say where any other input would come from
+  const r = await rules.add({ ...ok, input: { hash: 'abc' } });
+  assert.deepEqual(Object.keys((r as any).rule).sort(), ['action', 'armed', 'at', 'by', 'cooldown', 'created', 'failures', 'hook', 'id', 'onlyIf', 'repeat', 'say', 'when']);
+  assert.deepEqual((r as any).rule.action, { tool: 'dl__pause_all', input: { hash: 'abc' }, does: 'Pause this download' });
+});
+
+test('a hook rule may run what any rule may, and nothing more: the forbidden list holds for it too', async () => {
+  const { e } = env(), rules = new Rules([], e);
+  for (const [tool, why] of [
+    ['config__config_apply', /config/], ['valet__rule_add', /Valet's own/], ['valet__rule_remove', /Valet's own/], ['valet__watch_add', /Valet's own/], ['valet__report_issue', /Valet's own/],
+    ['pins__pin_remove', /pins/], ['plan', /exactly one/], ['mcp_home__turn_on', /no tool/], ['show', /exactly one/], ['dl__status', /only looks/],
+  ] as const) {
+    const p = await rules.prepare({ hook: 'sonarr', tool, input: {}, say: 'x', repeat: true, cooldown: 30 });
+    assert.ok('error' in p, tool); assert.match((p as { error: string }).error, why, tool);
+  }
+  assert.equal(rules.list.length, 0);
+});
+
+test('a hook rule runs only when its hook fires, with its approved input, once a cooldown, if its only-if holds', async () => {
+  const { e, told, acts } = env(), ran: unknown[] = [];
+  e.act = async (_r: Rule, s: any) => { acts.push(`${s.id}__${s.name}`); ran.push(s.args); return { ok: true }; };
+  const r = hookRule({ action: { tool: 'dl__pause_all', input: { hash: 'abc' }, does: 'Pause this download' } }), other = hookRule({ id: 'r2', hook: 'kuma' }), rules = new Rules([r, other], e);
+  // a card changing, a time of day passing: neither sets a hook rule off
+  assert.equal(triggered(r, { prev: list('A'), next: list() }, new Map(), at(9)), null);
+  rules.check([{ key: 'dl.active', card: list('A'), at: 1 }], at(9)); rules.check([{ key: 'dl.active', card: list(), at: 2 }], at(9, 1));
+  await settle();
+  assert.deepEqual(acts, []);
+  rules.hooked('sonarr', at(9));
+  await settle();
+  assert.deepEqual(acts, ['dl__pause_all']); assert.deepEqual(ran, [{ hash: 'abc' }]);
+  assert.deepEqual(told.map(n => [n.text, n.sub]), [['hi', undefined]], 'its message is its own, with nothing from the caller');
+  rules.hooked('sonarr', at(9, 10));
+  rules.hooked('radarr', at(9, 10));
+  await settle();
+  assert.equal(acts.length, 1, 'within the cooldown, and another hook\'s name, do nothing');
+  rules.hooked('sonarr', at(9, 31));
+  await settle();
+  assert.equal(acts.length, 2);
+  // only if: a card that says no, or can't say, means no
+  const q = hookRule({ id: 'q', onlyIf: { widget: 'svc.status', on: 'up', name: 'plex' } }), qe = env(), qr = new Rules([q], qe.e);
+  let states = [{ key: 'svc.status', card: status(['Plex', false]), at: 1 }];
+  qr.start(() => states, () => {}); qr.stop();
+  (qr as any).snapshot = () => states;
+  qr.hooked('sonarr', at(9)); await settle();
+  assert.deepEqual(qe.acts, []);
+  states = [{ key: 'svc.status', card: status(['Plex', true]), at: 2 }];
+  qr.hooked('sonarr', at(9)); await settle();
+  assert.deepEqual(qe.acts, ['dl__pause_all']);
+  assert.deepEqual([...qr.watching()], ['svc.status'], 'its only-if is kept fresh; there is no card to watch for the hook itself');
+  // paused, it doesn't run; a run-once rule is gone after its one run
+  const p = hookRule({ id: 'p', paused: 'you paused it' }), once = hookRule({ id: 'o', repeat: false }), pe = env(), pr = new Rules([p, once], pe.e);
+  pr.hooked('sonarr', at(9)); await settle(); pr.hooked('sonarr', at(12)); await settle();
+  assert.deepEqual(pe.acts, ['dl__pause_all']); assert.deepEqual(pr.list.map(x => x.id), ['p']);
+});
+
+test('a hook rule is checked again at every run: lowered access, a read-only page, rules off, or its hook gone', async () => {
+  for (const [o, why] of [[{ access: { dl: rank.read } }, /gives dl read/], [{ acting: false }, /read-only/], [{ access: { valet: rank.write } }, /rules are off/]] as const) {
+    const { e, told, acts } = env(o), r = hookRule(), rules = new Rules([r], e);
+    rules.hooked('sonarr', at(9)); await settle();
+    assert.deepEqual(acts, []); assert.match(r.paused!, why); assert.match(told[0].text, /Paused a rule/);
+  }
+  // a hook taken out of the config: the rule can never fire, says so on its card, and can't be resumed until it's back
+  const { e, acts } = env({ hooks: [] }), r = hookRule(), rules = new Rules([r], e);
+  assert.match(rules.card(at(9)).items[0].subtitle!, /Can't run: no hook sonarr in the config/);
+  assert.equal(rules.card(at(9)).items[0].detail, 'When the "sonarr" hook fires: pause all downloads');
+  rules.hooked('sonarr', at(9)); await settle();
+  assert.deepEqual(acts, []); assert.match(r.paused!, /no hook sonarr/);
+  await assert.rejects(rules.pause(r.id, false), /no hook sonarr/);
 });

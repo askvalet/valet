@@ -3,6 +3,11 @@
 const url = 'Where the service answers, from Valet\'s side.', key = 'Its API key. Use `${VAR}`.', href = 'Where the card links to, when that differs from `url`.';
 export const NOTES: Record<string, string> = {
   // the configuration reference
+  hooks: 'Webhooks in, by name: `POST /hooks/<name>` with that hook\'s token. Off unless one is named.',
+  events: 'What Valet notices, published to a webhook or an MQTT broker. Off unless set.',
+  'events.targets[mqtt].url': 'The broker: `mqtt://host:1883`, or `mqtts://host:8883` for TLS checked against the system\'s certificates. No user name or path in it.',
+  'events.targets[mqtt].username': 'If the broker wants one. The password goes in `password`, from `.env`.',
+  'events.on': 'Which types go out: `service`, `activity`, `notice`, `backup`, `rule`, `hook`, `ask`. Left out: all of them. A target\'s own `on` narrows it.',
   auth: 'Sign-in. Off by default, which leaves Valet read-only.',
   'auth.oidc.clientId': 'The client id from your provider.',
   'auth.oidc.clientSecret': 'The client secret from your provider. Use `${VAR}`.',

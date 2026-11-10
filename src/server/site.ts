@@ -27,6 +27,8 @@ import { Reminders } from './reminders.ts';
 import { Timeline } from './timeline.ts';
 import { loadWatches, Watches } from './watches.ts';
 import { loadRules, Rules } from './rules.ts';
+import { Buckets, words, type Hook } from './hooks.ts';
+import { Publisher } from './events.ts';
 import { accessOf as granted, rank, runTool, toolAccess } from './run.ts';
 import { customs } from '../shared/slash.ts';
 import { CORE } from './lazy.ts';
@@ -63,6 +65,11 @@ export interface Site {
   stopBackups: () => void;
   reminders: Reminders;
   stopReminders: () => void;
+  /** An incoming hook fired (hooks.ts): a notice, the timeline, a push if it asks, the rules waiting on it, an event. */
+  hook: (name: string, hook: Hook, payload: unknown) => void;
+  hookLimit: Buckets;
+  events: Publisher;
+  stopEvents: () => void;
 }
 
 const EVERYTHING = ['start', 'end', 'down', 'up'] as const;
@@ -128,6 +135,13 @@ export function check(config: Config, registry: Record<string, Integration>, fro
     else if (!names.includes(name)) problems.push(`assistant.access: ${id} has no tool "${name}" (it has: ${names.join(', ') || 'none'})`);
   }
   problems.push(...commandProblems(config, instances));
+  // a token opens one door: two hooks sharing one, or a hook sharing the MCP server's or the wall's, would open each other's
+  const tokens = new Map<string, string>([...(config.mcpServer ? [[config.mcpServer.token, 'mcpServer.token']] : []), ...(config.wall.token ? [[config.wall.token, 'wall.token']] : [])] as [string, string][]);
+  for (const [name, h] of Object.entries(config.hooks)) {
+    if (tokens.has(h.token)) problems.push(`hooks.${name}.token: the same token as ${tokens.get(h.token)}; give each its own`);
+    else tokens.set(h.token, `hooks.${name}.token`);
+  }
+  if (config.sandbox && (Object.keys(config.hooks).length || config.events?.targets.length)) problems.push('hooks and events are off in a sandbox');
   return { problems, instances, meta, placed };
 }
 
@@ -176,13 +190,21 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   for (const s of [...config.layout, ...wallPages(config).flatMap(p => p.layout)]) for (const w of s.widgets) if (w.every) every.set(w.widget, Math.min(w.every, every.get(w.widget) ?? Infinity));
 
   const recent: Notice[] = previous?.recent ?? [], noticeListeners = previous?.noticeListeners ?? new Set<(n: Notice) => void>();
+  // events out: the same publisher across a reload unless its settings changed, so a broker keeps one connection.
+  // Nothing connects here; it starts at the end, once the old site's (if its settings differ) has said goodbye
+  const sameEvents = !!previous && JSON.stringify(previous.config.events) === JSON.stringify(config.events);
+  const events = sameEvents ? previous!.events : new Publisher(sandbox.on ? undefined : config.events, { redact: s => redactNow(s), log: line => console.error(redactNow(line)) });
+  // a toast on every open page, and the last few for a page that opens just after
+  const raise = (n: Notice) => {
+    recent.push(n); if (recent.length > 5) recent.shift();
+    for (const l of noticeListeners) l(n);
+    events.emit({ type: 'notice', text: n.text, detail: n.sub, tone: n.tone, source: n.key }, n.at);
+  };
   const timeline = previous?.timeline ?? await new Timeline().load();
   const activity = previous?.activity ?? await new Activity(s => redactor(usedSecrets)(s)).load();
   // reminders, and Valet's own tools
   const watches = new Watches(await loadWatches(), w => {
-    const n: Notice = { key: w.widget, text: w.say, icon: 'pulse', tone: 'accent', at: Date.now() };
-    recent.push(n); if (recent.length > 5) recent.shift();
-    for (const l of noticeListeners) l(n);
+    raise({ key: w.widget, text: w.say, icon: 'pulse', tone: 'accent', at: Date.now() });
     timeline.add('reminder', w.say, w.widget);
     sendPush({ title: w.say, where: w.widget });
   });
@@ -192,6 +214,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     access: (id, tool) => toolAccess(config.assistant, id, tool),
     acting: () => canAct(config),
     title: key => hub.widget(key)?.title,
+    hooks: () => sandbox.on ? [] : Object.keys(config.hooks),
     act: async (r, s) => {
       const out = await runTool({ ...s, via: 'rule', who: r.by, rule: r.id, activity, redact: redactNow });
       setTimeout(() => hub.refreshInstance(s.id), 300);
@@ -200,9 +223,8 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     tell: ({ text: said, sub: why, tone, rule }) => {
       // a card's words can carry anything a service sent back, and these go to the phone too
       const text = redactNow(said), sub = why && redactNow(why);
-      const n: Notice = { key: rule.when?.widget ?? 'valet.rules', text, sub, icon: 'pulse', tone, at: Date.now() };
-      recent.push(n); if (recent.length > 5) recent.shift();
-      for (const l of noticeListeners) l(n);
+      raise({ key: rule.when?.widget ?? 'valet.rules', text, sub, icon: 'pulse', tone, at: Date.now() });
+      events.emit({ type: 'rule', id: rule.id, ok: tone !== 'bad', text, detail: sub });
       timeline.add('rule', sub ? `${text} (${sub})` : text, rule.when?.widget);
       sendPush({ title: text, text: sub, urgent: tone === 'bad', where: rule.when?.widget });
     },
@@ -225,9 +247,8 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   if (bk) backups.options = { overdue: bk.overdue, expect: bk.expect };
   backups.tell = t => {
     const m = news(t), text = redactNow(m.title), sub = m.text && redactNow(m.text);
-    const n: Notice = { key: 'valet.backups', text, sub, icon: 'shield', tone: m.tone, at: Date.now() };
-    recent.push(n); if (recent.length > 5) recent.shift();
-    for (const l of noticeListeners) l(n);
+    raise({ key: 'valet.backups', text, sub, icon: 'shield', tone: m.tone, at: Date.now() });
+    events.emit({ type: 'backup', state: m.tone === 'bad' ? 'problem' : 'recovered', name: t.job.name, source: t.job.source, health: t.now, text, detail: sub });
     timeline.add('backup', sub ? `${text} (${sub})` : text, 'valet.backups');
     if (bk && bk.notify) sendPush({ title: text, text: sub, urgent: m.tone === 'bad' });
   };
@@ -239,9 +260,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   reminders.sources = () => reminding;
   reminders.tell = r => {
     const text = redactNow(r.title), sub = r.text && redactNow(r.text), link = r.link && redactNow(r.link) === r.link ? r.link : undefined;
-    const n: Notice = { key: r.source, text, sub, icon: 'calendar', tone: 'accent', at: Date.now() };
-    recent.push(n); if (recent.length > 5) recent.shift();
-    for (const l of noticeListeners) l(n);
+    raise({ key: r.source, text, sub, icon: 'calendar', tone: 'accent', at: Date.now() });
     sendPush({ title: text, text: sub, link, device: r.device !== false, where: [...placed].find(k => k.startsWith(`${r.source}.`)) });
   };
 
@@ -252,13 +271,13 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     ...i, widgets: Object.fromEntries(Object.entries(i.widgets).filter(([w]) => placed.has(`${id}.${w}`))
       .map(([w, def]) => [w, every.has(`${id}.${w}`) ? { ...def, interval: every.get(`${id}.${w}`) } : def])),
   }])), (key, prev, next) => {
-    for (const n of noticesFor(key, prev?.card, next.card, config.live?.notify ?? [])) {
-      recent.push(n); if (recent.length > 5) recent.shift();
-      for (const l of noticeListeners) l(n);
-    }
+    for (const n of noticesFor(key, prev?.card, next.card, config.live?.notify ?? [])) raise(n);
     // everything that came or went goes on the timeline, announced or not
     // (not the AI's own comings and goings: they'd drown out everything else, and every summary would cause more)
     if (meta.get(key.split('.')[0])?.type !== 'aimonitor') for (const on of EVERYTHING) for (const n of noticesFor(key, prev?.card, next.card, [{ widget: key, on }])) timeline.add(on, `${n.text}${n.sub ? ` (${n.sub})` : ''}`, key);
+    // and out as events, by the same detection, with the name by itself rather than in a sentence
+    if (meta.get(key.split('.')[0])?.type !== 'aimonitor') for (const on of EVERYTHING) for (const n of noticesFor(key, prev?.card, next.card, [{ widget: key, on, text: on === 'down' || on === 'up' ? '{name}' : '{title}' }]))
+      events.emit(on === 'down' || on === 'up' ? { type: 'service', state: on, name: n.text, widget: key, detail: n.sub } : { type: 'activity', state: on, widget: key, title: n.text, detail: n.sub }, n.at);
     // and rules that asked for it reach your phone
     for (const r of config.live?.notify ?? []) if (r.push && r.widget === key) for (const n of noticesFor(key, prev?.card, next.card, [r])) sendPush({ title: n.text, text: n.sub, urgent: n.tone === 'bad', where: key });
   }, history);
@@ -270,6 +289,17 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     if (web.enabled && !sandbox.on && m.device !== false) void pushAll({ title: redactNow(m.title), body: m.text && redactNow(m.text), urgent: m.urgent, url: placeOf(config, m.where), open: m.link }, web);
   };
   const redactNow = redactor(usedSecrets);
+
+  // An incoming hook (hooks.ts). Its words are another program's: they go to the page, the phone and the event, never
+  // into a prompt, so the timeline line a model can read says only that the hook fired, and a rule hears only its name.
+  const hook = (name: string, h: Hook, payload: unknown) => {
+    const said = words(h, name, payload), text = redactNow(said.text), sub = said.sub && redactNow(said.sub);
+    raise({ key: `hooks.${name}`, text, sub, icon: 'pulse', tone: h.tone, at: Date.now() });
+    timeline.add('hook', `The ${name} hook fired`, undefined, Date.now(), sub ? `${text} (${sub})` : text);
+    if (h.push) sendPush({ title: text, text: sub, urgent: h.tone === 'bad' });
+    events.emit({ type: 'hook', name, text, detail: sub, tone: h.tone });
+    rules.hooked(name);
+  };
 
   // the assistant's own background work, if there's an assistant
   const ask = config.assistant ? makeAsk(config.assistant) : undefined;
@@ -306,6 +336,9 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   rules.start(() => hub.snapshot(), key => void hub.refresh(key));
   const stopBackups = bk ? backups.start(bk.every) : () => {};
   const stopReminders = sandbox.on ? () => {} : reminders.start();
+  // the publisher goes with the site that has it now; one whose settings changed says goodbye before the new one connects
+  if (previous) { if (!sameEvents) previous.stopEvents(); previous.stopEvents = () => {}; }
+  events.start();
 
   // a local wallpaper is served by Valet; a URL is handed to the browser as is, and paint is CSS
   const { appearance: a } = config;
@@ -321,7 +354,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   allowFonts(fontOrigins(a.font?.url));
 
   // the redactor knows every secret any config used, so a value from before a reload stays covered
-  return { config, instances, meta, placed, hub, history, acting: canAct(config), redact: redactor(usedSecrets), walls, cssVersion, recent, noticeListeners, problems, pins, ask, watcher, timeline, activity, watches, rules, push: sendPush, backups, stopBackups, reminders, stopReminders };
+  return { config, instances, meta, placed, hub, history, acting: canAct(config), redact: redactor(usedSecrets), walls, cssVersion, recent, noticeListeners, problems, pins, ask, watcher, timeline, activity, watches, rules, push: sendPush, backups, stopBackups, reminders, stopReminders, hook, hookLimit: previous?.hookLimit ?? new Buckets(), events, stopEvents: () => events.stop() };
 }
 
 

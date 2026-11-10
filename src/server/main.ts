@@ -20,6 +20,7 @@ import { chatAgent, choices, discovery } from './model.ts';
 import { buildRecap, recapYear } from './recap.ts';
 import { discover } from './discover.ts';
 import { mcpServer } from './mcpserver.ts';
+import { hookRoute } from './hooks.ts';
 import { listCommands, runCommand } from './commands.ts';
 import { findersOf, search } from './search.ts';
 import { confirmWords } from './confirm.ts';
@@ -69,7 +70,7 @@ let base: Site = await buildSite(config, registry, fromPlugins, opts);
 // In a sandbox each request runs against that visitor's own copy of the site; otherwise there's just the one.
 const own = new AsyncLocalStorage<Site>();
 const site = new Proxy({} as Site, { get: (_, k) => Reflect.get(own.getStore() ?? base, k), set: (_, k, v) => Reflect.set(own.getStore() ?? base, k, v) });
-const stopSite = (s: Site) => { s.hub.dispose(); s.watcher?.stop(); s.watches.stop(); s.rules.stop(); s.stopBackups(); s.stopReminders(); };
+const stopSite = (s: Site) => { s.hub.dispose(); s.watcher?.stop(); s.watches.stop(); s.rules.stop(); s.stopBackups(); s.stopReminders(); s.stopEvents(); };
 // A new site takes over from the old one, and every open page refetches and reconnects.
 async function swap(next: Config) {
   const old = base;
@@ -130,6 +131,10 @@ const mcpSize = bodyLimit({ maxSize: 64 * 2 ** 10, onError: c => c.json({ error:
 const asks = new Asks();
 app.post('/mcp', mcpSize, c => sandbox.on ? c.notFound() : mcpServer(c, site, asks));
 app.get('/mcp', c => sandbox.on ? c.notFound() : mcpServer(c, site, asks));
+// Webhooks in (hooks:, hooks.ts): a service on the network says something happened. Outside /api like /mcp, and each
+// hook answers only to its own token; no hooks, no such hook and a wrong token are the same 401. The demo has none.
+app.post('/hooks/:name', c => hookRoute(c, sandbox.on ? undefined : site));
+app.get('/hooks/:name', c => hookRoute(c, sandbox.on ? undefined : site));
 
 // for Docker's healthcheck and uptime monitors: up, and how many widgets have a fresh card
 app.get('/healthz', c => c.json({ ok: true, widgets: site.hub.snapshot().filter(s => s.card && !s.error).length }));
@@ -307,7 +312,8 @@ app.get('/api/events', c => streamSSE(c, async stream => {
   const notices: string[] = wall ? [] : recent.filter(n => Date.now() - n.at < 60_000).map(n => redact(JSON.stringify(n)));
   const off = hub.subscribe(s => { if (!heard(s)) return; queue.delete(s.key); queue.set(s.key, redact(JSON.stringify(s))); wake?.(); });
   for (const s of hub.snapshot()) if (heard(s) && !queue.has(s.key)) queue.set(s.key, redact(JSON.stringify(s)));
-  const tell = (n: { at: number }) => { if (wall) return; notices.push(redact(JSON.stringify(n))); wake?.(); };
+  // a page too slow to take them keeps the newest few, like its widgets: a busy hook can't grow its queue
+  const tell = (n: { at: number }) => { if (wall) return; notices.push(redact(JSON.stringify(n))); if (notices.length > 20) notices.shift(); wake?.(); };
   const onReload = () => { reloaded = true; wake?.(); };
   // approvals waiting from outside the chat: the whole (short) list whenever it changes, and on connect if there is one
   const answers = !wall && site.acting;   // only a page that could answer one is shown any

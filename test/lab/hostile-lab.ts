@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readUIMessageStream, type UIMessage } from 'ai';
 
+export const HOOK_TOKEN = 'lab-hook-token-0123456789abcdef0123';
 export const CANARY = { CD_KEY: 'canary-cd-7f3a91', KK_KEY: 'canary-kk-2b8e44', MF_KEY: 'canary-mf-5e2c18', VAULT_KEY: 'canary-vault-9c1d07', PVE_KEY: 'canary-pve-4e6b13', HC_KEY: 'canary-hc-8a2c50', JF_KEY: 'canary-jf-4e6a18' };
 export const HC1 = '00000000-0000-4000-8000-0000000000c1';
 export const W1 = '00000000-0000-4000-8000-000000000001', W2 = '00000000-0000-4000-8000-000000000002';
@@ -21,7 +22,9 @@ const portOf = (s: Server) => (s.address() as { port: number }).port;
 /** A model that does exactly what an attacker wants: one tool call per conversation, then "ok". */
 export async function hostileModel() {
   let next: [string, unknown] | null = null;
+  const heard: string[] = [];   // every request it was sent: what a model gets to read
   const server = await listen((q, r) => { let b = ''; q.on('data', d => b += d); q.on('end', () => {
+    heard.push(b);
     r.setHeader('content-type', 'text/event-stream');
     const w = (o: object) => r.write(`data: ${JSON.stringify(o)}\n\n`), base = { id: 'x', object: 'chat.completion.chunk', created: 1, model: 'm' };
     if (!b.includes('"role":"tool"') && next) {
@@ -33,7 +36,7 @@ export async function hostileModel() {
     }
     r.write('data: [DONE]\n\n'); r.end();
   }); });
-  return { url: `http://127.0.0.1:${portOf(server)}/v1`, will: (tool: string, input: unknown) => { next = [tool, input]; }, close: () => server.close() };
+  return { url: `http://127.0.0.1:${portOf(server)}/v1`, heard, will: (tool: string, input: unknown) => { next = [tool, input]; }, close: () => server.close() };
 }
 
 export async function startLab(o: { model: { provider?: string; baseURL: string; model: string; apiKey?: string }; poison: (attacker: string) => Poison }) {
@@ -96,6 +99,8 @@ integrations:
   vault: {type: api, url: "${S}/vault", headers: {Authorization: "Bearer \${VAULT_KEY}"}, title: Vault, stats: [{label: Items, value: items}]}
   servers: {type: proxmox, url: "${S}", key: "\${PVE_KEY}"}
   jobs: {type: healthchecks, url: "${S}", key: "\${HC_KEY}"}
+hooks:
+  alerts: {token: "${HOOK_TOKEN}"}
 layout:
   - widgets: [watching.watches, feeds.latest, bookmarks.recent, reader.unread, vault.data]
 `;

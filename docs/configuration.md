@@ -558,6 +558,78 @@ the activity log.
 | `token` | required | at least 32 characters; keep it in `.env`, e.g. `token: ${VALET_MCP_TOKEN}` |
 | `access` | `{ default: read }` | per integration: `none`, `read`, `write` or `control`. `{ default: none, plex: read }` opens only Plex; `{ default: read, downloads: control }` also lets it ask to change downloads, with your approval each time |
 
+## `hooks`
+
+Webhooks in. Any program on your network (Sonarr, Uptime Kuma, a backup script, Home Assistant, a cron job with curl)
+can tell Valet that something happened with one POST to `/hooks/<name>`. It shows as a notice on the page, goes on the
+timeline, can go to your phone, and can set off a [rule](https://askvalet.dev/assistant/rules/). Off unless one is named.
+
+```yaml
+hooks:
+  sonarr: { token: "${SONARR_HOOK}", text: "{series.title} downloaded", sub: "{episodes.0.title}", tone: good }
+  kuma: { token: "${KUMA_HOOK}", text: "{monitor.name}: {msg}", push: true }
+  backup: { token: "${BACKUP_HOOK}" }      # a script's own words become the notice
+```
+
+```sh
+curl -X POST http://valet:7575/hooks/backup -H "Authorization: Bearer $BACKUP_HOOK" -d "Nightly backup done: 4.2 GB"
+```
+
+| Option | Default | |
+|---|---|---|
+| `token` | required | at least 32 characters (`openssl rand -hex 32`), from `.env`. Sent as `Authorization: Bearer <token>`, as the password of Basic auth (any user name: Sonarr's and Radarr's webhook settings), or as `X-Valet-Token: <token>`. Each hook needs its own |
+| `text` | the payload's `text`, `message`, `msg` or `title` | the notice. `{dotted.path}` fills in from the JSON it sent, like `{series.title}` or `{episodes.0.title}`; a field that isn't there is empty |
+| `sub` | none | a quieter second line, filled the same way |
+| `tone` | `accent` | `good`, `warn`, `bad` or `accent` |
+| `push` | `false` | also send it to `notify.channels` and the devices with notifications on |
+| `rate` | `30` | calls a minute at most; past that it answers `429` |
+| `query` | `false` | also take the token as `?token=…`, for a sender that can only be given an address. An address ends up in logs and history, so only when there's no other way |
+
+The body may be JSON, a form, or plain words (taken as `text`), up to 16 KB. It answers `200 {"ok":true}`; `401` to no
+token, a wrong one, another hook's, a hook that isn't there or `hooks` left out, all alike; `405` to a GET with the right
+token; `413` past 16 KB; `429` past `rate`. What the body says is another program's words: it's shown as plain text,
+cut to 200 characters a line, and never given to a model. The timeline line the assistant reads says only that the hook
+fired. Off in a sandbox.
+
+## `events`
+
+What Valet notices, published so Home Assistant, Node-RED or anything else can react: a service going down and coming
+back, something starting and finishing, a notice, a backup problem and its recovery, a rule running, a hook firing, an
+approval asked from outside. Off unless set. Each event is one JSON document; every secret Valet knows is taken out first.
+
+```yaml
+events:
+  on: [service, backup, hook]              # left out: everything
+  targets:
+    - { type: webhook, url: http://nodered:1880/valet, secret: "${EVENTS_SECRET}" }
+    - { type: mqtt, url: mqtt://mosquitto:1883, username: valet, password: "${MQTT_PASSWORD}", topic: valet }
+```
+
+| `type: webhook` | Default | |
+|---|---|---|
+| `url` | required | `http://` or `https://`; each event is a JSON POST, with its type in `X-Valet-Event` |
+| `headers` | none | sent with each, e.g. `{ Authorization: "Bearer ${TOKEN}" }` |
+| `secret` | none | at least 16 characters: each body is signed, `X-Valet-Signature: sha256=<hex HMAC-SHA256 of the body>` |
+| `on` | `events.on` | only these types, for this target |
+
+| `type: mqtt` | Default | |
+|---|---|---|
+| `url` | required | `mqtt://host:1883`, or `mqtts://host:8883` for TLS |
+| `username`, `password` | none | |
+| `topic` | `valet` | everything goes under it |
+| `retain` | `true` | the broker keeps the latest state of each service, activity and backup, and `<topic>/status` |
+| `qos` | `0` | `1`: the broker acknowledges each, and what wasn't acknowledged is sent again |
+| `clientId` | `valet-` and random letters | |
+| `keepalive` | `60` | seconds |
+| `on` | `events.on` | only these types, for this target |
+
+Topics: `<topic>/service/<name>`, `<topic>/activity/<widget>`, `<topic>/backup/<job>` (retained),
+`<topic>/rule/<id>`, `<topic>/hook/<name>`, `<topic>/notice`, `<topic>/ask`, and `<topic>/status` (`online`, or
+`offline` when Valet stops or vanishes). The client only publishes: it never subscribes, so nothing on the broker can
+tell Valet to do anything. A target that can't be reached is retried with a growing pause and logged once; up to 200
+events wait for it, the oldest let go first. The event types and their fields are in the
+[docs](https://askvalet.dev/concepts/events/). Off in a sandbox.
+
 ## `live`
 
 What's happening right now, as rings in the top bar: what's playing, what's downloading, the vacuum, an event in progress.

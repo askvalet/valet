@@ -238,6 +238,7 @@ const SECTIONS: [string, string[], string][] = [
   ['Notify', ['notify'], 'Where "tell me when" reminders go when you\'re not looking.'], ['Auth', ['auth', 'allowedHosts'], 'Sign-in, and the names Valet answers to. See [sign-in and network safety](/start/sign-in/).'],
   ['History', ['history'], 'Each widget\'s headline numbers over time, so tiles can show a graph. Set to `false` to turn it off.'], ['Plugins', ['plugins'], 'Community integrations. A plain list of npm packages works too. See [the plugin toolkit](/build/plugins/).'],
   ['Assistant', ['assistant'], 'Left out, there is no assistant and the page loses nothing. See [models](/assistant/models/).'], ['MCP', ['mcp'], 'MCP servers the assistant may use. See [MCP](/assistant/mcp/).'], ['MCP server', ['mcpServer'], 'Valet as a read-only MCP server for an AI client you use. See [MCP](/assistant/mcp/#valet-as-an-mcp-server).'],
+  ['Hooks and events', ['hooks', 'events'], 'Webhooks in from your other services, and what Valet notices out to a webhook or an MQTT broker. Both off unless set. See [webhooks and events](/concepts/events/).'],
   ['Voice', ['voice'], 'Talk to the chat and hear its answers, over the OpenAI audio API. See [voice](/assistant/voice/).'],
   ['Layout', ['layout'], 'The sections of the page, in order. See [sections and layout](/concepts/layout/).'], ['Integrations', ['integrations'], 'One block per instance. The options depend on `type`: see [integrations](/integrations/).'],
 ];

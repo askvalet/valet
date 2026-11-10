@@ -21,6 +21,8 @@ const PUBLIC = new Set([
   'GET /plugins/:file',      // a plugin's browser half: code, no data
   'GET /manifest.webmanifest', // fetched before sign-in to install the app: it says "Valet" until there's a session
   'GET *',                   // the page's shell, which holds no data until /api answers
+  'POST /hooks/:name',       // webhooks in: another program has no session, so each hook answers to its own token, and every refusal is one 401
+  'GET /hooks/:name',        // the same 401 to a GET, so a method doesn't tell which hooks exist; a right token gets 405
 ]);
 const IN_AUTH = /^\/api\/auth\//;   // the sign-in routes themselves
 
@@ -306,6 +308,52 @@ describe('the read-only MCP server', () => {
     }
     const nope = await (await rpc({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'config__config_apply', arguments: {} } })).json();
     assert.ok(nope.error, 'a tool it never offered can\'t be called');
+  });
+});
+
+describe('webhooks in: each hook answers to its own token, and every refusal is the same', () => {
+  const SONARR = 'hook-token-sonarr-0123456789abcdef01', KUMA = 'hook-token-kuma-0123456789abcdef0123';
+  let s: Awaited<ReturnType<typeof boot>>;
+  before(async () => { s = await boot({ mode: 'local', secureCookie: false }, `hooks:
+  sonarr: { token: "\${SONARR_HOOK}", text: "{series.title} downloaded" }
+  kuma: { token: "${KUMA}", rate: 2 }
+`, undefined, { SONARR_HOOK: SONARR }); });
+  after(() => { s.proc.kill(); });
+  const hook = (name: string, o: { token?: string; headers?: Record<string, string>; body?: string; method?: string; query?: string } = {}) =>
+    fetch(`${s.base}/hooks/${name}${o.query ?? ''}`, { method: o.method ?? 'POST', headers: { 'Content-Type': 'application/json', ...(o.token ? { Authorization: `Bearer ${o.token}` } : {}), ...o.headers }, body: o.method === 'GET' || o.method === 'HEAD' ? undefined : o.body ?? '{}' });
+  const answer = async (r: Response) => [r.status, await r.text(), r.headers.get('www-authenticate')].join(' | ');
+
+  test('no token, a wrong one, another hook\'s, a hook that isn\'t there, the address, any method: one answer, nothing logged', async () => {
+    const logged = s.log().length, want = '401 | {"error":"unauthorized"} | Bearer';
+    for (const [why, r] of [
+      ['no token', await hook('sonarr')], ['a wrong token', await hook('sonarr', { token: `${SONARR}x` })], ['another hook\'s token', await hook('sonarr', { token: KUMA })],
+      ['the token in the header for tools', await hook('sonarr', { headers: { 'X-Valet-Token': 'nope' } })], ['a hook that isn\'t there', await hook('radarr', { token: SONARR })],
+      ['a name that reaches a prototype', await hook('__proto__', { token: SONARR })], ['the token in the address', await hook('sonarr', { query: `?token=${SONARR}` })],
+      ['Basic with a wrong password', await hook('sonarr', { headers: { Authorization: `Basic ${Buffer.from(`sonarr:${KUMA}`).toString('base64')}` } })],
+      ['Basic with the token as the user name', await hook('sonarr', { headers: { Authorization: `Basic ${Buffer.from(`${SONARR}:`).toString('base64')}` } })],
+      ['a GET', await hook('sonarr', { method: 'GET' })], ['a GET for nothing', await hook('radarr', { method: 'GET' })],
+      ['an oversized body without the token', await hook('sonarr', { body: 'x'.repeat(64 * 2 ** 10) })], ['a session cookie instead', await hook('sonarr', { headers: { cookie: 'valet_session=x.y' } })],
+    ] as const) { const text = await answer(r); assert.equal(text, want, why); clean(why, text); }
+    for (const method of ['PUT', 'DELETE', 'PATCH']) assert.notEqual((await hook('sonarr', { token: SONARR, method })).status, 200, method);
+    assert.equal(s.log().length, logged, 'refusals write nothing to the log');
+  });
+
+  test('the right token: a POST is taken, a body past 16 KB is refused, a GET is 405, and a burst is 429', async () => {
+    assert.deepEqual(await (await hook('sonarr', { token: SONARR, body: JSON.stringify({ series: { title: 'Severance' } }) })).json(), { ok: true });
+    assert.equal((await hook('sonarr', { headers: { 'X-Valet-Token': SONARR } })).status, 200);
+    assert.equal((await hook('sonarr', { headers: { Authorization: `Basic ${Buffer.from(`sonarr:${SONARR}`).toString('base64')}` } })).status, 200, 'Sonarr\'s own user name and password fields');
+    const big = await hook('sonarr', { token: SONARR, body: JSON.stringify({ text: 'x'.repeat(16 * 2 ** 10) }) });
+    assert.equal(big.status, 413); clean('oversized', await big.text());
+    assert.equal((await hook('sonarr', { token: SONARR, method: 'GET' })).status, 405);
+    const burst: number[] = [];
+    for (let i = 0; i < 4; i++) burst.push((await hook('kuma', { token: KUMA })).status);
+    assert.deepEqual(burst, [200, 200, 429, 429]);
+    assert.equal((await hook('sonarr', { token: SONARR })).status, 200, 'one hook\'s limit is its own');
+  });
+
+  test('what a hook says reaches only a session, and never as the page\'s config', async () => {
+    const r = await fetch(`${s.base}/api/events`);
+    assert.equal(r.status, 401); clean('events without a session', await r.text());
   });
 });
 

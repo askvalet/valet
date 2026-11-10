@@ -181,6 +181,19 @@ mcp:
 #   token: ${VALET_MCP_TOKEN}        # openssl rand -hex 32, in .env
 #   access: { default: read }        # or { default: none, plex: read }: only what you open
 
+# Webhooks in: another service tells Valet something happened, with POST /hooks/<name> and that hook's token. It becomes
+# a notice (and a push, with push: true); {dotted.path} fills in from the JSON it sent. Off unless one is named.
+# hooks:
+#   sonarr: { token: "${SONARR_HOOK}", text: "{series.title} downloaded", tone: good }   # openssl rand -hex 32, in .env
+#   backup: { token: "${BACKUP_HOOK}", push: true }   # curl -H "Authorization: Bearer $BACKUP_HOOK" -d "Backup done" http://valet:7575/hooks/backup
+
+# Events out: what Valet notices (services down and back, downloads and streams, notices, backups, rules, hooks), as JSON
+# to a webhook (signed with secret) or an MQTT broker under valet/…. Off unless set.
+# events:
+#   targets:
+#     - { type: mqtt, url: mqtt://mosquitto:1883, username: valet, password: "${MQTT_PASSWORD}" }
+#     - { type: webhook, url: http://nodered:1880/valet, secret: "${EVENTS_SECRET}" }
+
 # Backup health: every job the integrations report, on the card valet.backups, worst first. Overdue means no success
 # within the job's schedule, or this when the service doesn't say one. Problems and recoveries reach notify.channels.
 # backups: { overdue: 26h, expect: { Offsite copy: 8d } }
