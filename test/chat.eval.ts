@@ -93,7 +93,7 @@ const CASES: Case[] = [
   { ask: 'Thanks, that helped', plain: true },
 ];
 
-const config = loadConfig(process.env.VALET_CONFIG ?? 'config.yaml');
+const config = await loadConfig(process.env.VALET_CONFIG ?? 'config.yaml');
 const a = Config.parse({ assistant: { ...config.assistant, agent: undefined, access: { default: 'read', downloads: 'control', plex: 'control', house: 'control', dns: 'control', requests: 'control', docs: 'write', links: 'write' } } });
 const app = new Hono();
 app.post('/chat', chatRoute(a, home, meta, { acting: true, redact: s => s }) as any);

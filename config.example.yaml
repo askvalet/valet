@@ -2,7 +2,8 @@
 # local: built-in accounts · proxy: trust your sign-in proxy's user header · oidc: OpenID Connect · trustNetwork: true if only your VPN/tailnet reaches it
 auth: { mode: none, trustNetwork: false }
 
-# Valet configuration. `${NAME}` is replaced from the environment, so keep secrets in .env or Docker secrets.
+# Valet configuration. `${NAME}` is replaced from the environment, so keep secrets in .env, Docker secrets, Vault or
+# 1Password (see `secrets` below).
 title: Home
 greeting: Sam                      # "Sam's homelab"
 location: Toronto, Canada          # gives the assistant local context
@@ -175,6 +176,14 @@ mcp:
 # notify:
 #   channels: [{ type: ntfy, url: https://ntfy.sh/my-topic }]
 #   webPush: { contact: "mailto:you@example.com" }   # how a push service can reach you
+
+# More places a ${NAME} can come from when the environment doesn't have it, looked in this order. A provider's own
+# token is a ${NAME} from the environment (or NAME_FILE), or a tokenFile: never typed here.
+# secrets:
+#   files: /run/secrets              # Docker and Kubernetes secrets: a file called NAME, or name
+#   vault: { url: "https://vault.example.com:8200", token: "${VAULT_TOKEN}", mount: secret, path: valet }   # KV v2: one secret, its keys are the names
+#   onepassword: { url: "http://op-connect:8080", tokenFile: /run/secrets/op_token, vault: Homelab, item: Valet }   # Connect: one item, its field labels are the names
+#   refresh: 1h                      # ask again this often; the page is rebuilt only if a value changed
 
 # Valet as a read-only MCP server for your own AI client (Claude Desktop, an editor): POST /mcp with this token.
 # mcpServer:

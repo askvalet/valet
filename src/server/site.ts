@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { usedSecrets, type Config } from './config.ts';
+import { usedSecrets, writtenProblems, type Config } from './config.ts';
 import { setFrames } from './security.ts';
 import { makeContext, setHouse, type Instance, type Integration } from './core.ts';
 import { History } from './history.ts';
@@ -106,6 +106,8 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   for (const [id] of Object.entries(config.assistant?.access ?? {})) if (!id.includes('.') && !['default', 'config', 'valet'].includes(id) && !instances.has(id)) problems.push(`assistant.access.${id}: no such integration`);
   // the wall's own cards are polled too, while a wall is open; its typos name the wall
   const has = (key: string) => { const [inst, w] = key.split('.'); return inst === 'valet' || !!instances.get(inst)?.widgets[w]; };
+  problems.push(...writtenProblems(config));
+  if (config.secrets.refresh && !config.reload) problems.push('secrets.refresh: needs reload, which is turned off');
   problems.push(...wallProblems(config, has));
   problems.push(...voiceProblems(config));
   // a view the widget's card can't take is ignored on the page; say so here, with the ones it can

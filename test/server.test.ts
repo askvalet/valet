@@ -100,12 +100,12 @@ test('config: ${VAR} fills from the environment and is remembered for redaction;
   process.env.VALET_TEST_KEY = 'k-1234567890';
   await writeFile(join(dir, 'a.yaml'), 'integrations:\n  w: { type: weather, apiKey: "${VALET_TEST_KEY}" }\n');
   await writeFile(join(dir, 'b.yaml'), 'integrations:\n  w: { type: weather, apiKey: "${VALET_NOT_SET}" }\n');
-  const c = loadConfig(join(dir, 'a.yaml'));
+  const c = await loadConfig(join(dir, 'a.yaml'));
   assert.equal((c.integrations.w as any).apiKey, 'k-1234567890');
   assert.ok(usedSecrets.includes('k-1234567890'));
-  assert.throws(() => loadConfig(join(dir, 'b.yaml')), /VALET_NOT_SET is not set/);
+  await assert.rejects(loadConfig(join(dir, 'b.yaml')), /VALET_NOT_SET is not set/);
   await writeFile(join(dir, 'c.yaml'), 'titel: typo\n');
-  assert.throws(() => loadConfig(join(dir, 'c.yaml')), /config\.yaml/);   // unknown top-level keys are mistakes
+  await assert.rejects(loadConfig(join(dir, 'c.yaml')), /config\.yaml/);   // unknown top-level keys are mistakes
 });
 
 test('hub: identical cards aren\'t re-sent, errors keep the last card, a refresh asked mid-flight runs once more', async () => {

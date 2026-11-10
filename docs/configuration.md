@@ -4,7 +4,8 @@ Everything lives in one YAML file (`config.yaml`, or the path in `VALET_CONFIG`)
 is a working starting point; this page lists every option. Anything you leave out takes the default shown.
 
 `${NAME}` anywhere in the file is replaced from the environment, or from the file `NAME_FILE` points at (the Docker
-secrets convention). `${secret:name}` reads `/run/secrets/name` and `${file:/path}` any file; `\${…}` is left alone.
+secrets convention), or from a folder of secret files, Vault or 1Password if [`secrets`](#secrets) says so.
+`${secret:name}` reads `/run/secrets/name` and `${file:/path}` any file; `\${…}` is left alone.
 Valet redacts every replaced secret from anything it sends out. A name ending in `_USER`, `_URL`, `_HOST`, `_PORT` (and
 the like) isn't treated as one, unless it also says `TOKEN`, `KEY`, `SECRET`, `PASS` or `WEBHOOK`.
 
@@ -324,6 +325,51 @@ layout:
 | `proxy.header` | `Remote-User` | the header your proxy puts the user in |
 | `proxy.trusted` | `[127.0.0.1]` | proxy addresses whose header is believed (and whose `X-Forwarded-For` is used for sign-in throttling) |
 
+## `secrets`
+
+Where a `${NAME}` comes from when the environment doesn't have it. Valet looks in this order and takes the first that
+has it: the environment, the file `NAME_FILE` points at, `files`, `vault`, `onepassword`. So an install that keeps
+everything in `.env` behaves as it always did. A name nothing has stops the config from loading, with an error that
+says where Valet looked.
+
+```yaml
+secrets:
+  files: /run/secrets                # Docker and Kubernetes secrets: a file called NAME, or name
+  vault:
+    url: https://vault.example.com:8200
+    token: ${VAULT_TOKEN}            # from the environment or VAULT_TOKEN_FILE; or tokenFile: /run/secrets/vault_token
+  refresh: 1h
+```
+
+| Option | Default | |
+|---|---|---|
+| `files` | none | a folder of files named after the variable: `${SONARR_KEY}` reads `SONARR_KEY`, or else `sonarr_key`. The last newline is trimmed. A file over 64 KB, or a link that leads out of the folder, is refused |
+| `vault` | none | HashiCorp Vault, KV version 2: `{ url, token or tokenFile, mount, path, namespace }`. Valet reads one secret, and its keys are the names |
+| `vault.mount` | `secret` | where the KV engine is mounted |
+| `vault.path` | `valet` | the secret in it, so `secret/valet` by default |
+| `vault.namespace` | none | for Vault Enterprise and HCP |
+| `onepassword` | none | a 1Password Connect server: `{ url, token or tokenFile, vault, item }`. Valet reads one item, and its field labels are the names |
+| `onepassword.vault` | required | the vault's name or ID |
+| `onepassword.item` | `Valet` | the item's title or ID |
+| `refresh` | none | how often to ask again, `1m` to `7d`, e.g. `1h`. The page is rebuilt only when a value changed. It needs `reload` (on by default). Left out, values are read when Valet starts and when `config.yaml` changes |
+
+A key in Vault or a field label in 1Password is the variable's name, or the same in lower case. 1Password is asked only
+for names Vault didn't have, and neither is asked when nothing needs them.
+
+**A provider's own token** comes from the environment or a file and from nowhere else: write `token: ${VAULT_TOKEN}`
+(which also reads `VAULT_TOKEN_FILE`) or `tokenFile: /path`. Inside `secrets`, `${NAME}` never reads `files`, Vault or
+1Password. A token typed into the file still works, and `config check` reports it as a problem.
+
+**What Valet does with them.** Each provider is a few `GET` requests over `http` or `https`, with a 10 second limit and
+an answer of at most 512 KB. No redirect is followed, so the token only goes to the address you wrote. Values are kept
+in memory and never written to disk or the log, and they're redacted from everything Valet sends out, `config print`
+included, whatever the variable is called. An error names the variable and the provider, never a value or the token.
+
+When a provider can't be reached, a reload fails whole and the last good config keeps running, as with any broken
+edit. At startup there is no last good config, so Valet doesn't start. A failed `refresh` is logged and changes nothing.
+
+The assistant can't see this block or change it, and a provider's token can't be used anywhere else in the file by it.
+
 ## `assistant`
 
 | Option | Default | |
@@ -355,7 +401,7 @@ integration accepts, checks the change without saving or contacting anything (a 
 you approve; hot reload does the rest, and it can undo the last save. It changes only the lines it must. It can't touch
 `auth`, `allowedHosts`, `mcp`, `mcpServer`, `plugins`, `notify`, `sandbox` or `reload`, and of `assistant` only its `name` and
 `suggestions`, never its access, model or instructions; it can't
-point `appearance` at a file on disk or write its `css`, it refuses to write a secret (it asks you to put `${NAME}` in `.env`),
+point `appearance` at a file on disk or write its `css`, it refuses to write a secret (it asks you to put `${NAME}` in `.env`), it never sees or changes `secrets`,
 and a secret only ever goes to hosts it already goes to.
 Mount the config folder read-only and it hands you the diff to paste instead.
 

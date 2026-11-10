@@ -11,6 +11,7 @@ import { clientIp, sameOrigin, setupAuth, setupWall, userCommand } from './auth.
 import { wallPages, wallReads, wallWidgets } from './wall.ts';
 import type { WidgetState } from '../shared/cards.ts';
 import { loadConfig, startConfig, validZone, type Config } from './config.ts';
+import { Refresh } from './secrets.ts';
 import { cleanCss, headers, hostGuard, served } from './security.ts';
 import { UPLOAD_DIR, LOGO, hearBrowser } from './core.ts';
 import { parseSuggestions, scopeOf, statusLine, suggestPrompt, troubles } from './insight.ts';
@@ -57,7 +58,7 @@ let configError: { message: string; at: number } | null = null;
 // one bad promise in an integration shouldn't take the whole page down: log it and carry on
 process.on('unhandledRejection', e => console.error('unhandled:', e instanceof Error ? e.message : e));
 
-const { config, saved } = startConfig(CONFIG);
+const { config, saved } = await startConfig(CONFIG);
 // Dates the server writes (assistant answers, "Tonight", watch history) need the person's clock, not the container's
 // UTC. config `timezone` wins, then TZ; failing both, the first browser to open the page says where it is.
 let zoneKnown = !!(config.timezone || process.env.TZ);
@@ -84,13 +85,16 @@ for (const sig of ['SIGTERM', 'SIGINT'] as const) process.once(sig, async () => 
 // settings and plugins are read once, so those still need a restart.
 if (config.reload) {
   let timer: NodeJS.Timeout | undefined;
-  const reload = async () => {
-    let next; try { next = loadConfig(CONFIG); } catch (e) {
+  const reload = async (asked = true) => {
+    let next; try { next = await loadConfig(CONFIG); } catch (e) {
+      // a provider that's away when it's only time to ask again changes nothing: the values it gave still stand
+      if (!asked) return void console.error(`secrets: not refreshed: ${(e as Error).message}`);
       console.error(`config: not applied: ${(e as Error).message}`);
       configError = { message: (e as Error).message, at: Date.now() };
       for (const tell of sseClients) tell();   // open pages fetch the page again, and say so
       return;
     }
+    fresh.set(next.secrets.refresh);
     if (configError) { configError = null; if (JSON.stringify(next) === JSON.stringify(site.config)) { for (const tell of sseClients) tell(); return; } }
     if (JSON.stringify(next) === JSON.stringify(site.config)) return;
     if (JSON.stringify(next.auth) !== JSON.stringify(site.config.auth) || JSON.stringify(next.plugins) !== JSON.stringify(site.config.plugins)) console.log('config: auth and plugins changes take effect after a restart');
@@ -98,6 +102,9 @@ if (config.reload) {
     await swap(next);
     console.log(`config: reloaded · ${site.instances.size} integrations · ${site.placed.size} widgets${site.problems.length ? ` · ${site.problems.length} problems` : ''}`);
   };
+  // secrets.refresh: the same reload on a timer, which rebuilds only when a file or a provider gave something new
+  const fresh = new Refresh(() => reload(false));
+  fresh.set(config.secrets.refresh);
   // editors save by replacing the file, which some watchers see as a delete; watch the folder and settle for 300ms
   try { watch(resolve(CONFIG, '..'), (_, f) => { if (f && resolve(CONFIG, '..', f) === resolve(CONFIG)) { clearTimeout(timer); timer = setTimeout(reload, 300); } }); }
   catch (e) { console.warn(`config: can't watch ${CONFIG} (${(e as Error).message})`); }
