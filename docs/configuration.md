@@ -27,12 +27,21 @@ without starting the server, and `config schema` prints a JSON schema editors an
 node dist/server.js config check                            # every problem in config.yaml, or ✓
 node dist/server.js config print                            # the effective config, defaults filled in, secrets redacted
 node dist/server.js config schema > valet.schema.json      # JSON schema of the whole file, every integration included
+node dist/server.js doctor [--json] [--send-test]           # what's wrong with this install, and how to fix each thing
 node dist/server.js user add|passwd|remove|signout <name>   # local accounts (asks for the password)
 node dist/server.js new-integration <name> [--full]         # scaffold a plugin in data/integrations/
 node dist/server.js check-integration <file>                # run a plugin against the sample it carries
 ```
 
 In Docker, prefix these with `docker exec -it valet`.
+
+`doctor` only reads. It checks the file (every unset `${NAME}` at once), fetches each placed widget once (eight at a
+time, 10 seconds each, `--timeout <seconds>` to change that), asks the assistant's server for its model list and the voice
+and agent addresses whether they answer, checks each notification channel's shape and that its host answers, and looks at
+the data and config folders, sign-in and `allowedHosts`. A failure says what to look at: the address, the key, the path or
+the certificate. It never presses a button, runs a tool or sends a notification; `--send-test` sends one message to each
+channel, saying it's a test. Everything it prints passes the redactor. It exits 1 when something is wrong, and `--json`
+prints the list as `{ ok, checks: [{ group, status, check, problem, fix, ms }] }`.
 
 ## Top level
 

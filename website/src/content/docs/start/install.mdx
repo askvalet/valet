@@ -44,6 +44,12 @@ Open `http://localhost:7575`.
 
 On first start Valet writes a starter `config/config.yaml` and shows a getting-started card. If Valet can reach a read-only Docker socket proxy, like the optional one in the Compose file, the card lists the services it recognises running on the machine, each with the lines it takes. If the assistant may edit the config, you can also tell it what you run, and it sets the page up, asking before each change. If it can't write to that folder, it runs the starter from memory and the card says so.
 
+When it's running, `doctor` says what's wrong and how to fix each thing:
+
+```sh
+docker exec valet node dist/server.js doctor
+```
+
 ## docker run
 
 ```sh

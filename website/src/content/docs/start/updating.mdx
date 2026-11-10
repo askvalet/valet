@@ -36,6 +36,7 @@ npm start
 
 ```sh
 docker exec valet node dist/server.js config check
+docker exec valet node dist/server.js doctor          # and is every service still answering
 ```
 
 New options come with a default, so a config that doesn't mention them keeps working.

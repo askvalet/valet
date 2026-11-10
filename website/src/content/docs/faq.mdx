@@ -49,6 +49,10 @@ Each widget polls on its own interval, once for all open tabs, while a page is o
 
 Yes, with `local`, `proxy` or `oidc`. Everyone signed in sees the same page and has the same rights: there are no roles. There are no read-only share links yet, for something like a kitchen tablet.
 
+## Something isn't working. Where do I start?
+
+`docker exec valet node dist/server.js doctor`. It tries everything in the config once and says what to fix, without changing anything.
+
 ## Do you support my camera's MJPEG stream?
 
 No. See [what's not supported](/integrations/#not-supported). A snapshot URL works.

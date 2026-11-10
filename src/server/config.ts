@@ -484,8 +484,9 @@ const readSecret = (path: string, what: string) => {
   catch { throw new Error(`config: ${what}: can't read ${path}`); }
 };
 /** `${NAME}` from the environment (or the file `NAME_FILE` points at, the Docker convention); `${secret:name}` from
- *  /run/secrets/name; `${file:/path}` from any file. `\${…}` is left alone. */
-export function substitute(v: unknown): unknown {
+ *  /run/secrets/name; `${file:/path}` from any file. `\${…}` is left alone. `unset` answers for a name that has no
+ *  value instead of the error (the doctor lists them all and carries on); what it gives is not a secret. */
+export function substitute(v: unknown, unset?: (name: string) => string): unknown {
   if (typeof v === 'string') return v.replace(/(\\?)\$\{(?:(secret|file):([^}]+)|([A-Z0-9_]+))\}/g, (m, esc, kind, arg, name) => {
     if (esc) return m.slice(1);
     let value: string;
@@ -493,13 +494,14 @@ export function substitute(v: unknown): unknown {
     else if (kind === 'file') value = readSecret(arg.trim(), m);
     else if (process.env[name] !== undefined) value = process.env[name]!;
     else if (process.env[`${name}_FILE`]) value = readSecret(process.env[`${name}_FILE`]!, m);
+    else if (unset) return unset(name);
     else throw new Error(`config: environment variable ${name} is not set (nor ${name}_FILE)`);
     // a user name, an address or a port isn't a secret, and blanking one mangles real text ("sam" inside "samantha")
     if (kind || !/(^|_)(USER(NAME)?|LOGIN|URL|HOST|HOSTNAME|PORT|ADDR(ESS)?)$/.test(name) || /WEBHOOK|SECRET|TOKEN|KEY|PASS|ICS|CAL/.test(name)) usedSecrets.push(value);
     return value;
   });
-  if (Array.isArray(v)) return v.map(substitute);
-  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, substitute(x)]));
+  if (Array.isArray(v)) return v.map(x => substitute(x, unset));
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, substitute(x, unset)]));
   return v;
 }
 
@@ -528,7 +530,7 @@ const distance = (a: string, b: string) => {
   return row[b.length];
 };
 /** A problem as a person would want it: an unknown key names what's closest, or what's there. */
-function explain(i: z.core.$ZodIssue) {
+export function explain(i: z.core.$ZodIssue) {
   if (i.code !== 'unrecognized_keys') return i.message;
   const known = optionsAt(i.path);
   return i.keys.map(k => {

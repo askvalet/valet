@@ -53,7 +53,7 @@ export function choices(a: Assistant): { id: string; settings: Assistant }[] {
 }
 
 const ANTHROPIC = 'https://api.anthropic.com/v1';
-const base = (a: Assistant) => (a.baseURL ?? (a.provider === 'anthropic' ? ANTHROPIC : 'http://localhost:11434/v1')).replace(/\/$/, '').replace(/^https:\/\/api\.anthropic\.com$/, ANTHROPIC);
+export const base = (a: Assistant) => (a.baseURL ?? (a.provider === 'anthropic' ? ANTHROPIC : 'http://localhost:11434/v1')).replace(/\/$/, '').replace(/^https:\/\/api\.anthropic\.com$/, ANTHROPIC);
 const authed = (a: Assistant) => ({ 'User-Agent': 'Valet', ...(a.apiKey ? { Authorization: `Bearer ${a.apiKey}` } : {}) });
 const host = (a: Assistant) => { try { return new URL(base(a)).host; } catch { return base(a); } };
 /** the same server: one provider at one address */
@@ -95,7 +95,8 @@ export function servers(a: Assistant): Server[] {
   return out;
 }
 
-async function readList(a: Assistant, get: typeof fetch): Promise<Listed['models']> {
+/** Throws the status, or fetch's own error, when the server doesn't hand over a list (the doctor reads which). */
+export async function readList(a: Assistant, get: typeof fetch): Promise<Listed['models']> {
   const seen = new Set<string>(), models: Listed['models'] = [];
   const add = (d: any, label?: unknown) => {
     const id = d?.id;

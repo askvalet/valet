@@ -54,6 +54,33 @@ docker exec valet node dist/server.js config print    # what Valet made of it, s
 
 An unknown key anywhere in the core config is an error, and Valet names the closest match. The [integration pages](/integrations/) list every widget key.
 
+## Check everything
+
+`config check` reads the file. `doctor` also tries everything in it, once, and says what to do about each problem:
+
+```sh
+docker exec valet node dist/server.js doctor
+```
+
+```text
+Config
+  ✗ ${SONARR_KEY}: SONARR_KEY isn't set (integrations.coming.sonarr.apiKey)
+      Add SONARR_KEY=… to .env (or point SONARR_KEY_FILE at a file holding it) and restart Valet. In Docker the container needs it: env_file: .env.
+Integrations
+  ✓ dns (Pi-hole): 1 widget (41 ms)
+  ✗ photos (Immich): photos:2283 refused its key, token or password (401)
+      Check its key, token or password in .env: copied whole, and still valid.
+Assistant
+  ✓ assistant: qwen3:8b on ollama:11434 (12 ms)
+Install
+  ✓ data folder /app/data can be written
+  · no sign-in (auth.mode: none): the page is read-only, with no buttons and no changes by the assistant
+
+2 problems.
+```
+
+It fetches each widget on the page once, asks the model server for its models, and checks that each notification channel's host answers. It never presses a button, runs a tool or sends a notification, and no secret is printed. `--send-test` sends one test message to each channel, `--json` prints the list for a script, and it exits 1 when something is wrong.
+
 ## Autocomplete in your editor
 
 ```sh
