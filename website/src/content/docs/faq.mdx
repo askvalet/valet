@@ -49,6 +49,10 @@ Each widget polls on its own interval, once for all open tabs, while a page is o
 
 Yes, with `local`, `proxy` or `oidc`. Everyone signed in sees the same page and has the same rights: there are no roles. There are no read-only share links yet, for something like a kitchen tablet.
 
+## Can I bring my Homepage, Homarr, Dashy or Heimdall config?
+
+Yes: `import` turns it into a Valet config, and takes every key out of it for `.env`. See [bring your dashboard](/start/import/).
+
 ## Something isn't working. Where do I start?
 
 `docker exec valet node dist/server.js doctor`. It tries everything in the config once and says what to fix, without changing anything.

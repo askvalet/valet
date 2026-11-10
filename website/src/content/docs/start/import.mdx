@@ -1,0 +1,54 @@
+---
+title: Bring your dashboard
+description: Turn a Homepage, Homarr, Dashy or Heimdall config into a Valet one, with every key moved to .env.
+sidebar:
+  order: 3
+---
+
+`import` reads another dashboard's config and writes a Valet one. Put the old files where the container can see them, such as the `config` folder:
+
+```sh
+docker exec valet node dist/server.js import homepage /config/homepage --out /config/config.yaml --env /config/.env.import
+```
+
+| Dashboard | What to give it |
+|---|---|
+| `homepage` | its config folder, or `services.yaml` alone. `bookmarks.yaml`, `widgets.yaml` and `settings.yaml` beside it are read too |
+| `dashy` | `conf.yml` |
+| `homarr` | a board's JSON export |
+| `heimdall` | its JSON export |
+
+## What becomes what
+
+- **A service Valet has an integration for** becomes that integration, with its address, and its cards go on the page. Homepage and Homarr say what each service is; for Dashy and Heimdall it goes by the widget or the app's name.
+- **Everything else with an address** becomes a link in its group, with an up/down check on a Status card. A link known by name only, with no key, stays a link, and the summary says Valet has an integration for it.
+- **Groups** become sections, in the same order. Homepage's weather and search widgets set `weather` and `search`.
+- **What has no place** is skipped, and the summary says why: a widget Valet has no card for, an app with no address, a `javascript:` link.
+
+```text
+From Homepage, written to /config/config.yaml:
+4 integrations: Plex (plex: plex), Sonarr (coming: sonarr), Jellyseerr (jellyseerr: seerr), Pi-hole (pi-hole: pihole)
+3 links: Router, Notes, Code. Each has an up/down check on the Status card
+2 skipped:
+  the resources widget: Valet has no card like it
+  Odd thing: its address isn't an http(s) one
+Router: a password or key was in its address and was taken out
+3 secrets taken out of the config. None is in the Valet config: it has ${NAME} in their place.
+Their names and values are in /config/.env.import (only you can read it). Move them into .env, then delete it.
+```
+
+## Keys
+
+No key, token or password goes into the new config. Each becomes a `${NAME}`, and its value goes to `--env`'s file (readable by you alone), or is printed without it. A password inside an address, or a key in its query, is taken out of the address too. Homepage's `{{HOMEPAGE_VAR_X}}` becomes `${HOMEPAGE_VAR_X}`: the value is already in that dashboard's environment, under that name.
+
+Move the lines into `.env`, delete the import file, and restart.
+
+## Afterwards
+
+Without `--out` the config goes to the screen. `import` never writes over a file unless you add `--force`. Read the result over, then check it and everything in it:
+
+```sh
+docker exec valet node dist/server.js doctor
+```
+
+A service that became a link can become an integration later: see [add a service](/start/add-a-service/).

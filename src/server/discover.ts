@@ -10,7 +10,7 @@ export type Found = { type: string; name: string; icon: string; container: strin
 // types that aren't a program you'd find in a container, or that every page has anyway
 const NOT_APPS = new Set(['api', 'http', 'links', 'clock', 'iframe', 'rss', 'todo', 'markets', 'weather', 'calendar', 'host', 'sockets', 'releases', 'repository', 'hackernews', 'lobsters', 'reddit', 'twitch', 'camera', 'docker', 'aimonitor', 'rgbcontrol']);
 // one integration for several apps
-const ARR = new Set(['sonarr', 'radarr', 'lidarr', 'readarr']);
+const ARR = new Set(['sonarr', 'radarr']);
 // the port people browse to, where a container offers several
 const WEB = [80, 8080, 3000, 8000, 5000, 8096, 32400, 2283, 8123, 8989, 7878, 9696, 6767, 8686, 5055, 3001, 9000, 8443, 443];
 const PROXIES = ['http://valet-dockerproxy:2375', 'http://dockerproxy:2375', 'http://docker-socket-proxy:2375', 'http://socket-proxy:2375'];
@@ -18,7 +18,8 @@ const PROXIES = ['http://valet-dockerproxy:2375', 'http://dockerproxy:2375', 'ht
 const flat = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 /** "lscr.io/linuxserver/sonarr:latest" → "sonarr"; "ghcr.io/immich-app/immich-server" → "immich" */
 export const appOf = (image: string) => flat(image.split('/').pop()!.split(/[:@]/)[0].replace(/[-_](server|app|web|ce|ee|ui|frontend|backend)$/i, ''));
-const secret = (type: string, key: string) => `\${${`${type}_${key}`.replace(/([a-z])([A-Z])/g, '$1_$2').replace(/[^A-Za-z0-9]+/g, '_').toUpperCase()}}`;
+/** the name a secret goes by in .env: "sonarr", "apiKey" → `${SONARR_API_KEY}` */
+export const secret = (type: string, key: string) => `\${${`${type}_${key}`.replace(/([a-z])([A-Z])/g, '$1_$2').replace(/[^A-Za-z0-9]+/g, '_').toUpperCase()}}`;
 
 /** The lines one service takes: its type, its address, and a `${NAME}` for each secret it needs, to go in .env. */
 export function block(i: Integration, url: string, app: string): Record<string, unknown> {
@@ -45,8 +46,9 @@ export function match(registry: Record<string, Integration>, image: string, name
 }
 
 let held: { at: number; out: { via: string | null; found: Found[] } } | undefined;
-export async function discover(registry: Record<string, Integration>, configured: { type: string; url?: string }[]) {
-  if (held && Date.now() - held.at < 60_000) return held.out;
+export async function discover(registry: Record<string, Integration>, configured: { type: string; url?: string }[], o: { fetch?: typeof fetch; fresh?: boolean } = {}) {
+  if (!o.fresh && held && Date.now() - held.at < 60_000) return held.out;
+  const fetch = o.fetch ?? globalThis.fetch;
   const have = new Set(configured.map(c => c.type));
   const tries = [...configured.filter(c => c.type === 'docker' && c.url).map(c => c.url!), ...(process.env.VALET_DOCKER ? [process.env.VALET_DOCKER] : []), ...PROXIES];
   let via: string | null = null, list: any[] = [];

@@ -50,6 +50,8 @@ if (process.argv[2] === 'check-integration') process.exit(await (await import('.
 if (process.argv[2] === 'user') process.exit(await userCommand(process.argv.slice(3)).catch(e => { console.error(String(e.message ?? e)); return 1; }));
 if (process.argv[2] === 'config') process.exit(await (await import('./cli.ts')).configCommand(process.argv.slice(3), CONFIG, registry));
 if (process.argv[2] === 'doctor') process.exit(await (await import('./doctor.ts')).doctorCommand(process.argv.slice(3), CONFIG, DATA, registry));
+if (process.argv[2] === 'init') process.exit(await (await import('./init.ts')).initCommand(process.argv.slice(3), CONFIG, registry));
+if (process.argv[2] === 'import') process.exit(await (await import('./import.ts')).importCommand(process.argv.slice(3), registry));
 
 const sseClients = new Set<() => void>();
 // why the last edit to config.yaml wasn't applied, until one is: shown on the page, not only in the log
