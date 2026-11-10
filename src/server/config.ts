@@ -554,10 +554,11 @@ export type Format = z.infer<typeof Format>;
 
 export { usedSecrets } from './secrets.ts';
 const REF = /(\\?)\$\{(?:(secret|file):([^}]+)|([A-Z0-9_]+))\}/g;
-interface Sources { files?: string; providers?: string[] }
+interface Sources { files?: string; providers?: string[]; unset?: (name: string) => string }
 /** `${NAME}` from the environment, the file `NAME_FILE` points at (the Docker convention), a file in `secrets.files`,
  *  or what Vault or 1Password gave, in that order; `${secret:name}` from /run/secrets/name; `${file:/path}` from any
- *  file. `\${…}` is left alone. Without `from`, only the environment and NAME_FILE are looked in. */
+ *  file. `\${…}` is left alone. Without `from`, only the environment and NAME_FILE are looked in. `from.unset` answers for a
+ *  name that has no value instead of the error (the doctor lists them all and carries on); what it gives is not a secret. */
 export function substitute(v: unknown, from?: Sources): unknown {
   if (typeof v === 'string') return v.replace(REF, (m, esc, kind, arg, name) => {
     if (esc) return m.slice(1);
@@ -566,6 +567,7 @@ export function substitute(v: unknown, from?: Sources): unknown {
     else if (kind === 'file') value = readSecret(arg.trim(), m);
     else {
       const got = lookup(name, { files: from?.files, providers: !!from });
+      if (!got && from?.unset) return from.unset(name);
       if (!got) throw new Error(`config: environment variable ${name} is not set (nor ${name}_FILE${[from?.files && `, nor a file in ${from.files}`, from?.providers?.length && `, and ${from.providers.join(' and ')} had none`].filter(Boolean).join('')})`);
       ({ value, kept } = got);
     }
@@ -598,8 +600,8 @@ export async function loadConfig(path: string, send?: typeof fetch): Promise<Con
 const asMap = (v: unknown) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {}) as Record<string, any>;
 /** The `secrets` block as written, with its own `${NAME}`s filled in from the environment or NAME_FILE only: what a
  *  provider needs to be reached can't come from a provider. */
-const ownSecrets = (doc: Record<string, any>) => asMap(substitute(doc.secrets));
-const sourcesOf = (own: Record<string, any>): Sources => ({ files: typeof own.files === 'string' ? own.files : undefined, providers: providersOf(own) });
+export const ownSecrets = (doc: Record<string, any>) => asMap(substitute(doc.secrets));
+export const sourcesOf = (own: Record<string, any>): Sources => ({ files: typeof own.files === 'string' ? own.files : undefined, providers: providersOf(own) });
 
 /** Ask Vault or 1Password for the names this config uses that nothing nearer has. `parseConfig` then finds them; until
  *  this runs again it finds what they gave last time. A provider that can't be asked throws, naming what it was asked for. */
@@ -629,7 +631,7 @@ const distance = (a: string, b: string) => {
   return row[b.length];
 };
 /** A problem as a person would want it: an unknown key names what's closest, or what's there. */
-function explain(i: z.core.$ZodIssue) {
+export function explain(i: z.core.$ZodIssue) {
   if (i.code !== 'unrecognized_keys') return i.message;
   const known = optionsAt(i.path);
   return i.keys.map(k => {

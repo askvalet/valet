@@ -29,6 +29,20 @@ export async function configCommand(args: string[], path: string, registry: Reco
   return problems.length ? 1 : 0;
 }
 
+/** A command's `--flag`s and `--name value`s, and what's left in order. An option it doesn't know is `bad`. */
+export function flags(args: string[], bools: string[], values: string[] = []) {
+  const on = new Set<string>(), given: Record<string, string> = {}, rest: string[] = [];
+  let bad: string | undefined;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i], name = a.slice(2);
+    if (!a.startsWith('--')) rest.push(a);
+    else if (bools.includes(name)) on.add(name);
+    else if (values.includes(name) && args[i + 1] !== undefined) given[name] = args[++i];
+    else bad ??= values.includes(name) ? `${a} needs a value` : `unknown option ${a}`;
+  }
+  return { on, given, rest, bad };
+}
+
 /** The whole config as JSON schema, with every integration's options under its type. */
 export function schema(registry: Record<string, Integration>) {
   const blocks = Object.values(registry).map(i => (i.config as z.ZodObject).extend({ type: z.literal(i.type) }));

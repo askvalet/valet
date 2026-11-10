@@ -46,11 +46,14 @@ const DATA = resolve(process.env.VALET_DATA ?? 'data');
 const PORT = Number(process.env.PORT ?? 7575);
 const HOST = process.env.HOST ?? '0.0.0.0';
 
-// `node dist/server.js user add <name>`, `config check` and friends run and exit
+// `node dist/server.js user add <name>`, `config check`, `doctor` and friends run and exit
 if (process.argv[2] === 'new-integration') process.exit(await (await import('./plugins.ts')).scaffold(process.argv[3]));
 if (process.argv[2] === 'check-integration') process.exit(await (await import('./plugins.ts')).checkPlugin(process.argv[3]));
 if (process.argv[2] === 'user') process.exit(await userCommand(process.argv.slice(3), () => loadConfig(CONFIG)).catch(e => { console.error(String(e.message ?? e)); return 1; }));
 if (process.argv[2] === 'config') process.exit(await (await import('./cli.ts')).configCommand(process.argv.slice(3), CONFIG, registry));
+if (process.argv[2] === 'doctor') process.exit(await (await import('./doctor.ts')).doctorCommand(process.argv.slice(3), CONFIG, DATA, registry));
+if (process.argv[2] === 'init') process.exit(await (await import('./init.ts')).initCommand(process.argv.slice(3), CONFIG, registry));
+if (process.argv[2] === 'import') process.exit(await (await import('./import.ts')).importCommand(process.argv.slice(3), registry));
 
 const sseClients = new Set<() => void>();
 // why the last edit to config.yaml wasn't applied, until one is: shown on the page, not only in the log

@@ -28,6 +28,9 @@ without starting the server, and `config schema` prints a JSON schema editors an
 node dist/server.js config check                            # every problem in config.yaml, or ✓
 node dist/server.js config print                            # the effective config, defaults filled in, secrets redacted
 node dist/server.js config schema > valet.schema.json      # JSON schema of the whole file, every integration included
+node dist/server.js doctor [--json] [--send-test]           # what's wrong with this install, and how to fix each thing
+node dist/server.js init [--docker <url>] [--print] [--force]   # a first config.yaml from the containers running here
+node dist/server.js import <homepage|homarr|dashy|heimdall> <path> [--out <file>] [--env <file>] [--force]
 node dist/server.js user add|passwd|remove|signout <name>   # local accounts (asks for the password)
 node dist/server.js user list                               # every account: an owner, or which profile
 node dist/server.js new-integration <name> [--full]         # scaffold a plugin in data/integrations/
@@ -35,6 +38,29 @@ node dist/server.js check-integration <file>                # run a plugin again
 ```
 
 In Docker, prefix these with `docker exec -it valet`.
+
+`doctor` only reads. It checks the file (every unset `${NAME}` at once), fetches each placed widget once (eight at a
+time, 10 seconds each, `--timeout <seconds>` to change that), asks the assistant's server for its model list and the voice
+and agent addresses whether they answer, checks each notification channel's shape and that its host answers, and looks at
+the data and config folders, sign-in and `allowedHosts`. A failure says what to look at: the address, the key, the path or
+the certificate. It never presses a button, runs a tool or sends a notification; `--send-test` sends one message to each
+channel, saying it's a test. Everything it prints passes the redactor. It exits 1 when something is wrong, and `--json`
+prints the list as `{ ok, checks: [{ group, status, check, problem, fix, ms }] }`.
+
+`init` writes a first `config.yaml`. It asks a read-only Docker socket proxy (`--docker`, `VALET_DOCKER`, or the usual
+names) what's running, gives each app Valet knows its block with `${NAME}` for each secret, an up/down check for all of
+them and the Docker card, lays them out by kind, and lists the names `.env` needs. With no proxy, or nothing it knows,
+it's the starter config. It won't write over a config (`--force` does; the untouched starter doesn't count), and
+`--print` only shows it.
+
+`import` turns another dashboard's config into Valet's: Homepage (its config folder, or `services.yaml`; `bookmarks.yaml`,
+`widgets.yaml` and `settings.yaml` beside it are read too), Dashy (`conf.yml`), Homarr (a board's JSON export) or
+Heimdall (its JSON export). A service with a widget Valet has an integration for becomes that integration; everything
+else becomes a link in its group, with an up/down check on a Status card, and groups become sections. A key, token or
+password it finds never goes in the config: it writes `${NAME}` and prints the names and values for `.env`, or writes
+them to a file only you can read with `--env`. Homepage's `{{HOMEPAGE_VAR_X}}` stays `${HOMEPAGE_VAR_X}`. The config goes
+to stdout unless `--out` says where (never over a file without `--force`), and it ends with what became an integration,
+what became a link, and what was skipped and why.
 
 ## Top level
 

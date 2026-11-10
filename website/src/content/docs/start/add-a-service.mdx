@@ -2,7 +2,7 @@
 title: Add a service
 description: Connect one service, put its card on the page, and find out why it isn't working.
 sidebar:
-  order: 3
+  order: 4
 ---
 import Shot from '~/components/Shot.astro';
 import Row from '~/components/Row.astro';
@@ -79,6 +79,7 @@ A widget that can't reach its service says so, in the card.
 <Shot id="int/pihole/stats-down" label="Can't reach it" alt="A Pi-hole card showing a skeleton and an error next to its title." />
 </Row>
 
+- Run `doctor`. It tries every widget once and says whether it's the address, the key, the path or the certificate.
 - Run `config check` for mistakes in the file.
 - Read the log: `docker logs valet`. It lists problems at startup.
 - `npm run test:live`, from a source checkout, tests every widget in your config against your real services.
