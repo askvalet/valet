@@ -1,0 +1,260 @@
+---
+title: Webhooks and events
+description: Let your other services tell Valet when something happens, and let Home Assistant, Node-RED or an MQTT broker hear what Valet notices.
+sidebar:
+  order: 10
+---
+
+Valet watches your services by asking them. Two doors let it work the other way round:
+
+- **Webhooks in.** A service, a script or a cron job tells Valet that something happened, with one POST. It shows as a notice on the page, goes on the timeline, can reach your phone, and can set off a [rule](/assistant/rules/).
+- **Events out.** What Valet notices (a service going down, a download finishing, a backup failing) goes to a webhook or an MQTT broker, so something else can act on it.
+
+Both are off until you set them up.
+
+## Webhooks in
+
+Name a hook and give it a token of its own:
+
+```yaml title="config.yaml"
+hooks:
+  backup: { token: "${BACKUP_HOOK}" }
+```
+
+```sh title=".env"
+BACKUP_HOOK=paste-the-output-of-openssl-rand-hex-32
+```
+
+Then, from anywhere on your network:
+
+```sh
+curl -X POST http://valet:7575/hooks/backup \
+  -H "Authorization: Bearer $BACKUP_HOOK" \
+  -d "Nightly backup done: 4.2 GB"
+```
+
+A toast says *Nightly backup done: 4.2 GB* on every open page, and the timeline records that the hook fired.
+
+### What it says
+
+Without `text`, a hook says what it was sent: plain words, or the `text`, `message`, `msg` or `title` field of JSON. With nothing to say, it says its own name. With `text`, you choose the words, and `{dotted.path}` fills in from the JSON:
+
+```yaml title="config.yaml"
+hooks:
+  sonarr: { token: "${SONARR_HOOK}", text: "{series.title} downloaded", sub: "{episodes.0.title}", tone: good }
+```
+
+A field that isn't there is left empty. `{episodes.0.title}` is the first episode's title. Only words, numbers and true or false fill in; a whole object or list is left empty.
+
+| Option | Default | |
+|---|---|---|
+| `token` | required | At least 32 characters, from `.env`. Each hook needs its own. |
+| `text` | what it was sent | The notice. `{dotted.path}` fills in from the JSON. |
+| `sub` | none | A quieter second line, filled the same way. |
+| `tone` | `accent` | `good`, `warn`, `bad` or `accent`. |
+| `push` | `false` | Also send it to your [notification channels](/reference/configuration/#notify) and to the devices with notifications on. |
+| `rate` | `30` | Calls a minute at most. |
+| `query` | `false` | Also take the token in the address, `?token=…`. See [below](#the-token-in-the-address). |
+
+### Sending the token
+
+Any one of these works:
+
+- `Authorization: Bearer <token>`.
+- Basic auth with the token as the password and any user name. This is what Sonarr's and Radarr's webhook settings offer.
+- `X-Valet-Token: <token>`, for a tool that can set a header but not `Authorization`.
+
+### What it answers
+
+| Answer | When |
+|---|---|
+| `200 {"ok":true}` | It was heard. |
+| `401` | No token, a wrong one, another hook's, a hook that isn't there, or no `hooks` at all. All the same, so nobody can find out which hooks exist. |
+| `405` | The right token, but not a POST. |
+| `413` | A body over 16 KB. |
+| `429` | More than `rate` calls in a minute. `Retry-After` says when to try again. |
+
+The body can be JSON, a form, or plain words. JSON is read as JSON whatever the `Content-Type` says, because `curl -d` calls everything a form.
+
+### Examples
+
+**Sonarr and Radarr.** Settings, Connect, add a **Webhook**. URL `http://valet:7575/hooks/sonarr`, method POST, any user name, and the token as the password. Choose the events you want (On Import, On Health Issue).
+
+```yaml title="config.yaml"
+hooks:
+  sonarr: { token: "${SONARR_HOOK}", text: "{series.title} downloaded", sub: "{episodes.0.title}", tone: good }
+  radarr: { token: "${RADARR_HOOK}", text: "{movie.title} ({movie.year}) downloaded", tone: good }
+```
+
+**Uptime Kuma.** Settings, Notifications, add a **Webhook**. URL `http://valet:7575/hooks/kuma`, body *Preset - application/json*, and under **Additional Headers**:
+
+```json
+{ "Authorization": "Bearer your-kuma-hook-token" }
+```
+
+```yaml title="config.yaml"
+hooks:
+  kuma: { token: "${KUMA_HOOK}", text: "{msg}", tone: bad, push: true }
+```
+
+**Home Assistant.** A `rest_command`, called from any automation:
+
+```yaml title="configuration.yaml (Home Assistant)"
+rest_command:
+  tell_valet:
+    url: http://valet:7575/hooks/home
+    method: POST
+    headers: { Authorization: !secret valet_hook }   # "Bearer <token>" in secrets.yaml
+    content_type: application/json
+    payload: '{"text": "{{ text }}"}'
+```
+
+```yaml title="config.yaml"
+hooks:
+  home: { token: "${HOME_HOOK}" }
+```
+
+**A cron job** that only speaks when something goes wrong:
+
+```sh
+0 3 * * * /usr/local/bin/backup.sh || curl -s -H "Authorization: Bearer $BACKUP_HOOK" -d "The nightly backup failed" http://valet:7575/hooks/backup
+```
+
+### A rule that waits on a hook
+
+A rule can be set off by a hook, instead of by a card or a time of day: "whenever the Sonarr hook fires, pause the downloads". Ask in chat, approve the card, and it runs every time that hook is called, at most once per cooldown.
+
+Nothing the caller sends reaches the rule's action. The tool and its input are the ones on the card you approved, and the hook passes on only its name. A rule set off by a hook is held to everything any rule is: one integration tool, never the config or Valet's own tools, and checked again against `assistant.access` before every run. Take the hook out of the config and its rules can't run; their card says why. See [rules](/assistant/rules/).
+
+### What a hook's words can't do
+
+What a hook sends is another program's words, so Valet treats them that way:
+
+- **Never to a model.** The notice and the timeline card show them to you. The timeline line the assistant reads says only *The backup hook fired*. The brief, the suggestions and rules never see them.
+- **Never as a page.** The notice is drawn as plain text, so `<script>` is only words. Each line is cut to 200 characters, with line breaks and invisible control characters taken out.
+- **Never past the payload.** A template reads only fields the JSON itself holds, so a path like `{__proto__.x}` or `{constructor.name}` is empty.
+- **Secrets are taken out.** Like everything Valet shows, the words pass through the [redactor](/security/secrets/#the-redactor).
+
+### The token in the address
+
+Some senders can only be given an address. For those, `query: true` also takes the token as `?token=…`. An address gets written down in places a header doesn't: the sender's own settings and logs, a proxy's access log, a browser's history. Use it only when there's no other way, give that hook its own token, and nothing more than a notice.
+
+## Events out
+
+```yaml title="config.yaml"
+events:
+  targets:
+    - { type: mqtt, url: mqtt://mosquitto:1883, username: valet, password: "${MQTT_PASSWORD}" }
+    - { type: webhook, url: http://nodered:1880/valet, secret: "${EVENTS_SECRET}" }
+```
+
+Every event is one small JSON document. It goes to each target that takes its type: `events.on` chooses for all of them, and a target's own `on` narrows that.
+
+```yaml title="config.yaml"
+events:
+  on: [service, backup, hook]
+  targets:
+    - { type: webhook, url: http://nodered:1880/valet, on: [service] }
+    - { type: mqtt, url: mqtt://mosquitto:1883 }
+```
+
+### What's published
+
+Every event has `type` and `at` (an ISO time, UTC). A second line of words, when there is one, is `detail`. Long words are cut at 500 characters, and every secret Valet knows is taken out first.
+
+| `type` | When | Fields |
+|---|---|---|
+| `service` | A service on a status card goes down or comes back: the same detection as `live.notify`, for every status card on the page. | `state` (`down` or `up`), `name`, `widget`, `detail` |
+| `activity` | Something starts or finishes on a card: a stream, a download, a robot cleaning. | `state` (`start` or `end`), `widget`, `title`, `detail` |
+| `notice` | Any notice the page shows: `live.notify`, reminders, rules, backups, meetings, hooks. | `text`, `detail`, `tone`, `source` (the widget or hook it's about) |
+| `backup` | A backup job goes wrong, or comes right. | `state` (`problem` or `recovered`), `name`, `source`, `health` (`failed`, `overdue`, `ok`…), `text`, `detail` |
+| `rule` | A [rule](/assistant/rules/) runs, fails or pauses itself. | `id`, `ok`, `text`, `detail` |
+| `hook` | A hook is called. | `name`, `text`, `detail`, `tone` |
+| `ask` | An MCP client asks to change something and waits for your approval. | `id`, `from`, `tool`, `title` |
+
+```json
+{"type":"service","at":"2026-11-03T09:30:00.000Z","state":"down","name":"Plex","widget":"services.status","detail":"connection refused"}
+```
+
+```json
+{"type":"activity","at":"2026-11-03T21:04:12.000Z","state":"end","widget":"downloads.active","title":"Ubuntu 26.04 ISO"}
+```
+
+A notice is often a second telling of something with its own event, like a service going down with `live.notify` on. Choose the types you want with `on`.
+
+### To a webhook
+
+Each event is a POST of its JSON, with its type in `X-Valet-Event`. With `secret` (16 characters or more), the body is signed so the receiver can check it came from Valet:
+
+```text
+X-Valet-Signature: sha256=<the hex HMAC-SHA256 of the raw body, keyed with the secret>
+```
+
+To check it, in Node:
+
+```js
+import { createHmac, timingSafeEqual } from 'node:crypto';
+const ok = (body, header) => {
+  const want = Buffer.from(`sha256=${createHmac('sha256', process.env.EVENTS_SECRET).update(body).digest('hex')}`);
+  return header?.length === want.length && timingSafeEqual(Buffer.from(header), want);
+};
+```
+
+A receiver that can't be reached, or answers `429` or `5xx`, is tried again with a pause that doubles up to five minutes. Any other refusal means it doesn't want that one, and it's let go.
+
+| Option | Default | |
+|---|---|---|
+| `url` | required | `http://` or `https://`. |
+| `headers` | none | Sent with each, like `{ Authorization: "Bearer ${TOKEN}" }`. |
+| `secret` | none | Signs each body. |
+| `on` | `events.on` | Only these types. |
+
+### To an MQTT broker
+
+Valet publishes under `topic` (`valet` by default):
+
+| Topic | What | Retained |
+|---|---|---|
+| `valet/status` | `online` while Valet is connected, `offline` when it stops. The broker says `offline` itself if Valet vanishes. | yes |
+| `valet/service/<name>` | A service's latest `service` event. | yes |
+| `valet/activity/<widget>` | A card's latest `activity` event. | yes |
+| `valet/backup/<job>` | A job's latest `backup` event. | yes |
+| `valet/hook/<name>`, `valet/rule/<id>` | Each time one fires. | no |
+| `valet/notice`, `valet/ask` | Each one. | no |
+
+A name in a topic is lowercase, with anything that isn't a letter or a number as `-`: *Home Assistant* is `home-assistant`. A retained topic means something that starts listening later still hears the current state. Set `retain: false` to keep nothing on the broker.
+
+For a Home Assistant sensor of whether Plex is up:
+
+```yaml title="configuration.yaml (Home Assistant)"
+mqtt:
+  binary_sensor:
+    - name: Plex
+      state_topic: valet/service/plex
+      value_template: "{{ value_json.state }}"
+      payload_on: "up"
+      payload_off: "down"
+      device_class: connectivity
+      availability_topic: valet/status
+```
+
+| Option | Default | |
+|---|---|---|
+| `url` | required | `mqtt://host:1883`, or `mqtts://host:8883` for TLS. |
+| `username`, `password` | none | The password from `.env`. |
+| `topic` | `valet` | Everything goes under it. |
+| `retain` | `true` | Keep the latest state on the broker. |
+| `qos` | `0` | `1`: the broker acknowledges each message, and one that wasn't acknowledged is sent again after a reconnect. |
+| `clientId` | `valet-` and random letters | |
+| `keepalive` | `60` | Seconds between pings. |
+| `on` | `events.on` | Only these types. |
+
+Valet only publishes. It never subscribes, so nothing on the broker can tell it to do anything.
+
+### When a target is down
+
+Nothing waits on a target. A page loads, a rule runs and a notice shows whether a target is up or not. While one can't be reached, up to 200 events wait for it, oldest let go first. It's tried again with a growing pause, and the log says so once when it fails and once when it's back.
+
+A config reload keeps a broker's connection if `events` didn't change. If it did, the old connection says `offline` and closes before the new one opens. `config check` reads the settings without connecting to anything.
+
+Neither hooks nor events run in a [sandbox](/recipes/#a-public-demo).

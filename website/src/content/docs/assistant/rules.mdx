@@ -12,6 +12,7 @@ Some things you could say:
 - "If the GPU stays over 85 °C for 10 minutes, unload the model in Ollama."
 - "Every morning at 7, if anything is down, tell me."
 - "Whenever Plex goes down, pause the downloads."
+- "Whenever the Sonarr hook fires, pause the downloads."
 
 A [reminder](/assistant/#what-it-has-to-work-with) is the one-off version: it tells you once and it's gone, and it can't do anything but tell you. A rule can act, and it keeps going until you remove it.
 
@@ -19,7 +20,7 @@ A [reminder](/assistant/#what-it-has-to-work-with) is the one-off version: it te
 
 | Part | What it is |
 |---|---|
-| Trigger | Something on one of your cards, or a time of day. |
+| Trigger | Something on one of your cards, a time of day, or a [hook](/concepts/events/#webhooks-in) being called. |
 | Only if | Optional: another condition that must be true at that moment. |
 | Action | Optional: exactly one tool of one integration, with its input. Leave it out and the rule only sends its message. |
 | Message | What you're told each time it runs. |
@@ -35,6 +36,7 @@ The triggers are the ones reminders use, on a card that's on your page:
 | `down`, `up` | A service on a status card goes down or comes back. Without a name, any service counts. |
 | `above`, `below` | A number on the card crosses a limit, optionally for some minutes in a row. |
 | `at` | Every day at a time, like `07:00`, in your [time zone](/reference/configuration/). |
+| `hook` | One of your [hooks](/concepts/events/#webhooks-in) is called, by its name. The card says *When the "sonarr" hook fires*. |
 
 A condition that holds, like "Plex is down", sets the rule off once. It goes off again only after the condition has stopped being true and become true again, and not within the cooldown. So a service that keeps flapping can't set a rule off every half minute.
 
@@ -84,6 +86,7 @@ These hold in Valet's code, whatever the model asked for and whatever you approv
 - **Only what access allows, now.** Every time it's about to run, the action is checked against `assistant.access` as it is then. Lower an integration's access and its rules stop: the next time one would run, it pauses instead and says why. Set `assistant.access.valet` to `write` and every rule stops, while reminders keep working.
 - **Only on a page that may act.** If Valet becomes read-only (no sign-in and no `auth.trustNetwork`), rules don't run.
 - **Only checked input.** The action's input is checked against the tool's own rules when you set it up and again at every run. If a tool changes so that the input no longer fits, the rule pauses rather than guess.
+- **Only the input you approved, even from a hook.** A rule set off by a hook hears only the hook's name. Whatever the caller sent never reaches the action, so knowing a hook's token lets someone set the rule off, at most once per cooldown, and nothing more. Take the hook out of the config and the rule can't run.
 - **Only so many.** At most 20 rules, and none more often than its cooldown.
 
 ## Why it's built this way

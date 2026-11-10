@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import { z } from 'zod';
 import { stateOf, type Card, type Confirm, type ListCard, type WidgetState } from '../shared/cards.ts';
 import { fmt, type Instance, type Tool } from './core.ts';
+import { HOOK_NAME } from './hooks.ts';
 import { rank, who } from './run.ts';
 import { sandbox } from './sandbox.ts';
 import { has, reading, running, titles } from './watches.ts';
@@ -23,8 +24,9 @@ export const When = z.object({
 }).strict();
 export const OnlyIf = z.object({ widget, on: z.enum(['running', 'idle', 'down', 'up', 'above', 'below']), name, value: z.number().optional() }).strict();
 export const RuleInput = z.object({
-  when: When.optional().describe('what sets it off. Use this or at'),
+  when: When.optional().describe('what sets it off. Use this, at or hook'),
   at: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'a time like 07:00').optional().describe('every day at this time, 24-hour "HH:MM", in the home\'s time zone'),
+  hook: z.string().regex(HOOK_NAME).optional().describe('every time this incoming hook fires (a name under hooks: in the config)'),
   onlyIf: OnlyIf.optional().describe('and only if this is true at that moment'),
   tool: z.string().max(120).optional().describe('the one tool it runs, by its full name, e.g. downloads__pause_downloads. Leave out to only send the message'),
   input: z.record(z.string(), z.unknown()).optional().describe('that tool\'s input'),
@@ -36,7 +38,7 @@ export type RuleInput = z.infer<typeof RuleInput>;
 
 export interface Rule {
   id: string; by: string; created: number;
-  when?: z.infer<typeof When>; at?: string; onlyIf?: z.infer<typeof OnlyIf>;
+  when?: z.infer<typeof When>; at?: string; hook?: string; onlyIf?: z.infer<typeof OnlyIf>;
   action?: { tool: string; input: unknown; does: string };   // does: the action tool's own words, from its confirm
   say: string; repeat: boolean; cooldown: number;
   armed: boolean;            // a condition that holds fires once, then again only after it has stopped holding
@@ -57,6 +59,8 @@ export interface RuleEnv {
   acting(): boolean;
   /** A placed widget's own title, or nothing if it isn't on the page. */
   title(widget: string): string | undefined;
+  /** The incoming hooks the config names now. */
+  hooks(): string[];
   act(r: Rule, step: Step): Promise<{ ok: boolean; error?: string }>;
   tell(n: { text: string; sub?: string; tone: 'accent' | 'bad'; rule: Rule }): void;
 }
@@ -83,9 +87,10 @@ export function actionFor(tool: string, input: unknown, env: Pick<RuleEnv, 'inst
 }
 
 /** Why a rule can't run right now, or nothing. Asked every time it's about to run. */
-export function blocked(r: Pick<Rule, 'action'>, env: Pick<RuleEnv, 'instances' | 'access' | 'acting'>) {
+export function blocked(r: Pick<Rule, 'action' | 'hook'>, env: Pick<RuleEnv, 'instances' | 'access' | 'acting'> & Partial<Pick<RuleEnv, 'hooks'>>) {
   if (!env.acting()) return 'Valet is read-only now, so nothing may act';
   if (env.access('valet') < rank.control) return 'rules are off: assistant.access.valet is below control';
+  if (r.hook && env.hooks && !env.hooks().includes(r.hook)) return `no hook ${r.hook} in the config`;
   if (r.action) { const a = actionFor(r.action.tool, r.action.input, env); if ('error' in a) return a.error; }
   return undefined;
 }
@@ -134,6 +139,7 @@ export function nextRun(at: string, now = Date.now()) {
 /** Whether a rule goes off now, and why. It keeps its own bookkeeping (armed, slot) on the rule and in `held`.
  *  `cards`: the trigger widget's previous and current card, and the `onlyIf` widget's current one. */
 export function triggered(r: Rule, cards: { prev?: Card; next?: Card; check?: Card }, held: Map<string, number>, now = Date.now()): { because?: string } | null {
+  if (r.hook) return null;                             // set off by the hook itself: see Rules.hooked
   const also = !r.onlyIf || holds(r.onlyIf, cards.check) === true;
   if (r.at) {
     const slot = slotOf(r.at, now);
@@ -177,9 +183,10 @@ const state = (c: { widget: string; on: string; name?: string; value?: number },
 };
 /** "When something on Downloads finishes", "Every day at 07:00, if anything on Services is down". Built from the
  *  widget's real title and the rule's fields, so the words on the approval card can't be written by the model. */
-export function trigger(r: Pick<Rule, 'when' | 'at' | 'onlyIf'>, title: (w: string) => string | undefined) {
+export function trigger(r: Pick<Rule, 'when' | 'at' | 'hook' | 'onlyIf'>, title: (w: string) => string | undefined) {
   let s: string;
   if (r.at) s = `Every day at ${r.at}`;
+  else if (r.hook) s = `When the ${quote(r.hook)} hook fires`;
   else {
     const w = r.when!, held = w.minutes ? ` for ${mins(w.minutes)}` : '';
     s = w.on === 'ends' || w.on === 'starts'
@@ -214,7 +221,8 @@ export class Rules {
 
   /** Checked in full, as on the approval card: the trigger's widgets are on the page, the action is allowed now. */
   async prepare(input: RuleInput): Promise<{ rule: Omit<Rule, 'id' | 'by' | 'created'>; confirm?: Confirm } | { error: string }> {
-    if (!!input.when === !!input.at) return { error: 'a rule needs one trigger: when (something happens) or at (a time of day)' };
+    if ([input.when, input.at, input.hook].filter(Boolean).length !== 1) return { error: 'a rule needs one trigger: when (something happens), at (a time of day) or hook (an incoming hook fires)' };
+    if (input.hook && !this.env.hooks().includes(input.hook)) return { error: `no hook ${input.hook} in the config${this.env.hooks().length ? ` (there are: ${this.env.hooks().join(', ')})` : ''}` };
     for (const c of [input.when, input.onlyIf]) {
       if (!c) continue;
       if (!this.env.title(c.widget)) return { error: `no widget ${c.widget} on the page` };
@@ -230,7 +238,7 @@ export class Rules {
       confirm = await words(step);
       action = { tool: input.tool, input: step.args, does: plain(confirm) };
     }
-    return { rule: { when: input.when, at: input.at, onlyIf: input.onlyIf, action, say: input.say, repeat: input.repeat, cooldown: input.cooldown, armed: true, failures: 0 }, confirm };
+    return { rule: { when: input.when, at: input.at, hook: input.hook, onlyIf: input.onlyIf, action, say: input.say, repeat: input.repeat, cooldown: input.cooldown, armed: true, failures: 0 }, confirm };
   }
   async add(input: RuleInput, by = who()) {
     const p = await this.prepare(input);
@@ -238,7 +246,7 @@ export class Rules {
     const rule: Rule = { ...p.rule, id: randomBytes(4).toString('hex'), by, created: Date.now() };
     this.list.push(rule); await save(this.list);
     // it starts watching now, not at the next half minute: a condition already true is what was approved
-    if (rule.when) for (const k of new Set([rule.when.widget, rule.onlyIf?.widget])) if (k) this.refresh?.(k);
+    if (rule.when || rule.hook) for (const k of new Set([rule.when?.widget, rule.onlyIf?.widget])) if (k) this.refresh?.(k);
     return { rule };
   }
   async remove(id: string) {
@@ -271,6 +279,19 @@ export class Rules {
     }
     for (const s of states) if (!s.error) this.seen.set(s.key, s.card);
     if (JSON.stringify(this.list) !== before) void save(this.list).catch(() => {});
+  }
+
+  /** A hook fired: run the rules that wait on it, each at most once a cooldown. Only the hook's name arrives here. What
+   *  its caller sent never does, so a rule's action runs with the input that was approved on its card and nothing else. */
+  hooked(name: string, now = Date.now()) {
+    const states = this.snapshot?.() ?? [];
+    const card = (key: string) => { const s = states.find(x => x.key === key); return s && !s.error ? s.card : undefined; };
+    for (const r of this.list) {
+      if (r.hook !== name || r.paused || this.busy.has(r.id)) continue;
+      if (r.lastRun && now - r.lastRun < r.cooldown * 60_000) continue;
+      if (r.onlyIf && holds(r.onlyIf, card(r.onlyIf.widget)) !== true) continue;
+      void this.fire(r, undefined, now);
+    }
   }
 
   /** Run it: re-checked first, then the action through the same door as the chat, then the message. */
@@ -310,6 +331,7 @@ export class Rules {
     for (const r of this.list) {
       if (r.paused) continue;
       if (r.when) { keys.add(r.when.widget); if (r.onlyIf) keys.add(r.onlyIf.widget); }
+      else if (r.hook) { if (r.onlyIf) keys.add(r.onlyIf.widget); }
       else if (r.onlyIf && r.at) { const slot = slotOf(r.at, now); if (slot - now < 120_000 && (r.slot ?? r.created) < slot) keys.add(r.onlyIf.widget); }
     }
     return keys;
@@ -353,7 +375,7 @@ export function ruleTools(rules: Rules, widgets: string[]): Record<string, Tool>
   return {
     rule_add: {
       label: 'Set up a rule', followUps: ['What rules are there?'], access: 'control', input: RuleInput,
-      description: `A standing instruction: every time something happens (when) or every day at a time (at), optionally only if something else is true (onlyIf), run one tool (tool + input) and send a message (say). It runs by itself from then on with no model, so use it only when asked for something that repeats ("whenever", "every time", "every morning"); for a one-off "tell me when", use watch_add. when.on: ends / starts (a download or stream), down / up (a service), above / below (a number, with minutes it must hold). The tool must be one integration tool you were given (not plan, config, MCP or Valet's own), with its exact input. Widgets: ${widgets.join(', ') || 'see the page'}.`,
+      description: `A standing instruction: every time something happens (when), every day at a time (at) or every time an incoming hook fires (hook: its name), optionally only if something else is true (onlyIf), run one tool (tool + input) and send a message (say). It runs by itself from then on with no model, so use it only when asked for something that repeats ("whenever", "every time", "every morning"); for a one-off "tell me when", use watch_add. when.on: ends / starts (a download or stream), down / up (a service), above / below (a number, with minutes it must hold). The tool must be one integration tool you were given (not plan, config, MCP or Valet's own), with its exact input: nothing a hook's caller sent is ever passed to it. Widgets: ${widgets.join(', ') || 'see the page'}.`,
       async confirm(input) {
         const p = await rules.prepare(input);
         if ('error' in p) return { title: 'This rule can\'t be set up', detail: p.error, icon: 'pulse', verb: 'OK' };

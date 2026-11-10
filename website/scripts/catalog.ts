@@ -157,9 +157,9 @@ const recapOf = async (inst: any, problems: string[]) => {
 
 // The configuration reference: every key in the schema, with the comment beside it in config.ts. The schema is the truth.
 function configRows() {
-  const text = readFileSync(resolve(repo, 'src/server/config.ts'), 'utf8') + '\n' + readFileSync(resolve(repo, 'src/server/notify.ts'), 'utf8');
+  const text = ['config', 'notify', 'hooks', 'events'].map(f => readFileSync(resolve(repo, `src/server/${f}.ts`), 'utf8')).join('\n');
   const lines = text.split('\n');
-  const MARK: Record<string, string> = { appearance: 'export const Appearance', hero: 'export const Hero', chat: 'export const ChatView', format: 'export const Format', auth: 'export const Auth', assistant: 'export const AssistantConfig', layout: 'const Section', mcp: 'export const McpServer', notify: 'export const Config' };
+  const MARK: Record<string, string> = { appearance: 'export const Appearance', hero: 'export const Hero', chat: 'export const ChatView', format: 'export const Format', auth: 'export const Auth', assistant: 'export const AssistantConfig', layout: 'const Section', mcp: 'export const McpServer', notify: 'export const Config', hooks: 'export const Hook', events: 'export const EventTarget' };
   const blockFor = (top: string) => { const from = lines.findIndex(l => l.startsWith(MARK[top] ?? 'export const Config')), to = lines.findIndex((l, i) => i > from && (/^\}\)/.test(l) || /^export type Config/.test(l))); return lines.slice(from, to < 0 ? undefined : to + 1); };
   const commentAt = (block: string[], key: string) => {
     const at = block.findIndex(l => new RegExp(`(^|[\\s{,(])${key}: `).test(l));

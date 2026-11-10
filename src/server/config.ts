@@ -9,6 +9,8 @@ import { LABELS } from '../shared/labels.ts';
 import { isPaint } from '../shared/look.ts';
 import { Channel } from './notify.ts';
 import { askProviders, forget, inFolder, lookup, providersOf, readSecret, remember } from './secrets.ts';
+import { Hooks } from './hooks.ts';
+import { EventsConfig } from './events.ts';
 import { STARTER } from './starter.ts';
 import { VIEWS } from '../shared/views.ts';
 import { NAME, RESERVED } from '../shared/slash.ts';
@@ -537,6 +539,12 @@ export const Config = z.object({
     token: z.string().min(32, 'use a long random token, at least 32 characters, from .env'),
     access: z.record(z.string(), Access).default({ default: 'read' }),
   }).strict().optional(),
+  // webhooks in: POST /hooks/<name> with that hook's token tells Valet something happened (a notice, the timeline, a push
+  // if asked, and a rule can wait on it). Off unless one is named; each token is a long secret from .env
+  hooks: Hooks.default({}),
+  // events out: what Valet notices (a service down or back, something starting or ending, a notice, a backup problem, a
+  // rule or a hook firing, an approval asked from outside), sent to a webhook or an MQTT broker. Off unless set
+  events: EventsConfig.optional(),
   layout: z.array(Section).default([]),
   // the wall display at /wall: its own pages, for a wall tablet or a spare monitor (left out: time, weather, status, what's playing)
   wall: WallDisplay,

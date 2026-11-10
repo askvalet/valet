@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { sandbox } from './sandbox.ts';
 import { replaceFile } from './write.ts';
 
-export interface Event { at: number; kind: string; widget?: string; text: string }
+export interface Event { at: number; kind: string; widget?: string; text: string; shown?: string }   // shown: words from outside (a hook's payload), for the person's card only: prompts and the assistant's tool get `text`
 const FILE = () => resolve(process.env.VALET_DATA ?? 'data', 'timeline.json');
 const KEEP_MS = 14 * 864e5, KEEP_N = 4000;
 
@@ -14,8 +14,8 @@ export class Timeline {
   events: Event[] = [];
   private timer?: NodeJS.Timeout;
   async load() { this.events = await readFile(FILE(), 'utf8').then(JSON.parse).catch(() => []); return this; }
-  add(kind: string, text: string, widget?: string, at = Date.now()) {
-    this.events.push({ at, kind, widget, text });
+  add(kind: string, text: string, widget?: string, at = Date.now(), shown?: string) {
+    this.events.push({ at, kind, widget, text, shown });
     const cutoff = Date.now() - KEEP_MS;
     if (this.events.length > KEEP_N || this.events[0].at < cutoff) this.events = this.events.filter(e => e.at >= cutoff).slice(-KEEP_N);
     // written shortly after, so a burst of changes is one write

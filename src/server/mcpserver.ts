@@ -89,7 +89,7 @@ export async function mcpServer(c: Context, site: Site, asks?: Asks, hold = HOLD
         const said = JSON.parse(site.redact(JSON.stringify({ ...(own ?? { title: `${x.title}?`, detail: JSON.stringify(args.data).slice(0, 300) }), logo: type && `/api/icon/${type}` })));
         const asked = asks.request({ from: 'MCP client', tool, hash, said }, hold);
         // told once, wherever the owner hears things: the page shows the card, a phone gets the notification
-        if (asked.fresh) site.push({ title: 'Something is waiting for your approval', text: said.title, urgent: true });
+        if (asked.fresh) { site.push({ title: 'Something is waiting for your approval', text: said.title, urgent: true }); site.events.emit({ type: 'ask', id: asked.id!, from: 'MCP client', tool, title: said.title }); }
         const answer = await asked.answer;
         if (answer === 'full') return text('Too many approvals are already waiting on the Valet page. Ask the owner to answer those first.');
         if (answer === 'declined') { site.activity.add({ who: 'MCP client', via: 'mcp', what: x.t.label ?? x.name, input: args.data, ok: false, error: 'declined on the page' }); return text('The owner declined this on their Valet page. Nothing was changed.'); }

@@ -38,7 +38,8 @@ https://askvalet.dev.
 - **A rule is the only standing approval** (`src/server/rules.ts`). Approved once, it runs one integration tool with no
   model, so what it may do lives in code, not in the card: never `config`, `valet` or `pins` tools, plans or MCP; its
   card is built from the widget's title and the action tool's own `confirm`, never the model's words; and before every
-  run its access, its input and `site.acting` are checked again, and a refusal pauses it. Every call, chat, plan or
+  run its access, its input and `site.acting` are checked again, and a refusal pauses it. A hook sets one off by its name
+  alone (`Rules.hooked`): nothing the caller sent reaches the action. Every call, chat, plan or
   rule, goes through `runTool` in `run.ts`. Anything new that acts unattended follows the same shape.
 
 ### Architecture
@@ -73,6 +74,16 @@ https://askvalet.dev.
   answer of the name checked, the socket pinned to the checked one, each redirect checked again, no cookies or keys, time, size
   and type capped. Anything new that fetches a URL from a model or a stranger goes through it. The web tools (`web.ts`) are
   Valet's own, only with `assistant.webSearch`, and never an MCP client's.
+- **A hook is another program's words** (`hooks.ts`, `POST /hooks/<name>`). Outside `/api` like `/mcp`, each hook answers
+  only to its own token (digests, `timingSafeEqual`), and every refusal is the same 401 with nothing logged. What it sends
+  becomes a notice, a push and an event, through templates that read only the payload's own fields, cut to length; it
+  never reaches a model, so its timeline line keeps the words in `shown` (the person's card) and `text` says only that it
+  fired. Anything new that takes text from outside keeps it out of prompts the same way.
+- **Events go out, never in** (`events.ts`, `mqtt.ts`). One `Publisher` per live site, built without connecting and
+  started at the end of `buildSite`; kept across a reload when `events` didn't change, stopped first when it did.
+  Everything is redacted before it leaves, and `emit` returns at once and never throws. The MQTT client publishes and
+  never subscribes, and parses what a broker sends as hostile. A new thing Valet notices calls `site.events.emit` with a
+  small stable document, documented on the website's events page.
 - **Server stays small.** Hono + node-server, bundled with esbuild (dependencies included, so the image ships no
   `node_modules`) into `dist/server/`. No database: state lives in the services Valet talks to.
 - **A config is a Site** (`src/server/site.ts`): `check()` turns a config into instances and the list of problems
@@ -381,6 +392,9 @@ literal; a new size or corner is a new token with a role, argued for here.
 - **Glass traps `position: fixed`.** `backdrop-filter` makes a card the containing block for anything fixed inside it. Full-screen
   things go through a portal to the body (the cameras' theatre does).
 - **SSE keeps pages busy**: headless tools waiting for network idle never finish; wait a fixed time instead.
+- **A socket isn't closed until the other side hears it.** A test that drops a fake broker's connection and publishes at
+  once writes to a dying socket, and QoS 0 is gone, as MQTT means it to be: wait for the client to say it lost the
+  connection. And `destroy()` throws away what was just written; a fake that answers and hangs up uses `end(answer)`.
 - **The static demo's voice is recorded.** Its read-aloud clips (`demo/voices/`) are named by a hash of the speakable words, so changing an answer in `demo/mock-model.mjs` or `speakable()` needs `npm run demo:voices` (the demo README says how); `test/demo-voice.test.tsx` names what's missing.
 - **A screenshot beyond the viewport closes menus.** `captureBeyondViewport` lays the page out again, and Radix closes an open select or popover on that resize; the scenes capture beyond only when the box is.
 

@@ -65,7 +65,7 @@ export function ownInstance(o: { timeline: Timeline; activity: Activity; watches
           const events = o.timeline.since(hours * 36e5).filter(e => !q || `${e.text} ${e.widget ?? ''}`.toLowerCase().includes(q));
           const metrics = o.history?.overview(hours * 36e5) ?? [];
           return { data: { events: events.slice(-60).map(e => ({ when: when(e.at), kind: e.kind, what: e.text })), totalEvents: events.length, metrics: metrics.slice(0, 40) },
-            card: { type: 'list', title: `Last ${hours} hours`, icon: 'clock', empty: 'Nothing recorded', items: events.slice(-12).reverse().map(e => ({ title: e.text, subtitle: e.kind, meta: when(e.at) })) } };
+            card: { type: 'list', title: `Last ${hours} hours`, icon: 'clock', empty: 'Nothing recorded', items: events.slice(-12).reverse().map(e => ({ title: e.shown ?? e.text, subtitle: e.kind, meta: when(e.at) })) } };
         },
       },
       metric_chart: {

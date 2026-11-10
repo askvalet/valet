@@ -16,7 +16,7 @@ const { Activity } = await import('../src/server/activity.ts');
 
 const TOKEN = 'mcp-token-0123456789abcdef0123456789', SECRET = 'sekret-value-123';
 function lab(access: object = { default: 'control' }, o: { acting?: boolean; hold?: number } = {}) {
-  const ran: string[] = [], pushed: any[] = [], redact = (s: string) => s.replaceAll(SECRET, '•••');
+  const ran: string[] = [], pushed: any[] = [], emitted: any[] = [], redact = (s: string) => s.replaceAll(SECRET, '•••');
   const tool = (name: string, a: 'read' | 'write' | 'control', more: object = {}) => ({ description: name, label: name, access: a, input: z.object({ name: z.string().default('all') }), run: async ({ name: n }: { name: string }) => { ran.push(`${name} ${n}`); return { data: { did: name, key: SECRET } }; }, ...more });
   const instances = new Map<string, any>([
     ['dl', { widgets: {}, tools: { status: tool('status', 'read'), add: tool('add', 'write'), pause: tool('pause', 'control', { confirm: ({ name }: { name: string }) => ({ title: `Pause ${name}?`, detail: `It holds ${SECRET}`, verb: 'Pause' }) }), boom: { ...tool('boom', 'control'), run: async () => { throw new Error(`failed ${SECRET}`); } } } }],
@@ -25,13 +25,13 @@ function lab(access: object = { default: 'control' }, o: { acting?: boolean; hol
     ['pins', { widgets: {}, tools: { pin_remove: tool('pin_remove', 'control') } }],
   ]);
   const site: any = { config: Config.parse({ mcpServer: { token: TOKEN, access } }), instances, meta: new Map([...instances.keys()].map(id => [id, { type: id, name: id }])),
-    acting: o.acting ?? true, redact, activity: new Activity(redact), push: (m: any) => pushed.push(m), hub: { refreshInstance() {} } };
+    acting: o.acting ?? true, redact, activity: new Activity(redact), push: (m: any) => pushed.push(m), events: { emit: (e: any) => emitted.push(e) }, hub: { refreshInstance() {} } };
   const asks = new Asks(), app = new Hono().post('/mcp', c => mcpServer(c, site, asks, o.hold ?? 2000));
   let id = 0;
   const rpc = async (method: string, params?: object) => (await (await app.request('/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` }, body: JSON.stringify({ jsonrpc: '2.0', id: ++id, method, params }) })).json()) as any;
   const call = async (name: string, args: object = {}) => { const r = (await rpc('tools/call', { name, arguments: args })).result; return { text: r.content[0].text as string, isError: r.isError as boolean }; };
   const names = async () => ((await rpc('tools/list')).result.tools as any[]).map(t => t.name).sort();
-  return { site, asks, ran, pushed, rpc, call, names };
+  return { site, asks, ran, pushed, emitted, rpc, call, names };
 }
 const asked = (asks: InstanceType<typeof Asks>) => new Promise<void>(ok => { if (asks.list().length) return ok(); const l = () => { asks.listeners.delete(l); ok(); }; asks.listeners.add(l); });
 
@@ -60,6 +60,8 @@ test('a change waits for a yes on the page, in the tool\'s own words; then it ru
   const [a] = l.asks.list();
   assert.deepEqual([a.from, a.tool, a.said.title, a.said.detail, a.said.verb, a.said.logo], ['MCP client', 'dl__pause', 'Pause Dune?', 'It holds •••', 'Pause', '/api/icon/dl']);
   assert.deepEqual(l.pushed, [{ title: 'Something is waiting for your approval', text: 'Pause Dune?', urgent: true }]);
+  // and out as an event, for whatever else is listening: which call, in the tool's own words, with the secret taken out
+  assert.deepEqual(l.emitted, [{ type: 'ask', id: a.id, from: 'MCP client', tool: 'dl__pause', title: 'Pause Dune?' }]);
   l.asks.answer(a.id, true);
   const r = await going;
   assert.deepEqual(l.ran, ['pause Dune']);
