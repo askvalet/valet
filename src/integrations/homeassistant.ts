@@ -127,7 +127,7 @@ export default defineIntegration({
     const widgets: Record<string, Widget> = {};
     for (const [key, card] of Object.entries(cfg.cards)) {
       widgets[key] = {
-        title: card.title, interval: 5000,
+        title: card.title, interval: 5000, card: 'controls',
         async fetch() {
           const byId = new Map((await states()).map(s => [s.entity_id, s]));
           return { type: 'controls', title: card.title, icon: card.icon ?? 'home', href: cfg.href,
@@ -139,7 +139,7 @@ export default defineIntegration({
     // ── schedules: a day of timestamp sensors; times already past roll to tomorrow (same clock time) for "next"
     for (const [key, sch] of Object.entries(cfg.schedules)) {
       widgets[key] = {
-        title: sch.title, interval: 60_000,
+        title: sch.title, interval: 60_000, card: 'schedule',
         async fetch() {
           const byId = new Map((await states()).map(s => [s.entity_id, s]));
           const items = sch.entities.map(e => ({ name: e.name, at: byId.get(e.id)?.state, muted: e.muted }))
@@ -249,7 +249,7 @@ export default defineIntegration({
     }
     for (const [key, t] of Object.entries(cfg.thermostats)) {
       widgets[key] = {
-        title: t.title ?? 'Thermostat', interval: 10_000,
+        title: t.title ?? 'Thermostat', interval: 10_000, card: 'thermostat',
         async fetch() {
           const e = (await states()).find(s => s.entity_id === t.entity);
           if (!e) throw new Error(`${t.entity} not found`);
