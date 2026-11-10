@@ -22,7 +22,7 @@ Valet is locked down by default. Each protection below also says what it doesn't
 
 ## Your keys
 
-- **They stay on the server.** Keys live in `.env` or in secret files, and `config.yaml` refers to them as `${NAME}`. Only Valet's server talks to your services. The page gets finished cards. See [secrets](/security/secrets/).
+- **They stay on the server.** Keys live in `.env`, in secret files, or in Vault or 1Password, and `config.yaml` refers to them as `${NAME}`. Only Valet's server talks to your services. The page gets finished cards. See [secrets](/security/secrets/).
 - **They're scrubbed from what leaves.** Every secret a `${NAME}` stood for is redacted from widget errors, live updates, action errors and assistant tool results, in case a service echoes one back. Names that end in `_USER`, `_URL`, `_HOST` or `_PORT` aren't treated as secrets: see [the redactor](/security/secrets/#the-redactor).
 - **The assistant never sees them.** It calls tools, and the server makes the requests.
 - **What it keeps stays in the data folder.** History, the timeline, the activity log, pins, reminders and cached icons, with secrets redacted from the log. Chat attachments are kept for a day, and never served back out. Sign-in accounts are scrypt hashes.

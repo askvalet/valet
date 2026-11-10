@@ -1,12 +1,13 @@
 // Setting Valet up by talking to it. The assistant can read the config, look up what an integration accepts, try a
 // change without saving (a diff, every problem, and the new card), and, with the person's approval, save it. Only with
-// `assistant.access.config`. It can't touch sign-in, plugins, MCP or its own access, point at files on disk, or write a
-// secret into the file: those stay in .env. The save before this one is kept, so a change can be undone. Saved edits go through the same hot reload as a person's.
+// `assistant.access.config`. It can't touch sign-in, plugins, MCP or its own access, see or change where secrets come from
+// (`secrets`), point at files on disk, or write a secret into the file: those stay in .env or wherever `secrets` says. The save before this one is kept, so a change can be undone. Saved edits go through the same hot reload as a person's.
 import { chmod, readFile, writeFile } from 'node:fs/promises';
-import { parse as parseYaml } from 'yaml';
+import { isMap, isScalar, parse as parseYaml, parseDocument } from 'yaml';
 import { z } from 'zod';
-import { Config, parseConfig } from './config.ts';
+import { Config, parseConfig, resolveSecrets } from './config.ts';
 import { makeContext, type Instance, type Integration, type Tool } from './core.ts';
+import { lookup } from './secrets.ts';
 import { check } from './site.ts';
 import type { Card } from '../shared/cards.ts';
 import { applyOps, diff, Op } from './yaml-edit.ts';
@@ -48,6 +49,14 @@ export function refused(ops: Op[]): string | null {
   return null;
 }
 
+/** The config without its `secrets` block: which folder, Vault or 1Password the owner uses is theirs to know. Cut out of
+ *  the text rather than rewritten, so everything else reads exactly as the file does. */
+export function withoutSecrets(text: string) {
+  const top = parseDocument(text).contents, pair = isMap(top) ? top.items.find(p => isScalar(p.key) && p.key.value === 'secrets') : undefined;
+  const from = isScalar(pair?.key) ? pair.key.range?.[0] : undefined, to = (pair?.value as { range?: number[] } | null)?.range?.[2] ?? (isScalar(pair?.key) ? pair.key.range?.[2] : undefined);
+  return from == null || to == null ? text : `${text.slice(0, from)}# secrets: the owner's, not shown${text[to - 1] === '\n' ? '\n' : ''}${text.slice(to)}`;
+}
+
 const REF = /(\\?)\$\{(?:(secret|file):[^}]+|([A-Z0-9_]+))\}/g;
 const refsIn = (s: string) => [...s.matchAll(REF)].filter(m => !m[1]).map(m => m[0]);
 const walkStrings = (v: unknown, key: string, see: (s: string, key: string) => void) => {
@@ -57,7 +66,7 @@ const walkStrings = (v: unknown, key: string, see: (s: string, key: string) => v
 };
 /** Which secrets go where: each `${NAME}` in an integration, and the hosts that block talks to. */
 export function bindings(text: string) {
-  const doc = (parseYaml(text) ?? {}) as Record<string, unknown>, hosts = new Map<string, Set<string>>(), outside = new Set<string>();
+  const doc = (parseYaml(text) ?? {}) as Record<string, unknown>, hosts = new Map<string, Set<string>>(), outside = new Set<string>(), owner = new Set<string>();
   for (const [id, block] of Object.entries((doc.integrations ?? {}) as Record<string, unknown>)) {
     const names = new Set<string>(), at = new Set<string>();
     walkStrings(block, id, (s, key) => {
@@ -69,8 +78,9 @@ export function bindings(text: string) {
     });
     for (const n of names) { const set = hosts.get(n) ?? new Set<string>(); for (const h of at) set.add(h); hosts.set(n, set); }
   }
-  for (const [k, v] of Object.entries(doc)) if (k !== 'integrations') walkStrings(v, k, s => { for (const r of refsIn(s)) outside.add(r); });
-  return { hosts, outside, doc };
+  // what the `secrets` block itself uses (a provider's token) is the owner's: on no page, and in no integration it isn't in already
+  for (const [k, v] of Object.entries(doc)) if (k !== 'integrations') walkStrings(v, k, s => { for (const r of refsIn(s)) (k === 'secrets' ? owner : outside).add(r); });
+  return { hosts, outside, owner, doc };
 }
 /** Every host the config mentions anywhere: what Valet fetches, and what the browser loads or embeds. */
 export function addresses(text: string) {
@@ -100,6 +110,7 @@ export function guard(beforeText: string, afterText: string): string | null {
   for (const [r, hosts] of b.hosts) {
     if (/^\$\{(file|secret):/.test(r) && !a.hosts.has(r)) return `${r} reads a file; the owner adds those by hand`;
     const known = a.hosts.get(r);
+    if (!known && b.owner.has(r)) return `${r} is how Valet reaches its secrets, so nothing else may use it`;
     if (known) for (const h of hosts) if (!known.has(h)) return `${r} goes to ${[...known].join(', ') || 'nowhere yet'}, and this would send it to ${h} as well. The owner has to make that change by hand`;
   }
   return null;
@@ -146,21 +157,25 @@ export function setupTools(path: string, registry: Record<string, Integration>):
   const previous = previousOf(path);
   const edits = z.object({ ops: z.array(Op).min(1), summary: z.string().describe('in plain words, what this changes') });
   const newIntegration = (ops: Op[]) => { const o = ops.find(o => o.op === 'set' && o.path[0] === 'integrations' && o.path.length === 2); return o ? String(o.path[1]) : undefined; };
-  const trial = async (ops: Op[]) => {
+  const changes = (a: string, b: string) => diff(withoutSecrets(a), withoutSecrets(b));
+  // `ask`: only a save (which a person approves) may ask Vault or 1Password again for a name added there since the load
+  const trial = async (ops: Op[], ask = false) => {
     const why = refused(ops); if (why) throw new Error(why);
     const before = await readFile(path, 'utf8'), after = applyOps(before, ops);
     const blocked = guard(before, after); if (blocked) throw new Error(blocked);
-    return { before, after, ...validate(after, registry) };
+    let tried = validate(after, registry);
+    if (ask && tried.missing.length && await resolveSecrets(after).then(() => true, () => false)) tried = validate(after, registry);
+    return { before, after, ...tried };
   };
   return {
     config_read: {
       label: 'Read the config', access: 'read', input: z.object({}),
       description: 'The config file as it stands (secrets appear as ${NAME}), every integration type available, and the widgets each instance really offers, named as `layout` wants them. Start here when asked to add or change anything on the page.',
       async run() {
-        const config = await readFile(path, 'utf8');
-        return { data: { config, types: Object.values(registry).map(i => `${i.type} (${i.name})`), sections: Object.keys(Config.shape),
+        const config = withoutSecrets(await readFile(path, 'utf8'));
+        return { data: { config, types: Object.values(registry).map(i => `${i.type} (${i.name})`), sections: Object.keys(Config.shape).filter(k => k !== 'secrets'),
           widgets: Object.fromEntries([...validate(config, registry).instances].map(([id, inst]) => [id, Object.keys(inst.widgets).map(w => `${id}.${w}`)])),
-          changeable: [...EDITABLE, ...[...ASSISTANT].map(k => `assistant.${k}`)], ownerOnly: ['auth', 'allowedHosts', 'plugins', 'mcp', 'notify', 'sandbox', 'the rest of assistant'] } };
+          changeable: [...EDITABLE, ...[...ASSISTANT].map(k => `assistant.${k}`)], ownerOnly: ['auth', 'secrets', 'allowedHosts', 'plugins', 'mcp', 'notify', 'sandbox', 'the rest of assistant'] } };
       },
     },
     config_options: {
@@ -168,7 +183,7 @@ export function setupTools(path: string, registry: Record<string, Integration>):
       description: 'What an integration type, or a section of the config such as layout, appearance, hero, nav or chat, accepts, as JSON schema. Look before writing a block. For a service with no type of its own, use type "api"; its fields are paths like data.speed or items[0].name, with formats like size|bytes. Icons: cpu gpu memory wifi disk download pulse play film bulb home shield chat image clock crescent game book coins text file bookmark rss news reddit tag chart calendar sun moon cloud, or an image URL.',
       async run({ type }) {
         const part = (Config.shape as Record<string, z.ZodType>)[type];
-        if (part && !registry[type]) return { data: z.toJSONSchema(part, { io: 'input', unrepresentable: 'any' }) };
+        if (part && type !== 'secrets' && !registry[type]) return { data: z.toJSONSchema(part, { io: 'input', unrepresentable: 'any' }) };
         const i = registry[type]; if (!i) return { data: { error: `no type or section ${type}` } };
         return { data: z.toJSONSchema(i.config, { io: 'input', unrepresentable: 'any' }) };
       },
@@ -182,9 +197,9 @@ export function setupTools(path: string, registry: Record<string, Integration>):
       description: 'Fetch a JSON URL the person gave you and return the start of the response, to write a `type: api` block from: which paths hold the numbers. Headers may use a ${NAME} only if the config already sends it to that same host.',
       input: z.object({ url: z.string().url(), headers: z.record(z.string(), z.string()).optional() }),
       async run({ url, headers }) {
-        const given = (headers ?? {}) as Record<string, string>, { hosts } = bindings(await readFile(path, 'utf8')), host = new URL(url).host;
+        const given = (headers ?? {}) as Record<string, string>, { hosts, doc } = bindings(await readFile(path, 'utf8')), host = new URL(url).host;
         for (const r of Object.values(given).flatMap(refsIn)) if (!hosts.get(r)?.has(host)) return { data: { error: `${r} doesn't go to ${host}, so it isn't sent` } };
-        const filled = Object.fromEntries(Object.entries(given).map(([k, v]) => [k, v.replace(/\$\{(\w+)\}/g, (_: string, n: string) => process.env[n] ?? '')]));
+        const filled = Object.fromEntries(Object.entries(given).map(([k, v]) => [k, v.replace(/\$\{(\w+)\}/g, (_: string, n: string) => lookup(n, { files: (doc.secrets as { files?: string } | undefined)?.files, providers: true })?.value ?? '')]));
         try {
           const r = await makeContext('setup').http<Response>(url, { as: 'response', headers: filled, timeout: 15_000, redirect: 'manual' });
           if (r.status >= 300 && r.status < 400) return { data: { error: `it redirects to ${r.headers.get('location')}, which wasn't followed; ask them for that address` } };
@@ -198,8 +213,8 @@ export function setupTools(path: string, registry: Record<string, Integration>):
       async run({ ops }) {
         try {
           const t = await trial(ops), id = newIntegration(ops), inst = id ? t.instances.get(id) : undefined;
-          return { data: { diff: diff(t.before, t.after), problems: t.problems, needsInEnv: t.missing, widgets: inst ? Object.keys(inst.widgets) : undefined },
-            card: { type: 'code', title: 'What changes', diff: true, lines: diff(t.before, t.after).split('\n') } satisfies Card };
+          return { data: { diff: changes(t.before, t.after), problems: t.problems, needsInEnv: t.missing, widgets: inst ? Object.keys(inst.widgets) : undefined },
+            card: { type: 'code', title: 'What changes', diff: true, lines: changes(t.before, t.after).split('\n') } satisfies Card };
         } catch (e) { return { data: { error: (e as Error).message } }; }
       },
     },
@@ -233,11 +248,11 @@ export function setupTools(path: string, registry: Record<string, Integration>):
       description: 'Save edits you already previewed, once the problems list is empty. The page updates by itself. Asks the person first.',
       async run({ ops }) {
         try {
-          const t = await trial(ops);
-          if (t.missing.length) return { data: { error: `add ${t.missing.join(', ')} to .env and recreate the container first` } };
+          const t = await trial(ops, true);
+          if (t.missing.length) return { data: { error: `add ${t.missing.join(', ')} to .env and recreate the container first (or to the folder, Vault or 1Password that \`secrets\` reads)` } };
           if (t.problems.length) return { data: { error: 'not saved', problems: t.problems } };
           try { await save(path, t.before, t.after); }
-          catch { return { data: { error: 'the config folder is read-only to Valet, so nothing was saved; give the person this to paste in', diff: diff(t.before, t.after) } }; }
+          catch { return { data: { error: 'the config folder is read-only to Valet, so nothing was saved; give the person this to paste in', diff: changes(t.before, t.after) } }; }
           return { data: { saved: true } };
         } catch (e) { return { data: { error: (e as Error).message } }; }
       },
@@ -247,7 +262,7 @@ export function setupTools(path: string, registry: Record<string, Integration>):
       confirm: async () => {
         const [old, now] = await Promise.all([readFile(previous, 'utf8').catch(() => null), readFile(path, 'utf8')]);
         if (old == null) return { title: 'There is nothing to undo.', icon: 'pulse' };
-        const change = diff(now, old);
+        const change = changes(now, old);
         return { title: 'Undo the last config change?', detail: change.length > 1200 ? `${change.slice(0, 1200)}\n… and ${change.length - 1200} characters more` : change, icon: 'pulse', verb: 'Undo' };
       },
       description: 'Put the config back as it was before the last save. Undoing twice puts the change back.',

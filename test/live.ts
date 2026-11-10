@@ -6,7 +6,7 @@ import { checkCard } from '../src/shared/cards.schema.ts';
 import { registry } from '../src/integrations/index.ts';
 import { loadPlugins } from '../src/server/plugins.ts';
 
-const config = loadConfig(process.env.VALET_CONFIG ?? 'config.yaml');
+const config = await loadConfig(process.env.VALET_CONFIG ?? 'config.yaml');
 await loadPlugins(registry, config.plugins.packages, config.plugins.replace);
 let bad = 0, ok = 0;
 for (const [id, block] of Object.entries(config.integrations)) {

@@ -30,7 +30,7 @@ try {
   for (const wall of page.appearance?.walls ?? []) if (wall.image?.startsWith('/api/')) { const path = resolve(out, wall.image.slice(1).split('?')[0]); mkdirSync(resolve(path, '..'), { recursive: true }); cpSync(resolve(repo, 'demo/wallpaper.jpg'), path); }
 } finally { server.kill(); }
 
-const parsed = execFileSync('node', ['--input-type=module', '-e', `import { loadConfig } from './src/server/config.ts'; console.log(JSON.stringify(loadConfig(${JSON.stringify(resolve(tmp, 'config.yaml'))})));`], { cwd: repo, encoding: 'utf8' });
+const parsed = execFileSync('node', ['--input-type=module', '-e', `import { loadConfig } from './src/server/config.ts'; console.log(JSON.stringify(await loadConfig(${JSON.stringify(resolve(tmp, 'config.yaml'))})));`], { cwd: repo, encoding: 'utf8' });
 writeFileSync(resolve(out, 'snapshot/config.json'), parsed.replaceAll(repo, ''));
 // ⌘K's docs: the sections of the pages the site has, searched in the tab as the server would (only fetched once it's used)
 writeFileSync(resolve(out, 'snapshot/docs.json'), execFileSync('node', ['--input-type=module', '-e', `import { registry } from './src/integrations/index.ts'; import { docsIndex } from './src/server/guide.ts'; import { pathOf } from './src/shared/docs.ts';

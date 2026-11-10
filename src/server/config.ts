@@ -1,12 +1,14 @@
-// config.yaml: one file, readable top to bottom. `${NAME}` anywhere is replaced from the environment (or a file,
-// for Docker secrets: see `substitute`), so secrets never sit in the file. Unknown keys are errors, with the path.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+// config.yaml: one file, readable top to bottom. `${NAME}` anywhere is replaced from the environment (or a file, Vault
+// or 1Password: see `substitute` and secrets.ts), so secrets never sit in the file. Unknown keys are errors, with the path.
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { parse } from 'yaml';
 import { z } from 'zod';
 import { LABELS } from '../shared/labels.ts';
 import { isPaint } from '../shared/look.ts';
 import { Channel } from './notify.ts';
+import { askProviders, forget, inFolder, lookup, providersOf, readSecret, remember } from './secrets.ts';
 import { STARTER } from './starter.ts';
 import { VIEWS } from '../shared/views.ts';
 import { NAME, RESERVED } from '../shared/slash.ts';
@@ -405,8 +407,38 @@ const WebPush = z.object({
     .describe('The push services Valet will post to. Browsers use these four; add a host or an origin only for a push server of your own.'),
 }).strict().describe('Notifications on this device: Web Push straight to the browsers that turn it on in ⌘K.');
 
+// How a provider is reached. Its token comes from the environment or a file and from nowhere else: `${VAULT_TOKEN}`
+// (which also reads VAULT_TOKEN_FILE) or tokenFile. `config check` reports one written here in plain text.
+const access = {
+  url: z.string().url().refine(u => /^https?:\/\/[^/@]+(\/|$)/i.test(u), 'an http:// or https:// address, with no user or password in it'),
+  token: z.string().min(1).optional(),
+  tokenFile: z.string().min(1).optional(),      // a file that holds the token, e.g. /run/secrets/vault_token
+};
+const oneToken = (p: { token?: string; tokenFile?: string }) => !p.token !== !p.tokenFile, ONE_TOKEN = { message: 'needs token (as ${NAME}) or tokenFile, one of them', path: ['token'] };
+const vaultPath = z.string().regex(/^[\w.-]+(\/[\w.-]+)*$/, 'a path like secret or apps/valet').refine(p => !p.split('/').some(s => /^\.+$/.test(s)), 'a path with no . or .. in it');
+// Where a ${NAME} comes from when the environment doesn't have it, in this order: NAME_FILE, files, vault, onepassword.
+export const Secrets = z.object({
+  files: z.string().min(1).optional(),          // a folder of files named after the variable (NAME, or name), e.g. /run/secrets
+  // HashiCorp Vault, KV version 2: one secret whose keys are the names
+  vault: z.object({
+    ...access,                                  // e.g. https://vault.example.com:8200
+    mount: vaultPath.default('secret'),         // where the KV engine is mounted
+    path: vaultPath.default('valet'),           // the secret in it
+    namespace: z.string().regex(/^[\w./-]+$/).optional(),   // Vault Enterprise and HCP
+  }).strict().refine(oneToken, ONE_TOKEN).optional(),
+  // a 1Password Connect server: one item whose field labels are the names
+  onepassword: z.object({
+    ...access,                                  // e.g. http://op-connect:8080
+    vault: z.string().regex(/^[^"\\]+$/, 'a vault\'s name or ID'),
+    item: z.string().regex(/^[^"\\]+$/, 'an item\'s title or ID').default('Valet'),
+  }).strict().refine(oneToken, ONE_TOKEN).optional(),
+  // ask the files and providers again this often, e.g. 1h, and rebuild the page only if a value changed (left out: only when config.yaml changes)
+  refresh: Every.refine(ms => ms >= 60_000 && ms <= 7 * 864e5, 'between 1m and 7d').optional(),
+}).strict();
+
 export const Config = z.object({
   auth: Auth,
+  secrets: Secrets.prefault({}),
   // the names Valet answers to besides localhost and IP addresses, e.g. [valet.example.com, "*.home.example.com"].
   // Anything else is refused, so a web page elsewhere can't reach it through your browser (DNS rebinding).
   allowedHosts: z.array(z.string()).default([]),
@@ -498,43 +530,69 @@ export const Config = z.object({
 export type Config = z.infer<typeof Config>;
 export type Format = z.infer<typeof Format>;
 
-/** every value a ${…} was replaced with: Valet redacts these from anything it sends out */
-export const usedSecrets: string[] = [];
-const readSecret = (path: string, what: string) => {
-  try { return readFileSync(path, 'utf8').trim(); }
-  catch { throw new Error(`config: ${what}: can't read ${path}`); }
-};
-/** `${NAME}` from the environment (or the file `NAME_FILE` points at, the Docker convention); `${secret:name}` from
- *  /run/secrets/name; `${file:/path}` from any file. `\${…}` is left alone. */
-export function substitute(v: unknown): unknown {
-  if (typeof v === 'string') return v.replace(/(\\?)\$\{(?:(secret|file):([^}]+)|([A-Z0-9_]+))\}/g, (m, esc, kind, arg, name) => {
+export { usedSecrets } from './secrets.ts';
+const REF = /(\\?)\$\{(?:(secret|file):([^}]+)|([A-Z0-9_]+))\}/g;
+interface Sources { files?: string; providers?: string[] }
+/** `${NAME}` from the environment, the file `NAME_FILE` points at (the Docker convention), a file in `secrets.files`,
+ *  or what Vault or 1Password gave, in that order; `${secret:name}` from /run/secrets/name; `${file:/path}` from any
+ *  file. `\${…}` is left alone. Without `from`, only the environment and NAME_FILE are looked in. */
+export function substitute(v: unknown, from?: Sources): unknown {
+  if (typeof v === 'string') return v.replace(REF, (m, esc, kind, arg, name) => {
     if (esc) return m.slice(1);
-    let value: string;
-    if (kind === 'secret') value = readSecret(`/run/secrets/${arg.trim()}`, m);
+    let value: string, kept = !!kind;
+    if (kind === 'secret') { const got = inFolder('/run/secrets', arg.trim(), m); if (got === undefined) throw new Error(`config: ${m}: can't read /run/secrets/${arg.trim()}`); value = got; }
     else if (kind === 'file') value = readSecret(arg.trim(), m);
-    else if (process.env[name] !== undefined) value = process.env[name]!;
-    else if (process.env[`${name}_FILE`]) value = readSecret(process.env[`${name}_FILE`]!, m);
-    else throw new Error(`config: environment variable ${name} is not set (nor ${name}_FILE)`);
+    else {
+      const got = lookup(name, { files: from?.files, providers: !!from });
+      if (!got) throw new Error(`config: environment variable ${name} is not set (nor ${name}_FILE${[from?.files && `, nor a file in ${from.files}`, from?.providers?.length && `, and ${from.providers.join(' and ')} had none`].filter(Boolean).join('')})`);
+      ({ value, kept } = got);
+    }
     // a user name, an address or a port isn't a secret, and blanking one mangles real text ("sam" inside "samantha")
-    if (kind || !/(^|_)(USER(NAME)?|LOGIN|URL|HOST|HOSTNAME|PORT|ADDR(ESS)?)$/.test(name) || /WEBHOOK|SECRET|TOKEN|KEY|PASS|ICS|CAL/.test(name)) usedSecrets.push(value);
+    if (kept || !/(^|_)(USER(NAME)?|LOGIN|URL|HOST|HOSTNAME|PORT|ADDR(ESS)?)$/.test(name) || /WEBHOOK|SECRET|TOKEN|KEY|PASS|ICS|CAL/.test(name)) remember(value);
     return value;
   });
-  if (Array.isArray(v)) return v.map(substitute);
-  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, substitute(x)]));
+  if (Array.isArray(v)) return v.map(x => substitute(x, from));
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, substitute(x, from)]));
   return v;
 }
 
 /** Startup: the config, or on a fresh install a starter one, written next to where it belongs if the folder allows
  *  (a read-only mount doesn't, and then it runs from memory and the welcome card says so). */
-export function startConfig(path: string): { config: Config; saved: boolean } {
-  if (existsSync(path)) return { config: loadConfig(path), saved: true };
+export async function startConfig(path: string): Promise<{ config: Config; saved: boolean }> {
+  if (existsSync(path)) return { config: await loadConfig(path), saved: true };
   let saved = false;
   try { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, STARTER, { flag: 'wx', mode: 0o600 }); saved = true; console.log(`config: no ${path} yet, wrote a starter one`); }
   catch { console.log(`config: no ${path}, and that folder can't be written: running a starter config from memory`); }
   return { config: parseConfig(STARTER), saved };
 }
 
-export function loadConfig(path: string): Config { return parseConfig(readFileSync(path, 'utf8')); }
+/** The config file, with every `${NAME}` it uses found: the one way to load it, at startup, on a reload and for the CLI. */
+export async function loadConfig(path: string, send?: typeof fetch): Promise<Config> {
+  const yaml = await readFile(path, 'utf8');
+  await resolveSecrets(yaml, send);
+  return parseConfig(yaml);
+}
+
+const asMap = (v: unknown) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {}) as Record<string, any>;
+/** The `secrets` block as written, with its own `${NAME}`s filled in from the environment or NAME_FILE only: what a
+ *  provider needs to be reached can't come from a provider. */
+const ownSecrets = (doc: Record<string, any>) => asMap(substitute(doc.secrets));
+const sourcesOf = (own: Record<string, any>): Sources => ({ files: typeof own.files === 'string' ? own.files : undefined, providers: providersOf(own) });
+
+/** Ask Vault or 1Password for the names this config uses that nothing nearer has. `parseConfig` then finds them; until
+ *  this runs again it finds what they gave last time. A provider that can't be asked throws, naming what it was asked for. */
+export async function resolveSecrets(yaml: string, send?: typeof fetch) {
+  const doc = asMap(parse(yaml)), block = Secrets.safeParse(ownSecrets(doc));
+  if (!block.success) return;   // parseConfig says what's wrong with it
+  if (!providersOf(block.data).length) return forget();
+  const need = new Set<string>();
+  const see = (v: unknown): void => {
+    if (typeof v === 'string') { for (const m of v.matchAll(REF)) if (!m[1] && m[4] && !lookup(m[4], { files: block.data.files })) need.add(m[4]); }
+    else if (v && typeof v === 'object') Object.values(v).forEach(see);
+  };
+  for (const [k, v] of Object.entries(doc)) if (k !== 'secrets') see(v);
+  await askProviders(block.data, [...need], send);
+}
 
 /** The options at a path in the schema, reaching through defaults and unions, to say what a misspelt key should be. */
 function optionsAt(path: PropertyKey[]) {
@@ -558,9 +616,18 @@ function explain(i: z.core.$ZodIssue) {
   }).join('; ');
 }
 
+// what's wrong with how a config was written, which the parsed config can no longer show: `check` reports these
+const written = new WeakMap<Config, string[]>();
+export const writtenProblems = (config: Config) => written.get(config) ?? [];
+
 export function parseConfig(yaml: string): Config {
-  const raw = substitute(parse(yaml) ?? {});
-  const r = Config.safeParse(raw);
+  const doc = parse(yaml) ?? {}, { secrets, ...rest } = asMap(doc), own = ownSecrets({ secrets });
+  // the secrets block first and by itself, so the rest can say where it looked
+  const r = Config.safeParse(doc === asMap(doc) ? { ...(secrets === undefined ? {} : { secrets: substitute(secrets) }), ...asMap(substitute(rest, sourcesOf(own))) } : doc);
   if (!r.success) throw new Error('config.yaml:\n' + r.error.issues.map(i => `  ${i.path.join('.')}: ${explain(i)}`).join('\n'));
+  // a token typed into the file works, and is still kept out of everything Valet sends, but it shouldn't live there
+  written.set(r.data, (['vault', 'onepassword'] as const).filter(k => { const t = asMap(asMap(secrets)[k]).token; return typeof t === 'string' && !/^\$\{[^}]+\}$/.test(t.trim()); })
+    .map(k => `secrets.${k}.token: a token doesn't belong in config.yaml; write \${SOME_NAME} and set that in the environment, or use tokenFile`));
+  for (const k of ['vault', 'onepassword'] as const) if (r.data.secrets[k]?.token) remember(r.data.secrets[k]!.token!);
   return r.data;
 }

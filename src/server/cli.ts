@@ -14,7 +14,7 @@ export async function configCommand(args: string[], path: string, registry: Reco
   if (cmd === 'schema') { console.log(JSON.stringify(schema(registry), null, 2)); return 0; }
   if (cmd !== 'check' && cmd !== 'print') { console.log('usage: config check | print | schema'); return 1; }
   let config: Config;
-  try { config = loadConfig(path); }
+  try { config = await loadConfig(path); }
   catch (e) { console.error(String((e as Error).message)); return 1; }
   const fromPlugins = await loadPlugins(registry, config.plugins.packages, config.plugins.replace);
   const { problems, instances, placed } = check(config, registry, fromPlugins);

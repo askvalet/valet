@@ -16,6 +16,9 @@ services:
     tmpfs: [/tmp]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
+    # Optional, instead of .env: Docker secrets. With `secrets: { files: /run/secrets }` in config.yaml, ${SONARR_KEY}
+    # reads /run/secrets/sonarr_key. Uncomment this and the block at the bottom.
+    # secrets: [sonarr_key]
 
   # Optional, for `type: docker`: containers and logs, read-only. Give Valet the `docker-proxy` network too (networks:
   # [default, docker-proxy]) and use url: http://valet-dockerproxy:2375. Never mount the socket into Valet itself.
@@ -32,3 +35,7 @@ services:
 # networks:
 #   docker-proxy:
 #     internal: true
+
+# secrets:
+#   sonarr_key:
+#     file: ./secrets/sonarr_key      # one value per file; chmod 600

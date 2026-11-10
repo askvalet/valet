@@ -75,7 +75,7 @@ Then use `image: local/valet:dev` in your Compose file.
 | `mem_limit: 512m` | A cap, so nothing a service sends can take the machine down with it. |
 | `./config:/config` | A folder, not the file, so edits show up live. Add `:ro` if the assistant should never save config changes. |
 | `./data:/app/data` | Wallpaper, icon cache, uploads, history, accounts and plugins. |
-| `env_file: .env` | Secrets that `config.yaml` refers to as `${NAME}`. The file has to exist, even if it's empty. |
+| `env_file: .env` | Secrets that `config.yaml` refers to as `${NAME}`. The file has to exist, even if it's empty. Docker secrets, Vault and 1Password work too: see [secrets](/security/secrets/#other-places-a-name-can-come-from). |
 | `read_only`, `tmpfs` | The container's own filesystem can't be written. Only the two mounts and `/tmp` can. |
 | `cap_drop`, `no-new-privileges` | No Linux capabilities, and no way to gain any. |
 | `TZ` | The time zone for times the server writes. You can also set `timezone:` in `config.yaml`. |

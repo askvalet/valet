@@ -19,7 +19,8 @@ https://askvalet.dev.
 - **Configurable by everyone, in one YAML file.** Anything personal (which services, which entities, where cards go,
   how they look) is config, never code. Every new option lands in `config.example.yaml` with a one-line comment and a
   sensible default, so a config that doesn't mention it keeps working.
-- **Secrets never reach the browser.** Tokens live in the environment (`${VAR}` in YAML). The server talks to services;
+- **Secrets never reach the browser.** Tokens live in the environment (`${VAR}` in YAML), or in a secrets folder, Vault
+  or 1Password when `secrets:` says so (`src/server/secrets.ts`). The server talks to services;
   images go through `/api/image/:instance`, icons through `/api/icon/:slug`.
 - **Light by default.** Only widgets placed on the page are polled, only while someone has it open, once for all tabs.
   Heavy things (the assistant, the AI SDK, MCP, 3D visuals) load on first use.
@@ -359,6 +360,7 @@ literal; a new size or corner is a new token with a role, argued for here.
 - **Video through the image proxy needs ranges.** Phones won't play a video from a server that ignores `Range`; `image(ref, range)`
   gets the header and `served()` passes the answer on. A picture that changes needs `Cache-Control: no-store` on the
   handler's response, or the browser keeps it for a day.
+- **`loadConfig` asks, `parseConfig` only looks.** `loadConfig` (async) is the one way to read the file: it asks Vault or 1Password for the names nothing nearer has, then parses. `parseConfig` is synchronous and finds what they gave last time. A provider's token and the `secrets` block's own `${NAME}`s come from the environment or a file only.
 - **`create()` must have no side effects.** Config checks build instances for configs that never go live, so anything global belongs to the built site (`Instance.frame` is how an embed reaches the CSP).
 - **Nothing that parses a stranger's text uses a backtracking regex.** A feed is linear by construction (`xml.ts`); `test/audit.test.ts` holds it to that.
 - **Every signature names its purpose** (`signFor` in `auth.ts`). Two things signed by one key must not be interchangeable.
