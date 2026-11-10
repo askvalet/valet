@@ -175,7 +175,7 @@ export function setupTools(path: string, registry: Record<string, Integration>):
         const config = withoutSecrets(await readFile(path, 'utf8'));
         return { data: { config, types: Object.values(registry).map(i => `${i.type} (${i.name})`), sections: Object.keys(Config.shape).filter(k => k !== 'secrets'),
           widgets: Object.fromEntries([...validate(config, registry).instances].map(([id, inst]) => [id, Object.keys(inst.widgets).map(w => `${id}.${w}`)])),
-          changeable: [...EDITABLE, ...[...ASSISTANT].map(k => `assistant.${k}`)], ownerOnly: ['auth', 'secrets', 'allowedHosts', 'plugins', 'mcp', 'notify', 'sandbox', 'the rest of assistant'] } };
+          changeable: [...EDITABLE, ...[...ASSISTANT].map(k => `assistant.${k}`)], ownerOnly: ['auth', 'secrets', 'profiles', 'users', 'allowedHosts', 'plugins', 'mcp', 'notify', 'sandbox', 'the rest of assistant'] } };
       },
     },
     config_options: {

@@ -34,8 +34,9 @@ export async function checkPush() {
 }
 
 /** Why this browser can't, in words for the person, or null if it can. Checked before anything is asked. */
-export function cannot(page: { sandbox?: boolean; canAct: boolean }): string | null {
+export function cannot(page: { sandbox?: boolean; canAct: boolean; member?: boolean }): string | null {
   if (page.sandbox) return 'The demo can\'t send notifications. On your own Valet, this turns them on for this device.';
+  if (page.member) return 'Notifications are for the owners of this Valet.';
   if (!page.canAct) return 'Valet is read-only here, so notifications are off. Turn on sign-in (or auth.trustNetwork on a private network) first.';
   if (ios() && !standalone()) return 'On iPhone and iPad, notifications only work once Valet is on your Home Screen: tap Share, then Add to Home Screen, and turn them on from there.';
   if (!isSecureContext) return 'Notifications need Valet on HTTPS. This page came over plain HTTP, so the browser won\'t allow them.';

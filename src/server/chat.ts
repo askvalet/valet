@@ -13,7 +13,7 @@ import type { Context as HonoContext } from 'hono';
 import { z } from 'zod';
 import type { Activity } from './activity.ts';
 import { Reasoning, type Config } from './config.ts';
-import type { Instance, Integration } from './core.ts';
+import type { Instance, Integration, Tool } from './core.ts';
 import { mcpTools } from './mcp.ts';
 import { callSettings, chatAgent, choices, contextWindow, discovery, lastStepSettings, makeAgentModel, makeModel } from './model.ts';
 import { checkCard } from '../shared/cards.schema.ts';
@@ -25,8 +25,16 @@ export { trimHistory } from './compact.ts';
 // Approvals are signed when they're asked for and checked when they come back, so a request can't just claim one.
 const APPROVALS = randomBytes(32);
 
+/** Someone with a profile (people.ts): `config` and `instances` are already theirs, narrowed. What's left for the chat is
+ *  which widgets `show` may draw, and who approves what asks first: `viaOwner` when that's an owner, not them. */
+export interface Member {
+  profile: string;
+  sees(key: string): boolean;
+  viaOwner?(call: { id: string; name: string; t: Tool; args: unknown; who: string }, run: (who: string) => Promise<{ data: any; card?: unknown }>): Promise<{ data: any; card?: unknown }>;
+}
+
 export function chatRoute(config: Config, instances: Map<string, Instance>, meta: Map<string, { type: string; name: string; integration: Integration }>,
-  safety: { acting: boolean; redact: (s: string) => string; activity?: Activity; model?: LanguageModel; models?: Record<string, LanguageModel>; fetch?: typeof fetch } = { acting: true, redact: s => s }) {
+  safety: { acting: boolean; redact: (s: string) => string; activity?: Activity; model?: LanguageModel; models?: Record<string, LanguageModel>; fetch?: typeof fetch; member?: Member } = { acting: true, redact: s => s }) {
   const a = config.assistant!;
   const model = safety.model ?? makeModel(a);
   // assistant.models: a chat may name one of these by id, and nothing else; each is made once, on its first use
@@ -57,7 +65,9 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
   const groups = new Map<string, Group>(), lineOf = new Map<string, string>();
   const steps = new Map<string, { id: string; name: string; t: Instance['tools'] extends Record<string, infer T> | undefined ? T : never }>();
   // every tool call goes through one door (run.ts): redacted, and logged unless it only looks
-  const runTool = (id: string, name: string, t: any, args: any, via: 'chat' | 'plan') => run({ id, name, t, args, via, who: who(), activity: safety.activity, redact: safety.redact });
+  const runTool = (id: string, name: string, t: any, args: any, via: 'chat' | 'plan', by = who()) => run({ id, name, t, args, via, who: by, activity: safety.activity, redact: safety.redact });
+  // approve: owner. What would ask this person asks an owner instead, and runs only on their yes (people.ts)
+  const member = safety.member, viaOwner = member?.viaOwner;
   for (const [id, inst] of instances) {
     // read-only Valet (no sign-in, untrusted network): the assistant may look, never add or change
     const usable = Object.entries(inst.tools ?? {}).filter(([name, t]) => rank[t.access] <= levelOf(id, name));
@@ -71,10 +81,10 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
       tools[key] = tool({
         description: `[${id}] ${t.description}`,
         inputSchema: t.input as z.ZodType<any>,
-        execute: args => runTool(id, name, t, args, 'chat'),
+        execute: args => t.access !== 'read' && viaOwner ? viaOwner({ id, name, t, args, who: who() }, by => runTool(id, name, t, args, 'chat', by)) : runTool(id, name, t, args, 'chat'),
         toModelOutput: ({ output }) => ({ type: 'json', value: (output as { data: any }).data ?? null }),
       });
-      if (t.access !== 'read') approval[key] = 'user-approval';   // reading is free; anything that changes something asks
+      if (t.access !== 'read' && !viaOwner) approval[key] = 'user-approval';   // reading is free; anything that changes something asks
     }
   }
 
@@ -149,7 +159,8 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
 
   // Built-in: lay out any widgets the assistant may read, as live cards side by side or stacked.
   const readable = [...instances].filter(([id]) => accessOf(id) >= rank.read)
-    .flatMap(([id, inst]) => Object.entries(inst.widgets).map(([w, def]) => ({ key: `${id}.${w}`, title: def.title, def })));
+    .flatMap(([id, inst]) => Object.entries(inst.widgets).map(([w, def]) => ({ key: `${id}.${w}`, title: def.title, def })))
+    .filter(r => !member || member.sees(r.key));   // and for someone with a profile, only the cards on their tabs
   if (readable.length && builtin('show')) {
     tools.show = tool({
       description: 'Show live widgets as cards, side by side ("row") or stacked ("column"). Use when the person asks to see, show or compare things. Widgets: '
@@ -188,19 +199,26 @@ export function chatRoute(config: Config, instances: Map<string, Instance>, meta
     'For why something happened, look before answering: the timeline for what went on, then logs if there are any. Say what you found, not a guess.',
     'A service can run in Docker or directly on a machine. Check both kinds of status and logs before saying you cannot find one.',
     'Name a cause only if a tool result shows it. If two things happened at the same time, say that, not that one caused the other. If you cannot tell, say so.',
-    'When asked to be told about something later, set a reminder with watch_add; do not offer to check back yourself.',
-    'When asked to do something every time something happens, or every day at a time ("when a download finishes, pause the rest", "every morning at 7 tell me what is down"), set up a rule with rule_add: it then runs by itself, with no model. One action per rule, and never for a one-off.',
+    // reminders and rules are Valet's own tools, which stay with owners
+    ...(member ? [] : [
+      'When asked to be told about something later, set a reminder with watch_add; do not offer to check back yourself.',
+      'When asked to do something every time something happens, or every day at a time ("when a download finishes, pause the rest", "every morning at 7 tell me what is down"), set up a rule with rule_add: it then runs by itself, with no model. One action per rule, and never for a one-off.',
+    ]),
     `You are part of Valet, the software behind this page. For any question about Valet itself, what it can do or how to set something up, search its docs with docs_search and answer from them, never from memory.`,
-    instances.has('config')
+    member ? 'You cannot change Valet from here, and you cannot see or change its settings: those are the owner\'s.' : instances.has('config')
       ? 'You can change Valet: any page, tab, card, widget, integration, its look, words and layout are its config, and config_* tools edit it. Read with config_read, look up what a section accepts with config_options or the docs, check it with config_preview and fix what it reports, then save with config_apply, which asks the person. It applies at once. config_undo takes the last save back. Do several edits as one set of ops. The person\'s own chat commands (/morning) are chat.commands: a name and the prompt it sends.'
       : 'You cannot change Valet from here: tell them the page, cards and look are in config.yaml, or that `assistant.access: { config: control }` lets you edit it with their approval.',
-    'What you can never change, so say so plainly and point to the docs: sign-in, allowed hosts, plugins, MCP, notifications, your own access, model or instructions, files on disk, and secrets, which go in .env by hand. You cannot change Valet\'s code, install anything, or restart it.',
-    'If something looks like a bug in Valet itself, not a service that is down, say so and use report_issue to give them a filled-in GitHub issue to read and submit. Also use it when they ask for a feature or an integration Valet lacks.',
+    'What you can never change, so say so plainly and point to the docs: sign-in, who may see and do what (profiles and users), allowed hosts, plugins, MCP, notifications, your own access, model or instructions, files on disk, and secrets, which go in .env by hand. You cannot change Valet\'s code, install anything, or restart it.',
+    ...(member ? [] : ['If something looks like a bug in Valet itself, not a service that is down, say so and use report_issue to give them a filled-in GitHub issue to read and submit. Also use it when they ask for a feature or an integration Valet lacks.']),
     ...web,
     ...(index ? [
       'Your own tools are loaded. Each integration\'s tools load when you ask: call tools with the ids of every integration the question needs, all in one call, and use their tools from your next step. Integrations:',
       ...index, 'Valet\'s own tools:', ...catalog.filter(l => ![...lineOf.values()].includes(l)),
     ] : ['Available integrations and tools:', ...catalog, ...extra]),
+    ...(member ? [
+      `This person uses Valet with the "${member.profile}" profile, which the owner set up: the tools listed here are all you have for them. If they ask for something those can't do, say it isn't available to them and that an owner can help; never suggest a way around it.`,
+      ...(viaOwner ? ['Anything that changes something goes to an owner of this homelab to approve, not to this person. When a tool answers that it is waiting, tell them it is waiting for an owner and stop; when it answers that an owner declined, tell them so.'] : []),
+    ] : []),
     a.instructions ?? '',
   ].join('\n');
 

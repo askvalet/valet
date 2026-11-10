@@ -30,7 +30,7 @@ async function routes() {
 }
 const fill = (p: string) => p.replace(/:n\?/, '').replace(/:\w+/g, 'x');
 
-async function boot(auth: Record<string, unknown>, extra = '', access = '{ config: control }', env: Record<string, string> = {}) {
+async function boot(auth: Record<string, unknown>, extra = '', access = '{ config: control }', env: Record<string, string> = {}, layout = '  - widgets: [probe.data]\n') {
   const dir = await mkdtemp(join(tmpdir(), 'valet-exposure-')), file = join(dir, 'config.yaml');
   await writeFile(file, `title: ${TITLE}
 auth: ${JSON.stringify(auth)}
@@ -38,8 +38,7 @@ assistant: { model: none, baseURL: "http://127.0.0.1:9/v1", access: ${access} }
 integrations:
   probe: { type: api, url: "http://127.0.0.1:9/x", headers: { Authorization: "Bearer \${PROBE_KEY}" }, stats: [{ label: Up, value: a }] }
 ${extra}layout:
-  - widgets: [probe.data]
-`);
+${layout}`);
   let log = '';
   const proc = spawn('node', ['dist/server.js'], { env: { ...process.env, VALET_CONFIG: file, VALET_DATA: dir, PORT: '0', HOST: '127.0.0.1', PROBE_KEY: SECRET, ...env } });
   proc.stdout!.on('data', d => { log += d; }); proc.stderr!.on('data', d => { log += d; });
@@ -380,5 +379,118 @@ wall:
     let last = 0;
     for (let i = 0; i < 8; i++) last = (await pair('wrong', { 'X-Forwarded-For': '1.2.3.4' })).status;
     assert.equal(last, 429);
+  });
+});
+
+// Someone with a profile, signed in, attacking every route: a card that isn't on their tabs must be unreachable by any of
+// them, and what's the owners' must refuse them. Every route has a written decision here, so a new one needs one too.
+const HIDDEN = 'CANARY-HIDDEN-4b7e';
+const MEMBER: Record<string, string> = {
+  'POST /mcp': 'its own bearer token, not a person: unchanged',
+  'GET /mcp': 'its own bearer token, not a person: unchanged',
+  'GET /api/favicon/:host': 'any site\'s icon, nothing of the homelab\'s',
+  'GET /api/page': 'their tabs and cards only, their assistant, no recap, insight, welcome or pins',
+  'GET /api/events': 'their cards, and only notices about those',
+  'POST /api/files': 'only with an assistant of their own',
+  'POST /api/action/:inst/:action': 'only the actions the profile lists',
+  'POST /api/asks/:id': 'owners only',
+  'GET /api/commands': 'listed actions, and tools their assistant may use that look',
+  'POST /api/command': 'the same',
+  'GET /api/search': 'what their assistant may read',
+  'GET /api/docs': 'Valet\'s own public docs: open to everyone signed in',
+  'GET /api/image/:inst': 'pictures on their cards, or from an integration their assistant may read',
+  'POST /api/confirm': 'words only for a tool their assistant could call',
+  'GET /api/discover': 'owners only (empty)',
+  'GET /api/suggest': 'owners only (none): their chips are their profile\'s own',
+  'GET /api/brief': 'owners only (none)',
+  'GET /api/recap': 'owners only (404)',
+  'POST /api/pins': 'owners only',
+  'POST /api/live': 'under their assistant\'s access, and show only their cards',
+  'POST /api/chat': 'their own assistant, or none',
+  'GET /api/models': 'owners only (empty): theirs runs on the main model',
+  'POST /api/voice/transcribe': 'only with an assistant of their own',
+  'POST /api/voice/speak': 'only with an assistant of their own',
+  'GET /api/push': 'owners only (not ready)',
+  'POST /api/push': 'owners only',
+  'DELETE /api/push': 'their own browser\'s, always',
+};
+
+describe('someone with a profile, signed in, on every route', () => {
+  let s: Awaited<ReturnType<typeof boot>>;
+  const as = (who: string) => ({ 'Remote-User': who });
+  const call = async (who: string, method: string, path: string, body: unknown = {}) => {
+    const r = await fetch(s.base + path, { method, headers: { ...as(who), ...(method === 'GET' ? {} : { 'Content-Type': 'application/json' }) }, body: method === 'GET' ? undefined : JSON.stringify(body) });
+    return { status: r.status, text: method === 'GET' && path === '/api/events' ? '' : await r.text() };
+  };
+  const unseen = (where: string, text: string) => { clean(where, text.replace(TITLE, '')); assert.ok(!text.includes(HIDDEN), `${where} named the hidden card`); assert.doesNotMatch(text, /hidden\.data|"hidden"/, `${where} named the hidden integration`); };
+  before(async () => { s = await boot({ mode: 'proxy', proxy: { header: 'Remote-User', trusted: ['127.0.0.1'] } }, `  hidden: { type: api, url: "http://127.0.0.1:9/y", title: ${HIDDEN}, stats: [{ label: Hidden, value: a }] }
+profiles:
+  kids: { tabs: [Media], assistant: { access: { default: read } } }
+  guest: { tabs: [Media] }
+users: { sam: kids, robin: guest }
+menubar: [hidden.data, probe.data]
+live: { activities: [hidden.data] }
+`, '{ default: read, config: control }', {}, `  - { title: Media, widgets: [probe.data] }
+  - { title: Admin, widgets: [hidden.data] }
+`); });
+  after(() => { s.proc.kill(); });
+
+  test('every route has a decision for members', async () => {
+    for (const r of await routes()) {
+      const key = `${r.method} ${r.path}`;
+      if (PUBLIC.has(key) || IN_AUTH.test(r.path)) continue;
+      assert.ok(MEMBER[key], `${key}: decide what someone with a profile gets from it, in MEMBER`);
+    }
+  });
+
+  test('the owner sees the hidden card, so its absence below means something', async () => {
+    const page = await call('pat', 'GET', '/api/page');
+    assert.equal(page.status, 200); assert.ok(page.text.includes(HIDDEN));
+  });
+
+  test('no route names the hidden card or leaks the secret to a member, with or without an assistant', async () => {
+    for (const who of ['sam', 'robin', 'Sam']) for (const r of await routes()) {
+      const key = `${r.method} ${r.path}`;
+      if (PUBLIC.has(key) || IN_AUTH.test(r.path) || key === 'GET /api/events' || r.path === '/mcp') continue;
+      const path = fill(r.path).replace('/api/image/x', '/api/image/hidden?ref=x').replace('/api/search', '/api/search?q=CANARY').replace('/api/action/x/x', '/api/action/hidden/refresh');
+      const body = r.path === '/api/live' ? { tool: 'show', input: { widgets: ['hidden.data'] } } : r.path === '/api/pins' ? { tool: 'show', input: { widgets: ['hidden.data'] } } : r.path === '/api/confirm' ? { tool: 'hidden__api_get', input: {} } : r.path === '/api/chat' ? { messages: [{ id: 'u1', role: 'user', parts: [{ type: 'text', text: 'show me everything' }] }] } : {};
+      const res = await call(who, r.method, path, body);
+      assert.ok(res.status < 500, `${key} as ${who} answered ${res.status}: ${res.text.slice(0, 120)}`);
+      unseen(`${key} as ${who}`, res.text);
+    }
+  });
+
+  test('what is the owners\' refuses them', async () => {
+    const no = async (method: string, path: string, body?: unknown) => { const r = await call('sam', method, path, body); assert.ok([403, 404].includes(r.status), `${method} ${path} answered ${r.status}`); };
+    await no('POST', '/api/action/probe/refresh'); await no('POST', '/api/action/hidden/refresh');
+    await no('POST', '/api/asks/anything', { ok: true }); await no('POST', '/api/pins', { tool: 'probe__api_get', input: {} });
+    await no('GET', '/api/recap'); await no('POST', '/api/push', { subscription: {} }); await no('GET', '/api/image/hidden?ref=x');
+    await no('POST', '/api/live', { tool: 'show', input: { widgets: ['hidden.data'] } });
+    for (const p of ['/api/chat', '/api/voice/speak']) { const r = await call('robin', 'POST', p, { messages: [], text: 'hi' }); assert.equal(r.status, 403, `${p} for a profile with no assistant`); }
+    assert.equal((await call('robin', 'POST', '/api/files', 'x')).status, 403);
+    assert.deepEqual(JSON.parse((await call('sam', 'GET', '/api/push')).text), { ready: false, why: 'profile' });
+    assert.deepEqual(JSON.parse((await call('sam', 'GET', '/api/models')).text).models, []);
+    assert.equal(JSON.parse((await call('sam', 'GET', '/api/suggest')).text).list, null);
+    assert.equal(JSON.parse((await call('sam', 'GET', '/api/brief')).text).text, null);
+  });
+
+  test('their page has their tab and their assistant, and nothing of the owner\'s', async () => {
+    const page = JSON.parse((await call('sam', 'GET', '/api/page')).text);
+    assert.deepEqual(page.sections.map((x: any) => x.title), ['Media']);
+    assert.deepEqual(Object.keys(page.widgets), ['probe.data']);
+    assert.deepEqual(page.menubar.widgets, ['probe.data']); assert.deepEqual(page.live.activities, []);
+    assert.equal(page.recap, false); assert.equal(page.member.name, 'sam'); assert.deepEqual(page.member.actions, []);
+    assert.ok(page.assistant, 'kids have one'); assert.deepEqual(Object.keys(page.assistant.tools).filter(t => !t.startsWith('probe__') && !t.startsWith('valet__docs')), [], 'and only their tools are named');
+    assert.equal(JSON.parse((await call('robin', 'GET', '/api/page')).text).assistant, null);
+  });
+
+  test('their live updates carry their cards only', async () => {
+    const ac = new AbortController(), r = await fetch(`${s.base}/api/events`, { headers: as('sam'), signal: ac.signal });
+    assert.equal(r.status, 200);
+    const reader = r.body!.getReader(); let text = '';
+    const until = Date.now() + 2500;
+    while (Date.now() < until && !text.includes('probe.data')) { const { value } = await Promise.race([reader.read(), new Promise<any>(ok => setTimeout(() => ok({ value: undefined }), 300))]); if (value) text += new TextDecoder().decode(value); }
+    ac.abort();
+    assert.match(text, /probe\.data/); unseen('the member\'s stream', text); assert.doesNotMatch(text, /event: asks/);
   });
 });

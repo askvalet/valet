@@ -47,7 +47,9 @@ docker logs valet                                  # find the setup code
 docker exec -it valet node dist/server.js user add sam   # or skip the code, and do it here
 ```
 
-The same command takes `passwd`, `remove` and `signout`. `signout` ends that person's sessions everywhere.
+The same command takes `passwd`, `remove` and `signout`. `signout` ends that person's sessions everywhere. `user list` shows every account and whether it's an owner or has a [profile](/start/people/).
+
+Everyone who signs in is an owner unless `users` gives them a profile: a narrower Valet with only the tabs, buttons and assistant you choose. See [people and profiles](/start/people/).
 
 Passwords are hashed with scrypt. After five failed sign-ins from one address, each further try waits longer, up to 15 minutes.
 
@@ -86,7 +88,7 @@ auth:
 
 Register `https://<your-valet>/api/auth/oidc/callback` as the redirect URL at your provider. The issuer must serve `/.well-known/openid-configuration`.
 
-`claim` picks which claim is the person's name, `preferred_username` by default. `allow` takes names or emails. Set `redirectUrl` if Valet can't work out its own address behind an unusual proxy.
+`claim` picks which claim is the person's name, `preferred_username` by default; it's also the name `users` matches for a [profile](/start/people/), as the proxy's header is. `allow` takes names or emails. Set `redirectUrl` if Valet can't work out its own address behind an unusual proxy.
 
 ## Allowed hosts
 

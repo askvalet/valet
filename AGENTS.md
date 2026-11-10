@@ -104,6 +104,12 @@ https://askvalet.dev.
   instead of `toLocale…`, and new words the page writes go in `src/shared/labels.ts`.
   Light or dark is decided in two places that must agree: `applyTheme`/`forcedBy` in `look.ts` and its ES5 twin in
   `theme.js`, which reads the theme and whether there was a wallpaper from what `look.ts` last remembered.
+- **What a request may see is one view** (`src/server/people.ts`). `profiles` and `users` give some accounts a narrower Valet;
+  `viewFor(c)` in main.ts works out, once per person and site, the widgets they see, the actions they may press, and their
+  config and instances (their assistant narrowed to the lower of both accesses, or none). Every route answers from it, never from
+  `site` directly: a new route passes `siteFor(view)` to its doors, filters by `view.sees`, or refuses with `!view.owner`, and gets
+  a line in `MEMBER` in `test/exposure.ts`. Valet's own things (log, rules, pins, setup, notifications, asks) are owners' only. A
+  member's change with `approve: owner` waits in `asks.ts` like an MCP client's. A typo narrows, never widens.
 - **The wall is its own page** (`wall:`, `src/server/wall.ts`, `src/web/wall.tsx`): pages written like `layout`, drawn read-only (no
   `run`, no pointer on cards, no palette or chat) and scaled to fill the screen. `wallReads` is everything a screen paired with
   `wall.token` may hear; main.ts holds it to that on `/api/page`, `/api/events` and `/api/image`, and refuses it everywhere else.

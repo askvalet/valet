@@ -21,6 +21,8 @@ const looks = (inst: string, kind: string, target: Action | Tool | undefined) =>
 export interface CommandSite {
   config: Config; instances: Map<string, Instance>; meta: Map<string, { type: string; name: string }>;
   acting: boolean; redact: (s: string) => string; activity: Activity; hub?: Pick<Hub, 'refreshInstance'>;
+  /** someone with a profile (people.ts): `config` is already theirs, and these are the page actions they were given */
+  member?: { presses(inst: string, action: string): boolean; approve: 'self' | 'owner' };
 }
 interface Entry extends Phrase { inst: string; name: string; cmd: Command; target: Action | Tool }
 
@@ -46,6 +48,11 @@ export async function commandsOf(site: CommandSite): Promise<Entry[]> {
 
 /** Whether this page may run it, and why not. */
 export function refusal(site: CommandSite, e: Entry): string | null {
+  // a profile: the page actions it lists, and tools its own assistant could use. Nothing of Valet's own, nothing at all
+  // without an assistant, and nothing an owner would have to approve: that goes through the chat, where it can wait
+  const m = site.member;
+  if (m && (OWN.has(e.inst) || (e.kind === 'action' ? !m.presses(e.inst, e.name) : !site.config.assistant))) return 'that isn\'t part of your profile';
+  if (m && e.kind === 'tool' && (e.target as Tool).access !== 'read' && m.approve === 'owner') return 'an owner has to approve that: ask the assistant for it';
   if (OWN.has(e.inst) && !looks(e.inst, e.kind, e.target)) return 'that isn\'t something a command can do';
   if (OWN.has(e.inst)) return site.config.assistant?.access.valet === 'none' ? 'assistant.access gives valet none'
     : site.config.assistant?.access[`${e.inst}.${e.name}`] === 'none' ? `assistant.access turns ${e.inst}.${e.name} off` : null;

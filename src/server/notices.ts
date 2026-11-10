@@ -3,7 +3,7 @@
 import type { Card } from '../shared/cards.ts';
 
 export interface NoticeRule { widget: string; on: 'start' | 'end' | 'down' | 'up'; text?: string }
-export interface Notice { key: string; text: string; sub?: string; icon?: string; image?: string; tone: 'good' | 'warn' | 'bad' | 'accent'; at: number }
+export interface Notice { key: string; text: string; sub?: string; icon?: string; image?: string; tone: 'good' | 'warn' | 'bad' | 'accent'; at: number; owner?: true }   // owner: Valet's own word (a reminder, a rule, backups, the insight), which only owners hear
 
 const fill = (t: string, v: Record<string, string | undefined>) => t.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? '');
 

@@ -29,6 +29,7 @@ node dist/server.js config check                            # every problem in c
 node dist/server.js config print                            # the effective config, defaults filled in, secrets redacted
 node dist/server.js config schema > valet.schema.json      # JSON schema of the whole file, every integration included
 node dist/server.js user add|passwd|remove|signout <name>   # local accounts (asks for the password)
+node dist/server.js user list                               # every account: an owner, or which profile
 node dist/server.js new-integration <name> [--full]         # scaffold a plugin in data/integrations/
 node dist/server.js check-integration <file>                # run a plugin against the sample it carries
 ```
@@ -339,6 +340,17 @@ secrets:
     url: https://vault.example.com:8200
     token: ${VAULT_TOKEN}            # from the environment or VAULT_TOKEN_FILE; or tokenFile: /run/secrets/vault_token
   refresh: 1h
+## `profiles` and `users`
+
+What each signed-in person may see and do. An account `users` doesn't name is an owner, exactly as without these. Both need sign-in on (`config check` says so with `auth.mode: none`), reload live, and are the owner's to edit by hand: the assistant's setup tools can't change them. [People and profiles](https://askvalet.dev/start/people/) has the whole story.
+
+```yaml
+profiles:
+  kids:
+    tabs: [Media]
+    actions: [requests.request]
+    assistant: { access: { default: none, requests: write }, instructions: "Only suggest shows rated TV-Y7 or below.", approve: owner }
+users: { sam: kids, alex: kids }
 ```
 
 | Option | Default | |
@@ -369,6 +381,16 @@ When a provider can't be reached, a reload fails whole and the last good config 
 edit. At startup there is no last good config, so Valet doesn't start. A failed `refresh` is logged and changes nothing.
 
 The assistant can't see this block or change it, and a provider's token can't be used anywhere else in the file by it.
+| `users` | `{}` | account name → profile. The name is a local account's, the proxy header's or the OIDC `claim`'s, compared without case. A name whose profile doesn't exist sees nothing |
+| `profiles.<name>.tabs` | all | the tabs they see, by name as in `layout`. Only the cards on those tabs reach them, by any route. Valet's own cards (activity, rules, backups, pins) never do |
+| `profiles.<name>.actions` | none | page buttons they may press, as `<instance>.<action>`; pressed straight away. Never Valet's own |
+| `profiles.<name>.assistant` | `false` | no assistant for them, or: |
+| `….assistant.access` | `{ default: none }` | as `assistant.access`, and never more: each integration and tool gets the lower of the two. `default` covers integrations with a card on their tabs; others must be named. Setup tools, rules, reminders, the activity log, timeline, plans, pins, MCP servers, other models and your chat commands are never theirs; `show`, `present`, `search_everything` and the docs are, within what they may read |
+| `….assistant.instructions` | — | added to the assistant's instructions for them. Guidance only: what holds is `access` |
+| `….assistant.suggestions` | `[]` | questions offered on their empty chat |
+| `….assistant.approve` | `owner` | `owner`: what would ask them waits for an owner's yes on the page (with a notification), one exact call, once, logged as "sam, approved by pat". `self`: they get the approval card themselves |
+
+If every local account has a profile, nobody is an owner: Valet says so in its log, `config check` and `user list`, and promotes nobody. Take a name out of `users`, or `user add` an account of your own.
 
 ## `assistant`
 
@@ -391,6 +413,7 @@ The assistant can't see this block or change it, and a provider's token can't be
 | `models` | none | more models to switch to under the chat's message box, for that chat: each `{ name, model, provider, baseURL, apiKey, contextWindow, reasoning, options }`, with only `model` required. What an entry leaves out comes from the settings above, except that `baseURL` goes only to the same provider, `apiKey` only to the same server, and `contextWindow` is the model's own. `name` is what the menu shows (default: the model id) and must be unique. The main `model` stays the default, and background calls always use it. `auto` as an item (or `models: auto` alone) also offers every model the main server lists at `GET /models`, asked by Valet with the main settings and kept five minutes; `{ auto: true, name, provider, baseURL, apiKey, reasoning, options }` does the same for another server (filled in by the same rules; Anthropic's `GET /v1/models` with `provider: anthropic`), its models run on that server with its key, and one whose id another choice already has is offered as `<name or host>/<id>`. Models that clearly aren't chat models (embeddings, speech, image, moderation, rerankers) are left out. Past eight choices the menu is searchable, with a heading per server. Without `models` there's no menu |
 | `telegram` | none | the same chat in Telegram: `{ token, users }`, a bot's token from @BotFather (in `.env`) and the numeric Telegram user ids that may talk to it, in a private chat only. Same access and approvals as the page; approvals are two buttons. Valet polls Telegram, so nothing needs to reach it from outside. Anyone not listed gets no answer; the log names the id it ignored, which is how you find yours |
 | `webSearch` | none | web search for the assistant, off unless set: see [below](#assistantwebsearch) |
+| `telegram` | none | the same chat in Telegram: `{ token, users }`, a bot's token from @BotFather (in `.env`) and the numeric Telegram user ids that may talk to it, in a private chat only. Same access and approvals as the page; approvals are two buttons. Valet polls Telegram, so nothing needs to reach it from outside. Anyone not listed gets no answer; the log names the id it ignored, which is how you find yours. An id may be `{ id, as: <account> }`: that person is that account here too, [profile](#profiles-and-users) and all; a plain id is an owner |
 | `suggestions` | four examples | questions offered until the model has written its own, or if `background.suggest` is off |
 | `background` | `{ watch: true, brief: true, suggest: true, perDay: 100 }` | what it does unasked. `watch`: when two or more things break, say what they share, if the data shows it. `brief`: a short summary, shown when you hover the status sentence and rewritten every half hour while the page is in use. `suggest`: write the suggested questions from what's on the page, every half hour or when something changes (`suggestions` is the fallback). `perDay` caps the model calls all three make in a day. None of them get tools |
 

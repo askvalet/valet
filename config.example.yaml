@@ -1,6 +1,11 @@
 # Sign-in. Off by default, and then Valet is read-only (no buttons, no assistant tools that change things).
 # local: built-in accounts · proxy: trust your sign-in proxy's user header · oidc: OpenID Connect · trustNetwork: true if only your VPN/tailnet reaches it
 auth: { mode: none, trustNetwork: false }
+# Other people in the house, with sign-in on: a profile gives someone only these tabs, buttons and assistant. An account
+# users doesn't name is an owner. approve: owner sends what would ask them to an owner instead (self: they approve their own)
+# profiles:
+#   kids: { tabs: [Media], actions: [requests.request], assistant: { access: { default: none, requests: write }, approve: owner } }
+# users: { sam: kids, alex: kids }
 
 # Valet configuration. `${NAME}` is replaced from the environment, so keep secrets in .env, Docker secrets, Vault or
 # 1Password (see `secrets` below).
@@ -50,8 +55,8 @@ assistant:
   #   - { auto: true, name: OpenRouter, baseURL: https://openrouter.ai/api/v1, apiKey: "${OPENROUTER_KEY}" }
 
 # The same chat in Telegram: a bot of its own from @BotFather, and the Telegram user ids that may talk to it (private chats only).
-# Same access and approvals as the page. Under assistant:
-#   telegram: { token: "${TELEGRAM_BOT_TOKEN}", users: [123456789] }
+# Same access and approvals as the page. { id, as: sam } makes that person the account sam, profile and all. Under assistant:
+#   telegram: { token: "${TELEGRAM_BOT_TOKEN}", users: [123456789, { id: 987654321, as: sam }] }
 
 # Web search for the assistant, for what the homelab can't answer. Off unless set. A SearXNG of your own keeps it private
 # (turn on its json format: `search: { formats: [html, json] }` in its settings.yml); brave and tavily take a key from .env.

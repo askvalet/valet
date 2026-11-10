@@ -1,0 +1,99 @@
+---
+title: People and profiles
+description: Give other people in the house a Valet of their own, with only the tabs, buttons and assistant you choose.
+sidebar:
+  order: 4.5
+---
+
+With sign-in on, everyone who signs in is an owner: the same page, the same buttons, the same assistant. A profile gives someone less. Children might see only the Media tab, press one button to request a show, and ask the assistant for things a parent then approves.
+
+```yaml title="config.yaml"
+profiles:
+  kids:
+    tabs: [Media]                      # the tabs they see, by name as in layout. Left out: all of them
+    actions: [requests.request]        # page buttons they may press, as <integration>.<action>. Left out: none
+    assistant:                         # left out: no assistant for them
+      access: { default: none, requests: write }
+      instructions: "Only suggest shows rated TV-Y7 or below."
+      suggestions: ["What can I watch tonight?"]
+      approve: owner                   # owner: what asks first goes to an owner · self: they approve their own
+users: { sam: kids, alex: kids }       # account → profile. Anyone not listed is an owner
+```
+
+## Set it up
+
+1. Turn on [sign-in](/start/sign-in/). Without it there are no people, only a page, so profiles do nothing. `config check` says so.
+2. Make an account for each person. With local accounts, `node dist/server.js user add sam`. With a [sign-in proxy](/start/sign-in/#behind-a-sign-in-proxy) or [OpenID Connect](/start/sign-in/#openid-connect), the name is what your proxy's header or the `claim` says.
+3. Add `profiles` and `users` as above. Names in `users` don't care about case, so `Sam` from a proxy is still `sam`.
+4. Run `node dist/server.js config check`, then `node dist/server.js user list` to see who is an owner and who has which profile.
+
+Profiles and `users` reload live, like the rest of the config. Only you can change them, by hand: the assistant's setup tools can't touch either, as they can't touch `auth`.
+
+## What someone with a profile gets
+
+**The page.** Their tabs, and only the cards on them. Rings in the top bar, live activities, the weather beside the clock and the calendar only show if their card is on one of their tabs. The status sentence is written from their cards alone.
+
+**Buttons.** Only the `actions` the profile lists, pressed straight away: listing one is your yes. A card from an integration they were given nothing on is read-only for them. In ⌘K, the Do list is the same buttons.
+
+**The assistant.** Theirs, if the profile has one:
+
+- **It never has more than yours.** For each integration and each tool, it gets the lower of `assistant.access` and the profile's `access`. A profile can only narrow.
+- **`default` covers their tabs.** An integration with no card on their tabs gets nothing unless the profile names it.
+- **`show` draws only their cards**, and one search across everything covers only what they may read.
+- **`instructions` is guidance.** It's added to the assistant's instructions for them, and a model can ignore it. What holds is `access`, in code.
+- **Valet's own tools aren't theirs:** no setup tools, rules, reminders, activity log, timeline, plans or pins, no MCP servers, no other models from `assistant.models`, and none of your chat commands. They keep `show`, drawing a chart, one search across what they may read, and Valet's own docs.
+
+**⌘K.** Their buttons, commands for tools their assistant may use, search inside the services their assistant may read (nothing, without an assistant), their tabs, and Valet's docs. The Account group shows who's signed in.
+
+## What stays with owners
+
+Whatever a profile says, these are for owners only:
+
+- the cards, tabs and wallpapers of the tabs they don't have, and any picture that isn't on their cards or from an integration their assistant may read
+- the activity log, rules, reminders, pins and the year in review
+- the assistant's brief, its suggested questions written from the whole page, and the line about what several problems have in common
+- notifications: a profile can't turn them on for a device, and a device turned on before its account got a profile hears nothing
+- notices about Valet's own things (a reminder, a rule, backups); they hear a notice only when it's about one of their cards
+- approvals from outside the chat (an MCP client's, or another person's): they can't see them or answer them
+- a config edit that didn't apply, and the welcome card
+
+Every one of these is held on the server, not just hidden on the page. `npm run test:exposure` signs in with a profile and tries every route.
+
+## Approvals that go to an owner
+
+With `approve: owner`, the default, anything their assistant would ask before doing is asked of an owner instead:
+
+1. Sam asks for a show. The assistant calls the request tool, which would ask first.
+2. Nothing runs. Every owner's page shows the approval card, in the tool's own words, with "Asked by sam", and owners get a notification.
+3. Sam's chat says it's waiting for an owner.
+4. An owner presses Allow. If Sam's chat is still open it carries on and says it's done. If Sam had to wait longer, the yes is kept for ten minutes for that exact request: asking again runs it.
+5. It runs once. The activity log says "sam, approved by pat".
+
+A no is a no: Sam's chat says an owner declined. A yes covers that one request with that exact input, from that person, once. Five approvals can wait at a time.
+
+With `approve: self`, they get the same approval card you do, for what their access allows and nothing more. Use it for an older child or a housemate you'd trust with their own buttons.
+
+## Telegram
+
+An id in [`assistant.telegram.users`](/assistant/telegram/) can be bound to an account, so a child's Telegram is the child's assistant:
+
+```yaml
+assistant:
+  telegram:
+    token: ${TELEGRAM_BOT_TOKEN}
+    users: [123456789, { id: 987654321, as: sam }]
+```
+
+A plain id is an owner, as before. A bound one talks as that account, profile and all: with `approve: owner`, they get no buttons, and what needs a yes goes to an owner's page.
+
+## Nobody left as an owner
+
+If `users` gives every local account a profile, nobody is an owner: nobody can approve, read the log or use the full page. Valet won't pick someone to promote. It says so in its log and in `config check` and `user list`, and the accounts stay as narrow as you made them. To get back in, take one name out of `users` (it reloads live), or add an account of your own with `user add`.
+
+A name in `users` whose profile doesn't exist sees nothing at all until you fix it, rather than everything. `config check` names unknown profiles, tabs, actions and integrations, and any level a profile asks for that's more than `assistant.access` gives.
+
+## What it doesn't cover
+
+- **Each chat's history is kept in its own browser.** Two people sharing one browser share its chats.
+- **An integration you name in a profile's access is theirs to read through the assistant**, cards or not. Give a profile only what you'd show them.
+- **It isn't a lock on the services themselves.** Someone with the service's own address and a login can still use it. Valet only narrows what reaches them through Valet.

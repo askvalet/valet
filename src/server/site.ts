@@ -35,6 +35,7 @@ import { loadPins, pinsInstance, savePins, type Pin } from './pins.ts';
 import { setupTools } from './setup.ts';
 import { sandbox } from './sandbox.ts';
 import { wallPages, wallProblems, wallWidgets } from './wall.ts';
+import { peopleProblems, profileOf } from './people.ts';
 import { voiceProblems } from './voice.ts';
 import { choices, servers } from './model.ts';
 
@@ -131,6 +132,7 @@ export function check(config: Config, registry: Record<string, Integration>, fro
     else if (!names.includes(name)) problems.push(`assistant.access: ${id} has no tool "${name}" (it has: ${names.join(', ') || 'none'})`);
   }
   problems.push(...commandProblems(config, instances));
+  problems.push(...peopleProblems(config, instances));
   return { problems, instances, meta, placed };
 }
 
@@ -183,7 +185,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   const activity = previous?.activity ?? await new Activity(s => redactor(usedSecrets)(s)).load();
   // reminders, and Valet's own tools
   const watches = new Watches(await loadWatches(), w => {
-    const n: Notice = { key: w.widget, text: w.say, icon: 'pulse', tone: 'accent', at: Date.now() };
+    const n: Notice = { key: w.widget, text: w.say, icon: 'pulse', tone: 'accent', at: Date.now(), owner: true };
     recent.push(n); if (recent.length > 5) recent.shift();
     for (const l of noticeListeners) l(n);
     timeline.add('reminder', w.say, w.widget);
@@ -203,7 +205,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     tell: ({ text: said, sub: why, tone, rule }) => {
       // a card's words can carry anything a service sent back, and these go to the phone too
       const text = redactNow(said), sub = why && redactNow(why);
-      const n: Notice = { key: rule.when?.widget ?? 'valet.rules', text, sub, icon: 'pulse', tone, at: Date.now() };
+      const n: Notice = { key: rule.when?.widget ?? 'valet.rules', text, sub, icon: 'pulse', tone, at: Date.now(), owner: true };
       recent.push(n); if (recent.length > 5) recent.shift();
       for (const l of noticeListeners) l(n);
       timeline.add('rule', sub ? `${text} (${sub})` : text, rule.when?.widget);
@@ -228,7 +230,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   if (bk) backups.options = { overdue: bk.overdue, expect: bk.expect };
   backups.tell = t => {
     const m = news(t), text = redactNow(m.title), sub = m.text && redactNow(m.text);
-    const n: Notice = { key: 'valet.backups', text, sub, icon: 'shield', tone: m.tone, at: Date.now() };
+    const n: Notice = { key: 'valet.backups', text, sub, icon: 'shield', tone: m.tone, at: Date.now(), owner: true };
     recent.push(n); if (recent.length > 5) recent.shift();
     for (const l of noticeListeners) l(n);
     timeline.add('backup', sub ? `${text} (${sub})` : text, 'valet.backups');
@@ -242,7 +244,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   reminders.sources = () => reminding;
   reminders.tell = r => {
     const text = redactNow(r.title), sub = r.text && redactNow(r.text), link = r.link && redactNow(r.link) === r.link ? r.link : undefined;
-    const n: Notice = { key: r.source, text, sub, icon: 'calendar', tone: 'accent', at: Date.now() };
+    const n: Notice = { key: r.source, text, sub, icon: 'calendar', tone: 'accent', at: Date.now(), owner: true };
     recent.push(n); if (recent.length > 5) recent.shift();
     for (const l of noticeListeners) l(n);
     sendPush({ title: text, text: sub, link, device: r.device !== false, where: [...placed].find(k => k.startsWith(`${r.source}.`)) });
@@ -266,8 +268,9 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     for (const r of config.live?.notify ?? []) if (r.push && r.widget === key) for (const n of noticesFor(key, prev?.card, next.card, [r])) sendPush({ title: n.text, text: n.sub, urgent: n.tone === 'bad', where: key });
   }, history);
 
-  // to the channels, and to every browser that turned notifications on (not from a demo: there's nobody's phone to reach)
-  const web = config.notify.webPush;
+  // to the channels, and to every owner's browser that turned notifications on (not from a demo: there's nobody's phone to
+  // reach). Someone with a profile hears none of it: a notification can name anything
+  const web = { ...config.notify.webPush, only: (user?: string) => profileOf(config, user) === undefined };
   const sendPush = (m: Message) => {
     void push(config.notify.channels, m, fetch, redactNow);
     if (web.enabled && !sandbox.on && m.device !== false) void pushAll({ title: redactNow(m.title), body: m.text && redactNow(m.text), urgent: m.urgent, url: placeOf(config, m.where), open: m.link }, web);
@@ -277,7 +280,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   // the assistant's own background work, if there's an assistant
   const ask = config.assistant ? makeAsk(config.assistant) : undefined;
   const watcher = ask && config.assistant!.background.watch ? new Watcher(ask, i => {
-    const n: Notice = { key: 'insight', text: i?.text ?? '', icon: 'pulse', tone: 'warn', at: Date.now() };
+    const n: Notice = { key: 'insight', text: i?.text ?? '', icon: 'pulse', tone: 'warn', at: Date.now(), owner: true };
     for (const l of noticeListeners) l(n);
     if (i) { timeline.add('insight', i.text); if (config.notify.insights) sendPush({ title: 'Your homelab', text: i.text, urgent: true }); }
   }) : undefined;
