@@ -45,6 +45,7 @@ import emby from './emby.ts';
 import jellyfin from './jellyfin.ts';
 import navidrome from './navidrome.ts';
 import host from './host.ts';
+import machines from './machines.ts';
 import { services } from './services/index.ts';
 import clock from './clock.ts';
 import iframe from './iframe.ts';
@@ -55,5 +56,5 @@ import todo from './todo.ts';
 import twitch from './twitch.ts';
 
 export const registry: Record<string, Integration> = Object.fromEntries(
-  [aimonitor, arr, audiobookshelf, camera, changedetection, glances, homeassistant, http, immich, indexers, karakeep, kavita, komga, mealie, miniflux, ollama, paperless, pihole, qbittorrent, rgbcontrol, romm, scrutiny, seerr, tandoor, tautulli, jellyfin, emby, navidrome, uptimekuma, weather, links, rss, hackernews, reddit, releases, markets, calendar, api, docker, host, apcups, minecraft, clock, iframe, lobsters, repository, todo, twitch, proxmox, speedtesttracker, syncthing, backrest, healthchecks, ...services].map(i => [i.type, i as Integration]),
+  [aimonitor, arr, audiobookshelf, camera, changedetection, glances, homeassistant, http, immich, indexers, karakeep, kavita, komga, mealie, miniflux, ollama, paperless, pihole, qbittorrent, rgbcontrol, romm, scrutiny, seerr, tandoor, tautulli, jellyfin, emby, navidrome, uptimekuma, weather, links, rss, hackernews, reddit, releases, markets, calendar, api, docker, host, machines, apcups, minecraft, clock, iframe, lobsters, repository, todo, twitch, proxmox, speedtesttracker, syncthing, backrest, healthchecks, ...services].map(i => [i.type, i as Integration]),
 );

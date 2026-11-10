@@ -95,7 +95,7 @@ The image has no `node_modules`: the server is bundled into one folder of JavaSc
 
 Valet stays in its box. To show containers, the [`docker`](/integrations/docker/) integration reads through a read-only socket proxy. Never mount the Docker socket into Valet. The commented-out `valet-dockerproxy` service in `docker-compose.example.yml` is ready to use.
 
-For systemd services, the [`host`](/integrations/host/) integration talks to a small read-only agent, `agent/valet-agent.py`, which you run on the machine.
+For anything outside the container (the machine's CPU, memory and disks, its systemd services, other machines), a small read-only agent, `agent/valet-agent.py`, runs on each machine. [Your machines](/start/machines/) says how.
 
 ## From source
 

@@ -6,7 +6,7 @@ export const CATEGORY: Record<string, string> = {
   ...group('Media', 'arr tautulli jellyfin emby navidrome audiobookshelf seerr immich romm komga kavita'),
   ...group('Downloads', 'qbittorrent indexers'),
   ...group('Network', 'pihole speedtest-tracker'),
-  ...group('Infrastructure', 'docker glances host uptimekuma scrutiny apcups minecraft ollama aimonitor proxmox backrest healthchecks'),
+  ...group('Infrastructure', 'docker glances host machines uptimekuma scrutiny apcups minecraft ollama aimonitor proxmox backrest healthchecks'),
   ...group('Home and daily life', 'homeassistant weather calendar camera rgb-control todo clock frigate esphome evcc homebridge opendtu octoprint moonraker spoolman mealie tandoor'),
   ...group('Feeds and web', 'rss hackernews lobsters reddit releases repository markets twitch miniflux'),
   ...group('Apps', 'changedetection karakeep paperless syncthing'),

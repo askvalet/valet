@@ -2,7 +2,7 @@
 
 Generated from the code by `npm run docs:services`: please don't edit by hand.
 
-185 integrations. If yours isn't here, `type: api` turns any JSON API into a card from YAML, and a simple read-only
+186 integrations. If yours isn't here, `type: api` turns any JSON API into a card from YAML, and a simple read-only
 integration of your own is about ten lines ([docs/plugins.md](plugins.md)).
 
 **How these are tested:** every service in the catalog below runs in `npm test` against a sample of its API, which proves the card, the
@@ -41,6 +41,7 @@ catalog takes it, and so do `camera` and `frigate`.
 | Links | `links` |
 | Lobsters | `lobsters` |
 | Local AI | `aimonitor` |
+| Machines | `machines` |
 | Markets | `markets` |
 | Mealie | `mealie` |
 | Minecraft | `minecraft` |

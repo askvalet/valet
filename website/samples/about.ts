@@ -64,6 +64,7 @@ export const ABOUT: Record<string, string> = {
   homebox: 'Homebox is a home inventory. This shows items, locations, what\'s under warranty and total value.',
   homebridge: 'Homebridge brings devices to HomeKit. This shows its status, updates and child bridges.',
   host: 'Reads a machine\'s systemd services through the Valet agent. This shows what\'s running and what failed, and the assistant can read logs. The agent can only look.',
+  machines: 'Every machine running the Valet agent, from one block of config. This shows each machine with whether it answers, CPU, memory, disk, temperature and what\'s wrong, each one\'s own card, and their containers, services and disks grouped by machine. A machine that\'s down never holds up the rest. The assistant can say which machine is low on disk and read logs on any of them. The agent can only look.',
   http: 'Checks whether your services answer. This shows each one as up or down with its response time, with no API keys.',
   iframe: 'Embeds a web page in a card, sandboxed. Only the address you configure can load.',
   immich: 'Immich is a self-hosted photo library. This shows photos from this day as a masonry wall you can throw sideways, and lets the assistant search photos and people.',

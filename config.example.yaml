@@ -90,6 +90,11 @@ integrations:
     type: indexers                 # Prowlarr indexer health and Bazarr missing subtitles
     prowlarr: { url: "http://prowlarr:9696", apiKey: "${PROWLARR_KEY}" }
     bazarr: { url: "http://bazarr:6767", apiKey: "${BAZARR_KEY}" }
+  # machines:
+  #   type: machines               # every machine running the Valet agent: up or not, CPU, memory, disks, containers and services
+  #   hosts:                       # askvalet.dev/start/machines/ says how to put the agent on a machine
+  #     nas: { url: "http://10.0.0.5:7576", token: "${NAS_AGENT_TOKEN}", name: NAS }
+  #     pi: { url: "http://10.0.0.6:7576", token: "${PI_AGENT_TOKEN}" }
   ollama:
     type: ollama                   # installed and loaded models
     url: http://ollama:11434
