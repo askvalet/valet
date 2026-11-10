@@ -87,8 +87,12 @@ https://askvalet.dev.
   `oneLine` in `format.ts`): two things at most, what needs someone first, and services off by choice don't count. What it does unasked (`src/server/insight.ts`, through
   `brain.ts`) gets no tools. What it builds (pins, config edits in `setup.ts`, rules) runs without it afterwards.
 - **Valet stays in its box; agents go on the machines.** The container never gets the host. Anything from outside it
-  comes through a narrow read-only door: a socket proxy for Docker, `agent/valet-agent.py` for systemd. Keep the agent one
-  file of Python's standard library, and keep it unable to change anything: `test/agent.test.ts` enforces that.
+  comes through a narrow read-only door: a socket proxy for Docker, `agent/valet-agent.py` on each machine for its numbers,
+  its systemd services and (through that machine's own read-only proxy) its containers. Keep the agent one file of Python's
+  standard library, every part of it off until its own settings turn it on, and unable to change anything: files opened only
+  to read, Docker asked only with GET on a fixed list of paths, nothing typed reaching a command or a path. `test/agent.test.ts`
+  enforces that; a new part of the agent gets a check there. Its API is versioned (`/v1/`, `api` in `/v1/machine`): Valet
+  must keep reading an older agent, and say "update it" rather than fail.
 - **Personal things live in config, never in code.** Hardware builds (`build:`), rooms and lights, services, layout,
   angles: the repo ships generic defaults and a documented `config.example.yaml`. Before committing, grep for anything
   that names the author's hardware, hosts or people.
