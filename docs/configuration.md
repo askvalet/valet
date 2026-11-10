@@ -870,6 +870,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `markets` | `symbols` (`AAPL`, `BTC-USD`, `^GSPC`, `EURUSD=X`, or `{ symbol, name }`), `range` (`1d`), `title` | `quotes` |
 | `docker` | `url` (a read-only socket proxy, never the raw socket), `hide` (names to leave out, e.g. containers that are meant to stay stopped), `sources` (container → GitHub `owner/repo` for release notes, when its image doesn't say), `github` (a token, past 60 requests an hour) | `containers`, `updates` |
 | `host` | `url` (the Valet agent), `token`, `title`, `quiet` (services often off on purpose) | `services` |
+| `machines` | `hosts` (each `{ url, token, name, icon, quiet, hide, sensor }`, by a short name), `title`, `timeout` (4 s) | `fleet`, `overview`, `containers`, `units`, `disks`, and one per machine by its name |
 | `api` | `url`, `headers`, `method`, `body`, `every` (60s), `title`, `icon`, `href`, `about`, and one of `stats`, `list`, `rows`, `status` (see below) | `data` |
 | `calendar` | `calendars` (iCal URLs, or `{ url, name, color }`), `days` (14), `limit` (10), `title`, `months` (6, how far ahead the month browses), `meetings` (see below) | `upcoming`, `agenda` (place it `wide` or `large` for the month beside it; narrower and tall enough, it's a week you scroll sideways: `view: week` or `view: agenda` holds it to one) |
 | `links` | (from the top-level `links:` block) | one per group |
@@ -935,6 +936,32 @@ integrations:
 
 Bind it to the Docker bridge for the machine Valet is on, or a tailnet address for another; never a public one. Reading
 system services' logs needs your user in the `systemd-journal` group.
+
+### Several machines: `type: machines`
+
+The same agent can also report how its machine is doing and what runs in Docker there, each turned on in its own
+settings (`agent/valet-agent.py` lists them): `VALET_AGENT_METRICS=1` for CPU, memory, load, temperatures and uptime from
+`/proc` and `/sys`, `VALET_AGENT_MOUNTS` for the disks to report, `VALET_AGENT_DOCKER` for a read-only socket proxy (or a
+socket, which it only ever sends GET to), `VALET_AGENT_CONTAINERS` to name which containers, and `VALET_AGENT_ALLOW` for
+the addresses that may ask. Then one block lists every machine:
+
+```yaml
+integrations:
+  machines:
+    type: machines
+    timeout: 4                      # seconds a machine gets before it's shown as not reachable
+    hosts:
+      nas: { url: "http://10.0.0.5:7576", token: "${NAS_AGENT_TOKEN}", name: NAS, quiet: [backup-job] }
+      pi: { url: "http://10.0.0.6:7576", token: "${PI_AGENT_TOKEN}", sensor: cpu_thermal }
+```
+
+Widgets: `machines.fleet` (a row per machine: reachable, CPU, memory, temperature, and what's wrong; as a tile "2 of 2"),
+`machines.overview` (the same as a table), `machines.containers` and `machines.units` (grouped by machine),
+`machines.disks`, and `machines.<name>` for each machine. Machines are asked at once, each with its own `timeout`; one
+that doesn't answer is shown as down with when it was last seen, and what it last reported stays, marked. An agent
+older than this Valet still shows its services, and its card says to update it. The assistant gets
+`machines_status`, `machine_status`, `machines_running`, `machines_find` (also in ⌘K) and `machine_logs`, all `read`.
+[Your machines](https://askvalet.dev/start/machines/) on the site walks through installing the agent on another machine.
 
 ### Any JSON API: `type: api`
 

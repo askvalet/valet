@@ -43,6 +43,37 @@ const unit = (name: string, state: string, o: Record<string, unknown> = {}) => (
 const units = [unit('valet-agent', 'active'), unit('tailscaled', 'active'), unit('smbd', 'active'), unit('nfs-server', 'active'), unit('sshd', 'active'), unit('cron', 'active'), unit('restic-backup', 'inactive')];
 const hostAnswer = (list: unknown[]) => route([['/services', { host: 'nas', services: list }]]);
 
+// ── Machines (the agent on each): a NAS, a Pi and a mini PC, all made up
+const GB = 2 ** 30;
+const box = (name: string, Status: string, project: string) => ({ id: name.padEnd(12, '0').slice(0, 12), name, state: /^Exited/.test(Status) ? 'exited' : 'running', status: Status, image: `${name}:latest`, project });
+const pcs = (o: { full?: number; hot?: number } = {}) => ({
+  nas: { api: 1, host: 'nas', can: { metrics: true, units: 3, docker: true }, os: 'Debian GNU/Linux 12 (bookworm)', osId: 'debian', kernel: '6.1.0-28-amd64', arch: 'x86_64', uptime: 23 * 86400 + 4 * 3600,
+    cpu: { pct: wave(tock(), 6, 24), cores: 8, model: 'Intel Core i3-N305' }, load: [0.61, 0.52, 0.48], memory: { total: 32 * GB, available: 19.5 * GB }, swap: { total: 4 * GB, free: 4 * GB },
+    disks: [{ mount: '/', total: 240 * GB, free: 170 * GB, used: 70 * GB }, { mount: '/mnt/pool', total: 36000 * GB, free: 36000 * GB * (1 - (o.full ?? 71) / 100), used: 36000 * GB * (o.full ?? 71) / 100 }],
+    temperatures: [{ name: 'coretemp Package id 0', c: o.hot ?? 46 }, { name: 'nvme Composite', c: 39 }] },
+  pi: { api: 1, host: 'pi', can: { metrics: true, units: 1, docker: true }, os: 'Raspberry Pi OS (bookworm)', osId: 'raspbian', arch: 'aarch64', uptime: 61 * 86400,
+    cpu: { pct: wave(tock(), 2, 9), cores: 4, model: 'Raspberry Pi 5 Model B' }, load: [0.08, 0.1, 0.09], memory: { total: 8 * GB, available: 6.1 * GB }, swap: { total: 0.5 * GB, free: 0.5 * GB },
+    disks: [{ mount: '/', total: 58 * GB, free: 41 * GB, used: 17 * GB }], temperatures: [{ name: 'cpu_thermal', c: 49.4 }] },
+  mini: { api: 1, host: 'mini', can: { metrics: true, units: 2, docker: true }, os: 'Ubuntu 24.04.1 LTS', osId: 'ubuntu', arch: 'x86_64', uptime: 6 * 86400,
+    cpu: { pct: wave(tock(), 14, 41), cores: 16, model: 'AMD Ryzen 7 7840HS' }, load: [2.1, 1.8, 1.6], memory: { total: 64 * GB, available: 31 * GB }, swap: { total: 8 * GB, free: 7.6 * GB },
+    disks: [{ mount: '/', total: 1900 * GB, free: 1100 * GB, used: 800 * GB }], temperatures: [{ name: 'k10temp Tctl', c: 58 }] },
+});
+const onMachine = {
+  nas: { units: [unit('smbd', 'active'), unit('nfs-server', 'active'), unit('zfs-scrub', 'inactive')], boxes: [box('immich_server', 'Up 4 days (healthy)', 'immich'), box('immich_postgres', 'Up 4 days (healthy)', 'immich'), box('paperless', 'Up 9 days (healthy)', 'docs'), box('syncthing', 'Up 23 days', 'files'), box('backup-job', 'Exited (0) 6 hours ago', 'ops')] },
+  pi: { units: [unit('tailscaled', 'active')], boxes: [box('pihole', 'Up 61 days (healthy)', 'network'), box('homeassistant', 'Up 12 days', 'home'), box('mosquitto', 'Up 61 days', 'home'), box('zigbee2mqtt', 'Up 2 hours', 'home')] },
+  mini: { units: [unit('ollama', 'active'), unit('tailscaled', 'active')], boxes: [box('plex', 'Up 6 days (healthy)', 'media'), box('sonarr', 'Up 6 days', 'media'), box('radarr', 'Up 6 days', 'media'), box('qbittorrent', 'Up 6 days', 'media')] },
+};
+const PORTS: Record<string, keyof typeof onMachine> = { '10.0.0.5': 'nas', '10.0.0.6': 'pi', '10.0.0.7': 'mini' };
+const machineAnswer = (o: { full?: number; hot?: number; away?: string; broken?: string } = {}) => (url: string) => {
+  const at = PORTS[new URL(url).hostname], path = new URL(url).pathname;
+  if (!at || at === o.away) return undefined;   // no answer: not reachable
+  if (path === '/v1/machine') return pcs(o)[at];
+  if (path === '/v1/units') return { host: at, services: onMachine[at].units };
+  if (path === '/v1/containers') return { containers: onMachine[at].boxes.map(b => b.name === o.broken ? { ...b, state: 'exited', status: 'Exited (137) 12 minutes ago' } : b) };
+  if (path === '/v1/logs') return { container: o.broken, state: 'exited', status: 'Exited (137) 12 minutes ago', killedForMemory: false, exitCode: 137, restarts: 3, lines: ['Zigbee2MQTT:info  Starting', 'Zigbee2MQTT:error Adapter disconnected'] };
+  return undefined;
+};
+
 // ── http: answers vary by what each target is doing, as a real check's timing does
 const targets = [['Plex', 'http://plex:32400/identity', 'Media', 200], ['Radarr', 'http://radarr:7878/ping', 'Media', 200], ['Sonarr', 'http://sonarr:8989/ping', 'Media', 200], ['Immich', 'http://immich:2283/api/server/ping', 'Photos', 200], ['Paperless', 'http://paperless:8000/', 'Docs', 200], ['Karakeep', 'http://karakeep:3000/', 'Docs', 200], ['Home Assistant', 'http://homeassistant:8123/', 'Home', 200], ['Pi-hole', 'http://pihole/admin/', 'Network', 200]] as const;
 const delayed = (status: (url: string) => number) => async (url: string) => { await sleep(4 + url.length % 19); return new Response('', { status: status(url) }); };
@@ -121,6 +152,16 @@ export const infra: Record<string, Fixture> = {
     config: { url: 'http://10.0.0.5:7576', token: 'x', title: 'Services', quiet: ['restic-backup'] },
     http: hostAnswer(units),
     states: [{ widget: 'services', state: 'failed', label: 'A service failed', http: hostAnswer(units.map(u => u.name === 'smbd' ? { ...u, state: 'failed', result: 'exit-code', exitStatus: 1 } : u)) }],
+  },
+  machines: {
+    config: { hosts: { nas: { url: 'http://10.0.0.5:7576', token: 'x', name: 'NAS', quiet: ['zfs-scrub'] }, pi: { url: 'http://10.0.0.6:7576', token: 'x', name: 'Pi' }, mini: { url: 'http://10.0.0.7:7576', token: 'x', name: 'Mini PC' } } },
+    http: machineAnswer(), warm: 20,
+    states: [
+      { widget: 'fleet', state: 'away', label: 'One machine not answering', http: machineAnswer({ away: 'pi' }) },
+      { widget: 'fleet', state: 'full', label: 'A disk filling up', http: machineAnswer({ full: 94 }) },
+      { widget: 'containers', state: 'trouble', label: 'A container down', http: machineAnswer({ broken: 'zigbee2mqtt' }) },
+      { widget: 'disks', state: 'full', label: 'A disk filling up', http: machineAnswer({ full: 94 }) },
+    ],
   },
   http: {
     config: { interval: 30000, targets: targets.map(([name, url, group]) => ({ name, url, group })) },

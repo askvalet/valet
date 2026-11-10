@@ -2,8 +2,9 @@
 #   systemctl --user enable --now valet-agent
 #   loginctl enable-linger $USER      # keeps it running without a login
 # Reading system services' logs needs your user in the systemd-journal group (or wheel, on most distros).
+# To update: copy the new valet-agent.py over the old one, then systemctl --user restart valet-agent.
 [Unit]
-Description=Valet agent (read-only service status and logs)
+Description=Valet agent (read-only machine status, services, containers and logs)
 After=network-online.target docker.service
 
 [Service]
@@ -11,10 +12,21 @@ EnvironmentFile=%h/.config/valet-agent/env
 ExecStart=/usr/bin/python3 %h/.local/bin/valet-agent.py
 Restart=always
 RestartSec=5
+# it only reads, so everything from here on only takes away
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
 PrivateTmp=true
+UMask=0077
+LockPersonality=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @mount @reboot @swap @module @raw-io @clock
+# a few MB in use: a ceiling well above that, so a fault here can only stop the agent
+MemoryMax=96M
 
 [Install]
 WantedBy=default.target
