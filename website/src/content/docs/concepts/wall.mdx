@@ -1,6 +1,6 @@
 ---
 title: Wall displays
-description: A full-screen page at /wall for a wall tablet or a spare monitor, with its own cards, night dimming and a way in for a screen that can't sign in.
+description: A full-screen page at /wall for a wall tablet or a spare monitor, with its own cards, a few controls you choose, pages that show when they should, night dimming and a way in for a screen that can't sign in.
 sidebar:
   order: 9
 ---
@@ -15,9 +15,9 @@ The wall is its own page. It doesn't follow the main layout, so you decide exact
 
 <figure class="why"><img src="/why/wall-house.webp" alt="A second wall page for the house: the cameras, the thermostat, who's home, the doors, the energy and the weather" loading="lazy" /></figure>
 
-## It only shows
+## It mostly shows
 
-Whoever is signed in, the wall never acts. There's no chat, no ask box, no ⌘K, no editing, and no buttons or links. A card that has controls, like a thermostat, shows them read-only. Touching the screen only holds the page it's on.
+Whoever is signed in, there's no chat, no ask box, no ⌘K, no editing and no links on the wall. A card that has controls, like a thermostat, shows them read-only, unless you list it under [`touch`](#a-few-controls). Touching the screen anywhere else only holds the page it's on.
 
 ## Out of the box
 
@@ -63,6 +63,99 @@ A page that holds more than fits is shrunk to fit, so keep each page to what you
 
 To keep one page on a screen, open `/wall?page=House`. Two screens can show two different pages that way.
 
+## A few controls
+
+A wall tablet can switch a light, set the thermostat or run a scene. List the cards whose controls should work there:
+
+```yaml title="config.yaml"
+wall:
+  touch: [lights.living, home.thermostat, { widget: home.locks, hold: true }]
+```
+
+Only `controls` and `thermostat` cards have anything to press, and only where a wall page shows them. On the wall their controls grow for a finger: each switch, scene and button is a large tile that fills when it's on, a level is a pair of big − and + buttons a tenth of the way at a time, a choice is a row of its options, and the thermostat's steps and modes get bigger. A press shows at once, and gives way to what the service says when it answers. Every other card stays as it was, with nothing to press.
+
+`hold: true` makes every press on that card a long one: the tile fills while it's held and acts when it's full, so a sleeve brushing a lock or a garage door does nothing. It's a guard against accidents, not a lock: whoever holds the tablet can still press it. Leave anything you wouldn't hand to whoever is in that room off the list.
+
+After a touch the page stays put for `pause` (2 minutes), so it doesn't change under your finger. Each press is in the activity log as **Wall display**. A read-only Valet (sign-in off, without `trustNetwork`) has no touch.
+
+## Pages that show when they should
+
+A page can have a `when`, and the wall takes turns only among the pages whose `when` holds now:
+
+```yaml title="config.yaml"
+wall:
+  people: home.people                  # the card that says who's home
+  pages:
+    - title: Morning
+      when: { time: "06:00-09:00", home: any }
+      layout: [{ widgets: [weather.forecast, calendar.agenda] }]
+    - title: Door
+      when: { event: cameras.front }   # while that widget has something live
+      takeover: 60s                    # interrupts the turns, then goes back
+      layout: [{ widgets: [cameras.front] }]
+    - title: Away
+      when: { home: none }
+      layout: [{ widgets: [services.status] }]
+```
+
+Everything in a `when` must hold. It can say:
+
+- `time`: `"06:00-09:00"`, or a list. `"22:00-06:00"` runs overnight. It's your `timezone`'s clock, through the nights the clocks change.
+- `days`: `weekdays`, `weekends`, or `[sat, sun]`. An overnight range belongs to the evening it starts.
+- `home`: `any`, `none`, or names, like `[Sam, Ana]` (both home). With `only: true`, them and nobody else.
+- `live` and `playing`: something is live (a ring in the top bar) or playing; `false` for nothing.
+- `meeting`: an online meeting starts within this long, like `10m`, or is on.
+- `event`: that widget has something live now, like a camera's event or the doorbell.
+- `any`: a list of the above, at least one of which must hold too.
+
+It only uses what Valet already has: the clock and the cards. There's no model and no face recognition.
+
+### Who's home
+
+`people` names the card that says who's home: a `controls` card whose rows are people, each Home or Away, or a `status` card of people. Home Assistant's `cards:` with your `person.` entities is one:
+
+```yaml title="config.yaml"
+integrations:
+  home:
+    type: homeassistant
+    cards:
+      people: { title: Who's home, entities: [person.sam, person.ana] }
+```
+
+### Calm by rule
+
+- A change in who's home counts once it has lasted a minute, so a phone dropping off the wifi isn't someone leaving.
+- Something live counts at once, and for half a minute after it stops.
+- Each page stays at least 30 seconds. A page that stops qualifying leaves at the end of its turn, never in the middle; one that starts qualifying waits its turn.
+- If no page qualifies, the wall shows the pages without a `when`; with none of those, the [default page](#out-of-the-box).
+
+A `takeover` page isn't in the turns. It comes up the moment its `when` comes true, stays while it holds (its duration at most; `true` is a minute), then the wall goes back to the page it was on. It doesn't interrupt for something already happening when the wall opened, or while someone's finger is on the screen.
+
+### What the screen learns
+
+The conditions are judged on Valet's server. The screen is told only which of its pages may show now, never who is home or why, and a card that a `when` reads but no page shows never reaches it. That's what `home: none` is for: a page of personal cards (the calendar, the photos) with `home: any`, and a plain one for when nobody's in, blanks them when the house is empty.
+
+## More than one screen
+
+Each screen gets its own pages at `/wall/<name>`; `/wall` stays the default.
+
+```yaml title="config.yaml"
+wall:
+  screens:
+    kitchen:
+      touch: [lights.kitchen]          # its own controls; none if left out
+      token: ${KITCHEN_WALL_TOKEN}     # optional: its own pairing key
+      layout:
+        - widgets: [lights.kitchen, calendar.agenda]
+    office:
+      pages:
+        - title: Today
+          when: { meeting: 10m }
+          layout: [{ widgets: [calendar.agenda] }]
+```
+
+A screen has `pages` or `layout`, `touch` and `token`; the rest (`every`, `night`, `people`…) comes from `wall`. A screen with its own token pairs with that and reaches only that screen.
+
 ## Night
 
 From sunset to sunrise the wall dims, nearly to black, and comes back slowly in the morning. Sunset and sunrise come from the [weather](/integrations/weather/); without it, night is 21:00 to 07:00. Set your own times with `night: { from: "22:30", to: "06:45" }`, change how dark with `dim` (0 to 0.95), or turn it off with `night: false`. A touch lifts the dimming for a while.
@@ -84,7 +177,7 @@ wall:
   token: ${VALET_WALL_TOKEN}   # openssl rand -hex 32, in .env
 ```
 
-Then open `https://valet.example.com/wall#key=<the token>` on the tablet. The key leaves the address bar at once, and the browser keeps a cookie that reads the wall and nothing else. It can't open the main page, the chat or any other card, and it can't act. To unpair every screen, change the token. See [the threat model](/security/#a-paired-wall-display) for exactly what it can read.
+Then open `https://valet.example.com/wall#key=<the token>` on the tablet (or `/wall/kitchen#key=…`). The key leaves the address bar at once, and the browser keeps a cookie that reads the wall and nothing else. It can't open the main page, the chat or any other card, and the only thing it can do is press what `touch` lists. To unpair every screen, change the token. See [the threat model](/security/#a-paired-wall-display) for exactly what it can read and press.
 
 With sign-in off, there's nothing to pair: the wall is as open as the page is.
 
@@ -95,4 +188,4 @@ With sign-in off, there's nothing to pair: the wall is as open as the page is.
 - **A monitor on a Linux box**: `chromium --kiosk --noerrdialogs https://valet.example.com/wall`.
 - **A TV**: any browser that goes full screen. The wall grows with the screen, and `scale` makes it bigger or smaller.
 
-The pointer hides after a few seconds, and nothing on the wall needs hovering.
+The pointer hides after a few seconds, and nothing on the wall needs hovering, touch controls included.

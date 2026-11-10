@@ -20,6 +20,7 @@ import { SAMPLES } from '../src/web/samples.ts';
 import { chartless, Heatmap, Race, standing, Waffle } from '../src/web/charts.tsx';
 import { setFormat } from '../src/web/format.ts';
 import { LABELS } from '../src/shared/labels.ts';
+import { Touch } from '../src/web/touch.ts';
 
 // times and dates follow the browser's language; the tests read like a US one wherever they run
 setFormat({ clock: 'auto', date: 'short', weekStart: 'auto', locale: 'en-US' }, LABELS);
@@ -485,4 +486,32 @@ test('cards: a stack to deal through; documents keep their sender and date, save
   assert.doesNotMatch(docs, /Archive Bill/, 'nothing to archive without a way to run it');
   const saved = html({ type: 'shelf', layout: 'cards', title: 'Saved', aspect: 'wide', archived: '/archive', items: [{ id: 'a', title: 'A page', href: 'http://x/a' }] }, { run: true });
   assert.match(saved, /aria-label="Archive A page"/);
+});
+
+test('on the wall, a card on the touch list draws its controls for a finger; off it, they stay as they were', () => {
+  const card = { type: 'controls', title: 'Lights', items: [
+    { id: 'a', label: 'Lamp', kind: 'toggle', value: true, action: 'set' },
+    { id: 'b', label: 'Level', kind: 'slider', value: 40, min: 0, max: 100, action: 'level' },
+    { id: 'c', label: 'Mood', kind: 'select', value: 'Read', options: ['Relax', 'Read'], action: 'choose' },
+    { id: 'd', label: 'Movie night', kind: 'button', action: 'press' },
+    { id: 'e', label: 'Power', kind: 'value', value: '4 W' },
+  ] } as const;
+  const run = async () => {}, big = (hold?: boolean) => renderToString(<TooltipProvider><Touch.Provider value={{ hold }}><Widget card={card as never} run={run} /></Touch.Provider></TooltipProvider>);
+  const html = big();
+  assert.equal((html.match(/class="touch-tile/g) ?? []).length, 5, 'a tile each');
+  assert.match(html, /aria-pressed="true"[^>]*class="touch-tile press is-on"/, 'the lamp that is on is filled');
+  assert.equal((html.match(/touch-step/g) ?? []).length, 4, 'less and more, and one per option: nothing small to drag');
+  assert.doesNotMatch(html, /role="slider"|data-slot="switch"|data-slot="select-trigger"/);
+  assert.match(html, /touch-tile is-still[^"]*"><span[^>]*>.*4 W/, 'a reading stays words');
+  assert.match(big(true), /Press and hold/, 'a held one says so');
+  // no run (not on the list, or a read-only page): the usual rows, disabled
+  const plain = renderToString(<TooltipProvider><Touch.Provider value={{}}><Widget card={card as never} /></Touch.Provider></TooltipProvider>);
+  assert.doesNotMatch(plain, /touch-tile/);
+  assert.doesNotMatch(renderToString(<TooltipProvider><Widget card={card as never} run={run} /></TooltipProvider>), /touch-tile/);
+  // the thermostat's steps and modes grow
+  const th = { type: 'thermostat', title: 'Hall', unit: 'C', state: 'Idle', mode: 'heat', current: 19, target: 20, min: 10, max: 30, step: .5, set: { action: 'climate' }, modes: [{ id: 'eco', label: 'Eco', action: 'climate', args: { preset: 'eco' } }] } as ThermostatCard;
+  const dial = renderToString(<Touch.Provider value={{}}><Thermostat card={th} run={run} /></Touch.Provider>);
+  assert.match(dial, /th-step press grid place-items-center rounded-full size-12/);
+  assert.match(dial, /th-mode press[^"]*h-14/);
+  assert.match(renderToString(<Thermostat card={th} run={run} />), /size-8/);
 });

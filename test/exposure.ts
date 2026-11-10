@@ -2,7 +2,7 @@
 // tried without a session, so a route added later is covered without anyone remembering to. Needs `npm run build`.
 import assert from 'node:assert/strict';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import { createServer as createHttp } from 'node:http';
 import { connect } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -30,8 +30,9 @@ async function routes() {
 }
 const fill = (p: string) => p.replace(/:n\?/, '').replace(/:\w+/g, 'x');
 
-async function boot(auth: Record<string, unknown>, extra = '', access = '{ config: control }', env: Record<string, string> = {}, layout = '  - widgets: [probe.data]\n') {
+async function boot(auth: Record<string, unknown>, extra = '', access = '{ config: control }', env: Record<string, string> = {}, files: Record<string, string> = {}, layout = '  - widgets: [probe.data]\n') {
   const dir = await mkdtemp(join(tmpdir(), 'valet-exposure-')), file = join(dir, 'config.yaml');
+  for (const [name, body] of Object.entries(files)) { await mkdir(join(dir, name, '..'), { recursive: true }); await writeFile(join(dir, name), body); }
   await writeFile(file, `title: ${TITLE}
 auth: ${JSON.stringify(auth)}
 assistant: { model: none, baseURL: "http://127.0.0.1:9/v1", access: ${access} }
@@ -380,6 +381,130 @@ wall:
     for (let i = 0; i < 8; i++) last = (await pair('wrong', { 'X-Forwarded-For': '1.2.3.4' })).status;
     assert.equal(last, 429);
   });
+
+// A made-up house: a lamp and a scene on one card, a lock on another, and the same card on a second instance. Every press
+// that runs is written down, so a refusal is checked by what didn't happen as well as by the answer.
+const HOUSE = `import { appendFileSync } from 'node:fs';
+export default ({ z, defineIntegration }) => defineIntegration({
+  type: 'house', name: 'House', config: z.object({}),
+  create() {
+    const did = (what) => { appendFileSync(process.env.VALET_DATA + '/presses.log', what + '\\n'); return { done: what }; };
+    const card = (items) => ({ fetch: async () => ({ type: 'controls', title: 'Lights', items }), interval: 60000, title: 'Card' });
+    return {
+      widgets: {
+        lights: card([{ id: 'l', label: 'Lamp', kind: 'toggle', value: false, action: 'set', args: { entity_id: 'light.lamp' } }, { id: 's', label: 'Movie', kind: 'button', action: 'press', args: { entity_id: 'scene.movie' } }]),
+        doors: card([{ id: 'k', label: 'Front door', kind: 'toggle', value: true, action: 'set', args: { entity_id: 'lock.front' } }]),
+        people: card([{ id: 'p', label: 'Pseudonym-Q', kind: 'value', value: 'Home' }]),
+      },
+      actions: {
+        set: { description: 'Set', input: z.object({ entity_id: z.string(), value: z.boolean() }).strict(), run: async a => did('set ' + a.entity_id + ' ' + a.value) },
+        press: { description: 'Press', input: z.object({ entity_id: z.string() }).strict(), run: async a => did('press ' + a.entity_id) },
+      },
+    };
+  },
+});
+`;
+
+describe('a paired wall display with touch presses exactly what it lists', () => {
+  const KEY = 'wall-key-0123456789abcdef0123456789abcdef', KITCHEN = 'kitchen-key-0123456789abcdef0123456789ab';
+  let s: Awaited<ReturnType<typeof boot>>, cookie = '', kitchen = '', ac: AbortController;
+  const log = () => readFile(join(s.dir, 'presses.log'), 'utf8').catch(() => '');
+  before(async () => {
+    s = await boot({ mode: 'local', secureCookie: false }, `  house: { type: house }
+  other: { type: house }
+wall:
+  token: "\${WALL_KEY}"
+  touch: [house.lights]
+  people: house.people
+  pages:
+    - { title: Hall, layout: [{ widgets: [house.lights, house.doors, other.lights] }] }
+    - { title: Away, when: { home: none }, layout: [{ widgets: [probe.data] }] }
+  screens:
+    kitchen: { token: "\${KITCHEN_KEY}", touch: [house.doors], layout: [{ widgets: [house.doors] }] }
+`, undefined, { WALL_KEY: KEY, KITCHEN_KEY: KITCHEN }, { 'integrations/house.mjs': HOUSE });
+    const pair = async (key: string) => (( await fetch(`${s.base}/api/auth/wall`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) })).headers.get('set-cookie') ?? '').split(';')[0];
+    cookie = await pair(KEY); kitchen = await pair(KITCHEN);
+    assert.match(cookie, /^valet_wall=/); assert.match(kitchen, /^valet_wall=/);
+    // a wall is open: the cards are polled, as they are while the tablet shows them
+    ac = new AbortController();
+    const r = await fetch(`${s.base}/api/events?wall=`, { headers: { cookie }, signal: ac.signal }), reader = r.body!.getReader();
+    let text = '';
+    while (!text.includes('house.lights') || !text.includes('other.lights')) text += new TextDecoder().decode((await reader.read()).value);
+  });
+  after(() => { ac.abort(); s.proc.kill(); });
+  const press = (inst: string, action: string, body: unknown, headers: Record<string, string> = { cookie }, wall = '') =>
+    fetch(`${s.base}/api/action/${inst}/${action}?wall=${wall}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
+
+  test('its page says what may be pressed, and nothing about who is home or when a page shows', async () => {
+    const text = await (await fetch(`${s.base}/api/page?wall=`, { headers: { cookie } })).text(), page = JSON.parse(text);
+    clean('the paired page', text);
+    assert.deepEqual(page.wall.touch, { 'house.lights': {} });
+    assert.doesNotMatch(text, /Pseudonym-Q|house\.people|"when"|"none"|"screens"|kitchen/);
+    const ev = new AbortController(), r = await fetch(`${s.base}/api/events?wall=`, { headers: { cookie }, signal: ev.signal }), reader = r.body!.getReader();
+    let stream = '';
+    while (!stream.includes('event: wall')) stream += new TextDecoder().decode((await reader.read()).value);
+    while (!stream.includes('house.lights')) stream += new TextDecoder().decode((await reader.read()).value);
+    ev.abort();
+    assert.match(stream, /event: wall\ndata: \{"pages":\[0\],"ready":true\}/, 'which pages, never why');
+    assert.doesNotMatch(stream, /Pseudonym-Q|house\.people/, 'who is home is judged on the server and stays there');
+  });
+
+  test('a listed press works, and the log says the wall did it', async () => {
+    assert.equal((await press('house', 'set', { entity_id: 'light.lamp', value: true })).status, 200);
+    assert.equal((await press('house', 'press', { entity_id: 'scene.movie' })).status, 200);
+    assert.equal(await log(), 'set light.lamp true\npress scene.movie\n');
+    // the log is written a moment after the answer: read it until both presses are there
+    let entries: { who: string; ok: boolean }[] = [];
+    for (let i = 0; i < 500 && entries.length < 2; i++) entries = await readFile(join(s.dir, 'activity.json'), 'utf8').then(JSON.parse, () => []);
+    assert.deepEqual(entries.slice(-2).map((e: { who: string; ok: boolean }) => [e.who, e.ok]), [['Wall display', true], ['Wall display', true]]);
+  });
+
+  test('anything else is refused, and nothing runs', async () => {
+    const before = await log();
+    for (const [inst, action, body, why] of [
+      ['house', 'set', { entity_id: 'lock.front', value: false }, 'the same action on a card that isn\'t listed'],
+      ['other', 'set', { entity_id: 'light.lamp', value: true }, 'a listed action on another instance'],
+      ['house', 'set', { entity_id: 'light.lamp', value: 'on' }, 'a value the control doesn\'t take'],
+      ['house', 'press', { entity_id: 'scene.movie', extra: 1 }, 'an argument the card doesn\'t give'],
+      ['house', 'reboot', {}, 'an action no card offers'],
+      ['probe', 'set', {}, 'an instance with no actions'],
+    ] as const) {
+      const r = await press(inst, action, body), text = await r.text();
+      assert.equal(r.status, 401, `${why}: ${r.status} ${text.slice(0, 80)}`);
+      clean(why, text);
+    }
+    for (const [headers, why] of [[{}, 'no cookie'], [{ cookie: 'valet_wall=x' }, 'a forged cookie'], [{ cookie: `valet_wall=${KEY}` }, 'the key as a cookie'], [{ cookie: `valet_session=${cookie.split('=')[1]}` }, 'the wall\'s cookie as a session']] as const)
+      assert.equal((await press('house', 'press', { entity_id: 'scene.movie' }, headers)).status, 401, why);
+    assert.equal((await press('house', 'press', { entity_id: 'scene.movie' }, { cookie, Origin: 'https://evil.example' })).status, 403, 'from another site');
+    assert.equal(await log(), before, 'nothing ran');
+  });
+
+  test('every other route still refuses it, with touch on', async () => {
+    for (const r of await routes()) {
+      const key = `${r.method} ${r.path}`;
+      if (PUBLIC.has(key) || IN_AUTH.test(r.path) || key === 'GET /api/page' || key === 'GET /api/events' || key === 'GET /api/image/:inst') continue;
+      const res = await fetch(s.base + fill(r.path), { method: r.method, headers: r.method === 'GET' ? { cookie } : { cookie, 'Content-Type': 'application/json' }, body: r.method === 'GET' ? undefined : '{}' });
+      assert.equal(res.status, 401, `${key} answered ${res.status} to a wall with touch on`);
+    }
+  });
+
+  test('a screen\'s own token reaches that screen alone, and presses only its own list', async () => {
+    assert.equal((await fetch(`${s.base}/api/page?wall=kitchen`, { headers: { cookie } })).status, 401, 'the wall\'s token isn\'t the kitchen\'s');
+    assert.equal((await fetch(`${s.base}/api/page?wall=`, { headers: { cookie: kitchen } })).status, 401, 'nor the other way round');
+    assert.equal((await fetch(`${s.base}/api/page?wall=kitchen`, { headers: { cookie: kitchen } })).status, 200);
+    assert.equal((await fetch(`${s.base}/api/page?wall=nowhere`, { headers: { cookie: kitchen } })).status, 401);
+    assert.equal((await press('house', 'press', { entity_id: 'scene.movie' }, { cookie: kitchen })).status, 401, 'the hall\'s list isn\'t the kitchen\'s');
+    assert.equal((await press('house', 'set', { entity_id: 'lock.front', value: true }, { cookie })).status, 401, 'nor the kitchen\'s the hall\'s');
+    assert.equal((await press('house', 'set', { entity_id: 'lock.front', value: true }, { cookie: kitchen })).status, 200);
+  });
+
+  test('presses are counted per screen', async () => {
+    let last = 0;
+    for (let i = 0; i < 31 && last !== 429; i++) last = (await press('house', 'press', { entity_id: 'scene.movie' })).status;
+    assert.equal(last, 429);
+    assert.equal((await press('house', 'set', { entity_id: 'lock.front', value: false }, { cookie: kitchen })).status, 200, 'another token has its own count');
+  });
+});
 });
 
 // Someone with a profile, signed in, attacking every route: a card that isn't on their tabs must be unreachable by any of
@@ -430,7 +555,7 @@ profiles:
 users: { sam: kids, robin: guest }
 menubar: [hidden.data, probe.data]
 live: { activities: [hidden.data] }
-`, '{ default: read, config: control }', {}, `  - { title: Media, widgets: [probe.data] }
+`, '{ default: read, config: control }', {}, {}, `  - { title: Media, widgets: [probe.data] }
   - { title: Admin, widgets: [hidden.data] }
 `); });
   after(() => { s.proc.kill(); });

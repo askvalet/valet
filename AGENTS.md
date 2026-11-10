@@ -114,9 +114,13 @@ https://askvalet.dev.
   `site` directly: a new route passes `siteFor(view)` to its doors, filters by `view.sees`, or refuses with `!view.owner`, and gets
   a line in `MEMBER` in `test/exposure.ts`. Valet's own things (log, rules, pins, setup, notifications, asks) are owners' only. A
   member's change with `approve: owner` waits in `asks.ts` like an MCP client's. A typo narrows, never widens.
-- **The wall is its own page** (`wall:`, `src/server/wall.ts`, `src/web/wall.tsx`): pages written like `layout`, drawn read-only (no
-  `run`, no pointer on cards, no palette or chat) and scaled to fill the screen. `wallReads` is everything a screen paired with
-  `wall.token` may hear; main.ts holds it to that on `/api/page`, `/api/events` and `/api/image`, and refuses it everywhere else.
+- **The wall is its own page** (`wall:`, `src/server/wall.ts`, `src/web/wall.tsx`; more screens at `/wall/<name>`, `wall.screens`): pages
+  written like `layout`, drawn read-only (no pointer on cards, no palette, chat or links) and scaled to fill the screen. The one
+  exception is `wall.touch`: those cards get `run` and draw their controls for a finger (`Touch` in `touch.ts`). `wallReads` is
+  everything a paired screen may hear and `wallMayPress` everything it may press (an action a listed card offers now, with that
+  card's own arguments and one value); main.ts holds it to those on `/api/page`, `/api/events`, `/api/image` and `/api/action`, and
+  refuses it everywhere else. A page's `when` is judged on the server by `judge` (pure: config, time, cards, and what it remembered
+  for hysteresis); the screen hears only which pages may show (the `wall` event), never who's home. The turns are `wall-turn.ts`.
 - **Layout is data.** Sections choose how they draw (`display`), where they sit (`place`), how dense they are
   (`variant`, `header`, `columns`) and whether they're on the overview (`overview`); the tab buttons' side is `nav.side`.
   A new arrangement is a new option with a default, never a fork of the page.

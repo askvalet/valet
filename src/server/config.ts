@@ -342,15 +342,53 @@ export const Format = z.object({
   locale: z.string().refine(v => v === 'auto' || validLocale(v), 'a language tag, like en-GB or de-DE').default('auto'),   // sets numbers (1.234,5) and month names
 }).strict();
 
-// The wall display (/wall): its own pages, made for reading from across a room. It shows and never acts: no buttons,
-// no chat, no editing, whoever is signed in.
+// The wall display (/wall): its own pages, made for reading from across a room. It shows, and acts only where `touch`
+// says so: no chat, no editing, no links, whoever is signed in.
 const At = z.string().regex(/^([01]?\d|2[0-3]):[0-5]\d$/, 'a time like 22:00');
+const Span = z.string().regex(/^\s*([01]?\d|2[0-3]):[0-5]\d\s*-\s*([01]?\d|2[0-3]):[0-5]\d\s*$/, 'a time range like 06:00-09:00 (22:00-06:00 runs overnight)')
+  .refine(v => new Set(v.split('-').map(t => t.trim().padStart(5, '0'))).size === 2, 'a time range needs two different times');
+const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;   // in Date#getDay's order
+const WidgetKey = z.string().regex(/^[\w-]+\.[\w-]+$/, 'a widget, like home.people');
+// When a wall page shows. Every key given must hold; `any` adds "and at least one of these". Judged on the server from
+// what Valet already knows (wall.ts): the screen is told which pages may show, never why.
+const whenKeys = {
+  time: z.union([Span, z.array(Span).min(1)]).optional(),   // "06:00-09:00", or a list; in `timezone`
+  days: z.union([z.enum(['weekdays', 'weekends']), z.array(z.enum(WEEKDAYS)).min(1)]).optional(),   // an overnight range belongs to the day it starts
+  home: z.union([z.enum(['any', 'none']), z.array(z.string().min(1)).min(1)]).optional(),   // someone, nobody, or these people (from `wall.people`)
+  only: z.literal(true).optional(),        // with a list of people: them and nobody else
+  live: z.boolean().optional(),            // something is live (a stream, a download, a robot cleaning), or nothing is
+  playing: z.boolean().optional(),         // something is playing
+  meeting: z.union([z.literal(true), Every]).optional(),   // an online meeting starts within this long (10m), or is on
+  event: z.union([WidgetKey, z.array(WidgetKey).min(1)]).optional(),   // that widget has something live: a camera's event, a robot at work
+};
+const whenRules = <T extends z.ZodType<{ home?: unknown; only?: true }>>(s: T) => s
+  .refine(w => Object.keys(w as object).length > 0, 'say when: time, days, home, live, playing, meeting or event')
+  .refine(w => !w.only || Array.isArray(w.home), { message: '`only` goes with a list of people in `home`', path: ['only'] });
+const When = whenRules(z.object({ ...whenKeys, any: z.array(whenRules(z.object(whenKeys).strict())).min(1).optional() }).strict());
+export type When = z.infer<typeof When>;
 const WallPage = z.object({
   title: z.string().optional(),
   every: Every.optional(),                  // how long this page stays, when it isn't the wall's `every`
   clock: z.boolean().default(true),        // the time and weather across the top
+  when: When.optional(),                   // only then is it among the pages taking turns
+  // with `when`: it isn't in the rotation; it interrupts the moment its condition comes true, stays while it holds, this
+  // long at most (true: 60s), then the wall goes back to where it was
+  takeover: z.union([z.literal(true), Every.refine(ms => ms >= 5000 && ms <= 3_600_000, 'between 5s and 1h')]).optional(),
   layout: z.array(Section).min(1),         // sections and cards, written as in the main layout
-}).strict();
+}).strict().refine(p => !p.takeover || p.when, { message: 'a takeover page needs a `when`', path: ['takeover'] });
+// widgets a touch on the wall may work: "home.lights", or { widget, hold: true } where a press must be held (a lock, a
+// garage door). Off unless listed; only `controls` and `thermostat` cards have anything to press.
+const Touch = z.array(z.union([WidgetKey.transform(widget => ({ widget, hold: false })), z.object({ widget: WidgetKey, hold: z.boolean().default(false) }).strict()]));
+// for a screen that can't sign in: a long random secret from .env. Opening /wall#key=<token> once pairs that browser,
+// which can then read the wall's cards, press what `touch` lists, and nothing else. Change it to unpair every screen.
+const WallToken = z.string().min(32, 'use a long random token, at least 32 characters, from .env');
+// one more screen at /wall/<name>: its own pages, and its own touch list and token if it has them
+const WallScreen = z.object({
+  pages: z.array(WallPage).min(1).optional(),
+  layout: z.array(Section).min(1).optional(),
+  touch: Touch.optional(),                 // left out: nothing can be pressed there, whatever the wall's own list says
+  token: WallToken.optional(),             // left out: `wall.token` pairs it
+}).strict().refine(w => !(w.pages && w.layout), { message: 'use pages or layout, not both', path: ['layout'] });
 export const WallDisplay = z.object({
   pages: z.array(WallPage).min(1).optional(),   // several take turns
   layout: z.array(Section).min(1).optional(),   // or one page, written straight here
@@ -365,9 +403,10 @@ export const WallDisplay = z.object({
     dim: z.number().min(0).max(.95).default(.9),
   }).strict()]).prefault({}),
   awake: z.boolean().default(true),        // keep the screen on while it's open, where the browser allows it
-  // for a screen that can't sign in: a long random secret from .env. Opening /wall#key=<token> once pairs that browser,
-  // which can then read the wall's cards and nothing else. Change it to unpair every screen.
-  token: z.string().min(32, 'use a long random token, at least 32 characters, from .env').optional(),
+  touch: Touch.default([]),                // what a touch may work; nothing by default
+  people: WidgetKey.optional(),            // the widget that says who's home, for `when: { home }`: a card of people, each home or away
+  screens: z.record(z.string().regex(/^[a-z0-9][a-z0-9-]{0,31}$/, 'a short name in lower case, like kitchen'), WallScreen).default({}),
+  token: WallToken.optional(),
 }).strict().refine(w => !(w.pages && w.layout), { message: 'use pages or layout, not both', path: ['layout'] }).prefault({});
 
 export const Auth = z.object({

@@ -34,7 +34,7 @@ import { CORE } from './lazy.ts';
 import { loadPins, pinsInstance, savePins, type Pin } from './pins.ts';
 import { setupTools } from './setup.ts';
 import { sandbox } from './sandbox.ts';
-import { wallPages, wallProblems, wallWidgets } from './wall.ts';
+import { wallNeeds, wallProblems, wallViews, wallWidgets } from './wall.ts';
 import { peopleProblems, profileOf } from './people.ts';
 import { voiceProblems } from './voice.ts';
 import { choices, servers } from './model.ts';
@@ -110,15 +110,16 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   const has = (key: string) => { const [inst, w] = key.split('.'); return inst === 'valet' || !!instances.get(inst)?.widgets[w]; };
   problems.push(...writtenProblems(config));
   if (config.secrets.refresh && !config.reload) problems.push('secrets.refresh: needs reload, which is turned off');
-  problems.push(...wallProblems(config, has));
+  problems.push(...wallProblems(config, has, key => { const [inst, w] = key.split('.'); return instances.get(inst)?.widgets[w]?.card; }));
   problems.push(...voiceProblems(config));
   // a view the widget's card can't take is ignored on the page; say so here, with the ones it can
-  const drawn = [...config.layout.flatMap(s => s.widgets.map(w => ({ ...w, where: 'layout' }))), ...wallPages(config).flatMap(p => p.layout.flatMap(s => s.widgets.map(w => ({ ...w, where: 'wall' }))))];
+  const drawn = [...config.layout.flatMap(s => s.widgets.map(w => ({ ...w, where: 'layout' }))), ...wallViews(config).flatMap(v => v.pages.flatMap(p => p.layout.flatMap(s => s.widgets.map(w => ({ ...w, where: v.where })))))];
   for (const { widget, view, where } of drawn) {
     const [inst, w] = widget.split('.'), card = view && instances.get(inst)?.widgets[w]?.card;
     if (card && !fits(view, card)) problems.push(`${where}: ${widget} can't be drawn as "${view}" (it's a ${card} card${viewsFor(card).length ? `; it can be ${viewsFor(card).join(', ')}` : ''})`);
   }
-  for (const key of wallWidgets(config)) placed.add(key);
+  // and what a wall page's `when` reads (who's home, a camera's event), even when it's on no page
+  for (const key of [...wallWidgets(config), ...wallNeeds(config)]) if (has(key)) placed.add(key);
   for (const n of config.live?.notify ?? []) if (!placed.has(n.widget)) problems.push(`live.notify: "${n.widget}" isn't placed on the page`);
   const tabs = new Set(config.layout.flatMap(s => s.tab ?? s.title ?? []));
   for (const t of Object.keys(config.appearance.wallpapers)) if (!tabs.has(t)) problems.push(`appearance.wallpapers: no tab "${t}" (the tabs are: ${[...tabs].join(', ')})`);
@@ -178,7 +179,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
 
   // refresh cadence: the widget's own, unless the layout says `every`
   const every = new Map<string, number>();
-  for (const s of [...config.layout, ...wallPages(config).flatMap(p => p.layout)]) for (const w of s.widgets) if (w.every) every.set(w.widget, Math.min(w.every, every.get(w.widget) ?? Infinity));
+  for (const s of [...config.layout, ...wallViews(config).flatMap(v => v.pages.flatMap(p => p.layout))]) for (const w of s.widgets) if (w.every) every.set(w.widget, Math.min(w.every, every.get(w.widget) ?? Infinity));
 
   const recent: Notice[] = previous?.recent ?? [], noticeListeners = previous?.noticeListeners ?? new Set<(n: Notice) => void>();
   const timeline = previous?.timeline ?? await new Timeline().load();

@@ -229,24 +229,26 @@ export async function setupAuth(app: Hono, config: Config): Promise<MiddlewareHa
   return async (c, next) => { const u = await session(c); if (!u) return c.json({ error: 'not signed in' }, 401); (c.set as any)('user', u.name); return next(); };
 }
 
-// ── a paired wall display (wall.token): a screen that can't sign in, holding a cookie that reads the wall's cards and
-// nothing else (main.ts holds it to that). The cookie is a signature over the token, so a new token unpairs every screen.
+// ── a paired wall display (wall.token, or a screen's own): a screen that can't sign in, holding a cookie that reads the
+// wall's cards, presses what `wall.touch` lists, and nothing else (main.ts holds it to that). The cookie is a signature
+// over the token, so a new token unpairs every screen it paired. `paired` gives the token a request's cookie stands for.
 const PAIRED = 'valet_wall';
-export async function setupWall(app: Hono, config: Config, token: () => string | undefined) {
+export async function setupWall(app: Hono, config: Config, tokens: () => string[]) {
   const key = await secret();
   const digest = (t: string) => createHmac('sha256', key).update(`wall\0${createHash('sha256').update(t).digest('base64url')}`).digest('base64url');
   const same = (a: string, b: string) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
-  const paired = (c: Context) => { const t = token(), raw = getCookie(c, PAIRED); return !!t && !!raw && !sandbox.on && same(raw, digest(t)); };
+  const paired = (c: Context) => { const raw = getCookie(c, PAIRED); return raw && !sandbox.on ? tokens().find(t => same(raw, digest(t))) : undefined; };
   // a wrong key slows down per address, as a wrong password does
   const trusted = new Set(config.auth.proxy.trusted), fails = new Map<string, { n: number; until: number }>();
   const ipOf = (c: Context) => clientIp((getConnInfo(c).remote.address ?? '?').replace(/^::ffff:/, ''), c.req.header('x-forwarded-for'), trusted);
   app.get('/api/auth/wall', c => paired(c) ? c.json({ paired: true }) : c.json({ paired: false }, 401));
   app.post('/api/auth/wall', async c => {
-    const ip = ipOf(c), f = fails.get(ip), t = token();
+    const ip = ipOf(c), f = fails.get(ip);
     if (f && f.until > Date.now()) return c.json({ error: `Too many tries. Wait ${Math.ceil((f.until - Date.now()) / 1000)}s.` }, 429);
     const { key: given } = await c.req.json().catch(() => ({}));
     const hash = (v: unknown) => createHash('sha256').update(String(v ?? '')).digest('base64url');   // equal lengths, so the compare is constant-time
-    if (!t || sandbox.on || typeof given !== 'string' || !same(hash(given), hash(t))) {
+    const t = sandbox.on || typeof given !== 'string' ? undefined : tokens().find(t => same(hash(given), hash(t)));
+    if (!t) {
       if (fails.size > 5000) for (const [k, v] of fails) if (v.until < Date.now()) fails.delete(k);
       const n = (f?.n ?? 0) + 1; fails.set(ip, { n, until: n > 5 ? Date.now() + Math.min(900_000, 2 ** (n - 5) * 1000) : 0 });
       console.warn(`auth: wrong wall key from ${ip}`);

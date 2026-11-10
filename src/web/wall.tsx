@@ -1,14 +1,17 @@
-// The wall display (/wall): the config's own wall pages, full screen, for reading from across a room. It shows and never
-// acts: no chat, no ⌘K, no buttons, no links, whoever is signed in. Loaded only when someone opens /wall.
+// The wall display (/wall, and /wall/<name> for another screen): the config's own wall pages, full screen, for reading
+// from across a room. No chat, no ⌘K, no links, whoever is signed in; the only things that can be pressed are the controls
+// of the cards `wall.touch` lists. Which pages may show is the server's to say (`when`). Loaded only when someone opens it.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { ForecastCard, WidgetState } from '../shared/cards.ts';
 import { asView } from '../shared/views.ts';
 import { clock, highLow, label, longDay, oneLine, sayHow, setFormat } from './format.ts';
 import { applyLook, applyTheme } from './look.ts';
-import { isEmpty, NowPlaying, Ring, Shell, Shaped, shapeOf, SummaryTile, TileSkeleton, Widget } from './cards.tsx';
+import { isEmpty, NowPlaying, Ring, Shell, Shaped, shapeOf, SummaryTile, TileSkeleton, Widget, type RunAction } from './cards.tsx';
 import { WeatherGlyph } from './home-cards.tsx';
-import { dress, useDark, useHeld, useLive, Walls, type Page, type Size } from './app.tsx';
+import { dress, useDark, useHeld, useLive, wallScreen, Walls, type Page, type Size } from './app.tsx';
+import { Touch } from './touch.ts';
+import { nextPage, stayFor } from './wall-turn.ts';
 import { gridVars, wallCell } from './grid.ts';
 
 type Section = Page['sections'][number];
@@ -94,8 +97,9 @@ function Head({ now, weather, line }: { now: Date; weather?: ForecastCard; line:
   );
 }
 
-/** One section of a wall page, drawn as the main page would but read-only: no actions, no links, nothing to hover. */
-function WallSection({ sec, state, titles }: { sec: Section; state: Record<string, WidgetState>; titles: Page['widgets'] }) {
+/** One section of a wall page, drawn as the main page would but read-only: no actions, no links, nothing to hover. A card
+ *  on the touch list is the exception: its controls draw big and take a finger (`press` runs one). */
+function WallSection({ sec, state, titles, touch, press }: { sec: Section; state: Record<string, WidgetState>; titles: Page['widgets']; touch: Page['wall']['touch']; press: (key: string) => RunAction }) {
   const style = sec.gap != null ? { '--card-gap': `${sec.gap}px`, '--tile-gap': `${sec.gap}px` } as React.CSSProperties : undefined;
   const heading = sec.title && sec.heading !== false && <h2 className="wall-text px-0.5 text-[17px] font-medium text-muted-foreground">{sec.title}</h2>;
   if (sec.display === 'media') {
@@ -129,8 +133,10 @@ function WallSection({ sec, state, titles }: { sec: Section; state: Record<strin
   const widget = (key: string, size: Size) => {
     const s = state[key], o = sec.looks?.[key], card = dress(asView(s?.card, o?.view), o);
     if ((size === 'small' || size === 'wide') && card?.summary) return <SummaryTile s={card.summary} />;
-    const body = <Shaped id={key} card={s?.card}><Widget large={size === 'large'} fill={sec.grid ? 'always' : true} card={card} kind={shapeOf(key)?.t} failed={s?.error} title={o?.title ?? titles[key]?.title}
+    const mine = touch[key];
+    const drawn = <Shaped id={key} card={s?.card}><Widget large={size === 'large'} fill={sec.grid ? 'always' : true} card={card} kind={shapeOf(key)?.t} failed={s?.error} title={o?.title ?? titles[key]?.title} run={mine && press(key)}
       minimal={sec.variant === 'minimal'} headless={o?.header === false || (o?.header !== true && sec.header === false)} /></Shaped>;
+    const body = mine ? <Touch.Provider value={mine}><div className="wd-touch contents">{drawn}</div></Touch.Provider> : drawn;
     return o?.style ? <div className="card-look contents" style={o.style as React.CSSProperties}>{body}</div> : body;
   };
   return (
@@ -150,13 +156,16 @@ function WallSection({ sec, state, titles }: { sec: Section; state: Record<strin
 }
 
 export default function WallScreen() {
-  const [page, setPage] = useState<Page | null>(null);
-  const { state, generation } = useLive();
+  const screen = wallScreen() ?? '';
+  const [page, setPage] = useState<Page | null>(null), [gone, setGone] = useState(false);
+  const { state, generation, wallNow } = useLive(screen);
   useEffect(() => {
-    fetch(`/api/page?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}&lang=${encodeURIComponent(navigator.language)}`).then(r => r.json()).then((p: Page) => {
-      setFormat(p.format, p.labels); applyLook(p.look); setPage(p);
+    fetch(`/api/page?wall=${encodeURIComponent(screen)}&tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}&lang=${encodeURIComponent(navigator.language)}`).then(async r => {
+      if (!r.ok) { setGone(true); return; }
+      const p: Page = await r.json();
+      setFormat(p.format, p.labels); applyLook(p.look); setGone(false); setPage(p);
     });
-  }, [generation]);
+  }, [generation, screen]);
   const dark = useDark(), walls = (!dark && page?.appearance.light?.walls) || page?.appearance.walls || [];
   // dark glass over the wallpaper, or dark without one: a wall is read in a room, often a dim one. theme: system asks for
   // the screen's own light or dark instead, so a tablet that turns dark at sunset takes the wall with it.
@@ -168,28 +177,64 @@ export default function WallScreen() {
   const idle = useIdle();
   const now = useNow();
 
-  // the pages: the config's own, or the default built from what's on the main page. ?page=Name keeps one on screen.
-  const pages = useMemo(() => !page ? [] : page.wall.pages.length ? page.wall.pages : [defaultPage(state, page.sections ?? [])], [page, page?.wall.pages.length ? null : state]);
-  const pinned = useMemo(() => { const q = new URLSearchParams(location.search).get('page'); return q ? pages.findIndex(p => p.title?.toLowerCase() === q.toLowerCase()) : -1; }, [pages]);
-  const [n, setN] = useState(0), at = pinned >= 0 ? pinned : n % Math.max(1, pages.length), shown = pages[at];
-  const [view, setView] = useState<'in' | 'out' | ''>('');
+  // The pages that may show: all of the config's own, or, where they wait on a `when`, the ones the server says (a few
+  // seconds' wait for its first word, so the wrong page is never the first thing up). None: the default page, -1, built
+  // from what's on the main page.
+  const own = wall?.pages ?? [], calm = !!wall?.conditional, late = useHeld(!!page, 4000);
+  const waiting = !page || (calm && !wallNow?.ready && !late);
+  const may = useMemo(() => calm ? (wallNow?.pages ?? []).filter(i => i < own.length) : own.map((_, i) => i), [calm, wallNow, own.length]);
+  // ?page=Name keeps one on screen, while it may show
+  const pinned = useMemo(() => { const q = new URLSearchParams(location.search).get('page'), i = q ? own.findIndex(p => p.title?.toLowerCase() === q.toLowerCase()) : -1; return may.includes(i) ? i : -1; }, [own, may]);
+  // whose turn it is and since when; NONE until the first page is chosen
+  const NONE = -2, [turn, setTurn] = useState({ n: NONE, since: 0 });
+  const n = turn.n !== NONE && turn.n < own.length ? turn.n : waiting ? NONE : nextPage(-1, may);
+  useEffect(() => { if (n !== turn.n) setTurn({ n, since: Date.now() }); }, [n, turn.n]);
   const [held, setHeld] = useState(0);   // until when a touch keeps this page, and lifts the night's dim
-  const go = (to: number) => {
-    if (to === n) return;
-    if (still()) { setN(to); return; }
-    setView('out');
-    setTimeout(() => { setN(to); setView('in'); setTimeout(() => setView(''), 900); }, 600);
-  };
-  // each page stays its own time, or the wall's; a touch holds it for `pause`
-  useEffect(() => {
-    if (!wall || pinned >= 0 || pages.length < 2) return;
-    const wait = Math.max(5000, shown?.every ?? wall.every, held - Date.now());
-    const t = setTimeout(() => go(n + 1), wait);
-    return () => clearTimeout(t);
-  }, [n, held, pages.length, wall, pinned]);
-  const touch = () => { if (wall) setHeld(Date.now() + wall.pause); };
+  // a finger on the glass: the page under it doesn't change for `pause`, and a takeover waits a few seconds to come or go
+  const [busy, setBusy] = useState(false), calmed = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const touch = () => { if (!wall) return; setHeld(Date.now() + wall.pause); setBusy(true); clearTimeout(calmed.current); calmed.current = setTimeout(() => setBusy(false), 5000); };
+  useEffect(() => () => clearTimeout(calmed.current), []);
   const paused = held > Date.now();
   useEffect(() => { if (held <= Date.now()) return; const t = setTimeout(() => setHeld(0), held - Date.now()); return () => clearTimeout(t); }, [held]);
+  // a page that takes over (a `when` with `takeover`) interrupts the turn and gives it back where it was, for its full time
+  const asked = wallNow?.takeover !== undefined && own[wallNow.takeover]?.takeover ? wallNow.takeover : NONE, [taken, setTaken] = useState(NONE);
+  useEffect(() => {
+    if (busy || asked === taken) return;
+    if (asked === NONE) setTurn(t => ({ ...t, since: Date.now() }));
+    setTaken(asked);
+  }, [asked, busy, taken]);
+  // each page stays its own time, or the wall's; one that may no longer show leaves at the end of its turn, not before
+  useEffect(() => {
+    if (!wall || pinned >= 0 || taken !== NONE || turn.n === NONE || turn.n !== n) return;
+    const wait = stayFor({ n, since: turn.since, pages: may, every: own[n]?.every ?? wall.every, held, now: Date.now(), calm });
+    if (wait === null) return;
+    const t = setTimeout(() => setTurn({ n: nextPage(n, may), since: Date.now() }), wait);
+    return () => clearTimeout(t);
+  }, [n, turn, held, may, wall, pinned, taken]);
+
+  // what's on screen follows whose turn it is with a slow fade, and without one for the first page up
+  const want = pinned >= 0 ? pinned : taken !== NONE ? taken : n;
+  const [at, setAt] = useState(NONE), [view, setView] = useState<'in' | 'out' | ''>('');
+  useEffect(() => {
+    if (want === at) { if (view === 'out') setView('in'); return; }
+    if (at === NONE || still()) { setAt(want); return; }
+    setView('out');
+    const t = setTimeout(() => { setAt(want); setView('in'); }, 600);
+    return () => clearTimeout(t);
+  }, [want, at]);
+  useEffect(() => { if (view !== 'in') return; const t = setTimeout(() => setView(''), 900); return () => clearTimeout(t); }, [view, at]);
+  const usual = useMemo(() => page && at === -1 ? defaultPage(state, page.sections ?? []) : undefined, [page, at === -1 ? state : null]);
+  const shown = at === -1 ? usual : own[at];
+
+  const runners = useRef(new Map<string, RunAction>());
+  const press = (key: string) => {
+    let f = runners.current.get(key);
+    if (!f) runners.current.set(key, f = async (action, args) => {
+      const r = await fetch(`/api/action/${key.split('.')[0]}/${action}?wall=${encodeURIComponent(screen)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(args ?? {}) });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? r.statusText);
+    });
+    return f;
+  };
 
   // what's wrong, said as the main page says it; a stall has to last, since a torrent between peers reads 0 B/s for a moment
   const how = sayHow(Object.values(state)), stalled = useHeld(how.problems.some(p => p.id === 'downloads'), 20_000);
@@ -222,8 +267,9 @@ export default function WallScreen() {
     const ro = new ResizeObserver(fit); ro.observe(el.firstElementChild ?? el);
     addEventListener('resize', fit);
     return () => { cancelAnimationFrame(frame); ro.disconnect(); removeEventListener('resize', fit); };
-  }, [wall, at, pages]);
+  }, [wall, at, own]);
 
+  if (gone) return <div className="wd fixed inset-0"><p className="wd-gone">{label('noScreen')}</p></div>;
   if (!page || !wall) return null;
   return (
     <div className={cn('wd fixed inset-0 overflow-hidden', idle && 'wd-idle')} onPointerDown={touch}>
@@ -232,13 +278,13 @@ export default function WallScreen() {
         <div ref={body} className="wd-body @container/main">
           <div className="wd-page flex flex-col gap-(--section-gap)">
             {shown?.clock !== false && <Head now={now} weather={weather} line={line} />}
-            {shown?.sections.map((sec, i) => <WallSection key={`${at}:${i}`} sec={sec} state={state} titles={page.widgets} />)}
+            {shown?.sections.map((sec, i) => <WallSection key={`${at}:${i}`} sec={sec} state={state} titles={page.widgets} touch={wall.touch} press={press} />)}
           </div>
         </div>
       </div>
-      {pages.length > 1 && pinned < 0 && (
+      {may.length > 1 && pinned < 0 && (
         <nav className="wd-dots" aria-label={label('wall')}>
-          {pages.map((p, i) => <button key={i} aria-label={p.title ?? `${i + 1}`} aria-current={i === at ? 'page' : undefined} onClick={() => { touch(); go(i); }} className={cn('wd-dot', i === at && 'is-on')} />)}
+          {may.map(i => <button key={i} aria-label={own[i].title ?? `${i + 1}`} aria-current={i === at ? 'page' : undefined} onClick={() => setTurn({ n: i, since: Date.now() })} className={cn('wd-dot', i === at && 'is-on')} />)}
           {paused && <span className="wd-paused">{label('paused')}</span>}
         </nav>
       )}
