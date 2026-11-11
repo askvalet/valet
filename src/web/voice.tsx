@@ -106,7 +106,7 @@ export function MicButton({ rec, sheet, disabled }: { rec: ReturnType<typeof use
       onPointerUp={() => { if (down.current && Date.now() - down.current > 450) rec.stop(); down.current = 0; }}
       onClick={e => { if (e.detail === 0) { if (on) rec.stop(); else void rec.start(); } }}   // the keyboard's Enter or Space
       onContextMenu={e => e.preventDefault()}
-      className={cn('press grid shrink-0 cursor-pointer touch-none place-items-center rounded-full select-none disabled:cursor-default disabled:opacity-50', sheet ? 'mb-[3px] size-8' : 'mb-1 size-7',
+      className={cn('press grid shrink-0 cursor-pointer touch-none place-items-center rounded-full select-none disabled:cursor-default disabled:opacity-50', sheet ? 'mb-[3px] size-8' : 'mb-[5px] size-7',
         on ? 'bg-bad/15 text-bad' : 'text-muted-foreground hover:bg-fill-2 hover:text-foreground')}>
       {on ? <Square className="size-3 fill-current" /> : <Mic className="size-icon" />}
     </button>
@@ -124,7 +124,7 @@ export function DemoMic({ href, sheet }: { href: string; sheet?: boolean }) {
           // a tap shows it and the next tap hides it (a finger has no hover); a mouse keeps it open; Enter opens the page
           onPointerDown={e => { was.current = open; if (e.pointerType === 'touch') e.preventDefault(); }}
           onClick={e => { e.preventDefault(); if (e.detail === 0) window.open(href, '_blank', 'noopener'); else setOpen((e.nativeEvent as PointerEvent).pointerType === 'touch' ? !was.current : true); }}
-          className={cn('press grid shrink-0 cursor-pointer place-items-center rounded-full text-muted-foreground select-none hover:bg-fill-2 hover:text-foreground', sheet ? 'mb-[3px] size-8' : 'mb-1 size-7')}>
+          className={cn('press grid shrink-0 cursor-pointer place-items-center rounded-full text-muted-foreground select-none hover:bg-fill-2 hover:text-foreground', sheet ? 'mb-[3px] size-8' : 'mb-[5px] size-7')}>
           <Mic className="size-icon" />
         </button>
       </TooltipTrigger>

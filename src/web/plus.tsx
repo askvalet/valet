@@ -9,7 +9,7 @@ const ITEM = 'flex cursor-pointer select-none items-center gap-3 rounded-sm px-2
 export function PlusMenu({ sheet, attach, slash }: { sheet?: boolean; attach?: () => void; slash: () => void }) {
   return (
     <DropdownMenu.Root modal={false}>
-      <DropdownMenu.Trigger aria-label="Add to the message" className={cn('press grid shrink-0 cursor-pointer place-items-center rounded-full text-muted-foreground outline-hidden hover:bg-fill-2 hover:text-foreground focus-visible:bg-fill-2 focus-visible:text-foreground data-[state=open]:bg-fill-2 data-[state=open]:text-foreground', sheet ? 'mb-[3px] size-8' : 'mb-1 size-7')}>
+      <DropdownMenu.Trigger aria-label="Add to the message" className={cn('press grid shrink-0 cursor-pointer place-items-center rounded-full text-muted-foreground outline-hidden hover:bg-fill-2 hover:text-foreground focus-visible:bg-fill-2 focus-visible:text-foreground data-[state=open]:bg-fill-2 data-[state=open]:text-foreground', sheet ? 'mb-[3px] size-8' : 'mb-[5px] size-7')}>
         <Plus className="size-icon" />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
