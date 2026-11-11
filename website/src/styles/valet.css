@@ -130,7 +130,6 @@ header.header { background: var(--sl-color-bg-nav); backdrop-filter: blur(24px) 
 }
 /* the launch film on the home page: 16:9, and the 4:5 cut on a phone */
 .film { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 14px; border: 1px solid var(--sl-color-hairline); background: #0b0b0d; }
-@media (max-width: 640px) { .film { aspect-ratio: 4 / 5; } }
 /* the home page's reasons: each picture centred and kept to a readable width, the two chats side by side */
 .why { margin: 1.5rem auto 2.5rem; max-width: 620px; }
 .why img, .why-pair img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--sl-color-hairline); }

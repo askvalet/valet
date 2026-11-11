@@ -1,0 +1,27 @@
+/* The assistant in Telegram, on a phone. The film places it (.vf-phone .tg). */
+.tg { width: 560px; height: 1160px; border-radius: 84px; border: 12px solid #1b1c20; outline: 1.5px solid rgb(255 255 255 / .2); background: #0e1621; overflow: hidden;
+  box-shadow: 0 60px 120px -30px #000; font-size: 25px; line-height: 1.32; }
+.tg header { display: flex; align-items: center; gap: 14px; height: 138px; padding: 44px 22px 0; background: #17212b; border-bottom: 1px solid rgb(0 0 0 / .4); color: #6ab3f3; }
+.tg header div { display: flex; flex-direction: column; color: #fff; }
+.tg header b { font-size: 27px; font-weight: 600; }
+.tg header i { font-style: normal; font-size: 21px; color: #7d8e9e; }
+.tg-me { display: grid; place-items: center; width: 62px; height: 62px; border-radius: 50%; background: linear-gradient(160deg, #3b3d46, #15161a); }
+.tg-thread { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 18px 16px; }
+.tg-thread time { align-self: center; margin-bottom: 6px; padding: 5px 16px; border-radius: 99px; background: rgb(255 255 255 / .08); font-size: 20px; font-weight: 550; color: rgb(255 255 255 / .8); }
+.tg-thread p { display: flow-root; margin: 0; max-width: 432px; padding: 12px 18px 13px; border-radius: 26px; background: #182533; }
+.tg-thread small { float: right; margin: 12px 0 -4px 16px; font-size: 18px; color: rgb(255 255 255 / .45); }
+.tg-thread > p, .tg-ask { opacity: 0; translate: 0 16px; scale: .96; transform-origin: 0 100%; transition: opacity .28s ease, translate .5s cubic-bezier(.22, 1, .36, 1), scale .5s cubic-bezier(.22, 1, .36, 1); }
+.tg-thread > [data-on] { opacity: 1; translate: 0; scale: 1; }
+.tg-thread > .tg-in { border-bottom-left-radius: 8px; }
+.tg-out { align-self: flex-end; transform-origin: 100% 100% !important; background: #2b5278 !important; border-bottom-right-radius: 8px !important; }
+.tg-out small { color: rgb(255 255 255 / .6); }
+.tg-ask { width: 432px; }
+.tg-ask p { border-radius: 26px 26px 26px 8px; }
+.tg-verdict { display: none; }
+.tg-ask[data-done] .tg-verdict { display: inline; }
+.tg-keys { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.tg-ask[data-done] .tg-keys { display: none; }
+.tg-keys b { position: relative; padding: 14px 0; border-radius: 14px; background: rgb(255 255 255 / .1); text-align: center; font-weight: 550; transition: background .15s ease, scale .15s ease; }
+.tg-keys b[data-press] { background: rgb(255 255 255 / .22); scale: .97; }
+.tg-keys b[data-press]::after { content: ""; position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px; border-radius: 50%; background: rgb(255 255 255 / .3); box-shadow: 0 0 0 1.5px rgb(255 255 255 / .5); animation: tg-tap .42s ease-out both; }
+@keyframes tg-tap { from { scale: 1.3; opacity: 0; } 40% { opacity: 1; } to { scale: .9; opacity: .9; } }

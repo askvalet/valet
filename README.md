@@ -18,7 +18,7 @@ A self-hosted, open-source, AI-native homepage.
 
 <br>
 
-<a href="https://askvalet.dev/film/valet.mp4"><img src="docs/images/film.webp" alt="Play the film: the main screen, ⌘K opening a service, answering a question and finding a page in the docs, the Services, Home, Media and Library tabs, asking what's playing and what to watch, approving a change, adding a card from chat, and the integrations" width="100%"></a>
+<a href="https://askvalet.dev/film/valet.mp4"><img src="docs/images/film.webp" alt="Play the film: the main screen, ⌘K finding a film and a book inside the services, the Services, Home, Media and Library tabs, asking what's playing, asking out loud and hearing the answer, switching models with a command, approving a change, the same assistant in Telegram, adding a card from chat, several machines side by side, and the integrations" width="100%"></a>
 
 <sub>▶ <a href="https://askvalet.dev/film/valet.mp4">Watch the film</a> · or <a href="https://demo.askvalet.dev">try the demo</a>, right in your browser</sub>
 

@@ -63,4 +63,15 @@
   .vf-end h1 { margin: 24px 0 0; font-size: 116px; font-weight: 600; letter-spacing: -.04em; }
   .vf-end p { margin: 14px 0 0; font-size: 36px; color: rgb(255 255 255 / .72); }
   .vf-end strong { margin-top: 52px; font-size: 32px; font-weight: 550; }
+
+  /* Telegram: the words on the left, the phone on the right, running off the bottom of the frame */
+  .vf-film[data-scene="phone"] .vf-wall { filter: blur(40px) brightness(.16) saturate(1.1); }
+  .vf-phone { position: absolute; inset: 0; opacity: 0; transition: opacity .45s ease; }
+  .vf-phone[data-on] { opacity: 1; }
+  .vf-pitch { position: absolute; left: 150px; top: 0; bottom: 0; width: 900px; display: flex; flex-direction: column; justify-content: center; translate: 0 24px; transition: translate .9s var(--out); }
+  .vf-phone[data-on] .vf-pitch { translate: 0; }
+  .vf-pitch h2 { margin: 0; font-size: 92px; font-weight: 600; letter-spacing: -.04em; line-height: 1.02; }
+  .vf-pitch p { margin: 28px 0 0; font-size: 36px; line-height: 1.35; color: rgb(255 255 255 / .7); }
+  .vf-phone .tg { position: absolute; left: 1190px; top: 84px; translate: 0 70px; transition: translate 1s var(--out); }
+  .vf-phone[data-on] .tg { translate: 0; }
 }

@@ -1,7 +1,7 @@
 # The film and the GIFs
 
-How the moving pictures on askvalet.dev and in the README are made: the film (`website/public/film/valet.mp4`,
-`valet-mobile.mp4` and their posters, not in git) and the animations (GIFs, saved as animated WebP) in `docs/images`.
+How the moving pictures on askvalet.dev and in the README are made: the film (`website/public/film/valet.mp4`
+and its poster, not in git) and the animations (GIFs, saved as animated WebP) in `docs/images`.
 
 Everything is filmed from the demo, frame by frame. The page runs on a virtual clock (`record/vc.js`): time only moves
 when the recorder steps it, by exactly 1/60 s, and every step is a full screenshot. Timers, animation frames, CSS
@@ -15,7 +15,7 @@ the URL at the top of each script. Chrome must be installed.
 
 ```sh
 cd website/film/record
-node desktop.mjs out/desktop          # overview, ⌘K, services, home, media, library, chat, self: 1600x900 at 2x
+node desktop.mjs out/desktop          # overview, ⌘K, services, home, media, library, machines, chat, self: 1600x900 at 2x
 node gifs.mjs out/gif                 # live, home3d, chat, card, recap, rule: 1600x900 at 1.5x, side by side
 node stills.mjs out/cards             # the cards for the "185 integrations" reel, at 2x
 ```
@@ -23,7 +23,11 @@ node stills.mjs out/cards             # the cards for the "185 integrations" ree
 Each clip gets a `.json` beside it with the frame count and the rectangles of the cards that matter at each mark, so
 the film's camera can frame a whole card instead of guessing. Pass a comma list to record only some beats
 (`node desktop.mjs out/desktop chat,self`); separate lists can run at once, each in its own browser
-(`overview,kbar`, `tabs` and `chat,self` take a few minutes each side by side).
+(`overview,kbar`, `tabs,machines` and `chat,self` take a few minutes each side by side).
+
+The chat take asks one question out loud. The public demo's mic never listens (it has no server), so `record/voice-stub.js`
+gives the filming browser a microphone that hears a set sentence: Valet's own mic button, level, timer and read-aloud
+button do the rest, and nothing in the product changes. The film is silent, so an answer "plays" for nine seconds.
 
 The `rule` GIF needs the demo's reminder story (ask to be told when Oppenheimer finishes downloading, approve, and the
 notice arrives about ten seconds later). Point the recorder at another server with `DEMO_URL=http://localhost:7872/`.
@@ -51,21 +55,21 @@ glass. GitHub and every current browser play it like a GIF.
 
 ## The film
 
-`compose/` holds the two films as scenes for the Stageshow kit (the React kit that ships with the Stageshow skill): `valet-film` (1920x1080) and
-`valet-film-mobile` (1080x1350), which is the same story, beats and footage framed for a tall screen. Copy a folder into a Stageshow checkout's `examples/`, put the clips and their
+`compose/` holds the film as a scene for the Stageshow kit (the React kit that ships with the Stageshow skill): `valet-film`
+(1920x1080). It's the one film for every screen: a phone plays the same video. Copy a folder into a Stageshow checkout's `examples/`, put the clips and their
 `.json` in its `assets/clips`, the stills in `assets/cards` and app icons in `assets/icons`, start its playground
 on port 7868, copy `compose/render.mjs` into its `.tools/`, and render with `node .tools/render.mjs <example>
 <master.mp4>` (frame-exact, PNG frames into x264 at CRF 10). Then encode:
 
 ```sh
 ffmpeg -i master.mp4 -c:v libx264 -preset veryslow -crf 24 -tune animation -pix_fmt yuv420p -movflags +faststart valet.mp4
-ffmpeg -i mobile-master.mp4 -c:v libx264 -preset veryslow -crf 23 -tune animation -pix_fmt yuv420p -movflags +faststart valet-mobile.mp4
 ```
+
+One beat isn't footage: the assistant in Telegram is a phone drawn in the scene (`valet-film/tg.css`), with the bot's own wording: plain lines, two buttons on a change, and the message edited to say what was decided.
 
 The desktop film's footage fills the frame. The camera only moves while the page holds still, glides with an eased
 zoom, and frames a whole card (or a row) clear of the caption, which is a small glass pill in the bottom-left corner
-that leaves after a few seconds. The tall film puts the caption above the footage: wide, the whole page sits at full
-width in a band under it; close, the band opens to the bottom of the frame and one part of the page fills it.
+that leaves after a few seconds.
 
 `record/smooth.py <video>` checks a result: every frame 1/60 s apart, no frozen frame in the middle of a move, and
 the big frame-to-frame changes listed (cuts, and the app's own instant changes) to look at by eye. Window scrolls are
