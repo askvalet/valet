@@ -3,7 +3,7 @@
 import { Chat, useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses, type UIMessage } from 'ai';
 import {
-  Activity, ArrowDown, ArrowUp, Bookmark, Check, ChevronDown, ChevronRight, Copy, CornerDownRight, FileText, Globe, Lightbulb, Loader2, Paperclip, RotateCcw,
+  Activity, ArrowDown, ArrowUp, Bookmark, Check, ChevronDown, ChevronRight, Copy, CornerDownRight, FileText, Globe, Lightbulb, Loader2, RotateCcw,
   Pin, Search, Square, X, Zap,
 } from 'lucide-react';
 import { createContext, Fragment, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -22,6 +22,7 @@ import { label, num } from './format.ts';
 import { play } from './sound.ts';
 import { ModelPicker, ReasoningPicker, type Choice, type Thinking } from './models.tsx';
 import { DemoMic, Listening, MicButton, ReadAloud, useRecorder, useSpeaker, type VoiceUi } from './voice.tsx';
+import { PlusMenu } from './plus.tsx';
 import { ComposerMenu, HelpNote, Mentions, Note, WithMentions, runSlash, useComposerMenu, type Mentionable, type Slash } from './slash.tsx';
 import { matchModel, mentionsIn } from '../shared/slash.ts';
 
@@ -531,6 +532,12 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
   const menu = useComposerMenu({ draft, setDraft, box, commands: ui.commands ?? [], integrations: external ? [] : integrations,
     models: hasPicker ? offered.map(o => ({ id: o.id, label: o.label })) : [],
     run: t => { if (command(t)) { setDraft(''); return; } if (busy || uploading) { setDraft(t); return; } submit(t); setDraft(''); } });
+  // "Slash commands" in the + menu: a / at the start of the box, the caret after it, and the / menu open as if it was typed
+  const startCommand = () => {
+    const next = draft.startsWith('/') ? draft : `/${draft}`;
+    setDraft(next);
+    requestAnimationFrame(() => { const el = box.current; if (!el) return; el.focus(); el.setSelectionRange(1, 1); menu.sync(); });
+  };
   const submit = (heard?: string) => {
     const text = heard ?? draft;
     if (heard === undefined && !ready.length && command(text.trim())) { setDraft(''); return; }
@@ -642,7 +649,7 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
         <ChatBeam ui={ui} busy={busy}>
         <div className={cn('composer flex items-end gap-2 rounded-surface border bg-card px-3 py-2 shadow-card', over && 'ring-2 ring-primary/60')}>
           <input ref={filePicker} type="file" multiple hidden onChange={e => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
- {canAttach && <button type="button" onClick={() => filePicker.current?.click()} aria-label="Attach a file" className={cn('press grid shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-fill-2 hover:text-foreground', sheet ? 'mb-[3px] size-8' : 'mb-1 size-7')}><Paperclip className="size-icon" /></button>}
+          <PlusMenu sheet={sheet} attach={canAttach ? () => filePicker.current?.click() : undefined} slash={startCommand} />
           {rec.phase === 'recording' || rec.phase === 'sending' ? <Listening rec={rec} /> : <textarea ref={box} value={draft} onChange={e => { setDraft(e.target.value); menu.sync(); }} onSelect={menu.sync} rows={1}
             aria-expanded={!!menu.menu} aria-controls={menu.menu ? menu.id : undefined} aria-activedescendant={menu.menu ? `${menu.id}-${menu.index}` : undefined} aria-autocomplete="list" placeholder={label(sheet || external || !canAttach ? 'message' : 'messageHint', { name })} aria-label="Message"
             onKeyDown={e => { if (menu.onKey(e)) return; if (e.key === 'Enter' && (ui.send === 'enter' ? !e.shiftKey : e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
