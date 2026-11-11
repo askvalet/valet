@@ -49,6 +49,11 @@ const lastOnly = ({ messages, body, id }: any) => {
   const mentions = mentionsIn(asked?.text ?? '', mentionable);
   return { body: { ...body, id, messages: sendable(messages), ...(picked ? { model: picked } : {}), ...(thinking !== 'auto' ? { reasoning: thinking } : {}), ...(mentions.length ? { mentions } : {}) } };
 };
+// Pictures of the images attached in this tab, by file id: made from the file itself when it's picked, so the server never
+// serves an upload back. The chat lives in memory too, so a reload loses both together.
+const thumbs = new Map<string, string>();
+const isImage = (f: File) => /^image\/(png|jpeg|webp|gif)$/.test(f.type);
+const ATTACHED_LINE = /\n?\[attached: ([^(\]]+) \(file id ([a-f0-9]+)\)\]/g;
 // the last question from `ask` already sent; kept with the chat because the panel remounts on every navigation
 let lastAsk = 0;
 const chat = new Chat({
@@ -262,13 +267,23 @@ export function InlineAnswer({ text, tools, onMore, ui }: { text: string; tools:
 export interface RowActs { approve: (id: string, ok: boolean) => void; regenerate: () => void; ask: (t: string) => void; read?: (id: string, text: string) => void; silence?: () => void }
 export const MessageRow = memo(function MessageRow({ m, isLast, latest = isLast, busy, tookMs, fresh, since, tools, act, next, reading }: { m: any; isLast: boolean; latest?: boolean; next?: string; busy: boolean; tookMs?: number; fresh: boolean; since: number; tools: Record<string, ToolInfo>; act: RowActs; reading?: boolean }) {
   const [copied, setCopied] = useState<boolean | null>(null), [tapped, setTapped] = useState(false), ui = useContext(Ui);
-  if (m.role === 'user') return (
-    <div className="chat-msg flex justify-end">
-      <div className="chat-in chat-bubble max-w-[85%] rounded-surface rounded-br-md px-3.5 py-2 text-item">
-        {m.parts.map((p: any, i: number) => p.type === 'text' ? <span key={i} className="whitespace-pre-wrap"><WithMentions text={p.text.replace(/\n?\[attached: ([^(\]]+) \(file id [a-f0-9]+\)\]/g, '\n📎 $1')} /></span> : null)}
+  if (m.role === 'user') {
+    const said = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text as string).join('\n');
+    const pics = [...said.matchAll(ATTACHED_LINE)].flatMap(x => thumbs.has(x[2]!) ? [{ name: x[1]!, url: thumbs.get(x[2]!)! }] : []);
+    // the line a tool files it by stays in the message; on the page an image shows as itself, anything else as its name
+    const words = said.replace(ATTACHED_LINE, (_: string, name: string, id: string) => thumbs.has(id) ? '' : `\n📎 ${name}`).trim();
+    return (
+      <div className="chat-msg flex flex-col items-end gap-1.5">
+        {pics.length > 0 && <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
+          {pics.map((p, i) => <a key={i} href={p.url} target="_blank" rel="noopener" className="chat-in block overflow-hidden rounded-surface border border-white/10 shadow-card">
+            <img src={p.url} alt={p.name} title={p.name} className={cn('block object-cover', pics.length > 1 ? 'size-28' : 'max-h-56 max-w-[min(18rem,100%)]')} /></a>)}
+        </div>}
+        {words && <div className="chat-in chat-bubble max-w-[85%] rounded-surface rounded-br-md px-3.5 py-2 text-item">
+          <span className="whitespace-pre-wrap"><WithMentions text={words} /></span>
+        </div>}
       </div>
-    </div>
-  );
+    );
+  }
   // a reply: runs of tool calls become one chip list, followed by any cards they returned, then the words
   const live = isLast && busy;
   const blocks: ReactNode[] = [], thoughts: string[] = []; let run: any[] = [], thinking = false;
@@ -421,14 +436,15 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
   // read aloud is on the answers only when voice.tts is set; the functions stay put, so the rows don't re-render for it
   const reader = useRef({ ...act, read: (id: string, t: string) => latest.current.read(id, t), silence: () => latest.current.silence() }).current;
   // files pasted, dropped or picked: uploaded right away, then named in the message so a tool can file them
-  const [files, setFiles] = useState<{ key: number; name: string; id?: string; error?: string }[]>([]);
+  const [files, setFiles] = useState<{ key: number; name: string; id?: string; error?: string; thumb?: string }[]>([]);
+  const drop = (key: number) => setFiles(fs => fs.filter(x => { if (x.key === key && x.thumb) URL.revokeObjectURL(x.thumb); return x.key !== key; }));
   const [over, setOver] = useState(false);
   const filePicker = useRef<HTMLInputElement>(null);
   const attach = (list: FileList | File[]) => {
     if (!canAttach) return;
     for (const f of Array.from(list)) {
       const key = Math.random();
-      setFiles(fs => [...fs, { key, name: f.name || 'pasted' }]);
+      setFiles(fs => [...fs, { key, name: f.name || 'pasted', thumb: isImage(f) ? URL.createObjectURL(f) : undefined }]);
       fetch('/api/files', { method: 'POST', headers: { 'Content-Type': f.type || 'application/octet-stream', 'X-File-Name': encodeURIComponent(f.name || 'pasted') }, body: f })
         .then(r => r.json()).then(j => setFiles(fs => fs.map(x => x.key === key ? (j.id ? { ...x, id: j.id, name: j.name } : { ...x, error: j.error ?? 'upload failed' }) : x)))
         .catch(() => setFiles(fs => fs.map(x => x.key === key ? { ...x, error: 'upload failed' } : x)));
@@ -478,7 +494,7 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
   const hasPicker = !!models && (models.length > 1 || !!discover) && !external;
   mentionable = external ? [] : integrations.map(i => i.id);
   const known = useMemo(() => new Set(mentionable), [mentionable.join(' ')]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const startOver = () => { stop(); setMessages([]); setTook({}); choose(); think('auto'); notes = []; setLines([]); compactedAfter = undefined; setCut(undefined); };
+  const startOver = () => { stop(); setMessages([]); for (const u of thumbs.values()) URL.revokeObjectURL(u); thumbs.clear(); setTook({}); choose(); think('auto'); notes = []; setLines([]); compactedAfter = undefined; setCut(undefined); };
   const findListed = async (q: string) => {
     const key = say({ text: 'Looking for that model…', busy: true });
     try {
@@ -517,6 +533,8 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
     if (heard === undefined && !ready.length && command(text.trim())) { setDraft(''); return; }
     if ((!text.trim() && !ready.length) || busy || uploading) return;
     const lines = ready.map(f => `[attached: ${f.name} (file id ${f.id})]`);
+    for (const f of ready) if (f.thumb) thumbs.set(f.id!, f.thumb);
+    for (const f of files) if (f.thumb && !f.id) URL.revokeObjectURL(f.thumb);
     following.current = true; play('send'); setSent(n => n + 1); setVoiceNote(null);
     if (voice?.speak) { speaker.stop(); if (voice.speakReplies) speaker.unlock(); }
     sendMessage({ text: [text.trim() || 'File this.', ...lines].join('\n') }); if (heard === undefined) setDraft(''); setFiles([]);
@@ -597,11 +615,18 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
         onDrop={e => { if (e.dataTransfer.files.length) { e.preventDefault(); setOver(false); attach(e.dataTransfer.files); } }}>
         {files.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5">
-            {files.map(f => (
-              <span key={f.key} className={cn('flex max-w-[220px] items-center gap-1.5 rounded-full bg-secondary py-1 pr-1.5 pl-2.5 text-meta', f.error && 'text-bad')}>
+            {files.map(f => f.thumb && !f.error ? (
+              // an image: itself, small, with a way to take it off; dimmed with a spinner until it's uploaded
+              <span key={f.key} className="group relative size-16 shrink-0" title={f.name}>
+                <img src={f.thumb} alt={f.name} className={cn('size-16 rounded-xl border border-white/10 object-cover', !f.id && 'opacity-50')} />
+                {!f.id && <Loader2 className="absolute inset-0 m-auto size-5 animate-spin text-white drop-shadow" />}
+                <button type="button" aria-label={`Remove ${f.name}`} onClick={() => drop(f.key)} className="absolute -top-1.5 -right-1.5 grid size-5 cursor-pointer place-items-center rounded-full border border-white/15 bg-black/75 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"><X className="size-3" /></button>
+              </span>
+            ) : (
+              <span key={f.key} className={cn('flex max-w-[220px] items-center gap-1.5 self-center rounded-full bg-secondary py-1 pr-1.5 pl-2.5 text-meta', f.error && 'text-bad')}>
                 {f.id ? <FileText className="size-icon-sm shrink-0" /> : f.error ? null : <Loader2 className="size-icon-sm shrink-0 animate-spin" />}
                 <span className="truncate">{f.error ? `${f.name}: ${f.error}` : f.name}</span>
-                <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles(fs => fs.filter(x => x.key !== f.key))} className="grid size-4 place-items-center rounded-full hover:bg-fill-2"><X className="size-3" /></button>
+                <button type="button" aria-label={`Remove ${f.name}`} onClick={() => drop(f.key)} className="grid size-4 place-items-center rounded-full hover:bg-fill-2"><X className="size-3" /></button>
               </span>
             ))}
           </div>

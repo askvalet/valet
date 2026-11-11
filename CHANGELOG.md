@@ -7,7 +7,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Added
 
-- The chat shows images to a model that can see: `assistant.vision: true` (on by default for Anthropic), and `vision` on each of `assistant.models`. A PNG, JPEG, WebP or GIF attached in chat goes to the model as a picture, so it can read a screenshot or describe a photo, instead of only knowing its name and file id. The newest four in a chat go, each up to 5 MB and checked by its first bytes; one that can't be shown is named and the model is told why. Filing an attachment works as before. ([#19](https://github.com/askvalet/valet/issues/19))
+- The chat shows images to a model that can see: `assistant.vision: true` (on by default for Anthropic), and `vision` on each of `assistant.models`. A PNG, JPEG, WebP or GIF attached in chat goes to the model as a picture, so it can read a screenshot or describe a photo, instead of only knowing its name and file id. The newest four in a chat go, each up to 5 MB and checked by its first bytes; one that can't be shown is named and the model is told why. Filing an attachment works as before. An image you attach shows as a thumbnail in the message box and above your message once it's sent, drawn from the file in your browser, so nothing is served back from the server. ([#19](https://github.com/askvalet/valet/issues/19))
 
 ### Changed
 
