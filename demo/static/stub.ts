@@ -17,7 +17,3 @@ export const timingSafeEqual = (a: Uint8Array, b: Uint8Array) => a.length === b.
 export const connect = () => { throw new Error('no sockets in the demo'); }, isIP = () => 0, sep = '/';
 export const createHmac = () => ({ update() { return this; }, digest: () => '' });
 export default {};
-// reached only at import time by server code the demo never runs (secret files, webhooks, the MQTT publisher)
-export const closeSync = () => {}, openSync = () => 0, readSync = () => 0, realpathSync = (p: string) => p, timingSafeEqual = () => false;
-export const connect = () => ({ on() { return this; }, once() { return this; }, write() {}, end() {}, destroy() {}, setTimeout() {} }), isIP = () => 0, sep = '/';
-export const createHmac = () => ({ update() { return this; }, digest: () => '' });

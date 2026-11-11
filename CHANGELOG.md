@@ -5,6 +5,11 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+
+- The public demo searches inside its made-up services from ⌘K (films, audiobooks, documents, photos and games by title), shows several machines side by side at the foot of the Services tab, and understands a question with an `@mention` in it.
+- The film on the site and in the README is new: ⌘K inside the services, asking out loud, switching models with `/model`, an `@mention`, the assistant in Telegram and several machines. It's one film for every screen now: phones play the same video instead of a separate tall cut.
+
 ## [0.5.0] - 2026-11-10
 
 ### Added
@@ -34,8 +39,6 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
-- The public demo searches inside its made-up services from ⌘K (films, audiobooks, documents, photos and games by title), shows several machines side by side at the foot of the Services tab, and understands a question with an `@mention` in it. Its static build works again: it had stopped building when the secrets, webhooks and MQTT code arrived.
-- The film on the site and in the README is new: ⌘K inside the services, asking out loud, switching models with `/model`, an `@mention`, the assistant in Telegram and several machines. It's one film for every screen now: phones play the same video instead of a separate tall cut.
 - ⌘K opens at once. Its code is fetched when the page goes quiet instead of on the first press, and opening it no longer restyles the whole page behind it (twice on open, once on close). On a busy page the first open went from about 370 ms to 14 ms and every later one from about 56 ms to 9 ms. It's the same palette: the page behind is still dimmed and still, Escape and a click outside close it, and Tab stays inside it.
 
 ### Fixed
