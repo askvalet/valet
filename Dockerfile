@@ -1,14 +1,14 @@
 # Two stages: build the web app and the server bundle, then a runtime with nothing but the bundle (the server and
 # everything it imports are one folder of JavaScript; there's no node_modules to ship).
 # The base image is pinned by digest so a rebuild gets exactly what was tested; bump both lines together.
-FROM node:24.11-alpine@sha256:682368d8253e0c3364b803956085c456a612d738bd635926d73fa24db3ce53d7 AS build
+FROM node:24.22.3-alpine3.23@sha256:3946fb783fdce8a2812136ea694bc95c698c4f4096f3fd18568dc27a8ac389dc AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:24.11-alpine@sha256:682368d8253e0c3364b803956085c456a612d738bd635926d73fa24db3ce53d7
+FROM node:24.22.3-alpine3.23@sha256:3946fb783fdce8a2812136ea694bc95c698c4f4096f3fd18568dc27a8ac389dc
 WORKDIR /app
 ENV NODE_ENV=production PORT=7575 VALET_CONFIG=/config/config.yaml
 COPY --from=build /app/dist ./dist
