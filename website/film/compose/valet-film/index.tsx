@@ -52,13 +52,22 @@ export const initial: S = { scene: 'open', words: 0, part: 0, cap: false, yaml: 
 export const t = (n: string, m: string) => at(n, m).t
 // each stretch ends before the camera's next move, so no glide ever runs at 2x
 const T = (m: string) => t('chat', m)
+/** `f` with one stretch of clip time left out: the scene goes straight from `a` to `b`. */
+const cut = (f: ReturnType<typeof fast>, a: number, b: number): ReturnType<typeof fast> => {
+  const when = (c: number) => { let lo = 0, hi = 600; for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; if (f.map(m) < c) lo = m; else hi = m } return lo }
+  const from = when(a), gone = when(b) - from
+  return { map: e => f.map(e < from ? e : e + gone), saved: f.saved + gone }
+}
 export const FAST: Record<string, ReturnType<typeof fast>> = {
   // typing and the waits: the question, the answer, the spoken one's answer, the command, the mention and the change
-  chat: fast([[.9, T('watching') - .25], [T('heard') + .8, T('popular') - .95], [T('read') + .9, T('slash') - 1], [T('slash') + .5, T('picker') - .5], [T('switched') + 1, T('at') - .7], [T('at') + 1, T('approval') - .35], [T('approval') + 2.35, T('paused') - 1]]),
+  // and one cut: from the spoken question's answer straight to the command, without the pause between them
+  chat: cut(fast([[.9, T('watching') - .25], [T('heard') + .8, T('popular') - .95], [T('read') + .9, T('slash') - 1], [T('slash') + .5, T('picker') - .5], [T('switched') + 1, T('at') - .7], [T('at') + 1, T('approval') - .35], [T('approval') + 2.35, T('paused') - 1]]), T('popular') + 1.05, T('slash') - 1.15),
   self: fast([[.5, t('self', 'ask') - .25], [t('self', 'ask') + 2.35, t('self', 'done') - .2]]),
 }
 export const FROM: Record<string, number> = { overview: .5 }
-export const ms = (n: string) => Math.round((secs(n) - (FAST[n]?.saved ?? 0) - (FROM[n] ?? 0)) * 1000)
+// the overview ends once the page has scrolled down to what's playing
+export const END: Record<string, number> = { overview: t('overview', 'now') + .15 }
+export const ms = (n: string) => Math.round(((END[n] ?? secs(n)) - (FAST[n]?.saved ?? 0) - (FROM[n] ?? 0)) * 1000)
 export const sceneAt = (n: string, clipSec: number) => { let lo = 0, hi = secs(n); const f = FAST[n]?.map ?? (e => e + (FROM[n] ?? 0)); for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (f(mid) < clipSec) lo = mid; else hi = mid } return Math.round(lo * 1000) }
 
 export async function script(a: Act<S>) {
@@ -96,7 +105,7 @@ export async function script(a: Act<S>) {
 // the camera for each clip, from the rectangles measured while recording: wide while the page scrolls, close on a
 // whole card (or a row of them) when it holds
 const cam: Record<string, () => Key[]> = {
-  overview: () => [K(at('overview', 'carousels').t + .05, F(union(r('overview', 'carousels', 'reading'), r('overview', 'carousels', 'recent'))), 1.3)],
+  overview: () => [],
   kbar: () => {
     const pal = union(...['open', 'found', 'card'].map(m => r('kbar', m, 'pal')))
     return [K(at('kbar', 'open').t - .3, F(pal, 1.45), 1), K(at('kbar', 'closed').t, FULL, 1.1)]
