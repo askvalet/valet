@@ -5,6 +5,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-10
+
 ### Added
 
 - Web search for the assistant: `assistant.webSearch` with `provider: searxng` (your own, the private choice), `brave` or `tavily`. Off unless set. `web_search` hands the model titles, addresses and snippets, and you a card of links; `web_read` opens one page a search returned and reads its text. Both only look. The model is told to search only for what the homelab can't answer and to keep anything private out of a query, since the words go to the provider. Results are a stranger's text: nothing in them can change anything without your approval. `web_read` can't reach your own network (every address a name has is checked, the connection goes to the checked one, each redirect is checked again), sends no cookies or keys, and opens only an address a search returned. `perDay` caps the searches (100), a repeat within the hour isn't sent again, and `valet.web_search: none`, `valet.web_read: none` or `read: false` turn the tools off. Not offered to an MCP client.
@@ -327,7 +329,8 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/askvalet/valet/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/askvalet/valet/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/askvalet/valet/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/askvalet/valet/compare/v0.1.8...v0.2.0
