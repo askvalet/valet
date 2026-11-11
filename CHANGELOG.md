@@ -5,14 +5,23 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-11
+
 ### Added
 
 - The chat shows images to a model that can see: `assistant.vision: true` (on by default for Anthropic), and `vision` on each of `assistant.models`. A PNG, JPEG, WebP or GIF attached in chat goes to the model as a picture, so it can read a screenshot or describe a photo, instead of only knowing its name and file id. The newest four in a chat go, each up to 5 MB and checked by its first bytes; one that can't be shown is named and the model is told why. Filing an attachment works as before. An image you attach shows as a thumbnail in the message box and above your message once it's sent, drawn from the file in your browser, so nothing is served back from the server. ([#19](https://github.com/askvalet/valet/issues/19))
 
+- The chat reads text files you attach, for any model: notes, CSV, Markdown, JSON, a log or a config file go with your message as their words, so you can ask what's in them. Valet decides from the bytes (UTF-8 text with nothing binary in it), not the name, and a PDF stays a document to file. The newest four in a chat go, up to 100,000 characters each and 200,000 (or a quarter of a known window) in all; a longer file is cut at the end of a line and the model is told so. What's in a file is given as something to read, never as instructions. ([#19](https://github.com/askvalet/valet/issues/19))
+
 ### Changed
 
+- An image sent on its own, with no words, no longer becomes "File this.": a model that can see says what it shows and offers to file it. Any other file sent with no words is still filed.
 - The public demo searches inside its made-up services from ⌘K (films, audiobooks, documents, photos and games by title), shows several machines side by side at the foot of the Services tab, and understands a question with an `@mention` in it.
 - The film on the site and in the README is new: ⌘K inside the services, asking out loud, switching models with `/model`, an `@mention`, the assistant in Telegram and several machines. It's one film for every screen now: phones play the same video instead of a separate tall cut.
+
+### Security
+
+- The image runs on Node 24.22.3 (`node:24.22.3-alpine3.23`), from 24.11.1, with the fixes from Node's November 2026 security releases and every one since 24.11. Valet serves plain HTTP and leaves TLS and HTTP/2 to the proxy in front of it, so the worst of these didn't reach it, but the image no longer carries an old runtime.
 
 ## [0.5.0] - 2026-11-10
 
@@ -338,7 +347,8 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/askvalet/valet/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/askvalet/valet/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/askvalet/valet/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/askvalet/valet/compare/v0.2.0...v0.3.0
