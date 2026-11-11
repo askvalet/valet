@@ -5,6 +5,16 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-11
+
+### Changed
+
+- A + at the start of the chat's message box, in place of the paperclip, opens a small menu: Add files or photos (the file picker, as the paperclip was) and Slash commands, which puts a / in the box and opens the commands as if you'd typed it. Pasting and dropping files work as before.
+
+### Fixed
+
+- On a wide screen the attach button and the mic sat a pixel below the text and the send button.
+
 ## [0.6.0] - 2026-11-11
 
 ### Added
@@ -347,7 +357,8 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/askvalet/valet/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/askvalet/valet/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/askvalet/valet/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/askvalet/valet/compare/v0.3.0...v0.4.0
