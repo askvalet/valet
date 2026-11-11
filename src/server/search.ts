@@ -42,9 +42,10 @@ async function ask(site: SearchSite, f: Finder, q: string, wait: number): Promis
   // a tool with a `limit` is asked for a palette's worth; one without takes what it takes
   const input = f.t.input.safeParse({ [f.t.find!]: q, limit: ROWS });
   const args = input.success ? input.data : f.t.input.parse({ [f.t.find!]: q });
+  // referenced, like the request waiting on it, and cleared as soon as the service answers
   let timer: NodeJS.Timeout | undefined;
   try {
-    const out = await Promise.race([f.t.run(args), new Promise<never>((_, no) => { timer = setTimeout(() => no(new Error('timed out')), wait); timer.unref(); })]);
+    const out = await Promise.race([f.t.run(args), new Promise<never>((_, no) => { timer = setTimeout(() => no(new Error('timed out')), wait); })]);
     if (!out?.card || (out.data as { error?: unknown } | undefined)?.error) return null;
     const card = JSON.parse(site.redact(JSON.stringify(out.card))) as Card;
     return hitsOf(card, 1).length ? card : null;

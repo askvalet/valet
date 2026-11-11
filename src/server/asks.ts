@@ -49,8 +49,9 @@ export class Asks {
     }
     const mine = h;
     return { fresh, id: mine.ask.id, answer: new Promise<Answer>(done => {
+      // kept referenced: a request is waiting on it, and it lasts no longer than that request (an unref'd timer as the only
+      // thing left let Node 22 end with the answer still pending)
       const t = setTimeout(() => { mine.waiters.delete(end); done('waiting'); }, wait);
-      t.unref();
       const end = (a: Answer) => { clearTimeout(t); done(a); };
       mine.waiters.add(end);
     }) };
