@@ -42,6 +42,7 @@ const ModelChoice = z.object({
   contextWindow: z.number().int().min(1000).max(10_000_000).optional(),
   reasoning: Reasoning.optional(),
   options: Sampling.optional(),
+  vision: z.boolean().optional(),         // it can see images: ones attached in chat are shown to it. Left out, only Anthropic's are
 }).strict();
 
 // `{ auto: true, ... }`: every model one server lists, that server filled in from the main settings by the same rules as a
@@ -54,6 +55,7 @@ const AutoServer = z.object({
   apiKey: z.string().optional(),
   reasoning: Reasoning.optional(),
   options: Sampling.optional(),
+  vision: z.boolean().optional(),         // every model this server lists can see images
 }).strict();
 export type AutoServer = z.infer<typeof AutoServer>;
 
@@ -99,6 +101,9 @@ export const AssistantConfig = z.object({
   contextWindow: z.number().int().min(1000).max(10_000_000).optional(),
   // near a known window, summarise the oldest part of a long chat for the model (the page keeps all of it); false sends the last 24 messages
   compact: z.boolean().default(true),
+  // the model can see images: a PNG, JPEG, WebP or GIF attached in chat is shown to it, not only named. Left out, Anthropic's
+  // models can and others can't, since a server whose model can't see refuses the whole message
+  vision: z.boolean().optional(),
   // hand the chat to another agent (Hermes, say): anything with an OpenAI-compatible API. It runs its own tools, so
   // Valet's access levels and approvals don't apply to it, and a read-only page stays on Valet's own assistant.
   agent: z.object({ name: z.string(), baseURL: z.string().url(), apiKey: z.string().optional(), model: z.string() }).strict().optional(),
