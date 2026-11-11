@@ -9,3 +9,7 @@ b87d438f4aebebd0be0a749fc710e43562bd7289:test/lab/hostile-lab.ts:generic-api-key
 ea3715363a7cdce494ab2b446bc4424ef8610f12:test/lab/hostile-lab.ts:generic-api-key:11
 777aa48096c0cd30c4eb0ce0933aa86c3c17b0aa:test/webpush.test.ts:generic-api-key:35
 777aa48096c0cd30c4eb0ce0933aa86c3c17b0aa:test/exposure.ts:generic-api-key:190
+d1f41ce088753c2f61f7437e52618b99d15b2d53:test/events.test.ts:generic-api-key:22
+1223f67e2b75431e6860b782207ea26a5f9b4dbc:test/doctor.test.ts:generic-api-key:87
+1223f67e2b75431e6860b782207ea26a5f9b4dbc:test/doctor.test.ts:generic-api-key:168
+629fae9175e9c37cba2059942da68588f2e20181:test/people.test.ts:generic-api-key:328
