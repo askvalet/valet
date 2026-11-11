@@ -17,7 +17,8 @@ export default function Asks({ asks }: { asks: Ask[] }) {
   return createPortal(
     <div className="pointer-events-none fixed inset-x-0 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-50 flex flex-col items-center gap-3 px-4 max-sm:bottom-24">
       {asks.map(a => (
-        <div key={a.id} className="pointer-events-auto">
+        // a sheet of its own: over the page there's no chat panel behind the card to blur what's under it
+        <div key={a.id} className="pointer-events-auto glass-pop" style={{ borderRadius: 'var(--radius-surface)' }}>
           <Approval said={a.said} title={a.said.title} detail={[a.said.detail, label('askedBy', { who: a.from })].filter(Boolean).join(' · ')} icon="pulse" ready answer={ok => void answer(a.id, ok)} />
         </div>
       ))}

@@ -5,6 +5,8 @@ sidebar:
   order: 7
 ---
 
+import Shot from '~/components/Shot.astro';
+
 Valet runs in a locked-down container, so it can't see the machine it's on, or any other. The Valet agent goes on each machine instead: one file, `agent/valet-agent.py`, written in Python's standard library, with nothing to install. It answers Valet's questions about that machine and can't change anything.
 
 With an agent on each machine, the [`machines`](/integrations/machines/) integration shows them all from one block of config:
@@ -158,6 +160,9 @@ layout:
   - title: Machines
     widgets: [machines.fleet, { widget: machines.nas, size: small }, { widget: machines.pi, size: small }, machines.disks]
 ```
+
+<Shot id="int/machines/fleet-large" alt="The Machines card: a NAS, a Pi and a mini PC, each with whether it answers, CPU, memory, disk and temperature." />
+<Shot id="int/machines/nas-medium" alt="One machine's card: the NAS, with CPU over time, memory, its fullest disk and uptime." />
 
 ## Adding another machine later
 

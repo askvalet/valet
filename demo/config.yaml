@@ -62,6 +62,7 @@ nav: { order: [Services, AI, Home, Media, Library] }
 # /wall: its own pages for a screen across the room, taking turns every minute
 wall:
   every: 1m
+  touch: [lab.thermostat, { widget: lab.doors, hold: true }]   # the thermostat's steps and the doors work on the wall; a door needs a held press
   pages:
     - title: Now
       layout:

@@ -621,6 +621,12 @@ export default ({ z, defineIntegration, fmt: write }) => {
             run: async () => { const m = meeting(), on = m.start <= now(), mins = Math.max(1, Math.ceil(((on ? m.end : m.start) - now()) / 6e4)), link = { label: 'Join', href: m.href, note: m.provider };
               return { open: m.href, data: { next: { title: m.title, start: new Date(m.start).toISOString(), end: new Date(m.end).toISOString(), provider: m.provider, join: m.href, with: m.people } },
                 card: { type: 'list', title: on ? 'On now' : 'Next meeting', icon: 'video', items: [{ title: m.title, subtitle: `${m.provider} · with ${m.people.slice(0, 2).join(', ')} +${m.people.length - 2}`, meta: on ? `Now · ${fmt.span(mins * 6e4)} left` : `in ${fmt.span(mins * 6e4)} · ${spanOf(m)}`, tone: on ? 'accent' : undefined, link }] } }; } },
+          // ⌘K searches inside the services as you type: the demo's film library, by title
+          library_search: { find: 'query', label: 'Searched the library', access: 'read', description: 'Films in the Plex library, by title.',
+            input: z.object({ query: z.string(), limit: z.number().int().min(1).max(20).default(8) }),
+            run: async ({ query, limit }) => { const q = String(query).toLowerCase(), hits = Object.keys(ART.films).filter(t => t.toLowerCase().includes(q)).slice(0, limit);
+              return { data: { results: hits.map(t => ({ title: t, year: ART.films[t].year })) }, card: hits.length ? { type: 'shelf', title: `Library · “${query}”`, icon: 'film', aspect: 'poster',
+                items: hits.map(t => ({ title: t, subtitle: String(ART.films[t].year), image: poster(t), href: poster(t) })) } : { type: 'text', text: `Nothing in the library called “${query}”.` } }; } },
           docs_search: { label: 'Searched the docs', access: 'read', input: z.object({}), description: "Valet's own docs.", run: async () => ({ data: { page: 'Build an integration' } }) },
           plex_stop_stream: { label: 'Stopped a stream', confirm: () => ({ title: `Stop Theo's ${FILMS[0]}?`, detail: "They'll see: Stopped by the server owner.", logo: '/api/icon/plex', verb: 'Stop', danger: true }),
             description: "Stop someone's Plex stream.", access: 'control', input: z.object({ who: z.string().default('Theo') }),

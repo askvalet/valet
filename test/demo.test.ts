@@ -38,7 +38,13 @@ test('demo: every widget returns a valid card, and the layout only names widgets
 
 test('demo: the script only calls tools that exist, and answers from what they return', async () => {
   // a null tool is a plain answer; Valet's own backups tool gathers from the lab, as the server's does
-  for (const [, tool] of SCRIPT) if (tool) assert.ok(inst.tools[tool as string] || tool === 'backups_status' || tool === 'watch_add', tool as string);
+  // web_search is Valet's own too, there only where assistant.webSearch is set (the docs' screenshots), never in the demo
+  for (const [, tool] of SCRIPT) if (tool) assert.ok(inst.tools[tool as string] || tool === 'backups_status' || tool === 'watch_add' || tool === 'web_search', tool as string);
+  const web = 'Search the web for how to back up Immich';
+  assert.equal(ask(web).call, undefined, 'the demo has no web search, so that question is off script');
+  const searching = reply({ tools: [...tools, { type: 'function', function: { name: 'valet__web_search' } }], messages: [{ role: 'user', content: web }] });
+  assert.equal(searching.call?.name, 'valet__web_search');
+  assert.equal(JSON.parse(searching.call!.args).query, 'how to back up Immich');
   assert.equal(ask('How are the downloads?').call?.name, 'lab__downloads_status');
   assert.equal(ask('turn off the lights').call?.name, 'lab__set_lights');
   const { data } = await inst.tools.service_status.run({});
@@ -416,4 +422,14 @@ test('demo: every chip the page can offer gets a real answer, never "I can\'t"',
     const r = ask(q);
     assert.ok(r.call || (r.text && !r.text.startsWith('This demo only knows a few things')), `no answer for chip: ${q} → ${r.text?.slice(0, 80)}`);
   }
+});
+
+test('demo: ⌘K finds a film in the library by part of its title, and says so when nothing matches', async () => {
+  const t = inst.tools.library_search;
+  assert.equal(t.find, 'query'); assert.equal(t.access, 'read');
+  const hit = await t.run({ query: 'inter', limit: 6 });
+  assert.deepEqual(hit.data.results.map((r: any) => r.title), ['Interstellar']);
+  assert.equal(hit.card.type, 'shelf');
+  const none = await t.run({ query: 'zzzz', limit: 6 });
+  assert.equal(none.data.results.length, 0); assert.equal(none.card.type, 'text');
 });

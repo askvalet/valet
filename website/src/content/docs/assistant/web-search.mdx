@@ -4,6 +4,8 @@ description: Let the assistant look things up on the web, through your own SearX
 sidebar: { order: 4.8 }
 ---
 
+import Shot from '~/components/Shot.astro';
+
 A local model knows nothing recent. With `assistant.webSearch` the assistant can search the web for what your homelab can't answer: a new release, a how-to, today's news. It's off unless you set it, and a config without it works as before.
 
 ```yaml title="config.yaml"
@@ -15,6 +17,8 @@ assistant:
 ```
 
 This is not the top-level `search:` option. That one is a link ⌘K opens in your browser. This one gives the assistant two tools.
+
+<Shot id="scene/web-search" full alt="The chat after “Search the web for how to back up Immich”: a Searched the web step, a card of three results with their sites and snippets, and the answer citing two of them." />
 
 ## What it adds
 

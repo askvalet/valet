@@ -5,6 +5,8 @@ sidebar:
   order: 9
 ---
 
+import Shot from '~/components/Shot.astro';
+
 Open `/wall`, or pick **Wall display** in ⌘K, and Valet becomes a screen to read from across the room: the time and the weather large across the top, and the cards you chose below, sized to fill the screen. It's made for a tablet on the wall or a spare monitor beside the server.
 
 The wall is its own page. It doesn't follow the main layout, so you decide exactly what's on it, and changing one leaves the other alone.
@@ -71,6 +73,8 @@ A wall tablet can switch a light, set the thermostat or run a scene. List the ca
 wall:
   touch: [lights.living, home.thermostat, { widget: home.locks, hold: true }]
 ```
+
+<Shot id="scene/wall-touch" full alt="A wall screen: the time and weather across the top, then a thermostat with big minus and plus buttons and its modes, the doors and the washer as large tiles, and who's home." />
 
 Only `controls` and `thermostat` cards have anything to press, and only where a wall page shows them. On the wall their controls grow for a finger: each switch, scene and button is a large tile that fills when it's on, a level is a pair of big − and + buttons a tenth of the way at a time, a choice is a row of its options, and the thermostat's steps and modes get bigger. A press shows at once, and gives way to what the service says when it answers. Every other card stays as it was, with nothing to press.
 

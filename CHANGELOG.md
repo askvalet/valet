@@ -27,6 +27,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 - More than one wall screen: `wall.screens: { kitchen: { pages, touch, token } }`, each at `/wall/<name>`, with its own pages and controls and, if it has one, its own pairing key.
 - Home Assistant's `cards`, `thermostats` and `schedules` say what kind of card they draw, so `config check` can tell when a `touch` entry has nothing to press.
 - An integration's search tool can say `nearest: true` when it always finds something, however far off (photos by what's in them): its rows then sit under the ones found by the words themselves. Immich's does.
+- The public demo's ⌘K searches its film library as you type, and its wall's thermostat and doors work by touch (a door needs a held press).
+- The docs show ⌘K searching inside a service, a web search answer with its results, an MCP client's approval card, a wall screen's touch controls and the machines cards. The configuration reference has sections for `find`, `secrets`, `profiles` and `users`, and the new options are described.
 
 ### Changed
 
@@ -34,6 +36,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- An MCP client's approval card at the foot of the page has a sheet of its own. It used the chat's see-through card, so over the page the cards under it showed through.
 - The welcome card no longer offers Lidarr or Readarr as part of the `arr` integration, which only takes Sonarr and Radarr: each is found as its own service now.
 
 ## [0.4.0] - 2026-11-09

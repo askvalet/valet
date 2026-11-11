@@ -4,6 +4,8 @@ description: Give the assistant an MCP server's tools under the same rules, or l
 sidebar: { order: 6 }
 ---
 
+import Shot from '~/components/Shot.astro';
+
 The assistant can use tools from any MCP server. Add it under `mcp:`.
 
 ```yaml title="config.yaml"
@@ -106,3 +108,5 @@ mcpServer:
 - **Not everything can be opened.** Valet's config, its rules and its pins can't be changed from here at any level, and a
   [read-only page](/start/sign-in/) offers only tools that look, since nobody there could approve.
 - **Approvals and refusals are in the activity log**, with what was asked.
+
+<Shot id="scene/mcp-ask-card" alt="An approval card at the foot of the page: Pause all downloads?, Asked by MCP client, with Not now and Pause." />

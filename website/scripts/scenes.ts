@@ -29,6 +29,14 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
     });
   }).listen(speechPort, '127.0.0.1');
   stop.push(() => { speech.close(); });
+  // a stand-in SearXNG for the web search shot: made-up pages on made-up sites, whatever is asked
+  const searchPort = await freePort(7820), MCP = 'scene-mcp-token-'.padEnd(48, 'x');
+  const web = createServer((req, res) => { req.resume(); res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ results: [
+    { title: 'Backing up Immich: the database and the upload folder', url: 'https://docs.example.org/immich/backups', content: 'Dump the Postgres database while Immich runs, then copy the upload library, where the originals live. Both are needed to restore.' },
+    { title: 'A nightly restic schedule for photo libraries', url: 'https://selfhosted.example.net/restic-photos', content: 'One timer, two paths: the database dump and the library. Keep 7 daily and 4 weekly snapshots.' },
+    { title: 'Restoring a photo server from backup', url: 'https://wiki.example.com/restore-photos', content: 'Restore the database first, then the files, then start the server and let it rescan.' },
+  ] })); }).listen(searchPort, '127.0.0.1');
+  stop.push(() => { web.close(); });
   // the demo's own model and config, on free ports, with the public host names taken out
   // the script starts itself when run as mock-model.mjs, on MOCK_PORT
   writeFileSync(resolve(dir, 'mock-model.mjs'), readFileSync(resolve(repo, 'demo/mock-model.mjs'), 'utf8'));
@@ -37,6 +45,10 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
     // a sandbox would hide voice and the server's model list, and label the model "(demo)"; this copy is thrown away anyway
     .replace('sandbox: true', 'sandbox: false').replace('http://valet-demo-model:8080/v1', `http://127.0.0.1:${modelPort}/v1`)
     .replace('/demo/wallpaper.jpg', resolve(repo, 'demo/wallpaper.jpg')).replace('type: demo-homelab', `type: demo-homelab\n    art: ${resolve(repo, 'demo/art/cameras')}`)
+    .replace(/^assistant:\n/m, `assistant:\n  webSearch: { provider: searxng, url: http://127.0.0.1:${searchPort} }\n`)
+    // a second wall screen with the house page alone, so its controls can be shot without waiting for the turns
+    .replace(/^wall:\n/m, 'wall:\n  night: false\n  screens:\n    house:\n      touch: [lab.thermostat, { widget: lab.doors, hold: true }]\n      layout:\n        - columns: { phone: 1, tablet: 2, desktop: 3, wide: 3 }\n          widgets: [{ widget: lab.thermostat, rows: 2 }, lab.doors, lab.presence]\n')
+    + `\nmcpServer:\n  token: ${MCP}\n  access: { default: read, lab: control }\n`
     + `\nvoice:\n  stt: { baseURL: http://127.0.0.1:${speechPort}/v1, model: whisper-1, language: en }\n  tts: { model: tts-1, voice: alloy }\n`);
   const start = (args: string[], env = {}) => { const p = spawn('node', args, { cwd: repo, stdio: 'ignore', env: { PATH: process.env.PATH, HOME: process.env.HOME, TZ: 'America/Toronto', ...env } }); stop.push(() => { p.kill('SIGTERM'); }); return p; };
   start([resolve(dir, 'mock-model.mjs')], { MOCK_PORT: String(modelPort) });
@@ -194,6 +206,39 @@ export async function scenes({ browser, root, repo, out, manifest, problems, sto
     if (!await page.getByText('Skipped').count()) problems.push('scene/approval-skipped: no Skipped step');
     await shot(page, cdp, 'scene/approval-skipped', await panel(), 0);
   } finally { await tools.context.close(); }
+
+  // ⌘K inside the services, web search, an MCP client's approval, and touch on the wall
+  const more = await make(1440, 900);
+  try {
+    const { page, cdp } = more;
+    await page.goto(url); await page.waitForSelector('#ask-box', { timeout: 15000 }); await quiet(page, 2500);
+    await page.keyboard.press('Control+k'); await sleep(900);
+    await page.keyboard.type('inter', { delay: 50 }); await sleep(2500);
+    if (!await page.getByText('Interstellar').count()) problems.push('scene/palette-find: no library result');
+    await shot(page, cdp, 'scene/palette-find');
+    await page.keyboard.press('Escape'); await sleep(400);
+    await page.fill('#ask-box', 'Search the web for how to back up Immich'); await page.keyboard.press('Enter');
+    await page.waitForSelector('textarea[aria-label="Message"]', { timeout: 15000 }); await sleep(10000);
+    if (!await page.getByText('Searched the web').count()) problems.push('scene/web-search: no web search step');
+    await shot(page, cdp, 'scene/web-search');
+    // an MCP client asks to pause the downloads: the card waits at the foot of the page
+    await page.goto(url); await page.waitForSelector('#ask-box', { timeout: 15000 }); await quiet(page, 2000);
+    void fetch(`${url}mcp`, { method: 'POST', headers: { Authorization: `Bearer ${MCP}`, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'lab__pause_downloads', arguments: {} } }) }).catch(() => {});
+    await sleep(3000);
+    if (!await page.getByText('MCP client').count()) problems.push('scene/mcp-ask: no approval card');
+    await shot(page, cdp, 'scene/mcp-ask');
+    const asked = await page.locator('body > div.fixed').last().boundingBox({ timeout: 4000 }).catch(() => null);
+    const card = await page.locator('body > div.fixed .glass-pop').last().boundingBox({ timeout: 4000 }).catch(() => null);
+    if (asked && card) await shot(page, cdp, 'scene/mcp-ask-card', card, 24);
+  } finally { await more.context.close(); }
+
+  const wallScreen = await make(1280, 800);
+  try {
+    const { page, cdp } = wallScreen;
+    await page.goto(`${url}wall/house`); await quiet(page, 4500);
+    await shot(page, cdp, 'scene/wall-touch');
+  } finally { await wallScreen.context.close(); }
 
   const phone = await make(390, 844, true);
   try {

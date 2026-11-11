@@ -86,7 +86,7 @@ const { LOGO } = await import('../../src/server/core.ts');
 // Valet's own building blocks have no brand, so they get a drawn tile: the same glyph the app uses for them
 const GLYPH: Record<string, string> = {
   aimonitor: 'Cpu', api: 'Braces', atsumeru: 'BookOpen', calendar: 'CalendarDays', camera: 'Cctv', clock: 'Clock', coinmarketcap: 'Bitcoin',
-  host: 'Server', http: 'Activity', iframe: 'AppWindow', links: 'Link', lobsters: 'Newspaper', markets: 'ChartLine', opendtu: 'SunMedium',
+  host: 'Server', http: 'Activity', machines: 'ServerCog', iframe: 'AppWindow', links: 'Link', lobsters: 'Newspaper', markets: 'ChartLine', opendtu: 'SunMedium',
   'rgb-control': 'Lightbulb', rss: 'Rss', todo: 'ListChecks', weather: 'CloudSun',
 };
 const glyph = async (name: string) => {
@@ -229,12 +229,14 @@ writeFileSync(join(gen, 'cards.json'), JSON.stringify([{ label: 'Card gallery', 
 
 // the configuration reference: every key in the schema, in the order config.ts has them
 const SECTIONS: [string, string[], string][] = [
-  ['Page', ['title', 'greeting', 'notice', 'location', 'timezone', 'weather', 'calendar', 'search', 'recap', 'welcome', 'reload', 'sandbox', 'links'], 'The top level of `config.yaml`.'],
+  ['Page', ['title', 'greeting', 'notice', 'location', 'timezone', 'weather', 'calendar', 'search', 'find', 'recap', 'welcome', 'reload', 'sandbox', 'links'], 'The top level of `config.yaml`.'],
   ['Appearance', ['appearance'], 'Look and feel. Every option becomes a CSS variable or a class, so a change shows without a rebuild. Left out, it sets nothing and the stylesheet\'s own value stands.'],
   ['Hero', ['hero'], 'The top of the overview.'], ['Chat', ['chat'], 'The assistant\'s window on the page. What it knows and may do is under `assistant`.'],
   ['Nav', ['nav'], 'The tab buttons.'], ['Menubar', ['menubar'], 'The rings in the top bar. A plain list of widget keys works too.'], ['Live', ['live'], 'Rings in the top bar for what\'s happening.'],
   ['Format', ['format'], 'How things are written. `auto` follows the browser.'], ['Labels', ['labels'], 'The words on the page. `{name}`, `{year}`, `{n}` and `{scope}` fill in.'],
   ['Wall', ['wall'], 'The wall display at `/wall`: its own pages, separate from the main layout. See [wall displays](/concepts/wall/).'], ['Backups', ['backups'], 'Backup health on Valet\'s own Backups card. Set to `false` to turn it off. See [backup health](/concepts/backups/).'],
+  ['Secrets', ['secrets'], 'Where a `${NAME}` comes from when the environment doesn\'t have it: a folder of secret files, Vault or a 1Password Connect server. See [secrets](/security/secrets/).'],
+  ['People', ['profiles', 'users'], 'What each signed-in person may see and do: `profiles` names a narrower Valet, `users` gives accounts one. Anyone not listed is an owner. See [people and profiles](/start/people/).'],
   ['Notify', ['notify'], 'Where "tell me when" reminders go when you\'re not looking.'], ['Auth', ['auth', 'allowedHosts'], 'Sign-in, and the names Valet answers to. See [sign-in and network safety](/start/sign-in/).'],
   ['History', ['history'], 'Each widget\'s headline numbers over time, so tiles can show a graph. Set to `false` to turn it off.'], ['Plugins', ['plugins'], 'Community integrations. A plain list of npm packages works too. See [the plugin toolkit](/build/plugins/).'],
   ['Assistant', ['assistant'], 'Left out, there is no assistant and the page loses nothing. See [models](/assistant/models/).'], ['MCP', ['mcp'], 'MCP servers the assistant may use. See [MCP](/assistant/mcp/).'], ['MCP server', ['mcpServer'], 'Valet as a read-only MCP server for an AI client you use. See [MCP](/assistant/mcp/#valet-as-an-mcp-server).'],

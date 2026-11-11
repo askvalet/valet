@@ -41,6 +41,11 @@ export const ABOUT = {
 };
 const aboutSay = said => { const t = /^what(?:'?s| is) (.+?) about\??$/i.exec(said.trim())?.[1]?.toLowerCase(); return t && ABOUT[t]; };
 export const ANSWERS = [
+  // web search, where `assistant.webSearch` is set (the docs' screenshots); without it there's no such tool and this is off script
+  [/\b(?:search the web|on the web|look (?:it|that) up online)\b/i, 'web_search', said => ({ query: said.replace(/^.*?\bfor\b\s*/i, '').replace(/[?.!]+$/, '') || said }),
+    d => { const r = d.results ?? []; if (!r.length) return 'I searched the web and found nothing useful.';
+      const at = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
+      return `Back up two things: the database, as a dump made while Immich runs, and the upload folder with your originals. ${r[0].title} (${at(r[0].url)}) walks through both, and ${at(r[1]?.url ?? r[0].url)} has a restic schedule for them. Test a restore before you trust it.`; }],
   [/^what(?:'?s| is) .+ about\??$/i, null, {}, (d, said) => aboutSay(said) ?? `${standIn}, so it only knows what's playing right now. On a real Valet, the assistant would look the title up for you.`],
   [/\b(?:restart|reboot|revive)\b/i, null, {}, () => "Valet can't restart containers or services. It reads Docker through a read-only proxy on purpose, so a mistake, or a bad prompt, can't stop your stack. Restart it in Docker or Portainer."],
   [/\bhow (?:do|can|would) i\b.*\b(?:add|connect|support|build|make|write)\b|\b(?:valet|you) (?:doesn'?t|don'?t) (?:support|have)\b|\bnot supported\b/i, 'docs_search', {}, () => 'Two ways. If it has a JSON API, the `api` integration turns it into a card from YAML, with no code. Otherwise, one file in `data/integrations` adds a full integration in about ten lines. The Build an integration page in the docs has both.'],
