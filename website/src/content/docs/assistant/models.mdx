@@ -69,6 +69,7 @@ If that matters to you, use a local model, or set sensitive integrations to `non
 | `tools` | `all` | `all` sends every tool with every request. `lazy` sends Valet's own tools and a line per integration, and loads an integration's tools when a question needs them: a much smaller prompt on a big setup, for one more step. `auto` is `lazy` once the tools add up to about 6k tokens. |
 | `contextWindow` | known Claude models, or what your server reports | How many tokens the model holds, for the chat's context meter and for keeping long chats inside it. |
 | `compact` | `true` | Near a known window, summarise the oldest part of a long chat for the model. `false` sends the last 24 messages instead. |
+| `vision` | `true` for Anthropic, else `false` | The model can see images: one you attach in chat is shown to it, not only named. See [images](#images). |
 | `models` | none | More models to switch to in the chat, and `auto` for everything the server lists. See [more than one model](#more-than-one-model). |
 | `background` | see below | What it does on its own. |
 | `suggestions` | four questions | Offered on an empty chat and in the palette. |
@@ -102,6 +103,26 @@ The chat shows a quiet line where that happened, "Earlier messages summarised to
 
 If the summary can't be written, or the window isn't known, the oldest messages are left out instead (the last 24 go), and the model is told that earlier turns are missing. If the model's server still says the request is too long, Valet sends it once more with only your latest question and a summary, and if that fails too, the chat says so in plain words instead of showing an error.
 
+### Images
+
+With `vision: true`, an image you attach in the chat (PNG, JPEG, WebP or GIF) goes to the model as a picture, so it can say what it shows: read a screenshot, describe a photo, find the total on a receipt.
+
+```yaml
+assistant:
+  model: qwen3-vl:8b
+  vision: true
+```
+
+Claude models can see, so with `provider: anthropic` it's on unless you set `vision: false`. For any other server it's off unless you turn it on, because a model that can't see makes its server refuse the whole message: check that yours takes images first (vision models on Ollama, llama.cpp started with `--mmproj`, vLLM, OpenAI, OpenRouter). In [`models`](#more-than-one-model), each model says for itself: a choice doesn't take `vision` from the main settings, since another model on the same server may not see. An `auto: true` entry with `vision: true` says every model its server lists can.
+
+- **The newest four images** in a chat go with each question, each up to 5 MB. An older one, or one too big, is named but not shown, and the model is told so.
+- **It's the image itself.** Valet checks the first bytes, so a file called `.png` that isn't one isn't sent.
+- **Pictures cost context.** Each takes about as much of the window as a page of text, more on Claude for a large image.
+- **Words in a picture are only words.** The model is told that text in an image is something to read, never an instruction. A hosted model sees the whole picture, so keep what's private on a local one.
+- **Filing still works.** The image is also named in the message, so "file this" sends it to Paperless as before.
+
+An image is shown to the model only in the chat on the page, not in [Telegram](/assistant/telegram/) or to an [MCP client](/assistant/mcp/).
+
 ## Keeping the context small
 
 Every integration you connect adds its tools to every message the assistant sends, whether the question is about it or not. On a busy homelab with about 90 tools, the first step of a chat is about 16,000 tokens, and about 90% of that is tool definitions. A small local model reads all of it before it starts, so a smaller first step answers sooner. What helped, and what didn't, in testing against a local model:
@@ -131,7 +152,7 @@ assistant:
       reasoning: off
 ```
 
-Only `model` is required. An entry can also set `name` (what the menu shows; the model id if left out), `provider`, `baseURL`, `apiKey`, `contextWindow`, `reasoning` and `options`. What it leaves out comes from the main settings, with three exceptions: `baseURL` carries over only to the same provider, `apiKey` only to the same server, so a key never goes to a host it wasn't written for, and `contextWindow` is each model's own. Access, tools, steps and instructions are the same for every choice.
+Only `model` is required. An entry can also set `name` (what the menu shows; the model id if left out), `provider`, `baseURL`, `apiKey`, `contextWindow`, `reasoning`, `options` and `vision`. What it leaves out comes from the main settings, with three exceptions: `baseURL` carries over only to the same provider, `apiKey` only to the same server, so a key never goes to a host it wasn't written for, and `contextWindow` is each model's own. Access, tools, steps and instructions are the same for every choice.
 
 The page only ever sends the name of a choice. The server checks it against this list and refuses anything else, so nobody can point the chat at a model or server you didn't configure. The context meter and long-chat summaries follow the chosen model's window. Background calls (the brief, shared causes, suggested questions, rules) always use the main model. `config check` names duplicate names and an Anthropic entry without a key.
 
@@ -164,7 +185,7 @@ assistant:
     - { auto: true, name: Claude, provider: anthropic, apiKey: "${ANTHROPIC_API_KEY}" }
 ```
 
-An `auto: true` entry can set `name`, `provider`, `baseURL`, `apiKey`, `reasoning` and `options`, and fills in the rest from the main settings by the same rules as a model you named: `baseURL` only from the same provider, `apiKey` only for the same server. A model it finds runs on that server, with that server's key, and no other. `name` heads the server's models in the menu (left out, the server's host, like `openrouter.ai`; the main server's are "On the server").
+An `auto: true` entry can set `name`, `provider`, `baseURL`, `apiKey`, `reasoning`, `options` and `vision`, and fills in the rest from the main settings by the same rules as a model you named: `baseURL` only from the same provider, `apiKey` only for the same server. A model it finds runs on that server, with that server's key, and no other. `name` heads the server's models in the menu (left out, the server's host, like `openrouter.ai`; the main server's are "On the server").
 
 Each model keeps its own id unless another choice already has it: the main model, one you named, or one an earlier server in the list offers. Then it's told apart by its server's name or host, as in `OpenRouter/qwen3.8-27b`.
 

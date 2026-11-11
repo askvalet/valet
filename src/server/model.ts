@@ -44,7 +44,9 @@ function inherit(a: Assistant, m: Item, model: string): Assistant {
   const provider = m.provider ?? a.provider, baseURL = m.baseURL ?? (provider === a.provider ? a.baseURL : undefined);
   const apiKey = m.apiKey ?? (provider === a.provider && baseURL === a.baseURL ? a.apiKey : undefined);
   return { ...a, provider, baseURL, apiKey, model, contextWindow: 'auto' in m ? undefined : m.contextWindow,
-    reasoning: m.reasoning ?? a.reasoning, options: { ...a.options, ...m.options } };
+    reasoning: m.reasoning ?? a.reasoning, options: { ...a.options, ...m.options },
+    // whether it can see is the model's own: another model on the same server may not, and sending it an image fails the chat
+    vision: m.vision };
 }
 /** What the chat may run on: the main settings first (the default), then each of `assistant.models`, known by its name or
  *  model id, filled in from the main settings. */
@@ -187,7 +189,8 @@ export function discovery(a: Assistant, o: { fetch?: typeof fetch; now?: () => n
       if (!l.models.some(m => m.id === id)) l = await list(true);
       const m = l.models.find(x => x.id === id);
       const s = m && all[m.server].settings;
-      return m && s && { ...s, model: m.model, contextWindow: m.window, server: `${where(s)} ${s.apiKey ?? ''}` };
+      // bare `auto` lists the main server with the main settings, but the main model seeing says nothing of the others
+      return m && s && { ...s, model: m.model, contextWindow: m.window, server: `${where(s)} ${s.apiKey ?? ''}`, ...(s === a && m.model !== a.model ? { vision: undefined } : {}) };
     },
   };
 }

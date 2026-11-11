@@ -13,6 +13,7 @@ The rules on this page are enforced by Valet's code. They hold whatever the mode
 - Search documents, bookmarks and photos, if those integrations are there.
 - Read logs from Docker and from systemd through the [Host](/integrations/host/) agent, and say what they show.
 - File something you attach or paste, and save a link you send, once you approve.
+- Look at an image you attach, if the model can see ([`vision`](/assistant/models/#images)).
 - Set a reminder, once you approve. A plain rule checks it every half minute, with no model involved, and it goes to your [notification channels](/reference/configuration/#notify).
 - Make changes you approve.
 - Set up a [rule](/assistant/rules/), once you approve: one action that then runs by itself every time something happens, checked by code with no model involved.
@@ -90,7 +91,7 @@ These edits go through the same live reload as yours, and your comments and spac
 
 ## Attachments
 
-Files attached in chat are kept under `data/uploads` for a day, up to 50 MB each, and never served back out. They're for filing. On a read-only page or in a sandbox, attaching is off.
+Files attached in chat are kept under `data/uploads` for a day, up to 50 MB each, and never served back out. They're for filing, and a model that can see is shown the images among them ([`vision`](/assistant/models/#images)). On a read-only page or in a sandbox, attaching is off.
 
 ## Its own docs
 
