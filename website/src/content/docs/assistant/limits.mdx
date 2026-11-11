@@ -13,7 +13,7 @@ The rules on this page are enforced by Valet's code. They hold whatever the mode
 - Search documents, bookmarks and photos, if those integrations are there.
 - Read logs from Docker and from systemd through the [Host](/integrations/host/) agent, and say what they show.
 - File something you attach or paste, and save a link you send, once you approve.
-- Look at an image you attach, if the model can see ([`vision`](/assistant/models/#images)).
+- Read a text file you attach (notes, CSV, Markdown, JSON, a log), and look at an image if the model can see ([`vision`](/assistant/models/#images)). See [attachments](#attachments).
 - Set a reminder, once you approve. A plain rule checks it every half minute, with no model involved, and it goes to your [notification channels](/reference/configuration/#notify).
 - Make changes you approve.
 - Set up a [rule](/assistant/rules/), once you approve: one action that then runs by itself every time something happens, checked by code with no model involved.
@@ -91,7 +91,12 @@ These edits go through the same live reload as yours, and your comments and spac
 
 ## Attachments
 
-Files attached in chat are kept under `data/uploads` for a day, up to 50 MB each, and never served back out. They're for filing, and a model that can see is shown the images among them ([`vision`](/assistant/models/#images)). On a read-only page or in a sandbox, attaching is off.
+Files attached in chat are kept under `data/uploads` for a day, up to 50 MB each, and never served back out. Tools can file them (Paperless, say), and the assistant reads some of them itself:
+
+- **Text files**, for any model: notes, CSV, Markdown, JSON, a log or a config file. Valet decides from the file's bytes, not its name: UTF-8 text with no binary in it. Its words go with your message, so you can ask "what's the total in this?" or "summarise these notes". The newest four in a chat go, each up to 100,000 characters (about 25,000 tokens) and all of them together up to 200,000 characters or a quarter of the model's window, whichever is less. A longer file is cut at the end of a line, and the model is told it was cut. A PDF is a document to file, not text to read.
+- **Images**, for a model that can see ([`vision`](/assistant/models/#images)).
+
+What's in a file is given to the model as something to read, never as instructions, the same as a web page or a picture: a line in a file telling it to do something is just a line. A hosted model gets the whole file, so keep private files to a local one. Anything else (a PDF, a spreadsheet, a zip) is named in the message for the tools to use, as before. On a read-only page or in a sandbox, attaching is off.
 
 ## Its own docs
 
