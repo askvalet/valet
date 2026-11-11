@@ -111,6 +111,8 @@ layout:
       - { widget: lab.containers, size: medium, cols: 3 }
       - { widget: lab.drives, size: medium, cols: 2, rows: 2 }
       - { widget: lab.traffic, size: medium, cols: 3 }   # under the containers: the network's day
+      - { widget: lab.machines, cols: 5 }   # several machines, one Valet: what `type: machines` shows
+      - { widget: lab.nas, cols: 3 }        # and one machine's own card   # several machines, one card: what `type: machines` shows
   - title: AI
     display: tiles
     overview: false

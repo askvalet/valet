@@ -357,6 +357,8 @@ export default ({ z, defineIntegration, fmt: write }) => {
       const inDays = n => fmt.day(now() + n * 864e5);
       const drives = [['Backup 12 TB', 38, 27150], ['Media 8 TB', 41, 15770], ['System NVMe', 58, 5856]], hottest = drives.reduce((a, b) => b[1] > a[1] ? b : a), HOT = 55;
       const lastMonth = () => ({ tv: share(playsOf('tv'), past(30, .2, 4, 864e5)), movies: share(playsOf('movie'), past(30, .1, 2, 7e7)) });
+      // [name, CPU %, memory %, fullest disk %, °C, days up]: the server this page is about, and the three machines beside it
+      const fleet = () => [['Server', cpuLoad(), pctOf(memoryNow()), 61, cpuTemp(), 41], ['NAS', 6 + hash(Math.floor(now() / 5000)) % 5, 38, 72, 39, 118], ['Pi', 3 + hash(Math.floor(now() / 7000)) % 4, 44, 23, 47, 63], ["Daniel's Desktop", 9 + hash(Math.floor(now() / 4000)) % 9, 52, 48, 51, 2]];
       const statusCard = (title, icon, items) => ({ type: 'status', title, icon, items });
       const containers = () => ['bazarr', 'caddy', 'home-assistant', 'immich', 'immich-postgres', 'immich-redis', 'karakeep', 'mealie', 'paperless', 'pi-hole', 'plex', 'prowlarr', 'qbittorrent', 'radarr', 'sonarr', 'tautulli', 'uptime-kuma']
         .map(n => {
@@ -381,6 +383,14 @@ export default ({ z, defineIntegration, fmt: write }) => {
           return { ...statusCard('Uptime', 'pulse', s.map(({ group, ...x }) => x)), note: '99.8% over 30 days',
             summary: { label: 'Uptime', icon: 'pulse', value: '99.8%', sub: down.length ? `30 days · ${down.map(x => x.name).join(', ')} down` : '30 days · all up', tone: down.length ? 'warn' : 'good',
               marks: s.filter(x => !x.quiet).map(x => ({ pct: x.ok ? .55 + hash(x.name) % 45 / 100 : .18, tone: x.ok ? undefined : 'bad', label: `${x.name} · ${x.ok ? 'up' : 'down'}` })) } }; }),
+        // several machines, one Valet: the overview `type: machines` draws, for the server and the three beside it
+        machines: w('Machines', 5_000, () => ({ type: 'table', title: 'Machines', icon: 'cpu', columns: ['Machine', 'CPU', 'Memory', 'Disk', 'Temp', 'Up'],
+          rows: fleet().map(([name, cpu, mem, disk, temp, days]) => [name, `${cpu}%`, `${mem}%`, `${disk}%`, `${Math.round(temp)}°C`, fmt.span(days * 864e5)]),
+          summary: { label: 'Machines', icon: 'cpu', value: '4 of 4', sub: 'machines', tone: 'good', pct: 1 } })),
+        // and one machine's own card, as `machines.<name>` is
+        nas: w('NAS', 5_000, () => { const [name, cpu, mem, disk, temp, days] = fleet()[1];
+          return { type: 'stats', title: name, icon: 'cpu', note: 'Debian 13', items: [{ label: 'CPU', value: cpu, unit: '%', pct: cpu / 100, trend: past(48, 4, 11, 300_000), sub: `${Math.round(temp)}°C` },
+            { label: 'Memory', value: mem, unit: '%', pct: mem / 100 }, { label: 'Disk', value: disk, unit: '%', pct: disk / 100 }, { label: 'Up', value: fmt.span(days * 864e5) }] }; }),
         containers: w('Containers', 30_000, () => ({ ...statusCard('Containers', 'disk', containers()), layout: 'wall' })),
         drives: w('Drives', 300_000, () => ({ type: 'list', layout: 'temps', title: 'Drives', icon: 'disk', items: drives.map(([title, t, age]) => ({ title, subtitle: `Powered on ${fmt.span(age * 36e5, { style: 'long', parts: 1 })}`, meta: `${t}°C`, pct: (t - 20) / 40, tone: t >= HOT ? 'warn' : undefined })),
           summary: { label: 'Drives', icon: 'disk', value: `${hottest[1]}°C`, sub: hottest[1] >= HOT ? `${hottest[0]} is running warm` : `All ${drives.length} healthy`, tone: hottest[1] >= HOT ? 'warn' : 'good', marks: drives.map(([title, t]) => ({ pct: (t - 20) / 40, label: `${title} · ${t}°C` })) } })),
@@ -651,6 +661,16 @@ export default ({ z, defineIntegration, fmt: write }) => {
           run_vacuum: { label: 'Sent the vacuum', confirm: ({ command, rooms: ids = [] }) => ({ title: command === 'dock' ? 'Send the vacuum back to its dock?' : command === 'locate' ? 'Make the vacuum beep?' : ids.length ? `Clean the ${rooms.find(r => r[0] === ids[0])?.[1].toLowerCase() ?? 'room'}?` : 'Clean the whole house?', logo: '/api/icon/home-assistant', verb: command === 'dock' ? 'Dock' : command === 'locate' ? 'Find' : 'Clean' }), access: 'control', input: z.object({ command: z.enum(['start', 'clean_rooms', 'dock', 'locate']), rooms: z.array(z.number()).optional() }), description: 'Start, dock or find the robot vacuum, or clean some rooms.',
             run: async args => { vacuum(args); const { status } = robot(); return { data: { done: true, status }, card: textCard(status) }; } },
           what_happened: { label: 'Looked back', access: 'read', input: z.object({}), description: 'What happened recently.', run: async () => ({ data: { summary: `Mealie ran out of memory at 3:12 AM, the backup finished at 4:00, and a new episode of ${SHELF[0]} arrived.` }, card: { type: 'list', title: 'Overnight', icon: 'clock', items: [{ title: 'Mealie stopped', subtitle: 'Out of memory', meta: '3:12 AM', tone: mealieUp() ? undefined : 'bad' }, { title: 'Backup finished', subtitle: '41 GB, verified', meta: '4:00 AM' }, { title: 'New episode', subtitle: SHELF[0], meta: '5:30 AM' }] } }) },
+          // the rest of what ⌘K finds as you type: the books, the papers, the photos, the games and the week's meals, each by its words
+          ...Object.fromEntries([
+            ['books', 'the audiobooks', 'book', 'poster', () => ART.library.map(b => ({ title: b.title, subtitle: b.author, image: b.cover }))],
+            ['documents', 'the documents', 'file', 'poster', () => PAPERS.map((p, n) => ({ title: p.title, subtitle: `${p.org} · ${p.date}`, image: ctx.image(`doc${n}`) }))],
+            ['photos', 'the photos', 'image', 'wide', () => [...ART.photos.map((p, n) => ({ title: p.title, image: ctx.image(`photo${n}`) })), ...TRIP.map(([n, title, subtitle]) => ({ title, subtitle, image: ctx.image(`album${n}`) }))]],
+            ['games', 'the games', 'game', 'square', () => ART.games.map(g => ({ title: g.title, subtitle: g.system, image: g.cover }))],
+          ].map(([name, what, icon, aspect, all]) => [`${name}_search`, { find: 'query', label: `Searched ${what}`, access: 'read', description: `Search ${what} by title.`,
+            input: z.object({ query: z.string(), limit: z.number().int().min(1).max(20).default(8) }),
+            run: async ({ query, limit }) => { const q = String(query).toLowerCase(), hits = all().filter(x => `${x.title} ${x.subtitle ?? ''}`.toLowerCase().includes(q)).slice(0, limit);
+              return { data: { results: hits.map(({ title, subtitle }) => ({ title, subtitle })) }, card: hits.length ? { type: 'shelf', title: `${name[0].toUpperCase()}${name.slice(1)} · “${query}”`, icon, aspect, items: hits } : { type: 'text', text: `Nothing in ${what} for “${query}”.` } }; } }])),
         },
       };
     },

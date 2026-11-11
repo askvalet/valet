@@ -35,6 +35,10 @@ runs unchanged, and `static/backend.ts` answers its `/api` calls in the browser:
 Valet's real chat, tools and approvals. Each visitor's changes live in their tab and are gone on reload. The layout and the year
 in review are saved from a real server at build time.
 
+⌘K searches inside the made-up services as you type, as a real Valet does: films, audiobooks, documents, photos and games
+by title (try "dune"), each under the service it would come from. The foot of the Services tab has what `type: machines` shows
+for several machines, and one machine's own card.
+
 One change to the page works from chat, to show what the real assistant does: "Add an internet speed card" asks first, then the card appears, and "undo" takes it away. It's scripted and lives in the tab, like everything else.
 
 Voice works without a server too. The mic is there but only says where voice is set up: it never records or asks for the

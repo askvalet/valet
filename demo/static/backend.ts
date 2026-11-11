@@ -13,6 +13,7 @@ import plugin from '../integrations/homelab.mjs';
 import { modelList, reply, suggestions } from '../mock-model.mjs';
 import { discovery } from '../../src/server/model.ts';
 import { voiceKey } from '../../src/shared/speech.ts';
+import { hitsOf } from '../../src/shared/search.ts';
 
 const snapshot = (name: string) => realFetch(`/snapshot/${name}.json`).then(r => r.json());
 const realFetch = window.fetch.bind(window), json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -93,6 +94,7 @@ const remind = () => {
   };
   return t;
 };
+const FOUND_IN: Record<string, string> = { library_search: 'Plex', books_search: 'Audiobookshelf', documents_search: 'Paperless', photos_search: 'Immich', games_search: 'RomM' };
 let started: Promise<void> | undefined;
 const start = () => started ??= snapshot('page').then((page: any) => {
   for (const key of Object.keys(page.widgets)) { const [inst, name] = key.split('.'), w = instances.get(inst)?.widgets[name]; if (!w) continue; known.set(key, { key, at: 0 }); void refresh(key); setInterval(() => { if (!document.hidden) void refresh(key); }, w.interval ?? 10_000); }
@@ -138,6 +140,20 @@ async function answer(path: string, method: string, body: any, signal?: AbortSig
   }
   // ⌘K's docs, from the pages saved when the site was built
   if (route === 'docs') { docs ??= snapshot('docs').catch(() => ({ parts: [], integrations: [] })); return json({ docs: findDocs(await docs, new URLSearchParams(path.split('?')[1] ?? '').get('q') ?? '') }); }
+  // ⌘K's search inside the services, as the server's /api/search: every search tool at once, a line per answer as it
+  // arrives. On a real Valet each service is its own integration; here they're all the made-up homelab, named by what they'd be
+  if (route === 'search') {
+    const q = (new URLSearchParams(path.split('?')[1] ?? '').get('q') ?? '').trim().replace(/\s+/g, ' ').slice(0, 80), text = new TextEncoder();
+    const finders = q.length < 2 ? [] : Object.entries<any>(lab.tools ?? {}).filter(([, t]) => t.find && t.access === 'read');
+    return new Response(new ReadableStream({ async start(c) {
+      await Promise.all(finders.map(async ([name, t], n) => {
+        await sleep(between(90, 420));
+        const card = await t.run(t.input.parse({ [t.find]: q, limit: 6 })).then((o: any) => hitsOf(o.card, 1).length ? o.card : null).catch(() => null);
+        c.enqueue(text.encode(`${JSON.stringify({ id: `lab__${name}`, n, source: FOUND_IN[name] ?? integration.name, card })}\n`));
+      }));
+      c.close();
+    } }), { headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8' } });
+  }
   if (route === 'files') return json({ error: 'This demo keeps nothing, so it takes no files' }, 403);
   if (route === 'push') return method === 'GET' ? json({ ready: false, why: 'demo' }) : json({ error: 'The demo can\'t send notifications', why: 'demo' }, 403);
   if (route === 'action') {

@@ -102,7 +102,8 @@ const hasFile = c => /\[attached: /.test(textOf(c)) || (Array.isArray(c) && c.so
 const sick = text => /bazarr is unhealthy/i.test(/Wrong right now:\n([\s\S]*?)(?:\n\n|$)/.exec(text)?.[1] ?? '');
 const mealieDown = text => /mealie is down/i.test(/Wrong right now:\n([\s\S]*?)(?:\n\n|$)/.exec(text)?.[1] ?? '');
 /** The sentence without its manners, so "Hey, could you restart Mealie, please?" is the same order as "restart mealie". */
-const plain = said => said.replace(/\n?\[attached: [^\]]*\]/g, '').trim().replace(/^(?:(?:hey|hi|ok|okay|valet|please)\b[,!]*\s+)+/i, '').replace(/^(?:can|could|would|will) you (?:please )?(.*?)\??$/i, '$1').replace(/^please\s+/i, '').replace(/[,\s]+(?:please|thanks|thank you)[.!\s]*$/i, '').replace(/[.!\s]+$/, '');
+// an @mention says where to look, not what's asked, so the script reads the words around it
+const plain = said => said.replace(/\n?\[attached: [^\]]*\]/g, '').replace(/(^|\s)@[\w.-]+(?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim().replace(/^(?:(?:hey|hi|ok|okay|valet|please)\b[,!]*\s+)+/i, '').replace(/^(?:can|could|would|will) you (?:please )?(.*?)\??$/i, '$1').replace(/^please\s+/i, '').replace(/[,\s]+(?:please|thanks|thank you)[.!\s]*$/i, '').replace(/[.!\s]+$/, '');
 const NO = /^(?:no|nope|nah|not now|don'?t|leave it|no thanks)\b[\s.!]*$/i, HELLO = /^(?:hi|hello|hey|yo|hiya|good (?:morning|afternoon|evening))\b[\s.!]*$/i, THANKS = /^(?:thanks?|thank you|ty|cheers|nice|great|cool|perfect)\b[\s.!]*$/i;
 const YES = /^(?:yes|yep|yeah|sure|ok|okay|go ahead|do it|please do|yes please)\b[\s.!]*$/i;
 
