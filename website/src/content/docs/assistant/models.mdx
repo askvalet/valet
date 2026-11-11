@@ -120,6 +120,7 @@ Claude models can see, so with `provider: anthropic` it's on unless you set `vis
 - **Pictures cost context.** Each takes about as much of the window as a page of text, more on Claude for a large image.
 - **Words in a picture are only words.** The model is told that text in an image is something to read, never an instruction. A hosted model sees the whole picture, so keep what's private on a local one.
 - **Filing still works.** The image is also named in the message, so "file this" sends it to Paperless as before.
+- **Text files don't need `vision`.** Any model reads the words of a text file you attach. See [attachments](/assistant/limits/#attachments).
 
 An image is shown to the model only in the chat on the page, not in [Telegram](/assistant/telegram/) or to an [MCP client](/assistant/mcp/).
 
