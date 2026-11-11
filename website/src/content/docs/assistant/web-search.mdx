@@ -100,7 +100,7 @@ A search result or a web page can say "ignore your instructions". Valet treats t
 Valet sits inside your network, so a tool that fetches an address is a way in if it's careless. `web_read`:
 
 - takes `http` and `https` only, and no address with a sign-in in it;
-- looks the name up and refuses it unless every address it has is public. Loopback, private ranges (`10/8`, `172.16/12`, `192.168/16`), link-local (`169.254/16`, `fe80::/10`), unique-local (`fc00::/7`), carrier NAT (`100.64/10`), multicast, reserved and unspecified addresses are all refused, also when an IPv4 address is written as IPv6;
+- looks the name up and refuses it unless every address it has is public. Loopback, the private ranges of RFC 1918, link-local (`169.254/16`, `fe80::/10`), unique-local (`fc00::/7`), carrier NAT (`100.64/10`), multicast, reserved and unspecified addresses are all refused, also when an IPv4 address is written as IPv6;
 - connects to the address it checked, so a second lookup can't swap in another;
 - follows at most four redirects itself, and checks each one the same way;
 - sends a plain GET with no cookies and no keys;
