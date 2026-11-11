@@ -275,8 +275,11 @@ export const MessageRow = memo(function MessageRow({ m, isLast, latest = isLast,
     return (
       <div className="chat-msg flex flex-col items-end gap-1.5">
         {pics.length > 0 && <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
-          {pics.map((p, i) => <a key={i} href={p.url} target="_blank" rel="noopener" className="chat-in block overflow-hidden rounded-surface border border-white/10 shadow-card">
-            <img src={p.url} alt={p.name} title={p.name} className={cn('block object-cover', pics.length > 1 ? 'size-28' : 'max-h-56 max-w-[min(18rem,100%)]')} /></a>)}
+          {pics.map((p, i) => <a key={i} href={p.url} target="_blank" rel="noopener" className="chat-in block max-w-full overflow-hidden rounded-surface border border-white/10 shadow-card">
+            <img src={p.url} alt={p.name} title={p.name} className={cn('block object-cover', pics.length > 1 && 'size-28')}
+              // one picture keeps its shape, inside 18rem by 14rem. A fixed cap, not a percentage: the frame around it sizes
+              // to what the picture would be without one, which for a wide screenshot is the whole chat
+              style={pics.length > 1 ? undefined : { maxWidth: '18rem', maxHeight: '14rem', width: 'auto', height: 'auto' }} /></a>)}
         </div>}
         {words && <div className="chat-in chat-bubble max-w-[85%] rounded-surface rounded-br-md px-3.5 py-2 text-item">
           <span className="whitespace-pre-wrap"><WithMentions text={words} /></span>
@@ -537,7 +540,10 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
     for (const f of files) if (f.thumb && !f.id) URL.revokeObjectURL(f.thumb);
     following.current = true; play('send'); setSent(n => n + 1); setVoiceNote(null);
     if (voice?.speak) { speaker.stop(); if (voice.speakReplies) speaker.unlock(); }
-    sendMessage({ text: [text.trim() || 'File this.', ...lines].join('\n') }); if (heard === undefined) setDraft(''); setFiles([]);
+    // a file sent with no words is to be filed, as it always was; images on their own go as they are, for a model that can
+    // see to say what they show (one that can't still offers to file them)
+    const bare = !text.trim() && ready.some(f => !f.thumb);
+    sendMessage({ text: [bare ? 'File this.' : text.trim(), ...lines].filter(Boolean).join('\n') }); if (heard === undefined) setDraft(''); setFiles([]);
   };
   // with voice.speakReplies each finished answer is read aloud; one waiting for approval isn't finished, and the click still decides
   const answering = useRef(false);
