@@ -22,7 +22,9 @@ export default defineIntegration({
       for (const line of text.split('\n')) {
         const m = line.match(/^(monitor_\w+)\{([^}]*)\}\s+([\d.e+-]+)/); if (!m) continue;
         const labels = Object.fromEntries([...m[2].matchAll(/(\w+)="([^"]*)"/g)].map(x => [x[1], x[2]]));
-        const id = labels.monitor_id, v = Number(m[3]);
+        // Kuma 2 labels each line with its monitor's id; Kuma 1 doesn't, so there a monitor is everything it's described by
+        // (two with one name still differ by type or address). Without this, every Kuma 1 monitor was one row.
+        const id = labels.monitor_id ?? ['monitor_name', 'monitor_type', 'monitor_url', 'monitor_hostname', 'monitor_port'].map(k => labels[k] ?? '').join('\u0000'), v = Number(m[3]);
         const e = by.get(id) ?? { name: labels.monitor_name, status: 1 }; by.set(id, e);
         if (m[1] === 'monitor_status') e.status = v;                       // 1 up, 0 down, 2 pending, 3 maintenance
         else if (m[1] === 'monitor_response_time') e.ms = v > 0 ? Math.round(v) : undefined;
@@ -51,9 +53,10 @@ export default defineIntegration({
             return {
               type: 'status', title: 'Uptime', icon: 'pulse', href: cfg.href ?? cfg.url,
               note: avg != null ? `${pct(avg)} over 30 days` : undefined,
-              summary: { label: 'Uptime', icon: 'pulse', value: down.length ? `${down.length} down` : pct(avg), tone: down.length ? 'bad' : certs.length ? 'warn' : 'good',
-                sub: down.length ? down.map(m => m.name).join(', ') : `${list.length} monitors · 30 days`, detail: certs.length ? `cert ${Math.min(...certs.map(c => c.certDays!))} days` : undefined, pct: avg },
-              items: list.map(m => ({ name: m.name, icon: iconFor(m.name), ok: m.status !== 0, state: m.status === 0 ? 'down' as const : m.status === 2 ? 'degraded' as const : m.status === 3 ? 'off' as const : 'up' as const, ms: m.ms, detail: m.status === 0 ? 'down' : m.status === 3 ? 'maintenance' : `${pct(m.month)} · 30d` })),
+              // Kuma 1 reports no uptime ratios: there it's how many are up, not a percentage nobody sent
+              summary: { label: 'Uptime', icon: 'pulse', value: down.length ? `${down.length} down` : avg != null ? pct(avg) : 'All up', tone: down.length ? 'bad' : certs.length ? 'warn' : 'good',
+                sub: down.length ? down.map(m => m.name).join(', ') : `${list.length} ${list.length === 1 ? 'monitor' : 'monitors'}${avg != null ? ' · 30 days' : ''}`, detail: certs.length ? `cert ${Math.min(...certs.map(c => c.certDays!))} days` : undefined, pct: avg },
+              items: list.map(m => ({ name: m.name, icon: iconFor(m.name), ok: m.status !== 0, state: m.status === 0 ? 'down' as const : m.status === 2 ? 'degraded' as const : m.status === 3 ? 'off' as const : 'up' as const, ms: m.ms, detail: m.status === 0 ? 'down' : m.status === 3 ? 'maintenance' : m.month != null ? `${pct(m.month)} · 30d` : m.status === 2 ? 'pending' : 'up' })),
             };
           },
         },

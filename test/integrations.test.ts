@@ -134,6 +134,25 @@ test('uptime kuma: parses metrics; a down monitor makes the summary red', async 
   assert.match(card.summary.value, /1 down/);
 });
 
+test('uptime kuma 1: no monitor_id, so each monitor is its name, type and address, never all of them as one', async () => {
+  // as Uptime Kuma 1.23 writes it: no monitor_id and no uptime ratios. Two monitors share a name
+  const line = (name: string, type: string, url: string, host: string, v: number, metric = 'monitor_status') =>
+    `${metric}{monitor_name="${name}",monitor_type="${type}",monitor_url="${url}",monitor_hostname="${host}",monitor_port="null"} ${v}`;
+  const metrics = [
+    line('xoa', 'http', 'http://192.168.1.10/', 'null', 1), line('adguard', 'http', 'http://192.168.1.103/', 'null', 1),
+    line('nas', 'http', 'http://192.168.1.20/', 'null', 1), line('nas', 'ping', 'null', '192.168.1.20', 0),
+    line('adguard', 'http', 'http://192.168.1.103/', 'null', 14, 'monitor_response_time'),
+  ].join('\n');
+  const k = make(uptimekuma, { url: 'http://kuma', password: 'x' }, fake(() => new Response(metrics)));
+  const card: any = await k.widgets.monitors.fetch();
+  valid(card);
+  assert.deepEqual(card.items.map((i: any) => [i.name, i.state, i.ms, i.detail]), [['xoa', 'up', undefined, 'up'], ['adguard', 'up', 14, 'up'], ['nas', 'up', undefined, 'up'], ['nas', 'down', undefined, 'down']]);
+  assert.deepEqual([card.summary.value, card.summary.sub, card.summary.tone, card.note], ['1 down', 'nas', 'bad', undefined]);
+  const allUp = make(uptimekuma, { url: 'http://kuma', password: 'x' }, fake(() => new Response(line('xoa', 'http', 'http://x/', 'null', 1))));
+  const one: any = await allUp.widgets.monitors.fetch();
+  assert.deepEqual([one.summary.value, one.summary.sub], ['All up', '1 monitor'], 'no percentage nobody sent');
+});
+
 test('docker: a container that was made and never run is not down', async () => {
   const d = make(docker, { url: 'http://d' }, fake(() => [
     { Id: '1', Names: ['/musing_chaum'], State: 'created', Status: 'Created', Labels: {} },
