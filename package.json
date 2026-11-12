@@ -1,6 +1,6 @@
 {
   "name": "valet",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "private": true,
   "type": "module",
   "description": "Talk to your homelab. A self-hosted, open-source, AI-native homepage.",
