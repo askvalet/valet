@@ -174,7 +174,7 @@ export const ABOUT: Record<string, string> = {
   'unifi-drive': 'UniFi Drive is Ubiquiti\'s NAS. This shows used, free and total space.',
   unmanic: 'Unmanic optimizes a media library. This shows what\'s queued and active workers.',
   unraid: 'Unraid is a NAS system. This shows the array, space used, cache, CPU, memory and notifications.',
-  uptimekuma: 'Uptime Kuma watches services. This shows each monitor as up or down, warns about certificates that are expiring, and the assistant can read its history.',
+  uptimekuma: 'Uptime Kuma watches services. This shows each monitor as up or down, warns about certificates that are expiring, and the assistant can read its history. Uptime Kuma 2 also reports each monitor\'s uptime over a day and 30 days; Uptime Kuma 1 reports only up or down, so the card counts what\'s up instead.',
   uptimerobot: 'UptimeRobot is a hosted uptime monitor. This shows what\'s up, down and paused.',
   vaultwarden: 'Vaultwarden is a password server. This shows its status and version, and nothing from the vault.',
   vikunja: 'Vikunja manages tasks. This shows what\'s overdue, due this week and in progress, and projects.',

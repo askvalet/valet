@@ -5,6 +5,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Fixed
+
+- Uptime Kuma 1 showed as one monitor. Its `/metrics` has no `monitor_id`, so every monitor merged into the first one's row, and one that was down could hide behind one that was up. Without an id, a monitor is now told apart by its name, type and address, so two with one name stay two. Kuma 1 reports no uptime percentages, so its card says how many are up instead of a percentage. Checked against a real Uptime Kuma 1.23 and 2.5.
+
 ## [0.6.2] - 2026-11-12
 
 ### Fixed
