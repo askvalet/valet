@@ -30,6 +30,7 @@ import { Empty } from './empty.tsx';
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
 import { clock as clockOf, day as dayOf, duration, highLow, label, num as written, stamp, withUnit } from './format.ts';
 import { HOLD, Touch } from './touch.ts';
+import { copyText } from './copy.ts';
 import { stateOf } from '../shared/cards.ts';
 import type { ServiceState, Banner, Stall, ArticleCard, CodeCard, RankedCard, ShelfItem, StatusItem, TableCard, LinksCard, Card as CardT, ScheduleCard, PhotosCard, ForecastCard, ShowcaseCard, ChartCard, Control, ControlsCard, ListCard, MediaCard, MediaItem, ShelfCard, StatsCard, StatusCard, Summary, Tone } from '../shared/cards.ts';
 
@@ -956,7 +957,7 @@ function Chart({ card, pop }: { card: ChartCard; pop?: boolean }) {
 /** Logs and config: monospace, numbered, one-tap copy; a diff shows what's added and removed. */
 function Code({ card }: { card: CodeCard }) {
   const [copied, setCopied] = useState(false);
-  const copy = () => { navigator.clipboard?.writeText(card.lines.join('\n')); setCopied(true); setTimeout(() => setCopied(false), 1400); };
+  const copy = (e: React.MouseEvent<HTMLElement>) => { void copyText(card.lines.join('\n'), e.currentTarget).then(ok => { if (ok) { setCopied(true); setTimeout(() => setCopied(false), 1400); } }); };
   return (
     <div className="group/code relative -mx-1">
       <button type="button" onClick={copy} aria-label="Copy" className="chat-icon absolute top-1 right-1 z-10 text-muted-foreground">{copied ? <Check className="morph size-icon-sm text-good" /> : <Copy className="size-icon-sm" />}</button>

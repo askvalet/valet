@@ -23,6 +23,7 @@ import { play } from './sound.ts';
 import { ModelPicker, ReasoningPicker, type Choice, type Thinking } from './models.tsx';
 import { DemoMic, Listening, MicButton, ReadAloud, useRecorder, useSpeaker, type VoiceUi } from './voice.tsx';
 import { PlusMenu } from './plus.tsx';
+import { copyText } from './copy.ts';
 import { ComposerMenu, HelpNote, Mentions, Note, WithMentions, runSlash, useComposerMenu, type Mentionable, type Slash } from './slash.tsx';
 import { matchModel, mentionsIn } from '../shared/slash.ts';
 
@@ -267,7 +268,7 @@ export function InlineAnswer({ text, tools, onMore, ui }: { text: string; tools:
 /** One message. Memoised, so a reply streaming in doesn't re-render everything above it. */
 export interface RowActs { approve: (id: string, ok: boolean) => void; regenerate: () => void; ask: (t: string) => void; read?: (id: string, text: string) => void; silence?: () => void }
 export const MessageRow = memo(function MessageRow({ m, isLast, latest = isLast, busy, tookMs, fresh, since, tools, act, next, reading }: { m: any; isLast: boolean; latest?: boolean; next?: string; busy: boolean; tookMs?: number; fresh: boolean; since: number; tools: Record<string, ToolInfo>; act: RowActs; reading?: boolean }) {
-  const [copied, setCopied] = useState<boolean | null>(null), [tapped, setTapped] = useState(false), ui = useContext(Ui);
+  const [copied, setCopied] = useState<boolean | null>(null), [failed, setFailed] = useState(false), [tapped, setTapped] = useState(false), ui = useContext(Ui);
   if (m.role === 'user') {
     const said = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text as string).join('\n');
     const pics = [...said.matchAll(ATTACHED_LINE)].flatMap(x => thumbs.has(x[2]!) ? [{ name: x[1]!, url: thumbs.get(x[2]!)! }] : []);
@@ -328,8 +329,9 @@ export const MessageRow = memo(function MessageRow({ m, isLast, latest = isLast,
       {live && !text && !m.parts.some((p: any) => (ui.steps && (p.type.startsWith('tool-') || p.type === 'dynamic-tool') && p.state !== 'output-available') || (ui.thinking !== 'hidden' && p.type === 'reasoning' && p.state === 'streaming')) && !thinking && <Pending since={since || Date.now()} label={label(m.parts.some((p: any) => p.type === 'reasoning' && p.state === 'streaming') ? 'thinking' : 'working')} />}
       {!live && text && (
         <div className="chat-actions flex items-center gap-1 text-muted-foreground">
-          <button aria-label="Copy" title="Copy" onClick={() => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1400); }}
-            className="chat-icon">{copied ? <Tick draw className="morph size-3.5 text-good" /> : <Copy className={cn('size-icon-sm', copied === false && 'morph')} />}</button>
+          <button aria-label={failed ? "Couldn't copy" : 'Copy'} title={failed ? "Couldn't copy. Select the text and copy it instead." : 'Copy'}
+            onClick={e => { void copyText(text, e.currentTarget).then(ok => { if (ok) { setCopied(true); setTimeout(() => setCopied(false), 1400); } else { setFailed(true); setTimeout(() => setFailed(false), 2400); } }); }}
+            className="chat-icon">{copied ? <Tick draw className="morph size-3.5 text-good" /> : failed ? <X className="morph size-3.5 text-bad" /> : <Copy className={cn('size-icon-sm', copied === false && 'morph')} />}</button>
           {isLast && <button aria-label="Ask again" title="Ask again" onClick={act.regenerate} className="chat-icon"><RotateCcw className="size-icon-sm" /></button>}
           {act.read && <ReadAloud playing={!!reading} onRead={() => act.read!(m.id, text)} onStop={() => act.silence?.()} />}
           {tookMs != null && tookMs >= 1000 && <span className="ml-1 text-meta tabular">{label('worked', { n: (tookMs / 1000).toFixed(tookMs < 10_000 ? 1 : 0) })}</span>}
