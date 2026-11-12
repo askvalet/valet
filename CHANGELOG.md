@@ -5,6 +5,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Fixed
+
+- The chat's copy button copies again when Valet is opened at a plain `http://` address, as most are on a home network. Browsers only offer the clipboard on https or localhost, and without it the button copied nothing but still showed a tick. It now falls back to the browser's copy command, and shows a cross if nothing could be copied. The code card's copy button too. ([#20](https://github.com/askvalet/valet/issues/20))
+
 ## [0.6.1] - 2026-11-11
 
 ### Changed
