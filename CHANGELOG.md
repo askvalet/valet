@@ -7,7 +7,7 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
-- The chat's copy button copies again when Valet is opened at a plain `http://` address, as most are on a home network. Browsers only offer the clipboard on https or localhost, and without it the button copied nothing but still showed a tick. It now falls back to the browser's copy command, and shows a cross if nothing could be copied. The code card's copy button too. ([#20](https://github.com/askvalet/valet/issues/20))
+- The chat's copy button copies again when Valet is opened at a plain `http://` address, as most are on a home network. Browsers only offer the clipboard on https or localhost, and without it the button copied nothing but still showed a tick. In Safari an answer could also paste as an address: one starting "Roughly: …" came out as `roughly:%2011%20torrents…`, since Safari's clipboard API also stores text that parses as an address as a link. Copying now selects the text and copies it as plain text, the same as ⌘C, on any page, with the clipboard API only when that doesn't work; a cross shows if nothing could be copied. The code card's copy button too. ([#20](https://github.com/askvalet/valet/issues/20))
 
 ## [0.6.1] - 2026-11-11
 

@@ -1,7 +1,10 @@
-// Copying to the clipboard, on every page Valet is served from. Browsers only offer navigator.clipboard on a secure page
-// (https or localhost), and a homelab is often opened at a plain http address on the LAN, where it doesn't exist; there
-// the old copy command still works, from a click. So: the clipboard where it is and works, the copy command where it
-// isn't or doesn't, and an answer either way, so a button only says "copied" when it was.
+// Copying to the clipboard, on every page Valet is served from. Two ways, in this order:
+// - the copy command on a selected, unseen text box: the same plain-text copy as selecting and pressing ⌘C. It works on a
+//   plain http LAN address, where browsers don't offer navigator.clipboard, and it's the only way Safari copies text as
+//   text: its clipboard API also stores anything that parses as an address as a link ("Roughly: 11 torrents…" is one,
+//   to recent macOS and iOS), and an app that pastes the link gets "roughly:%2011%20torrents…".
+// - navigator.clipboard, where the command didn't copy.
+// Either way the answer is honest, so a button only says "copied" when it was.
 
 /** Copy through a selected, unseen text box, from inside `near` so a dialog that keeps focus to itself lets it be focused. */
 function copyCommand(text: string, near?: Element | null): boolean {
@@ -27,8 +30,9 @@ function copyCommand(text: string, near?: Element | null): boolean {
 
 /** Copy `text`; true once it's on the clipboard. Call it from the click itself: the copy command needs that click. */
 export async function copyText(text: string, near?: Element | null): Promise<boolean> {
+  if (copyCommand(text, near)) return true;
   if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText && (typeof window === 'undefined' || window.isSecureContext)) {
-    try { await navigator.clipboard.writeText(text); return true; } catch { /* refused (no focus, a permission): try the old way */ }
+    try { await navigator.clipboard.writeText(text); return true; } catch { /* refused (no focus, a permission) */ }
   }
-  return copyCommand(text, near);
+  return false;
 }

@@ -1,5 +1,6 @@
-// Copying from the chat: the clipboard API where the page is secure and it works, the old copy command where it isn't
-// (a plain http LAN address has no navigator.clipboard), and an honest answer when neither copies.
+// Copying from the chat: the copy command first (plain text, the same as ⌘C on a selection: it works on a plain http LAN
+// address, and Safari doesn't store it as a link), the clipboard API when that didn't copy, and an honest answer when
+// neither did.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { copyText } from '../src/web/copy.ts';
@@ -15,25 +16,27 @@ function page(o: { secure: boolean; api?: 'ok' | 'refuses'; command: boolean }) 
   return log;
 }
 
-test('a secure page uses the clipboard', async () => {
-  const log = page({ secure: true, api: 'ok', command: true });
-  assert.equal(await copyText('hello'), true);
-  assert.deepEqual(log, ['api:hello']);
+test('the copy command goes first, on any page, and cleans up after itself', async () => {
+  for (const secure of [true, false]) {
+    const log = page({ secure, api: 'ok', command: true });
+    assert.equal(await copyText('Roughly: 11 torrents'), true);
+    assert.deepEqual(log, ['box', 'command:copy', 'gone'], 'never the clipboard API, which Safari would also store as a link');
+  }
 });
 
-test('a plain http page, with no clipboard, copies with the copy command and cleans up', async () => {
-  const log = page({ secure: false, command: true });
+test('when the command doesn\'t copy, a secure page uses the clipboard', async () => {
+  const log = page({ secure: true, api: 'ok', command: false });
   assert.equal(await copyText('hello'), true);
-  assert.deepEqual(log, ['box', 'command:copy', 'gone']);
+  assert.deepEqual(log, ['box', 'command:copy', 'gone', 'api:hello']);
 });
 
-test('a clipboard that refuses falls back to the copy command', async () => {
-  const log = page({ secure: true, api: 'refuses', command: true });
-  assert.equal(await copyText('hello'), true);
-  assert.deepEqual(log, ['box', 'command:copy', 'gone']);
+test('a plain http page has no clipboard to fall back on: the command or nothing', async () => {
+  const log = page({ secure: false, api: 'ok', command: false });
+  assert.equal(await copyText('hello'), false);
+  assert.ok(!log.includes('api:hello'));
 });
 
 test('when nothing copies, it says so, so the button never claims it did', async () => {
-  page({ secure: false, command: false });
+  page({ secure: true, api: 'refuses', command: false });
   assert.equal(await copyText('hello'), false);
 });
