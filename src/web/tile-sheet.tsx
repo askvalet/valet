@@ -19,6 +19,7 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
   // the card is in a portal, which puts it on the page a commit after this one: the flip starts when it's actually there
   const wrap = useRef<HTMLDivElement | null>(null), [mounted, setMounted] = useState<HTMLDivElement | null>(null), front = useRef<HTMLDivElement>(null), dim = useRef<HTMLDivElement>(null);
   const [leaving, setLeaving] = useState(false);
+  const tileFade = useRef<Animation | null>(null);
   const busy = useRef(false);
 
   // the tile's own face, copied onto the front of the card, drawn at the tile's size and stretched to the card's, so the
@@ -37,14 +38,18 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
   useLayoutEffect(() => {
     const card = wrap.current;
     if (!card) return;
-    tile?.style.setProperty('visibility', 'hidden');   // it has lifted off the page
-    const gone = () => { tile?.style.removeProperty('visibility'); };
+    const gone = () => { tileFade.current?.cancel(); tile?.style.removeProperty('visibility'); };
     if (still() || !tile || !onScreen(tile.getBoundingClientRect())) {
+      tile?.style.setProperty('visibility', 'hidden');   // it has lifted off the page
       card.animate([{ opacity: 0 }, { opacity: 1 }], { duration: still() ? 120 : 220, easing: 'ease-out' });
       dim.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
       return gone;
     }
     dress();
+    // the page's tile is glass and the card's copy of it is the sheet's solid surface: they cross-fade in the first moment,
+    // where they lie on top of each other, so the tile never switches material in one frame
+    tileFade.current = tile.animate([{ opacity: 1 }, { opacity: 0, offset: .2 }, { opacity: 0 }], { duration: OPEN_MS, fill: 'forwards' });
+    front.current?.animate([{ opacity: 0 }, { opacity: 1, offset: .2 }, { opacity: 1 }], { duration: OPEN_MS });
     const m = from(tile, card), lift = `translate(${m.x}px, ${m.y}px) scale(${m.sx}, ${m.sy})`;
     card.classList.add('flipping');
     busy.current = true;
@@ -65,10 +70,11 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
     const card = wrap.current;
     if (leaving || !card) return;
     setLeaving(true);
-    const done = () => { tile?.style.removeProperty('visibility'); onClosed(); };
+    const done = () => { tileFade.current?.cancel(); tile?.style.removeProperty('visibility'); onClosed(); };
     const r = tile?.getBoundingClientRect();
     dim.current?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: CLOSE_MS, easing: 'ease-in', fill: 'forwards' });
     if (still() || !tile || !r || !onScreen(r)) {
+      if (tile) { tileFade.current?.cancel(); tile.style.removeProperty('visibility'); tileFade.current = tile.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, fill: 'forwards' }); }
       card.animate([{ opacity: 1 }, { opacity: 0, transform: 'scale(.97)' }], { duration: 160, easing: 'ease-in', fill: 'forwards' }).onfinish = done;
       return;
     }
@@ -76,6 +82,10 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
     const m = from(tile, card);
     card.classList.remove('settled');
     card.classList.add('flipping');
+    // and the other way home: in the last stretch, where the copy lies over the tile's place, the copy fades as the tile returns
+    tileFade.current?.cancel(); tile.style.removeProperty('visibility');
+    tileFade.current = tile.animate([{ opacity: 0 }, { opacity: 0, offset: .7 }, { opacity: 1 }], { duration: CLOSE_MS, fill: 'forwards' });
+    front.current?.animate([{ opacity: 1 }, { opacity: 1, offset: .7 }, { opacity: 0 }], { duration: CLOSE_MS, fill: 'forwards' });
     card.animate([
       { transform: 'none' },
       { transform: `translate(${m.x}px, ${m.y}px) scale(${m.sx}, ${m.sy}) rotateY(-180deg)` },
