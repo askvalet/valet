@@ -5,6 +5,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- Background scripts: `appearance.background: <name>` runs `data/backgrounds/<name>.js` behind the cards, over the wallpaper if there is one, so a background can be anything a page can draw, like an animated canvas. One for light and one for dark, a different one per tab with `appearance.backgrounds` (`none` for none there), and the wall display too. The script gets a full-screen box, the theme and the tab, and is told when they change; the theme's colours are the page's CSS variables. It never runs with `motion` reduced or none or when the device asks for less motion. Valet serves it from its own address, so the page's security policy is unchanged; only the owner can turn one on, and `config check` names a script that isn't there. An example is in `examples/backgrounds/ascii-flow.js`. ([#23](https://github.com/askvalet/valet/issues/23))
+
 ## [0.6.3] - 2026-11-12
 
 ### Fixed

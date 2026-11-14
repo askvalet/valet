@@ -107,6 +107,12 @@ test('wallpapers: a file, a URL, paint, a list, one per tab', () => {
   assert.equal(Config.parse({ appearance: { rotate: '10m' } }).appearance.rotate, 600_000);
 });
 
+test('a background script is named, for both themes or each, and per tab, with none for none', () => {
+  const a = Config.parse({ appearance: { background: 'ascii-flow', backgrounds: { Media: 'none', Home: { light: 'calm', dark: 'stars' } } } }).appearance;
+  assert.equal(a.background, 'ascii-flow');
+  assert.deepEqual(a.backgrounds, { Media: 'none', Home: { light: 'calm', dark: 'stars' } });
+});
+
 test('bad values are refused', () => {
   for (const color of ['#12', 'red; background: url(//x)', 'rgb(1 2 3) } body { display: none', 'rgb(url(//x))', 'color-mix(in srgb, red, url(x))', '<b>', '12px'])
     refused({ appearance: { colors: { accent: color } } });
@@ -114,7 +120,8 @@ test('bad values are refused', () => {
   for (const appearance of [
     { theme: 'sepia' }, { density: 'cosy' }, { motion: 'slow' }, { dim: 2 }, { glass: { opacity: 2 } }, { glass: { blur: -1 } }, { glass: { material: 'clear' } }, { shape: { shadow: 'huge' } }, { shape: { radius: 400 } },
     { font: { family: 'A</style>' } }, { font: { family: 'A; color: red' } }, { font: { url: 'https://x.test/f.woff2' } }, { font: { family: 'A', url: 'notes.txt' } }, { font: { scale: 9 } },
-    { maxWidth: '100px; color: red' }, { cssFile: '/etc/passwd' }, { sizes: { huge: { cols: 1 } } }, { sizes: { tall: { cols: 9 } } }, { rotate: 'soon' },
+    { maxWidth: '100px; color: red' }, { cssFile: '/etc/passwd' },
+    { background: '../config' }, { background: 'a.js' }, { background: '/etc/passwd' }, { background: 'Ascii' }, { backgrounds: { Media: 'x/y' } }, { background: { dark: 'a' } }, { sizes: { huge: { cols: 1 } } }, { sizes: { tall: { cols: 9 } } }, { rotate: 'soon' },
   ]) refused({ appearance });
   for (const widget of [{ tint: 'red;' }, { background: 'javascript:alert(1)' }, { background: 'https://x/a.jpg") ; x' }, { opacity: 3 }, { size: 'huge' }, { nope: 1 }]) refused({ layout: [{ widgets: [{ widget: 'a.b', ...widget }] }] });
   refused({ layout: [{ widgets: [], columns: { phone: 9 } }] }); refused({ layout: [{ widgets: [], columns: { watch: 1 } }] });

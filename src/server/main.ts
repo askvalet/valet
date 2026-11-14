@@ -305,7 +305,10 @@ app.get('/api/page', c => {
   // walls are dark's (or the only ones); light's come too when the config gives one for each theme
   const { wallpaper, wallpapers } = config.appearance, both = [wallpaper, ...Object.values(wallpapers)].some(w => isBoth(w));
   const set = (light = false) => ({ walls: wallsOf(wallpaper, light), tabWalls: Object.fromEntries(Object.entries(wallpapers).filter(([t]) => v.tab(t)).map(([t, w]) => [t, wallsOf(w, light)])) });
-  const appearance = { ...set(), light: both ? set(true) : undefined, rotate: config.appearance.rotate, sizes: config.appearance.sizes, sounds: config.appearance.sounds };
+  // background scripts by name, for each theme; a tab's own (a hidden tab's isn't named)
+  const scene = (s?: string | { light: string; dark: string }) => s === undefined ? undefined : typeof s === 'string' ? { light: s, dark: s } : s;
+  const scenes = { all: scene(config.appearance.background), tabs: Object.fromEntries(Object.entries(config.appearance.backgrounds).filter(([t]) => v.tab(t)).map(([t, s]) => [t, scene(s)!])) };
+  const appearance = { ...set(), light: both ? set(true) : undefined, rotate: config.appearance.rotate, sizes: config.appearance.sizes, sounds: config.appearance.sounds, scenes };
   const weather = config.weather && hub.widget(config.weather) && v.sees(config.weather) ? config.weather : undefined;
   // a paired wall display learns how the page looks and the wall's own pages: no title, no assistant, nothing it could act
   // with, and no other card's name
@@ -313,7 +316,7 @@ app.get('/api/page', c => {
   if (!view) return isWall(c) ? c.json({ error: 'not signed in' }, 401) : c.json({ error: `no wall screen "${(c.req.query('wall') ?? '').slice(0, 40)}"` }, 404);
   if (isWall(c)) return c.json(JSON.parse(site.redact(JSON.stringify({
     title: '', paired: true, canAct: false, sandbox: false, labels: { ...LABELS, ...config.labels }, format: config.format, look, weather,
-    appearance: { ...appearance, tabWalls: {}, light: appearance.light && { walls: appearance.light.walls, tabWalls: {} } }, wall: wallOf(config, view), sections: [],
+    appearance: { ...appearance, tabWalls: {}, light: appearance.light && { walls: appearance.light.walls, tabWalls: {} }, scenes: { all: scenes.all, tabs: {} } }, wall: wallOf(config, view), sections: [],
     widgets: Object.fromEntries([...widgetsOf(view), ...weather ? [weather] : []].filter(k => hub.widget(k)).map(k => [k, { title: hub.widget(k)!.title }])),
   }))));
   const a = mine.assistant, agent = a && chatAgent(a, site.acting), level = (id: string, n: string) => Math.min(toolAccess(a, id, n), site.acting ? rank.control : rank.read);
@@ -727,6 +730,14 @@ app.get('/manifest.webmanifest', async c => {
       { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   }), 200, { 'Content-Type': 'application/manifest+json', 'Cache-Control': 'no-cache', Vary: 'Cookie' });
+});
+
+// Background scripts: data/backgrounds/<name>.js, served as a module from here, so the page's script-src 'self' allows them
+app.get('/backgrounds/:file', async c => {
+  const file = c.req.param('file');
+  if (!/^[a-z0-9][a-z0-9-]{0,63}\.js$/.test(file)) return c.notFound();
+  const body = await readFile(resolve(DATA, 'backgrounds', file)).catch(() => null);
+  return body ? c.body(body, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }) : c.notFound();
 });
 
 // Community visuals: the browser half of a plugin, data/integrations/<kind>.web.js, served as a module

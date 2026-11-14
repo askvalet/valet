@@ -10,6 +10,7 @@ import { applyLook, applyTheme } from './look.ts';
 import { isEmpty, NowPlaying, Ring, Shell, Shaped, shapeOf, SummaryTile, TileSkeleton, Widget, type RunAction } from './cards.tsx';
 import { WeatherGlyph } from './home-cards.tsx';
 import { dress, useDark, useHeld, useLive, wallScreen, Walls, type Page, type Size } from './app.tsx';
+import { Scene, sceneFor, useStill } from './scene.tsx';
 import { Touch } from './touch.ts';
 import { nextPage, stayFor } from './wall-turn.ts';
 import { gridVars, wallCell } from './grid.ts';
@@ -170,7 +171,9 @@ export default function WallScreen() {
   // dark glass over the wallpaper, or dark without one: a wall is read in a room, often a dim one. theme: system asks for
   // the screen's own light or dark instead, so a tablet that turns dark at sunset takes the wall with it.
   const themeName = page?.look.theme === 'system' ? 'system' : 'dark';
-  useEffect(() => { if (page) applyTheme(themeName, walls.length > 0); }, [page, themeName, walls.length]);
+  // a background script runs on the wall too, the same one for every page, unless things should stay still
+  const quiet = useStill(), scene = quiet ? undefined : sceneFor(page?.appearance.scenes, '', dark);
+  useEffect(() => { if (page) applyTheme(themeName, walls.length > 0 || !!scene); }, [page, themeName, walls.length, scene]);
   useEffect(() => { document.title = page?.title ? `${page.title} · ${label('wall')}` : label('wall'); }, [page?.title]);
   const wall = page?.wall;
   useAwake(!!wall?.awake);
@@ -274,6 +277,7 @@ export default function WallScreen() {
   return (
     <div className={cn('wd fixed inset-0 overflow-hidden', idle && 'wd-idle')} onPointerDown={touch}>
       {walls.length > 0 && <Walls list={walls} every={page.appearance.rotate} />}
+      {scene && <Scene name={scene} theme={dark ? 'dark' : 'light'} tab="" />}
       <div ref={stage} className="wd-stage" data-view={view || undefined} style={{ '--wd-scale': scale } as React.CSSProperties}>
         <div ref={body} className="wd-body @container/main">
           <div className="wd-page flex flex-col gap-(--section-gap)">

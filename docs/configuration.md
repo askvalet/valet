@@ -150,6 +150,8 @@ offline, so it's the choice if you'd rather no browser talks to a font CDN.
 | `wallpaper` | none | a file (a path Valet can read: it serves it), an image URL, a colour, or a gradient like `"linear-gradient(135deg, #0f2027, #2c5364)"`. Any of them turns cards to glass. A list takes turns. `{ light: …, dark: … }` gives one for each theme (both, each of them any of the above) |
 | `rotate` | none | how long each one in a list stays: `10m`, `1h` |
 | `wallpapers` | `{}` | a different one per tab, by the tab's name: `{ Media: /data/film.jpg, Home: "#102030" }`. A value can be a list, or `{ light, dark }`, too. Other tabs and the overview use `wallpaper` |
+| `background` | none | a script of your own that draws behind the cards: the name of `data/backgrounds/<name>.js`, without `.js`, or `{ light, dark }`. It runs over the wallpaper, puts the cards on glass, and doesn't run with `motion` reduced or none or when the device asks for less motion. Only the owner can set it. See [background scripts](https://askvalet.dev/concepts/backgrounds/) |
+| `backgrounds` | `{}` | a different one per tab, by the tab's name; `none` for no script there |
 | `dim` | `0.35` | 0–0.9, darkens it (lightens it, in light). `{ light: 0.2, dark: 0.4 }` sets one for each theme |
 | `blur` | `0` | px, 0–40, blurs it. `{ light, dark }` works here too |
 

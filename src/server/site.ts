@@ -1,6 +1,7 @@
 // Everything built from a config: the integration instances, which widgets are placed, the hub that polls them, and
 // the notices they raise. Built once at startup and again on every config reload (main.ts swaps the site in place).
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { usedSecrets, writtenProblems, type Config } from './config.ts';
@@ -130,6 +131,11 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   for (const n of config.live?.notify ?? []) if (!placed.has(n.widget)) problems.push(`live.notify: "${n.widget}" isn't placed on the page`);
   const tabs = new Set(config.layout.flatMap(s => s.tab ?? s.title ?? []));
   for (const t of Object.keys(config.appearance.wallpapers)) if (!tabs.has(t)) problems.push(`appearance.wallpapers: no tab "${t}" (the tabs are: ${[...tabs].join(', ')})`);
+  for (const t of Object.keys(config.appearance.backgrounds)) if (!tabs.has(t)) problems.push(`appearance.backgrounds: no tab "${t}" (the tabs are: ${[...tabs].join(', ')})`);
+  // a background script named but not there: the page would quietly show none
+  const scripts = [config.appearance.background, ...Object.values(config.appearance.backgrounds)].flatMap(s => s === undefined ? [] : typeof s === 'string' ? [s] : [s.light, s.dark]);
+  for (const name of new Set(scripts)) if (name !== 'none' && !existsSync(resolve(process.env.VALET_DATA ?? 'data', 'backgrounds', `${name}.js`)))
+    problems.push(`appearance.background: no script "${name}" (put it in data/backgrounds/${name}.js)`);
   const lists = [config.appearance.wallpaper].flatMap(w => isBoth(w) ? [w.light, w.dark] : [w]);
   if (lists.some(w => Array.isArray(w) && w.length > 1) && !config.appearance.rotate) problems.push('appearance.rotate: a list of wallpapers needs a time to take turns, like 10m (only the first shows)');
   // a dotted key in assistant.access names one tool: <instance>.<tool>
