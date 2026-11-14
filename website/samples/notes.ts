@@ -30,6 +30,8 @@ export const NOTES: Record<string, string> = {
   'appearance.shape.borderColor': 'The colour of card borders.',
   'appearance.shape.shadow': 'How much shadow cards cast.',
   'appearance.dim': 'How much to darken the wallpaper, 0 to 0.9.',
+  'appearance.background': 'A script of your own that draws behind the cards: the name of data/backgrounds/<name>.js, or { light, dark }. See background scripts.',
+  'appearance.backgrounds': 'A different background script per tab, by the tab\'s name; none for no script there.',
   'appearance.sizes.<name>.cols': 'How many columns this size spans.',
   'appearance.sizes.<name>.rows': 'How many rows this size spans.',
   hero: 'The top of the overview.',

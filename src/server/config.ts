@@ -242,6 +242,10 @@ const Wall = z.string().refine(v => !isPaint(v) || Color.safeParse(v).success ||
 const Walls = z.union([Wall, z.array(Wall).min(1)]);    // a list takes turns: see `rotate`
 // either one for both, or one for light and one for dark: the page wears the one for the theme it's in
 const Themed = z.union([Walls, z.object({ light: Walls, dark: Walls }).strict()]);
+// A scene: a script of your own that draws behind the cards, data/backgrounds/<name>.js, by its name; none turns one off
+// (for a tab, say). Either one for both themes, or one for light and one for dark.
+const SceneName = z.string().regex(/^(?:[a-z0-9][a-z0-9-]{0,63})$/, 'the name of a script in data/backgrounds, without .js (or none)');
+const Scene = z.union([SceneName, z.object({ light: SceneName, dark: SceneName }).strict()]);
 // a number, or one for light and one for dark
 const PerTheme = (n: z.ZodNumber) => z.union([n, z.object({ light: n, dark: n }).strict()]);
 const Font = z.string().refine(v => /^https?:\/\//.test(v) ? URL.canParse(v) : /\.(woff2?|ttf|otf)$/i.test(v), 'a stylesheet or font URL, or a local .woff2, .woff, .ttf or .otf file');
@@ -272,6 +276,10 @@ export const Appearance = z.object({
   wallpaper: Themed.optional(),            // local file path (served by Valet), image URL, colour or gradient; any of them turns cards to glass
   wallpapers: z.record(z.string(), Themed).default({}),        // a different one per tab, by the tab's name
   rotate: Every.optional(),                // how long each wallpaper in a list stays
+  // a script that draws behind the cards (an animated canvas, say): data/backgrounds/<name>.js, over the wallpaper if there
+  // is one. It doesn't run with motion reduced or none, or when the device asks for less motion
+  background: Scene.optional(),
+  backgrounds: z.record(z.string(), Scene).default({}),        // a different one per tab, by the tab's name; none for no script there
   dim: PerTheme(z.number().min(0).max(0.9)).default(0.35),
   blur: PerTheme(z.number().min(0).max(40)).default(0),
   density: z.enum(['compact', 'comfortable', 'spacious']).default('comfortable'),   // scales all spacing at once

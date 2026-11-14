@@ -138,6 +138,8 @@ test('setup: the look and how it comes across can change; files, access and mode
   yes(['assistant', 'name'], 'Jeeves'); yes(['assistant', 'suggestions'], ['Hi']); yes(['hero', 'status'], false);
   no(['appearance', 'wallpaper'], '/etc/passwd'); no(['appearance', 'wallpaper'], ['../.env']); no(['appearance', 'wallpaper'], { light: 'https://example.com/a.jpg', dark: '/etc/passwd' });
   yes(['appearance', 'theme'], 'system'); yes(['appearance', 'wallpaper'], { light: '#eef', dark: 'https://example.com/a.jpg' }); no(['appearance', 'cssFile'], 'x.css'); no(['appearance'], { font: { file: 'x.woff2' } });
+  // a background script runs on the page: only the owner turns one on
+  no(['appearance', 'background'], 'ascii-flow'); no(['appearance', 'backgrounds'], { Media: 'ascii-flow' });
   for (const k of ['access', 'model', 'baseURL', 'apiKey', 'instructions', 'agent']) no(['assistant', k], 'x');
   no(['assistant'], { name: 'x' }); no(['notify'], {}); no(['sandbox'], true);
 });

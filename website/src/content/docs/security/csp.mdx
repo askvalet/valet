@@ -57,7 +57,7 @@ Pictures through the [image proxy](/security/image-proxy/) carry a tighter polic
 
 ## Plugin visuals
 
-A plugin's browser module, `data/integrations/<kind>.web.js`, is served from Valet's origin, so `script-src 'self'` allows it. That's why plugins need your trust. See [plugins](/build/plugins/).
+A plugin's browser module, `data/integrations/<kind>.web.js`, is served from Valet's origin, so `script-src 'self'` allows it. That's why plugins need your trust. See [plugins](/build/plugins/). A [background script](/concepts/backgrounds/), `data/backgrounds/<name>.js`, is served the same way and needs the same trust.
 
 ## Requests that change something
 

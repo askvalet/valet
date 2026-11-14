@@ -246,6 +246,13 @@
 :root { --wall-dim: var(--wall-dim-light, .35); --wall-filter: var(--wall-filter-light, none); }
 :root.dark { --wall-dim: var(--wall-dim-dark, .35); --wall-filter: var(--wall-filter-dark, none); }
 .wallpaper { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: #0b0b0d; }
+/* a background script's box: over the wallpaper (later in the page at the same depth), under everything else, and never
+   in the way of a click */
+.scene, .scene-host { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+/* the largest the viewport gets, not what it is now: a phone's toolbars come and go as you scroll, and a box that followed
+   them would resize the script's canvas, which blanks it until its next frame and flashes the wallpaper through */
+.scene { bottom: auto; height: 100lvh; contain: strict; }
+.scene-host { position: absolute; z-index: auto; }
 .wallpaper img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.04); filter: var(--wall-filter, none); }
 .wall-paint { position: absolute; inset: 0; animation: fade-in-soft var(--dur-scene) var(--ease-out) backwards; }
 .wallpaper::after { content: ""; position: absolute; inset: 0;

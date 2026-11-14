@@ -1,0 +1,71 @@
+---
+title: Background scripts
+description: Run a script of your own behind the cards, like an animated canvas, instead of or over a wallpaper.
+sidebar:
+  order: 11
+---
+
+A wallpaper is a picture, a colour or a gradient. A background script can be anything a page can draw: an animated canvas, particles, a slow field of ASCII characters. It runs in a box that fills the screen, behind the cards and over the wallpaper if there is one, and the cards go to glass over it as they do over a wallpaper.
+
+## Adding one
+
+Put the script in the data folder, in `backgrounds/`, and name it in the config without `.js`:
+
+```yaml
+appearance:
+  background: ascii-flow          # data/backgrounds/ascii-flow.js
+```
+
+Valet serves it from its own address, so the page's [security policy](/security/csp/) allows it without loosening anything, and nothing is fetched from anywhere else.
+
+The repository has one to start from, [`examples/backgrounds/ascii-flow.js`](https://github.com/askvalet/valet/blob/master/examples/backgrounds/ascii-flow.js): characters that drift in waves, in your accent colour.
+
+## Per theme and per tab
+
+Like a wallpaper, it can be one for light and one for dark, and a tab can have its own. `none` turns it off there:
+
+```yaml
+appearance:
+  background: { light: paper, dark: ascii-flow }
+  backgrounds: { Media: none, Home: rain }
+```
+
+The wall display runs `background`, the same for every page.
+
+## Writing one
+
+A background script is a module whose default export Valet calls once, with the box to draw in and what it's showing:
+
+```js title="data/backgrounds/my-background.js"
+export default function mount(el, { theme, tab }) {
+  const canvas = document.createElement('canvas');
+  el.appendChild(canvas);
+  // ...draw, with requestAnimationFrame...
+  return {
+    update({ theme, tab }) { /* the theme or the tab changed */ },
+    destroy() { /* stop drawing and remove what you added */ },
+  };
+}
+```
+
+- **`el`** fills the screen and takes no clicks. Size what you draw to it, and watch it with a `ResizeObserver`.
+- **`theme`** is `light` or `dark`. The theme's colours are the page's CSS variables: `getComputedStyle(document.documentElement).getPropertyValue('--primary')`.
+- **`tab`** is the tab on screen, or empty on the overview and the wall.
+- **`destroy`** is called when you go to a tab with another background or none, or the theme switches to one with another.
+
+## Keep it light
+
+Every glass card blurs what's behind it, so a background that changes every frame makes the browser redraw that blur every frame too. A few things keep it cheap:
+
+- **Draw with `requestAnimationFrame`.** The browser stops calling it while the tab is hidden.
+- **Don't draw more often than you need to.** The example draws 24 times a second, which is plenty for something slow.
+- **Mind the screen.** A high-resolution screen has four times the pixels; capping the canvas at twice the page's size, as the example does, is enough.
+- **Paint again as soon as you resize.** Resizing a canvas blanks it, and until your next frame whatever is behind it shows through. If you paint every pixel anyway, an opaque canvas (`getContext('2d', { alpha: false })`) means a missed frame shows your own colour, not the wallpaper. The box itself stays the size of the largest viewport, so a phone's toolbars coming and going as you scroll don't resize it.
+
+## Motion
+
+A background script never runs with `appearance.motion: reduced` or `none`, or when the device asks for less motion. Then the wallpaper, or the page's own colour, is all there is.
+
+## Trust
+
+A background script runs on the page with the same reach as Valet's own code, like a [plugin's visual](/build/plugins/). Only use one you wrote or have read. Only you can turn one on: the assistant can't set `background` or `backgrounds`, and `config check` names a script that isn't in the folder.

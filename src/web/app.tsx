@@ -21,6 +21,7 @@ import { clock, day, favorites, label, oneLine, sayHow, setFormat, stillTrue, ta
 import { applyLook, applyTheme, switchable, toggleTheme, type Look } from './look.ts';
 import { adaptInk } from './ink.ts';
 import type { Labels } from '../shared/labels.ts';
+import { Scene, sceneFor, useStill, type Scenes } from './scene.tsx';
 import { ChatBeam } from './beam.tsx';
 import { ClockMonth, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, shapeOf, TileSkeleton, WeatherRing, Ring, Shell, SummaryTile, Widget } from './cards.tsx';
 
@@ -47,7 +48,7 @@ export type CardOverride = { title?: string; icon?: string; header?: boolean; vi
 export interface Page {
   title: string; greeting?: string; notice?: string; location?: string; canAct?: boolean; sandbox?: boolean;
   member?: { name?: string; actions: string[] };   // someone with a profile: the page actions it lists, as <instance>.<action>
-  appearance: { walls: Paper[]; tabWalls: Record<string, Paper[]>; light?: { walls: Paper[]; tabWalls: Record<string, Paper[]> }; rotate?: number; sizes: Partial<Record<Size, { cols?: number; rows?: number }>>; sounds?: Sounds };
+  appearance: { walls: Paper[]; tabWalls: Record<string, Paper[]>; light?: { walls: Paper[]; tabWalls: Record<string, Paper[]> }; rotate?: number; sizes: Partial<Record<Size, { cols?: number; rows?: number }>>; sounds?: Sounds; scenes?: Scenes };
   look: Look;
   hero: { greeting: boolean | string; status: boolean; search: boolean; review: boolean | 'end'; align: 'center' | 'left' | 'right'; scope?: string[] };
   chat: ChatUi & { open: 'center' | 'right' | 'left' | 'bottom' | 'page'; overview: boolean; placeholder?: string; suggestions: 'ai' | 'fixed' | 'off' };
@@ -466,7 +467,9 @@ function Home({ account, who }: { account: boolean; who?: string }) {
   // A config can give one wallpaper for light and one for dark; both or neither, so whether there's one never turns on the theme.
   const papers = (!theme.dark && page?.appearance.light) || page?.appearance;
   const walls = (view !== 'all' && papers?.tabWalls[view]) || papers?.walls || [];
-  const wall = walls.length > 0, themeName = page?.look.theme;
+  // a background script for this tab and theme, unless things should stay still; like a wallpaper, it puts the cards on glass
+  const quiet = useStill(), scene = quiet ? undefined : sceneFor(page?.appearance.scenes, view, theme.dark);
+  const wall = walls.length > 0 || !!scene, themeName = page?.look.theme;
   useEffect(() => { if (themeName) applyTheme(themeName, wall); }, [themeName, wall]);
   useEffect(adaptInk, []);
   // ⌘K's code is fetched once the page is quiet, so the first press opens as fast as any other
@@ -720,7 +723,8 @@ function Home({ account, who }: { account: boolean; who?: string }) {
 
   return (
     <TooltipProvider delayDuration={300}>
-      {wall && <Walls list={walls} every={page!.appearance.rotate} />}
+      {walls.length > 0 && <Walls list={walls} every={page!.appearance.rotate} />}
+      {scene && <Scene name={scene} theme={theme.dark ? 'dark' : 'light'} tab={view} />}
 
 
       {/* the tab buttons, on whichever side the config says (wide screens); a column on the left/right, a dock at the top/bottom */}

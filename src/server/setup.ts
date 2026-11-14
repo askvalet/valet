@@ -22,7 +22,8 @@ const SECRET_KEY = /^(api[-_]?key|token|password|secret|client[-_]?secret|author
 const LOCAL = /^(\/|\.{1,2}\/|~|file:)/;   // and `css`, which is served to the sign-in screen and can load things from anywhere
 function namesAFile(o: Op): string | null {
   const walk = (v: unknown, key: string): string | null => {
-    if (/file$|^css$/i.test(key)) return `"${key}" is something the owner sets by hand`;
+    // a background script runs on the page like `css` does: the owner turns one on by hand
+    if (/file$|^css$|^backgrounds?$/i.test(key)) return `"${key}" is something the owner sets by hand`;
     if (typeof v === 'string' && LOCAL.test(v)) return `"${v}" is a file on disk; use an image URL, a colour or a gradient, or the owner sets it by hand`;
     if (Array.isArray(v)) { for (const x of v) { const r = walk(x, key); if (r) return r; } }
     else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) { const r = walk(x, k); if (r) return r; }
@@ -97,7 +98,8 @@ function ownerChanged(before: Record<string, any>, after: Record<string, any>) {
       if (!same(strip(before[k]), strip(after[k]))) return 'assistant';
     } else if (!EDITABLE.has(k) && !same(before[k], after[k])) return k;
   }
-  for (const k of ['css', 'cssFile']) if (!same(before.appearance?.[k], after.appearance?.[k])) return `appearance.${k}`;
+  // what runs on the page: styles, and a background script, are the owner's to turn on
+  for (const k of ['css', 'cssFile', 'background', 'backgrounds']) if (!same(before.appearance?.[k], after.appearance?.[k])) return `appearance.${k}`;
   return null;
 }
 /** The rule that keeps secrets home: a secret only ever goes to hosts it already goes to, and none moves into the page.

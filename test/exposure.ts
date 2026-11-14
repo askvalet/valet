@@ -19,6 +19,7 @@ const PUBLIC = new Set([
   'GET /api/font',
   'GET /api/icon/:slug',
   'GET /plugins/:file',      // a plugin's browser half: code, no data
+  'GET /backgrounds/:file',  // a background script: code, no data
   'GET /manifest.webmanifest', // fetched before sign-in to install the app: it says "Valet" until there's a session
   'GET *',                   // the page's shell, which holds no data until /api answers
   'POST /hooks/:name',       // webhooks in: another program has no session, so each hook answers to its own token, and every refusal is one 401
@@ -106,7 +107,7 @@ function everyRoute(name: string, auth: Record<string, unknown>) {
 
     test('tricks with the path reach neither data nor files', async () => {
       for (const p of ['/api/auth/../page', '/api/auth/%2e%2e/page', '/api/auth/..%2fpage', '/api/icon/../page', '/api/wallpaper/../page', '//api/page', '/api//page', '/api/page/', '/API/page', '/api/%70age', '/api/custom.css/../page',
-        '/../config.yaml', '/..%2f..%2fconfig.yaml', '/%2e%2e/%2e%2e/config.yaml', '/.env', '/data/secret', '/data/users.json', '/config.yaml', '/plugins/..%2f..%2fsecret', '/assets/../../../config.yaml'])
+        '/../config.yaml', '/..%2f..%2fconfig.yaml', '/%2e%2e/%2e%2e/config.yaml', '/.env', '/data/secret', '/data/users.json', '/config.yaml', '/plugins/..%2f..%2fsecret', '/backgrounds/..%2f..%2fconfig.yaml', '/backgrounds/..%2fusers.json', '/assets/../../../config.yaml'])
         clean(p, await raw(s.port, p));
     });
 
