@@ -5,6 +5,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- The tile view takes more cards, and tiles do what their cards do. A card with no headline of its own gets one in `display: tiles` and `rings`: a status card says all up or how many are down, a list its count and first item, a shelf its count and first picture, controls how many are on, a calendar the next event, the weather the temperature, a chart its latest value. And a tile carries its card's buttons, its banner's button and its switches as small pills, its link a corner button; none on a read-only page, for a card someone's profile can't use, or on the wall for a card that isn't on `wall.touch`, and every press is in the activity log. ([#22](https://github.com/askvalet/valet/issues/22))
+
 ## [0.6.3] - 2026-11-12
 
 ### Fixed

@@ -27,11 +27,30 @@ layout:
 | Value | What you get |
 |---|---|
 | `cards` | Full cards. The default. |
-| `tiles` | Headline tiles with live graphs. |
+| `tiles` | Headline tiles with live graphs, and the card's buttons and switches. |
 | `rings` | The same headlines as ring gauges, coloured by health. |
 | `media` | Every item of the section's media cards as artwork tiles in one grid. |
 
-Tiles and rings need a card with a `summary` or `summaries`.
+Tiles and rings use a card's `summary` or `summaries`. A card without one gets a headline from what it holds:
+
+| Card | Its tile |
+|---|---|
+| Status | All up, or how many are down and which, with a bar for each service |
+| List, links | How many, and the first one |
+| Shelf, media, photos | How many, the first one, and its picture |
+| Ranked | The top one, and its picture |
+| Controls | How many switches are on, or the first reading (Locked, Home) |
+| Calendar | The next event, and when |
+| Schedule | The next time |
+| Weather | The temperature now, the sky, the high and low |
+| Chart | The latest value, over its graph |
+| Stats, key and value, table | The first number or row |
+
+A card with nothing short to say, like text or a camera, has no tile.
+
+### Pressing a tile
+
+A tile carries what its full card can do: the card's buttons, its banner's button, and its switches, which light up while they're on. Its link moves to a small corner button. Nothing to press shows on a read-only page or to someone whose profile can't use the card, and on the [wall display](/concepts/wall/) only for cards on `wall.touch`. Every press is in the activity log, as it is from the card.
 
 ## How cards are arranged
 

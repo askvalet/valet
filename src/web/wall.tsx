@@ -1,6 +1,7 @@
 // The wall display (/wall, and /wall/<name> for another screen): the config's own wall pages, full screen, for reading
 // from across a room. No chat, no ⌘K, no links, whoever is signed in; the only things that can be pressed are the controls
 // of the cards `wall.touch` lists. Which pages may show is the server's to say (`when`). Loaded only when someone opens it.
+import { tileActions, tilesOf } from '../shared/tiles.ts';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { ForecastCard, WidgetState } from '../shared/cards.ts';
@@ -113,7 +114,7 @@ function WallSection({ sec, state, titles, touch, press }: { sec: Section; state
   if (sec.display === 'rings') return (
     <section className="space-y-3" style={style}>{heading}
       <div data-slot="card" className="grid gap-y-5 rounded-surface border bg-card px-4 py-5 shadow-card" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))' }}>
-        {sec.widgets.flatMap(key => { const c = state[key]?.card; return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <Ring key={`${key}${j}`} s={t} />); })}
+        {sec.widgets.flatMap(key => tilesOf(state[key]?.card).map((t, j) => <Ring key={`${key}${j}`} s={t} />))}
       </div></section>
   );
   if (sec.display === 'tiles') return (
@@ -122,7 +123,9 @@ function WallSection({ sec, state, titles, touch, press }: { sec: Section; state
         {sec.widgets.flatMap(key => {
           const o = sec.looks?.[key], c = dress(state[key]?.card, o);
           if (!c) return [<TileSkeleton key={key} />];
-          return (c.summaries ?? (c.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} className={cn('min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} /></div>);
+          // on the wall a tile can be pressed only when its card is on wall.touch, as a card can
+          const run = touch[key] ? press(key) : undefined;
+          return tilesOf(c).map((t, j) => <div key={`${key}${j}`} className={cn('min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} actions={j === 0 ? tileActions(c) : undefined} run={run} /></div>);
         })}
       </div></section>
   );

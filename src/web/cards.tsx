@@ -24,6 +24,7 @@ import { Metric } from './metric.tsx';
 import { Counter, DUST_HOLD, HeadActions, headButton, HeadSlot, lean, Pile, Row, RowArrows, RowSlot, Tick, toast, useRows } from './feel.tsx';
 import { dissolve, justActed, useSettle } from './dust.ts';
 import { play } from './sound.ts';
+import type { TileAction } from '../shared/tiles.ts';
 import { LinkButton } from './link-button.tsx';
 import { Meter } from './meter.tsx';
 import { Empty } from './empty.tsx';
@@ -1541,8 +1542,8 @@ function TileGraph({ points, gauge }: { points: number[]; gauge?: boolean }) {
 /** Headline tile for the overview's top row: label and context up top, the value at the bottom. Beside or behind them,
  *  what the tile knows: its artwork (a poster inside the tile, at its inset), a live graph, or a bar for each thing it counts.
  *  The tile is always the same glass. */
-function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
-  const art = !!s.image;
+function SummaryTileView({ s, href, actions, run }: { s: Summary; href?: string; actions?: TileAction[]; run?: RunAction }) {
+  const art = !!s.image, acts = run && actions?.length ? actions : undefined;
   const body = (
     <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift')} style={{ '--tint': s.color ?? 'color-mix(in oklab, var(--foreground) 55%, transparent)' } as React.CSSProperties}>
       {art && <Art src={s.image} className={cn('absolute top-(--spacing-inset-tight) right-(--spacing-inset-tight) aspect-[2/3] h-[calc(100%-2*var(--spacing-inset-tight))] rounded-poster object-cover shadow-[0_8px_20px_-10px_rgb(0_0_0/.5)] transition-transform duration-(--dur-move) ease-out', href && 'group-hover/tile:scale-[1.03]')} />}
@@ -1555,16 +1556,41 @@ function SummaryTileView({ s, href }: { s: Summary; href?: string }) {
             {s.sub && <div className="truncate text-body leading-tight text-muted-foreground">{s.sub}</div>}
           </div>
           {s.tone === 'bad' && <span className="dot dot-bad ml-auto" />}
+          {/* with things to press, the tile isn't one big link: its link is a corner button instead */}
+          {acts && href && <a href={href} target="_blank" rel="noreferrer" className={cn(headButton, 'shrink-0', s.tone !== 'bad' && 'ml-auto')} aria-label={`Open ${s.label}`} title="Open"><ArrowUpRight className="size-icon" /></a>}
         </div>
         <div className={cn('mt-auto flex min-w-0 justify-between gap-3 pt-3', s.marks || s.waffle || s.pie ? 'min-h-0 flex-1 items-end' : 'items-baseline')}>
           <div className={cn('metric text-metric-s leading-none', s.marks || s.waffle || s.pie ? 'shrink-0' : 'min-w-0 truncate', toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}><Metric value={s.value} /></div>
           {s.marks?.length ? <TileMarks marks={s.marks} /> : s.pie && s.pct != null ? <Pie pct={s.pct} color={s.color} label={s.sub} /> : s.waffle && s.pct != null ? <Waffle pct={s.pct} label={s.sub} /> : null}
           {s.detail && <div className="hidden min-w-0 truncate text-meta tabular text-muted-foreground @[200px]/tile:block">{s.detail}</div>}
         </div>
+        {acts && <TileActions actions={acts} run={run!} />}
       </div>
     </Card>
   );
-  return href ? <a href={href} target="_blank" rel="noreferrer" className="group/tile block h-full min-w-0">{body}</a> : <div className="group/tile h-full min-w-0">{body}</div>;
+  return href && !acts ? <a href={href} target="_blank" rel="noreferrer" className="group/tile block h-full min-w-0">{body}</a> : <div className="group/tile h-full min-w-0">{body}</div>;
+}
+
+/** What a tile can do, as small pills under its number: the card's buttons, and its toggles, lit while on. Each shows
+ *  it's working, then settles, as the card's own buttons do; a read-only page doesn't get them at all. */
+function TileActions({ actions, run }: { actions: TileAction[]; run: RunAction }) {
+  const [busy, setBusy] = useState<string | null>(null), [done, setDone] = useState<string | null>(null);
+  return (
+    <div className="tile-actions mt-3 flex flex-wrap gap-1.5">
+      {actions.map(a => (
+        <button key={`${a.action}:${a.label}`} type="button" disabled={!!busy} aria-pressed={a.on ?? undefined}
+          className={cn('press inline-flex h-7 max-w-full cursor-pointer items-center gap-1.5 truncate rounded-full px-3 text-meta font-medium transition-colors disabled:cursor-default',
+            a.on ? 'bg-primary text-primary-foreground' : 'bg-fill-2 hover:bg-fill-3')}
+          onClick={async () => {
+            setBusy(a.label);
+            try { await run(a.action, a.args); play(a.on === undefined ? 'done' : 'tap'); setDone(a.label); setTimeout(() => setDone(null), 1600); } catch { play('no'); } finally { setBusy(null); }
+          }}>
+          {busy === a.label ? <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" /> : done === a.label ? <Tick draw className="size-3" /> : null}
+          <span className="truncate">{a.label}</span>
+        </button>
+      ))}
+    </div>
+  );
 }
 
 /** A ring gauge: a ¾ circle (gap at the bottom), the number in the middle, coloured by health. */

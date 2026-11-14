@@ -1,4 +1,5 @@
 import { ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Search, Sun, TriangleAlert, X } from 'lucide-react';
+import { tileActions, tilesOf } from '../shared/tiles.ts';
 import { Fragment, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -625,7 +626,7 @@ function Home({ account, who }: { account: boolean; who?: string }) {
                   <div className={cn('grid gap-y-5 px-4', sec.grid && 'cols')} style={sec.grid ? gridVars(sec.grid) : { gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))' }}>
                     {sec.widgets.flatMap(key => {
                       const c = state[key]?.card;
-                      return (c?.summaries ?? (c?.summary ? [c.summary] : [])).map((t, j) => <Ring key={`${key}${j}`} s={t} />);
+                      return tilesOf(c).map((t, j) => <Ring key={`${key}${j}`} s={t} />);
                     })}
                   </div>
                 </Card>
@@ -636,7 +637,9 @@ function Home({ account, who }: { account: boolean; who?: string }) {
                   {sec.widgets.flatMap(key => {
                     const o = sec.looks?.[key], c = dress(state[key]?.card, o);
                     if (!c) return [<TileSkeleton key={key} />];
-                    return (c.summaries ?? (c.summary ? [c.summary] : [])).map((t, j) => <div key={`${key}${j}`} className={cn(arrival(key), 'min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} href={c.href} /></div>);
+                    // a tile does what its card does, on its first tile, where this page may act and this person may use it
+                    const run = page?.canAct === false || !may(key) ? undefined : runFor(key), acts = tileActions(c);
+                    return tilesOf(c).map((t, j) => <div key={`${key}${j}`} className={cn(arrival(key), 'min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} href={c.href} actions={j === 0 ? acts : undefined} run={run} /></div>);
                   })}
                 </div>
               )
