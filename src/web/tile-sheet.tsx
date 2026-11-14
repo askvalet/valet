@@ -1,6 +1,5 @@
 // A tile's full card, opened over the page. The tile flips: it lifts from its place, turns over in 3D as it grows, and its
-// back is the card. A touch of light crosses it while it's edge-on, it overshoots by a few degrees and settles, and the
-// page dims as it comes. Closing plays it backwards into the tile's place, however it's closed (×, a tap outside,
+// back is the card. It overshoots by a few degrees and settles, and the page dims as it comes. Closing plays it backwards into the tile's place, however it's closed (×, a tap outside,
 // Escape). Only transform and opacity move, so it stays smooth. With less motion asked for, the card just fades in.
 import { XIcon } from 'lucide-react';
 import { Dialog as Primitive } from 'radix-ui';
@@ -19,7 +18,6 @@ const onScreen = (r: DOMRect) => r.width > 0 && r.bottom > 0 && r.top < innerHei
 export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLElement | null; title: string; onClosed: () => void; children: ReactNode }) {
   // the card is in a portal, which puts it on the page a commit after this one: the flip starts when it's actually there
   const wrap = useRef<HTMLDivElement | null>(null), [mounted, setMounted] = useState<HTMLDivElement | null>(null), front = useRef<HTMLDivElement>(null), dim = useRef<HTMLDivElement>(null);
-  const sheens = useRef<HTMLDivElement[]>([]);
   const [leaving, setLeaving] = useState(false);
   const busy = useRef(false);
 
@@ -35,10 +33,6 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
     inner.replaceChildren(face);
     Object.assign(inner.style, { width: `${t.width}px`, height: `${t.height}px`, transform: `scale(${c.width / t.width}, ${c.height / t.height})` });
   };
-
-  const sheen = (open: boolean, ms: number) => sheens.current.forEach(s => s.animate(
-    [{ opacity: 0, transform: 'translateX(-60%)' }, { opacity: .5, transform: 'translateX(0)', offset: .45 }, { opacity: 0, transform: 'translateX(60%)', offset: .8 }, { opacity: 0, transform: 'translateX(60%)' }],
-    { duration: ms, easing: 'linear', direction: open ? 'normal' : 'reverse' }));
 
   useLayoutEffect(() => {
     const card = wrap.current;
@@ -59,7 +53,6 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
       { transform: 'translate(0, 0) scale(1.012, 1.012) rotateY(7deg)', offset: .72, easing: 'cubic-bezier(.3, .7, .3, 1)' },
       { transform: 'none' },
     ], { duration: OPEN_MS, easing: 'cubic-bezier(.2, .75, .25, 1)' });
-    sheen(true, OPEN_MS);
     dim.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: OPEN_MS * .7, easing: 'ease-out' });
     a.onfinish = () => { card.classList.remove('flipping'); busy.current = false; };
     return gone;
@@ -79,7 +72,6 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
     dress();
     const m = from(tile, card);
     card.classList.add('flipping');
-    sheen(false, CLOSE_MS);
     card.animate([
       { transform: 'none' },
       { transform: `translate(${m.x}px, ${m.y}px) scale(${m.sx}, ${m.sy}) rotateY(-180deg)` },
@@ -98,11 +90,9 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
           <div ref={el => { wrap.current = el; if (el && el !== mounted) setMounted(el); }} className="tile-flip relative w-[min(44rem,calc(100vw-2rem))]">
             <div className="tile-face tile-back relative max-h-[calc(100dvh-3rem)] overflow-y-auto rounded-surface">
               {children}
-              <div ref={el => { if (el) sheens.current[0] = el; }} className="tile-sheen" aria-hidden />
             </div>
             <div ref={front} className="tile-face tile-front" aria-hidden>
               <div className="tile-front-face" />
-              <div ref={el => { if (el) sheens.current[1] = el; }} className="tile-sheen" aria-hidden />
             </div>
             <Primitive.Close className="absolute top-3 right-3 z-10 grid size-8 cursor-pointer place-items-center rounded-full bg-black/35 text-white/90 backdrop-blur-sm transition-colors hover:bg-black/55" aria-label="Close">
               <XIcon className="size-4" />
