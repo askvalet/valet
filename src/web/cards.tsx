@@ -1585,22 +1585,39 @@ function SummaryTileView({ s, href, actions, run, onOpen }: { s: Summary; href?:
  *  it's working, then settles, as the card's own buttons do; a read-only page doesn't get them at all. */
 function TileActions({ actions, run }: { actions: TileAction[]; run: RunAction }) {
   const [busy, setBusy] = useState<string | null>(null), [done, setDone] = useState<string | null>(null);
+  // a switch lights the moment it's pressed and holds until the service says otherwise (or a while passes), as a card's does
+  const [mine, setMine] = useState<Record<string, boolean>>({}), timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const said = actions.map(a => `${a.label}:${a.on}`).join('|');
+  useEffect(() => { setMine({}); }, [said]);
+  useEffect(() => () => Object.values(timers.current).forEach(clearTimeout), []);
+  const forget = (label: string) => setMine(m => { const { [label]: _, ...rest } = m; return rest; });
   return (
     <div className="tile-actions mt-3 flex flex-wrap gap-1.5">
-      {actions.map(a => (
-        <button key={`${a.action}:${a.label}`} type="button" disabled={!!busy} aria-pressed={a.on ?? undefined} onKeyDown={e => e.stopPropagation()}
-          className={cn('press relative inline-flex h-7 max-w-full cursor-pointer items-center truncate rounded-full px-3 text-meta font-medium transition-colors disabled:cursor-default',
-            a.on ? 'bg-primary text-primary-foreground' : 'bg-fill-2 hover:bg-fill-3')}
-          onClick={async e => {
-            e.stopPropagation();
-            setBusy(a.label);
-            try { await run(a.action, a.args); play(a.on === undefined ? 'done' : 'tap'); setDone(a.label); setTimeout(() => setDone(null), 1600); } catch { play('no'); } finally { setBusy(null); }
-          }}>
-          <span className={cn('truncate', (busy === a.label || done === a.label) && 'invisible')}>{a.label}</span>
-          {(busy === a.label || done === a.label) && <span className="absolute inset-0 grid place-items-center">
-            {busy === a.label ? <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" /> : <Tick draw className="size-3" />}</span>}
-        </button>
-      ))}
+      {actions.map(a => {
+        const toggle = a.on !== undefined, on = toggle ? mine[a.label] ?? a.on : undefined;
+        return (
+          <button key={`${a.action}:${a.label}`} type="button" disabled={!toggle && !!busy} aria-pressed={on} onKeyDown={e => e.stopPropagation()}
+            className={cn('press relative inline-flex h-7 max-w-full cursor-pointer items-center truncate rounded-full px-3 text-meta font-medium transition-colors disabled:cursor-default',
+              on ? 'bg-primary text-primary-foreground' : 'bg-fill-2 hover:bg-fill-3')}
+            onClick={async e => {
+              e.stopPropagation();
+              if (toggle) {
+                // what's shown is what it's toggled from, so two quick presses before the house answers go on, then off
+                const next = !on;
+                play('tap'); setMine(m => ({ ...m, [a.label]: next })); clearTimeout(timers.current[a.label]);
+                try { await run(a.action, { ...a.args, value: next }); timers.current[a.label] = setTimeout(() => forget(a.label), 8000); }
+                catch { play('no'); forget(a.label); }
+                return;
+              }
+              setBusy(a.label);
+              try { await run(a.action, a.args); play('done'); setDone(a.label); setTimeout(() => setDone(null), 1600); } catch { play('no'); } finally { setBusy(null); }
+            }}>
+            <span className={cn('truncate', (busy === a.label || done === a.label) && 'invisible')}>{a.label}</span>
+            {(busy === a.label || done === a.label) && <span className="absolute inset-0 grid place-items-center">
+              {busy === a.label ? <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" /> : <Tick draw className="size-3" />}</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }
