@@ -941,3 +941,10 @@ section + section[data-plain] { margin-top: calc(var(--card-gap) - var(--section
 .tile-flip.flipping .tile-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .tile-flip.flipping .tile-front { display: block; transform: rotateY(180deg); }
 .tile-flip.flipping .tile-back { overflow: hidden; }
+/* in the sheet the card is a solid sheet, not glass: a blur can't be drawn while it turns in 3D, so glass would switch off
+   mid-flip and snap back on as it lands. The tile's face on the front is the same surface, so the two halves match */
+.tile-face [data-slot="card"] { backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  background-color: rgb(255 255 255) !important; background-image: none !important; }
+.dark .tile-face [data-slot="card"] { background-color: rgb(24 24 26) !important; }
+.tile-close { transition: opacity 180ms var(--ease-out, ease-out), background-color 120ms ease; }
+.tile-flip.flipping:not(.settled) .tile-close { opacity: 0; transition: none; pointer-events: none; }

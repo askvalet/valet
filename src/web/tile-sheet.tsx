@@ -5,7 +5,7 @@ import { XIcon } from 'lucide-react';
 import { Dialog as Primitive } from 'radix-ui';
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
-const OPEN_MS = 720, CLOSE_MS = 520;
+const OPEN_MS = 720, CLOSE_MS = 440;
 const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches || /\bmotion-(reduced|none)\b/.test(document.documentElement.className);
 
 /** Where the tile is now, as a move from the card's own place: its centre's offset, and its size against the card's. */
@@ -54,7 +54,10 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
       { transform: 'none' },
     ], { duration: OPEN_MS, easing: 'cubic-bezier(.2, .75, .25, 1)' });
     dim.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: OPEN_MS * .7, easing: 'ease-out' });
+    // the × comes in as the card settles, within a few degrees of flat, so it's there the moment it lands
+    const settle = setTimeout(() => card.classList.add('settled'), OPEN_MS * .6);
     a.onfinish = () => { card.classList.remove('flipping'); busy.current = false; };
+    a.oncancel = () => clearTimeout(settle);
     return gone;
   }, [mounted]);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -71,11 +74,12 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
     }
     dress();
     const m = from(tile, card);
+    card.classList.remove('settled');
     card.classList.add('flipping');
     card.animate([
       { transform: 'none' },
       { transform: `translate(${m.x}px, ${m.y}px) scale(${m.sx}, ${m.sy}) rotateY(-180deg)` },
-    ], { duration: CLOSE_MS, easing: 'cubic-bezier(.5, 0, .3, 1)', fill: 'forwards' }).onfinish = done;
+    ], { duration: CLOSE_MS, easing: 'cubic-bezier(.45, 0, .25, 1)', fill: 'forwards' }).onfinish = done;
   };
 
   return (
@@ -83,20 +87,23 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
       <Primitive.Portal>
         <div ref={dim} className="tile-dim fixed inset-0 z-50 bg-black/45" aria-hidden />
         {/* the whole screen is the dialog, so a tap beside the card is ours to answer: it closes, flipping back */}
+        {/* focus goes to the card itself, quietly: focusing a control inside it while it still turns would scroll it */}
         <Primitive.Content aria-describedby={undefined} onCloseAutoFocus={e => { e.preventDefault(); tile?.focus({ preventScroll: true }); }}
+          onOpenAutoFocus={e => { e.preventDefault(); wrap.current?.focus({ preventScroll: true }); }}
           onPointerDown={e => { if (e.target === e.currentTarget) close(); }}
           // the dialog turns the page's clicks off and its own back on with an inline style, which this one replaces: so it says
           // so itself, and only stops them while the card flips home
           className="tile-stage fixed inset-0 z-50 grid place-items-center p-4 outline-none" style={{ pointerEvents: leaving ? 'none' : 'auto' }}>
           <Primitive.Title className="sr-only">{title}</Primitive.Title>
-          <div ref={el => { wrap.current = el; if (el && el !== mounted) setMounted(el); }} className="tile-flip relative w-[min(44rem,calc(100vw-2rem))]">
+          <div ref={el => { wrap.current = el; if (el && el !== mounted) setMounted(el); }} tabIndex={-1} className="tile-flip relative w-[min(44rem,calc(100vw-2rem))] outline-none">
             <div className="tile-face tile-back relative max-h-[calc(100dvh-3rem)] overflow-y-auto rounded-surface">
               {children}
             </div>
             <div ref={front} className="tile-face tile-front" aria-hidden>
               <div className="tile-front-face" />
             </div>
-            <Primitive.Close className="absolute top-3 right-3 z-10 grid size-8 cursor-pointer place-items-center rounded-full bg-black/35 text-white/90 backdrop-blur-sm transition-colors hover:bg-black/55" aria-label="Close">
+            {/* it arrives once the card has landed, and leaves the moment it starts back: never turning with it */}
+            <Primitive.Close className="tile-close absolute top-3 right-3 z-10 grid size-8 cursor-pointer place-items-center rounded-full bg-black/45 text-white/90 hover:bg-black/65 focus-visible:ring-2 focus-visible:ring-ring" aria-label="Close">
               <XIcon className="size-4" />
             </Primitive.Close>
           </div>
