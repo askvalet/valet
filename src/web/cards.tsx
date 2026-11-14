@@ -1430,9 +1430,11 @@ function CardButtons({ buttons, run }: { buttons: NonNullable<CardT['buttons']>;
           setBusy(b.label);
           const card = b.action === 'unpin' ? box.current?.closest('[data-slot="card"]') : null;   // unpinned, the card itself is leaving
           try { await run(b.action, b.args); play('done'); if (card) dissolve(card); setDone(b.label); setTimeout(() => setDone(null), 1600); } catch { play('no'); } finally { setBusy(null); }
-        }} size="sm">
-          {busy === b.label ? <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" /> : done === b.label ? <Tick draw className="size-3 text-good" /> : null}
-          {b.label}
+        }} size="sm" className="relative">
+          {/* the word keeps its place under the spinner or tick, so the button keeps its width and nothing beside it moves */}
+          <span className={cn((busy === b.label || done === b.label) && 'invisible')}>{b.label}</span>
+          {(busy === b.label || done === b.label) && <span className="absolute inset-0 grid place-items-center">
+            {busy === b.label ? <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" /> : <Tick draw className="size-3 text-good" />}</span>}
         </Button>
       ))}
     </div>
@@ -1546,7 +1548,7 @@ function SummaryTileView({ s, href, actions, run }: { s: Summary; href?: string;
   const art = !!s.image, acts = run && actions?.length ? actions : undefined;
   const body = (
     <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift')} style={{ '--tint': s.color ?? 'color-mix(in oklab, var(--foreground) 55%, transparent)' } as React.CSSProperties}>
-      {art && <Art src={s.image} className={cn('absolute top-(--spacing-inset-tight) right-(--spacing-inset-tight) aspect-[2/3] h-[calc(100%-2*var(--spacing-inset-tight))] rounded-poster object-cover shadow-[0_8px_20px_-10px_rgb(0_0_0/.5)] transition-transform duration-(--dur-move) ease-out', href && 'group-hover/tile:scale-[1.03]')} />}
+      {art && <Art src={s.image} className={cn('absolute top-(--spacing-inset-tight) right-(--spacing-inset-tight) aspect-[2/3] w-[4.5rem] max-h-[calc(100%-2*var(--spacing-inset-tight))] rounded-poster object-cover shadow-[0_8px_20px_-10px_rgb(0_0_0/.5)] transition-transform duration-(--dur-move) ease-out', href && 'group-hover/tile:scale-[1.03]')} />}
       {!art && !s.marks && !s.waffle && !s.pie && <div style={{ color: 'var(--tint)' }}><TileGraph points={s.trend ?? []} gauge={s.ring != null} /></div>}
       <div className={cn('relative flex flex-1 flex-col p-(--spacing-inset-tight)', art && 'pr-[calc(var(--spacing-inset-tight)*2+4.5rem)]')}>
         <div className="flex items-center gap-2.5">
@@ -1579,14 +1581,15 @@ function TileActions({ actions, run }: { actions: TileAction[]; run: RunAction }
     <div className="tile-actions mt-3 flex flex-wrap gap-1.5">
       {actions.map(a => (
         <button key={`${a.action}:${a.label}`} type="button" disabled={!!busy} aria-pressed={a.on ?? undefined}
-          className={cn('press inline-flex h-7 max-w-full cursor-pointer items-center gap-1.5 truncate rounded-full px-3 text-meta font-medium transition-colors disabled:cursor-default',
+          className={cn('press relative inline-flex h-7 max-w-full cursor-pointer items-center truncate rounded-full px-3 text-meta font-medium transition-colors disabled:cursor-default',
             a.on ? 'bg-primary text-primary-foreground' : 'bg-fill-2 hover:bg-fill-3')}
           onClick={async () => {
             setBusy(a.label);
             try { await run(a.action, a.args); play(a.on === undefined ? 'done' : 'tap'); setDone(a.label); setTimeout(() => setDone(null), 1600); } catch { play('no'); } finally { setBusy(null); }
           }}>
-          {busy === a.label ? <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" /> : done === a.label ? <Tick draw className="size-3" /> : null}
-          <span className="truncate">{a.label}</span>
+          <span className={cn('truncate', (busy === a.label || done === a.label) && 'invisible')}>{a.label}</span>
+          {(busy === a.label || done === a.label) && <span className="absolute inset-0 grid place-items-center">
+            {busy === a.label ? <span className="size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" /> : <Tick draw className="size-3" />}</span>}
         </button>
       ))}
     </div>
