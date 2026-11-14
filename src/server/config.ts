@@ -202,6 +202,8 @@ const Section = z.object({
     title: z.string().optional(), icon: z.string().optional(), header: z.boolean().optional(),
     tint: Color.optional(), opacity: z.number().min(0).max(1).optional(), blur: z.number().min(0).max(80).optional(),
     background: z.string().regex(/^(https:\/\/|\/api\/)[^\s"'()<>\\]+$/, 'an image URL: https://… or /api/icon/name').optional(),
+    // as a tile: what a tap opens. Its own card by default; false for nothing, or another widget's card ("home.plan")
+    open: z.union([z.boolean(), z.string().regex(/^[\w-]+\.[\w-]+$/, 'a widget, like home.plan')]).optional(),
   }).strict()]))
     .transform(ws => ws.map(w => typeof w === 'string' ? { widget: w, size: 'medium' as const } : w)),
   // a number (from tablet width up), or per screen: { phone: 1, tablet: 2, desktop: 3, wide: 4 } (wide: a page past 1760px)
@@ -210,6 +212,7 @@ const Section = z.object({
   // tiles: headline tiles with live graphs · rings: the same as ring gauges coloured by health · cards: full cards
   // media: every item of the section's media cards (streams, downloads…) as artwork tiles in one grid
   display: z.enum(['cards', 'tiles', 'rings', 'media']).default('cards'),
+  open: z.boolean().default(true),        // tiles: a tap opens the tile's full card in a sheet over the page; false: tiles are only to look at
   // left / right: a sidebar beside the rest of the page (on wide screens), e.g. services as a tall list.
   // `columns` then sets how many columns its list uses.
   place: z.enum(['main', 'left', 'right']).default('main'),

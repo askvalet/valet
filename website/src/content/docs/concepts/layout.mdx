@@ -48,9 +48,25 @@ Tiles and rings use a card's `summary` or `summaries`. A card without one gets a
 
 A card with nothing short to say, like text or a camera, has no tile.
 
+### Opening a tile
+
+Tap a tile, or press Enter on it, and its full card opens in a sheet over the page: everything the card shows, and everything it can do, by the same rules as the card itself. Escape, or a tap outside, closes it.
+
+Nothing to set up: every tile opens its own card. Two settings change that:
+
+```yaml
+- title: Glance
+  display: tiles
+  widgets:
+    - { widget: home.lights, open: home.plan }   # this tile opens the house instead of its own card
+    - { widget: weather.now, open: false }       # this one is only to look at
+```
+
+`open: false` on the section keeps all its tiles to look at. A tile set to open a widget the person can't see opens its own card instead.
+
 ### Pressing a tile
 
-A tile carries what its full card can do: the card's buttons, its banner's button, and its switches, which light up while they're on. Its link moves to a small corner button. Nothing to press shows on a read-only page or to someone whose profile can't use the card, and on the [wall display](/concepts/wall/) only for cards on `wall.touch`. Every press is in the activity log, as it is from the card.
+A tile carries what its full card can do: the card's buttons, its banner's button, and its switches, which light up while they're on. Pressing one does just that; it doesn't open the card. Its link moves to a small corner button. Nothing to press shows on a read-only page or to someone whose profile can't use the card, and on the [wall display](/concepts/wall/) only for cards on `wall.touch`. Every press is in the activity log, as it is from the card.
 
 ## How cards are arranged
 

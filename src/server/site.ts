@@ -102,7 +102,8 @@ export function check(config: Config, registry: Record<string, Integration>, fro
     } catch (e) { problems.push(`integrations.${id}: ${(e as Error).message}`); }
   }
   // only widgets placed somewhere are polled; a key that points nowhere is a typo
-  const placed = new Set([...config.layout.flatMap(s => s.widgets.map(w => w.widget)), ...config.menubar.widgets, ...(config.weather ? [config.weather] : []), ...(config.live?.activities ?? [])]);
+  // a tile that opens another widget's card needs that one kept fresh too
+  const placed = new Set([...config.layout.flatMap(s => s.widgets.flatMap(w => [w.widget, ...(typeof w.open === 'string' ? [w.open] : [])])), ...config.menubar.widgets, ...(config.weather ? [config.weather] : []), ...(config.live?.activities ?? [])]);
   for (const key of placed) {
     const [inst, w] = key.split('.');
     if (inst === 'valet') continue;      // Valet's own widgets exist once the site is built

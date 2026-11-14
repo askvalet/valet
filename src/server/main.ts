@@ -277,10 +277,12 @@ const fontOf = ({ appearance: { font } }: Config) => {
 };
 
 /** A layout's sections as the page draws them, for the main page and the wall's pages alike */
-const sectionsOf = (layout: Config['layout'], sees: (key: string) => boolean = () => true) => layout.map(s => ({ title: s.title, icon: s.icon, columns: typeof s.columns === 'object' ? s.columns.desktop ?? s.columns.tablet ?? s.columns.phone : s.columns, grid: typeof s.columns === 'object' ? s.columns : undefined, gap: s.gap, tabColumns: s.tabColumns, display: s.display, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat, favorites: s.favorites,
+const sectionsOf = (layout: Config['layout'], sees: (key: string) => boolean = () => true) => layout.map(s => ({ title: s.title, icon: s.icon, columns: typeof s.columns === 'object' ? s.columns.desktop ?? s.columns.tablet ?? s.columns.phone : s.columns, grid: typeof s.columns === 'object' ? s.columns : undefined, gap: s.gap, tabColumns: s.tabColumns, display: s.display, open: s.open, place: s.place, overview: s.overview, variant: s.variant, header: s.header, heading: s.heading, tab: s.tab, chat: s.chat, favorites: s.favorites,
   widgets: s.widgets.map(w => w.widget).filter(k => site.hub.widget(k) && sees(k)),
   sizes: Object.fromEntries(s.widgets.filter(w => w.size !== 'medium' && sees(w.widget)).map(w => [w.widget, w.size])),
-  looks: Object.fromEntries(s.widgets.filter(w => sees(w.widget) && ('title' in w || 'icon' in w || 'header' in w || 'view' in w || 'rows' in w || 'cols' in w || cardLook(w))).map(w => [w.widget, { title: w.title, icon: w.icon, header: w.header, view: w.view, rows: w.rows, cols: w.cols, style: cardLook(w) }])) }));
+  looks: Object.fromEntries(s.widgets.filter(w => sees(w.widget) && ('title' in w || 'icon' in w || 'header' in w || 'view' in w || 'rows' in w || 'cols' in w || 'open' in w || cardLook(w))).map(w => [w.widget, { title: w.title, icon: w.icon, header: w.header, view: w.view, rows: w.rows, cols: w.cols, style: cardLook(w),
+    // a tile opening another widget's card says which only when this person may see that one; otherwise its own
+    open: typeof w.open === 'string' ? (site.hub.widget(w.open) && sees(w.open) ? w.open : undefined) : w.open }])) }));
 /** One screen's settings and pages; never a token, another screen, or what a `when` says (it can name people). No pages:
  *  the browser builds the default one from the cards it hears. `touch` is what a press may work, and empty when nothing may.
  *  For someone with a profile, the pages keep only the cards they see (a page left with none shows just its clock: the

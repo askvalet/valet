@@ -1544,8 +1544,10 @@ function TileGraph({ points, gauge }: { points: number[]; gauge?: boolean }) {
 /** Headline tile for the overview's top row: label and context up top, the value at the bottom. Beside or behind them,
  *  what the tile knows: its artwork (a poster inside the tile, at its inset), a live graph, or a bar for each thing it counts.
  *  The tile is always the same glass. */
-function SummaryTileView({ s, href, actions, run }: { s: Summary; href?: string; actions?: TileAction[]; run?: RunAction }) {
+function SummaryTileView({ s, href, actions, run, onOpen }: { s: Summary; href?: string; actions?: TileAction[]; run?: RunAction; onOpen?: () => void }) {
   const art = !!s.image, acts = run && actions?.length ? actions : undefined;
+  // a tile that opens its card, or has things to press, isn't one big link: its link is a corner button instead
+  const corner = !!href && (!!acts || !!onOpen);
   const body = (
     <Card className={cn('@container/tile relative isolate h-full min-h-[136px] gap-0 overflow-hidden py-0 shadow-card', href && 'lift')} style={{ '--tint': s.color ?? 'color-mix(in oklab, var(--foreground) 55%, transparent)' } as React.CSSProperties}>
       {art && <Art src={s.image} className={cn('absolute top-(--spacing-inset-tight) right-(--spacing-inset-tight) aspect-[2/3] w-[4.5rem] max-h-[calc(100%-2*var(--spacing-inset-tight))] rounded-poster object-cover shadow-[0_8px_20px_-10px_rgb(0_0_0/.5)] transition-transform duration-(--dur-move) ease-out', href && 'group-hover/tile:scale-[1.03]')} />}
@@ -1559,7 +1561,7 @@ function SummaryTileView({ s, href, actions, run }: { s: Summary; href?: string;
           </div>
           {s.tone === 'bad' && <span className="dot dot-bad ml-auto" />}
           {/* with things to press, the tile isn't one big link: its link is a corner button instead */}
-          {acts && href && <a href={href} target="_blank" rel="noreferrer" className={cn(headButton, 'shrink-0', s.tone !== 'bad' && 'ml-auto')} aria-label={`Open ${s.label}`} title="Open"><ArrowUpRight className="size-icon" /></a>}
+          {corner && <a href={href} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()} className={cn(headButton, 'shrink-0', s.tone !== 'bad' && 'ml-auto')} aria-label={`Open ${s.label} in a new tab`} title="Open"><ArrowUpRight className="size-icon" /></a>}
         </div>
         <div className={cn('mt-auto flex min-w-0 justify-between gap-3 pt-3', s.marks || s.waffle || s.pie ? 'min-h-0 flex-1 items-end' : 'items-baseline')}>
           <div className={cn('metric text-metric-s leading-none', s.marks || s.waffle || s.pie ? 'shrink-0' : 'min-w-0 truncate', toneText[s.tone === 'good' ? 'neutral' : s.tone ?? 'neutral'])}><Metric value={s.value} /></div>
@@ -1570,7 +1572,13 @@ function SummaryTileView({ s, href, actions, run }: { s: Summary; href?: string;
       </div>
     </Card>
   );
-  return href && !acts ? <a href={href} target="_blank" rel="noreferrer" className="group/tile block h-full min-w-0">{body}</a> : <div className="group/tile h-full min-w-0">{body}</div>;
+  // tapped, it opens its full card: a button, so Enter and Space open it too; the pills and the link inside keep their own
+  if (onOpen) return (
+    <div role="button" tabIndex={0} aria-haspopup="dialog" aria-label={`${s.label}: open`} onClick={onOpen}
+      onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(); } }}
+      className="group/tile block h-full min-w-0 cursor-pointer rounded-surface outline-none focus-visible:ring-2 focus-visible:ring-ring">{body}</div>
+  );
+  return href && !corner ? <a href={href} target="_blank" rel="noreferrer" className="group/tile block h-full min-w-0">{body}</a> : <div className="group/tile h-full min-w-0">{body}</div>;
 }
 
 /** What a tile can do, as small pills under its number: the card's buttons, and its toggles, lit while on. Each shows
@@ -1580,10 +1588,11 @@ function TileActions({ actions, run }: { actions: TileAction[]; run: RunAction }
   return (
     <div className="tile-actions mt-3 flex flex-wrap gap-1.5">
       {actions.map(a => (
-        <button key={`${a.action}:${a.label}`} type="button" disabled={!!busy} aria-pressed={a.on ?? undefined}
+        <button key={`${a.action}:${a.label}`} type="button" disabled={!!busy} aria-pressed={a.on ?? undefined} onKeyDown={e => e.stopPropagation()}
           className={cn('press relative inline-flex h-7 max-w-full cursor-pointer items-center truncate rounded-full px-3 text-meta font-medium transition-colors disabled:cursor-default',
             a.on ? 'bg-primary text-primary-foreground' : 'bg-fill-2 hover:bg-fill-3')}
-          onClick={async () => {
+          onClick={async e => {
+            e.stopPropagation();
             setBusy(a.label);
             try { await run(a.action, a.args); play(a.on === undefined ? 'done' : 'tap'); setDone(a.label); setTimeout(() => setDone(null), 1600); } catch { play('no'); } finally { setBusy(null); }
           }}>

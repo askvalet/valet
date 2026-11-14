@@ -37,7 +37,7 @@ const Asks = lazy(() => import('./asks.tsx'));
 const RecapStory = lazy(() => import('./recap.tsx'));
 
 export type Paper = { image?: string; paint?: string };
-export type CardOverride = { title?: string; icon?: string; header?: boolean; view?: View; rows?: number; cols?: number; style?: Record<string, string> };
+export type CardOverride = { title?: string; icon?: string; header?: boolean; view?: View; rows?: number; cols?: number; style?: Record<string, string>; open?: boolean | string };
 
 export interface Page {
   title: string; greeting?: string; notice?: string; location?: string; canAct?: boolean; sandbox?: boolean;
@@ -60,7 +60,7 @@ export interface Page {
   weather?: string;
   calendar?: string;
   recap?: boolean;
-  sections: { title?: string; icon?: string; columns?: number; grid?: Grid; gap?: number; looks?: Record<string, CardOverride>; tabColumns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; sizes?: Record<string, Size>; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; favorites?: string[]; widgets: string[] }[];
+  sections: { title?: string; icon?: string; columns?: number; grid?: Grid; gap?: number; looks?: Record<string, CardOverride>; tabColumns?: number; display?: 'cards' | 'tiles' | 'rings' | 'media'; open?: boolean; sizes?: Record<string, Size>; place?: 'main' | 'left' | 'right'; overview?: boolean; variant?: 'full' | 'minimal'; header?: boolean; heading?: boolean; tab?: string; chat?: boolean; favorites?: string[]; widgets: string[] }[];
   widgets: Record<string, { title: string }>;
   // the wall display's own pages (/wall); none means it builds its default from the cards it hears
   // `touch`: the widgets a press may work there · `conditional`: its pages wait on the server's word (the `wall` event)
@@ -406,6 +406,8 @@ function Home({ account, who }: { account: boolean; who?: string }) {
     return () => cancelAnimationFrame(frame);
   }, [view]);
   const [palette, setPalette] = useState(false);
+  // a tile tapped open: the widget whose full card shows in a sheet over the page
+  const [opened, setOpened] = useState<string | null>(null);
   const recap = hash === '#recap';
   const closeRecap = () => {
     if (location.hash !== '#recap') return;
@@ -639,7 +641,9 @@ function Home({ account, who }: { account: boolean; who?: string }) {
                     if (!c) return [<TileSkeleton key={key} />];
                     // a tile does what its card does, on its first tile, where this page may act and this person may use it
                     const run = page?.canAct === false || !may(key) ? undefined : runFor(key), acts = tileActions(c);
-                    return tilesOf(c).map((t, j) => <div key={`${key}${j}`} className={cn(arrival(key), 'min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} href={c.href} actions={j === 0 ? acts : undefined} run={run} /></div>);
+                    // tapped, a tile opens its full card (or the one `open` names); `open: false`, on it or its section, keeps it to look at
+                    const target = sec.open === false || o?.open === false ? undefined : typeof o?.open === 'string' ? o.open : key;
+                    return tilesOf(c).map((t, j) => <div key={`${key}${j}`} className={cn(arrival(key), 'min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} href={c.href} actions={j === 0 ? acts : undefined} run={run} onOpen={target ? () => setOpened(target) : undefined} /></div>);
                   })}
                 </div>
               )
@@ -823,6 +827,15 @@ function Home({ account, who }: { account: boolean; who?: string }) {
           runAction={runAction} services={services} SUGGESTIONS={questions} setView={go} nav={nav} sectionIcon={sectionIcon} search={page.search} find={page.find} device={{ sandbox: page.sandbox, canAct: page.canAct !== false, member: !!page.member }} />)(PaletteNow ?? Palette)}</Suspense>
       )}
 
+      {/* a tile's full card, over the page, with what it can do here: the same controls, and the same rules, as the card */}
+      <Dialog open={!!opened} onOpenChange={o => { if (!o) setOpened(null); }}>
+        <DialogContent className="tile-sheet max-h-[calc(100dvh-3rem)] w-[min(44rem,calc(100vw-2rem))] max-w-none gap-0 overflow-y-auto border-0 bg-transparent p-0 shadow-none">
+          <DialogTitle className="sr-only">{opened ? page?.widgets[opened]?.title ?? state[opened]?.card?.title ?? opened : ''}</DialogTitle>
+          <DialogDescription className="sr-only">Everything this card shows and can do</DialogDescription>
+          {opened && <Widget large card={state[opened]?.card} kind={shapeOf(opened)?.t} failed={state[opened]?.error} title={page?.widgets[opened]?.title}
+            run={page?.canAct === false || !may(opened) ? undefined : runFor(opened)} />}
+        </DialogContent>
+      </Dialog>
       {page?.assistant && (
         <Dialog open={chatOpen} onOpenChange={setChatOpen} modal={!docked}>
           {/* the chat pops out over the page, frosted like everything else: a tall window in the middle unless the config

@@ -50,3 +50,12 @@ test('a tile offers its card\'s buttons and toggles, a toggle sending the opposi
   assert.equal(tileActions(card, 2).length, 2, 'a tile keeps to a few');
   assert.deepEqual(tileActions({ type: 'status', items: [] }), []);
 });
+
+test('a tile opens its own card by default; open: false, or another widget, by config', async () => {
+  const { Config } = await import('../src/server/config.ts');
+  const sec = Config.parse({ layout: [{ title: 'T', display: 'tiles', widgets: ['a.b', { widget: 'c.d', open: false }, { widget: 'e.f', open: 'home.plan' }] }] }).layout[0]!;
+  assert.equal(sec.open, true, 'on unless said');
+  assert.deepEqual(sec.widgets.map(w => w.open), [undefined, false, 'home.plan']);
+  assert.equal(Config.parse({ layout: [{ title: 'T', display: 'tiles', open: false, widgets: [] }] }).layout[0]!.open, false);
+  for (const open of ['plan', '../x', 'a.b.c', 'home.plan; x']) assert.throws(() => Config.parse({ layout: [{ title: 'T', widgets: [{ widget: 'a.b', open }] }] }), String(open));
+});
