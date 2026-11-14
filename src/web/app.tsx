@@ -1,5 +1,6 @@
 import { ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Search, Sun, TriangleAlert, X } from 'lucide-react';
 import { tileActions, tilesOf } from '../shared/tiles.ts';
+import { TileSheet } from './tile-sheet.tsx';
 import { Fragment, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -407,7 +408,7 @@ function Home({ account, who }: { account: boolean; who?: string }) {
   }, [view]);
   const [palette, setPalette] = useState(false);
   // a tile tapped open: the widget whose full card shows in a sheet over the page
-  const [opened, setOpened] = useState<string | null>(null);
+  const [opened, setOpened] = useState<{ key: string; tile: HTMLElement } | null>(null);
   const recap = hash === '#recap';
   const closeRecap = () => {
     if (location.hash !== '#recap') return;
@@ -643,7 +644,7 @@ function Home({ account, who }: { account: boolean; who?: string }) {
                     const run = page?.canAct === false || !may(key) ? undefined : runFor(key), acts = tileActions(c);
                     // tapped, a tile opens its full card (or the one `open` names); `open: false`, on it or its section, keeps it to look at
                     const target = sec.open === false || o?.open === false ? undefined : typeof o?.open === 'string' ? o.open : key;
-                    return tilesOf(c).map((t, j) => <div key={`${key}${j}`} className={cn(arrival(key), 'min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} href={c.href} actions={j === 0 ? acts : undefined} run={run} onOpen={target ? () => setOpened(target) : undefined} /></div>);
+                    return tilesOf(c).map((t, j) => <div key={`${key}${j}`} className={cn(arrival(key), 'min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} href={c.href} actions={j === 0 ? acts : undefined} run={run} onOpen={target ? tile => setOpened({ key: target, tile }) : undefined} /></div>);
                   })}
                 </div>
               )
@@ -827,15 +828,11 @@ function Home({ account, who }: { account: boolean; who?: string }) {
           runAction={runAction} services={services} SUGGESTIONS={questions} setView={go} nav={nav} sectionIcon={sectionIcon} search={page.search} find={page.find} device={{ sandbox: page.sandbox, canAct: page.canAct !== false, member: !!page.member }} />)(PaletteNow ?? Palette)}</Suspense>
       )}
 
-      {/* a tile's full card, over the page, with what it can do here: the same controls, and the same rules, as the card */}
-      <Dialog open={!!opened} onOpenChange={o => { if (!o) setOpened(null); }}>
-        <DialogContent className="tile-sheet max-h-[calc(100dvh-3rem)] w-[min(44rem,calc(100vw-2rem))] max-w-none gap-0 overflow-y-auto border-0 bg-transparent p-0 shadow-none">
-          <DialogTitle className="sr-only">{opened ? page?.widgets[opened]?.title ?? state[opened]?.card?.title ?? opened : ''}</DialogTitle>
-          <DialogDescription className="sr-only">Everything this card shows and can do</DialogDescription>
-          {opened && <Widget large card={state[opened]?.card} kind={shapeOf(opened)?.t} failed={state[opened]?.error} title={page?.widgets[opened]?.title}
-            run={page?.canAct === false || !may(opened) ? undefined : runFor(opened)} />}
-        </DialogContent>
-      </Dialog>
+      {/* a tile's full card, flipped open over the page, with what it can do here: the same controls, and rules, as the card */}
+      {opened && <TileSheet key={opened.key} tile={opened.tile} title={page?.widgets[opened.key]?.title ?? state[opened.key]?.card?.title ?? opened.key} onClosed={() => setOpened(null)}>
+        <Widget large card={state[opened.key]?.card} kind={shapeOf(opened.key)?.t} failed={state[opened.key]?.error} title={page?.widgets[opened.key]?.title}
+          run={page?.canAct === false || !may(opened.key) ? undefined : runFor(opened.key)} />
+      </TileSheet>}
       {page?.assistant && (
         <Dialog open={chatOpen} onOpenChange={setChatOpen} modal={!docked}>
           {/* the chat pops out over the page, frosted like everything else: a tall window in the middle unless the config

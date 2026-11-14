@@ -929,3 +929,18 @@ section + section[data-plain] { margin-top: calc(var(--card-gap) - var(--section
   .has-wallpaper.glass-light [data-chat-menu][data-chat-menu][data-chat-menu] { background: #fff; }
 }
 @media (forced-colors: active) { .has-wallpaper [data-chat-menu][data-chat-menu][data-chat-menu] { background: Canvas; backdrop-filter: none; } }
+
+/* A tile opening into its card (tile-sheet.tsx). While it flips, the card is a two-sided thing in 3D: the tile on the
+   front, the card on the back; once it lands it's flat again, so the card's own glass and scrolling behave as usual. */
+.tile-stage { perspective: 1800px; }
+.tile-flip { transform-origin: center; }
+.tile-front { position: absolute; inset: 0; display: none; overflow: hidden; border-radius: var(--radius-surface, 1rem); pointer-events: none; }
+.tile-front-face { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+.tile-front-face > * { width: 100%; height: 100%; }
+.tile-flip.flipping { transform-style: preserve-3d; will-change: transform; }
+.tile-flip.flipping .tile-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.tile-flip.flipping .tile-front { display: block; transform: rotateY(180deg); }
+.tile-flip.flipping .tile-back { overflow: hidden; }
+/* light crossing the face as it turns edge-on */
+.tile-sheen { position: absolute; inset: 0; pointer-events: none; opacity: 0; border-radius: inherit;
+  background: linear-gradient(105deg, transparent 30%, rgb(255 255 255 / .38) 48%, rgb(255 255 255 / .12) 55%, transparent 70%); mix-blend-mode: soft-light; }

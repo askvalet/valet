@@ -1544,7 +1544,7 @@ function TileGraph({ points, gauge }: { points: number[]; gauge?: boolean }) {
 /** Headline tile for the overview's top row: label and context up top, the value at the bottom. Beside or behind them,
  *  what the tile knows: its artwork (a poster inside the tile, at its inset), a live graph, or a bar for each thing it counts.
  *  The tile is always the same glass. */
-function SummaryTileView({ s, href, actions, run, onOpen }: { s: Summary; href?: string; actions?: TileAction[]; run?: RunAction; onOpen?: () => void }) {
+function SummaryTileView({ s, href, actions, run, onOpen }: { s: Summary; href?: string; actions?: TileAction[]; run?: RunAction; onOpen?: (tile: HTMLElement) => void }) {
   const art = !!s.image, acts = run && actions?.length ? actions : undefined;
   // a tile that opens its card, or has things to press, isn't one big link: its link is a corner button instead
   const corner = !!href && (!!acts || !!onOpen);
@@ -1574,8 +1574,8 @@ function SummaryTileView({ s, href, actions, run, onOpen }: { s: Summary; href?:
   );
   // tapped, it opens its full card: a button, so Enter and Space open it too; the pills and the link inside keep their own
   if (onOpen) return (
-    <div role="button" tabIndex={0} aria-haspopup="dialog" aria-label={`${s.label}: open`} onClick={onOpen}
-      onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(); } }}
+    <div role="button" tabIndex={0} aria-haspopup="dialog" aria-label={`${s.label}: open`} onClick={e => onOpen(e.currentTarget)}
+      onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(e.currentTarget); } }}
       className="group/tile block h-full min-w-0 cursor-pointer rounded-surface outline-none focus-visible:ring-2 focus-visible:ring-ring">{body}</div>
   );
   return href && !corner ? <a href={href} target="_blank" rel="noreferrer" className="group/tile block h-full min-w-0">{body}</a> : <div className="group/tile h-full min-w-0">{body}</div>;
