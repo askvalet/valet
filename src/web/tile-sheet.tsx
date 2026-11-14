@@ -85,7 +85,9 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
         {/* the whole screen is the dialog, so a tap beside the card is ours to answer: it closes, flipping back */}
         <Primitive.Content aria-describedby={undefined} onCloseAutoFocus={e => { e.preventDefault(); tile?.focus({ preventScroll: true }); }}
           onPointerDown={e => { if (e.target === e.currentTarget) close(); }}
-          className="tile-stage fixed inset-0 z-50 grid place-items-center p-4 outline-none" style={{ pointerEvents: leaving ? 'none' : undefined }}>
+          // the dialog turns the page's clicks off and its own back on with an inline style, which this one replaces: so it says
+          // so itself, and only stops them while the card flips home
+          className="tile-stage fixed inset-0 z-50 grid place-items-center p-4 outline-none" style={{ pointerEvents: leaving ? 'none' : 'auto' }}>
           <Primitive.Title className="sr-only">{title}</Primitive.Title>
           <div ref={el => { wrap.current = el; if (el && el !== mounted) setMounted(el); }} className="tile-flip relative w-[min(44rem,calc(100vw-2rem))]">
             <div className="tile-face tile-back relative max-h-[calc(100dvh-3rem)] overflow-y-auto rounded-surface">
