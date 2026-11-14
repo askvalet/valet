@@ -28,6 +28,7 @@ import { ClockMonth, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, sha
 const Assistant = lazy(() => import('./assistant.tsx'));
 import type { ChatUi, ToolInfo } from './assistant.tsx';
 import type { VoiceUi } from './voice.tsx';
+import { loadMotion, springIn, useGlide } from './motion.ts';
 // ⌘K: once its code has arrived (it's fetched when the page goes quiet) it's drawn directly, not through Suspense, which
 // holds back a boundary that resolves at once by about 300 ms. Until then, the lazy one.
 let PaletteNow: typeof import('./palette.tsx').default | undefined;
@@ -469,7 +470,7 @@ function Home({ account, who }: { account: boolean; who?: string }) {
   useEffect(() => { if (themeName) applyTheme(themeName, wall); }, [themeName, wall]);
   useEffect(adaptInk, []);
   // ⌘K's code is fetched once the page is quiet, so the first press opens as fast as any other
-  useEffect(() => { const warm = () => { void loadPalette(); void loadSheet(); }; const id = 'requestIdleCallback' in window ? requestIdleCallback(warm, { timeout: 4000 }) : setTimeout(warm, 2000); return () => { 'cancelIdleCallback' in window ? cancelIdleCallback(id as number) : clearTimeout(id); }; }, []);
+  useEffect(() => { const warm = () => { void loadPalette(); void loadSheet(); void loadMotion(); }; const id = 'requestIdleCallback' in window ? requestIdleCallback(warm, { timeout: 4000 }) : setTimeout(warm, 2000); return () => { 'cancelIdleCallback' in window ? cancelIdleCallback(id as number) : clearTimeout(id); }; }, []);
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === 'k' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setPalette(p => !p); } };
     addEventListener('keydown', k); return () => removeEventListener('keydown', k);
@@ -527,6 +528,7 @@ function Home({ account, who }: { account: boolean; who?: string }) {
   const [railWidth, setRailWidth] = useState(0);
   useLayoutEffect(() => { setRailWidth((navSide === 'left' || navSide === 'right') && (words || getComputedStyle(document.documentElement).getPropertyValue('--nav-size')) ? railBox.current?.offsetWidth ?? 0 : 0); }, [navSide, words, nav.length, page]);
   const swell = useDock(railBox, navSide);
+  useGlide(railBox, view); useGlide(dockBox, view);
   useEffect(() => { dockBox.current?.querySelector('[aria-current]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, [view, nav.length]);   // a dock that scrolls keeps its tab in sight
   // remember what's empty (nothing playing), so it doesn't flash a placeholder on the next visit
   useEffect(() => { for (const [k, s] of Object.entries(state)) if (isEmpty(s.card)) noteShape(k, { empty: true }); }, [state]);
@@ -840,7 +842,7 @@ function Home({ account, who }: { account: boolean; who?: string }) {
         <Dialog open={chatOpen} onOpenChange={setChatOpen} modal={!docked}>
           {/* the chat pops out over the page, frosted like everything else: a tall window in the middle unless the config
               moves it. A panel at the side leaves the page usable beside it; phones always get the full sheet. */}
-          <DialogContent showCloseButton={false} data-place={place} onOpenAutoFocus={e => { if (phone) e.preventDefault(); }} onInteractOutside={e => { if (docked) e.preventDefault(); }} className="chat-pop flex max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+          <DialogContent ref={springIn} showCloseButton={false} data-place={place} onOpenAutoFocus={e => { if (phone) e.preventDefault(); }} onInteractOutside={e => { if (docked) e.preventDefault(); }} className="chat-pop flex max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
             <DialogTitle className="sr-only">{page.assistant.name}</DialogTitle>
             <DialogDescription className="sr-only">Ask about your homelab</DialogDescription>
             {chatOpen && (

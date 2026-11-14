@@ -10,16 +10,17 @@ import { createRoot } from 'react-dom/client';
 import { buttonVariants } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
-import { dissolve } from './dust.ts';
+import { dissolve, useSettle } from './dust.ts';
+import { motionNow } from './motion.ts';
 import './feel.css';
 
 /** True when this page has been asked to hold still: the system's setting or appearance.motion, through the one --move. */
 export const still = (el?: Element | null) => !!el && getComputedStyle(el).getPropertyValue('--move').trim() === '0';
 /** Past the end a thing still follows the finger, less and less, up to `limit` pixels. */
 export const rubber = (d: number, limit: number) => Math.sign(d) * (1 - 1 / (Math.abs(d) * .55 / limit + 1)) * limit;
-type Trail = { t: number; x: number }[];
+export type Trail = { t: number; x: number }[];
 /** How fast a pointer was going as it let go, from its last 90 ms. */
-const speed = (trail: Trail) => { const end = trail.at(-1)!, from = trail.find(p => end.t - p.t < 90) ?? end; return end.t > from.t ? (end.x - from.x) / (end.t - from.t) * 1000 : 0; };
+export const speed = (trail: Trail) => { const end = trail.at(-1)!, from = trail.find(p => end.t - p.t < 90) ?? end; return end.t > from.t ? (end.x - from.x) / (end.t - from.t) * 1000 : 0; };
 
 /** How a carousel moves when asked: smoothly, unless this page has been asked to hold still or it was a key. */
 const glide = (el?: Element | null, key = false): ScrollBehavior => key || still(el ?? document.documentElement) ? 'instant' : 'smooth';
@@ -326,7 +327,16 @@ function useSwipe(key: string) {
   const grab = useRef<{ x: number; dx: number; trail: Trail; live: boolean } | null>(null);
   const letGo = (el: HTMLElement) => {
     const g = grab.current; grab.current = null; if (!g?.live) return;
-    const v = g.trail.length ? speed(g.trail) : 0, away = Math.abs(g.dx) > 64 || (Math.abs(v) > 500 && v * g.dx > 0);
+    const v = g.trail.length ? speed(g.trail) : 0, away = Math.abs(g.dx) > 64 || (Math.abs(v) > 500 && v * g.dx > 0), m = motionNow();
+    if (m) {
+      // with Motion here: thrown at the speed it left the finger, or sprung back with a little of it
+      const x = m.motionValue(g.dx), fade = (n: number) => String(Math.max(.2, 1 - Math.abs(n) / 220));
+      x.on('change', n => { el.style.translate = `${n}px 0`; if (!away) el.style.opacity = fade(n); });
+      const run = m.animate(x, away ? Math.sign(g.dx || v) * (el.offsetWidth + 80) : 0, { type: 'spring', velocity: v, bounce: away ? 0 : .25, visualDuration: away ? .22 : .35 });
+      if (away) { m.animate(el, { opacity: 0 }, { duration: .16, ease: 'easeOut' }); toast(key, null); }
+      void run.finished.then(() => { el.classList.remove('is-held'); if (!away) { el.style.translate = ''; el.style.opacity = ''; } });
+      return;
+    }
     el.classList.remove('is-held');
     if (away) { el.style.translate = `${Math.sign(g.dx || v) * 160}px 0`; el.style.opacity = '0'; toast(key, null); }
     else { el.style.translate = ''; el.style.opacity = ''; }
@@ -346,12 +356,13 @@ function useSwipe(key: string) {
 }
 function Note({ t }: { t: Up }) {
   const swipe = useSwipe(t.key);
-  return <div {...swipe} className={cn('undo-bar', t.tone && `is-${t.tone}`, t.out && 'is-out')}>{t.text}{t.undo && <button type="button" onClick={() => { t.undo!(); toast(t.key, null); }}>Undo</button>}</div>;
+  return <div {...swipe} data-key={t.key} className={cn('undo-bar', t.tone && `is-${t.tone}`, t.out && 'is-out')}>{t.text}{t.undo && <button type="button" onClick={() => { t.undo!(); toast(t.key, null); }}>Undo</button>}</div>;
 }
 function Toasts() {
   const list = useSyncExternalStore(f => { subs.add(f); return () => subs.delete(f); }, () => toasts, () => toasts);
+  const stack = useSettle<HTMLDivElement>(list.map(t => t.key).join(' '));   // the others close up when one goes
   return (
-    <div role="status" className={cn('toasts', near && 'is-near')} style={near ?? undefined}>
+    <div ref={stack} role="status" className={cn('toasts', near && 'is-near')} style={near ?? undefined}>
       {list.map(t => <Note key={t.key} t={t} />)}
     </div>
   );

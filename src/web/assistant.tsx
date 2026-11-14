@@ -17,7 +17,9 @@ import { splitThink } from '../shared/think.ts';
 import { skipBeforeSending } from '../shared/approvals.ts';
 import { Icon } from './cards.tsx';
 import { Approval, ChatCard, type ToolInfo } from './approval.tsx';
-import { Tick } from './feel.tsx';
+import { speed, still, Tick, type Trail } from './feel.tsx';
+import { motionNow, moving, shift } from './motion.ts';
+import type { MotionValue } from 'motion';
 import { label, num } from './format.ts';
 import { play } from './sound.ts';
 import { ModelPicker, ReasoningPicker, type Choice, type Thinking } from './models.tsx';
@@ -395,18 +397,42 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
   voice?: VoiceUi;   // voice: which of the mic and the speaker are on
 }) {
   const sheet = !!onClose;
-  // dragging the header pulls the sheet down with the finger; far or fast enough lets it go, otherwise it rides back
-  const pull = useRef<{ y: number; t: number; el: HTMLElement } | null>(null);
+  // dragging the header pulls the sheet down with the finger; far or fast enough throws it away at the speed it was let go,
+  // otherwise it springs back. With Motion not here yet (or held still), the same with a plain ease.
+  const pull = useRef<{ y: number; t: number; el: HTMLElement; at: number; v?: MotionValue<number>; trail: Trail } | null>(null);
   const grab = {
     onPointerDown: (e: React.PointerEvent<HTMLElement>) => {
       const el = e.currentTarget.closest<HTMLElement>('.chat-pop'); if (!el) return;
-      e.currentTarget.setPointerCapture(e.pointerId); el.style.transition = 'none'; pull.current = { y: e.clientY, t: Date.now(), el };
+      e.currentTarget.setPointerCapture(e.pointerId);
+      const m = motionNow(), at = Math.max(0, shift(el).y); moving.get(el)?.stop(); moving.delete(el);
+      el.style.transition = 'none'; el.style.opacity = '';
+      const v = m && !still(el) ? m.motionValue(at) : undefined;
+      v?.on('change', y => { el.style.transform = `translateY(${y}px)`; });
+      pull.current = { y: e.clientY, t: Date.now(), el, at, v, trail: [] };
     },
-    onPointerMove: (e: React.PointerEvent) => { const p = pull.current; if (p) p.el.style.transform = `translateY(${Math.max(0, e.clientY - p.y)}px)`; },
+    onPointerMove: (e: React.PointerEvent) => {
+      const p = pull.current; if (!p) return;
+      const y = Math.max(0, p.at + e.clientY - p.y);
+      p.trail.push({ t: e.timeStamp, x: e.clientY }); if (p.trail.length > 8) p.trail.shift();
+      if (p.v) p.v.set(y); else p.el.style.transform = `translateY(${y}px)`;
+    },
     onPointerUp: (e: React.PointerEvent) => {
       const p = pull.current; if (!p) return; pull.current = null;
-      const dy = e.clientY - p.y;
+      const dy = p.at + e.clientY - p.y, m = motionNow();
+      if (p.v && m) {
+        const flung = p.trail.length > 1 && e.timeStamp - p.trail.at(-1)!.t < 100 ? speed(p.trail) : 0, away = dy > 140 || flung > 650;
+        const run = m.animate(p.v, away ? p.el.offsetHeight + 32 : 0, { type: 'spring', velocity: flung, bounce: away ? 0 : .12, visualDuration: away ? .3 : .38, restDelta: away ? 4 : .5 });
+        moving.set(p.el, run);
+        void run.finished.then(() => { if (moving.get(p.el) === run) moving.delete(p.el); if (away) onClose?.(); });
+        return;
+      }
       if (dy > 140 || dy / (Date.now() - p.t) > .6) { onClose?.(); return; }
+      p.el.style.transition = 'transform 280ms var(--ease-drawer)'; p.el.style.transform = '';
+    },
+    // the system took the finger (a scroll, a gesture): it rides back
+    onPointerCancel: () => {
+      const p = pull.current; if (!p) return; pull.current = null; const m = motionNow();
+      if (p.v && m) { moving.set(p.el, m.animate(p.v, 0, { type: 'spring', bounce: .12, visualDuration: .38 })); return; }
       p.el.style.transition = 'transform 280ms var(--ease-drawer)'; p.el.style.transform = '';
     },
   };

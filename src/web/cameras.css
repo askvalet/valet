@@ -84,6 +84,7 @@
 
 /* full screen */
 .cam-theatre { position: fixed; inset: 0; z-index: 100; background: #000; outline: none; animation: cam-in var(--dur-pop) var(--ease-out) backwards; }
+.cam-theatre[data-grown], .cam-theatre[data-grown] .cam-frame { animation: none; }   /* growing out of the card instead (Theatre) */
 .cam-close { position: absolute; top: max(14px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); display: grid; place-items: center; width: 40px; height: 40px; border-radius: 99px; color: #fff; background: rgb(30 30 34 / .55); backdrop-filter: blur(20px) saturate(1.6); }
 .cam-close svg { width: 18px; height: 18px; }
 .cam-dock { position: absolute; left: 0; right: 0; bottom: max(14px, env(safe-area-inset-bottom)); display: flex; justify-content: center; padding-inline: 12px; }

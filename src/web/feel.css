@@ -132,6 +132,7 @@
 .toasts .undo-bar { touch-action: pan-y; transition: translate var(--dur-move) var(--ease-spring), opacity var(--dur-pop) var(--ease-out); }
 .toasts .undo-bar.is-held { transition: none; cursor: grabbing; user-select: none; }
 .toasts .undo-bar.is-out { opacity: 0; scale: .96; transition: opacity var(--dur-pop) var(--ease-out), scale var(--dur-pop) var(--ease-out), translate var(--dur-pop) var(--ease-out); }
+.toasts .undo-bar.is-held.is-out { transition: none; }   /* thrown: Motion carries it off */
 
 /* Dust (dust.ts): a copy of what was taken off, where it was, masked away from the left while its specks drift off. The
    mask is the only thing that isn't transform or opacity, on one element for a third of a second. */

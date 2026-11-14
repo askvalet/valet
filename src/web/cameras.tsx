@@ -2,11 +2,13 @@
 // snapshot refreshes about once a second if not, and both rest when the tab is hidden or the card has scrolled away. An
 // event opens as its own picture, never as the live view; a card that says `sample` plays recordings and never says LIVE.
 import { Cctv, Expand, X } from 'lucide-react';
-import { memo, useCallback, useEffect, useId, useRef, useState, type MutableRefObject, type RefObject } from 'react';
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import type { Camera, CameraEvent, CamerasCard, Detection } from '../shared/cards.ts';
-import { Row, RowArrows } from './feel.tsx';
+import { Row, RowArrows, still as held } from './feel.tsx';
+import { motionNow } from './motion.ts';
+import type { MotionValue } from 'motion';
 import { Empty } from './empty.tsx';
 import { clock } from './format.ts';
 import './cameras.css';
@@ -188,8 +190,45 @@ export function EventStill({ event, cam, sample, live }: { event: CameraEvent; c
 
 /** Full screen. It lives on the body because glass makes a card the containing block for anything fixed inside it, and
  *  it's its own overlay because iPhones won't put anything but a bare video in real full screen. */
-function Theatre({ card, at, pick, close }: { card: CamerasCard; at: string; pick: (id: string) => void; close: () => void }) {
+function Theatre({ card, at, pick, close: done, from }: { card: CamerasCard; at: string; pick: (id: string) => void; close: () => void; from: () => HTMLElement | null | undefined }) {
   const box = useRef<HTMLDivElement>(null), cam = card.cameras.find(c => c.id === at) ?? card.cameras[0];
+  const grow = useRef<{ p: MotionValue<number>; measure: () => void; draw: (v: number) => void } | null>(null), leaving = useRef(false);
+  // Where there's no real full screen (an iPhone), the picture grows out of the card's own and goes back into it on a
+  // spring: the whole overlay is scaled so its picture sits on the card's, and clipped to it, then let go. Both are
+  // measured once each way, so a picture finding its shape mid-flight can't make it jump. Real full screen has its own
+  // move, and Motion not here yet or a page held still gets the plain fade.
+  useLayoutEffect(() => {
+    const el = box.current, m = motionNow(); if (!el || !m || document.fullscreenEnabled || held(el)) return;
+    const p = m.motionValue(0), bits = el.querySelectorAll<HTMLElement>('.cam-close, .cam-dock');
+    let at: { r: DOMRect; c: DOMRect; s: number; round: number } | null = null;
+    const measure = () => {
+      const a = from()?.querySelector<HTMLElement>('.cam-frame'), b = el.querySelector<HTMLElement>('.cam-frame');
+      const r = a?.getBoundingClientRect(), c = b?.getBoundingClientRect();
+      at = a && r && c && r.width && c.width && r.bottom > 0 && r.top < innerHeight
+        ? { r, c, s: r.width / c.width, round: parseFloat(getComputedStyle(a.closest('.cam-stage') ?? a).borderTopLeftRadius) || 0 } : null;
+    };
+    const draw = (v: number) => {
+      bits.forEach(n => { n.style.opacity = String(Math.max(0, (v - .6) / .4)); });
+      if (!at) { el.style.transform = el.style.clipPath = ''; el.style.opacity = String(v); return; }   // the card's picture is out of sight: a fade
+      const { r, c, s, round } = at, k = 1 - v;
+      el.style.transform = `translate(${(r.left - c.left * s) * k}px, ${(r.top - c.top * s) * k}px) scale(${1 + (s - 1) * k})`;
+      el.style.clipPath = `inset(${c.top * k}px ${(innerWidth - c.right) * k}px ${(innerHeight - c.bottom) * k}px ${c.left * k}px round ${round / s * k}px)`;
+    };
+    el.dataset.grown = ''; el.style.transformOrigin = '0 0';
+    measure(); p.on('change', draw); draw(0);
+    grow.current = { p, measure, draw };
+    const run = m.animate(p, 1, { type: 'spring', visualDuration: .45, bounce: .12 });
+    return () => run.stop();
+  }, []);
+  const close = () => {
+    const g = grow.current, m = motionNow();
+    if (!g || !m) return done();
+    if (leaving.current) return; leaving.current = true;
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    const el = box.current; if (el) el.style.transform = el.style.clipPath = '';   // measured as it will be at rest, even if closed mid-grow
+    g.measure(); g.draw(g.p.get());
+    void m.animate(g.p, 0, { type: 'spring', visualDuration: .36, bounce: 0 }).finished.then(done);
+  };
   useEffect(() => {
     const el = box.current, step = (n: number) => pick(card.cameras[(card.cameras.findIndex(c => c.id === at) + n + card.cameras.length) % card.cameras.length].id);
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); if (e.key === 'ArrowRight') step(1); if (e.key === 'ArrowLeft') step(-1); };
@@ -214,17 +253,18 @@ export function Cameras({ card }: { card: CamerasCard }) {
   const [at, setAt] = useState(card.cameras[0]?.id ?? ''), [full, setFull] = useState(false), [still, setStill] = useState<CameraEvent | null>(null);
   const cam = card.cameras.find(c => c.id === at) ?? card.cameras[0], many = card.cameras.length > 1;
   const pick = (id: string) => { setAt(id); setStill(null); };
+  const grid = useRef<HTMLDivElement>(null);
   const openEvent = useCallback((e: CameraEvent) => { setAt(e.camera); setStill(e); }, []);
   if (!cam) return <Empty icon={Cctv} text={card.empty ?? 'No cameras'} height={240} />;
   return (
     <div className="cam-card @container">
-      <div className={cn('cam-grid', many && 'has-pills')}>
+      <div ref={grid} className={cn('cam-grid', many && 'has-pills')}>
         {still ? <EventStill event={still} cam={card.cameras.find(c => c.id === still.camera)} sample={card.sample} live={() => pick(still.camera)} />
           : <Feed key={cam.id} cam={cam} refresh={card.refresh} on={!full} open={() => setFull(true)} sample={card.sample} />}
         {many && <Pills cameras={card.cameras} at={cam.id} pick={pick} />}
       </div>
       {!!card.events?.length && <Events events={card.events} cameras={card.cameras} at={still} open={openEvent} />}
-      {full && <Theatre card={card} at={cam.id} pick={pick} close={() => setFull(false)} />}
+      {full && <Theatre card={card} at={cam.id} pick={pick} close={() => setFull(false)} from={() => grid.current?.querySelector<HTMLElement>('.cam-stage')} />}
     </div>
   );
 }
