@@ -1,6 +1,5 @@
 import { ArrowUp, CornerDownLeft, LayoutGrid, MessageCircle, Moon, Search, Sun, TriangleAlert, X } from 'lucide-react';
 import { tileActions, tilesOf } from '../shared/tiles.ts';
-import { TileSheet } from './tile-sheet.tsx';
 import { Fragment, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -33,6 +32,10 @@ import type { VoiceUi } from './voice.tsx';
 // holds back a boundary that resolves at once by about 300 ms. Until then, the lazy one.
 let PaletteNow: typeof import('./palette.tsx').default | undefined;
 const loadPalette = () => import('./palette.tsx').then(m => { PaletteNow = m.default; return m; });
+// a tile's sheet, and Motion with it (about 25 KB), aren't on the first load: fetched once the page is quiet, so the first
+// tap still opens at once
+let SheetNow: typeof import('./tile-sheet.tsx').TileSheet | undefined;
+const loadSheet = () => import('./tile-sheet.tsx').then(m => { SheetNow = m.TileSheet; return m; });
 const Palette = lazy(loadPalette);
 const Asks = lazy(() => import('./asks.tsx'));
 const RecapStory = lazy(() => import('./recap.tsx'));
@@ -466,7 +469,7 @@ function Home({ account, who }: { account: boolean; who?: string }) {
   useEffect(() => { if (themeName) applyTheme(themeName, wall); }, [themeName, wall]);
   useEffect(adaptInk, []);
   // ⌘K's code is fetched once the page is quiet, so the first press opens as fast as any other
-  useEffect(() => { const warm = () => void loadPalette(); const id = 'requestIdleCallback' in window ? requestIdleCallback(warm, { timeout: 4000 }) : setTimeout(warm, 2000); return () => { 'cancelIdleCallback' in window ? cancelIdleCallback(id as number) : clearTimeout(id); }; }, []);
+  useEffect(() => { const warm = () => { void loadPalette(); void loadSheet(); }; const id = 'requestIdleCallback' in window ? requestIdleCallback(warm, { timeout: 4000 }) : setTimeout(warm, 2000); return () => { 'cancelIdleCallback' in window ? cancelIdleCallback(id as number) : clearTimeout(id); }; }, []);
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === 'k' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setPalette(p => !p); } };
     addEventListener('keydown', k); return () => removeEventListener('keydown', k);
@@ -644,7 +647,7 @@ function Home({ account, who }: { account: boolean; who?: string }) {
                     const run = page?.canAct === false || !may(key) ? undefined : runFor(key), acts = tileActions(c);
                     // tapped, a tile opens its full card (or the one `open` names); `open: false`, on it or its section, keeps it to look at
                     const target = sec.open === false || o?.open === false ? undefined : typeof o?.open === 'string' ? o.open : key;
-                    return tilesOf(c).map((t, j) => <div key={`${key}${j}`} className={cn(arrival(key), 'min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} href={c.href} actions={j === 0 ? acts : undefined} run={run} onOpen={target ? tile => setOpened({ key: target, tile }) : undefined} /></div>);
+                    return tilesOf(c).map((t, j) => <div key={`${key}${j}`} className={cn(arrival(key), 'min-w-0', o?.style && 'card-look')} style={o?.style as React.CSSProperties}><SummaryTile s={t} href={c.href} actions={j === 0 ? acts : undefined} run={run} onOpen={target ? tile => { if (SheetNow) setOpened({ key: target, tile }); else void loadSheet().then(() => setOpened({ key: target, tile })); } : undefined} /></div>);
                   })}
                 </div>
               )
@@ -829,10 +832,10 @@ function Home({ account, who }: { account: boolean; who?: string }) {
       )}
 
       {/* a tile's full card, flipped open over the page, with what it can do here: the same controls, and rules, as the card */}
-      {opened && <TileSheet key={opened.key} tile={opened.tile} title={page?.widgets[opened.key]?.title ?? state[opened.key]?.card?.title ?? opened.key} onClosed={() => setOpened(null)}>
+      {opened && SheetNow && <SheetNow key={opened.key} tile={opened.tile} title={page?.widgets[opened.key]?.title ?? state[opened.key]?.card?.title ?? opened.key} onClosed={() => setOpened(null)}>
         <Widget large card={state[opened.key]?.card} kind={shapeOf(opened.key)?.t} failed={state[opened.key]?.error} title={page?.widgets[opened.key]?.title}
           run={page?.canAct === false || !may(opened.key) ? undefined : runFor(opened.key)} />
-      </TileSheet>}
+      </SheetNow>}
       {page?.assistant && (
         <Dialog open={chatOpen} onOpenChange={setChatOpen} modal={!docked}>
           {/* the chat pops out over the page, frosted like everything else: a tall window in the middle unless the config
