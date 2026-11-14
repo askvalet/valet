@@ -60,6 +60,7 @@ Every glass card blurs what's behind it, so a background that changes every fram
 - **Draw with `requestAnimationFrame`.** The browser stops calling it while the tab is hidden.
 - **Don't draw more often than you need to.** The example draws 24 times a second, which is plenty for something slow.
 - **Mind the screen.** A high-resolution screen has four times the pixels; capping the canvas at twice the page's size, as the example does, is enough.
+- **Paint again as soon as you resize.** Resizing a canvas blanks it, and until your next frame whatever is behind it shows through. If you paint every pixel anyway, an opaque canvas (`getContext('2d', { alpha: false })`) means a missed frame shows your own colour, not the wallpaper. The box itself stays the size of the largest viewport, so a phone's toolbars coming and going as you scroll don't resize it.
 
 ## Motion
 

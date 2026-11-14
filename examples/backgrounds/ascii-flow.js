@@ -13,7 +13,8 @@ export default function mount(el, ctx) {
   const canvas = document.createElement('canvas');
   canvas.style.cssText = 'width:100%;height:100%;display:block';
   el.appendChild(canvas);
-  const g = canvas.getContext('2d');
+  // opaque: it paints every pixel anyway, and a frame it misses then shows its own colour rather than what's behind it
+  const g = canvas.getContext('2d', { alpha: false });
   let theme = ctx.theme, w = 0, h = 0, cols = 0, rows = 0, raf = 0, last = 0, colour = '', ink = '';
 
   // the theme's colours, from the page's own CSS variables, so it follows accent and light or dark
@@ -29,14 +30,12 @@ export default function mount(el, ctx) {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.font = `${CELL - 2}px ui-monospace, SFMono-Regular, Menlo, monospace`;
     g.textBaseline = 'top';
+    if (colour) paint(last || performance.now());   // a resize blanks the canvas: fill it again now, not a frame later
   };
   // two slow waves crossing: smooth, and cheap enough to work out for every character every frame
   const field = (x, y, t) => (Math.sin(x * .09 + t * .6) + Math.sin(y * .13 - t * .45) + Math.sin((x + y) * .05 + t * .3)) / 3;
 
-  const draw = now => {
-    raf = requestAnimationFrame(draw);   // the browser stops calling this while the tab is hidden
-    if (now - last < 1000 / FPS) return;
-    last = now;
+  const paint = now => {
     const t = now / 1000;
     g.fillStyle = ink; g.fillRect(0, 0, w, h);
     g.fillStyle = colour;
@@ -47,6 +46,12 @@ export default function mount(el, ctx) {
       g.fillText(c, x * CELL, y * CELL);
     }
     g.globalAlpha = 1;
+  };
+  const draw = now => {
+    raf = requestAnimationFrame(draw);   // the browser stops calling this while the tab is hidden
+    if (now - last < 1000 / FPS) return;
+    last = now;
+    paint(now);
   };
 
   const seen = new ResizeObserver(size);
