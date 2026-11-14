@@ -466,6 +466,20 @@ test('home assistant cards: rows carry a small icon, and a lock, a garage door o
   assert.equal(row('light.desk').icon, undefined);   // a light keeps its colour swatch
 });
 
+test('home assistant: a switch pressed shows on the next look, not the state kept from just before', async () => {
+  let lamp = 'off', asked = 0;
+  const ha = make(homeassistant, { url: 'http://ha', token: 'x', cards: { h: { title: 'House', entities: ['light.lamp'] } } }, fake((url: string, init: any) => {
+    if (url.endsWith('/api/states')) { asked++; return [{ entity_id: 'light.lamp', state: lamp, attributes: { friendly_name: 'Lamp' } }]; }
+    if (url.includes('/api/services/')) { lamp = url.endsWith('turn_on') ? 'on' : 'off'; return []; }
+  }));
+  const value = async () => ((await ha.widgets.h.fetch()) as any).items[0].value;
+  assert.equal(await value(), false);
+  await ha.actions!.set.run({ entity_id: 'light.lamp', value: true });
+  assert.equal(await value(), true, 'within the two seconds states are kept, a press still asks the house again');
+  assert.equal(asked, 2);
+  assert.equal(await value(), true); assert.equal(asked, 2, 'and otherwise they are kept, as before');
+});
+
 const climate = (over: Record<string, unknown> = {}, state = 'heat') => ({ entity_id: 'climate.hall', state, attributes: { friendly_name: 'Hall', hvac_modes: ['off', 'heat'], preset_modes: ['none', 'home', 'sleep'], preset_mode: 'home',
   hvac_action: 'idle', temperature: 20, current_temperature: 19.5, min_temp: 7, max_temp: 30, target_temp_step: .5, ...over } });
 const thermostatHA = (entity: object, more: object = {}, seen: { url: string; body?: unknown }[] = [], unit = '°C') => make(homeassistant, { url: 'http://ha', token: 'x', thermostats: { hall: { entity: 'climate.hall', ...more } } }, fake((url, init) => {

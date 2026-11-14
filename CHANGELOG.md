@@ -9,6 +9,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 - The tile view takes more cards, and tiles do what their cards do. A card with no headline of its own gets one in `display: tiles` and `rings`: a status card says all up or how many are down, a list its count and first item, a shelf its count and first picture, controls how many are on, a calendar the next event, the weather the temperature, a chart its latest value. And a tile carries its card's buttons, its banner's button and its switches as small pills, its link a corner button; none on a read-only page, for a card someone's profile can't use, or on the wall for a card that isn't on `wall.touch`, and every press is in the activity log. A tile also opens: tap it, or press Enter, and it flips over into its full card, a sheet over the page with everything it can do (and flips back into its place when closed; a plain fade with less motion); `open: false` on a tile or its section keeps it to look at, and `open: <widget>` opens another card instead, like the house from a Lights tile. Pills and buttons keep their width while they work, and a tile's poster never covers its title. ([#22](https://github.com/askvalet/valet/issues/22))
 
+### Fixed
+
+- A switch pressed on a card shows at once and stays, instead of flicking back. Home Assistant kept its states for two seconds, and the refresh after a press read them from before it, so a light that came on showed as off until the next refresh. Its states are now asked for again after anything is switched, every press refreshes its cards again a moment later for a light that's slow to report, and a card's switch moves when pressed and holds until the service says otherwise (or goes back if the press failed), as the wall's touch tiles already did.
+
 ## [0.6.3] - 2026-11-12
 
 ### Fixed
