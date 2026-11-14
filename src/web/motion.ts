@@ -1,4 +1,3 @@
-import { useLayoutEffect, useRef, type RefObject } from 'react';
 // Motion (motion.dev), for the few gestures that want real physics: a throw that keeps its speed, a spring that settles.
 // It's about 25 KB, so it's never on the first load: the page fetches it when it's idle, and until it's here everything
 // moves the way it always did, with CSS. Held still (the system's setting or appearance.motion), nothing asks for it.
@@ -29,32 +28,4 @@ export function springIn(el: HTMLElement | null) {
     phone ? { type: 'spring', visualDuration: .42, bounce: 0 } : { type: 'spring', visualDuration: .4, bounce: .22, opacity: { duration: .16, ease: 'easeOut' } });
   moving.set(el, run);
   void run.finished.then(() => { if (moving.get(el) === run) moving.delete(el); });
-}
-
-type Box = { left: number; top: number; width: number; height: number };
-const box = (el: HTMLElement): Box => ({ left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight });
-/** The tab you're on keeps its solid pill, and moving to another one slides that pill across on a spring instead of
- *  switching it in place. A copy of the pill does the travelling, under the buttons, while the new tab's own waits
- *  transparent; it lands and hands over in one frame. Offsets, not rects, so the dock's swell can't throw it off. */
-export function useGlide(nav: RefObject<HTMLElement | null>, on: unknown) {
-  const last = useRef<{ at?: Box; ghost?: HTMLElement; run?: { stop: () => void }; btn?: HTMLElement }>({});
-  useLayoutEffect(() => {
-    const host = nav.current, l = last.current, btn = host?.querySelector<HTMLElement>('[aria-current="page"]');
-    const from = l.ghost ? box(l.ghost) : l.at;
-    l.run?.stop(); l.btn?.removeAttribute('data-gliding'); l.ghost?.remove(); l.ghost = l.run = l.btn = undefined;
-    l.at = btn ? box(btn) : undefined;
-    const m = motionNow(), to = l.at;
-    if (!host || !btn || !to || !from || !m || calm(host) || (from.left === to.left && from.top === to.top)) return;
-    const look = getComputedStyle(btn), ghost = document.createElement('div');
-    ghost.className = 'nav-glide';
-    Object.assign(ghost.style, { background: look.backgroundColor, borderRadius: look.borderRadius, boxShadow: look.boxShadow,
-      left: `${from.left}px`, top: `${from.top}px`, width: `${from.width}px`, height: `${from.height}px` });
-    host.prepend(ghost); host.classList.add('is-gliding'); btn.dataset.gliding = '';
-    const run = m.animate(ghost, { left: to.left, top: to.top, width: to.width, height: to.height }, { type: 'spring', visualDuration: .34, bounce: .2 });
-    Object.assign(l, { ghost, run, btn });
-    void run.finished.then(() => {
-      if (l.run !== run) return;
-      btn.removeAttribute('data-gliding'); ghost.remove(); host.classList.remove('is-gliding'); l.ghost = l.run = l.btn = undefined;
-    });
-  }, [on]);
 }

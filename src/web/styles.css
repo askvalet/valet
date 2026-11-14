@@ -950,8 +950,3 @@ section + section[data-plain] { margin-top: calc(var(--card-gap) - var(--section
 .tile-flip.flipping:not(.settled) .tile-close { opacity: 0; transition: none; pointer-events: none; }
 /* the chat arriving on Motion's spring (motion.ts springIn) instead of the keyframes above */
 .chat-pop[data-sprung][data-state="open"] { animation: none; }
-/* the active tab's pill sliding to the new tab (motion.ts useGlide): the copy travels under the buttons, the new tab's own
-   pill waits clear, and nothing fades meanwhile, so the hand-over is a single frame */
-.nav-glide { position: absolute; pointer-events: none; }
-.is-gliding button { transition-property: width, height, transform, opacity !important; }
-[data-gliding] { background: transparent !important; box-shadow: none !important; }

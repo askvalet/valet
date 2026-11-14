@@ -28,7 +28,7 @@ import { ClockMonth, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, sha
 const Assistant = lazy(() => import('./assistant.tsx'));
 import type { ChatUi, ToolInfo } from './assistant.tsx';
 import type { VoiceUi } from './voice.tsx';
-import { loadMotion, springIn, useGlide } from './motion.ts';
+import { loadMotion, springIn } from './motion.ts';
 // ⌘K: once its code has arrived (it's fetched when the page goes quiet) it's drawn directly, not through Suspense, which
 // holds back a boundary that resolves at once by about 300 ms. Until then, the lazy one.
 let PaletteNow: typeof import('./palette.tsx').default | undefined;
@@ -528,7 +528,6 @@ function Home({ account, who }: { account: boolean; who?: string }) {
   const [railWidth, setRailWidth] = useState(0);
   useLayoutEffect(() => { setRailWidth((navSide === 'left' || navSide === 'right') && (words || getComputedStyle(document.documentElement).getPropertyValue('--nav-size')) ? railBox.current?.offsetWidth ?? 0 : 0); }, [navSide, words, nav.length, page]);
   const swell = useDock(railBox, navSide);
-  useGlide(railBox, view); useGlide(dockBox, view);
   useEffect(() => { dockBox.current?.querySelector('[aria-current]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, [view, nav.length]);   // a dock that scrolls keeps its tab in sight
   // remember what's empty (nothing playing), so it doesn't flash a placeholder on the next visit
   useEffect(() => { for (const [k, s] of Object.entries(state)) if (isEmpty(s.card)) noteShape(k, { empty: true }); }, [state]);
