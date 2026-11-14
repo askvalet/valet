@@ -5,6 +5,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-14
+
 ### Added
 
 - Background scripts: `appearance.background: <name>` runs `data/backgrounds/<name>.js` behind the cards, over the wallpaper if there is one, so a background can be anything a page can draw, like an animated canvas. One for light and one for dark, a different one per tab with `appearance.backgrounds` (`none` for none there), and the wall display too. The script gets a full-screen box, the theme and the tab, and is told when they change; the theme's colours are the page's CSS variables. It never runs with `motion` reduced or none or when the device asks for less motion. Valet serves it from its own address, so the page's security policy is unchanged; only the owner can turn one on, and `config check` names a script that isn't there. An example is in `examples/backgrounds/ascii-flow.js`. ([#23](https://github.com/askvalet/valet/issues/23))
@@ -379,7 +381,8 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/compare/v0.6.3...HEAD
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/askvalet/valet/compare/v0.6.3...v0.7.0
 [0.6.3]: https://github.com/askvalet/valet/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/askvalet/valet/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/askvalet/valet/compare/v0.6.0...v0.6.1
