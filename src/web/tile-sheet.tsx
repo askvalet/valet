@@ -18,7 +18,22 @@ const onScreen = (r: DOMRect) => r.width > 0 && r.bottom > 0 && r.top < innerHei
 export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLElement | null; title: string; onClosed: () => void; children: ReactNode }) {
   // the card is in a portal, which puts it on the page a commit after this one: the flip starts when it's actually there
   const wrap = useRef<HTMLDivElement | null>(null), [mounted, setMounted] = useState<HTMLDivElement | null>(null), front = useRef<HTMLDivElement>(null), dim = useRef<HTMLDivElement>(null);
-  const [leaving, setLeaving] = useState(false);
+  const leaving = useRef(false);
+  const back = useRef<HTMLDivElement>(null), watching = useRef(0);
+  /** While it turns, exactly one face shows: the card while it faces you, the tile once it has turned past edge-on. Read
+   *  off the card's real angle every frame rather than left to backface-visibility, which Safari ignores for a face with
+   *  layers of its own inside (the tile's copy has), and then shows the tile through the card. */
+  const faces = (card: HTMLElement) => {
+    cancelAnimationFrame(watching.current);
+    const tick = () => {
+      const t = getComputedStyle(card).transform, facing = t === 'none' || new DOMMatrix(t).m11 >= 0;
+      if (back.current) back.current.style.visibility = facing ? '' : 'hidden';
+      if (front.current) front.current.style.visibility = facing ? 'hidden' : '';
+      watching.current = requestAnimationFrame(tick);
+    };
+    tick();
+  };
+  const unwatch = () => { cancelAnimationFrame(watching.current); if (back.current) back.current.style.visibility = ''; };   // closing already: a second tap or Escape mid-flip changes nothing
   const tileFade = useRef<Animation | null>(null);
   const busy = useRef(false);
 
@@ -38,7 +53,7 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
   useLayoutEffect(() => {
     const card = wrap.current;
     if (!card) return;
-    const gone = () => { tileFade.current?.cancel(); tile?.style.removeProperty('visibility'); };
+    const gone = () => { cancelAnimationFrame(watching.current); tileFade.current?.cancel(); tile?.style.removeProperty('visibility'); };
     if (still() || !tile || !onScreen(tile.getBoundingClientRect())) {
       tile?.style.setProperty('visibility', 'hidden');   // it has lifted off the page
       card.animate([{ opacity: 0 }, { opacity: 1 }], { duration: still() ? 120 : 220, easing: 'ease-out' });
@@ -61,15 +76,16 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
     dim.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: OPEN_MS * .7, easing: 'ease-out' });
     // the × comes in as the card settles, within a few degrees of flat, so it's there the moment it lands
     const settle = setTimeout(() => card.classList.add('settled'), OPEN_MS * .6);
-    a.onfinish = () => { card.classList.remove('flipping'); busy.current = false; };
+    faces(card);
+    a.onfinish = () => { unwatch(); card.classList.remove('flipping'); busy.current = false; };
     a.oncancel = () => clearTimeout(settle);
     return gone;
   }, [mounted]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const close = () => {
     const card = wrap.current;
-    if (leaving || !card) return;
-    setLeaving(true);
+    if (leaving.current || !card) return;
+    leaving.current = true;
     const done = () => { tileFade.current?.cancel(); tile?.style.removeProperty('visibility'); onClosed(); };
     const r = tile?.getBoundingClientRect();
     dim.current?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: CLOSE_MS, easing: 'ease-in', fill: 'forwards' });
@@ -86,10 +102,11 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
     tileFade.current?.cancel(); tile.style.removeProperty('visibility');
     tileFade.current = tile.animate([{ opacity: 0 }, { opacity: 0, offset: .7 }, { opacity: 1 }], { duration: CLOSE_MS, fill: 'forwards' });
     front.current?.animate([{ opacity: 1 }, { opacity: 1, offset: .7 }, { opacity: 0 }], { duration: CLOSE_MS, fill: 'forwards' });
+    faces(card);
     card.animate([
       { transform: 'none' },
       { transform: `translate(${m.x}px, ${m.y}px) scale(${m.sx}, ${m.sy}) rotateY(-180deg)` },
-    ], { duration: CLOSE_MS, easing: 'cubic-bezier(.45, 0, .25, 1)', fill: 'forwards' }).onfinish = done;
+    ], { duration: CLOSE_MS, easing: 'cubic-bezier(.45, 0, .25, 1)', fill: 'forwards' }).onfinish = () => { cancelAnimationFrame(watching.current); done(); };
   };
 
   return (
@@ -101,12 +118,13 @@ export function TileSheet({ tile, title, onClosed, children }: { tile: HTMLEleme
         <Primitive.Content aria-describedby={undefined} onCloseAutoFocus={e => { e.preventDefault(); tile?.focus({ preventScroll: true }); }}
           onOpenAutoFocus={e => { e.preventDefault(); wrap.current?.focus({ preventScroll: true }); }}
           onPointerDown={e => { if (e.target === e.currentTarget) close(); }}
-          // the dialog turns the page's clicks off and its own back on with an inline style, which this one replaces: so it says
-          // so itself, and only stops them while the card flips home
-          className="tile-stage fixed inset-0 z-50 grid place-items-center p-4 outline-none" style={{ pointerEvents: leaving ? 'none' : 'auto' }}>
+          // the dialog turns the page's clicks off and its own back on with an inline style, which this one replaces, so it says
+          // so itself. It keeps taking them while the card flips home: a tap that closed it would otherwise land on the page
+          // underneath when it lifts, often on the very tile it came from, and open it again
+          className="tile-stage fixed inset-0 z-50 grid place-items-center p-4 outline-none" style={{ pointerEvents: 'auto' }}>
           <Primitive.Title className="sr-only">{title}</Primitive.Title>
           <div ref={el => { wrap.current = el; if (el && el !== mounted) setMounted(el); }} tabIndex={-1} className="tile-flip relative w-[min(44rem,calc(100vw-2rem))] outline-none">
-            <div className="tile-face tile-back relative max-h-[calc(100dvh-3rem)] overflow-y-auto rounded-surface">
+            <div ref={back} className="tile-face tile-back relative max-h-[calc(100dvh-3rem)] overflow-y-auto rounded-surface">
               {children}
             </div>
             <div ref={front} className="tile-face tile-front" aria-hidden>
