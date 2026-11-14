@@ -5,6 +5,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Fixed
+
+- A switch pressed on a card shows at once and stays, instead of flicking back. Home Assistant kept its states for two seconds, and the refresh after a press read them from before it, so a light that came on showed as off until the next refresh. Its states are now asked for again after anything is switched, every press refreshes its cards again a moment later for a light that's slow to report, and a card's switch moves when pressed and holds until the service says otherwise (or goes back if the press failed), as the wall's touch tiles already did.
+
 ## [0.6.3] - 2026-11-12
 
 ### Fixed

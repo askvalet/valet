@@ -453,7 +453,9 @@ app.post('/api/action/:inst/:action', async c => {
   const who = token ? `${site.config.labels.wall ?? LABELS.wall}${screen ? ` · ${screen}` : ''}` : userOf(c) ?? 'you', what = `${site.meta.get(inst)?.name ?? inst}: ${a.description ?? action}`;
   try {
     const result = await a.run(args.data);
+    // its cards again at once, and once more a moment later: a light or a lock can take a second to report its new state
     setTimeout(() => hub.refreshInstance(inst), 300);
+    setTimeout(() => hub.refreshInstance(inst), 1500);
     // an action may say what it did ({ done: 'Archived a saved link' }); its description is written for a model
     site.activity.add({ who, via: 'page', what, action: (result as { done?: string } | undefined)?.done ?? `${site.meta.get(inst)?.name ?? inst}: ${action}`, input: args.data, ok: true });
     return c.json(JSON.parse(redact(JSON.stringify({ ok: true, result: result ?? null }))));

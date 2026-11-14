@@ -1066,6 +1066,19 @@ function TouchControls({ card, run, hold }: { card: ControlsCard; run: RunAction
   return <div className="touch-grid">{card.items.map(c => <TouchTile key={c.id} c={c} run={run} hold={hold} />)}</div>;
 }
 
+/** A switch on a card's row: it moves the moment it's pressed and stays there until the house says otherwise, so a
+ *  refresh that comes before the light has answered doesn't flick it back. It gives way to what the service says when
+ *  that changes, or after a while if it never does, and goes back at once if the press failed. */
+function RowToggle({ c, run, fire }: { c: Control; run?: RunAction; fire: (c: Control, extra: Record<string, unknown>) => Promise<void> | undefined | '' }) {
+  const [mine, setMine] = useState<boolean>(), timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => { setMine(undefined); }, [c.value]);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  return <Switch checked={mine ?? !!c.value} disabled={!run} aria-label={c.label} onCheckedChange={v => {
+    play('tap'); setMine(v); clearTimeout(timer.current);
+    void Promise.resolve(fire(c, { value: v })).then(() => { timer.current = setTimeout(() => setMine(undefined), 8000); }, () => { play('no'); setMine(undefined); });
+  }} />;
+}
+
 function ControlRows({ card, run }: { card: ControlsCard; run?: RunAction }) {
   const fire = (c: Control, extra: Record<string, unknown>) => c.action && run?.(c.action, { ...c.args, ...extra });
   // a row someone just cleared away (a to-do that's done) leaves as dust; one that's only gone from the list just goes
@@ -1081,7 +1094,7 @@ function ControlRows({ card, run }: { card: ControlsCard; run?: RunAction }) {
             {c.sub && <div className="truncate text-meta text-muted-foreground">{c.sub}</div>}
           </div>
           {c.kind === 'value' && <span className={cn('text-item tabular', c.tone && c.tone !== 'neutral' ? toneText[c.tone] : 'text-muted-foreground')}>{String(c.value ?? '–')}</span>}
-          {c.kind === 'toggle' && <Switch checked={!!c.value} disabled={!run} aria-label={c.label} onCheckedChange={v => { play('tap'); fire(c, { value: v }); }} />}
+          {c.kind === 'toggle' && <RowToggle c={c} run={run} fire={fire} />}
           {c.kind === 'slider' && (
             <Slider className="w-32" min={c.min ?? 0} max={c.max ?? 100} step={c.step ?? 1} defaultValue={[Number(c.value ?? 0)]} disabled={!run}
               aria-label={c.label} onValueCommit={v => fire(c, { value: v[0] })} />

@@ -84,8 +84,12 @@ export default defineIntegration({
       p.catch(() => { if (cached?.p === p) cached = null; });
       return p;
     };
-    const call = (domain: string, service: string, data: Record<string, unknown>) =>
-      ctx.http(`${base}/api/services/${domain}/${service}`, { method: 'POST', headers, body: JSON.stringify(data) });
+    // anything switched makes the kept states old: the refresh that follows a press asks the house again, rather than
+    // showing what it was a moment before
+    const call = async (domain: string, service: string, data: Record<string, unknown>) => {
+      try { return await ctx.http(`${base}/api/services/${domain}/${service}`, { method: 'POST', headers, body: JSON.stringify(data) }); }
+      finally { cached = null; }
+    };
     const ids = (c: (typeof cfg.cards)[string]) => c.entities.map(e => typeof e === 'string' ? e : e.id);
     const names = new Map(Object.values(cfg.cards).flatMap(c => c.entities).flatMap(e => typeof e === 'string' || !e.name ? [] : [[e.id, e.name] as const]));
     const icons = new Map(Object.values(cfg.cards).flatMap(c => c.entities).flatMap(e => typeof e === 'string' || !e.icon ? [] : [[e.id, e.icon] as const]));
