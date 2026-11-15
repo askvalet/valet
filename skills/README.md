@@ -11,9 +11,17 @@ A skill that teaches a coding agent (Claude Code, Codex and others) how to set u
 | `plugin.md` | A plugin integration in `data/integrations/` |
 | `background.md` | A background script in `data/backgrounds/` |
 
-## Claude Code
+## Install
 
-Copy or symlink the folder into your skills:
+One command, which asks which agents you use (Claude Code, Codex, Cursor and many more):
+
+```sh
+npx skills add askvalet/valet
+```
+
+## Claude Code, by hand
+
+Or copy or symlink the folder into your skills:
 
 ```sh
 ln -s "$PWD/skills/valet" ~/.claude/skills/valet           # for you, everywhere

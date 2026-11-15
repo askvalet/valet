@@ -5,6 +5,16 @@ sidebar:
   order: 1
 ---
 
+:::tip[Setting it up with an AI agent?]
+Give your agent Valet's skill first, and it can install and configure Valet for you:
+
+```sh
+npx skills add askvalet/valet
+```
+
+Works with Claude Code, Codex, Cursor and many more. [More below](#with-an-ai-agent).
+:::
+
 Valet runs as one container. It needs two folders of yours: `config` for `config.yaml`, and `data` for everything it keeps.
 
 ## Docker Compose
@@ -130,12 +140,13 @@ npm start
 
 Valet has a skill for coding agents: how to write `config.yaml`, add a service, make a card from any JSON API, write a plugin or a background script, and check the result with `config check` and `doctor`. With it, an agent like Claude Code can set Valet up for you and get it right the first time.
 
-For Claude Code, put it in your skills folder:
+Install it with one command. It asks which agents you use (Claude Code, Codex, Cursor and many more):
 
 ```sh
-git clone --depth 1 https://github.com/askvalet/valet /tmp/valet
-mkdir -p ~/.claude/skills && cp -r /tmp/valet/skills/valet ~/.claude/skills/
+npx skills add askvalet/valet
 ```
+
+Or copy the folder in by hand: `skills/valet` from the repository, into `~/.claude/skills/` for Claude Code.
 
 Then ask it something like "set up Valet for my Docker containers and Plex". Other agents can read the skill's [`SKILL.md`](https://github.com/askvalet/valet/blob/master/skills/valet/SKILL.md) directly, and these docs are also at [`/llms.txt`](/llms.txt) and as Markdown on every page.
 
