@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import network, { mapFrom, told, whereIs } from '../src/integrations/network.ts';
-import { mapFor, summaryOf } from '../src/shared/map.ts';
+import { drawn, mapFor, stateNow, summaryOf } from '../src/shared/map.ts';
 import { addressesOf, addressOf } from '../src/server/lab.ts';
 import { session, type Peer, type PeerWidget } from '../src/server/core.ts';
 import { redactor } from '../src/server/security.ts';
@@ -138,9 +138,9 @@ test('containers and VMs hang from the machine they run on, and a container that
   assert.equal(node(card, 'redis')?.kind, 'container');
   assert.equal(node(card, 'redis')?.state, 'down');
   // plex the container is Plex the service: one node, which says so
-  assert.equal(card.nodes.filter(n => n.label.toLowerCase() === 'plex').length, 1);
-  assert.equal(node(card, 'Plex')!.also?.label, 'plex');
-  assert.equal(node(card, 'Plex')!.also?.from, 'docker');
+  assert.equal(drawn(card.nodes).filter(n => n.label.toLowerCase() === 'plex').length, 1);
+  assert.equal(node(card, 'plex')!.same, 'svc:plex');
+  assert.equal(node(card, 'plex')!.from, 'docker');
   // a machine's containers are under that machine, which is down because its agent says so
   assert.equal(parentOf(card, 'immich')?.label, 'nas');
   assert.equal(parentOf(card, 'paperless')?.label, 'nas');
@@ -228,15 +228,15 @@ test('a profile that sees one service gets that service, its machine and network
   for (const gone of ['Plex', '32400', 'Home Assistant', '8123', 'Weather', 'redis', 'Pi', '192.168.9.40', 'Tailscale', 'docker', 'out there', 'timed out']) assert.ok(!text.includes(gone), `leaked ${gone}`);
   assert.deepEqual(theirs.nodes.map(n => n.label), ['Internet', 'Local network', 'Server', 'Sonarr']);
   // the container sonarr is Docker's, which they can't see: Sonarr's own dot, with no word of it
-  assert.equal(node(theirs, 'Sonarr')?.also, undefined);
-  assert.equal(node(theirs, 'Sonarr')?.state, 'up');
+  assert.ok(!theirs.nodes.some(n => n.same));
+  assert.equal(stateNow(node(theirs, 'Sonarr')!, theirs.nodes), 'up');
   // the machine is worked out again from what's left: up, because Sonarr answers, though Plex on it doesn't
   assert.equal(node(theirs, 'Server')?.state, 'up');
   assert.equal(node(theirs, 'Internet')?.state, undefined);
   assert.deepEqual([theirs.summary?.value, theirs.summary?.sub, theirs.summary?.tone], ['1 host', 'all answering', 'good']);
   // the owner's is the whole map: Plex down, Sonarr unwell for its container
   assert.equal(all.summary?.tone, 'bad');
-  assert.equal(node(all, 'Sonarr')?.also?.state, 'down');
+  assert.equal(stateNow(node(all, 'Sonarr')!, all.nodes), 'degraded');
   // a machine they may see the source of stays even with nothing of theirs on it, with its own state
   const pi = mapFor(all, id => id === 'boxes');
   assert.deepEqual(pi.nodes.filter(n => n.kind === 'host').map(h => [h.label, h.state]), [['Pi', 'up']]);
@@ -275,4 +275,97 @@ layout:
   const full = await owner.instances.get('net')!.tools!.network_map.run({});
   assert.ok(JSON.stringify(full.data).includes('Plex'));
   assert.equal(node(full.card as MapCard, 'Plex')?.state, 'down');
+});
+
+// ── a config shaped like a real one: http checks beside the services' own integrations, a reverse proxy on a domain
+
+test('one service on one machine is one node: a check of it, another integration of it and its container fold into it', () => {
+  const config = parseConfig(`
+integrations:
+  quran: { type: api, url: "https://quran.example.dev", title: Quran, stats: [{ label: Ayat, value: n }] }
+  drives: { type: scrutiny, url: "https://scrutiny.example.dev" }
+  indexers:
+    type: indexers
+    prowlarr: { url: "http://192.168.2.55:9696", apiKey: k }
+    bazarr: { url: "http://192.168.2.55:6767", apiKey: k }
+  dns: { type: pihole, url: "http://192.168.2.51", password: p }
+  services:
+    type: http
+    targets:
+      - { name: Bazarr, url: "http://192.168.2.55:6767" }
+      - { name: Quran, url: "https://quran.example.dev" }
+      - { name: Scrutiny, url: "https://home.example.dev/_status/drives-ok" }
+      - { name: Pi-hole, url: "http://192.168.2.51/admin/" }
+      - { name: Beszel, url: "https://beszel.example.dev" }
+  feeds: { type: rss, feeds: [{ url: "https://blog.example.org/rss", name: Example Blog }, { url: "https://news.example.org/rss", name: Example News }] }
+  network: { type: network, containers: false, names: { 192.168.2.55: Desktop, 172.17.0.1: Desktop, 192.168.2.51: Raspberry Pi } }
+layout:
+  - widgets: [network.map]
+`);
+  const { problems, instances } = check(config, registry);
+  assert.deepEqual(problems, []);
+  return (instances.get('network')!.widgets.map.fetch() as Promise<MapCard>).then(card => {
+    valid(card);
+    const shown = drawn(card.nodes), under = (host: string) => shown.filter(n => n.parent === node(card, host)?.id).map(n => n.label).sort();
+    // the check and the integration were two nodes each: Quran and Scrutiny out on the internet, Pi-hole on the Pi, and
+    // indexers' bazarr beside the check's Bazarr on the Desktop
+    for (const name of ['quran', 'scrutiny', 'pihole', 'bazarr']) assert.equal(shown.filter(n => n.label.toLowerCase().replace(/[^a-z]/g, '') === name).length, 1, name);
+    assert.deepEqual(under('Raspberry Pi'), ['Pi-hole']);
+    assert.ok(under('Desktop').includes('Bazarr') && !under('Desktop').includes('bazarr'), 'the written name is the one drawn');
+    // feeds stay, once each
+    assert.deepEqual(shown.filter(n => n.parent === 'internet' && /Example (Blog|News)/.test(n.label)).map(n => n.label).sort(), ['Example Blog', 'Example News']);
+  });
+});
+
+test('names: a domain names its subdomains, so services behind a reverse proxy are on its machine', async () => {
+  const config = parseConfig(`
+integrations:
+  quran: { type: api, url: "https://quran.example.dev", title: Quran, stats: [{ label: Ayat, value: n }] }
+  drives: { type: scrutiny, url: "https://scrutiny.example.dev" }
+  photos: { type: api, url: "http://192.168.2.55:2283", title: Immich, stats: [{ label: Photos, value: n }] }
+  jobs: { type: api, url: "https://home.example.dev/jobs.json", title: Jobs, stats: [{ label: Jobs, value: n }] }
+  cloud: { type: api, url: "https://api.weather.example/v1", title: Weather, stats: [{ label: Temp, value: n }] }
+  network: { type: network, containers: false, names: { 192.168.2.55: Desktop, example.dev: Desktop } }
+layout:
+  - widgets: [network.map]
+`);
+  const card = await check(config, registry).instances.get('network')!.widgets.map.fetch() as MapCard;
+  valid(card);
+  for (const name of ['Quran', 'Scrutiny', 'Immich', 'Jobs']) assert.equal(parentOf(card, name)?.label, 'Desktop', name);
+  assert.equal(parentOf(card, 'Weather')?.kind, 'internet');   // a domain nobody named is still out there
+  // the machine shows its private address; the public names are how its services are reached, said on them
+  assert.equal(node(card, 'Desktop')?.address, '192.168.2.55');
+  assert.equal(node(card, 'Quran')?.address, 'quran.example.dev:443');
+  // with no private address, the public name is all there is to show
+  const only = await check(parseConfig(`
+integrations:
+  quran: { type: api, url: "https://quran.example.dev", title: Quran, stats: [{ label: Ayat, value: n }] }
+  network: { type: network, names: { example.dev: Desktop } }
+layout:
+  - widgets: [network.map]
+`), registry).instances.get('network')!.widgets.map.fetch() as MapCard;
+  assert.equal(node(only, 'Desktop')?.address, 'quran.example.dev');
+});
+
+test('a container or unit that is a service folds into it, matched loosely, and its trouble shows on the service', () => {
+  const status = (items: { name: string; ok: boolean; group?: string; detail?: string }[]): Card => ({ type: 'status', items });
+  const card = mapFrom([
+    peer('dns', 'pihole', 'http://192.168.2.51', undefined, 'Pi-hole'),
+    peer('photos', 'immich', 'http://192.168.2.55:2283', undefined, 'Immich'),
+    peer('bazarr', 'bazarr', 'http://192.168.2.55:6767', undefined, 'Bazarr'),
+    peer('docker', 'docker', 'http://valet-dockerproxy:2375', [widget('containers', { card: status([{ name: 'bazarr', ok: true }, { name: 'immich_server', ok: false, detail: 'exited (1)' }, { name: 'immich_postgres', ok: true }, { name: 'homepage', ok: true }]) })], 'Docker'),
+    { ...peer('boxes', 'machines', [], [widget('fleet', { card: status([{ name: 'Raspberry Pi', ok: true }]) }), widget('units', { card: status([{ name: 'pihole-FTL', ok: true, group: 'Raspberry Pi' }, { name: 'unbound', ok: true, group: 'Raspberry Pi' }]) })], 'Machines'),
+      addresses: [{ host: '192.168.2.51', port: 7576, field: 'hosts.pi.url', label: 'Raspberry Pi' }] },
+  ], opts({ names: { '192.168.2.55': 'Desktop', localhost: 'Desktop' } }));
+  valid(card);
+  const shown = drawn(card.nodes).map(n => n.label);
+  for (const gone of ['bazarr', 'immich_server', 'immich_postgres', 'pihole-FTL']) assert.ok(!shown.includes(gone), gone);
+  for (const kept of ['Bazarr', 'Immich', 'Pi-hole', 'unbound', 'homepage']) assert.ok(shown.includes(kept), kept);
+  assert.equal(node(card, 'pihole-FTL')?.same, node(card, 'Pi-hole')?.id);
+  // Immich answers but its server container has stopped: unwell, not up
+  assert.equal(stateNow(node(card, 'Immich')!, card.nodes), 'degraded');
+  // and folding is worked out again for someone who can't see Docker: Immich is just up
+  const theirs = mapFor(card, id => id === 'photos');
+  assert.equal(stateNow(node(theirs, 'Immich')!, theirs.nodes), 'up');
+  assert.ok(!theirs.nodes.some(n => n.same));
 });

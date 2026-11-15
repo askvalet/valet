@@ -2,7 +2,7 @@
 // so a generated card looks exactly like the widget it came from.
 import { Check, Plus, Minus, Copy, X, Rss, Newspaper, MessagesSquare, Tag, TrendingUp, Calendar,
   Activity, Archive, ArrowUpRight, Search, BookOpen, Bookmark, Gamepad2, Clock, Moon as MoonIcon, Image as ImageIcon, Coins, MessageCircle, Type, ChevronLeft, FileText, ChevronRight, Thermometer, Cloud, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Cpu, Moon, Sun, Download, Film, Gpu, HardDrive, House, Lightbulb, MemoryStick, Play, Shield, Wifi,
-  Box, TriangleAlert, Video, Lock, LockOpen, Warehouse, DoorClosed, Zap, Droplets, BatteryMedium, User, WashingMachine, Fan, Power, type LucideIcon,
+  Box, Network as NetworkIcon, TriangleAlert, Video, Lock, LockOpen, Warehouse, DoorClosed, Zap, Droplets, BatteryMedium, User, WashingMachine, Fan, Power, type LucideIcon,
 } from 'lucide-react';
 import { createContext, Fragment, lazy, memo, Suspense, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Cameras } from './cameras.tsx';
@@ -41,7 +41,7 @@ const ICONS: Record<string, LucideIcon> = {
   camera: Video, video: Video, cpu: Cpu, gpu: Gpu, memory: MemoryStick, wifi: Wifi, disk: HardDrive, download: Download, pulse: Activity, play: Play, film: Film,
   search: Search, bulb: Lightbulb, home: House, shield: Shield, chat: MessageCircle, image: ImageIcon, clock: Clock, crescent: MoonIcon, game: Gamepad2, book: BookOpen, coins: Coins, text: Type,
   file: FileText, bookmark: Bookmark, rss: Rss, news: Newspaper, reddit: MessagesSquare, tag: Tag, chart: TrendingUp, calendar: Calendar, sun: Sun, moon: Moon, cloud: Cloud, 'cloud-sun': CloudSun, 'cloud-moon': CloudMoon, rain: CloudRain, snow: CloudSnow, fog: CloudFog, storm: CloudLightning, thermometer: Thermometer,
-  lock: Lock, unlock: LockOpen, garage: Warehouse, door: DoorClosed, bolt: Zap, droplets: Droplets, battery: BatteryMedium, user: User, washer: WashingMachine, fan: Fan, power: Power,
+  lock: Lock, unlock: LockOpen, garage: Warehouse, door: DoorClosed, bolt: Zap, droplets: Droplets, battery: BatteryMedium, user: User, washer: WashingMachine, fan: Fan, power: Power, network: NetworkIcon,
 };
 export function Icon({ name, className }: { name?: string; className?: string }) {
   if (!name) return null;
