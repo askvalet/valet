@@ -1,6 +1,6 @@
 ---
 name: valet
-description: Set up, configure and extend Valet, the self-hosted homelab dashboard. Covers installing it, editing config.yaml (integrations, layout, tabs, look), adding a service, making a card from any JSON API with `type: api`, writing a plugin integration, writing a background script, sign-in, people and profiles, the assistant's access levels, and fixing what `config check` or `doctor` reports.
+description: "Set up, configure and extend Valet, the self-hosted homelab dashboard. Covers installing it, editing config.yaml (integrations, layout, tabs, look), adding a service, making a card from any JSON API with `type: api`, writing a plugin integration, writing a background script, sign-in, people and profiles, the assistant's access levels, and fixing what `config check` or `doctor` reports."
 ---
 
 # Valet
