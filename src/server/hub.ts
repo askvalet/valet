@@ -39,6 +39,9 @@ export class Hub {
 
   snapshot() { return [...this.state.values()]; }
 
+  /** whether any page is listening now */
+  get watched() { return this.listeners.size > 0; }
+
   subscribe(fn: Listener) {
     this.listeners.add(fn);
     if (this.listeners.size === 1) this.start();

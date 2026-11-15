@@ -165,6 +165,11 @@ export const VoiceConfig = z.object({
   autoSend: z.boolean().default(false),       // send what was heard straight away, rather than leaving it in the box to check
 }).strict();
 
+/** `people:` on an integration that knows whose activity is whose: each person who signs in to Valet (the name profiles
+ *  use) and the service's own name for them. Read with the block's own key, so it needs no key of theirs (people.mdx). */
+export const People = z.record(z.string().trim().min(1).max(64), z.string().trim().min(1).max(128)).optional()
+  .describe('Who is who here: each person who signs in to Valet, by the name they sign in with, and their user name on this service, like { sam: samantha }. Each then sees their own activity on its cards and in the assistant; anyone not listed sees what they did before.');
+
 /** a duration: seconds as a number, or "30s" / "5m" / "2h" / "1d"; comes out in milliseconds */
 export const Every = z.union([z.number().positive(), z.string().regex(/^\d+(\.\d+)?\s*[smhd]?$/, 'a duration like 30s, 5m or 1h')])
   .transform(v => {

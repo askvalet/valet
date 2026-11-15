@@ -48,6 +48,7 @@ export type CardOverride = { title?: string; icon?: string; header?: boolean; vi
 export interface Page {
   title: string; greeting?: string; notice?: string; location?: string; canAct?: boolean; sandbox?: boolean;
   member?: { name?: string; actions: string[] };   // someone with a profile: the page actions it lists, as <instance>.<action>
+  people?: 'mine' | 'everyone';   // an owner with their own activity on a service (`people:`): which this browser shows
   appearance: { walls: Paper[]; tabWalls: Record<string, Paper[]>; light?: { walls: Paper[]; tabWalls: Record<string, Paper[]> }; rotate?: number; sizes: Partial<Record<Size, { cols?: number; rows?: number }>>; sounds?: Sounds; scenes?: Scenes };
   look: Look;
   hero: { greeting: boolean | string; status: boolean; search: boolean; review: boolean | 'end'; align: 'center' | 'left' | 'right'; scope?: string[] };
@@ -833,7 +834,7 @@ function Home({ account, who }: { account: boolean; who?: string }) {
       {page && palette && (
         <Suspense fallback={null}>{(P => <P palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} placeholder={page.assistant && (page.chat.placeholder || page.hero.scope?.length) ? placeholder : undefined} ui={ui} ask={ask} actions={actions} account={account} who={who} tools={page.assistant?.tools}
           openChat={() => { setPalette(false); if (phone || !(chatTab && view === chatTab)) setChatOpen(true); }}
-          runAction={runAction} services={services} SUGGESTIONS={questions} setView={go} nav={nav} sectionIcon={sectionIcon} search={page.search} find={page.find} device={{ sandbox: page.sandbox, canAct: page.canAct !== false, member: !!page.member }} />)(PaletteNow ?? Palette)}</Suspense>
+          runAction={runAction} services={services} SUGGESTIONS={questions} setView={go} nav={nav} sectionIcon={sectionIcon} search={page.search} find={page.find} device={{ sandbox: page.sandbox, canAct: page.canAct !== false, member: !!page.member, people: page.people }} />)(PaletteNow ?? Palette)}</Suspense>
       )}
 
       {/* a tile's full card, flipped open over the page, with what it can do here: the same controls, and rules, as the card */}

@@ -668,3 +668,85 @@ live: { activities: [hidden.data] }
     assert.match(text, /probe\.data/); unseen('the member\'s stream', text); assert.doesNotMatch(text, /event: asks/);
   });
 });
+
+// `people:` (personal.ts): two people signed in at once, one service, one key. Each hears their own streams and nobody
+// else's, on the live stream, a live card in chat, a plain command and a picture; anyone not mapped hears everyone's, as
+// before; and only an owner can ask for everyone's back.
+describe('each person\'s own activity, two at once', () => {
+  let s: Awaited<ReturnType<typeof boot>>, plex: ReturnType<typeof createHttp>;
+  const as = (who: string, cookie = '') => ({ 'Remote-User': who, ...(cookie ? { cookie } : {}) });
+  const PEOPLE = [[11, 'samantha', 'SAM-SHOW-x1'], [22, 'patrick', 'PAT-FILM-x2'], [33, 'robin', 'ROBIN-SHOW-x3'], [44, 'lee', 'LEE-SHOW-x4']] as const;
+  const TITLES = PEOPLE.map(p => p[2]);
+  before(async () => {
+    plex = createHttp((req, res) => {
+      const q = new URL(req.url!, 'http://x').searchParams, cmd = q.get('cmd');
+      if (cmd === 'pms_image_proxy') { res.writeHead(200, { 'Content-Type': 'image/jpeg' }); return res.end('jpeg'); }
+      const data = cmd === 'get_users' ? PEOPLE.map(([user_id, username]) => ({ user_id, username, friendly_name: username }))
+        : cmd === 'get_activity' ? { stream_count: '4', total_bandwidth: '0', sessions: PEOPLE.map(([user_id, username, title]) => ({ user_id, friendly_name: username, title, full_title: title, media_type: 'movie', thumb: `/library/metadata/${user_id}/thumb`, state: 'playing', progress_percent: '5', duration: '1000', view_offset: '10', bandwidth: '0', player: 'TV' })) }
+        : [];
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ response: { result: 'success', data } }));
+    });
+    await new Promise<void>(ok => plex.listen(0, '127.0.0.1', ok));
+    const port = (plex.address() as { port: number }).port;
+    s = await boot({ mode: 'proxy', proxy: { header: 'Remote-User', trusted: ['127.0.0.1'] } }, `  plex: { type: tautulli, url: "http://127.0.0.1:${port}", apiKey: k, people: { sam: samantha, lee: lee, Pat: patrick } }
+profiles:
+  kids: { tabs: [Media], assistant: { access: { default: read } } }
+  viewers: { tabs: [Media] }
+users: { sam: kids, robin: kids, lee: viewers }
+live: { activities: [plex.streams] }
+`, '{ default: read, config: control }', {}, {}, '  - { title: Media, widgets: [probe.data, plex.streams] }\n');
+  });
+  after(() => { s.proc.kill(); plex.close(); });
+
+  /** what one person's live stream says about Now playing within a few seconds */
+  const heard = async (who: string, cookie = '') => {
+    const ac = new AbortController(), r = await fetch(`${s.base}/api/events`, { headers: as(who, cookie), signal: ac.signal });
+    assert.equal(r.status, 200);
+    const reader = r.body!.getReader(); let text = '';
+    const until = Date.now() + 4000;
+    while (Date.now() < until && !TITLES.some(t => text.includes(t))) { const { value } = await Promise.race([reader.read(), new Promise<any>(ok => setTimeout(() => ok({ value: undefined }), 300))]); if (value) text += new TextDecoder().decode(value); }
+    // a moment more, so a second card for the same widget (someone else's) would have arrived too
+    const more = Date.now() + 600;
+    while (Date.now() < more) { const { value } = await Promise.race([reader.read(), new Promise<any>(ok => setTimeout(() => ok({ value: undefined }), 200))]); if (value) text += new TextDecoder().decode(value); }
+    ac.abort();
+    return TITLES.filter(t => text.includes(t));
+  };
+
+  test('the live stream: each mapped person hears their own, at the same time', async () => {
+    const [sam, lee, pat] = await Promise.all([heard('sam'), heard('lee'), heard('pat')]);
+    assert.deepEqual(sam, ['SAM-SHOW-x1']); assert.deepEqual(lee, ['LEE-SHOW-x4']); assert.deepEqual(pat, ['PAT-FILM-x2'], 'an owner who is mapped sees their own');
+  });
+
+  test('anyone not mapped hears everyone\'s, as before; an owner may ask for everyone\'s, a member may not', async () => {
+    assert.deepEqual(await heard('robin'), TITLES, 'a member with no name on the service');
+    assert.deepEqual(await heard('alex'), TITLES, 'an owner with no name on it');
+    assert.deepEqual(await heard('pat', 'valet_everyone=1'), TITLES);
+    assert.deepEqual(await heard('sam', 'valet_everyone=1'), ['SAM-SHOW-x1']);
+    const page = async (who: string, cookie = '') => JSON.parse(await (await fetch(`${s.base}/api/page`, { headers: as(who, cookie) })).text()).people;
+    assert.equal(await page('pat'), 'mine'); assert.equal(await page('pat', 'valet_everyone=1'), 'everyone');
+    assert.equal(await page('alex'), undefined); assert.equal(await page('sam'), undefined, 'a member has no choice to offer');
+  });
+
+  test('a live card in chat and a plain command answer as whoever asks, never from another\'s cache', async () => {
+    const live = async (who: string) => { const r = await fetch(`${s.base}/api/live`, { method: 'POST', headers: { ...as(who), 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: 'plex__plex_streams', input: {} }) }); assert.equal(r.status, 200); const t = await r.text(); return TITLES.filter(x => t.includes(x)); };
+    assert.deepEqual(await live('sam'), ['SAM-SHOW-x1']);
+    assert.deepEqual(await live('robin'), TITLES, 'the same tool and input a moment later, for someone else');
+    assert.deepEqual(await live('sam'), ['SAM-SHOW-x1']);
+    const said = async (who: string) => {
+      const { commands } = await (await fetch(`${s.base}/api/commands`, { headers: as(who) })).json(), id = commands.find((x: any) => x.say.includes("what's playing"))?.id;
+      assert.ok(id, `${who} has the command`);
+      const r = await fetch(`${s.base}/api/command`, { method: 'POST', headers: { ...as(who), 'Content-Type': 'application/json' }, body: JSON.stringify({ text: "what's playing", id }) }), t = await r.text();
+      assert.equal(r.status, 200, t);
+      return TITLES.filter(x => t.includes(x));
+    };
+    assert.deepEqual(await said('sam'), ['SAM-SHOW-x1']);
+    assert.deepEqual(await said('pat'), ['PAT-FILM-x2']);
+  });
+
+  test('a picture from someone else\'s stream isn\'t theirs to load', async () => {
+    await heard('lee');   // lee's card is in hand
+    const img = (n: number) => fetch(`${s.base}/api/image/plex?ref=${encodeURIComponent(`/library/metadata/${n}/thumb`)}`, { headers: as('lee') }).then(r => r.status);
+    assert.equal(await img(44), 200);
+    assert.equal(await img(11), 404, 'sam\'s poster, though it is on the shared card');
+  });
+});

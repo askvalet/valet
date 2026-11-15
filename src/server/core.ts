@@ -22,6 +22,9 @@ export interface Widget {
   title: string;
   interval?: number;                     // ms between refreshes while visible (default 10 s)
   card?: Card['type'];                   // the kind of card it returns, so the config check can tell a `view` that can't draw it
+  /** It shows one person's activity (what's playing, what they're partway through, what they asked for). With `people:`
+   *  on the block, everyone mapped gets their own copy, fetched as them (`Context.as`), and never anyone else's. */
+  personal?: boolean;
   fetch(): Promise<Card>;
 }
 
@@ -146,6 +149,9 @@ export interface BackupJob {
 
 export interface Context {
   id: string;                            // the instance's key in config.yaml, e.g. "downloads"
+  /** With `people:` on the block, the instance made for one person: the service's own name for them. Its personal widgets
+   *  and its tools show only that user's activity, and a name the service doesn't know is an error, never everyone's. */
+  as?: string;
   format?: Partial<Format>;              // the config's `format:`, for a service that can answer in the right units
   /** fetch with a timeout and a readable error; returns parsed JSON unless `as: 'text'` */
   http<T = any>(url: string, init?: RequestInit & { timeout?: number; as?: 'json' | 'text' | 'response'; insecure?: boolean }): Promise<T>;
@@ -233,9 +239,9 @@ export async function keptHome(url: string, init: RequestInit, hops = 5): Promis
   return keptHome(next.href, { ...init, ...(get ? { method: 'GET', body: undefined } : {}), headers: home ? init.headers : { Accept: new Headers(init.headers).get('accept') ?? '*/*' } }, hops - 1);
 }
 
-export function makeContext(id: string, format?: Partial<Format>): Context {
+export function makeContext(id: string, format?: Partial<Format>, as?: string): Context {
   return {
-    id, format,
+    id, format, ...(as ? { as } : {}),
     async http(url, init = {}) {
       const { timeout = 8000, as = 'json', insecure, ...rest } = init;
       const res = insecure && url.startsWith('https:') ? await selfSigned(url, rest, timeout) : await keptHome(url, { ...rest, signal: AbortSignal.timeout(timeout) });

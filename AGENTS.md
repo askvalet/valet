@@ -125,6 +125,13 @@ https://askvalet.dev.
   `site` directly: a new route passes `siteFor(view)` to its doors, filters by `view.sees`, or refuses with `!view.owner`, and gets
   a line in `MEMBER` in `test/exposure.ts`. Valet's own things (log, rules, pins, setup, notifications, asks) are owners' only. A
   member's change with `approve: owner` waits in `asks.ts` like an MCP client's. A typo narrows, never widens.
+- **Whose data a card is, is the view's too** (`src/server/personal.ts`). `people:` on a block that takes it maps a person to
+  their user on that service; the view's `own` names those integrations and its `instances` hold copies made with `ctx.as`, so
+  every door that reads `view.instances` (chat, tools, ⌘K, commands, confirm, live cards) answers as them. Widgets marked
+  `personal` get one hub per widget and service user, polled only while someone it's for is subscribed, never with history or
+  `onChange` (no timeline, notices, events or rules). A route that surfaces cards reads `statesFor(view)` and drops `view.mine`
+  keys from the shared hub; anything kept per person (a chat, a live card) keys on `view.key`, never the profile alone. An unknown
+  name is the card's error, never everyone's.
 - **The wall is its own page** (`wall:`, `src/server/wall.ts`, `src/web/wall.tsx`; more screens at `/wall/<name>`, `wall.screens`): pages
   written like `layout`, drawn read-only (no pointer on cards, no palette, chat or links) and scaled to fill the screen. The one
   exception is `wall.touch`: those cards get `run` and draw their controls for a finger (`Touch` in `touch.ts`). `wallReads` is

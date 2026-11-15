@@ -10,6 +10,7 @@ import type { Config } from './config.ts';
 import type { Instance, Tool } from './core.ts';
 import type { Message } from './notify.ts';
 import { accessOf, rank, toolAccess } from './run.ts';
+import type { Personal } from './personal.ts';
 
 type Level = keyof typeof rank;
 const LEVELS = ['none', 'read', 'write', 'control'] as const;
@@ -35,8 +36,17 @@ export interface View {
   instances: Map<string, Instance>;
   /** who answers what their assistant asks first */
   approve: 'self' | 'owner';
+  /** The integrations whose activity this person sees as their own (`people:`), each with the service's name for them, and
+   *  `instances` holds those made for them. Empty for anyone not mapped, and for an owner who chose everyone's. */
+  own: Map<string, string>;
+  /** a widget whose card is this person's own: the shared card is never theirs to hear, and its notices aren't either */
+  mine(key: string): boolean;
+  /** an owner with their own somewhere: what they chose to see (⌘K, the `valet_everyone` cookie) */
+  choice?: 'mine' | 'everyone';
+  /** who this view is, as anything kept per person keys it (a chat, a live card): their profile and their own */
+  key: string;
 }
-interface SiteLike { config: Config; instances: Map<string, Instance>; placed: Set<string> }
+interface SiteLike { config: Config; instances: Map<string, Instance>; placed: Set<string>; personal?: Personal }
 
 const names = new WeakMap<Config, Map<string, string>>();
 const same = (n: string) => n.trim().toLowerCase();
@@ -65,20 +75,39 @@ function narrowed(a: NonNullable<Config['assistant']>, mine: Record<string, Leve
   return out;
 }
 
-const built = new WeakMap<Map<string, Instance>, Map<string, View>>();
+const built = new WeakMap<Map<string, Instance>, Map<string, Base>>();
 
-/** The view for one account on one site. Asked on every request; a profile's is built once per site. */
-export function viewOf(site: SiteLike, name?: string): View {
+/** The view for one account on one site. Asked on every request; a profile's is built once per site. `everyone`: an owner
+ *  with their own on some service asked to see everyone's there instead. A member can't: theirs is all they get. */
+export function viewOf(site: SiteLike, name?: string, o: { everyone?: boolean } = {}): View {
   const id = profileOf(site.config, name);
-  if (id === undefined) return { owner: true, name, sees: () => true, tab: () => true, presses: () => true, config: site.config, instances: site.instances, approve: 'self' };
-  let views = built.get(site.instances);
-  if (!views) built.set(site.instances, views = new Map());
-  let view = views.get(id);
-  if (!view) views.set(id, view = member(site, id));
-  return { ...view, name };
+  const base: Base = id === undefined ? { owner: true, sees: () => true, tab: () => true, presses: () => true, config: site.config, instances: site.instances, approve: 'self' } : (() => {
+    let views = built.get(site.instances);
+    if (!views) built.set(site.instances, views = new Map());
+    let view = views.get(id);
+    if (!view) views.set(id, view = member(site, id));
+    return view;
+  })();
+  const theirs = site.personal?.of(name) ?? new Map<string, string>(), everyone = base.owner && !!o.everyone;
+  const own = everyone ? new Map<string, string>() : new Map([...theirs].filter(([i]) => base.instances.has(i)));
+  const key = `${base.owner ? '' : `profile ${base.profile}`}${own.size ? ` own ${[...own].map(([i, a]) => `${i}=${a.toLowerCase()}`).join(',')}` : ''}`;
+  return { ...base, name, own, key, choice: base.owner && theirs.size ? everyone ? 'everyone' : 'mine' : undefined,
+    mine: k => own.has(k.slice(0, k.indexOf('.'))) && !!site.personal?.personal(k),
+    instances: own.size ? swapped(site, base.instances, own, key) : base.instances };
+}
+type Base = Omit<View, 'own' | 'mine' | 'choice' | 'key' | 'name'>;
+
+// the instances one person's doors use: their own copy in place of each service they're mapped on, the same map each time
+const swaps = new WeakMap<Map<string, Instance>, Map<string, Map<string, Instance>>>();
+function swapped(site: SiteLike, from: Map<string, Instance>, own: Map<string, string>, key: string) {
+  let kept = swaps.get(from);
+  if (!kept) swaps.set(from, kept = new Map());
+  let out = kept.get(key);
+  if (!out) kept.set(key, out = new Map([...from].map(([id, inst]) => [id, own.has(id) ? site.personal!.instance(id, own.get(id)!) : inst])));
+  return out;
 }
 
-function member({ config, instances, placed }: SiteLike, id: string): View {
+function member({ config, instances, placed }: SiteLike, id: string): Base {
   const p = Object.hasOwn(config.profiles, id) ? config.profiles[id] : undefined;
   const tabs = p?.tabs && new Set(p.tabs), acts = new Set(p?.actions ?? []);
   const tab = (name?: string) => !!p && (!tabs || (name != null && tabs.has(name)));
@@ -132,6 +161,35 @@ export function peopleProblems(config: Config, instances: Map<string, Instance>)
   }
   for (const as of bound) if (profileOf(config, as) === undefined) out.push(`assistant.telegram.users: "${as}" isn't in users, so that person is an owner there`);
   if (config.auth.mode === 'none' && profiles.length) out.push(`profiles: auth.mode is none, so nobody signs in and the page is the same for everyone; profiles ${bound.length ? 'only reach Telegram' : 'do nothing'} until sign-in is on`);
+  return out;
+}
+
+/** What a `people:` map says that can't be. Like a profile's typos, none of them widens anything: a name that isn't anyone
+ *  is nobody's, and a person with no name in it sees the shared cards, as before. */
+export function ownProblems(config: Config, given: [string, Record<string, string>][], instances: Map<string, Instance>): string[] {
+  const out: string[] = [];
+  for (const [id, people] of given) {
+    const at = `integrations.${id}.people`, seen = new Map<string, string>();
+    if (config.auth.mode === 'none') out.push(`${at}: auth.mode is none, so nobody signs in and everyone sees the shared cards; it does nothing until sign-in is on`);
+    for (const name of Object.keys(people)) {
+      if (seen.has(same(name))) out.push(`${at}.${name}: the same person as ${seen.get(same(name))} (names compare without case); the first one counts`);
+      else seen.set(same(name), name);
+    }
+    if (!Object.values(instances.get(id)?.widgets ?? {}).some(w => w.personal)) out.push(`${at}: none of its widgets is anyone's own, so only its tools follow the person`);
+  }
+  return out;
+}
+
+/** With local accounts: a name in a `people:` map that no account has (the accounts are in the data folder, not the
+ *  config, so this is for `config check` and the log). */
+export function unknownPeople(config: Config, accounts: string[]): string[] {
+  if (config.auth.mode !== 'local' || !accounts.length) return [];
+  const have = new Set(accounts.map(same)), out: string[] = [];
+  for (const [id, block] of Object.entries(config.integrations)) {
+    const people = (block as { people?: unknown }).people;
+    if (!people || typeof people !== 'object') continue;
+    for (const name of Object.keys(people)) if (!have.has(same(name))) out.push(`integrations.${id}.people.${name}: no account "${name}" (the accounts are: ${accounts.join(', ')}); it does nothing until there is one`);
+  }
   return out;
 }
 

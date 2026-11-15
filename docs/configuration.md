@@ -222,7 +222,7 @@ A list of widget keys, or this, to say more about the bar:
 | Option | Default | |
 |---|---|---|
 | `clock` | `auto` | `12h`, `24h`; `auto` follows the language (the browser's, or `locale`) |
-| `emby` | `url`, `key`, `user` (whose shelves; the first administrator by default) | the same as `jellyfin` |
+| `emby` | `url`, `key`, `user` (whose shelves; the first administrator by default), `people` (each person's own activity, `{ sam: samantha }`: see `profiles` and `users`) | the same as `jellyfin` |
 | `date` | `short` | how a date reads in a card's small print: `short` (Sat, Oct 31), `long` (Saturday, October 31), `numeric` (10/31/2026), `iso` (2026-10-31). Headings (the calendar's day, the wall) are always in words. A year is added only when it isn't this one |
 | `locale` | `auto` | a language tag like `en-GB` or `de-DE`: sets month and day names, whether the clock is 12 or 24 hours under `auto`, and how numbers are written (`1.234,5`) on what Valet formats itself. `auto` follows the browser; what the server writes (a card's "next 8:25", "Tonight") follows the first browser to open the page, as the time zone does. Values a service writes out in full stay as they are |
 | `temperature` | `auto` | `c`, `f`: converts anything a service reports as `°C` or `°F` on any card, and is the default for the `weather` integration's `units`. `auto` leaves everything as reported |
@@ -379,6 +379,17 @@ profiles:
     actions: [requests.request]
     assistant: { access: { default: none, requests: write }, instructions: "Only suggest shows rated TV-Y7 or below.", approve: owner }
 users: { sam: kids, alex: kids }
+```
+
+**Each person's own activity.** On Tautulli, Jellyfin, Emby, Seerr and Audiobookshelf, `people` maps each person who
+signs in (the same name `users` uses, owners too) to their user name on that service. With the service's own key, they
+then see their own streams, history, shelves, listening and requests on its cards and in the assistant, and never
+anyone else's. Anyone not in it sees the shared cards, as before. An owner in it sees their own too, and ⌘K's
+"Everyone's activity" shows the whole house's on that browser.
+
+```yaml
+integrations:
+  jellyfin: { type: jellyfin, url: "http://jellyfin:8096", key: "${JELLYFIN_KEY}", people: { sam: samantha, pat: pat } }
 ```
 
 | Option | Default | |
@@ -942,7 +953,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `apcups` | `host`, `port` (3551), `title` | `status` |
 | `arr` | `sonarr`, `radarr` (each `{ url, apiKey, href }`), `days` (14), `plex` (its web address, so what's ready opens there) | `upcoming` |
 | `backrest` | `url`, `username`, `password` (only if Backrest has users), `insecure` | `plans`, `status` |
-| `audiobookshelf` | `url`, `key` (an API token; an administrator's to see what's playing now) | `status`, `progress` (books in progress), `playing`, `recent` (new on the shelf), `week` (listening, last 7 days) |
+| `audiobookshelf` | `url`, `key` (an API token; an administrator's to see what's playing now, or anyone's own), `people` (each person's own activity, `{ sam: samantha }`: see `profiles` and `users`) | `status`, `progress` (books in progress), `playing`, `recent` (new on the shelf), `week` (listening, last 7 days) |
 | `camera` | `cameras` (`{ name, url, video }`), `title`, `href`, `refresh` (seconds), `username`, `password`, `insecure` | `cameras` |
 | `frigate` | `url` (the port that needs no sign-in), `cameras` (names, in order), `go2rtc` (for smooth video), `every`, `insecure` | `status`, `cameras` |
 | `clock` | `clocks` (`{ name, zone }`), `title` | `times` |
@@ -952,7 +963,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `http` | `targets` (`name`, `url`, `href`, `icon`, `group`, `quiet`, `expect`), `interval` (30000 ms) | `status` |
 | `iframe` | `url`, `title`, `height` (360), `scripts` (`true`) | `page` |
 | `immich` | `url`, `apiKey` | `memories` |
-| `jellyfin` | `url`, `key` (an API key), `user` (whose continue watching and recently added; the first administrator by default) | `status`, `streams` (now playing), `resume` (continue watching), `recent`, `library` |
+| `jellyfin` | `url`, `key` (an API key), `user` (whose continue watching and recently added; the first administrator by default), `people` (each person's own activity, `{ sam: samantha }`: see `profiles` and `users`) | `status`, `streams` (now playing), `resume` (continue watching), `recent`, `library` |
 | `indexers` | `prowlarr`, `bazarr` (each `{ url, apiKey }`) | `health` |
 | `changedetection` | `url`, `key`, `limit` (8) | `watches`, `status` |
 | `karakeep` | `url`, `apiKey` | `recent`, `digest`, `reading` |
@@ -973,10 +984,10 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `romm` | `url`, `username`, `password` | `recent` |
 | `scrutiny` | `url`, `hotC` (55) | `drives` |
 | `tandoor` | `url`, `key` (read scope; write to add to the shopping list) | `week` (the meal plan from today), `today` (a recipe of the day), `recent`, `status` |
-| `seerr` | `url`, `apiKey`, `downloads` (where "See progress" goes) | `requests` |
+| `seerr` | `url`, `apiKey`, `downloads` (where "See progress" goes), `people` (each person's own activity, `{ sam: samantha }`: see `profiles` and `users`) | `requests` |
 | `speedtest-tracker` | `url`, `key` (an API token that can read results, and run tests if you want that from chat), `days` (7, how far back the chart goes), `insecure` | `speed`, `status` |
 | `syncthing` | `url`, `key` (its API key), `insecure` | `sync`, `status` |
-| `tautulli` | `url`, `apiKey` | `streams`, `recent`, `top`, `people`, `library`, `plays` (a stream of 30 days), `race` (the year's titles overtaking each other; refreshes every few hours), `viewing` (a year of days) |
+| `tautulli` | `url`, `apiKey`, `people` (each person's own activity, `{ sam: samantha }`: see `profiles` and `users`) | `streams`, `recent`, `top`, `people`, `library`, `plays` (a stream of 30 days), `race` (the year's titles overtaking each other; refreshes every few hours), `viewing` (a year of days) |
 | `todo` | `title` | `list` |
 | `twitch` | `clientId`, `clientSecret`, `channels`, `limit` (8) | `channels`, `games` |
 | `uptimekuma` | `url`, `username` (empty with an API key), `password` (or the key), `certWarnDays` (14) | `monitors` |

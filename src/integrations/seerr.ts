@@ -1,6 +1,7 @@
 // Seerr (Overseerr / Jellyseerr): ask for a movie or show and it's requested, then Radarr/Sonarr fetch it. The
 // assistant can search (with whether each title is already in the library or on its way), request, and list requests.
 import { z } from 'zod';
+import { People } from '../server/config.ts';
 import { defineIntegration } from '../server/core.ts';
 import type { ShelfItem } from '../shared/cards.ts';
 
@@ -13,7 +14,8 @@ export default defineIntegration({
   type: 'seerr',
   name: 'Seerr',
   config: z.object({ url: z.string().url(), apiKey: z.string(), href: z.string().optional(),
-    downloads: z.string().optional() }),   // where download progress lives; without it, Seerr's own page for the title
+    downloads: z.string().optional(),   // where download progress lives; without it, Seerr's own page for the title
+    people: People }),
   create(cfg, ctx) {
     const base = cfg.url.replace(/\/$/, ''), web = (cfg.href ?? base).replace(/\/$/, '');
     const headers = { 'X-Api-Key': cfg.apiKey, 'Content-Type': 'application/json' };
@@ -35,9 +37,18 @@ export default defineIntegration({
       }
       return seen.get(k)!;
     };
+    // For one person (`people:`, ctx.as): their Seerr user, by user name, Plex or Jellyfin name, email or display name. The
+    // key reads everyone's requests, so theirs are asked for by id and checked again here; a name it doesn't know is an error.
+    let who: Promise<number> | undefined;
+    const me = () => who ??= api<any>('user?take=1000').then(r => {
+      const w = ctx.as!.trim().toLowerCase(), u = (r?.results ?? []).find((x: any) => [x?.username, x?.plexUsername, x?.jellyfinUsername, x?.email, x?.displayName].some(v => typeof v === 'string' && v.toLowerCase() === w));
+      if (!u || !Number.isInteger(u.id)) throw new Error(`Seerr has no user called ${ctx.as}`);
+      return u.id as number;
+    }).catch(e => { who = undefined; throw e; });
     async function requests(take: number) {
-      const r = await api<any>(`request?take=${take}&sort=added`);
-      return Promise.all((r.results ?? []).map(async (q: any) => {
+      const id = ctx.as ? await me() : undefined;
+      const r = await api<any>(`request?take=${take}&sort=added${id ? `&requestedBy=${id}` : ''}`);
+      return Promise.all((r.results ?? []).filter((q: any) => id === undefined || q.requestedBy?.id === id).map(async (q: any) => {
         const d = await details(q.type, q.media?.tmdbId);
         return { q, d, title: d?.title ?? d?.name ?? `#${q.media?.tmdbId}` };
       }));
@@ -67,7 +78,7 @@ export default defineIntegration({
       },
       widgets: {
         requests: {
-          title: 'Requests', interval: 300_000, card: 'shelf',
+          title: 'Requests', interval: 300_000, card: 'shelf', personal: true,
           async fetch() {
             const list = await requests(12);
             return { type: 'shelf', title: 'Requested', icon: 'film', href: `${web}/requests`, aspect: 'poster', layout: 'tickets', source: { name: 'Seerr', icon: '/api/icon/seerr' }, empty: 'No requests yet',
@@ -105,7 +116,8 @@ export default defineIntegration({
           access: 'control',
           input: z.object({ title: z.string(), year: z.string().optional(), media_type: z.enum(['movie', 'tv']), tmdb_id: z.number().int() }),
           async run({ title, year: y, media_type, tmdb_id }) {
-            const r = await api<any>('request', { method: 'POST', body: JSON.stringify({ mediaType: media_type, mediaId: tmdb_id, ...(media_type === 'tv' ? { seasons: 'all' } : {}) }) });
+            // in someone's own copy, asked for as them: it's theirs in Seerr, with their limits and their approvals
+            const r = await api<any>('request', { method: 'POST', body: JSON.stringify({ mediaType: media_type, mediaId: tmdb_id, ...(media_type === 'tv' ? { seasons: 'all' } : {}), ...(ctx.as ? { userId: await me() } : {}) }) });
             const d = await details(media_type, tmdb_id);
             return { data: { requested: true, title, status: REQUEST[r.status] ?? 'Requested' },
               card: d ? { type: 'shelf', title: `Requested ${title}${y ? ` (${y})` : ''}`, icon: 'film', aspect: 'poster', items: [tile({ ...d, mediaType: media_type }, 2)] }
@@ -114,7 +126,7 @@ export default defineIntegration({
         },
         media_requests: {
           label: 'Checked requests',
-          description: 'Recent movie and TV requests and where each one is (waiting, approved, downloading, available).',
+          description: ctx.as ? 'The movie and TV requests the person asking made, and where each one is (waiting, approved, downloading, available).' : 'Recent movie and TV requests and where each one is (waiting, approved, downloading, available).',
           access: 'read', input: z.object({}),
           async run() {
             const list = await requests(10);

@@ -1,6 +1,6 @@
 // The ⌘K palette: run a plain command, ask, do a card's action, open a service, jump to a tab. Loaded the first time it opens.
 // Commands come first and need no model: they're matched here as you type and run by the server (src/server/commands.ts).
-import { ArrowUp, Bell, BellOff, CornerDownLeft, Droplet, Globe, LayoutGrid, LogOut, Monitor, Search, Slash, Volume2, VolumeX, Zap } from 'lucide-react';
+import { ArrowUp, Bell, BellOff, CornerDownLeft, Droplet, Globe, LayoutGrid, LogOut, Monitor, Search, Slash, Users, Volume2, VolumeX, Zap } from 'lucide-react';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { defaultFilter } from 'cmdk';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
@@ -33,7 +33,7 @@ export interface PaletteProps {
   search?: string;   // a provider name or a URL with {q}
   find?: boolean;    // some service here can be searched as you type
   placeholder?: string; ui?: ChatUi;
-  device: { sandbox?: boolean; canAct: boolean; member?: boolean };   // whether this page could turn notifications on at all (they're the owners')
+  device: { sandbox?: boolean; canAct: boolean; member?: boolean; people?: 'mine' | 'everyone' };   // whether this page could turn notifications on at all (they're the owners'), and an owner's own-or-everyone's
 }
 
 const PROVIDERS: Record<string, string> = { duckduckgo: 'https://duckduckgo.com/?q={q}', google: 'https://www.google.com/search?q={q}', kagi: 'https://kagi.com/search?q={q}',
@@ -76,6 +76,10 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
   // the glass, liquid or frosted: this browser's say over appearance.glass.material, only where there's glass to change
   const glassy = typeof document !== 'undefined' && document.documentElement.classList.contains('has-wallpaper'), [liquid, setLiquid] = useState(isLiquid);
   const glass = { value: 'liquid glass', keywords: ['glass', 'liquid', 'frosted', 'material', 'look'] };
+  // an owner mapped on a service (`people:`) sees their own there; this browser may show everyone's instead. The server
+  // reads the cookie on every request, so the page starts again with the other view
+  const everyone = { value: "everyone's activity", keywords: ['everyone', 'people', 'mine', 'my own', 'whose', 'all users'] };
+  const flipEveryone = () => { document.cookie = `valet_everyone=${device.people === 'everyone' ? '0' : '1'}; path=/; max-age=31536000; samesite=lax`; location.reload(); };
   const [asking, setAsking] = useState(false);
   const flipPush = async () => {
     const no = cannot(device);
@@ -178,7 +182,7 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
     // after Open and Go to, so a service or tab with the same name as a command keeps Enter
     run,
     // this browser's say over appearance.sounds; it's remembered here and nowhere else
-    [best([sound, ...(device.member ? [] : [alerts]), glass]), <CommandGroup key="feel" heading="This device">
+    [best([sound, ...(device.member ? [] : [alerts]), glass, ...(device.people ? [everyone] : [])]), <CommandGroup key="feel" heading="This device">
       <CommandItem {...sound} onSelect={() => { const on = toggleSounds(); toast('sounds', { text: on ? 'Sounds on' : 'Sounds off' }, { ms: 2000 }); }}>
         {sounds.on ? <VolumeX /> : <Volume2 />}{sounds.on ? 'Turn sounds off' : 'Turn sounds on'}
       </CommandItem>
@@ -189,6 +193,10 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
       {glassy && <CommandItem {...glass} onSelect={() => { const on = toggleGlass(); setLiquid(on); toast('glass', { text: on ? 'Liquid glass on this device' : 'Frosted glass on this device' }, { ms: 2000 }); }}>
         <Droplet className={cn(!liquid && 'text-muted-foreground')} />Liquid glass
         <span className="ml-auto text-meta text-muted-foreground">{liquid ? 'On' : 'Off'}</span>
+      </CommandItem>}
+      {device.people && <CommandItem {...everyone} onSelect={flipEveryone}>
+        <Users className={cn(device.people !== 'everyone' && 'text-muted-foreground')} />Everyone's activity
+        <span className="ml-auto text-meta text-muted-foreground">{device.people === 'everyone' ? 'On' : 'Off'}</span>
       </CommandItem>}
     </CommandGroup>],
     [best([{ value: 'sign out' }, { value: 'sign out everywhere' }]), account && <CommandGroup key="account" heading={who ? `Account · ${who}` : 'Account'}>

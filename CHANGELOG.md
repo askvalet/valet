@@ -5,6 +5,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- Each person's own activity on a shared service. `people: { sam: samantha }` on a Tautulli, Jellyfin, Emby, Seerr or Audiobookshelf block maps the name someone signs in to Valet with to their name on that service, and with your one key they then see their own Now playing, history, Continue watching, listening and requests, on its cards, in the assistant, in ⌘K's search and in the top bar's live activities, and never anyone else's. Their cards are fetched as them, apart from the shared ones, shared by two people mapped to one user, and only while someone they're for has the page open. Anyone not mapped sees what they did before; an owner who's mapped sees their own, and ⌘K's "Everyone's activity" shows the whole house's again in that browser. The wall, rules, the timeline and the year in review keep the shared view. `doctor` says which names a service doesn't know, and `config check` which have no account. ([#25](https://github.com/askvalet/valet/discussions/25))
+
 ## [0.7.0] - 2026-11-14
 
 ### Added

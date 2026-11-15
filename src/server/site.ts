@@ -38,7 +38,8 @@ import { loadPins, pinsInstance, savePins, type Pin } from './pins.ts';
 import { setupTools } from './setup.ts';
 import { sandbox } from './sandbox.ts';
 import { wallNeeds, wallProblems, wallViews, wallWidgets } from './wall.ts';
-import { peopleProblems, profileOf } from './people.ts';
+import { ownProblems, peopleProblems, profileOf } from './people.ts';
+import { Personal, type Mapped } from './personal.ts';
 import { voiceProblems } from './voice.ts';
 import { choices, servers } from './model.ts';
 
@@ -73,6 +74,8 @@ export interface Site {
   hookLimit: Buckets;
   events: Publisher;
   stopEvents: () => void;
+  /** each person's own copy of a service with `people:` (personal.ts) */
+  personal: Personal;
 }
 
 const EVERYTHING = ['start', 'end', 'down', 'up'] as const;
@@ -82,6 +85,7 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   const problems: string[] = [];
   const instances = new Map<string, Instance>();
   const meta = new Map<string, { type: string; name: string; integration: Integration }>();
+  const mapped = new Map<string, Mapped>(), given: [string, Record<string, string>][] = [];
   const blocks: Record<string, { type: string } & Record<string, unknown>> = { ...config.integrations };
   if (Object.keys(config.links).length) blocks.links = { type: 'links', groups: config.links };
   for (const [id, block] of Object.entries(blocks)) {
@@ -100,6 +104,16 @@ export function check(config: Config, registry: Record<string, Integration>, fro
       if (fromPlugins.has(block.type)) guardCards(inst);   // a plugin's cards are checked against the catalog
       instances.set(id, inst);
       meta.set(id, { type, name: integration.name, integration });
+      // `people:`: the same block made again for each user on the service it names, when someone of theirs first needs it
+      const people = (parsed.data as { people?: Record<string, string> }).people;
+      if (people && Object.keys(people).length) {
+        given.push([id, people]);
+        mapped.set(id, { names: new Map(Object.entries(people).reverse().map(([k, v]) => [k.trim().toLowerCase(), v])), make: as => {
+          const own = inUnits(integration.create(parsed.data, makeContext(id, config.format, as)), config.format);
+          if (fromPlugins.has(block.type)) guardCards(own);
+          return own;
+        } });
+      }
     } catch (e) { problems.push(`integrations.${id}: ${(e as Error).message}`); }
   }
   // only widgets placed somewhere are polled; a key that points nowhere is a typo
@@ -148,6 +162,7 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   }
   problems.push(...commandProblems(config, instances));
   problems.push(...peopleProblems(config, instances));
+  problems.push(...ownProblems(config, given, instances));
   // a token opens one door: two hooks sharing one, or a hook sharing the MCP server's or the wall's, would open each other's
   const tokens = new Map<string, string>([...(config.mcpServer ? [[config.mcpServer.token, 'mcpServer.token']] : []), ...(config.wall.token ? [[config.wall.token, 'wall.token']] : [])] as [string, string][]);
   for (const [name, h] of Object.entries(config.hooks)) {
@@ -155,7 +170,7 @@ export function check(config: Config, registry: Record<string, Integration>, fro
     else tokens.set(h.token, `hooks.${name}.token`);
   }
   if (config.sandbox && (Object.keys(config.hooks).length || config.events?.targets.length)) problems.push('hooks and events are off in a sandbox');
-  return { problems, instances, meta, placed };
+  return { problems, instances, meta, placed, mapped };
 }
 
 /** chat.commands that couldn't do what they say: no assistant, a model that isn't a choice, an integration that isn't there
@@ -179,7 +194,7 @@ function commandProblems(config: Config, instances: Map<string, Instance>) {
 
 export async function buildSite(config: Config, registry: Record<string, Integration>, fromPlugins: Set<string>, opts: { path: string; rebuild: () => Promise<void> }, previous?: Site): Promise<Site> {
   setHouse(config.format);
-  const { problems, instances, meta, placed } = check(config, registry, fromPlugins);
+  const { problems, instances, meta, placed, mapped } = check(config, registry, fromPlugins);
   for (const p of problems) console.error(`config: ${p}`);
 
   // pinned answers are an integration of their own; setup tools one too, only if the config grants them
@@ -368,7 +383,8 @@ export async function buildSite(config: Config, registry: Record<string, Integra
   allowFonts(fontOrigins(a.font?.url));
 
   // the redactor knows every secret any config used, so a value from before a reload stays covered
-  return { config, instances, meta, placed, hub, history, acting: canAct(config), redact: redactor(usedSecrets), walls, cssVersion, recent, noticeListeners, problems, pins, ask, watcher, timeline, activity, watches, rules, push: sendPush, backups, stopBackups, reminders, stopReminders, hook, hookLimit: previous?.hookLimit ?? new Buckets(), events, stopEvents: () => events.stop() };
+  const personal = new Personal({ mapped, shared: instances, placed, every });
+  return { personal, config, instances, meta, placed, hub, history, acting: canAct(config), redact: redactor(usedSecrets), walls, cssVersion, recent, noticeListeners, problems, pins, ask, watcher, timeline, activity, watches, rules, push: sendPush, backups, stopBackups, reminders, stopReminders, hook, hookLimit: previous?.hookLimit ?? new Buckets(), events, stopEvents: () => events.stop() };
 }
 
 

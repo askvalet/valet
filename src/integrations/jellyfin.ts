@@ -2,7 +2,7 @@
 // The assistant can say what's on, search the library, and stop a stream after asking. Emby speaks the same API (Jellyfin
 // began as its fork), so `mediaServer` below is both: emby.ts is this with Emby's paths.
 import { z } from 'zod';
-import { Every } from '../server/config.ts';
+import { Every, People } from '../server/config.ts';
 import { defineIntegration, fmt, type Context, type Instance } from '../server/core.ts';
 import { tally } from '../server/service.ts';
 import type { MediaItem, ShelfItem } from '../shared/cards.ts';
@@ -25,7 +25,7 @@ export interface Flavour {
 export const serverConfig = z.object({
   url: z.string().url(), key: z.string(), href: z.string().optional(),
   user: z.string().optional().describe('Whose "continue watching" and "recently added" to show, by user name. The first administrator if left out.'),
-  every: z.union([z.string(), z.number()]).optional(), insecure: z.boolean().optional(),
+  every: z.union([z.string(), z.number()]).optional(), insecure: z.boolean().optional(), people: People,
 }).strict();
 type Cfg = z.infer<typeof serverConfig>;
 
@@ -62,16 +62,26 @@ export function mediaServer(f: Flavour) {
         : i.ParentBackdropItemId && i.ParentBackdropImageTags?.[0] ? ref(i.ParentBackdropItemId, 'Backdrop', i.ParentBackdropImageTags[0]) : undefined;
       const link = (i: any) => typeof i.Id === 'string' && ID.test(i.Id) ? f.link(web, i) : web;
 
-      // The person whose shelves these are. An API key belongs to no one, so it's the named user or the first administrator.
+      // The person whose shelves these are. An API key belongs to no one, so it's the named user or the first administrator;
+      // in someone's own copy (`people:`, ctx.as) it's always theirs, and a name the server doesn't know is an error.
       let who: Promise<{ id: string; name: string }> | undefined;
+      const named = ctx.as ?? cfg.user;
       const user = () => who ??= api<any[]>('/Users').then(list => {
         const live = (list ?? []).filter(u => !u?.Policy?.IsDisabled);
-        const u = cfg.user ? live.find(x => String(x.Name).toLowerCase() === cfg.user!.toLowerCase()) : live.find(x => x?.Policy?.IsAdministrator) ?? live[0];
-        if (!u || !ID.test(String(u.Id))) throw new Error(cfg.user ? `${f.name} has no user called ${cfg.user}` : `${f.name} lists no users: is the key an API key?`);
+        const u = named ? live.find(x => String(x.Name).toLowerCase() === named.trim().toLowerCase()) : live.find(x => x?.Policy?.IsAdministrator) ?? live[0];
+        if (!u || !ID.test(String(u.Id))) throw new Error(named ? `${f.name} has no user called ${named}` : `${f.name} lists no users: is the key an API key?`);
         return { id: String(u.Id), name: String(u.Name) };
       }).catch(e => { who = undefined; throw e; });
 
-      const playing = async () => ((await api<any[]>(f.sessions)) ?? []).filter(s => s?.NowPlayingItem);
+      const plain = (id: unknown) => String(id ?? '').replace(/-/g, '').toLowerCase();
+      // the admin key sees every session; someone's own copy keeps theirs
+      const playing = async () => {
+        const all = ((await api<any[]>(f.sessions)) ?? []).filter(s => s?.NowPlayingItem);
+        if (!ctx.as) return all;
+        const { id } = await user();
+        return all.filter(s => plain(s.UserId) === plain(id));
+      };
+      const counted = async () => api<any>(`/Items/Counts${ctx.as ? `?userId=${(await user()).id}` : ''}`);
       const toItem = (s: any): MediaItem => {
         const i = s.NowPlayingItem, at = Number(s.PlayState?.PositionTicks) || 0, run = Number(i.RunTimeTicks) || 0, t = s.TranscodingInfo;
         const height = Number(t?.Height ?? i.Height) || 0, mbps = Number(t?.Bitrate) / 1e6;
@@ -89,9 +99,9 @@ export function mediaServer(f: Flavour) {
 
       const widgets = {
         status: {
-          title: f.name, interval: seconds(cfg.every) ?? 60_000,
+          title: f.name, interval: seconds(cfg.every) ?? 60_000, personal: true,
           async fetch() {
-            const [counts, now] = await Promise.all([api<any>('/Items/Counts'), playing()]);
+            const [counts, now] = await Promise.all([counted(), playing()]);
             const n = (k: string) => Number(counts?.[k] ?? 0);
             return { type: 'stats' as const, title: f.name, icon: 'film', href: web, source,
               summary: { label: f.name, icon: 'film', value: now.length ? `${now.length} playing` : n('MovieCount').toLocaleString('en'), sub: now.length ? [...new Set(now.map(s => s.UserName))].join(', ') : 'Movies' },
@@ -110,7 +120,7 @@ export function mediaServer(f: Flavour) {
           },
         },
         streams: {
-          title: 'Now playing', interval: 10_000, card: 'media',
+          title: 'Now playing', interval: 10_000, card: 'media', personal: true,
           async fetch() {
             const now = await playing(), items = now.map(toItem), first = items.find(i => i.state !== 'paused') ?? items[0];
             return { type: 'media' as const, title: 'Now playing', icon: 'play', href: web, source, empty: 'Nothing playing', items,
@@ -121,7 +131,7 @@ export function mediaServer(f: Flavour) {
           },
         },
         resume: {
-          title: 'Continue watching', interval: 300_000, card: 'shelf',
+          title: 'Continue watching', interval: 300_000, card: 'shelf', personal: true,
           async fetch() {
             const u = await user(), r = await api<any>(`${f.resume(u.id)}Limit=12&MediaTypes=Video&Fields=PrimaryImageAspectRatio&EnableUserData=true`);
             const items: ShelfItem[] = (r?.Items ?? []).map((i: any) => {
@@ -133,7 +143,7 @@ export function mediaServer(f: Flavour) {
           },
         },
         recent: {
-          title: 'Recently added', interval: 300_000, card: 'shelf',
+          title: 'Recently added', interval: 300_000, card: 'shelf', personal: true,
           async fetch() {
             const u = await user(), list = await api<any[]>(`${f.latest(u.id)}Limit=16&Fields=DateCreated,PrimaryImageAspectRatio&IncludeItemTypes=Movie,Series,Episode&GroupItems=true`);
             const items: ShelfItem[] = (list ?? []).map(i => ({ id: i.Id, title: titleOf(i), subtitle: subtitleOf(i), image: poster(i), backdrop: backdrop(i), href: link(i), badge: i.DateCreated ? fmt.relativeDay(i.DateCreated).replace('Tonight', 'Today') : undefined }));
