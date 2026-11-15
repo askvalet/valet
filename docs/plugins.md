@@ -100,6 +100,14 @@ the bottom. Give `calendar` the events the browser may page through, and say wha
 ], summary: { label: 'Family', icon: 'calendar', value: 'Daycare', sub: 'Mon · 8:30 AM' } }
 ```
 
+A `list` or `controls` card can end with a line to type into. Enter runs your action with the words, so a plugin's
+to-do list or shopping list can be added to from the page, through the same checks as its buttons:
+
+```js
+{ type: 'list', title: 'Groceries', items, add: { placeholder: 'Add to the list…', action: 'add', args: { list: 'groceries' }, max: 100 } }
+// actions: { add: { description: 'Put something on the list', input: z.object({ list: z.string(), text: z.string().trim().min(1).max(100) }), run: … } }
+```
+
 A `thermostat`'s buttons are your own actions, run like any other, so the same permissions apply:
 
 ```js

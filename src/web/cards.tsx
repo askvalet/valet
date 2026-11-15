@@ -26,6 +26,7 @@ import { dissolve, justActed, useSettle } from './dust.ts';
 import { play } from './sound.ts';
 import type { TileAction } from '../shared/tiles.ts';
 import { LinkButton } from './link-button.tsx';
+import { AddLine } from './add-line.tsx';
 import { Meter } from './meter.tsx';
 import { Empty } from './empty.tsx';
 import { CalendarView, isWeather, Thermostat, WeatherCard, WeatherGlyph } from './home-cards.tsx';
@@ -992,7 +993,9 @@ function Table({ card }: { card: TableCard }) {
   );
 }
 
-export type RunAction = (action: string, args?: Record<string, unknown>) => Promise<void>;
+/** Runs one of the card's actions. `may` says whether this person may press that one (a profile lists its actions); left
+ *  out, any the card offers. */
+export type RunAction = ((action: string, args?: Record<string, unknown>) => Promise<void>) & { may?: (action: string) => boolean };
 
 function Controls({ card, run }: { card: ControlsCard; run?: RunAction }) {
   const touch = useContext(Touch);
@@ -1515,6 +1518,9 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
       <CardContent className={cn('flex min-w-0 flex-col px-(--pad)', fill && 'flex-1')}>
         {card?.banner && <BannerLine b={card.banner} run={run} />}
         {card ? <div className={cn(fade, 'flex min-w-0 flex-1 flex-col')}><CardBody card={card} run={run} large={large} fill={fill} columns={columns} minimal={minimal || (compact && card.type === 'status')} /></div> : <CardSkeleton kind={kind} />}
+        {/* a line to type into goes where a button would work, never in chat (cards there can't act) */}
+        {(card?.type === 'list' || card?.type === 'controls') && card.add && run && !compact && run.may?.(card.add.action) !== false
+          ? <AddLine add={card.add} run={run} ruled={card.items.length > 0} rows={card.items.map(i => 'label' in i ? `${i.id}:${i.label}` : i.id ?? i.title).join('\n')} /> : null}
         {card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null}
       </CardContent>
     </Shell>

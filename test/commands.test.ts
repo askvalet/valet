@@ -85,6 +85,26 @@ test('match: a slot takes a whole number, and a command missing its number is no
   assert.equal(clear(match(l, 'pause ads 10 20 min')), undefined);
 });
 
+test('match: {text} keeps the words typed in its place, as typed, between the phrase\'s own words in order', () => {
+  const l = list(['todo', ['add {text} to todo', 'add {text} to To do']], ['shop', ['add {text} to shopping list']], ['note', ['note {text}']]);
+  const text = (t: string) => clear(match(l, t))?.slots.text;
+  assert.equal(clear(match(l, 'add milk to to do'))?.id, 'todo');
+  assert.equal(text('Add buy milk, eggs to my To do'), 'buy milk, eggs');
+  assert.equal(text('please add Call Mum to todo'), 'Call Mum', 'its case and its words are kept');
+  assert.equal(text('add read the to do list to to do'), 'read the to do list', 'the closing words close it, not the first look-alike');
+  assert.equal(clear(match(l, 'add 2 onions to the shopping list'))?.id, 'shop');
+  assert.equal(text('add 2 onions to the shopping list'), '2 onions', 'a number in the words is words, not a slot');
+  assert.equal(text('note the boiler pressure is low'), 'the boiler pressure is low', 'with nothing after it, it runs to the end');
+  for (const t of ['add to do', 'add', 'milk add to to do', 'add milk to the fridge']) assert.equal(clear(match(l, t))?.id === 'todo' ? 'todo' : undefined, undefined, t);
+  // still being typed: offered with the words so far, below asking, and never run
+  const half = match(l, 'add milk');
+  assert.deepEqual(half.map(m => [m.id, m.exact, m.text]), [['todo', false, 'add milk to todo'], ['shop', false, 'add milk to shopping list']]);
+  assert.ok(half.every(m => m.score < .5)); assert.equal(clear(half), undefined);
+  assert.deepEqual(match(l, 'add milk to t').find(m => m.id === 'todo')?.slots, { text: 'milk' }, 'the closing words begun aren\'t part of the text');
+  // said in full, it isn't also offered as the start of another command's words
+  assert.deepEqual(match(l, 'add milk to to do').map(m => m.id), ['todo']);
+});
+
 // ── a made-up homelab ───────────────────────────────────────────────────────────────────────────────────────────────
 interface Ran { tool: string[]; action: string[] }
 function lab(ran: Ran): Map<string, Instance> {
@@ -348,6 +368,34 @@ test('integrations: Home Assistant names its own lights, and only those it may c
   assert.deepEqual(one('run movie night')?.input, { entity_id: 'scene.movie' });
   assert.equal(one('garage on'), undefined, 'not on the page, not in controllable');
   assert.equal(one('front door off'), undefined, 'a lock is never a command');
+});
+
+test('integrations: "add milk to to do" adds to the list through its action, logged, and a read-only page can\'t', async () => {
+  const { default: todo } = await import('../src/integrations/todo.ts');
+  const t = todo.create(todo.config.parse({}), fake(() => ({})));
+  const site = siteOf({ todo: t }, { todo: 'todo' });
+  const app = new Hono();
+  app.use('/api/*', async (c, next) => { (c.set as any)('user', 'sam'); return next(); });
+  app.post('/api/command', c => runCommand(c, site as any));
+  const all = await commandsOf(site as any);
+  const run = async (text: string) => {
+    const id = clear(match(all, text))?.id ?? 'none';
+    const r = await app.request('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, id }) });
+    return { status: r.status, body: await r.json() as any };
+  };
+  const r = await run('add Water the plants to to do');
+  assert.equal(r.status, 200); assert.equal(r.body.done, 'Added “Water the plants” to To do');
+  assert.equal((await run('add milk to To-do list')).status, 200, 'by the integration\'s name too');
+  assert.deepEqual(((await t.widgets.list.fetch()) as any).items.map((i: any) => i.label), ['Water the plants', 'milk']);
+  assert.deepEqual(site.activity.recent().map((e: any) => [e.via, e.input]), [['command', { text: 'milk' }], ['command', { text: 'Water the plants' }]]);
+  // the words are the action's input, and its own schema has the last say
+  assert.equal((await run(`add ${'x'.repeat(180)} to to do`)).status, 200);
+  const long = await app.request('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: `add ${'x'.repeat(201)} to to do`, id: 'todo:0' }) });
+  assert.equal(long.status, 400, 'more than a command can say');
+  (site as any).acting = false;
+  const ro = await run('add eggs to to do');
+  assert.equal(ro.status, 403); assert.match(ro.body.error, /read-only/);
+  assert.equal(((await t.widgets.list.fetch()) as any).items.length, 3);
 });
 
 test('integrations: "stop plex" stops the one stream, and says so when there are several', async () => {

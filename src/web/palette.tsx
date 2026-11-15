@@ -39,7 +39,7 @@ export interface PaletteProps {
 const PROVIDERS: Record<string, string> = { duckduckgo: 'https://duckduckgo.com/?q={q}', google: 'https://www.google.com/search?q={q}', kagi: 'https://kagi.com/search?q={q}',
   brave: 'https://search.brave.com/search?q={q}', startpage: 'https://www.startpage.com/do/search?q={q}', searxng: '/search?q={q}' };
 const searchUrl = (p: string, q: string) => (PROVIDERS[p] ?? p).replace('{q}', encodeURIComponent(q));
-const filled = (label: string, slots: Record<string, number>) => label.replace(/\{(\w+)\}/g, (_, k) => String(slots[k] ?? '…'));
+const filled = (label: string, slots: Record<string, number | string>) => label.replace(/\{(\w+)\}/g, (_, k) => String(slots[k] ?? '…'));
 /** A command that's running or has run: asking first, its card, or why it couldn't. */
 interface Ran { m: Match; c: Phrase; busy?: boolean; said?: Confirm & { logo?: string }; card?: Card; tool?: string; input?: unknown; error?: string }
 

@@ -893,6 +893,31 @@ test('todo: add, tick and clear', async () => {
   assert.deepEqual(((await t.widgets.list.fetch()) as any).items, []);
 });
 
+test('todo: the card\'s add line runs the add action, which trims and refuses what it can\'t keep', async () => {
+  process.env.VALET_DATA = await mkdtemp(join(tmpdir(), 'valet-todo-'));
+  const t = make(todo, { title: 'Chores' }, fake(() => null)) as any;
+  const c: any = await t.widgets.list.fetch();
+  valid(c);
+  assert.deepEqual(c.add, { placeholder: 'New task…', action: 'add' });
+  const input = t.actions[c.add.action].input;
+  assert.deepEqual(input.parse({ text: '  Water the plants \n' }), { text: 'Water the plants' });
+  for (const text of ['', '   ', 'x'.repeat(201), 42]) assert.equal(input.safeParse({ text }).success, false, JSON.stringify(text));
+  assert.equal(input.safeParse({ text: 'x'.repeat(200) }).success, true);
+  assert.match(input.safeParse({ text: 'x'.repeat(201) }).error.issues[0].message, /over 200 characters/);
+  assert.match(input.safeParse({ text: ' ' }).error.issues[0].message, /Type something/);
+  // two quick adds are two rows, in order, each with its own id
+  const [a, b] = await Promise.all([t.actions.add.run(input.parse({ text: ' Milk ' })), t.actions.add.run(input.parse({ text: 'Eggs' }))]);
+  assert.equal(a.done, 'Added “Milk” to Chores');
+  assert.ok(b.done);
+  const after: any = await t.widgets.list.fetch();
+  assert.deepEqual(after.items.map((i: any) => i.label), ['Milk', 'Eggs']);
+  assert.equal(new Set(after.items.map((i: any) => i.id)).size, 2);
+  // the assistant's tool still adds, through the same check
+  assert.equal(t.tools.todo_add.input.safeParse({ text: '  ' }).success, false);
+  await t.tools.todo_add.run(t.tools.todo_add.input.parse({ text: ' Bread ' }));
+  assert.equal(((await t.widgets.list.fetch()) as any).items[2].label, 'Bread');
+});
+
 test('sockets: speaks Minecraft and apcupsd to a real socket', async () => {
   const { createServer } = await import('node:net');
   const { ping, upsStatus } = await import('../src/integrations/sockets.ts');

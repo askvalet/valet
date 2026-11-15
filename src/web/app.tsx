@@ -23,7 +23,7 @@ import { adaptInk } from './ink.ts';
 import type { Labels } from '../shared/labels.ts';
 import { Scene, sceneFor, useStill, type Scenes } from './scene.tsx';
 import { ChatBeam } from './beam.tsx';
-import { ClockMonth, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, shapeOf, TileSkeleton, WeatherRing, Ring, Shell, SummaryTile, Widget } from './cards.tsx';
+import { ClockMonth, Icon, NowPlaying, isEmpty, MiniRing, noteShape, Shaped, shapeOf, TileSkeleton, WeatherRing, Ring, Shell, SummaryTile, Widget, type RunAction } from './cards.tsx';
 
 // The assistant (and the AI SDK client) loads only when someone asks something.
 const Assistant = lazy(() => import('./assistant.tsx'));
@@ -490,10 +490,11 @@ function Home({ account, who }: { account: boolean; who?: string }) {
   const warm = () => { void import('./assistant.tsx'); };   // about to be needed: start loading it
 
   // one stable action function per widget, so memoised cards don't re-render on every live update
-  const runners = useRef(new Map<string, (action: string, args?: Record<string, unknown>) => Promise<void>>());
+  // each knows which of its card's actions this person may press, read when asked, so a profile's change needs no new one
+  const runners = useRef(new Map<string, RunAction>()), mayNow = useRef<(key: string, action?: string) => boolean>(() => true);
   const runFor = (key: string) => {
     let f = runners.current.get(key);
-    if (!f) runners.current.set(key, f = (action, args) => runAction(key, action, args));
+    if (!f) runners.current.set(key, f = Object.assign((action: string, args?: Record<string, unknown>) => runAction(key, action, args), { may: (action: string) => mayNow.current(key, action) }));
     return f;
   };
   const cause = liveInsight === undefined ? page?.insight : liveInsight;
@@ -503,6 +504,7 @@ function Home({ account, who }: { account: boolean; who?: string }) {
   // someone with a profile presses only the actions it lists. The server holds that; here the page just doesn't offer the
   // rest: no button in ⌘K, and a card of an integration they were given nothing on is read-only
   const granted = page?.member?.actions, may = (key: string, action?: string) => !granted || granted.some(a => action ? a === `${key.split('.')[0]}.${action}` : a.startsWith(`${key.split('.')[0]}.`));
+  mayNow.current = may;
   const actions = page?.canAct === false ? [] : Object.values(state).flatMap(w => (w.card?.buttons ?? []).filter(b => may(w.key, b.action)).map(b => ({ key: w.key, b, card: w.card!.title ?? page?.widgets[w.key]?.title ?? w.key })));
   // every service from the status cards, for ⌘K: type a name, open it
   const services = Object.values(state).flatMap(w => w.card?.type === 'status' ? w.card.items.filter(i => i.href) : []);

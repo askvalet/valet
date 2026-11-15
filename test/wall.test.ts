@@ -307,6 +307,27 @@ test('a paired screen may press exactly what its touch list\'s cards offer, as t
   assert.ok(!wallMayPress([wallView(s, 'bare')!], states, 'ha', 'press', { entity_id: 'scene.movie' }));
 });
 
+test('a paired screen may type into a card\'s add line only when the card is on its touch list, and only words that fit', () => {
+  const todo: Card = { type: 'controls', items: [], add: { placeholder: 'New task…', action: 'add' } };
+  const shop: Card = { type: 'list', items: [], add: { placeholder: 'Add…', action: 'todo_add', args: { entity_id: 'todo.shop' }, max: 20 } };
+  const c = Config.parse({ ...base, wall: { touch: ['t.list', 'ha.shop'], layout: [{ widgets: ['t.list', 'ha.shop', 'u.list'] }] } });
+  const states = [{ key: 't.list', card: todo }, { key: 'ha.shop', card: shop }, { key: 'u.list', card: todo }];
+  const may = (inst: string, action: string, body: unknown) => wallMayPress(wallViews(c), states, inst, action, body);
+  assert.ok(may('t', 'add', { text: 'Water the plants' }));
+  assert.ok(may('ha', 'todo_add', { entity_id: 'todo.shop', text: 'Milk' }));
+  for (const [inst, action, body, why] of [
+    ['u', 'add', { text: 'Milk' }, 'the same card off the touch list'],
+    ['t', 'add', {}, 'no words'],
+    ['t', 'add', { text: '   ' }, 'only spaces'],
+    ['t', 'add', { text: 'x'.repeat(201) }, 'longer than the line takes'],
+    ['t', 'add', { text: 5 }, 'not words at all'],
+    ['t', 'add', { text: 'Milk', id: 'x' }, 'an argument the line doesn\'t give'],
+    ['ha', 'todo_add', { entity_id: 'todo.other', text: 'Milk' }, 'another list behind the same action'],
+    ['ha', 'todo_add', { text: 'Milk' }, 'without the list the card names'],
+    ['ha', 'todo_add', { entity_id: 'todo.shop', text: 'x'.repeat(21) }, 'past the card\'s own max'],
+  ] as const) assert.ok(!may(inst, action, body), why);
+});
+
 test('a paired screen\'s presses are counted: thirty a minute', () => {
   const p = new Presses(), t = 1_000_000;
   for (let i = 0; i < 30; i++) assert.ok(p.allow('a', t + i));

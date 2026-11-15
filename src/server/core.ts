@@ -67,8 +67,9 @@ export interface Command {
    *  other asks with its own `confirm` words first. */
   run: `action:${string}` | `tool:${string}`;
   /** The input, before the slots are added. A function gets the slots and may look things up (never change them), and
-   *  may throw to say why it can't run now ("two streams are playing"). The target's own schema checks the result. */
-  input?: Record<string, unknown> | ((slots: Record<string, number>) => unknown | Promise<unknown>);
+   *  may throw to say why it can't run now ("two streams are playing"). The target's own schema checks the result.
+   *  A `{text}` slot in `say` ("add {text} to {name}") gives the words typed in its place as `text`, untouched. */
+  input?: Record<string, unknown> | ((slots: Record<string, number | string>) => unknown | Promise<unknown>);
   /** In the palette: "Pause all downloads". The first phrase if left out. */
   label?: string;
   /** A `read` tool's answer carries a link (`open`, https only): go there in a new tab, as "join meeting" does. Opening a

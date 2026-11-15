@@ -84,7 +84,7 @@ export default defineIntegration({
       commands: [
         { say: ['pause ads', 'pause ad blocking', 'ads off', 'ad blocking off', 'pause {name}', 'pause pihole', 'pause blocking'], run: 'action:pause', input: { minutes: 5 }, label: 'Pause ad blocking for 5 minutes' },
         { say: ['pause ads {minutes} min', 'pause ad blocking {minutes} min', 'ads off {minutes} min', 'pause {name} {minutes} min', 'pause pihole {minutes} min'], run: 'action:pause', label: 'Pause ad blocking: {minutes} min' },
-        { say: ['pause ads {hours} hour', 'pause ad blocking {hours} hour', 'ads off {hours} hour', 'pause {name} {hours} hour', 'pause pihole {hours} hour'], run: 'action:pause', input: ({ hours }) => ({ minutes: hours * 60 }), label: 'Pause ad blocking: {hours} h' },
+        { say: ['pause ads {hours} hour', 'pause ad blocking {hours} hour', 'ads off {hours} hour', 'pause {name} {hours} hour', 'pause pihole {hours} hour'], run: 'action:pause', input: ({ hours }) => ({ minutes: Number(hours) * 60 }), label: 'Pause ad blocking: {hours} h' },
         { say: ['resume ads', 'resume ad blocking', 'ads on', 'ad blocking on', 'block ads', 'resume {name}', 'resume pihole'], run: 'action:pause', input: { minutes: 0 }, label: 'Turn ad blocking back on' },
         { say: ['ad blocking', 'ads blocked', 'how many ads blocked', '{name} status', 'pihole status', 'ad blocking status'], run: 'tool:adblock_status', label: 'Show ad blocking' },
       ],

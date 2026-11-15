@@ -3,7 +3,7 @@
 // holds a paired screen to them. Which pages may show now (`when`) is judged here too, from the time and the cards
 // Valet already has: a pure function, so the screen is told which pages, and never who is home.
 import type { Config, When } from './config.ts';
-import type { Card, WidgetState } from '../shared/cards.ts';
+import { addOf, type Card, type WidgetState } from '../shared/cards.ts';
 
 type WallPage = NonNullable<Config['wall']['pages']>[number];
 type Cond = NonNullable<When['any']>[number];
@@ -182,11 +182,18 @@ const between = (min: number, max: number) => (v: unknown) => typeof v === 'numb
 
 /** Everything on a card a touch could press, exactly as the card offers it. */
 export function pressesOf(card?: Card): Press[] {
-  if (card?.type === 'controls') return card.items.flatMap((c): Press[] => {
+  // a line to type into takes one value, the words, as long as the card allows; the action's own schema checks them again
+  const typed: Press[] = [];
+  if ((card?.type === 'controls' || card?.type === 'list') && card.add) {
+    const { arg, max } = addOf(card.add);
+    typed.push({ action: card.add.action, args: card.add.args ?? {}, value: { key: arg, ok: v => typeof v === 'string' && v.trim().length > 0 && v.length <= max } });
+  }
+  if (card?.type === 'list') return typed;
+  if (card?.type === 'controls') return [...typed, ...card.items.flatMap((c): Press[] => {
     if (!c.action || c.kind === 'value') return [];
     const value = c.kind === 'toggle' ? (v: unknown) => typeof v === 'boolean' : c.kind === 'slider' ? between(c.min ?? 0, c.max ?? 100) : c.kind === 'select' ? (v: unknown) => typeof v === 'string' && !!c.options?.includes(v) : undefined;
     return [{ action: c.action, args: c.args ?? {}, ...(value ? { value: { key: 'value', ok: value } } : {}) }];
-  });
+  })];
   if (card?.type === 'thermostat') return [
     ...card.set ? [{ action: card.set.action, args: card.set.args ?? {}, value: { key: 'temperature', ok: between(card.min, card.max) } }] : [],
     ...(card.modes ?? []).map(m => ({ action: m.action, args: m.args ?? {} })),

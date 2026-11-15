@@ -34,7 +34,7 @@ The AI SDK and the MCP client load on the first question. With no assistant, the
 
 ## Commands
 
-Type a plain command in the palette and it runs straight away, with no model: "pause downloads", "lights off", "what's playing", "pause ads 10 min". Integrations bring their own; there's nothing to set up.
+Type a plain command in the palette and it runs straight away, with no model: "pause downloads", "lights off", "what's playing", "pause ads 10 min", "add buy stamps to to do". Integrations bring their own; there's nothing to set up. A command that takes words keeps them as you typed them: "add buy stamps to to do" puts "buy stamps" on the To-do list, exactly as the card's own "New task…" line would.
 
 With no assistant, commands do what the page can already do: its actions (when [sign-in](/start/sign-in/) allows them) and tools that only look, which show their card in the palette. Anything that would need a tool to add or change something waits for an assistant, and then follows `assistant.access` like the chat does, approval card included. On a read-only page commands only look. Nothing on this path ever calls a model, with an assistant or without.
 

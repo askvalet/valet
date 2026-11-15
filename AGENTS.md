@@ -266,6 +266,11 @@ literal; a new size or corner is a new token with a role, argued for here.
 - **Button** (`components/ui/button.tsx`, `buttonVariants` for a link): `sm` 28 with the chip's corner, `default` 36 and `lg` 44 with
   the control's; `ghost`, `tonal` (the default), `solid` (the ink), and `default` for the rare accent one. A meeting's big blue Join is
   `solid lg` plus `.meeting-join`.
+- **Add line** (`add-line.tsx`, a card's `add`): the one place a card takes words, at the foot of a list or controls card, a
+  row tall, the words where the rows' names are and a round + where their switches are. It's a button that takes words, so it's
+  drawn only where `run` is (and `run.may` allows its action) and never in chat; on the wall's touch list it's taller. It's 16px
+  on a touch screen, read-only (never disabled) while it sends so a phone keeps its keyboard, and its words stay until the card
+  lists something new, so they leave as the row arrives. The action's schema is the check; the page only stops typing at `max`.
 - **Dots**: `.dot` (6px) beside a name, `.dot-lg` (8px) only in a legend; `ChipDot` for a thing's own colour. Calendar day marks
   under a date are marks, not dots.
 - **Focus**: one `:focus-visible` rule in the base layer (2px `--ring`, offset 2). Don't write `outline-none` unless something else

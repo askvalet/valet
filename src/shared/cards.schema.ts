@@ -47,6 +47,10 @@ const ShelfItem = z.object({ id: z.string().optional(), mark: z.string().optiona
   cta: z.object({ label: z.string(), href: z.string() }).strict().optional(), doc: z.object({ sender: z.string().optional(), date: z.string().optional(), type: z.string().optional() }).strict().optional() }).strict();
 const StatusItem = z.object({ name: z.string(), ok: z.boolean(), ms: z.number().optional(), detail: z.string().optional(), href: z.string().optional(),
   icon: z.string().optional(), group: z.string().optional(), quiet: z.boolean().optional(), state: z.enum(['up', 'degraded', 'down', 'off']).optional() }).strict();
+// the words someone types go to one argument of one action; what that action accepts is its own schema's to say
+const AddField = z.object({ placeholder: z.string().min(1).max(60), action: z.string().min(1), arg: z.string().regex(/^[a-z]\w{0,31}$/i, 'not an argument name').optional(),
+  args: z.record(z.string(), z.unknown()).optional(), max: z.number().int().min(1).max(2000).optional() }).strict()
+  .refine(a => !a.args || !Object.hasOwn(a.args, a.arg ?? 'text'), 'args can\'t also hold the typed words');
 const Control = z.object({ id: z.string(), label: z.string(), kind: z.enum(['toggle', 'slider', 'select', 'button', 'value']),
   value: z.union([z.boolean(), z.number(), z.string()]).optional(), options: z.array(z.string()).optional(), min: z.number().optional(), max: z.number().optional(),
   step: z.number().optional(), color: z.string().optional(), action: z.string().optional(), sub: z.string().optional(), icon: z.string().optional(), tone: Tone.optional(), args: z.record(z.string(), z.unknown()).optional() }).strict();
@@ -59,7 +63,7 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
   z.object({ ...base, type: z.literal('cameras'), cameras: z.array(Camera), refresh: z.number().positive().optional(), empty: z.string().optional(), sample: z.boolean().optional(),
     events: z.array(z.object({ id: z.string().optional(), camera: z.string(), label: z.string(), at: z.number(), image: z.string().optional(), score: unit.optional() }).strict()).optional() }).strict(),
   z.object({ ...base, type: z.literal('stats'), items: z.array(StatItem), pie: z.array(z.object({ label: z.string(), value: z.number(), tone: Tone.optional() }).strict()).optional(), pieCenter: z.string().optional() }).strict(),
-  z.object({ ...base, type: z.literal('list'), items: z.array(ListItem), empty: z.string().optional(), limit: z.number().int().positive().optional(), log: z.boolean().optional(), layout: z.enum(['temps', 'chips', 'headlines']).optional() }).strict(),
+  z.object({ ...base, type: z.literal('list'), items: z.array(ListItem), empty: z.string().optional(), limit: z.number().int().positive().optional(), log: z.boolean().optional(), add: AddField.optional(), layout: z.enum(['temps', 'chips', 'headlines']).optional() }).strict(),
   z.object({ ...base, type: z.literal('media'), items: z.array(MediaItem), empty: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('shelf'), layout: z.enum(['row', 'spotlight', 'week', 'tickets', 'desk', 'windows', 'focus', 'coverflow', 'masonry', 'cards']).optional(), items: z.array(ShelfItem), aspect: z.enum(['poster', 'square', 'wide']).optional(), empty: z.string().optional(), stack: z.boolean().optional(), archived: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('status'), items: z.array(StatusItem), layout: z.literal('wall').optional() }).strict(),
@@ -69,7 +73,7 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
   z.object({ ...base, type: z.literal('race'), span: z.string().optional(), unit: z.string().optional(), steps: z.array(z.string()),
     items: z.array(z.object({ title: z.string(), image: z.string().optional(), points: nums }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('heatmap'), from: date, days: nums, unit: z.string().optional(), headline: z.string().optional(), span: z.string().optional() }).strict(),
-  z.object({ ...base, type: z.literal('controls'), items: z.array(Control) }).strict(),
+  z.object({ ...base, type: z.literal('controls'), items: z.array(Control), add: AddField.optional() }).strict(),
   z.object({ ...base, type: z.literal('showcase'), visual: z.object({ kind: z.string(), src: z.string().optional(), data: z.unknown().optional() }).strict(),
     items: z.array(StatItem), caption: z.string().optional() }).strict(),
   z.object({ ...base, type: z.literal('forecast'),

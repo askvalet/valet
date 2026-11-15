@@ -438,16 +438,17 @@ export default ({ z, defineIntegration }) => defineIntegration({
   type: 'house', name: 'House', config: z.object({}),
   create() {
     const did = (what) => { appendFileSync(process.env.VALET_DATA + '/presses.log', what + '\\n'); return { done: what }; };
-    const card = (items) => ({ fetch: async () => ({ type: 'controls', title: 'Lights', items }), interval: 60000, title: 'Card' });
+    const card = (items, add) => ({ fetch: async () => ({ type: 'controls', title: 'Lights', items, add }), interval: 60000, title: 'Card' });
     return {
       widgets: {
-        lights: card([{ id: 'l', label: 'Lamp', kind: 'toggle', value: false, action: 'set', args: { entity_id: 'light.lamp' } }, { id: 's', label: 'Movie', kind: 'button', action: 'press', args: { entity_id: 'scene.movie' } }]),
-        doors: card([{ id: 'k', label: 'Front door', kind: 'toggle', value: true, action: 'set', args: { entity_id: 'lock.front' } }]),
+        lights: card([{ id: 'l', label: 'Lamp', kind: 'toggle', value: false, action: 'set', args: { entity_id: 'light.lamp' } }, { id: 's', label: 'Movie', kind: 'button', action: 'press', args: { entity_id: 'scene.movie' } }], { placeholder: 'Name a scene…', action: 'note', args: { room: 'hall' } }),
+        doors: card([{ id: 'k', label: 'Front door', kind: 'toggle', value: true, action: 'set', args: { entity_id: 'lock.front' } }], { placeholder: 'Note…', action: 'note', args: { room: 'door' } }),
         people: card([{ id: 'p', label: 'Pseudonym-Q', kind: 'value', value: 'Home' }]),
       },
       actions: {
         set: { description: 'Set', input: z.object({ entity_id: z.string(), value: z.boolean() }).strict(), run: async a => did('set ' + a.entity_id + ' ' + a.value) },
         press: { description: 'Press', input: z.object({ entity_id: z.string() }).strict(), run: async a => did('press ' + a.entity_id) },
+        note: { description: 'Note', input: z.object({ room: z.string(), text: z.string().trim().min(1).max(50) }).strict(), run: async a => did('note ' + a.room + ' ' + a.text) },
       },
     };
   },
@@ -535,6 +536,20 @@ wall:
       const res = await fetch(s.base + fill(r.path), { method: r.method, headers: r.method === 'GET' ? { cookie } : { cookie, 'Content-Type': 'application/json' }, body: r.method === 'GET' ? undefined : '{}' });
       assert.equal(res.status, 401, `${key} answered ${res.status} to a wall with touch on`);
     }
+  });
+
+  test('a plugin card\'s add line takes words from the wall only on a listed card, and the action\'s own schema has the last say', async () => {
+    const before = await log();
+    assert.equal((await press('house', 'note', { room: 'hall', text: 'Movie night' })).status, 200);
+    assert.equal(await log(), `${before}note hall Movie night\n`);
+    for (const [body, status, why] of [
+      [{ room: 'door', text: 'Hi' }, 401, 'the line on a card that isn\'t listed'],
+      [{ room: 'hall', text: '   ' }, 401, 'no words'],
+      [{ room: 'hall', text: 'x'.repeat(201) }, 401, 'more than the line takes'],
+      [{ room: 'hall', text: 'Hi', extra: 1 }, 401, 'an argument the line doesn\'t give'],
+      [{ room: 'hall', text: 'x'.repeat(60) }, 400, 'past what the action itself accepts'],
+    ] as const) assert.equal((await press('house', 'note', body)).status, status, why);
+    assert.equal(await log(), `${before}note hall Movie night\n`, 'nothing else ran');
   });
 
   test('a screen\'s own token reaches that screen alone, and presses only its own list', async () => {
