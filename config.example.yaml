@@ -4,7 +4,7 @@ auth: { mode: none, trustNetwork: false }
 # Other people in the house, with sign-in on: a profile gives someone only these tabs, buttons and assistant. An account
 # users doesn't name is an owner. approve: owner sends what would ask them to an owner instead (self: they approve their own)
 # profiles:
-#   kids: { tabs: [Media], actions: [requests.request], assistant: { access: { default: none, requests: write }, approve: owner } }
+#   kids: { tabs: [Media], actions: [downloads.pause], assistant: { access: { default: none, requests: write }, approve: owner } }
 # users: { sam: kids, alex: kids }
 
 # Valet configuration. `${NAME}` is replaced from the environment, so keep secrets in .env, Docker secrets, Vault or

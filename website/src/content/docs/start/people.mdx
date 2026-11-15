@@ -5,13 +5,13 @@ sidebar:
   order: 4.5
 ---
 
-With sign-in on, everyone who signs in is an owner: the same page, the same buttons, the same assistant. A profile gives someone less. Children might see only the Media tab, press one button to request a show, and ask the assistant for things a parent then approves.
+With sign-in on, everyone who signs in is an owner: the same page, the same buttons, the same assistant. A profile gives someone less. Children might see only the Media tab, press the one button you allow, and ask the assistant for things a parent then approves.
 
 ```yaml title="config.yaml"
 profiles:
   kids:
     tabs: [Media]                      # the tabs they see, by name as in layout. Left out: all of them
-    actions: [requests.request]        # page buttons they may press, as <integration>.<action>. Left out: none
+    actions: [downloads.pause]         # page buttons they may press, as <integration>.<action>. Left out: none
     assistant:                         # left out: no assistant for them
       access: { default: none, requests: write }
       instructions: "Only suggest shows rated TV-Y7 or below."

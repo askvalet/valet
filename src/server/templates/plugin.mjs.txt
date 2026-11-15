@@ -1,4 +1,4 @@
-// __NAME__: a community integration for Valet. It's live as soon as it's in data/integrations/ and config.yaml has
+// __NAME__: a community integration for Valet. It loads when Valet restarts with it in data/integrations/ and config.yaml has
 //
 //   integrations:
 //     __NAME__:
@@ -56,7 +56,7 @@ export default ({ z, defineIntegration, fmt }) => defineIntegration({
         { say: ['__NAME__ status', '{name} status'], run: 'tool:__SLUG___status', label: 'Show __TITLE__' },
       ],
 
-      // what the assistant can use. access: 'read' looks, 'write' adds without asking, 'control' asks the person first
+      // what the assistant can use. access: 'read' looks, 'write' may add things and 'control' may also change or remove them; both ask the person first
       tools: {
         __SLUG___status: {
           description: 'Status of __TITLE__: how full it is and which things are up. Use when asked about __TITLE__.',
