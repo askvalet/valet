@@ -36,7 +36,7 @@ services:
 
   valet-demo-edge:
     <<: *hardened
-    image: caddy:2.11.7
+    image: caddy:2.11.9
     container_name: valet-demo-edge
     cap_add: [NET_BIND_SERVICE]   # the binary carries this file capability, and won't start without it
     mem_limit: 64m
