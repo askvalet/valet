@@ -395,7 +395,7 @@ export default ({ z, defineIntegration, fmt: write }) => {
         // the homelab as `type: network` draws it: each service under the machine its address is on, the containers beside
         // them, and the weather out on the internet
         network: w('Network', 15_000, () => {
-          const on = { NAS: ['Immich', 'Paperless', 'Nextcloud', 'Karakeep'], Pi: ['Pi-hole', 'Home Assistant', 'Frigate'] }, ports = { Plex: 32400, Sonarr: 8989, Radarr: 7878, 'Pi-hole': 80, 'Home Assistant': 8123, Immich: 2283 };
+          const on = { NAS: ['Immich', 'Paperless', 'Nextcloud', 'Karakeep'], Pi: ['Pi-hole', 'Home Assistant', 'Frigate'], "Daniel's Desktop": ['Navidrome', 'Komga', 'Grafana', 'Uptime Kuma'] }, ports = { Plex: 32400, Sonarr: 8989, Radarr: 7878, 'Pi-hole': 80, 'Home Assistant': 8123, Immich: 2283, Navidrome: 4533, Komga: 25600, Grafana: 3000, 'Uptime Kuma': 3001 };
           const machines = [['Server', '10.0.0.20'], ['NAS', '10.0.0.30'], ['Pi', '10.0.0.40'], ["Daniel's Desktop", '10.0.0.50']];
           const ip = Object.fromEntries(machines), id = (m) => `host:${m.toLowerCase().replace(/[^a-z0-9]+/g, '')}`;
           const where = (name) => Object.entries(on).find(([, list]) => list.includes(name))?.[0] ?? 'Server';
