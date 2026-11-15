@@ -22,6 +22,9 @@ export interface Widget {
   title: string;
   interval?: number;                     // ms between refreshes while visible (default 10 s)
   card?: Card['type'];                   // the kind of card it returns, so the config check can tell a `view` that can't draw it
+  /** The widget (`instance.widget`) whose latest card this one is made from, through `ctx.card`. Valet keeps that one
+   *  polled, refreshes this one when it changes, and shows this one only to someone who may see that one. */
+  from?: string;
   fetch(): Promise<Card>;
 }
 
@@ -157,6 +160,9 @@ export interface Context {
   /** For services that sign in and hand back a session (a cookie, a token). get() signs in once and reuses it; parallel
    *  callers share one sign-in; reset() after the service says the session expired. */
   session<T>(login: () => Promise<T>): { get(): Promise<T>; reset(): void };
+  /** The latest card another widget made, as Valet already has it (no request of its own). Only for a widget one of
+   *  this instance's widgets names in `from`; undefined when there's none yet, or outside a running site. */
+  card?(key: string): Promise<Card | undefined>;
 }
 
 export function session<T>(login: () => Promise<T>) {
@@ -233,9 +239,9 @@ export async function keptHome(url: string, init: RequestInit, hops = 5): Promis
   return keptHome(next.href, { ...init, ...(get ? { method: 'GET', body: undefined } : {}), headers: home ? init.headers : { Accept: new Headers(init.headers).get('accept') ?? '*/*' } }, hops - 1);
 }
 
-export function makeContext(id: string, format?: Partial<Format>): Context {
+export function makeContext(id: string, format?: Partial<Format>, card?: Context['card']): Context {
   return {
-    id, format,
+    id, format, card,
     async http(url, init = {}) {
       const { timeout = 8000, as = 'json', insecure, ...rest } = init;
       const res = insecure && url.startsWith('https:') ? await selfSigned(url, rest, timeout) : await keptHome(url, { ...rest, signal: AbortSignal.timeout(timeout) });

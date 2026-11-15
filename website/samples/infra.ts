@@ -217,7 +217,8 @@ export const infra: Record<string, Fixture> = {
     states: [
       { widget: 'data', state: 'list', label: 'As a list', config: { title: 'Jobs', stats: undefined, list: { items: 'jobs', title: 'name', subtitle: 'group', meta: 'took', pct: 'done' } } },
       { widget: 'data', state: 'status', label: 'As a status list', config: { title: 'Jobs', stats: undefined, status: { items: 'jobs', name: 'name', ok: 'state', detail: 'took', group: 'group' } } },
-      { widget: 'data', state: 'rows', label: 'As a table', config: { title: 'Last test', stats: undefined, rows: { Server: 'server', Download: '{download|round:0} Mbps', Upload: '{upload|round:0} Mbps', When: 'at|ago' } } },
+      { widget: 'data', state: 'rows', label: 'As rows', config: { title: 'Last test', stats: undefined, rows: { Server: 'server', Download: '{download|round:0} Mbps', Upload: '{upload|round:0} Mbps', When: 'at|ago' } } },
+      { widget: 'data', state: 'table', label: 'A table, filtered and sorted', config: { title: 'Storage jobs', stats: undefined, table: { items: 'jobs', where: "group == 'Storage'", sort: '-done', columns: { Job: 'name', Done: 'done|pct', Took: 'took' } } } },
     ],
   },
   iframe: { config: { url: 'https://grafana.example.com/d/abc/overview?kiosk', title: 'Grafana', height: 320 } },
