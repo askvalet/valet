@@ -950,7 +950,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `clock` | `clocks` (`{ name, zone }`), `title` | `times` |
 | `glances` | `url`, `disks` (mounts, or `{ mount, name, sub }`), `network` (interface), `cpuSensor` (`CPU`) | `tiles`, `overview`, `disks` |
 | `healthchecks` | `url` (`https://healthchecks.io` or your own), `key` (the read-only key is enough to look; pausing needs the full one), `insecure` | `checks`, `status` |
-| `homeassistant` | `url`, `token`, `cards` (each `{ title, icon, entities }`; an entity is its id, or `{ id, name, icon }`), `schedules`, `floorplans`, `thermostats` (`{ entity, title, modes, unit }`), `controllable` (extra entities the assistant may control). A card's rows get a small icon from the entity (a lock, a garage door, a person, energy, money, temperature), and a lock that's locked, a garage door that's closed and someone at home read green, unlocked or open amber | one per entry in `cards`, `schedules`, `floorplans`, `thermostats` |
+| `homeassistant` | `url`, `token`, `cards` (each `{ title, icon, entities }`; an entity is its id, or `{ id, name, icon }`), `schedules`, `floorplans`, `thermostats` (`{ entity, title, modes, unit }`), `todos` (`{ entity, title }`: one of its to-do lists, ticked off and added to from the card), `controllable` (extra entities the assistant may control). A card's rows get a small icon from the entity (a lock, a garage door, a person, energy, money, temperature), and a lock that's locked, a garage door that's closed and someone at home read green, unlocked or open amber | one per entry in `cards`, `schedules`, `floorplans`, `thermostats`, `todos` |
 | `http` | `targets` (`name`, `url`, `href`, `icon`, `group`, `quiet`, `expect`), `interval` (30000 ms) | `status` |
 | `iframe` | `url`, `title`, `height` (360), `scripts` (`true`) | `page` |
 | `immich` | `url`, `apiKey` | `memories` |
@@ -960,7 +960,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `karakeep` | `url`, `apiKey` | `recent`, `digest`, `reading` |
 | `kavita` | `url`, `username` and `password`, or `key` (an auth key) | `reading` (what you're in the middle of), `recent`, `status` |
 | `komga` | `url`, `username` and `password`, or `key` (an API key, Komga 1.20+) | `reading` (in progress, with how far along), `ondeck` (next in a series you've started), `recent`, `status` |
-| `mealie` | `url`, `key`, `version` (`2`; `1` before households) | `week` (the meal plan from today, its photos landscape), `today` (a recipe of the day), `recent`, `status` |
+| `mealie` | `url`, `key`, `version` (`2`; `1` before households), `list` (the shopping list to show; the first if left out) | `week` (the meal plan from today, its photos landscape), `today` (a recipe of the day), `recent`, `status`, `shopping` (what's left to buy, with a line to add to it) |
 | `miniflux` | `url`, `key` | `unread` (a pile to step through; archiving marks read), `feeds` (unread per feed), `starred`, `status` |
 | `lobsters` | `tags`, `sort` (`hottest`, `newest`), `limit` (8) | `stories` |
 | `minecraft` | `host`, `port` (25565), `title` | `status` |
@@ -979,7 +979,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `speedtest-tracker` | `url`, `key` (an API token that can read results, and run tests if you want that from chat), `days` (7, how far back the chart goes), `insecure` | `speed`, `status` |
 | `syncthing` | `url`, `key` (its API key), `insecure` | `sync`, `status` |
 | `tautulli` | `url`, `apiKey` | `streams`, `recent`, `top`, `people`, `library`, `plays` (a stream of 30 days), `race` (the year's titles overtaking each other; refreshes every few hours), `viewing` (a year of days) |
-| `todo` | `title` | `list` |
+| `todo` | `title` | `list` (tick things off; its last line adds a task) |
 | `twitch` | `clientId`, `clientSecret`, `channels`, `limit` (8) | `channels`, `games` |
 | `uptimekuma` | `url`, `username` (empty with an API key), `password` (or the key), `certWarnDays` (14) | `monitors` |
 | `weather` | `latitude`, `longitude`, `units` (from `format.temperature`, else `metric`), `interval` (600000 ms) | `now` |

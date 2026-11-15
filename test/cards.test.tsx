@@ -152,6 +152,35 @@ test('schema rejects a malformed card', () => {
   assert.equal(checkCard({ type: 'list', items: [{ title: 'x', pct: 3 }] }).success, false);     // progress past 100%
 });
 
+test('schema: an add line names its action and a sensible length, and nothing else', () => {
+  const add = { placeholder: 'New task…', action: 'add' };
+  for (const type of ['list', 'controls']) assert.equal(checkCard({ type, items: [], add }).success, true, type);
+  assert.equal(checkCard({ type: 'controls', items: [], add: { ...add, arg: 'item', args: { entity_id: 'todo.shop' }, max: 255 } }).success, true);
+  for (const [bad, why] of [
+    [{ action: 'add' }, 'no placeholder'], [{ placeholder: 'x' }, 'no action'], [{ ...add, placeholder: '' }, 'an empty placeholder'],
+    [{ ...add, max: 0 }, 'nothing fits'], [{ ...add, max: 1.5 }, 'not whole'], [{ ...add, max: 100_000 }, 'too long to be a line'],
+    [{ ...add, arg: '../x' }, 'not an argument name'], [{ ...add, args: { text: 'fixed' } }, 'fixed args that would hide the words'],
+    [{ ...add, colour: 'red' }, 'an unknown field'],
+  ] as const) assert.equal(checkCard({ type: 'controls', items: [], add: bad }).success, false, why);
+  assert.equal(checkCard({ type: 'stats', items: [], add }).success, false, 'only on cards that list things');
+});
+
+test('add line: drawn only where the card can act, outside chat, and where this person may press that action', () => {
+  const card = { type: 'controls', title: 'To do', items: [{ id: 't1', label: 'Milk', kind: 'toggle', value: false, action: 'tick' }], add: { placeholder: 'New task…', action: 'add', max: 80 } };
+  const on = html(card, { run: true });
+  assert.match(on, /placeholder="New task…"/); assert.match(on, /maxLength="80"/); assert.match(on, /enterKeyHint="done"/);
+  assert.match(on, /text-\[16px\]/, 'a phone doesn\'t zoom into it');
+  assert.doesNotMatch(html(card), /New task/, 'a read-only page, or a card this profile can\'t use, gets no run and so no line');
+  assert.doesNotMatch(html(card, { run: true, compact: true }), /New task/, 'nor in chat');
+  const denied = Object.assign(async () => {}, { may: (a: string) => a !== 'add' });
+  assert.doesNotMatch(renderToString(<TooltipProvider><Widget card={card as any} run={denied} /></TooltipProvider>), /New task/, 'a profile that may tick but not add');
+  const allowed = Object.assign(async () => {}, { may: (a: string) => a === 'add' });
+  assert.match(renderToString(<TooltipProvider><Widget card={card as any} run={allowed} /></TooltipProvider>), /New task/);
+  // an empty list still offers the line, under its empty note; on the wall's touch list it's drawn for a finger
+  assert.match(html({ type: 'list', items: [], empty: 'Nothing saved yet', add: { placeholder: 'Save a link…', action: 'save' } }, { run: true }), /Nothing saved yet[^]*Save a link…/);
+  assert.match(renderToString(<TooltipProvider><Touch.Provider value={{}}><Widget card={card as any} run={async () => {}} /></Touch.Provider></TooltipProvider>), /min-h-14/);
+});
+
 test('calendar: an event lands on every day it touches, and no further', () => {
   const on = (s: string) => new Date(2026, 2, Number(s)).toISOString();
   const days = byDay([{ title: 'Trip', start: '2026-03-06', end: '2026-03-09' }, { title: 'Late', start: on('10'), end: new Date(2026, 2, 11, 1).toISOString() }, { title: 'To midnight', start: new Date(2026, 2, 12, 22).toISOString(), end: on('13') }, { title: 'One day', start: '2026-03-14' }]);

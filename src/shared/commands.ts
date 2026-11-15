@@ -1,7 +1,8 @@
 // Plain commands, matched by rule: "pause downloads", "lights off", "pause ads 10 min". The page and the server match the
 // same way: words are normalised (case, punctuation, word order, plurals, a few synonyms) and must then be exactly the
 // command's words. Nothing is fuzzy, so nothing can run that wasn't said. A half-typed command is only offered, and two
-// commands that both match are both shown.
+// commands that both match are both shown. One slot takes words rather than a number: `{text}` ("add {text} to to do")
+// keeps what was typed in its place as it was typed, and there the fixed words must come in the phrase's order.
 
 /** A command as the page knows it: the words that run it, and what it is. */
 export interface Phrase {
@@ -20,7 +21,8 @@ export interface Match {
   exact: boolean;
   /** what to send to run it: what was typed, or for a half-typed command the command's own words */
   text: string;
-  slots: Record<string, number>;
+  /** numbers for `{minutes}` and the like; words for `{text}` */
+  slots: Record<string, number | string>;
 }
 
 // one word for each meaning, applied to both sides: "stop downloads" and "pause downloads" are the same command
@@ -59,8 +61,34 @@ function pattern(say: string) {
 }
 const isNum = (w: string) => /^\d{1,6}$/.test(w);
 
+const TEXT = '{text}';
+const same = (a: string[], b: string[]) => a.length === b.length && a.every((w, i) => w === b[i]);
+/** A phrase with `{text}`: its fixed words before the slot lead, in order, and its words after it close what was typed;
+ *  everything between is the text, as typed. Still being typed, the text runs to the end, less what has begun the closing
+ *  words ("add milk to" offers "add milk to to do"). */
+function fitText(say: string, text: string, open: boolean): { exact: boolean; slots: Record<string, string> } | null {
+  const at = say.indexOf(TEXT), before = words(say.slice(0, at)), after = words(say.slice(at + TEXT.length));
+  // something fixed must lead, or any sentence at all would be this command
+  if (!before.length || say.indexOf(TEXT, at + 1) >= 0 || /\{(?!text\})\w+\}/.test(say)) return null;
+  const raw = text.slice(0, MAX).trim().split(/\s+/), of = (from: number, to = raw.length) => words(raw.slice(from, to).join(' '));
+  let i = 1;
+  while (i <= raw.length && !same(of(0, i), before)) i++;
+  if (i >= raw.length) return null;
+  // the text needs a word of its own: "add to do" adds nothing called "to"
+  const take = (j: number) => raw.slice(i, j).join(' '), real = (j: number) => of(i, j).length > 0;
+  if (!after.length) return real(raw.length) ? { exact: true, slots: { text: take(raw.length) } } : null;
+  for (let j = i + 1; j < raw.length; j++) if (real(j) && same(of(j), after)) return { exact: true, slots: { text: take(j) } };
+  // the closing words begun, the last perhaps half-typed: the text is what's before them
+  for (let j = i + 1; j <= raw.length; j++) {
+    const tail = of(j);
+    if (real(j) && tail.length <= after.length && tail.every((w, k) => w === after[k] || (open && k === tail.length - 1 && after[k].startsWith(w)))) return { exact: false, slots: { text: take(j) } };
+  }
+  return null;
+}
+
 /** How what was typed fits one phrase: exactly, as a beginning, or not at all. */
-function fit(say: string, typed: string[], open: boolean): { exact: boolean; slots: Record<string, number> } | null {
+function fit(say: string, typed: string[], open: boolean, text = ''): { exact: boolean; slots: Record<string, number | string> } | null {
+  if (say.includes(TEXT)) return fitText(say, text, open);
   const p = pattern(say);
   if (!p.words.length || !typed.length) return null;
   const left = [...p.words], numbers: number[] = [];
@@ -88,7 +116,7 @@ export function match(list: Pick<Phrase, 'id' | 'say'>[], text: string): Match[]
   for (const c of list) {
     let best: Match | null = null;
     for (const say of c.say) {
-      const f = fit(say, typed, open);
+      const f = fit(say, typed, open, text);
       if (!f) continue;
       if (f.exact) { best = { id: c.id, score: 1, exact: true, text, slots: f.slots }; break; }
       if (best || pattern(say).slots.length > Object.keys(f.slots).length) continue;
@@ -97,7 +125,9 @@ export function match(list: Pick<Phrase, 'id' | 'say'>[], text: string): Match[]
     }
     if (best) out.push(best);
   }
-  return out.sort((a, b) => b.score - a.score);
+  // said in full, a command with words of its own isn't also the start of another one's text
+  const said = out.some(m => m.exact);
+  return out.filter(m => m.exact || !said || !Object.values(m.slots).some(v => typeof v === 'string')).sort((a, b) => b.score - a.score);
 }
 
 /** The one command Enter may run: an exact match with no other exact match beside it. */

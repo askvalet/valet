@@ -24,6 +24,7 @@ const mealieHttp = route([
   ['/statistics', { totalRecipes: 428, totalCategories: 12, totalTags: 34, totalUsers: 2, totalTools: 6 }],
   ['/users/self', { groupSlug: 'home' }],
   ['/mealplans', { page: 1, per_page: 100, total: plan.length, total_pages: 1, items: plan.map(([d, entryType, r], id) => ({ id, date: ymd(d * DAY), entryType, title: '', text: '', recipeId: uuid(r), recipe: mealieRecipe(r) })) }],
+  [/\/shopping\/lists\/[0-9a-f-]+$/, { id: uuid(40), name: 'Groceries', listItems: ['2 onions', 'Olive oil', 'Basil', 'Parmesan', 'Lemons'].map((note, i) => ({ id: uuid(60 + i), note, checked: i === 4 })) }],
   ['/shopping/lists', { items: [{ id: uuid(40), name: 'Groceries' }] }],
   [/\/recipes\/[a-z-]+$/, () => ({ ...mealieRecipe(0), recipeIngredient: [{ display: '1 butternut squash' }, { display: '400 ml coconut milk' }, { display: '2 tbsp green curry paste' }], recipeInstructions: [{ text: 'Roast the squash.' }, { text: 'Simmer it all together.' }] })],
   ['/recipes', { page: 1, per_page: 12, total: DISHES.length, items: DISHES.map((_, i) => mealieRecipe(i)) }],

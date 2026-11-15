@@ -102,6 +102,9 @@ commands: [
   min/minutes, h/hours. Nothing else is guessed, so write the variants out. `{name}` becomes the instance's name in
   `config.yaml` and the integration's own name.
 - A slot like `{minutes}` takes a whole number and is added to the input under its name. The target's schema still checks it.
+- `{text}` takes words instead: whatever is typed in its place, as it was typed, added to the input as `text`
+  ("add {text} to {name}"). Its phrase must start with words of its own, those before it come first and those after it
+  last, and it has no number slots. Point it at an action whose schema limits the words.
 - `run: 'action:<name>'` runs a page action, as its button would. `run: 'tool:<name>'` runs a tool: a `read` tool shows its
   card in the palette; anything else shows the tool's approval card (its `confirm`) first.
 - `input` is fixed, or a function of the slots that may look things up (never change them) and may throw to say why it
@@ -203,6 +206,9 @@ Any card can also carry:
   ring goes. `link: { label, href, note }` puts a button in its story (an https link, opened in a new tab, its host shown).
   With a countdown, `count` shows as "+1" on the ring.
 - `buttons`: quick actions along the bottom (`{ label, action, args }`), run through the integration's `actions`.
+- `add`, on a `list` or `controls` card: a line to type into at its foot, `{ placeholder, action, arg?, args?, max? }`.
+  Enter runs `action` with `args` plus the words as `arg` (`text` if left out), at most `max` characters (200). It's
+  drawn where the card's buttons would work, and the action's own schema checks the words: trim and limit them there.
 - `banner`: a state the person chose and shouldn't forget, at the top of the card: `{ text, until, tone, button }`, as in
   "Blocking paused until 14:05" with Resume beside it. `until` is in milliseconds.
 

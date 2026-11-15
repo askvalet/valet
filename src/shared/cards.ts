@@ -124,7 +124,7 @@ export interface ListItem {
   buttons?: { label: string; action: string; args?: Record<string, unknown> }[];   // rows: quiet actions on this row alone, e.g. Pause and Remove
   link?: Link;            // a small button on the row, e.g. Join a meeting
 }
-export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; limit?: number; log?: boolean; layout?: 'temps' | 'chips' | 'headlines' }   // headlines: one column of stories, each with a small mark (its image, the site's icon, else its first letter), the title on up to two lines, then subtitle · meta · temps: a reading per row (pct along the track, meta the number) · chips: pills, an icon by name · limit: chips show this many, "19 in all" opens the rest in place
+export interface ListCard extends Base { type: 'list'; items: ListItem[]; empty?: string; limit?: number; log?: boolean; add?: AddField; layout?: 'temps' | 'chips' | 'headlines' }   // headlines: one column of stories, each with a small mark (its image, the site's icon, else its first letter), the title on up to two lines, then subtitle · meta · temps: a reading per row (pct along the track, meta the number) · chips: pills, an icon by name · limit: chips show this many, "19 in all" opens the rest in place
 
 export interface MediaItem {
   title: string;
@@ -152,6 +152,8 @@ export interface ShelfCard extends Base { type: 'shelf'; items: ShelfItem[]; asp
 export type ServiceState = 'up' | 'degraded' | 'down' | 'off';
 export interface StatusItem { name: string; ok: boolean; ms?: number; detail?: string; href?: string; icon?: string; group?: string; quiet?: boolean; state?: ServiceState }   // quiet: being down is expected, never an alert · state: up, up but unwell, down, or off by choice; left out, it follows from ok and quiet
 /** What a status item's dot should say. Anything counting "services running" should use this, not `ok` alone. */
+/** An add line's argument name and length, with their defaults filled in. */
+export const addOf = (a: AddField) => ({ arg: a.arg ?? 'text', max: a.max ?? 200 });
 export const stateOf = (i: Pick<StatusItem, 'ok' | 'quiet' | 'state'>): ServiceState => i.state ?? (i.ok ? 'up' : i.quiet ? 'off' : 'down');
 /** A widget that can't reach a service the status cards already call down or unhealthy is that one problem, not a second:
  *  it kept its last card, and that card's `source` names the service. */
@@ -197,7 +199,16 @@ export interface Control {
   tone?: Tone;            // how the value reads: good (locked, home), warn (left open)…
   args?: Record<string, unknown>;
 }
-export interface ControlsCard extends Base { type: 'controls'; items: Control[] }
+export interface ControlsCard extends Base { type: 'controls'; items: Control[]; add?: AddField }
+/** A line to type into at the end of a list or controls card ("New task…"): Enter runs `action` with `args` plus the
+ *  typed words as `arg`, through the same door, rules and log as a button. The action's own schema decides what it takes. */
+export interface AddField {
+  placeholder: string;    // what the empty line says, e.g. "New task…"
+  action: string;         // the action on the same integration instance that takes the words
+  arg?: string;           // which argument the words go in; 'text' if left out
+  args?: Record<string, unknown>;   // fixed arguments sent with them, e.g. which list
+  max?: number;           // the most characters the line takes; 200 if left out
+}
 
 /** A hero visual with its numbers beside it: a device, a room, a camera. `visual.kind` picks a renderer
  *  from the web app's visuals (e.g. "pc-case"), or "image" for a plain picture. */

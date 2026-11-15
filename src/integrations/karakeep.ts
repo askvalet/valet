@@ -32,7 +32,15 @@ export default defineIntegration({
         return [{ id: 'saved', theme: 'files', icon: 'bookmark', kicker: 'You saved for later', value: s.numBookmarks.toLocaleString('en'), unit: 'things', stat: 'Things saved', score: 58, scope: 'All time',
           line: `${top ? `${top.count} of them came from ${top.domain}. ` : ''}Later is doing a lot of work here. What you keep saving:`, bars: tags.map(t => ({ label: t.name, value: t.count, show: String(t.count) })) }];
       },
+      // a link typed on the card or in ⌘K is saved as a link, anything else as a note, as the assistant's bookmark_save would
+      commands: [{ say: ['save {text} to {name}', 'save {text} for later'], run: 'action:save', label: 'Save {text} to Karakeep' }],
       actions: {
+        save: { description: 'Save a link or a note', input: z.object({ text: z.string().trim().min(1, 'Type a link or a note to save').max(2000, 'That\'s over 2000 characters') }),
+          run: async ({ text }) => {
+            const url = /^https?:\/\/\S+$/i.test(text) && URL.canParse(text) ? text : undefined;
+            const b = await api<any>('bookmarks', { method: 'POST', body: JSON.stringify(url ? { type: 'link', url } : { type: 'text', text }) });
+            return { done: b?.alreadyExists ? `Already saved: ${host(url) ?? 'that note'}` : `Saved ${url ? host(url) : 'a note'} to Karakeep` };
+          } },
         archive: { description: 'Archive a saved link', input: z.object({ id: z.string().regex(/^[\w-]{1,64}$/) }), run: async ({ id }) => { await api(`bookmarks/${id}`, { method: 'PATCH', body: JSON.stringify({ archived: true }) }); return { done: 'Archived a saved link' }; } },
         unarchive: { description: 'Bring an archived link back', input: z.object({ id: z.string().regex(/^[\w-]{1,64}$/) }), run: async ({ id }) => { await api(`bookmarks/${id}`, { method: 'PATCH', body: JSON.stringify({ archived: false }) }); return { done: 'Brought back a saved link' }; } },
       },
@@ -41,8 +49,8 @@ export default defineIntegration({
           title: 'Recently saved', interval: 300_000, card: 'list',
           async fetch() {
             const r = await api<any>('bookmarks?limit=8&sortOrder=desc');
-            return { type: 'list', title: 'Recently saved', icon: 'bookmark', href: search, source: { name: 'Karakeep', icon: '/api/icon/karakeep' }, empty: 'Nothing saved yet',
-              items: (r.bookmarks ?? []).map((b: any) => { const x = brief(b); return { title: x.title ?? x.url ?? 'Note', subtitle: [host(x.url), ...x.tags.slice(0, 2)].filter(Boolean).join(' · ') || undefined, detail: x.summary ? String(x.summary).slice(0, 500) : undefined, meta: fmt.relativeDay(b.createdAt), href: x.url ?? `${web}/dashboard/preview/${b.id}` }; }) };
+            return { type: 'list', title: 'Recently saved', icon: 'bookmark', href: search, source: { name: 'Karakeep', icon: '/api/icon/karakeep' }, empty: 'Nothing saved yet', add: { placeholder: 'Save a link…', action: 'save', max: 2000 },
+              items: (r.bookmarks ?? []).map((b: any) => { const x = brief(b); return { id: b.id ? String(b.id) : undefined, title: x.title ?? x.url ?? 'Note', subtitle: [host(x.url), ...x.tags.slice(0, 2)].filter(Boolean).join(' · ') || undefined, detail: x.summary ? String(x.summary).slice(0, 500) : undefined, meta: fmt.relativeDay(b.createdAt), href: x.url ?? `${web}/dashboard/preview/${b.id}` }; }) };
           },
         },
         // something you saved, a new one each day: its page behind it and what it says up front

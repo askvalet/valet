@@ -182,6 +182,9 @@ integrations:
     # a dial for one climate entity, placed as home.hallway; modes picks and orders its buttons (default: all of them)
     thermostats:
       hallway: { entity: climate.hallway, title: Hallway, modes: [off, home, sleep, away] }
+    # a to-do list, placed as home.shopping: tick things off and add to it from the card
+    todos:
+      shopping: { entity: todo.shopping_list }
 
 # Any MCP server's tools, under the same access rules.
 mcp:

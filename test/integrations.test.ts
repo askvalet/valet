@@ -307,6 +307,24 @@ test('karakeep: archiving can be taken back, and the title goes to its search', 
   assert.equal(c.href, 'http://k/dashboard/search'); assert.equal(c.archived, 'http://k/dashboard/archive');
 });
 
+test('karakeep: the Recently saved card\'s line saves a link as a link and anything else as a note', async () => {
+  const posted: any[] = [];
+  const k = make(karakeep, { url: 'http://k', apiKey: 'x' }, fake((url, init: any) => {
+    if (init.method === 'POST') { posted.push(JSON.parse(init.body)); return { id: 'b1', alreadyExists: posted.length === 3 }; }
+    return { bookmarks: [{ id: 'b0', title: 'A page', content: { type: 'link', url: 'https://example.com/a' }, tags: [], createdAt: '2026-11-01T00:00:00Z' }] };
+  }));
+  const c: any = await k.widgets.digest.fetch(); valid(c);
+  assert.deepEqual(c.add, { placeholder: 'Save a link…', action: 'save', max: 2000 });
+  assert.equal(c.items[0].id, 'b0');
+  const save = k.actions!.save, run = (text: string) => save.run(save.input.parse({ text })) as Promise<any>;
+  assert.equal((await run(' https://example.com/long-read ')).done, 'Saved example.com to Karakeep');
+  assert.equal((await run('Call the plumber about the boiler')).done, 'Saved a note to Karakeep');
+  assert.match((await run('https://example.com/a')).done, /^Already saved: example.com/);
+  assert.equal((await run('javascript:alert(1)')).done, 'Saved a note to Karakeep');   // only http(s) is a link
+  assert.deepEqual(posted, [{ type: 'link', url: 'https://example.com/long-read' }, { type: 'text', text: 'Call the plumber about the boiler' }, { type: 'link', url: 'https://example.com/a' }, { type: 'text', text: 'javascript:alert(1)' }]);
+  for (const text of ['', '  ', 'x'.repeat(2001)]) assert.equal(save.input.safeParse({ text }).success, false);
+});
+
 test('seerr: each ticket says what to do next, and what a part-filled one is missing', async () => {
   const media = (status: number, more = {}) => ({ type: 'tv', media: { tmdbId: status, status, ...more } });
   const s = make(seerr, { url: 'http://s', apiKey: 'x', downloads: 'http://dl' }, fake(url => url.includes('request?') ? { results: [
@@ -478,6 +496,45 @@ test('home assistant: a switch pressed shows on the next look, not the state kep
   assert.equal(await value(), true, 'within the two seconds states are kept, a press still asks the house again');
   assert.equal(asked, 2);
   assert.equal(await value(), true); assert.equal(asked, 2, 'and otherwise they are kept, as before');
+});
+
+test('home assistant to-do lists: what\'s left first, ticked and added to through todo services, and only the lists in todos', async () => {
+  const seen: { url: string; body: any }[] = [];
+  let items = [{ uid: 'u1', summary: 'Milk', status: 'completed' }, { uid: 'u2', summary: 'Bread', status: 'needs_action' }, { summary: 'no uid', status: 'needs_action' }];
+  const ha = make(homeassistant, { url: 'http://ha', token: 'x', href: 'https://ha.example/', todos: { shop: { entity: 'todo.shopping_list' } } }, fake((url, init: any) => {
+    if (init.method === 'POST') seen.push({ url, body: JSON.parse(init.body) });
+    if (url.includes('/todo/get_items?return_response')) return { changed_states: [], service_response: { 'todo.shopping_list': { items } } };
+    if (url.endsWith('/api/states/todo.shopping_list')) return { entity_id: 'todo.shopping_list', state: '1', attributes: { friendly_name: 'Shopping List' } };
+    if (url.endsWith('/api/states')) return [{ entity_id: 'todo.shopping_list', state: '1', attributes: { friendly_name: 'Shopping List' } }];
+    if (url.includes('/api/services/')) return [];
+  }));
+  const c: any = await ha.widgets.shop.fetch(); valid(c);
+  assert.equal(c.title, 'Shopping List');
+  assert.deepEqual(c.items.map((i: any) => [i.label, i.value]), [['Bread', false], ['Milk', true]]);
+  assert.deepEqual(c.items[0].args, { entity_id: 'todo.shopping_list', uid: 'u2' });
+  assert.deepEqual(c.add, { placeholder: 'New item…', action: 'todo_add', args: { entity_id: 'todo.shopping_list' }, max: 255 });
+  assert.equal(c.buttons[0].action, 'todo_clear'); assert.equal(c.summary.value, '1');
+  assert.equal(c.href, 'https://ha.example/todo?entity_id=todo.shopping_list');
+  const a = ha.actions!;
+  const r: any = await a.todo_add.run(a.todo_add.input.parse({ ...c.add.args, text: '  Eggs ' }));
+  assert.match(r.done, /Added “Eggs”/);
+  await a.todo_tick.run({ ...c.items[0].args, value: true });
+  await a.todo_clear.run({ entity_id: 'todo.shopping_list' });
+  assert.deepEqual(seen.filter(x => !x.url.includes('get_items')).map(x => [x.url.split('/services/')[1], x.body]), [
+    ['todo/add_item', { entity_id: 'todo.shopping_list', item: 'Eggs' }],
+    ['todo/update_item', { entity_id: 'todo.shopping_list', item: 'u2', status: 'completed' }],
+    ['todo/remove_completed_items', { entity_id: 'todo.shopping_list' }]]);
+  // a list that isn't in todos can't be reached by naming it, and the words are checked as on the card
+  await assert.rejects(Promise.resolve(a.todo_add.run({ entity_id: 'todo.secret', text: 'x' })), /isn't one of the to-do lists/);
+  await assert.rejects(Promise.resolve(a.todo_tick.run({ entity_id: 'light.lamp', uid: 'u', value: true })), /isn't one of the to-do lists/);
+  for (const text of ['', '   ', 'x'.repeat(256)]) assert.equal(a.todo_add.input.safeParse({ entity_id: 'todo.shopping_list', text }).success, false);
+  assert.throws(() => homeassistant.config.parse({ url: 'http://ha', token: 'x', todos: { a: { entity: 'light.x' } } }));
+  // ⌘K: "add eggs to shopping list" by the list's own name
+  const cmds = await (ha.commands as () => Promise<any[]>)();
+  assert.deepEqual(cmds.find(x => x.run === 'action:todo_add'), { say: ['add {text} to Shopping List'], run: 'action:todo_add', input: { entity_id: 'todo.shopping_list' }, label: 'Add {text} to Shopping List' });
+  items = [];
+  const empty: any = await ha.widgets.shop.fetch(); valid(empty);
+  assert.deepEqual([empty.items, empty.buttons, !!empty.add], [[], undefined, true]);
 });
 
 const climate = (over: Record<string, unknown> = {}, state = 'heat') => ({ entity_id: 'climate.hall', state, attributes: { friendly_name: 'Hall', hvac_modes: ['off', 'heat'], preset_modes: ['none', 'home', 'sleep'], preset_mode: 'home',
@@ -891,6 +948,31 @@ test('todo: add, tick and clear', async () => {
   assert.equal(((await t.widgets.list.fetch()) as any).summary.value, '0');
   await t.actions.clear.run({});
   assert.deepEqual(((await t.widgets.list.fetch()) as any).items, []);
+});
+
+test('todo: the card\'s add line runs the add action, which trims and refuses what it can\'t keep', async () => {
+  process.env.VALET_DATA = await mkdtemp(join(tmpdir(), 'valet-todo-'));
+  const t = make(todo, { title: 'Chores' }, fake(() => null)) as any;
+  const c: any = await t.widgets.list.fetch();
+  valid(c);
+  assert.deepEqual(c.add, { placeholder: 'New task…', action: 'add' });
+  const input = t.actions[c.add.action].input;
+  assert.deepEqual(input.parse({ text: '  Water the plants \n' }), { text: 'Water the plants' });
+  for (const text of ['', '   ', 'x'.repeat(201), 42]) assert.equal(input.safeParse({ text }).success, false, JSON.stringify(text));
+  assert.equal(input.safeParse({ text: 'x'.repeat(200) }).success, true);
+  assert.match(input.safeParse({ text: 'x'.repeat(201) }).error.issues[0].message, /over 200 characters/);
+  assert.match(input.safeParse({ text: ' ' }).error.issues[0].message, /Type something/);
+  // two quick adds are two rows, in order, each with its own id
+  const [a, b] = await Promise.all([t.actions.add.run(input.parse({ text: ' Milk ' })), t.actions.add.run(input.parse({ text: 'Eggs' }))]);
+  assert.equal(a.done, 'Added “Milk” to Chores');
+  assert.ok(b.done);
+  const after: any = await t.widgets.list.fetch();
+  assert.deepEqual(after.items.map((i: any) => i.label), ['Milk', 'Eggs']);
+  assert.equal(new Set(after.items.map((i: any) => i.id)).size, 2);
+  // the assistant's tool still adds, through the same check
+  assert.equal(t.tools.todo_add.input.safeParse({ text: '  ' }).success, false);
+  await t.tools.todo_add.run(t.tools.todo_add.input.parse({ text: ' Bread ' }));
+  assert.equal(((await t.widgets.list.fetch()) as any).items[2].label, 'Bread');
 });
 
 test('sockets: speaks Minecraft and apcupsd to a real socket', async () => {

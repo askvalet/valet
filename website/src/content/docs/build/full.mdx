@@ -87,11 +87,40 @@ A widget has a `title`, an optional `interval` in milliseconds, and `fetch()`, w
 
 ## Actions
 
-An action has a `description`, an `input` schema and `run(args)`. A card names it from a `controls` item, or from `buttons`.
+An action has a `description`, an `input` schema and `run(args)`. A card names it from a `controls` item, from `buttons`, or from its `add` line.
 
 Valet checks the input, runs the action, and refreshes that integration's widgets. If the page is [read-only](/start/sign-in/), the action is refused.
 
 An action may return `{ done: 'Archived a saved link' }`. That's what the activity log says it did, in place of the integration and action name.
+
+### A line to type into
+
+A `list` or `controls` card can end with a line someone types into, like the To-do card's "New task…". Enter or its button runs one of your actions with the words:
+
+```ts
+fetch: async () => ({
+  type: 'controls', title: 'Groceries', items,
+  add: { placeholder: 'Add to the list…', action: 'add', args: { list: 'groceries' }, max: 100 },
+}),
+// …
+actions: {
+  add: {
+    description: 'Put something on the list',
+    input: z.object({ list: z.string(), text: z.string().trim().min(1, 'Type something to add').max(100) }),
+    run: async ({ list, text }) => { await api.add(list, text); return { done: `Added “${text}”` }; },
+  },
+},
+```
+
+| Field | Required | What it does |
+|---|---|---|
+| `placeholder` | yes | What the empty line says. |
+| `action` | yes | The action that takes the words. |
+| `arg` | | Which argument the words go in. `text` if left out. |
+| `args` | | Fixed arguments sent with them, such as which list. |
+| `max` | | The most characters the line takes. 200 if left out. |
+
+It's a button that takes words, so a button's rules apply: it isn't drawn on a read-only page, for someone whose profile doesn't list the action, in chat, on a tile, or on the wall unless the card is on `wall.touch`. The page only stops someone typing past `max`; your action's schema is what's checked, so trim and limit the words there, and give its errors in words a person can read, because the line shows them. When the action returns, the words stay until your next card lists something new, then leave the line as the new row arrives.
 
 ## Tools
 
@@ -126,17 +155,20 @@ commands: [
   { say: ['pause downloads', 'pause {name}'], run: 'action:pause', label: 'Pause all downloads' },
   { say: ["what's downloading", 'downloads'], run: 'tool:downloads_status' },
   { say: ['pause ads {minutes} min'], run: 'action:pause', label: 'Pause ad blocking: {minutes} min' },
+  { say: ['add {text} to {name}'], run: 'action:add', label: 'Add {text} to the list' },
 ],
 ```
 
 | Field | Required | What it does |
 |---|---|---|
-| `say` | yes | Every phrasing you'd accept. `{name}` is the instance's name in `config.yaml`, or the integration's. `{minutes}` or any other slot takes a whole number and goes into the input under that name. |
+| `say` | yes | Every phrasing you'd accept. `{name}` is the instance's name in `config.yaml`, or the integration's. `{minutes}` or any other slot takes a whole number and goes into the input under that name. `{text}` takes words instead: see below. |
 | `run` | yes | `action:<name>` runs a page action, as its button would. `tool:<name>` runs a tool: a `read` one shows its card, anything else asks with its `confirm` words first. |
 | `input` | | Fixed input, or a function of the slots. It may look things up, never change them, and may throw to say why it can't run now. |
 | `label` | | What the palette shows. `{slot}` in it is filled in. The first phrase if left out. |
 
 Matching ignores case, punctuation, word order, plurals and filler words ("the", "all", "please", "turn"), and a few words mean the same: off and disable, on and enable, pause and stop, resume, start and continue, min and minutes. Nothing else is guessed, so write the variants out. Two commands with the same words are both shown, and neither runs until one is picked.
+
+`{text}` takes whatever is typed in its place, as it was typed, and goes into the input as `text`. In a phrase with `{text}` the words before it must come first and the words after it last ("add {text} to {name}"), the phrase needs words before it so a sentence that's only text is never a command, and there are no number slots. While someone is still typing, the palette offers the command with the words so far, and Enter runs it only once it's said in full. Point it at an action whose schema limits the words, as the add line does.
 
 `commands` can be a function, asked each time the palette opens. Home Assistant uses that to name every light it may control.
 

@@ -163,7 +163,7 @@ export const ABOUT: Record<string, string> = {
   tautulli: 'Tautulli tracks what\'s played on Plex. This shows streams, who\'s watching, most watched, plays over time and a race of the year\'s titles, and the assistant can stop a stream, after asking.',
   tdarr: 'Tdarr transcodes a media library. This shows what\'s queued, processed and errored, and space saved.',
   technitium: 'Technitium is a DNS server. This shows queries, what\'s blocked and cached, and clients.',
-  todo: 'A short to-do list kept in Valet\'s data folder. Tick things off on the page, or add to it from chat. It reads no service.',
+  todo: 'A short to-do list kept in Valet\'s data folder. Type a new task into the card\'s last line and press Enter, tick things off, or add from ⌘K ("add buy stamps to to do") or the chat. It reads no service.',
   tracearr: 'Tracearr monitors media server streams. This shows streams, transcodes, direct plays and bitrate.',
   traefik: 'Traefik is a reverse proxy. This shows routers, services, middlewares, errors and warnings.',
   transmission: 'Transmission is a BitTorrent client. This shows speeds, what\'s active and the number of torrents.',
@@ -192,7 +192,7 @@ export const ABOUT: Record<string, string> = {
 // One or two sentences for each card type, for the top of its page.
 export const CARD_ABOUT: Record<string, string> = {
   stats: 'A few numbers, one leading. The first item is the hero: `trend` draws a sparkline behind it, and `pct` a meter. `pie` draws parts of a whole as a ring.',
-  list: 'Rows of things, each with an optional status, progress bar or link. Layouts turn it into chips, readings or a column of headlines, each story with a small mark for where it\'s from.',
+  list: 'Rows of things, each with an optional status, progress bar or link. Layouts turn it into chips, readings or a column of headlines, each story with a small mark for where it\'s from. `add` ends it with a line to type into, like Karakeep\'s "Save a link…".',
   status: 'Services that are up or down, with a dot each. `group` puts them in sections, and the wall layout is a grid of icons where only trouble gets words.',
   media: 'What\'s playing or downloading, with artwork, progress and tags. A download getting nowhere says so in words.',
   shelf: 'A row of artwork, like a shelf in a TV app. Layouts turn it into a spotlight, a week, tickets, a desk of documents, windows, a focus carousel, a cover flow, a masonry wall or a stack of cards.',
@@ -203,7 +203,7 @@ export const CARD_ABOUT: Record<string, string> = {
   calendar: 'An agenda beside a month you can browse. It measures its own box and fills it: the month beside the day when it\'s wide, a week of days side by side with the hours down the side when it\'s narrower and tall enough, and the day\'s list when it\'s small. `view: week` or `view: agenda` holds it to one.',
   thermostat: 'A dial for one climate device, with mode buttons. With no `target` it draws the room and no handle, and with no `set` it\'s read-only. Its colour says what it\'s doing: orange to heat, blue to cool, teal on auto, quieter while idle, grey when off.',
   article: 'One thing to read: the page itself behind it, and what it says in a few lines. `more` is a pile to step through.',
-  controls: 'Switches, sliders, choices and buttons. Each control names an action on the same integration. `icon` puts a small picture before a row, and `tone` colours its value: green for locked, amber for left open.',
+  controls: 'Switches, sliders, choices and buttons. Each control names an action on the same integration. `icon` puts a small picture before a row, and `tone` colours its value: green for locked, amber for left open. `add` ends the card with a line to type into, like the To-do card\'s "New task…": Enter runs an action with the words, where a button would work.',
   chart: 'A graph of one or more series: a line, columns, or a stream of parts around a centre line. Scrub across it to read a point. A series can take its own `color`, so power used and solar read apart.',
   race: 'A year of titles overtaking each other. It plays once, and its resting frame is the final order. The month and what it measures sit in the title row, and the leader takes its poster\'s colour.',
   map: 'The homelab as a tree: the internet, each network, the machines on it and what runs on each, every one with a dot for whether it\'s working. While the machines fit side by side they hang from their network on lines; where they don\'t, each network is a heading over a grid of them. A long list folds into "+12 containers", and hover or focus says what a node is and where it answers.',

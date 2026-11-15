@@ -101,6 +101,21 @@ In chat, the assistant shows your visual whenever one of your tools returns that
 
 `new-integration my-thing --full` writes a working one to start from.
 
+## A line to type into
+
+A `list` or `controls` card can end with a line someone types into: a to-do list's "New task…", a shopping list's "Add to the list…". Its `add` names one of your actions, and Enter runs it with the words, through the same checks, rules and activity log as a button. Your cards are checked against the catalog at runtime, so a malformed `add` is reported like any other mistake.
+
+```js
+fetch: async () => ({ type: 'list', title: 'Groceries', items, add: { placeholder: 'Add to the list…', action: 'add', args: { list: 'groceries' }, max: 100 } }),
+// …
+actions: {
+  add: { description: 'Put something on the list', input: z.object({ list: z.string(), text: z.string().trim().min(1, 'Type something to add').max(100) }),
+    run: async ({ list, text }) => { /* put it on that list */ return { done: `Added “${text}”` }; } },
+},
+```
+
+The fields, and when the line is drawn, are in [a line to type into](/build/full/#a-line-to-type-into). A command with `{text}` ("add {text} to {name}") lets ⌘K run the same action.
+
 ## Cards for the house
 
 Three cards draw their own glass and fill whatever row they land in. See [forecast](/cards/forecast/), [calendar](/cards/calendar/) and [thermostat](/cards/thermostat/).

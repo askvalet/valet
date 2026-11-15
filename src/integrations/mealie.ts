@@ -19,6 +19,7 @@ export default defineIntegration({
     key: z.string(),                                                   // an API token: your profile → API Tokens
     version: z.union([z.literal(1), z.literal(2)]).default(2),         // 2 for Mealie 2 and later (households), 1 before
     every: Every.optional(), insecure: z.boolean().optional(),
+    list: z.string().optional(),                                       // the shopping list the Shopping card shows and adds to; the first one if left out
   }),
   create(cfg, ctx) {
     const base = cfg.url.replace(/\/$/, ''), web = (cfg.href ?? base).replace(/\/$/, '');
@@ -51,8 +52,36 @@ export default defineIntegration({
       return (name ? all.find(l => String(l.name).toLowerCase() === name.toLowerCase()) : undefined) ?? (name ? undefined : all[0]);
     };
 
+    const item = (i: any) => String(i.display || i.note || i.food?.name || '').trim();
+    const missing = (list?: string) => list ? `Mealie has no shopping list called “${list}”` : 'Mealie has no shopping lists yet';
+    const shop = async (items: string[], list?: string) => {
+      const l = await listFor(list);
+      if (!l) return undefined;
+      await api(`${home}/shopping/items/create-bulk`, { method: 'POST', body: JSON.stringify(items.map(note => ({ shoppingListId: l.id, note, quantity: 1, checked: false }))) });
+      return l;
+    };
+
     return {
+      commands: [{ say: ['add {text} to shopping list', 'add {text} to shopping', 'add {text} to {name}', ...cfg.list ? [`add {text} to ${cfg.list}`] : []], run: 'action:shop', label: 'Add {text} to the shopping list' }],
+      actions: {
+        shop: { description: 'Put something on the shopping list', input: z.object({ text: z.string().trim().min(1, 'Type something to add').max(200, 'That\'s over 200 characters') }),
+          run: async ({ text }) => { const l = await shop([text], cfg.list); if (!l) throw new Error(missing(cfg.list)); return { done: `Added “${text}” to ${l.name}` }; } },
+      },
       widgets: {
+        // what's still to buy on one list, and a line to add to it
+        shopping: {
+          title: 'Shopping', interval: cfg.every ?? 120_000, card: 'list',
+          async fetch() {
+            const l = await listFor(cfg.list);
+            const base = { type: 'list' as const, title: l?.name ? String(l.name) : 'Shopping', icon: 'tag', href: l ? `${web}/shopping-lists/${l.id}` : `${web}/shopping-lists`, source };
+            if (!l) return { ...base, items: [], empty: missing(cfg.list) };
+            const full = await api<any>(`${home}/shopping/lists/${l.id}`);
+            const left = rows(full?.listItems).filter(i => !i.checked && item(i));
+            return { ...base, empty: 'Nothing to buy', add: { placeholder: 'Add to the list…', action: 'shop' },
+              items: left.map(i => ({ id: String(i.id), title: item(i) })),
+              summary: { label: base.title, icon: 'tag', value: String(left.length), sub: left.length === 1 ? 'thing to buy' : 'things to buy' } };
+          },
+        },
         status: {
           title: 'Mealie', interval: cfg.every ?? 300_000, card: 'stats',
           async fetch() {
@@ -143,9 +172,8 @@ export default defineIntegration({
             return { title: l ? `Add to “${l.name}”?` : `No shopping list${list ? ` called “${list}”` : ''} in Mealie`, detail: items.join(', '), logo: '/api/icon/mealie', verb: 'Add', danger: !l };
           },
           async run({ items, list }) {
-            const l = await listFor(list);
-            if (!l) return { data: { error: list ? `Mealie has no shopping list called “${list}”` : 'Mealie has no shopping lists yet' } };
-            await api(`${home}/shopping/items/create-bulk`, { method: 'POST', body: JSON.stringify(items.map((note: string) => ({ shoppingListId: l.id, note, quantity: 1, checked: false }))) });
+            const l = await shop(items, list);
+            if (!l) return { data: { error: missing(list) } };
             return { data: { added: items.length, list: l.name }, card: { type: 'text', tone: 'good', text: `Added ${items.length === 1 ? items[0] : `${items.length} things`} to “${l.name}”.` } };
           },
         },
