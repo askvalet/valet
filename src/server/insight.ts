@@ -21,7 +21,8 @@ export function troubles(states: WidgetState[]): Trouble[] {
     if (c?.type === 'status') for (const i of c.items) if (!i.ok && !i.quiet) out.push({ id: `${s.key}:${i.name}`, name: i.name, text: `${i.name} is ${stateOf(i) === 'degraded' ? 'unhealthy' : 'down'}${i.detail ? ` (${clip(i.detail, 60)})` : ''}` });
     if (c?.type === 'list') for (const i of c.items) if (i.tone === 'bad') out.push({ id: `${s.key}:${i.title}`, name: clip(i.title, 40), text: `${title}: ${clip(i.title, 60)} ${clip(i.meta ?? i.subtitle, 40)}` });
     if (c?.type === 'stats') for (const i of c.items) if (i.tone === 'bad') out.push({ id: `${s.key}:${i.label}`, name: i.label, text: `${title}: ${i.label} is ${i.value}${i.unit ?? ''}` });
-    for (const h of [c?.summary, ...(c?.summaries ?? [])]) if (h?.tone === 'bad' && c?.type !== 'status' && c?.type !== 'stats' && c?.type !== 'list') out.push({ id: `${s.key}:${h.label}`, name: h.label, text: `${h.label}: ${h.value}${h.sub ? ` ${h.sub}` : ''}` });
+    // a map only repeats what the other widgets said, so its headline is never a trouble of its own
+    for (const h of [c?.summary, ...(c?.summaries ?? [])]) if (h?.tone === 'bad' && c?.type !== 'status' && c?.type !== 'stats' && c?.type !== 'list' && c?.type !== 'map') out.push({ id: `${s.key}:${h.label}`, name: h.label, text: `${h.label}: ${h.value}${h.sub ? ` ${h.sub}` : ''}` });
   }
   return [...new Map(out.map(t => [t.id, t])).values()];
 }

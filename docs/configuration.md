@@ -989,6 +989,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `docker` | `url` (a read-only socket proxy, never the raw socket), `hide` (names to leave out, e.g. containers that are meant to stay stopped), `sources` (container → GitHub `owner/repo` for release notes, when its image doesn't say), `github` (a token, past 60 requests an hour) | `containers`, `updates` |
 | `host` | `url` (the Valet agent), `token`, `title`, `quiet` (services often off on purpose) | `services` |
 | `machines` | `hosts` (each `{ url, token, name, icon, quiet, hide, sensor }`, by a short name), `title`, `timeout` (4 s) | `fleet`, `overview`, `containers`, `units`, `disks`, and one per machine by its name |
+| `network` | `names` (an address → what to call that machine), `containers` (true), `hide` (integrations by key, machines or containers by name), `title` | `map` |
 | `api` | `url`, `headers`, `method`, `body`, `every` (60s), `title`, `icon`, `href`, `about`, and one of `stats`, `list`, `rows`, `status` (see below) | `data` |
 | `calendar` | `calendars` (iCal URLs, or `{ url, name, color }`), `days` (14), `limit` (10), `title`, `months` (6, how far ahead the month browses), `meetings` (see below) | `upcoming`, `agenda` (place it `wide` or `large` for the month beside it; narrower and tall enough, it's a week you scroll sideways: `view: week` or `view: agenda` holds it to one) |
 | `links` | (from the top-level `links:` block) | one per group |
@@ -1080,6 +1081,33 @@ that doesn't answer is shown as down with when it was last seen, and what it las
 older than this Valet still shows its services, and its card says to update it. The assistant gets
 `machines_status`, `machine_status`, `machines_running`, `machines_find` (also in ⌘K) and `machine_logs`, all `read`.
 [Your machines](https://askvalet.dev/start/machines/) on the site walks through installing the agent on another machine.
+
+### The network map: `type: network`
+
+Your homelab drawn from what Valet already knows: the internet, each network, every machine and, on each, the services,
+containers and VMs Valet sees there, each with a dot for whether it's working. It needs no setup: every integration's url
+says which machine it's on, and the dots are what the page's widgets last said, so the map asks nothing of anyone.
+
+```yaml
+integrations:
+  network:
+    type: network
+    names: { 192.168.1.20: Server, localhost: Server, 192.168.1.40: Pi }   # two addresses with one name are one machine
+    hide: [printer]
+```
+
+A private address is a machine on its network, one per `/24`; Tailscale's addresses are their own. `localhost`,
+`172.17.0.1`, `host.docker.internal` and a name with no dot (a container beside Valet, as in `http://sonarr:8989`) all mean
+the machine Valet runs on. Anything public hangs from the internet, and so does an integration with no url that calls one
+fixed API (the weather). The `machines` integration names its machines and says whether each is up; `docker`, `machines`,
+`host` and `proxmox` put their containers, services and VMs under the machine they run on (`containers: false` leaves them
+out), and a container that is a service already on the map is folded into it. Only host and port are shown, never a path, a
+query, a user or a key, and an address from a secret is left out.
+
+Widget: `network.map`, as a tile "3 hosts" with what's down under it. On a phone, or wherever its machines don't fit side by
+side, each network becomes a heading over a grid of them; a long list folds into "+12 containers". The assistant gets
+`network_map` (read): "what runs on the server?". Anyone who can see the map sees every machine and service on it, so leave
+it off a profile's page if they shouldn't.
 
 ### Any JSON API: `type: api`
 

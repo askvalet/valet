@@ -130,7 +130,36 @@ const socketServer = (reply: (host: string) => Buffer | undefined) => async () =
 const minecraftReply = (online: number) => { const j = Buffer.from(JSON.stringify({ version: { name: '1.21.4' }, players: { online, max: 20 }, description: { text: 'Back garden' } })); return packet(varint(0), varint(j.length), j); };
 const ups = (status: string, charge: string, left: string, load: string) => nis([`STATUS   : ${status}`, `BCHARGE  : ${charge} Percent`, `TIMELEFT : ${left} Minutes`, `LOADPCT  : ${load} Percent`, 'MODEL    : Back-UPS 1500']);
 
+// the rest of a made-up homelab, as ctx.lab() would hand it to the network map: where each integration answers, and what
+// its widgets last showed
+const peer = (id: string, type: string, name: string, addresses: { host: string; port?: number; field?: string; label?: string; seen?: boolean }[], widgets: { name: string; card?: unknown; error?: string }[] = [{ name: 'status', card: { type: 'text', text: 'fine' } }]) => ({
+  id, type, name, icon: `/api/icon/${type}`, addresses: addresses.map(a => ({ field: 'url', ...a })),
+  widgets: widgets.map(w => ({ title: w.name, placed: true, at: 0, read: async () => w.card, ...w })),
+});
+const ok = (name: string, group?: string) => ({ name, ok: true, icon: `/api/icon/${name}`, ...(group ? { group } : {}) });
+const lab = (broken = false) => () => [
+  peer('plex', 'plex', 'Plex', [{ host: '10.0.0.7', port: 32400 }], [{ name: 'now', ...(broken ? { error: 'timed out' } : { card: { type: 'text', text: 'x' } }) }]),
+  peer('sonarr', 'sonarr', 'Sonarr', [{ host: '10.0.0.7', port: 8989 }]),
+  peer('downloads', 'qbittorrent', 'qBittorrent', [{ host: '10.0.0.7', port: 8080 }]),
+  peer('photos', 'immich', 'Immich', [{ host: '10.0.0.5', port: 2283 }]),
+  peer('docs', 'paperless', 'Paperless', [{ host: '10.0.0.5', port: 8000 }]),
+  peer('dns', 'pihole', 'Pi-hole', [{ host: '10.0.0.6', port: 80 }]),
+  peer('house', 'homeassistant', 'Home Assistant', [{ host: '10.0.0.6', port: 8123 }]),
+  peer('weather', 'weather', 'Weather', [{ host: 'api.open-meteo.com', port: 443, field: '', seen: true }]),
+  peer('docker', 'docker', 'Docker', [{ host: 'valet-dockerproxy', port: 2375 }], [{ name: 'containers', card: { type: 'status', items: ['valet', 'valet-dockerproxy', 'ollama', 'open-webui'].map(n => ok(n)) } }]),
+  peer('machines', 'machines', 'Machines', [{ host: '10.0.0.5', port: 7576, field: 'hosts.nas.url', label: 'NAS' }, { host: '10.0.0.6', port: 7576, field: 'hosts.pi.url', label: 'Pi' }, { host: '10.0.0.7', port: 7576, field: 'hosts.mini.url', label: 'Mini PC' }], [
+    { name: 'fleet', card: { type: 'status', items: [{ name: 'NAS', ok: true }, { name: 'Pi', ok: true }, { name: 'Mini PC', ok: true }] } },
+    { name: 'containers', card: { type: 'status', items: [...['immich_server', 'immich_postgres', 'paperless', 'syncthing'].map(n => ok(n, 'NAS')), ...['pihole', 'homeassistant', 'mosquitto', broken ? { ...ok('zigbee2mqtt', 'Pi'), ok: false, detail: 'exited (1)' } : ok('zigbee2mqtt', 'Pi')].map(x => typeof x === 'string' ? ok(x, 'Pi') : x), ...['plex', 'sonarr', 'radarr', 'qbittorrent', 'prowlarr', 'bazarr', 'overseerr', 'tautulli'].map(n => ok(n, 'Mini PC'))] } },
+  ]),
+];
+
 export const infra: Record<string, Fixture> = {
+  network: {
+    config: { names: { localhost: 'Server' } },
+    lab: lab(),
+    states: [{ widget: 'map', state: 'trouble', label: 'Something down', lab: lab(true) }],
+    note: 'The rest of the homelab is made up here, as ctx.lab() would hand it over; the map itself is drawn by the integration\'s own code.',
+  },
   docker: {
     config: { url: 'http://valet-dockerproxy:2375', sources: { immich_server: 'immich-app/immich-server' } },
     http: dockerRoutes(fleet),

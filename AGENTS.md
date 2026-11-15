@@ -60,6 +60,10 @@ https://askvalet.dev.
   builds DOM, takes `update(data)` and `select(id)`, and owns its own camera and interaction. React wraps it with a
   thin panel. That's what lets the PC model run unchanged on another app (`npm run export:pc-model`). Edit the model
   here and re-export; never fork it.
+- **A card about the homelab reads the homelab, never asks it** (`ctx.lab()`, `src/server/lab.ts`; the network map is the one).
+  It gets every other integration's host and port (from its url options, or the one or two hosts an integration with none was
+  seen to call), never a path, query, user or anything a secret covers, and what each widget last said from the hub. It asks
+  no service anything; reading a widget that isn't on the page is `read()`, and the map does that at most once a minute.
 - **Visuals are lazy**: registered in `VISUALS` in `cards.tsx` with `lazy(() => import(...))`, so a page without them
   never downloads them. A showcase card with no `items` hands the whole card to its visual.
 - **Backups are one shape** (`BackupJob` in `core.ts`, `src/server/backups.ts`). An integration reports its jobs through

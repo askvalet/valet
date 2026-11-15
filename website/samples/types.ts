@@ -8,13 +8,15 @@ export interface Fixture {
   /** The fake network: gets the URL and init of every ctx.http call, answers with the body (or a Response). */
   http?: Answer;
   /** Other states of a widget: the same code against another answer or config. `state` names it on the page. */
-  states?: { widget?: string; state: string; label: string; config?: Record<string, unknown>; http?: Answer }[];
+  states?: { widget?: string; state: string; label: string; config?: Record<string, unknown>; http?: Answer; lab?: () => unknown[] }[];
   /** Pictures: what ctx.image(ref) becomes. /art/… are demo/art files; anything else is drawn. */
   image?: (ref: string) => string;
   /** Runs before create(), for what can't go through ctx.http (a socket, a file). Undone after. */
   before?: () => void | (() => void) | Promise<void | (() => void)>;
   /** Fetch each widget this many times first, as a page would over time, so graphs built up by polling have a line. */
   warm?: number;
+  /** What `ctx.lab()` answers: the rest of a made-up homelab, for a card about the homelab itself (the network map). */
+  lab?: () => unknown[];
   /** Why the screenshot shows hand-made data rather than this integration's own code, if it must. */
   note?: string;
 }

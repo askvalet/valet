@@ -157,6 +157,33 @@ export interface Context {
   /** For services that sign in and hand back a session (a cookie, a token). get() signs in once and reuses it; parallel
    *  callers share one sign-in; reset() after the service says the session expired. */
   session<T>(login: () => Promise<T>): { get(): Promise<T>; reset(): void };
+  /** The rest of this Valet, for a card about the homelab itself (the network map): every other integration, where it
+   *  answers (host and port only) and what its widgets last said. Read-only, and it asks no service anything; `read()`
+   *  fetches a widget that isn't on the page. Undefined until the site is built, and in tests that don't set it. */
+  lab?(): Peer[];
+}
+
+/** One other integration, as `ctx.lab()` sees it. */
+export interface Peer {
+  id: string;                            // its key in config.yaml
+  type: string;
+  name: string;                          // the integration's name: "Sonarr"
+  icon?: string;
+  /** Where it answers, from its config's url fields and, for one with none, the few hosts it was seen to call. `field` is
+   *  the option's path ("hosts.nas.url"), `label` the `name` beside it or the key above it, when there's one. */
+  addresses: Address[];
+  widgets: PeerWidget[];
+}
+export interface Address { host: string; port?: number; field: string; label?: string; seen?: boolean }
+export interface PeerWidget {
+  name: string;                          // "containers": its key under the instance
+  title: string;
+  placed: boolean;                       // on the page, so the hub keeps it fresh
+  card?: Card;                           // what it last showed, and why it couldn't show more
+  error?: string;
+  at?: number;
+  /** Its card now: the hub's when it's placed, otherwise fetched once. */
+  read(): Promise<Card | undefined>;
 }
 
 export function session<T>(login: () => Promise<T>) {
@@ -233,11 +260,17 @@ export async function keptHome(url: string, init: RequestInit, hops = 5): Promis
   return keptHome(next.href, { ...init, ...(get ? { method: 'GET', body: undefined } : {}), headers: home ? init.headers : { Accept: new Headers(init.headers).get('accept') ?? '*/*' } }, hops - 1);
 }
 
-export function makeContext(id: string, format?: Partial<Format>): Context {
-  return {
-    id, format,
+/** The hosts each context has called, as host:port, a few at most: for an integration with no url of its own (the weather),
+ *  that's where it answers. Kept beside the context, not on it, so it isn't part of what a plugin is handed. */
+export const reached = new WeakMap<Context, Set<string>>();
+
+export function makeContext(id: string, format?: Partial<Format>, lab?: () => Peer[]): Context {
+  const seen = new Set<string>();
+  const ctx: Context = {
+    id, format, ...(lab ? { lab } : {}),
     async http(url, init = {}) {
       const { timeout = 8000, as = 'json', insecure, ...rest } = init;
+      if (seen.size < 8) try { const u = new URL(url); seen.add(`${u.hostname}:${u.port || (u.protocol === 'https:' ? 443 : 80)}`); } catch {}
       const res = insecure && url.startsWith('https:') ? await selfSigned(url, rest, timeout) : await keptHome(url, { ...rest, signal: AbortSignal.timeout(timeout) });
       if (as === 'response') return res as any;
       if (!res.ok) throw new Error(`${new URL(url).host} answered ${res.status}`);
@@ -249,6 +282,8 @@ export function makeContext(id: string, format?: Partial<Format>): Context {
     upload: readUpload,
     session,
   };
+  reached.set(ctx, seen);
+  return ctx;
 }
 
 // Files attached in chat: kept for a day under data/uploads, named <id>.<meta> and <id>.bin

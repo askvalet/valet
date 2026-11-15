@@ -51,9 +51,9 @@ function clean<T>(v: T, key = ''): T {
 }
 
 /** The test suite's fake context: a function in place of the network. */
-function fake(answer: (url: string, init: any) => unknown, image: (r: string) => string, id: string) {
+function fake(answer: (url: string, init: any) => unknown, image: (r: string) => string, id: string, lab?: () => unknown[]) {
   return {
-    id, log() {}, image, upload: async () => ({ name: 'f.txt', type: 'text/plain', data: Buffer.from('') }), session,
+    id, log() {}, image, ...(lab ? { lab } : {}), upload: async () => ({ name: 'f.txt', type: 'text/plain', data: Buffer.from('') }), session,
     async http(url: string, init: any = {}) {
       const out = await answer(url, init);
       if (out === undefined) throw new Error(`fixture has no answer for ${url}`);
@@ -206,9 +206,9 @@ for (const [type, i] of Object.entries<any>(registry).sort(([a], [b]) => a.local
       const undo = await fx.before?.();
       const image = fx.image ?? ((r: string) => `/img/${hash(r).toString(36)}`);
       const parsed = i.config.parse(fx.config);
-      const states = (fx.states ?? []).map((s: any) => ({ ...s, make: () => i.create(i.config.parse({ ...fx.config, ...s.config }), fake(s.http ?? fx.http ?? (() => { throw new Error('no fake network'); }), image, type)) }));
-      const make = () => i.create(parsed, fake(fx.http ?? (() => { throw new Error('no fake network'); }), image, type));
-      const { widgets, inst } = await widgetsFrom(type, def, parsed, make, [...states, ...(states.some((s: any) => s.state === 'down') ? [] : [{ state: 'down', label: 'Can\'t reach it', make: () => i.create(parsed, fake(() => new Response('nope', { status: 500 }), image, type)) }])], problems, fx.warm);
+      const states = (fx.states ?? []).map((s: any) => ({ ...s, make: () => i.create(i.config.parse({ ...fx.config, ...s.config }), fake(s.http ?? fx.http ?? (() => { throw new Error('no fake network'); }), image, type, s.lab ?? fx.lab)) }));
+      const make = () => i.create(parsed, fake(fx.http ?? (() => { throw new Error('no fake network'); }), image, type, fx.lab));
+      const { widgets, inst } = await widgetsFrom(type, def, parsed, make, [...states, ...(states.some((s: any) => s.state === 'down') ? [] : [{ state: 'down', label: 'Can\'t reach it', make: () => i.create(parsed, fake(() => new Response('nope', { status: 500 }), image, type, fx.lab)) }])], problems, fx.warm);
       base.widgets = widgets; base.tools = toolsOf(inst); base.actions = actionsOf(inst); base.commands = await commandsOf(inst); base.recap = await recapOf(inst, problems);
       base.config = dressConfig(type, fx.config); base.sample = 'fixture'; base.note = fx.note;
       if (typeof undo === 'function') undo();

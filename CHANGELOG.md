@@ -5,6 +5,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- A network map, with nothing to set up: `type: network` draws your homelab as Valet already knows it. Every integration's address says which machine it's on, so the map has the internet on top, each network under it, every machine on those, and on each machine the services, containers and VMs Valet sees there, each with a dot for whether it's working. The dots are what the page's widgets last said, so the map asks nothing of anyone. The `machines` integration names its machines and says if each is up; `docker`, `machines`, `host` and `proxmox` put their containers and VMs under the machine they run on, and a container that's a service already on the map is folded into it. `names` gives a machine a name by its address, and two addresses with one name are one machine. Only host and port are shown, never a path or a key. As a tile it's "3 hosts" with what's down; on a phone each network is a heading over its machines; and the assistant can say what runs where ("what's on the server?"). It's also a new card type, `map`, that any integration or the assistant can draw.
+
 ## [0.7.0] - 2026-11-14
 
 ### Added

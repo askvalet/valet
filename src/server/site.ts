@@ -10,6 +10,7 @@ import { makeContext, setHouse, type Instance, type Integration } from './core.t
 import { History } from './history.ts';
 import { fits, viewsFor } from '../shared/views.ts';
 import { Hub } from './hub.ts';
+import { peersFor, type LabParts } from './lab.ts';
 import { noticesFor, type Notice } from './notices.ts';
 import { guardCards } from './plugins.ts';
 import { allowFonts, canAct, fontOrigins, redactor } from './security.ts';
@@ -82,6 +83,8 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   const problems: string[] = [];
   const instances = new Map<string, Instance>();
   const meta = new Map<string, { type: string; name: string; integration: Integration }>();
+  // what ctx.lab() reads (lab.ts): the hub joins it once the site is built
+  const lab: LabParts = { instances, meta, configs: new Map(), contexts: new Map(), redact: redactor(usedSecrets) };
   const blocks: Record<string, { type: string } & Record<string, unknown>> = { ...config.integrations };
   if (Object.keys(config.links).length) blocks.links = { type: 'links', groups: config.links };
   for (const [id, block] of Object.entries(blocks)) {
@@ -96,7 +99,9 @@ export function check(config: Config, registry: Record<string, Integration>, fro
     const parsed = integration.config.safeParse(rest);
     if (!parsed.success) { problems.push(...parsed.error.issues.map(i => `integrations.${id}.${i.path.join('.')}: ${i.message}`)); continue; }
     try {
-      const inst = inUnits(integration.create(parsed.data, makeContext(id, config.format)), config.format);
+      const ctx = makeContext(id, config.format, () => peersFor(lab, id));
+      lab.configs.set(id, parsed.data); lab.contexts.set(id, ctx);
+      const inst = inUnits(integration.create(parsed.data, ctx), config.format);
       if (fromPlugins.has(block.type)) guardCards(inst);   // a plugin's cards are checked against the catalog
       instances.set(id, inst);
       meta.set(id, { type, name: integration.name, integration });
@@ -155,7 +160,7 @@ export function check(config: Config, registry: Record<string, Integration>, fro
     else tokens.set(h.token, `hooks.${name}.token`);
   }
   if (config.sandbox && (Object.keys(config.hooks).length || config.events?.targets.length)) problems.push('hooks and events are off in a sandbox');
-  return { problems, instances, meta, placed };
+  return { problems, instances, meta, placed, lab };
 }
 
 /** chat.commands that couldn't do what they say: no assistant, a model that isn't a choice, an integration that isn't there
@@ -179,7 +184,7 @@ function commandProblems(config: Config, instances: Map<string, Instance>) {
 
 export async function buildSite(config: Config, registry: Record<string, Integration>, fromPlugins: Set<string>, opts: { path: string; rebuild: () => Promise<void> }, previous?: Site): Promise<Site> {
   setHouse(config.format);
-  const { problems, instances, meta, placed } = check(config, registry, fromPlugins);
+  const { problems, instances, meta, placed, lab } = check(config, registry, fromPlugins);
   for (const p of problems) console.error(`config: ${p}`);
 
   // pinned answers are an integration of their own; setup tools one too, only if the config grants them
@@ -294,6 +299,7 @@ export async function buildSite(config: Config, registry: Record<string, Integra
     // and rules that asked for it reach your phone
     for (const r of config.live?.notify ?? []) if (r.push && r.widget === key) for (const n of noticesFor(key, prev?.card, next.card, [r])) sendPush({ title: n.text, text: n.sub, urgent: n.tone === 'bad', where: key });
   }, history);
+  lab.hub = hub;
 
   // to the channels, and to every owner's browser that turned notifications on (not from a demo: there's nobody's phone to
   // reach). Someone with a profile hears none of it: a notification can name anything

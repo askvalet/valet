@@ -107,6 +107,9 @@ integrations:
   #   hosts:                       # askvalet.dev/start/machines/ says how to put the agent on a machine
   #     nas: { url: "http://10.0.0.5:7576", token: "${NAS_AGENT_TOKEN}", name: NAS }
   #     pi: { url: "http://10.0.0.6:7576", token: "${PI_AGENT_TOKEN}" }
+  network:
+    type: network                  # the homelab as a map, drawn from the addresses above: nothing else to fill in
+    names: { 10.0.0.5: NAS }       # what to call a machine by its address; localhost is the one Valet runs on
   ollama:
     type: ollama                   # installed and loaded models
     url: http://ollama:11434
