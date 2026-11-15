@@ -21,7 +21,7 @@ export function hitsOf(card: Card | null | undefined, max = 5): Hit[] {
       case 'photos': return card.items.map(i => ({ title: i.title ?? i.subtitle ?? 'Photo', sub: i.title ? i.subtitle : undefined, image: i.image, href: i.href }));
       case 'links': return card.items.map(i => ({ title: i.name, sub: i.note, href: i.href }));
       case 'status': return card.items.map(i => ({ title: i.name, sub: i.detail, href: i.href }));
-      case 'controls': return card.items.map(i => ({ title: i.label, sub: line(i.sub, typeof i.value === 'boolean' ? (i.value ? 'On' : 'Off') : i.value) }));
+      case 'controls': return card.items.map(i => ({ title: i.label, sub: line(i.sub, typeof i.value === 'boolean' ? (i.kind === 'check' ? (i.value ? 'Done' : 'To do') : i.value ? 'On' : 'Off') : i.value) }));
       case 'article': return [card, ...card.more ?? []].filter(a => a.headline).map(a => ({ title: a.headline, sub: a.site, image: a.image, href: a.link }));
       case 'table': return card.rows.map(r => ({ title: String(r[0] ?? ''), sub: line(...r.slice(1, 3)) }));
       case 'kv': return card.rows.map(([k, v]) => ({ title: k, sub: v }));

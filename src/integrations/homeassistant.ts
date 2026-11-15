@@ -183,9 +183,9 @@ export default defineIntegration({
           const title = t.title ?? (e ? nameOf(e) : 'To do'), left = items.filter(i => i.status !== 'completed').length;
           const order = [...items.filter(i => i.status !== 'completed'), ...items.filter(i => i.status === 'completed')];
           return { type: 'controls', title, icon: 'tag', href: cfg.href && `${cfg.href.replace(/\/$/, '')}/todo?entity_id=${t.entity}`,
-            items: order.map(i => ({ id: i.uid, label: i.summary, kind: 'toggle' as const, value: i.status === 'completed', action: 'todo_tick', args: { entity_id: t.entity, uid: i.uid } })),
+            items: order.map(i => ({ id: i.uid, label: i.summary, kind: 'check' as const, value: i.status === 'completed', action: 'todo_tick', args: { entity_id: t.entity, uid: i.uid } })),
             buttons: items.some(i => i.status === 'completed') ? [{ label: 'Clear finished', action: 'todo_clear', args: { entity_id: t.entity } }] : undefined,
-            add: { placeholder: 'New item…', action: 'todo_add', args: { entity_id: t.entity }, max: 255 },
+            add: { placeholder: 'New item…', action: 'todo_add', args: { entity_id: t.entity }, max: 255, check: true },
             summary: { label: title, icon: 'tag', value: String(left), sub: left === 1 ? 'thing left' : 'things left' } };
         },
       };

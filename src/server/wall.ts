@@ -191,7 +191,7 @@ export function pressesOf(card?: Card): Press[] {
   if (card?.type === 'list') return typed;
   if (card?.type === 'controls') return [...typed, ...card.items.flatMap((c): Press[] => {
     if (!c.action || c.kind === 'value') return [];
-    const value = c.kind === 'toggle' ? (v: unknown) => typeof v === 'boolean' : c.kind === 'slider' ? between(c.min ?? 0, c.max ?? 100) : c.kind === 'select' ? (v: unknown) => typeof v === 'string' && !!c.options?.includes(v) : undefined;
+    const value = c.kind === 'toggle' || c.kind === 'check' ? (v: unknown) => typeof v === 'boolean' : c.kind === 'slider' ? between(c.min ?? 0, c.max ?? 100) : c.kind === 'select' ? (v: unknown) => typeof v === 'string' && !!c.options?.includes(v) : undefined;
     return [{ action: c.action, args: c.args ?? {}, ...(value ? { value: { key: 'value', ok: value } } : {}) }];
   })];
   if (card?.type === 'thermostat') return [

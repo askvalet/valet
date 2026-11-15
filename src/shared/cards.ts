@@ -188,7 +188,7 @@ export interface TableCard extends Base { type: 'table'; columns: string[]; rows
 export interface Control {
   id: string;
   label: string;
-  kind: 'toggle' | 'slider' | 'select' | 'button' | 'value';   // value: read-only, e.g. a sensor reading
+  kind: 'toggle' | 'check' | 'slider' | 'select' | 'button' | 'value';   // value: read-only, e.g. a sensor reading · check: a thing to tick off (a to-do), not a switch
   value?: boolean | number | string;
   options?: string[];
   min?: number; max?: number; step?: number;
@@ -208,6 +208,7 @@ export interface AddField {
   arg?: string;           // which argument the words go in; 'text' if left out
   args?: Record<string, unknown>;   // fixed arguments sent with them, e.g. which list
   max?: number;           // the most characters the line takes; 200 if left out
+  check?: boolean;        // the card is a checklist: the line's button sits where the boxes do, so new words line up with the rest
 }
 
 /** A hero visual with its numbers beside it: a device, a room, a camera. `visual.kind` picks a renderer

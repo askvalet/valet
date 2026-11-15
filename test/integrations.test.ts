@@ -512,7 +512,7 @@ test('home assistant to-do lists: what\'s left first, ticked and added to throug
   assert.equal(c.title, 'Shopping List');
   assert.deepEqual(c.items.map((i: any) => [i.label, i.value]), [['Bread', false], ['Milk', true]]);
   assert.deepEqual(c.items[0].args, { entity_id: 'todo.shopping_list', uid: 'u2' });
-  assert.deepEqual(c.add, { placeholder: 'New item…', action: 'todo_add', args: { entity_id: 'todo.shopping_list' }, max: 255 });
+  assert.deepEqual(c.add, { placeholder: 'New item…', action: 'todo_add', args: { entity_id: 'todo.shopping_list' }, max: 255, check: true });
   assert.equal(c.buttons[0].action, 'todo_clear'); assert.equal(c.summary.value, '1');
   assert.equal(c.href, 'https://ha.example/todo?entity_id=todo.shopping_list');
   const a = ha.actions!;
@@ -955,7 +955,7 @@ test('todo: the card\'s add line runs the add action, which trims and refuses wh
   const t = make(todo, { title: 'Chores' }, fake(() => null)) as any;
   const c: any = await t.widgets.list.fetch();
   valid(c);
-  assert.deepEqual(c.add, { placeholder: 'New task…', action: 'add' });
+  assert.deepEqual(c.add, { placeholder: 'New task…', action: 'add', check: true });
   const input = t.actions[c.add.action].input;
   assert.deepEqual(input.parse({ text: '  Water the plants \n' }), { text: 'Water the plants' });
   for (const text of ['', '   ', 'x'.repeat(201), 42]) assert.equal(input.safeParse({ text }).success, false, JSON.stringify(text));
