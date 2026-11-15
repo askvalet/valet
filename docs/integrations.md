@@ -151,7 +151,7 @@ does, in the house's `format` and language, so never write these by hand (`src/s
 
 Icons in cards are names: `camera video cpu gpu memory wifi disk download pulse play film search bulb home shield chat image
 clock crescent game book coins text file bookmark rss news reddit tag chart calendar sun moon cloud cloud-sun cloud-moon
-rain snow fog storm thermometer`, or an image URL or path.
+rain snow fog storm thermometer lock unlock garage door bolt droplets battery user washer fan power network`, or an image URL or path.
 
 ## Guidelines
 

@@ -1092,16 +1092,20 @@ says which machine it's on, and the dots are what the page's widgets last said, 
 integrations:
   network:
     type: network
-    names: { 192.168.1.20: Server, localhost: Server, 192.168.1.40: Pi }   # two addresses with one name are one machine
+    names: { 192.168.1.20: Server, localhost: Server, 192.168.1.40: Pi, example.com: Server }   # two addresses with one name are one machine
     hide: [printer]
 ```
 
 A private address is a machine on its network, one per `/24`; Tailscale's addresses are their own. `localhost`,
 `172.17.0.1`, `host.docker.internal` and a name with no dot (a container beside Valet, as in `http://sonarr:8989`) all mean
-the machine Valet runs on. Anything public hangs from the internet, and so does an integration with no url that calls one
+the machine Valet runs on. A domain in `names` names its subdomains too: `example.com: Server` puts `sonarr.example.com`
+and every other service behind the reverse proxy on that machine, which then shows its private address, or the public name
+when it has none. Anything else public hangs from the internet, and so does an integration with no url that calls one
 fixed API (the weather). The `machines` integration names its machines and says whether each is up; `docker`, `machines`,
 `host` and `proxmox` put their containers, services and VMs under the machine they run on (`containers: false` leaves them
-out), and a container that is a service already on the map is folded into it. Only host and port are shown, never a path, a
+out). One service on one machine is one node: an `http` check of a service its own integration also watches, and a
+container or unit that is it (`immich_server` is Immich, `pihole-FTL` is Pi-hole, matched as the icons are), are drawn as
+part of it, and a stopped container makes it unwell. Only host and port are shown, never a path, a
 query, a user or a key, and an address from a secret is left out.
 
 Widget: `network.map`, as a tile "3 hosts" with what's down under it. On a phone, or wherever its machines don't fit side by

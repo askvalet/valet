@@ -4,12 +4,12 @@
 // Once they wrap (a phone, a narrow card) each network is a heading over its machines instead, so nothing ever crosses.
 import './netmap.css';
 import { AppWindow, Box, Globe, Monitor, Network, Server, Smartphone, type LucideIcon } from 'lucide-react';
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, useContext, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { Empty } from './empty.tsx';
 import type { MapCard, MapKind, MapNode, ServiceState } from '../shared/cards.ts';
-import { stateNow } from '../shared/map.ts';
+import { drawn, stateNow } from '../shared/map.ts';
 
 const GLYPH: Record<MapKind, LucideIcon> = { internet: Globe, network: Network, host: Server, vm: Monitor, container: Box, service: AppWindow, device: Smartphone };
 const DOT: Record<ServiceState, string> = { up: 'dot-good', degraded: 'dot-warn', down: 'dot-bad', off: 'dot-off' };
@@ -48,9 +48,14 @@ function Mark({ n, className }: { n: MapNode; className?: string }) {
   return <G className={cn('nm-icon nm-glyph', className)} aria-hidden />;
 }
 
+/** Every node, the folded ones too: a dot counts what's folded into it, and its tooltip names it. */
+const All = createContext<MapNode[]>([]);
+
 /** One node you can point at: what it is and how it is on hover or focus, and its page on a tap. */
 function Node({ n, className, children }: { n: MapNode; className: string; children: ReactNode }) {
-  const st = stateNow(n), also = n.also && `container ${n.also.label}${n.also.state && n.also.state !== 'up' ? `, ${n.also.detail ?? SAY[n.also.state]}` : ''}`;
+  const all = useContext(All), st = stateNow(n, all);
+  // a check of the same service says nothing new; a container or unit that is it does, and how it is if it isn't fine
+  const also = all.filter(x => x.same === n.id && !x.id.startsWith('svc:')).map(x => `${x.kind === 'service' ? 'unit' : x.kind} ${x.label}${x.state && x.state !== 'up' ? ` (${x.detail ?? SAY[x.state]})` : ''}`).join(', ');
   const how = [st ? SAY[st] : undefined, n.detail, also].filter(Boolean).join(' · '), said = [how, n.address].filter(Boolean).join(' · ');
   const label = `${n.label}${said ? `: ${said}` : ''}`;
   const el = n.href
@@ -69,8 +74,7 @@ function Node({ n, className, children }: { n: MapNode; className: string; child
   );
 }
 
-const nodeState = (n?: MapNode) => n && stateNow(n);
-const Dot = ({ n }: { n: MapNode }) => { const s = stateNow(n); return s ? <span className={cn('dot', DOT[s])} /> : null; };
+const Dot = ({ n }: { n: MapNode }) => { const s = stateNow(n, useContext(All)); return s ? <span className={cn('dot', DOT[s])} /> : null; };
 
 function Machine({ host, under, limit }: { host: MapNode; under: MapNode[]; limit: number }) {
   const [open, setOpen] = useState(false);
@@ -125,7 +129,7 @@ function Net({ net, tree, limit }: { net: MapNode; tree: Tree; limit: number }) 
 }
 
 export function NetMap({ card, dense = false, large = false }: { card: MapCard; dense?: boolean; large?: boolean }) {
-  const tree = useMemo(() => treeOf(card.nodes), [card.nodes]);
+  const tree = useMemo(() => treeOf(drawn(card.nodes)), [card.nodes]);
   const box = useRef<HTMLDivElement>(null);
   const [links, setLinks] = useState<{ d: string; tone?: ServiceState }[]>([]), [width, setWidth] = useState(0);
   const internet = tree.top.find(n => n.kind === 'internet');
@@ -154,12 +158,13 @@ export function NetMap({ card, dense = false, large = false }: { card: MapCard; 
       if (Math.abs(dx) < 1) return `M${f(x1)},${f(y1)}V${f(y2)}`;
       return `M${f(x1)},${f(y1)}V${f(m - r)}Q${f(x1)},${f(m)} ${f(x1 + s * r)},${f(m)}H${f(x2 - s * r)}Q${f(x2)},${f(m)} ${f(x2)},${f(m + r)}V${f(y2)}`;
     };
+    const stateOfId = (id: string | null) => { const n = tree.byId.get(id ?? ''); return n && stateNow(n, card.nodes); };
     const next: { d: string; tone?: ServiceState }[] = [];
     const top = el.querySelector('.nm-internet');
     for (const s of el.querySelectorAll<HTMLElement>('.nm-net')) {
       const pill = s.querySelector('.nm-net-pill'), heads = [...s.querySelectorAll('.nm-host')];
-      if (top && pill) next.push({ d: link(top, pill), tone: nodeState(tree.byId.get(pill.getAttribute('data-id') ?? '')) });
-      if (pill) for (const h of heads) next.push({ d: link(pill, h), tone: nodeState(tree.byId.get(h.getAttribute('data-id') ?? '')) });
+      if (top && pill) next.push({ d: link(top, pill), tone: stateOfId(pill.getAttribute('data-id')) });
+      if (pill) for (const h of heads) next.push({ d: link(pill, h), tone: stateOfId(h.getAttribute('data-id')) });
     }
     setLinks(l => JSON.stringify(l) === JSON.stringify(next) ? l : next);
   };
@@ -172,6 +177,7 @@ export function NetMap({ card, dense = false, large = false }: { card: MapCard; 
 
   if (!card.nodes.length) return <Empty icon={Network} text={card.empty ?? 'Nothing to draw yet'} height={dense ? 96 : 200} />;
   return (
+    <All.Provider value={card.nodes}>
     <div ref={box} className={cn('nm', wrapped ? 'is-wrapped' : 'is-tree', dense && 'is-dense')} style={width ? { '--nm-col': `${col}px` } as CSSProperties : undefined} role="group" aria-label={card.title ?? 'Network map'}>
       {/* a line to something down goes under the others, so only the part that's its own is dashed */}
       {!wrapped && <svg className="nm-links" aria-hidden>{[...links].sort((a, b) => Number(b.tone === 'down') - Number(a.tone === 'down')).map((l, i) => <path key={i} d={l.d} className={cn(l.tone === 'down' && 'is-down')} />)}</svg>}
@@ -190,5 +196,6 @@ export function NetMap({ card, dense = false, large = false }: { card: MapCard; 
         {orphans.length > 0 && <Net net={{ id: 'nm:orphans', label: 'Elsewhere', kind: 'network' }} tree={{ ...tree, kids: new Map([...tree.kids, ['nm:orphans', orphans]]) }} limit={limit} />}
       </div>
     </div>
+    </All.Provider>
   );
 }
