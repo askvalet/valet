@@ -1,0 +1,62 @@
+/* The network map (netmap.tsx). Rows: the internet, each network, then a column per machine. Surfaces are the page's
+   fills and corners; the only colour is the status dots, and the line to something that's down. */
+.nm { position: relative; isolation: isolate; display: flex; flex: 1; flex-direction: column; justify-content: center; gap: 18px; min-width: 0; }
+.nm-links { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: -1; }
+.nm-links path { fill: none; stroke-linejoin: round; stroke: color-mix(in oklab, var(--foreground) 22%, transparent); stroke-width: 1.25; }
+.nm-links path.is-down { stroke: color-mix(in oklab, var(--bad) 70%, transparent); stroke-dasharray: 3 3; }
+
+/* a node's own icon is a logo when it has one, else a glyph in the ink */
+.nm-icon { width: var(--spacing-icon); height: var(--spacing-icon); flex: none; object-fit: contain; }
+.nm-glyph { color: var(--muted-foreground); }
+
+.nm-top { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; }
+.nm-pill { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; height: 32px; padding: 0 12px; border-radius: 999px;
+  background: var(--fill-1); font-size: var(--text-body); font-weight: 500; }
+.nm-pill-note { color: var(--muted-foreground); font-weight: 400; font-size: var(--text-meta); }
+.nm-out { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.nm-chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; max-width: 200px; padding: 0 10px; border-radius: var(--radius-chip);
+  box-shadow: inset 0 0 0 1px var(--border); font-size: var(--text-meta); }
+
+.nm-nets { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px 28px; }
+.nm-net { display: flex; flex-direction: column; align-items: center; gap: 18px; min-width: 0; max-width: 100%; }
+.nm-hosts { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 12px; max-width: 100%; }
+.nm-machine { flex: 0 1 200px; min-width: 150px; }
+.nm.is-tree .nm-nets, .nm.is-tree .nm-hosts { flex-wrap: nowrap; }
+.nm.is-tree .nm-net { flex: 0 1 auto; gap: 36px; }
+/* the internet centred over the networks, what's out there beside it */
+.nm.is-tree .nm-top { display: grid; grid-template-columns: 1fr auto 1fr; }
+.nm.is-tree .nm-internet { grid-column: 2; }
+.nm.is-tree .nm-out { grid-column: 3; justify-content: flex-start; }
+.nm.is-tree .nm-nets { margin-top: 18px; }
+.nm.is-tree .nm-machine { flex: none; width: var(--nm-col, 180px); min-width: 0; }
+.nm-host { display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 8px; border-radius: var(--radius-control); background: var(--fill-1); }
+.nm-plate { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: var(--radius-tag); background: var(--fill-1); }
+.nm-plate .nm-icon { width: 18px; height: 18px; }
+
+/* what runs on a machine hangs from a line down its left, each thing on a short tick */
+.nm-spine { position: relative; margin: 4px 0 0 21px; padding: 2px 0 0 0; }
+.nm-spine::before { content: ""; position: absolute; left: 0; top: 0; bottom: 14px; width: 1.25px; background: color-mix(in oklab, var(--foreground) 16%, transparent); }
+.nm-spine > li { position: relative; padding-left: 12px; }
+.nm-spine > li::before { content: ""; position: absolute; left: 0; top: 50%; width: 8px; height: 1.25px; background: color-mix(in oklab, var(--foreground) 16%, transparent); }
+.nm-leaf { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 8px; margin-left: -4px; border-radius: var(--radius-chip); }
+.nm-more { height: 28px; padding: 0 8px; margin-left: -4px; border-radius: var(--radius-chip); color: var(--muted-foreground); font-size: var(--text-meta); font-weight: 500;
+  transition: background-color var(--dur-press) var(--ease-out), color var(--dur-press) var(--ease-out); }
+@media (hover: hover) {
+  .nm-link:hover, .nm-more:hover { background: var(--fill-2); }
+  .nm-host.nm-link:hover { background: var(--fill-2); }
+  .nm-more:hover { color: var(--foreground); }
+}
+.nm-link, .nm-leaf { transition: background-color var(--dur-press) var(--ease-out); }
+
+/* wrapped: the machines no longer fit in a row, so each network is a heading over a grid of them and nothing is joined */
+.nm.is-wrapped .nm-top { justify-content: flex-start; }
+.nm.is-wrapped .nm-out { justify-content: flex-start; }
+.nm.is-wrapped .nm-nets, .nm.is-wrapped .nm-net { align-items: stretch; justify-content: flex-start; width: 100%; }
+.nm.is-wrapped .nm-net { gap: 10px; }
+.nm.is-wrapped .nm-net-pill { align-self: flex-start; }
+.nm.is-wrapped .nm-hosts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); justify-content: stretch; width: 100%; }
+.nm.is-wrapped .nm-machine { min-width: 0; }
+
+/* in chat: closer, smaller */
+.nm.is-dense { gap: 12px; }
+.nm.is-dense .nm-net, .nm.is-dense .nm-nets { gap: 12px; }

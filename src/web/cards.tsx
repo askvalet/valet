@@ -6,6 +6,7 @@ import { Check, Plus, Minus, Copy, X, Rss, Newspaper, MessagesSquare, Tag, Trend
 } from 'lucide-react';
 import { createContext, Fragment, lazy, memo, Suspense, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Cameras } from './cameras.tsx';
+import { NetMap } from './netmap.tsx';
 import { Album } from './album.tsx';
 import { Focus } from './focus.tsx';
 import { CoverFlow } from './coverflow.tsx';
@@ -1383,6 +1384,7 @@ export function CardBody({ card, run, columns, minimal, large, fill }: { card: C
     case 'chart': return <Chart card={card} />;
     case 'race': return <Race race={card} span={card.span} inCard />;
     case 'heatmap': return <Heatmap card={card} inCard />;
+    case 'map': return <NetMap card={card} dense={dense} large={large} />;
     case 'code': return <Code card={card} />;
     case 'ranked': return <Ranked card={card} />;
     case 'table': return <Table card={card} />;

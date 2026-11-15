@@ -142,7 +142,9 @@ service that shows the assistant at work.
 `as: 'text'` or `as: 'response'`; `insecure: true` accepts a self-signed certificate. `ctx.id` is the instance's name and
 `ctx.format` the config's `format:`. `ctx.log` prefixes output with the instance name. `ctx.session(login)` shares one sign-in between
 parallel requests (call `.get()` for the token, `.reset()` after a 401). `ctx.upload(id)` reads a file the person
-attached in chat. `fmt` (from `core.ts`) formats bytes, rates, speeds, percentages, times (`fmt.time`, `fmt.range`:
+attached in chat. `ctx.lab()` is for a card about the homelab itself, as the network map is: every other integration, where it
+answers (host and port only, from its url options, or for one with none the one or two hosts it was seen to call) and what each
+of its widgets last showed or why it couldn't. It asks no service anything; a widget's `read()` fetches one that isn't on the page. `fmt` (from `core.ts`) formats bytes, rates, speeds, percentages, times (`fmt.time`, `fmt.range`:
 "8:25–8:50 AM", `fmt.stamp`: "Fri 8:25 AM"), days (`fmt.day`, `fmt.relativeDay`: "Today", "Tomorrow", "Fri") and
 lengths of time (`fmt.span(ms)`: "2h 37m", `{ style: 'long' }`: "2 hr 37 min"; `fmt.ago`: "5m ago") the way the page
 does, in the house's `format` and language, so never write these by hand (`src/shared/format.ts` says how).
@@ -174,6 +176,7 @@ can still draw it another way with a widget's [`view`](configuration.md#layout).
 | `ranked` | who or what comes top | the leader gets its artwork, the rest a bar; `aspect: square` keeps album covers square, as rows and in any gallery view |
 | `race` | titles overtaking each other, each bar in its poster's colour | `steps`, and each item's `points` as running totals (and an `image` for its poster) |
 | `heatmap` | a year of days | `from`, and a count per day in `days` |
+| `map` | the homelab as a tree: the internet, networks, machines and what runs on each | `nodes`, each with an `id`, `label`, `kind` (`internet`, `network`, `host`, `vm`, `container`, `service`, `device`) and its `parent`'s id; `state` colours its dot, `detail` and `address` (host:port only) show on hover |
 | `article` | one thing to read | the page behind it and a few lines; `more` is the pile to step through |
 | `links` | bookmarks | `name`, `href`, `icon`, `note` |
 | `cameras` | live cameras | a big view, a pill per camera, `events` as a strip; each camera has an `image` (refreshed every `refresh` seconds, 1 by default) or a `video`, and `detections` draw a box that flashes as it lands. Goes full screen on a tap |

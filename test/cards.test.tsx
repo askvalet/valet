@@ -25,7 +25,7 @@ import { Touch } from '../src/web/touch.ts';
 // times and dates follow the browser's language; the tests read like a US one wherever they run
 setFormat({ clock: 'auto', date: 'short', weekStart: 'auto', locale: 'en-US' }, LABELS);
 
-const TYPES = ['cameras', 'stats', 'list', 'media', 'shelf', 'status', 'links', 'chart', 'code', 'table', 'ranked', 'race', 'heatmap', 'controls', 'showcase', 'forecast', 'calendar', 'thermostat', 'photos', 'schedule', 'kv', 'text', 'group'];
+const TYPES = ['cameras', 'stats', 'list', 'media', 'shelf', 'status', 'links', 'chart', 'code', 'table', 'ranked', 'race', 'heatmap', 'map', 'controls', 'showcase', 'forecast', 'calendar', 'thermostat', 'photos', 'schedule', 'kv', 'text', 'group'];
 
 test('every card type has a sample', () => {
   const have = new Set(SAMPLES.map(s => s.card.type));

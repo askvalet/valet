@@ -14,6 +14,9 @@ export function plain(card: Card | null | undefined, max = 8): string {
       case 'status': return card.items.map(i => `${i.ok ? '✓' : i.quiet ? '–' : '✗'} ${join(i.name, i.ok ? undefined : i.detail)}`);
       case 'chart': return card.series.map(s => `${s.name}: ${s.total ?? s.points.at(-1) ?? '–'}${card.unit ?? ''}`);
       case 'group': return card.cards.map(c => plain(c, max)).filter(Boolean);
+      // a machine to a line, with how many things run on it and what's down
+      case 'map': return card.nodes.filter(n => n.kind === 'host').map(h => { const on = card.nodes.filter(n => n.parent === h.id), down = on.filter(n => n.state === 'down');
+        return `${h.state === 'down' ? '✗' : '✓'} ${join(h.label, `${on.length} running`, down.length ? `down: ${down.map(n => n.label).join(', ')}` : undefined)}`; });
       default: return hitsOf(card, 1000).map(h => join(h.title, h.sub));
     }
   })();

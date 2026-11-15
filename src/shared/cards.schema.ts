@@ -69,6 +69,9 @@ export const CardSchema: z.ZodType<Card> = z.lazy(() => z.discriminatedUnion('ty
   z.object({ ...base, type: z.literal('race'), span: z.string().optional(), unit: z.string().optional(), steps: z.array(z.string()),
     items: z.array(z.object({ title: z.string(), image: z.string().optional(), points: nums }).strict()) }).strict(),
   z.object({ ...base, type: z.literal('heatmap'), from: date, days: nums, unit: z.string().optional(), headline: z.string().optional(), span: z.string().optional() }).strict(),
+  z.object({ ...base, type: z.literal('map'), empty: z.string().optional(), nodes: z.array(z.object({ id: z.string().min(1), label: z.string(), kind: z.enum(['internet', 'network', 'host', 'vm', 'container', 'service', 'device']),
+    parent: z.string().optional(), state: z.enum(['up', 'degraded', 'down', 'off']).optional(), detail: z.string().optional(), address: z.string().max(300).optional(), href: z.string().optional(), icon: z.string().optional() }).strict())
+    .refine(ns => new Set(ns.map(n => n.id)).size === ns.length, 'two nodes share an id') }).strict(),
   z.object({ ...base, type: z.literal('controls'), items: z.array(Control) }).strict(),
   z.object({ ...base, type: z.literal('showcase'), visual: z.object({ kind: z.string(), src: z.string().optional(), data: z.unknown().optional() }).strict(),
     items: z.array(StatItem), caption: z.string().optional() }).strict(),

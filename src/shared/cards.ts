@@ -307,7 +307,14 @@ export interface RaceCard extends Base, Race { type: 'race'; span?: string }
 /** A year of days as a grid of squares, a column a week. `days` starts at `from`, a count for each day. */
 export interface HeatmapCard extends Base { type: 'heatmap'; from: string; days: number[]; unit?: string; headline?: string; span?: string }   // unit: what's counted, singular: 'play'
 
-export type Card = RaceCard | HeatmapCard | CamerasCard | ThermostatCard | CalendarCard | EmbedCard | RankedCard | CodeCard | TableCard | LinksCard | ArticleCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
+/** The homelab drawn as a tree: the internet, each network, the machines on it, and what runs on each. `parent` is another
+ *  node's `id`; a node whose parent isn't there hangs from the top. `state` colours its dot as a status item's does (left out:
+ *  not known, so no dot). `detail` is said on hover and focus, `address` is host:port only, never a path or a key. */
+export type MapKind = 'internet' | 'network' | 'host' | 'vm' | 'container' | 'service' | 'device';
+export interface MapNode { id: string; label: string; kind: MapKind; parent?: string; state?: ServiceState; detail?: string; address?: string; href?: string; icon?: string }
+export interface MapCard extends Base { type: 'map'; nodes: MapNode[]; empty?: string }
+
+export type Card = MapCard | RaceCard | HeatmapCard | CamerasCard | ThermostatCard | CalendarCard | EmbedCard | RankedCard | CodeCard | TableCard | LinksCard | ArticleCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;
 
 /** One widget slot's live state, as pushed to the browser. */
 export interface WidgetState { key: string; card?: Card; error?: string; at: number; source?: string }
