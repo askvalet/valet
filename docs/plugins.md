@@ -54,7 +54,7 @@ For controls, write tools or several widgets: use the full form below (`new-inte
 ## Write one
 
 A plugin's default export is either an integration object, or a function that receives Valet's toolkit
-(`{ z, fmt, defineIntegration, service, checkCard }`) and returns one, or a list of them. The function form needs no
+(`{ z, fmt, defineIntegration, service, checkCard, People }`) and returns one, or a list of them. The function form needs no
 imports and no build step:
 
 ```js

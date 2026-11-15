@@ -84,6 +84,7 @@ A widget has a `title`, an optional `interval` in milliseconds, and `fetch()`, w
 - Throw with a clear message when it fails: `throw new Error('qBittorrent login failed')`. It shows on the card.
 - Give every card a `summary`, so it works at the small size, in the menubar and as a tile. The layout chooses the size, not the integration.
 - Set `activity` on a card only while something's live, and it shows as a [ring in the top bar](/concepts/layout/#live-activities).
+- Set `personal: true` on a widget that shows one person's activity (what's playing, what they're partway through, what they asked for). Add `people: People` to your config schema, and with a [`people:` map](/start/people/#their-own-plex-jellyfin-and-requests) each person gets their own copy, made with `ctx.as` set to their name on your service.
 
 ## Actions
 
@@ -187,6 +188,7 @@ A command passes the same checks as the chat: a [read-only page](/start/sign-in/
 | `ctx.image(ref)` | The URL for a picture from your `image()`. |
 | `ctx.upload(id)` | A file the person attached in chat. |
 | `ctx.session(login)` | One sign-in shared by parallel calls. `.get()` for the token, `.reset()` after a 401. |
+| `ctx.as` | In a person's own copy (`people:`), their user name on your service. Show only that user's activity, in `personal` widgets and in tools, and throw if the service doesn't know the name: never fall back to everyone's. |
 
 ## Images
 

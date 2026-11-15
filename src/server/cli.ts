@@ -9,7 +9,7 @@ import { redactor } from './security.ts';
 import { check } from './site.ts';
 import { voiceOf } from './voice.ts';
 import { accounts } from './auth.ts';
-import { noOwner } from './people.ts';
+import { noOwner, unknownPeople } from './people.ts';
 
 export async function configCommand(args: string[], path: string, registry: Record<string, Integration>) {
   const [cmd] = args;
@@ -22,8 +22,9 @@ export async function configCommand(args: string[], path: string, registry: Reco
   const { problems, instances, placed } = check(config, registry, fromPlugins);
   if (cmd === 'print') { console.log(stringify(JSON.parse(redactor(usedSecrets)(JSON.stringify(config))))); return problems.length ? 1 : 0; }
   // with local accounts: a `users` that leaves nobody an owner (the accounts are in the data folder, not the config)
-  const no = noOwner(config, await accounts());
+  const all = await accounts(), no = noOwner(config, all);
   if (no) problems.push(no);
+  problems.push(...unknownPeople(config, all));   // and a `people:` name no account has
   for (const p of problems) console.log(`✗ ${p}`);
   console.log(`${problems.length ? '' : '✓ '}${path}: ${instances.size} integrations, ${placed.size} widgets placed, ${config.assistant ? 'assistant on' : 'no assistant'}${voiceOf(config) ? `, voice: ${[voiceOf(config)!.stt && 'listens', voiceOf(config)!.tts && 'speaks'].filter(Boolean).join(' and ')}` : ''}${problems.length ? `, ${problems.length} problem${problems.length > 1 ? 's' : ''}` : ''}`);
   return problems.length ? 1 : 0;

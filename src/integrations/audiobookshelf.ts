@@ -1,7 +1,7 @@
 // Audiobookshelf: the books you're partway through and how far, what's being listened to right now, what's new on the
 // shelves, and your listening this week. The assistant can say what you're listening to and search the libraries.
 import { z } from 'zod';
-import { Every } from '../server/config.ts';
+import { Every, People } from '../server/config.ts';
 import { bounded, defineIntegration, fmt, type Instance } from '../server/core.ts';
 import type { MediaItem, ShelfItem } from '../shared/cards.ts';
 
@@ -15,7 +15,7 @@ export default defineIntegration({
   name: 'Audiobookshelf',
   config: z.object({
     url: z.string().url(), key: z.string(), href: z.string().optional(),
-    every: z.union([z.string(), z.number()]).optional(), insecure: z.boolean().optional(),
+    every: z.union([z.string(), z.number()]).optional(), insecure: z.boolean().optional(), people: People,
   }).strict(),
   create(cfg, ctx) {
     const base = cfg.url.replace(/\/$/, ''), web = (cfg.href ?? base).replace(/\/$/, ''), insecure = cfg.insecure === true;
@@ -34,10 +34,31 @@ export default defineIntegration({
       return libs.list;
     };
 
+    // For one person (`people:`, ctx.as): their Audiobookshelf user, by user name. /me is the key's owner, so their own
+    // progress and listening come from /users/<id>, which only an administrator's key may read.
+    let who: Promise<string> | undefined;
+    const me = () => who ??= api<any>('users').then(r => {
+      const w = ctx.as!.trim().toLowerCase(), u = (r?.users ?? []).find((x: any) => typeof x?.username === 'string' && x.username.toLowerCase() === w);
+      if (!u || !ID.test(String(u.id))) throw new Error(`Audiobookshelf has no user called ${ctx.as}`);
+      return String(u.id);
+    }, e => { throw /40[13]/.test(String(e?.message)) ? new Error('Seeing someone\'s own listening needs an administrator\'s API key') : e; }).catch(e => { who = undefined; throw e; });
+    /** Their started, unfinished books, from their progress and then the books themselves (one request for all of them). */
+    async function theirs(limit: number) {
+      const u = await api<any>(`users/${encodeURIComponent(await me())}`);
+      const going = ((u?.mediaProgress ?? []) as any[]).filter(p => !p.isFinished && !p.hideFromContinueListening && (Number(p.progress) > 0 || Number(p.currentTime) > 0) && ID.test(String(p.libraryItemId)))
+        .sort((a, b) => (Number(b.lastUpdate) || 0) - (Number(a.lastUpdate) || 0)).slice(0, limit);
+      if (!going.length) return { libraryItems: [], progress: going };
+      const got = await ctx.http<any>(`${base}/api/items/batch/get`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ libraryItemIds: [...new Set(going.map(p => p.libraryItemId))] }), insecure, timeout: 15_000 });
+      const items = new Map<string, any>(((got?.libraryItems ?? []) as any[]).map(i => [String(i.id), i]));
+      return { progress: going, libraryItems: going.flatMap(p => { const i = items.get(String(p.libraryItemId)); if (!i) return [];
+        const ep = p.episodeId ? (i.media?.episodes ?? []).find((e: any) => e.id === p.episodeId) : undefined;
+        return [{ ...i, recentEpisode: ep, progressLastUpdate: p.lastUpdate }]; }) };
+    }
+
     /** What's started and not finished, newest first, each with how far along: the list comes without progress, /me has it. */
     async function inProgress(limit = 12) {
-      const [r, me] = await Promise.all([api<any>(`me/items-in-progress?limit=${limit}`), api<any>('me')]);
-      const progress = new Map<string, any>((me?.mediaProgress ?? []).map((p: any) => [`${p.libraryItemId}:${p.episodeId ?? ''}`, p]));
+      const [r, own]: [any, any] = ctx.as ? await theirs(limit).then(t => [t, { mediaProgress: t.progress }]) : await Promise.all([api<any>(`me/items-in-progress?limit=${limit}`), api<any>('me')]);
+      const progress = new Map<string, any>((own?.mediaProgress ?? []).map((p: any) => [`${p.libraryItemId}:${p.episodeId ?? ''}`, p]));
       return ((r?.libraryItems ?? []) as any[]).map(i => {
         const ep = i.recentEpisode, p = progress.get(`${i.id}:${ep?.id ?? ''}`) ?? progress.get(`${i.id}:`);
         const duration = Number(p?.duration) || Number(i.media?.duration) || Number(ep?.audioFile?.duration) || 0, at = Number(p?.currentTime) || 0;
@@ -53,7 +74,8 @@ export default defineIntegration({
       if (!r.ok) throw new Error(`Audiobookshelf answered ${r.status}`);
       const d: any = JSON.parse(await bounded(r));
       const names = new Map((d?.usersOnline ?? []).map((u: any) => [u.id, u.username]));
-      return (d?.openSessions ?? []).map((s: any) => ({ ...s, username: names.get(s.userId) ?? s.user?.username }));
+      const only = ctx.as ? await me() : undefined;
+      return (d?.openSessions ?? []).filter((s: any) => only === undefined || String(s.userId) === only).map((s: any) => ({ ...s, username: names.get(s.userId) ?? s.user?.username }));
     }
     const device = (d: any) => d?.deviceName ?? d?.clientName ?? ([d?.browserName, d?.osName].filter(Boolean).join(' on ') || undefined);
     const toItem = (s: any): MediaItem => {
@@ -63,7 +85,7 @@ export default defineIntegration({
     };
 
     async function week() {
-      const s = await api<any>('me/listening-stats'), days = s?.days ?? {};
+      const s = await api<any>(ctx.as ? `users/${encodeURIComponent(await me())}/listening-stats` : 'me/listening-stats'), days = s?.days ?? {};
       const span = Array.from({ length: 7 }, (_, i) => Date.now() - (6 - i) * 864e5);
       const secs = span.map(t => Number(days[local(t)]) || 0);
       return { span, secs, total: secs.reduce((a, b) => a + b, 0), today: Number(s?.today) || 0 };
@@ -74,7 +96,7 @@ export default defineIntegration({
 
     const widgets = {
       status: {
-        title: 'Audiobookshelf', interval: (() => { const r = Every.safeParse(cfg.every); return r.success ? r.data : 300_000; })(), card: 'stats',
+        title: 'Audiobookshelf', interval: (() => { const r = Every.safeParse(cfg.every); return r.success ? r.data : 300_000; })(), card: 'stats', personal: true,
         async fetch() {
           const [ls, going, w] = await Promise.all([libraries(), inProgress(25), week().catch(() => undefined)]);
           return { type: 'stats' as const, title: 'Audiobookshelf', icon: 'book', href: web, source,
@@ -84,7 +106,7 @@ export default defineIntegration({
         },
       },
       progress: {
-        title: 'Continue listening', interval: 300_000, card: 'shelf',
+        title: 'Continue listening', interval: 300_000, card: 'shelf', personal: true,
         async fetch() {
           const items = (await inProgress()).map(shelf);
           return { type: 'shelf' as const, title: 'Continue listening', icon: 'book', href: web, source, aspect: 'square' as const, layout: 'focus' as const, items, empty: 'Nothing in progress',
@@ -93,7 +115,7 @@ export default defineIntegration({
         },
       },
       playing: {
-        title: 'Listening now', interval: 15_000, card: 'media',
+        title: 'Listening now', interval: 15_000, card: 'media', personal: true,
         async fetch() {
           const now = await open(), items = now.map(toItem), first = items[0];
           return { type: 'media' as const, title: 'Listening now', icon: 'book', href: web, source, empty: 'Nobody listening', items,
@@ -113,7 +135,7 @@ export default defineIntegration({
         },
       },
       week: {
-        title: 'Listening this week', interval: 900_000, card: 'chart',
+        title: 'Listening this week', interval: 900_000, card: 'chart', personal: true,
         async fetch() {
           const w = await week(), mins = w.secs.map(s => Math.round(s / 60));
           return { type: 'chart' as const, style: 'bars' as const, title: 'Listening this week', icon: 'book', href: web, source, unit: 'min', headline: hours(w.total), window: 'last 7 days',

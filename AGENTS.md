@@ -138,6 +138,14 @@ https://askvalet.dev.
 - **Expressions are read, never run** (`src/server/expr.ts`, used by `type: api`). A hand-written parser and walker: own
   properties only, a fixed list of functions, capped length and depth. Anything new that evaluates config text uses it,
   never `eval`, `Function` or a library.
+- **Whose data a card is, is the view's too** (`src/server/personal.ts`). `people:` on a block that takes it maps a person to
+  their user on that service; the view's `own` names those integrations and its `instances` hold copies made with `ctx.as`, so
+  every door that reads `view.instances` (chat, tools, ⌘K, commands, confirm, live cards) answers as them. Widgets marked
+  `personal` get one hub per widget and service user, polled only while someone it's for is subscribed, never with history or
+  `onChange` (no timeline, notices, events or rules). A route that surfaces cards reads `statesFor(view)` and drops `view.mine`
+  keys from the shared hub; anything kept per person (a chat, a live card) keys on `view.key`, never the profile alone. An unknown
+  name is the card's error, never everyone's. A person's copy gets no `ctx.card` or `ctx.lab`; a `from:` card whose source is
+  someone's own is made from everyone's, so `viewOf` hides it (and drops its integration) for whoever has that source as `mine`.
 - **The wall is its own page** (`wall:`, `src/server/wall.ts`, `src/web/wall.tsx`; more screens at `/wall/<name>`, `wall.screens`): pages
   written like `layout`, drawn read-only (no pointer on cards, no palette, chat or links) and scaled to fill the screen. The one
   exception is `wall.touch`: those cards get `run` and draw their controls for a finger (`Touch` in `touch.ts`). `wallReads` is

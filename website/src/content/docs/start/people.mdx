@@ -86,6 +86,55 @@ assistant:
 
 A plain id is an owner, as before. A bound one talks as that account, profile and all: with `approve: owner`, they get no buttons, and what needs a yes goes to an owner's page.
 
+## Their own Plex, Jellyfin and requests
+
+A profile picks which cards someone sees, not whose data is behind them. The services use your keys, so out of the box everyone sees the same Now playing, the same Continue watching and the same requests: the whole house's.
+
+Some services know whose activity is whose, and your key can read each person's. Tell Valet who is who there with `people`, on that service's block:
+
+```yaml title="config.yaml"
+integrations:
+  plex:
+    type: tautulli
+    url: http://tautulli:8181
+    apiKey: ${TAUTULLI_KEY}
+    people: { sam: samantha, alex: alex.k, pat: pat }   # the name they sign in to Valet with → their name on this service
+  requests:
+    type: seerr
+    url: http://seerr:5055
+    apiKey: ${SEERR_KEY}
+    people: { sam: samantha, alex: alex }
+```
+
+Then each of them sees their own on that service's cards, in the assistant, in ⌘K's search and in the live activities in the top bar. Nothing else changes: the same cards, the same tabs, and your one key.
+
+| Service | What becomes their own | What stays everyone's |
+|---|---|---|
+| [Tautulli](/integrations/tautulli/) | Now playing, Most watched, Who's watching (their row), Plays, The year so far, Viewing, the history and stats tools, and stopping a stream (only their own) | Your library, Recently added |
+| [Jellyfin](/integrations/jellyfin/) and [Emby](/integrations/emby/) | Now playing, Continue watching, Recently added (what their libraries hold), the status card, search, and stopping a stream (only their own) | Your library |
+| [Seerr](/integrations/seerr/) | Requests, the requests tool, and a request the assistant makes for them is theirs in Seerr, with their limits and approvals | Search |
+| [Audiobookshelf](/integrations/audiobookshelf/) | Continue listening, Listening now, Listening this week, the status card and the assistant's listening tools. Needs an administrator's API token | New on the shelf, search |
+
+The name on the right is the service's own: a Plex user name, display name or email for Tautulli; a user name for Jellyfin, Emby and Audiobookshelf; a user name, Plex or Jellyfin name, email or display name for Seerr. Names compare without case on both sides, and two people can share one.
+
+**A name the service doesn't know is an error on their cards**, never everyone's. `node dist/server.js doctor` asks each service about each name and says which don't match. With local accounts, `config check` also names anyone in `people` who has no account.
+
+**Anyone not in `people` sees what they did before**: everyone's. Give a profile's people a name there, or leave the card off their tabs.
+
+**Owners are people too.** An owner in `people` sees their own. To see the whole house's again, choose **Everyone's activity** in ⌘K. It's remembered in that browser, and only an owner's counts.
+
+### Where it reaches
+
+- **The page**: their own cards, fetched as them and kept apart from the shared ones. Two people mapped to the same user share one copy. Each is fetched only while someone it's for has the page open, as often as the shared card would be.
+- **The assistant, ⌘K and Telegram**: the same service's tools answer for whoever asks, so "what am I watching" is theirs. A Telegram id [bound to an account](#telegram) is that person; a plain one is an owner.
+- **Notices**: someone with their own card doesn't get the shared card's toasts (somebody else's stream starting).
+- **The wall** shows the shared cards: a screen on the wall is nobody in particular.
+- **A card made from one of these** (`from:` on an `api` card) is made once, from everyone's. Whoever has their own there doesn't get it, its tools included; `config check` says so.
+- **The [network map](/integrations/network/)** shows whether the service answers, from the shared card, and never what anyone is watching.
+- **Rules, reminders, the timeline, the activity log, the year in review and notifications** watch the shared cards, as before. They're owners' things, about the whole house.
+
+What this doesn't do is sign in to anything as them. Plex's On Deck, for one, is only Plex's to give with that person's own token, so Valet's Plex card stays the server's numbers: use Tautulli for whose is whose. Navidrome, Immich, Kavita and Komga answer only for the account whose key or password Valet has, so `people` isn't offered there.
+
 ## Nobody left as an owner
 
 If `users` gives every local account a profile, nobody is an owner: nobody can approve, read the log or use the full page. Valet won't pick someone to promote. It says so in its log and in `config check` and `user list`, and the accounts stay as narrow as you made them. To get back in, take one name out of `users` (it reloads live), or add an account of your own with `user add`.
@@ -96,4 +145,6 @@ A name in `users` whose profile doesn't exist sees nothing at all until you fix 
 
 - **Each chat's history is kept in its own browser.** Two people sharing one browser share its chats.
 - **An integration you name in a profile's access is theirs to read through the assistant**, cards or not. Give a profile only what you'd show them.
+- **Whose data it is, outside `people`.** A service with no `people`, and anyone not in it, sees the house's: your keys' view. See [their own Plex, Jellyfin and requests](#their-own-plex-jellyfin-and-requests).
+- **It never signs in as them.** Everything is read with your keys, so what a service only shows its own user (Plex's On Deck, a music server's plays) stays yours.
 - **It isn't a lock on the services themselves.** Someone with the service's own address and a login can still use it. Valet only narrows what reaches them through Valet.

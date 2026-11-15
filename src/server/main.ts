@@ -8,7 +8,7 @@ import { Hono, type Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { bodyLimit } from 'hono/body-limit';
 import { accounts, clientIp, sameOrigin, setupAuth, setupWall, userCommand } from './auth.ts';
-import { noOwner, viaOwner, viewOf, type View } from './people.ts';
+import { noOwner, unknownPeople, viaOwner, viewOf, type View } from './people.ts';
 import { narrowMaps } from '../shared/map.ts';
 import { judge, Presses, viewsFor, wallMayPress, wallReads, wallTokens, wallView, widgetsOf, type Mind, type WallView } from './wall.ts';
 import type { WidgetState } from '../shared/cards.ts';
@@ -77,8 +77,8 @@ let base: Site = await buildSite(config, registry, fromPlugins, opts);
 const own = new AsyncLocalStorage<Site>();
 const site = new Proxy({} as Site, { get: (_, k) => Reflect.get(own.getStore() ?? base, k), set: (_, k, v) => Reflect.set(own.getStore() ?? base, k, v) });
 // said at start and after each reload, loudly: with local accounts, a `users` that leaves no owner (people.ts)
-const ownerless = async () => { const no = noOwner(site.config, await accounts()); if (no) console.error(`config: ${no}`); };
-const stopSite = (s: Site) => { s.hub.dispose(); s.watcher?.stop(); s.watches.stop(); s.rules.stop(); s.stopBackups(); s.stopReminders(); s.stopEvents(); };
+const ownerless = async () => { const all = await accounts(), no = noOwner(site.config, all); if (no) console.error(`config: ${no}`); for (const p of unknownPeople(site.config, all)) console.error(`config: ${p}`); };
+const stopSite = (s: Site) => { s.hub.dispose(); s.personal.dispose(); s.watcher?.stop(); s.watches.stop(); s.rules.stop(); s.stopBackups(); s.stopReminders(); s.stopEvents(); };
 // A new site takes over from the old one, and every open page refetches and reconnects.
 async function swap(next: Config) {
   const old = base;
@@ -200,9 +200,15 @@ app.use('/api/*', async (c, next) => {
 // every route below reads this view and answers with what that person may see and do, or refuses. A new route does the
 // same. (A paired wall is not a person; `isWall` is checked first wherever it can reach.)
 const userOf = (c: Context) => (c.get as (k: string) => string | undefined)('user');
-const viewFor = (c: Context): View => viewOf(site, (c.get as (k: string) => string | undefined)('account') ?? userOf(c));
-/** The site as this person's doors read it: their config (their assistant or none) and their integrations. */
-const siteFor = (v: View) => ({ config: v.config, instances: v.instances, meta: site.meta, acting: site.acting, redact: site.redact, activity: site.activity, hub: site.hub });
+// `valet_everyone`: an owner with their own activity somewhere (`people:`) chose everyone's in ⌘K. Only an owner's counts.
+const viewFor = (c: Context): View => viewOf(site, (c.get as (k: string) => string | undefined)('account') ?? userOf(c), { everyone: getCookie(c, 'valet_everyone') === '1' });
+/** After a change: the shared cards of an integration again, and the personal ones someone is looking at. */
+const refreshed = { refreshInstance: (inst: string) => { site.hub.refreshInstance(inst); site.personal.refreshInstance(inst); } };
+/** The site as this person's doors read it: their config (their assistant or none) and their integrations (their own copy
+ *  of a service they're mapped on, people.ts). */
+const siteFor = (v: View) => ({ config: v.config, instances: v.instances, meta: site.meta, acting: site.acting, redact: site.redact, activity: site.activity, hub: refreshed });
+/** The cards a person may hear now: the shared ones, less those that are theirs to have as their own, and their own. */
+const statesFor = (v: View) => [...site.hub.snapshot().filter(s => !v.mine(s.key)), ...site.personal.snapshot(v.own)];
 const OWNERS = 'That belongs to the owners of this Valet.';
 
 // by number, so only what the config lists can be asked for
@@ -329,6 +335,8 @@ app.get('/api/page', c => {
     title: config.title, greeting: config.greeting, notice: config.notice, location: config.location, canAct: site.acting, sandbox: sandbox.on, search: config.search, find: findersOf(siteFor(v)).length > 0,
     // a profile: who this is and the page actions they were given, so the page offers no button the server would refuse
     member: me && { name: me.name, actions: config.profiles[me.profile!]?.actions ?? [] },
+    // an owner with their own activity on a service: which they see, so ⌘K can offer the other
+    people: v.choice,
     // everyone learns an edit didn't apply; the error itself can quote the file, so only people who can change things see it
     configError: configError ? { message: site.acting && v.owner ? site.redact(configError.message).slice(0, 600) : undefined, at: configError.at } : undefined,
     welcome: config.welcome && v.owner ? { path: CONFIG, saved, setup: site.acting && instances.has('config') } : undefined,
@@ -372,10 +380,12 @@ app.get('/api/events', c => isWall(c) && !screenOf(c) ? c.json({ error: 'not sig
   // Someone with a profile hears their own cards, and a notice only when it's the page's own about one of those cards:
   // a reminder, a rule, backups and the insight are Valet's word to owners
   const wall = isWall(c), config = site.config, v = wall ? viewOf(site) : viewFor(c), view = wall || c.req.query('wall') !== undefined ? screenOf(c) : undefined;
-  const heard = (s: WidgetState) => wall ? wallReads(config, s, view) : v.sees(s.key);
-  const told = (n: { key?: string; owner?: true }) => !wall && (v.owner || (!n.owner && !!n.key && v.sees(n.key)));
+  // A card that's this person's own (`people:`) comes from their own copy, never the shared one, and the shared card's
+  // notices (someone else started something) aren't theirs either. A paired wall has no one's own: it hears the shared.
+  const heard = (s: WidgetState) => wall ? wallReads(config, s, view) : v.sees(s.key) && !v.mine(s.key);
+  const told = (n: { key?: string; owner?: true }) => !wall && (v.owner || (!n.owner && !!n.key && v.sees(n.key))) && (!!n.owner || !n.key || !v.mine(n.key));
   // the hub keeps one map for everyone; someone with a profile is sent it narrowed to the integrations on their tabs
-  const theirs = (s: WidgetState): WidgetState => v.owner || wall || s.card?.type !== 'map' ? s : { ...s, card: narrowMaps(s.card, v.knows) };
+  const narrow = (s: WidgetState): WidgetState => v.owner || wall || s.card?.type !== 'map' ? s : { ...s, card: narrowMaps(s.card, v.knows) };
   // a wall whose pages wait on a `when` is told which may show, as that changes: on any card's news, and every few
   // seconds for the clock and for what has to last before it counts. Which pages, never why.
   let look = !!view?.pages.some(p => p.when), shown = '', last = Date.now();
@@ -385,8 +395,12 @@ app.get('/api/events', c => isWall(c) && !screenOf(c) ? c.json({ error: 'not sig
   const queue = new Map<string, string>();
   let wake: (() => void) | null = null, reloaded = false;
   const notices: string[] = recent.filter(n => told(n) && Date.now() - n.at < 60_000).map(n => redact(JSON.stringify(n)));
-  const off = hub.subscribe(s => { if (judged) { look = true; wake?.(); } if (!heard(s)) return; queue.delete(s.key); queue.set(s.key, redact(JSON.stringify(theirs(s)))); wake?.(); });
-  for (const s of hub.snapshot()) if (heard(s) && !queue.has(s.key)) queue.set(s.key, redact(JSON.stringify(theirs(s))));
+  const off = hub.subscribe(s => { if (judged) { look = true; wake?.(); } if (!heard(s)) return; queue.delete(s.key); queue.set(s.key, redact(JSON.stringify(narrow(s)))); wake?.(); });
+  for (const s of hub.snapshot()) if (heard(s) && !queue.has(s.key)) queue.set(s.key, redact(JSON.stringify(narrow(s))));
+  // their own cards: one hub per widget and service user, polled while someone it's for is watching (personal.ts)
+  const theirs = wall ? [] : [...site.placed].filter(k => v.mine(k) && v.sees(k)).flatMap(k => site.personal.hub(k, v.own.get(k.slice(0, k.indexOf('.')))!) ?? []);
+  const offs = theirs.map(h => h.subscribe(s => { if (!v.mine(s.key) || !v.sees(s.key)) return; queue.delete(s.key); queue.set(s.key, redact(JSON.stringify(narrow(s)))); wake?.(); }));
+  for (const h of theirs) for (const s of h.snapshot()) if (!queue.has(s.key)) queue.set(s.key, redact(JSON.stringify(narrow(s))));
   // a page too slow to take them keeps the newest few, like its widgets: a busy hook can't grow its queue
   const tell = (n: { at: number; key?: string; owner?: true }) => { if (!told(n)) return; notices.push(redact(JSON.stringify(n))); if (notices.length > 20) notices.shift(); wake?.(); };
   const onReload = () => { reloaded = true; wake?.(); };
@@ -395,7 +409,7 @@ app.get('/api/events', c => isWall(c) && !screenOf(c) ? c.json({ error: 'not sig
   let asked = answers && asks.list().length > 0;
   const onAsk = () => { if (answers) { asked = true; wake?.(); } };
   noticeListeners.add(tell); sseClients.add(onReload); asks.listeners.add(onAsk);
-  const done = () => { off(); clearInterval(clock); noticeListeners.delete(tell); sseClients.delete(onReload); asks.listeners.delete(onAsk); };
+  const done = () => { off(); for (const o of offs) o(); clearInterval(clock); noticeListeners.delete(tell); sseClients.delete(onReload); asks.listeners.delete(onAsk); };
   stream.onAbort(done);
   while (!stream.aborted && !reloaded) {
     if (look) { look = false; const now = JSON.stringify(wallNow(view!)); if (now !== shown) { shown = now; last = Date.now(); await stream.writeSSE({ event: 'wall', data: now }); } }
@@ -455,7 +469,8 @@ app.post('/api/action/:inst/:action', async c => {
   if (!site.acting) return c.json({ error: 'Valet is read-only: sign-in is off (set auth.mode, or auth.trustNetwork if the network is private)' }, 403);
   // a profile presses the actions it lists and no others; the answer is the same whether or not the action exists
   if (!token && !viewFor(c).presses(inst, action)) return c.json({ error: 'That isn\'t part of your profile. An owner can do it, or add it to your profile.' }, 403);
-  const a = instances.get(inst)?.actions?.[action];
+  // a person's own copy of a service they're mapped on presses as them (people.ts); a screen presses the shared one
+  const a = (token ? instances : viewFor(c).instances).get(inst)?.actions?.[action];
   if (!a) return c.json({ error: `no action ${inst}.${action}` }, 404);
   const args = a.input.safeParse(await c.req.json().catch(() => ({})));
   if (!args.success) return c.json({ error: args.error.issues[0]?.message }, 400);
@@ -464,8 +479,8 @@ app.post('/api/action/:inst/:action', async c => {
   try {
     const result = await a.run(args.data);
     // its cards again at once, and once more a moment later: a light or a lock can take a second to report its new state
-    setTimeout(() => hub.refreshInstance(inst), 300);
-    setTimeout(() => hub.refreshInstance(inst), 1500);
+    setTimeout(() => refreshed.refreshInstance(inst), 300);
+    setTimeout(() => refreshed.refreshInstance(inst), 1500);
     // an action may say what it did ({ done: 'Archived a saved link' }); its description is written for a model
     site.activity.add({ who, via: 'page', what, action: (result as { done?: string } | undefined)?.done ?? `${site.meta.get(inst)?.name ?? inst}: ${action}`, input: args.data, ok: true });
     return c.json(JSON.parse(redact(JSON.stringify({ ok: true, result: result ?? null }))));
@@ -504,12 +519,12 @@ app.get('/api/docs', async c => c.json({ docs: await paletteDocs(c.req.query('q'
 app.get('/api/image/:inst', async c => {
   const inst = site.instances.get(c.req.param('inst'));
   const ref = c.req.query('ref');
-  const shown = (ok: (s: WidgetState) => boolean) => !!ref && site.hub.snapshot().some(s => ok(s) && JSON.stringify(s.card ?? null).includes(`/api/image/${encodeURIComponent(c.req.param('inst'))}?ref=${encodeURIComponent(ref)}`));
+  const shown = (ok: (s: WidgetState) => boolean, states = site.hub.snapshot()) => !!ref && states.some(s => ok(s) && JSON.stringify(s.card ?? null).includes(`/api/image/${encodeURIComponent(c.req.param('inst'))}?ref=${encodeURIComponent(ref)}`));
   // a paired wall display sees only the pictures its cards show now
   if (isWall(c) && (!ref || !site.hub.snapshot().some(s => viewsFor(site.config, wallToken(c)!).some(v => wallReads(site.config, s, v)) && JSON.stringify(s.card ?? null).includes(`/api/image/${encodeURIComponent(c.req.param('inst'))}?ref=${encodeURIComponent(ref)}`)))) return c.json({ error: 'not signed in' }, 401);
   // and someone with a profile, the pictures their cards show now, or an integration's their own assistant may read (its
   // answers carry pictures too). The same answer as for a picture that isn't there
-  else if (!isWall(c)) { const v = viewFor(c); if (!v.owner && !shown(s => v.sees(s.key)) && accessOf(v.config.assistant, c.req.param('inst')) < rank.read) return c.notFound(); }
+  else if (!isWall(c)) { const v = viewFor(c); if (!v.owner && !shown(s => v.sees(s.key), statesFor(v)) && accessOf(v.config.assistant, c.req.param('inst')) < rank.read) return c.notFound(); }
   if (!inst?.image || !ref) return c.notFound();
   try {
     const res = await inst.image(ref, c.req.header('range'));
@@ -616,7 +631,7 @@ app.post('/api/live', async c => {
   const ok = tool === 'show' ? Array.isArray(input.widgets) && input.widgets.every((k: unknown) => typeof k === 'string' && allowed(k.split('.')[0]) && v.sees(k))
     : inst !== 'valet' ? !!instances.get(inst)?.tools?.[name]?.live && allowed(inst) : v.owner && !!instances.get(inst)?.tools?.[name]?.live && a.access[`valet.${name}`] !== 'none';
   if (!ok) return c.json({ error: 'not a live card' }, 403);
-  const id = JSON.stringify([tool, input, v.profile ?? '']), hit = liveCache.get(id);
+  const id = JSON.stringify([tool, input, v.key]), hit = liveCache.get(id);   // a profile's and a person's own are their own
   if (hit && Date.now() - hit.at < 5000) return c.json({ card: hit.card });
   try {
     const card = JSON.parse(site.redact(JSON.stringify(await pinnedCard({ tool, input }, instances))));
@@ -639,7 +654,7 @@ const answer = async (c: Context) => {
   for (const [id, inst] of site.instances) for (const w of inst.onChat?.() ?? []) void site.hub.refresh(`${id}.${w}`);
   let mine = chats.get(key);
   if (!mine) chats.set(key, mine = new Map());
-  const id = v.owner ? '' : `profile ${v.profile}`;
+  const id = v.key;   // a profile's, and anyone's with their own on a service (people.ts), is theirs alone
   let chat = mine.get(id);
   if (!chat) mine.set(id, chat = (await import('./chat.ts')).chatRoute(v.config, v.instances, site.meta, { acting: site.acting, redact: site.redact, activity: site.activity,
     member: v.owner ? undefined : { profile: v.profile!, sees: v.sees, viaOwner: v.approve === 'owner' ? viaOwner({ asks, meta: site.meta, redact: site.redact, activity: site.activity, push: m => site.push(m) }) : undefined } }));

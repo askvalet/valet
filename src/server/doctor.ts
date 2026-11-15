@@ -251,7 +251,7 @@ export async function doctor(o: Options): Promise<Finding[]> {
   if (!read) return tidy([...top, ...await install(o, undefined)]);
   const { config, waits } = read;
   const fromPlugins = await loadPlugins(o.registry, config.plugins.packages, config.plugins.replace);
-  const { problems, instances, meta, placed } = check(config, o.registry, fromPlugins);
+  const { problems, instances, meta, placed, mapped } = check(config, o.registry, fromPlugins);
   const held = Object.keys(config.integrations).filter(id => waits(`integrations.${id}`).length);
   for (const p of problems) if (!held.some(id => p.startsWith(`integrations.${id}`) || p.startsWith(`layout: no widget "${id}.`))) top.push({ group: 'Config', status: 'fail', check: p.slice(0, p.indexOf(':')), problem: p.slice(p.indexOf(':') + 2), fix: 'Every option is in docs/configuration.md; `config print` shows what Valet made of the file.' });
   if (!top.length) top.push({ group: 'Config', status: 'ok', check: `${o.path}: ${instances.size} integration${instances.size === 1 ? '' : 's'}, ${placed.size} widget${placed.size === 1 ? '' : 's'} placed` });
@@ -269,8 +269,16 @@ export async function doctor(o: Options): Promise<Finding[]> {
       catch (error) { return { id, w, error, ms: Math.round(performance.now() - t0) }; }
     });
   }
-  const [fetched, chat, channels, rest] = await Promise.all([pool(jobs, 8), assistant(config, waits, get, ms), notify(config, waits, get, ms, !!o.sendTest), install(o, config)]);
+  // `people:`: each user named on a service, asked for once through their own copy, so a name it doesn't know says so here
+  const own = [...mapped].flatMap(([id, m]) => held.includes(id) ? [] : [...new Map([...m.names.values()].map(as => [as.toLowerCase(), as])).values()].map(as => async () => {
+    const inst = m.make(as), ws = Object.keys(inst.widgets).filter(w => inst.widgets[w].personal), w = ws.find(w => placed.has(`${id}.${w}`)) ?? ws[0];
+    if (!w || Date.now() > until) return null;
+    try { await within(inst.widgets[w].fetch(), ms); return null; } catch (e) { return { id, as, error: e }; }
+  }));
+  const [fetched, chat, channels, rest, theirs] = await Promise.all([pool(jobs, 8), assistant(config, waits, get, ms), notify(config, waits, get, ms, !!o.sendTest), install(o, config), pool(own, 4)]);
   const found: Finding[] = [];
+  for (const t of theirs) if (t) found.push({ group: 'Integrations', status: 'fail', check: `${t.id} people: ${t.as}`, problem: (t.error as Error)?.message ?? String(t.error),
+    fix: 'Use their name as the service shows it in its own list of users. Until it matches, whoever is mapped to it sees an error on those cards, never anyone else\'s.' });
   for (const id of new Set(fetched.map(f => f.id))) {
     const mine = fetched.filter(f => f.id === id), block = config.integrations[id] as Record<string, unknown>, what = `${id} (${typeName(o.registry, meta.get(id)?.type ?? block.type as string)})`;
     const say = (status: Finding['status'], check: string, problem?: string, fix?: string, took?: number) => { found.push({ group: 'Integrations', status, check, problem, fix, ms: took }); };

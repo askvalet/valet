@@ -1,5 +1,6 @@
 // Tautulli (https://tautulli.com): who's watching what on Plex right now, what was added, and watch history.
 import { z } from 'zod';
+import { People } from '../server/config.ts';
 import { defineIntegration, fmt, type Instance } from '../server/core.ts';
 import type { RankedItem, MediaItem, Race, RecapSlide } from '../shared/cards.ts';
 
@@ -31,7 +32,7 @@ const ledFrom = (r: Race) => { const final = r.items[0].points; let i = r.steps.
 export default defineIntegration({
   type: 'tautulli',
   name: 'Plex (Tautulli)',
-  config: z.object({ url: z.string().url(), apiKey: z.string(), href: z.string().optional() }),
+  config: z.object({ url: z.string().url(), apiKey: z.string(), href: z.string().optional(), people: People }),
   create(cfg, ctx) {
     const base = cfg.url.replace(/\/$/, '');
     const api = async (cmd: string, params: Record<string, string | number> = {}) => {
@@ -40,6 +41,15 @@ export default defineIntegration({
       if (r?.response?.result !== 'success') throw new Error(r?.response?.message ?? 'Tautulli error');
       return r.response.data;
     };
+    // For one person (`people:`, ctx.as): their Plex user, by user name, display name or email. Tautulli's key reads every
+    // user's history, so each call below that takes user_id is asked for theirs; a name it doesn't know is an error.
+    let who: Promise<{ id: number; name: string }> | undefined;
+    const me = () => who ??= api('get_users').then((list: any[]) => {
+      const w = ctx.as!.trim().toLowerCase(), u = (list ?? []).find(x => [x?.username, x?.friendly_name, x?.email].some(v => typeof v === 'string' && v.toLowerCase() === w));
+      if (!u || !Number.isInteger(Number(u.user_id))) throw new Error(`Tautulli has no Plex user called ${ctx.as}`);
+      return { id: Number(u.user_id), name: String(u.friendly_name || u.username) };
+    }).catch(e => { who = undefined; throw e; });
+    const mine = async (): Promise<Record<string, number>> => ctx.as ? { user_id: (await me()).id } : {};
     const poster = (s: any) => { const t = s.grandparent_thumb || s.parent_thumb || s.thumb; return t ? ctx.image(t) : undefined; };
     const backdrop = (s: any) => { const a = s.grandparent_art || s.art; return a ? ctx.image(a) : undefined; };
     const left = (ms: number) => `${fmt.span(ms)} left`;
@@ -90,7 +100,9 @@ export default defineIntegration({
     }
     async function activity() {
       const d = await api('get_activity');
-      return { count: Number(d.stream_count), bandwidth: Number(d.total_bandwidth), sessions: d.sessions as any[] };
+      if (!ctx.as) return { count: Number(d.stream_count), bandwidth: Number(d.total_bandwidth), sessions: d.sessions as any[] };
+      const { id } = await me(), sessions = ((d.sessions ?? []) as any[]).filter(s => Number(s.user_id) === id);
+      return { count: sessions.length, bandwidth: sessions.reduce((n, s) => n + (Number(s.bandwidth) || 0), 0), sessions };
     }
     const toItem = (s: any): MediaItem => ({
       title: title(s), subtitle: subtitle(s), image: poster(s), backdrop: backdrop(s), pct: Number(s.progress_percent) / 100,
@@ -107,13 +119,13 @@ export default defineIntegration({
     const art = (r: any) => { const a = r.art || r.grandparent_art; return a ? ctx.image(a) : undefined; };
     /** Films and shows together, by time watched. */
     async function mostWatched(n: number): Promise<RankedItem[]> {
-      const home = await api('get_home_stats', { time_range: 30, stats_count: n }) as any[];
+      const home = await api('get_home_stats', { time_range: 30, stats_count: n, ...await mine() }) as any[];
       const rows = [...stat(home, 'top_movies').map(r => ({ ...r, kind: 'Movie' })), ...stat(home, 'top_tv').map(r => ({ ...r, kind: 'Show' }))].sort((a, b) => (b.total_duration ?? 0) - (a.total_duration ?? 0)).slice(0, n);
       const top = Math.max(1, ...rows.map(r => r.total_duration ?? 0));
       return rows.map(r => ({ title: r.title, subtitle: `${r.total_plays} play${r.total_plays === 1 ? '' : 's'}`, value: fmt.duration(r.total_duration ?? 0), image: r.thumb ? ctx.image(r.thumb) : undefined, backdrop: art(r), pct: (r.total_duration ?? 0) / top }));
     }
 
-    const scope = 'Everyone · last 30 days';
+    const scope = ctx.as ? 'Yours · last 30 days' : 'Everyone · last 30 days';
     const months = new Map<string, any[]>();   // a month that's over doesn't change, so a refresh only asks for this one
     /** A year's history, a month and a page at a time, one request after the next: it's the heaviest thing Tautulli gets asked. */
     async function history(year: number, today = new Date()) {
@@ -124,7 +136,7 @@ export default defineIntegration({
         if (!rows) {
           rows = [];
           for (let got = PAGE; got === PAGE;) {
-            const page = (await api('get_history', { after, before: `${after.slice(0, 8)}${String(end.getDate()).padStart(2, '0')}`, start: rows.length, length: PAGE })).data as any[];
+            const page = (await api('get_history', { after, before: `${after.slice(0, 8)}${String(end.getDate()).padStart(2, '0')}`, start: rows.length, length: PAGE, ...await mine() })).data as any[];
             rows.push(...page.map(h => ({ date: h.date, media_type: h.media_type, title: h.title, grandparent_title: h.grandparent_title, grandparent_thumb: h.grandparent_thumb, thumb: h.thumb, play_duration: h.play_duration, duration: h.duration })));   // only what the race reads
             got = page.length;
           }
@@ -137,7 +149,7 @@ export default defineIntegration({
     let viewers: { at: number; rows: any[] } | undefined;   // totals move slowly; who's on right now doesn't
     async function totals() {
       if (viewers && Date.now() - viewers.at < 3_600_000) return viewers.rows;
-      const rows = stat(await api('get_home_stats', { time_range: 30, stats_count: 6 }) as any[], 'top_users');
+      const only = await mine(), rows = stat(await api('get_home_stats', { time_range: 30, stats_count: 6, ...only }) as any[], 'top_users').filter(r => !only.user_id || Number(r.user_id) === only.user_id);
       viewers = { at: Date.now(), rows };
       return rows;
     }
@@ -155,11 +167,11 @@ export default defineIntegration({
         },
       },
       top: {
-        title: 'Most watched', interval: 3_600_000, card: 'ranked',
+        title: 'Most watched', interval: 3_600_000, card: 'ranked', personal: true,
         async fetch() { return { type: 'ranked', title: 'Most watched', icon: 'film', source, note: scope, items: await mostWatched(6), empty: 'Nothing watched yet' }; },
       },
       people: {
-        title: 'Who\'s watching', interval: 60_000, card: 'list',
+        title: 'Who\'s watching', interval: 60_000, card: 'list', personal: true,
         async fetch() {
           const [rows, now] = await Promise.all([totals(), activity().then(a => a.sessions, () => [] as any[])]), top = Math.max(1, ...rows.map(r => r.total_duration ?? 0));
           // one list, most watched first; whoever's on right now says what, on their own row
@@ -170,15 +182,15 @@ export default defineIntegration({
         },
       },
       plays: {
-        title: 'Plays', interval: 3_600_000, card: 'chart',
+        title: 'Plays', interval: 3_600_000, card: 'chart', personal: true,
         async fetch() {
-          const d = await api('get_plays_by_date', { time_range: 30 }), series = (d.series as any[]).filter(x => x.name !== 'Total' && x.data.some((n: number) => n > 0));
+          const d = await api('get_plays_by_date', { time_range: 30, ...await mine() }), series = (d.series as any[]).filter(x => x.name !== 'Total' && x.data.some((n: number) => n > 0));
           const all = (d.series as any[]).find(x => x.name === 'Total')?.data as number[] | undefined;
           return { type: 'chart', style: 'stream', title: 'Plays', icon: 'chart', source, span: 'last 30 days', headline: all ? `${all.reduce((a, b) => a + b, 0)} plays` : undefined, labels: d.categories, series: series.map(x => ({ name: x.name, points: x.data })) };
         },
       },
       race: {
-        title: 'The year so far', interval: HEAVY, card: 'race',
+        title: 'The year so far', interval: HEAVY, card: 'race', personal: true,
         async fetch() {
           const year = new Date().getFullYear(), r = raceOf(await history(year), ctx.image), lead = r?.items[0];
           return { type: 'race', title: 'The year so far', icon: 'film', source, steps: r?.steps ?? [], items: r?.items ?? [], unit: r?.unit, span: r && (/ /.test(r.steps[0]) ? `Hours watched since ${r.steps[0]}` : `Hours watched in ${year}`),
@@ -186,14 +198,14 @@ export default defineIntegration({
         },
       },
       viewing: {
-        title: 'Viewing', interval: HEAVY, card: 'heatmap',
+        title: 'Viewing', interval: HEAVY, card: 'heatmap', personal: true,
         async fetch() {
-          const d = await api('get_plays_by_date', { time_range: 365 }), all = (d.series as any[]).find(x => x.name === 'Total')?.data as number[] | undefined;
+          const d = await api('get_plays_by_date', { time_range: 365, ...await mine() }), all = (d.series as any[]).find(x => x.name === 'Total')?.data as number[] | undefined;
           return { type: 'heatmap', title: 'Viewing', icon: 'calendar', source, from: d.categories[0], days: all ?? [], unit: 'play', span: 'last 12 months' };
         },
       },
       streams: {
-        title: 'Now playing', interval: 10_000, card: 'media',
+        title: 'Now playing', interval: 10_000, card: 'media', personal: true,
         async fetch() {
           const a = await activity();
           bw.push(a.bandwidth / 1000); if (bw.length > 40) bw.shift();
@@ -293,7 +305,7 @@ export default defineIntegration({
           description: 'What\'s been watched most on Plex in the last 30 days, and who has watched the most. Use for "what do we watch", "most popular", "who watches the most".',
           access: 'read', input: z.object({}),
           async run() {
-            const items = await mostWatched(6), users = stat(await api('get_home_stats', { time_range: 30, stats_count: 6 }) as any[], 'top_users');
+            const items = await mostWatched(6), users = await totals();
             return { data: { mostWatched: items.map(i => ({ title: i.title, plays: i.subtitle, time: i.value })), people: users.map(u => ({ name: u.friendly_name, plays: u.total_plays, time: fmt.duration(u.total_duration ?? 0) })) },
               card: { type: 'ranked', title: 'Most watched', icon: 'film', source, note: scope, items } };
           },
@@ -301,10 +313,11 @@ export default defineIntegration({
         plex_history: {
           label: 'Checked Plex history',
           followUps: ['What was added recently?'],
-          description: 'Recent watch history: who watched what and when. Optionally filter by user name.',
+          description: ctx.as ? 'What the person asking watched on Plex recently, and when. Only their own history.' : 'Recent watch history: who watched what and when. Optionally filter by user name.',
           access: 'read', input: z.object({ user: z.string().optional(), count: z.number().int().min(1).max(50).default(15) }),
           async run({ user, count }) {
-            const d = await api('get_history', { length: count, ...(user ? { search: user } : {}) });
+            // someone's own copy reads only their history, whoever the model names
+            const only = await mine(), d = await api('get_history', { length: count, ...only, ...(user && !only.user_id ? { search: user } : {}) });
             const rows = (d.data as any[]).map(h => ({ at: h.date * 1000, when: new Date(h.date * 1000).toLocaleString(), user: h.friendly_name, title: h.full_title, watched: `${h.percent_complete}%`, device: h.player }));
             return { data: rows.map(({ at, ...r }) => r), card: { type: 'list', title: 'Watch history', icon: 'film', items: rows.map(r => ({ title: r.title, subtitle: `${r.user} · ${r.device}`, meta: `${fmt.relativeDay(r.at)}, ${fmt.time(r.at)}` })) } };
           },

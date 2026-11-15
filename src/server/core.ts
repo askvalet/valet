@@ -25,6 +25,9 @@ export interface Widget {
   /** The widget (`instance.widget`) whose latest card this one is made from, through `ctx.card`. Valet keeps that one
    *  polled, refreshes this one when it changes, and shows this one only to someone who may see that one. */
   from?: string;
+  /** It shows one person's activity (what's playing, what they're partway through, what they asked for). With `people:`
+   *  on the block, everyone mapped gets their own copy, fetched as them (`Context.as`), and never anyone else's. */
+  personal?: boolean;
   fetch(): Promise<Card>;
 }
 
@@ -150,6 +153,9 @@ export interface BackupJob {
 
 export interface Context {
   id: string;                            // the instance's key in config.yaml, e.g. "downloads"
+  /** With `people:` on the block, the instance made for one person: the service's own name for them. Its personal widgets
+   *  and its tools show only that user's activity, and a name the service doesn't know is an error, never everyone's. */
+  as?: string;
   format?: Partial<Format>;              // the config's `format:`, for a service that can answer in the right units
   /** fetch with a timeout and a readable error; returns parsed JSON unless `as: 'text'` */
   http<T = any>(url: string, init?: RequestInit & { timeout?: number; as?: 'json' | 'text' | 'response'; insecure?: boolean }): Promise<T>;
@@ -275,10 +281,10 @@ export async function keptHome(url: string, init: RequestInit, hops = 5): Promis
  *  that's where it answers. Kept beside the context, not on it, so it isn't part of what a plugin is handed. */
 export const reached = new WeakMap<Context, Set<string>>();
 
-export function makeContext(id: string, format?: Partial<Format>, more: { lab?: () => Peer[]; card?: Context['card'] } = {}): Context {
+export function makeContext(id: string, format?: Partial<Format>, more: { lab?: () => Peer[]; card?: Context['card']; as?: string } = {}): Context {
   const seen = new Set<string>();
   const ctx: Context = {
-    id, format, ...(more.lab ? { lab: more.lab } : {}), card: more.card,
+    id, format, ...(more.lab ? { lab: more.lab } : {}), card: more.card, ...(more.as ? { as: more.as } : {}),
     async http(url, init = {}) {
       const { timeout = 8000, as = 'json', insecure, ...rest } = init;
       if (seen.size < 8) try { const u = new URL(url); seen.add(`${u.hostname}:${u.port || (u.protocol === 'https:' ? 443 : 80)}`); } catch {}

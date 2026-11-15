@@ -14,8 +14,9 @@ import { z } from 'zod';
 import { checkCard } from '../shared/cards.schema.ts';
 import { defineIntegration, fmt, type Instance, type Integration } from './core.ts';
 import { service } from './service.ts';
+import { People } from './config.ts';
 
-export const toolkit = { z, fmt, defineIntegration, service, checkCard };
+export const toolkit = { z, fmt, defineIntegration, service, checkCard, People };
 
 async function load(spec: string): Promise<Integration[]> {
   const mod = await import(spec);
