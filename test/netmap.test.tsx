@@ -35,7 +35,7 @@ test('the sample draws every machine, folds the long one, and reads as a group',
   for (const n of ['Internet', 'Local network', 'Server', 'NAS', 'Pi', 'Weather']) assert.ok(html.includes(`>${n}<`), n);
   assert.match(html, /\+\d+ containers/);
   assert.ok(html.includes('role="group"') && html.includes('aria-label="Network"'));
-  assert.ok(html.includes('href="http://192.168.1.20:8989"'));
+  assert.ok(html.includes('href="http://10.0.0.20:8989"'));
   const empty = renderToString(<TooltipProvider><NetMap card={{ type: 'map', nodes: [], empty: 'Nothing yet' }} /></TooltipProvider>);
   assert.ok(empty.includes('Nothing yet'));
 });
