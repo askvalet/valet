@@ -121,11 +121,11 @@ export function guard(beforeText: string, afterText: string): string | null {
 export { applyOps, diff, type Op } from './yaml-edit.ts';
 
 /** Would this text work? Problems by name, and ${NAMES} it needs that aren't set yet (those aren't its fault). */
-export function validate(text: string, registry: Record<string, Integration>) {
+export function validate(text: string, registry: Record<string, Integration>, cards?: (key: string) => Promise<Card | undefined>) {
   const missing: string[] = [];
   let t = text;
   for (let i = 0; i < 20; i++) {
-    try { return { ...check(parseConfig(t), registry), missing }; }
+    try { return { ...check(parseConfig(t), registry, undefined, cards), missing }; }
     catch (e) {
       const m = (e as Error).message.match(/variable (\w+) is not set/);
       if (!m) return { problems: [(e as Error).message], instances: new Map<string, Instance>(), missing };
@@ -155,7 +155,10 @@ export async function undoSave(path: string, registry: Record<string, Integratio
   return { undone: true };
 }
 
-export function setupTools(path: string, registry: Record<string, Integration>): Record<string, Tool<any>> {
+/** What the running site lends the setup tools: a widget's latest card, and whether the assistant may read it. */
+export interface Live { card(key: string): Promise<Card | undefined>; may(key: string): boolean }
+
+export function setupTools(path: string, registry: Record<string, Integration>, live?: Live): Record<string, Tool<any>> {
   const previous = previousOf(path);
   const edits = z.object({ ops: z.array(Op).min(1), summary: z.string().describe('in plain words, what this changes') });
   const newIntegration = (ops: Op[]) => { const o = ops.find(o => o.op === 'set' && o.path[0] === 'integrations' && o.path.length === 2); return o ? String(o.path[1]) : undefined; };
@@ -165,8 +168,10 @@ export function setupTools(path: string, registry: Record<string, Integration>):
     const why = refused(ops); if (why) throw new Error(why);
     const before = await readFile(path, 'utf8'), after = applyOps(before, ops);
     const blocked = guard(before, after); if (blocked) throw new Error(blocked);
-    let tried = validate(after, registry);
-    if (ask && tried.missing.length && await resolveSecrets(after).then(() => true, () => false)) tried = validate(after, registry);
+    // a card made `from` another reads the live one, and only one the assistant may read itself
+    const cards = live && (async (key: string) => { if (!live.may(key)) throw new Error(`${key} isn't a widget you may read`); return live.card(key); });
+    let tried = validate(after, registry, cards);
+    if (ask && tried.missing.length && await resolveSecrets(after).then(() => true, () => false)) tried = validate(after, registry, cards);
     return { before, after, ...tried };
   };
   return {
@@ -182,7 +187,7 @@ export function setupTools(path: string, registry: Record<string, Integration>):
     },
     config_options: {
       label: 'Looked up the options', access: 'read', input: z.object({ type: z.string() }),
-      description: 'What an integration type, or a section of the config such as layout, appearance, hero, nav or chat, accepts, as JSON schema. Look before writing a block. For a service with no type of its own, use type "api"; its fields are paths like data.speed or items[0].name, with formats like size|bytes. Icons: cpu gpu memory wifi disk download pulse play film bulb home shield chat image clock crescent game book coins text file bookmark rss news reddit tag chart calendar sun moon cloud, or an image URL.',
+      description: 'What an integration type, or a section of the config such as layout, appearance, hero, nav or chat, accepts, as JSON schema. Look before writing a block. For a service with no type of its own, or a card they describe, use type "api": its fields are paths like items[0].name with formats like size|bytes, or "=" expressions like "=mem / maxmem|pct"; list, status and table take where ("cpu > 0.8 and not contains(name, \'test\')") and sort ("-cpu"). Functions: len lower upper contains min max round abs num hours days. Icons: cpu gpu memory wifi disk download pulse play film bulb home shield chat image clock crescent game book coins text file bookmark rss news reddit tag chart calendar sun moon cloud, or an image URL.',
       async run({ type }) {
         const part = (Config.shape as Record<string, z.ZodType>)[type];
         if (part && type !== 'secrets' && !registry[type]) return { data: z.toJSONSchema(part, { io: 'input', unrepresentable: 'any' }) };
@@ -196,7 +201,7 @@ export function setupTools(path: string, registry: Record<string, Integration>):
         const sends = Object.entries((headers ?? {}) as Record<string, string>).map(([k, v]) => `${k}${refsIn(v).length ? ` (${refsIn(v).join(', ')})` : ''}`);
         return { title: `Fetch from ${new URL(url).host}?`, detail: `${url}${sends.length ? ` · sends ${sends.join(', ')}` : ''}`, icon: 'pulse', verb: 'Fetch' };
       },
-      description: 'Fetch a JSON URL the person gave you and return the start of the response, to write a `type: api` block from: which paths hold the numbers. Headers may use a ${NAME} only if the config already sends it to that same host.',
+      description: 'Fetch a JSON URL and return the start of the response, to write a `type: api` block from. Only when no widget already has the data (then use widget_sample and from:). For a service already in the config, reuse its url and its ${NAME}s: a ${NAME} may go only to a host the config already sends it to.',
       input: z.object({ url: z.string().url(), headers: z.record(z.string(), z.string()).optional() }),
       async run({ url, headers }) {
         const given = (headers ?? {}) as Record<string, string>, { hosts, doc } = bindings(await readFile(path, 'utf8')), host = new URL(url).host;
@@ -209,9 +214,20 @@ export function setupTools(path: string, registry: Record<string, Integration>):
         } catch (e) { return { data: { error: (e as Error).message } }; }
       },
     },
+    widget_sample: {
+      label: 'Looked at a card', access: 'read', input: z.object({ widget: z.string().describe('instance.widget, as config_read lists them') }),
+      description: 'The start of the card a widget shows now, as JSON. To make a card from data Valet already has, write a `type: api` block with `from: <that widget>` (no url, no keys) and paths into this card, e.g. items, items[0].pct. Prefer this to api_sample.',
+      async run({ widget }) {
+        if (!live?.may(widget)) return { data: { error: `no widget "${widget}" you may read; config_read lists them` } };
+        try {
+          const card = await live.card(widget);
+          return { data: card ? { sample: JSON.stringify(card).slice(0, 5000) } : { error: `${widget} has no card yet` } };
+        } catch (e) { return { data: { error: (e as Error).message } }; }
+      },
+    },
     config_preview: {
       label: 'Tried the change', access: 'read', input: edits,
-      description: 'Check edits WITHOUT saving and without contacting anything: returns the diff, any problems, the env variables it still needs and which widgets a new integration offers. Always do this before config_apply, and fix what it reports. Edit the smallest path that does the job: one widget or section, by index, never the whole of `layout`. New cards go in `layout` too, or they won\'t appear. Secrets are never written: use ${NAME}. To see a new card with real data, config_try.',
+      description: 'Check edits WITHOUT saving and without contacting anything: returns the diff, any problems, the env variables it still needs and which widgets a new integration offers. Always do this before config_apply, and fix what it reports. Edit the smallest path that does the job: one widget or section, by index, never the whole of `layout`. New cards go in `layout` too, or they won\'t appear (ask where if it isn\'t clear). Secrets are never written: use ${NAME}. Then config_try to see the card with real data.',
       async run({ ops }) {
         try {
           const t = await trial(ops), id = newIntegration(ops), inst = id ? t.instances.get(id) : undefined;
@@ -226,9 +242,11 @@ export function setupTools(path: string, registry: Record<string, Integration>):
       confirm: async ({ ops }) => {
         const id = newIntegration(ops), block = (ops as Op[]).find(o => o.path[1] === id)?.value as Record<string, any> | undefined, where: string[] = [], keys: string[] = [];
         walkStrings(block, 'url', s => { keys.push(...refsIn(s)); if (/^https?:/.test(s)) where.push(s.replace(/\?.*/, '')); });
+        // made from a card Valet has: nothing of its own is sent anywhere
+        if (typeof block?.from === 'string' && !where.length) return { title: `Try ${id ?? 'this card'}, made from ${block.from}?`, detail: `Uses the card Valet has for ${block.from}, with no address or keys of its own`, icon: 'pulse', verb: 'Try' };
         return { title: `Fetch ${id ?? 'this card'} to try it?`, detail: `${String(block?.method ?? 'GET')} ${where.join(', ') || 'its address'}${keys.length ? ` · sends ${[...new Set(keys)].join(', ')}` : ''}`, icon: 'pulse', verb: 'Fetch' };
       },
-      description: 'Really fetch a new integration from edits you previewed, once, so the person sees its card before saving and you can see whether the paths are right. Nothing is saved. Asks first, because it sends a request.',
+      description: 'Really fetch a new integration from edits you previewed, once, so the person sees its card before saving and you can see whether the paths are right. Nothing is saved. Asks first, because it may send a request. Then config_apply.',
       async run({ ops }) {
         try {
           const t = await trial(ops), id = newIntegration(ops), w = id && Object.values(t.instances.get(id)?.widgets ?? {})[0];

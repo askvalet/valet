@@ -387,7 +387,7 @@ function ContextMeter({ used, total, auto, fresh }: { used: number; total?: numb
 }
 
 export default function Assistant({ name, model, models, discover, ask, suggestions, tools = {}, integrations = [], external, onAsk, onClose, onDismiss, ui = { steps: true, thinking: 'collapsed', send: 'enter' }, attach: canAttach = true, voice }: {
-  name: string; model: string; models?: Choice[]; discover?: boolean; ask: { text: string; n: number } | null; suggestions: string[]; tools?: Record<string, ToolInfo>; onAsk: (t: string) => void;
+  name: string; model: string; models?: Choice[]; discover?: boolean; ask: { text: string; n: number; draft?: boolean } | null; suggestions: string[]; tools?: Record<string, ToolInfo>; onAsk: (t: string) => void;
   integrations?: Mentionable[];   // what @ offers: integrations this chat may use
   external?: boolean;   // the chat is another agent's (assistant.agent), with tools of its own
   onClose?: () => void;   // shown as a phone sheet: a grabber to drag it away, and room for fingers and the keyboard
@@ -501,7 +501,8 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
   const busy = status === 'submitted' || status === 'streaming';
 
   // questions from the ⌘K palette arrive through `ask`
-  useEffect(() => { if (ask && ask.n !== lastAsk) { lastAsk = ask.n; following.current = true; sendMessage({ text: ask.text }); } }, [ask, post]);
+  // (a draft goes in the box instead, below, for the person to finish)
+  useEffect(() => { if (ask && !ask.draft && ask.n !== lastAsk) { lastAsk = ask.n; following.current = true; sendMessage({ text: ask.text }); } }, [ask, post]);
   useLayoutEffect(pin, [messages, status]);
   // cards and images that finish loading change the height too
   useEffect(() => {
@@ -557,6 +558,13 @@ export default function Assistant({ name, model, models, discover, ask, suggesti
     compact: () => void compact(),
   });
   const box = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (!ask?.draft || ask.n === lastAsk) return;
+    lastAsk = ask.n; setDraft(ask.text);
+    // after the sheet has opened, so the caret lands at the end of the words, ready to type
+    const t = setTimeout(() => { const el = box.current; if (el) { el.focus(); el.setSelectionRange(ask.text.length, ask.text.length); } }, 60);
+    return () => clearTimeout(t);
+  }, [ask]);
   const menu = useComposerMenu({ draft, setDraft, box, commands: ui.commands ?? [], integrations: external ? [] : integrations,
     models: hasPicker ? offered.map(o => ({ id: o.id, label: o.label })) : [],
     run: t => { if (command(t)) { setDraft(''); return; } if (busy || uploading) { setDraft(t); return; } submit(t); setDraft(''); } });

@@ -11,7 +11,6 @@ export class Hub {
   private state = new Map<string, WidgetState>();
   private timers = new Map<string, NodeJS.Timeout>();
   private listeners = new Set<Listener>();
-  private inflight = new Set<string>();
   private again = new Set<string>();   // a refresh was asked for while one was running: run once more after
 
   private instances: Map<string, Instance>;
@@ -45,16 +44,23 @@ export class Hub {
     return () => { this.listeners.delete(fn); if (!this.listeners.size) this.stop(); };
   }
 
-  /** Refresh one widget now (after an action changed something) instead of waiting for its timer. */
-  async refresh(key: string) {
+  /** Refresh one widget now (after an action changed something) instead of waiting for its timer. Asked again while it
+   *  runs, it runs once more after; that caller doesn't wait. */
+  refresh(key: string): Promise<void> {
     const w = this.widget(key);
-    if (!w) return;
-    if (this.inflight.has(key)) { this.again.add(key); return; }
-    this.inflight.add(key);
+    if (!w) return Promise.resolve();
+    const running = this.running.get(key);
+    if (running) { this.again.add(key); return Promise.resolve(); }
+    const run = this.fetch(key, w).finally(() => this.running.delete(key)).then(() => this.again.delete(key) ? this.refresh(key) : undefined);
+    this.running.set(key, run);
+    return run;
+  }
+  private running = new Map<string, Promise<void>>();
+
+  private async fetch(key: string, w: NonNullable<ReturnType<Hub['widget']>>) {
     let next: WidgetState;
     try { const card = await w.fetch(); next = { key, card: this.history ? this.history.apply(key, card) : card, at: Date.now() }; }
     catch (e) { next = { key, error: (e as Error).message, at: Date.now(), card: this.state.get(key)?.card }; }
-    finally { this.inflight.delete(key); }
     const prev = this.state.get(key);
     this.state.set(key, next);
     // don't push identical cards: most refreshes of a quiet service change nothing
@@ -62,8 +68,17 @@ export class Hub {
       if (!next.error) this.onChange?.(key, prev, next);
       for (const l of this.listeners) l(next);
       this.watch?.();
+      // a card made from this one (`from`) follows it at once rather than at its own next turn
+      for (const [inst, i] of this.instances) for (const [name, d] of Object.entries(i.widgets)) if (d.from === key) void this.refresh(`${inst}.${name}`);
     }
-    if (this.again.delete(key)) await this.refresh(key);
+  }
+
+  /** A widget's latest card, waiting for its first if it's on its way (or asking for it if nothing has yet). */
+  async latest(key: string) {
+    if (!this.state.has(key)) await (this.running.get(key) ?? this.refresh(key));
+    const s = this.state.get(key);
+    if (!s?.card && s?.error) throw new Error(`${key} couldn't be read: ${s.error}`);
+    return s?.card;
   }
 
   refreshInstance(inst: string) {

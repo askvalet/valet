@@ -22,6 +22,9 @@ export interface Widget {
   title: string;
   interval?: number;                     // ms between refreshes while visible (default 10 s)
   card?: Card['type'];                   // the kind of card it returns, so the config check can tell a `view` that can't draw it
+  /** The widget (`instance.widget`) whose latest card this one is made from, through `ctx.card`. Valet keeps that one
+   *  polled, refreshes this one when it changes, and shows this one only to someone who may see that one. */
+  from?: string;
   fetch(): Promise<Card>;
 }
 
@@ -161,6 +164,9 @@ export interface Context {
    *  answers (host and port only) and what its widgets last said. Read-only, and it asks no service anything; `read()`
    *  fetches a widget that isn't on the page. Undefined until the site is built, and in tests that don't set it. */
   lab?(): Peer[];
+  /** The latest card another widget made, as Valet already has it (no request of its own). Only for a widget one of
+   *  this instance's widgets names in `from`; undefined when there's none yet, or outside a running site. */
+  card?(key: string): Promise<Card | undefined>;
 }
 
 /** Who a tool answers, when it's someone with a profile (people.ts): only a tool about the homelab itself needs it, to
@@ -268,10 +274,10 @@ export async function keptHome(url: string, init: RequestInit, hops = 5): Promis
  *  that's where it answers. Kept beside the context, not on it, so it isn't part of what a plugin is handed. */
 export const reached = new WeakMap<Context, Set<string>>();
 
-export function makeContext(id: string, format?: Partial<Format>, lab?: () => Peer[]): Context {
+export function makeContext(id: string, format?: Partial<Format>, more: { lab?: () => Peer[]; card?: Context['card'] } = {}): Context {
   const seen = new Set<string>();
   const ctx: Context = {
-    id, format, ...(lab ? { lab } : {}),
+    id, format, ...(more.lab ? { lab: more.lab } : {}), card: more.card,
     async http(url, init = {}) {
       const { timeout = 8000, as = 'json', insecure, ...rest } = init;
       if (seen.size < 8) try { const u = new URL(url); seen.add(`${u.hostname}:${u.port || (u.protocol === 'https:' ? 443 : 80)}`); } catch {}

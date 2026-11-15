@@ -277,6 +277,8 @@ services and the assistant write is theirs, and the status sentence is built fro
 | `compacted` | Earlier messages summarised to make room |
 | `compactedOut` | Earlier messages left out to make room |
 | `newChat` | Start a new chat |
+| `newCard` | New card… |
+| `newCardStart` | Make a card that shows |
 
 ### A full example
 
@@ -1151,6 +1153,46 @@ A field is a path into the response (`data.speed`, `items[0].name`, `$` for the 
 braces. Paths can pass through formats: `bytes`, `rate`, `duration` (seconds), `pct` (0 to 1), `round:1`, `divide:1000`,
 `day`, `time`, `ago`, `upper`, `lower`, `count`. Quote anything with `{` so YAML reads it as text. Secrets go in `headers`
 or the `url` as `${NAME}`.
+
+A field that starts with `=` is an expression: `value: "=used / total|pct"`, or `{=used / total|pct}` inside a template.
+Expressions have numbers, `'text'`, `true`, `false` and `null`, paths, `+ - * / %`, `== != < <= > >=`, `and`, `or`, `not`,
+brackets, and the functions `len`, `lower`, `upper`, `contains`, `min`, `max`, `round`, `abs`, `num` (a number out of
+text like `"42%"`), `hours` and `days` (how long ago a timestamp was). Nothing else runs: there's no way to call anything
+but these, and a path reads only the data's own fields.
+
+`list`, `status` and `table` take `where`, an expression that keeps a row when it's true, and `sort`, a path or an
+expression to order the rows by (`-` first for the largest first), before `limit`. `table` is rows and columns:
+`columns` maps each heading to a field.
+
+```yaml
+integrations:
+  hungry:
+    type: api
+    url: http://nodes:9000/nodes
+    title: Busiest
+    table:
+      items: $
+      where: "cpu > 0.5 and not contains(hostname, 'test')"
+      sort: -cpu
+      limit: 5
+      columns: { Node: hostname, CPU: cpu|pct, Memory: "=mem / maxmem|pct" }
+```
+
+Instead of a `url`, `from: <instance>.<widget>` makes the card out of another widget's latest card, as Valet already has
+it: no request of its own and no keys. Paths then go into that card (each widget's card type is in the
+[card gallery](https://askvalet.dev/cards/)). The card is seen only by someone who may see its source too, and the
+assistant reads it no more than it may read the source.
+
+```yaml
+integrations:
+  bigvms:
+    type: api
+    from: proxmox.guests                      # the Proxmox card, nodes and guests
+    title: Over 80% memory
+    list: { items: items, where: "pct > 0.8 and not contains(id, 'node/')", sort: -pct, title: title, meta: "=pct|pct" }
+```
+
+`config check` says when a `from` names no widget, or another card made with `from`: point at the one that fetches.
 
 The comments in each integration's schema (`src/integrations/<type>.ts`, the `config:` block) explain the nested
 options (Home Assistant's `cards`, `schedules`, `thermostats` and `floorplans`; the PC `build`). `/#gallery` shows every card type.

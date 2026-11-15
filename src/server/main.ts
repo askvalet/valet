@@ -343,6 +343,8 @@ app.get('/api/page', c => {
         // assistant.models: what the chat's header offers, the default first; one model offers nothing. With `auto`, the
         // rest of each listed server's models come from /api/models when the menu opens
         ...(a.models.length ? { models: choices(a).map(c => ({ id: c.id, model: c.settings.model })), ...(discovery(a).on && !sandbox.on ? { discover: true } : {}) } : {}) }), suggestions: a.suggestions,
+      // ⌘K's "New card…": only where the chat could save the card it builds, an owner's with config access to change things
+      ...(v.owner && !agent && instances.has('config') && level('config', 'config_apply') >= rank.control ? { builds: true } : {}),
       // how each tool reads in chat, keyed as the assistant names them ("<instance>__<tool>"); a profile's, only the ones it may use
       tools: Object.fromEntries([...v.instances].flatMap(([id, inst]) => Object.entries(inst.tools ?? {}).filter(([n, t]) => !me || rank[t.access] <= level(id, n))
         .map(([n, t]) => [`${id}__${n}`, { label: t.label, followUps: t.followUps, access: t.access, live: t.live }]))),

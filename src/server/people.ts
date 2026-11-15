@@ -63,6 +63,14 @@ function narrowed(a: NonNullable<Config['assistant']>, mine: Record<string, Leve
     out[id] = LEVELS[level];
     for (const tool of Object.keys(inst.tools ?? {})) { const l = Math.min(toolAccess(a, id, tool), theirs(id, tool)); if (l !== level) out[`${id}.${tool}`] = LEVELS[l]; }
   }
+  // a card made from another (`from`) is read no more than its source: theirs is the lower of the two
+  for (const [id, inst] of instances) for (const w of Object.values(inst.widgets)) {
+    const src = w.from?.slice(0, w.from.indexOf('.'));
+    if (!src || !out[id]) continue;
+    const cap = rank[(out[src] ?? 'none') as Level];
+    if (rank[out[id] as Level] > cap) out[id] = LEVELS[cap];
+    for (const tool of Object.keys(inst.tools ?? {})) if (out[`${id}.${tool}`] && rank[out[`${id}.${tool}`] as Level] > cap) out[`${id}.${tool}`] = LEVELS[cap];
+  }
   for (const b of KEPT) if (a.access[`valet.${b}`] === 'none' || mine[`valet.${b}`] === 'none') out[`valet.${b}`] = 'none';
   for (const d of DOCS) if (toolAccess(a, 'valet', d) >= rank.read && mine[`valet.${d}`] !== 'none') out[`valet.${d}`] = 'read';
   return out;
@@ -99,7 +107,17 @@ function member({ config, instances, placed }: SiteLike, id: string): View {
   const tabs = p?.tabs && new Set(p.tabs), acts = new Set(p?.actions ?? []);
   const tab = (name?: string) => !!p && (!tabs || (name != null && tabs.has(name)));
   const keys = new Set(tabs ? config.layout.filter(s => tab(s.tab ?? s.title)).flatMap(s => s.widgets.map(w => w.widget)) : p ? [...placed] : []);
-  const sees = (key: string) => keys.has(key) && !OWN.has(key.split('.')[0]);
+  // A card made from another widget (`type: api` with `from:`) carries that widget's data, so it's seen only by someone
+  // who sees that one too: the source has to be on one of their tabs as well. Every route, the chat's `show`, a card's
+  // pictures and its assistant access read `sees`, so this one rule covers them all. A chain is refused by the config
+  // check; the depth here only keeps a broken config from looping.
+  const fromOf = (key: string) => { const dot = key.indexOf('.'); return instances.get(key.slice(0, dot))?.widgets[key.slice(dot + 1)]?.from; };
+  const seen = (key: string, depth: number): boolean => {
+    if (!keys.has(key) || OWN.has(key.split('.')[0])) return false;
+    const src = fromOf(key);
+    return !src || (depth < 4 && seen(src, depth + 1));
+  };
+  const sees = (key: string) => seen(key, 0);
   const onTabs = (inst: string) => [...keys].some(k => k.startsWith(`${inst}.`) && sees(k));
   const mine = p?.assistant || undefined, a = config.assistant;
   const assistant = a && mine ? { ...a, access: narrowed(a, mine.access, instances, onTabs), suggestions: mine.suggestions, models: [], agent: undefined, telegram: undefined,

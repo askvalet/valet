@@ -132,6 +132,12 @@ https://askvalet.dev.
   `site` directly: a new route passes `siteFor(view)` to its doors, filters by `view.sees`, or refuses with `!view.owner`, and gets
   a line in `MEMBER` in `test/exposure.ts`. Valet's own things (log, rules, pins, setup, notifications, asks) are owners' only. A
   member's change with `approve: owner` waits in `asks.ts` like an MCP client's. A typo narrows, never widens.
+  A card made from another (`from:` on a widget, `ctx.card`) carries that one's data, so `sees` holds it to its source
+  and the assistant's access to it is capped at the source's (`capDerived` in site.ts, `narrowed` here). An instance reads
+  only the cards its own widgets name in `from`.
+- **Expressions are read, never run** (`src/server/expr.ts`, used by `type: api`). A hand-written parser and walker: own
+  properties only, a fixed list of functions, capped length and depth. Anything new that evaluates config text uses it,
+  never `eval`, `Function` or a library.
 - **The wall is its own page** (`wall:`, `src/server/wall.ts`, `src/web/wall.tsx`; more screens at `/wall/<name>`, `wall.screens`): pages
   written like `layout`, drawn read-only (no pointer on cards, no palette, chat or links) and scaled to fill the screen. The one
   exception is `wall.touch`: those cards get `run` and draw their controls for a finger (`Touch` in `touch.ts`). `wallReads` is

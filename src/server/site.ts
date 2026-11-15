@@ -39,7 +39,8 @@ import { loadPins, pinsInstance, savePins, type Pin } from './pins.ts';
 import { setupTools } from './setup.ts';
 import { sandbox } from './sandbox.ts';
 import { wallNeeds, wallProblems, wallViews, wallWidgets } from './wall.ts';
-import { peopleProblems, profileOf } from './people.ts';
+import { OWN, peopleProblems, profileOf } from './people.ts';
+import type { Card } from '../shared/cards.ts';
 import { voiceProblems } from './voice.ts';
 import { choices, servers } from './model.ts';
 
@@ -79,7 +80,7 @@ export interface Site {
 const EVERYTHING = ['start', 'end', 'down', 'up'] as const;
 
 /** Check a config against the registry without starting anything: every problem, in order, with its path. */
-export function check(config: Config, registry: Record<string, Integration>, fromPlugins = new Set<string>()) {
+export function check(config: Config, registry: Record<string, Integration>, fromPlugins = new Set<string>(), cards?: (key: string) => Promise<Card | undefined>) {
   const problems: string[] = [];
   const instances = new Map<string, Instance>();
   const meta = new Map<string, { type: string; name: string; integration: Integration }>();
@@ -99,7 +100,13 @@ export function check(config: Config, registry: Record<string, Integration>, fro
     const parsed = integration.config.safeParse(rest);
     if (!parsed.success) { problems.push(...parsed.error.issues.map(i => `integrations.${id}.${i.path.join('.')}: ${i.message}`)); continue; }
     try {
-      const ctx = makeContext(id, config.format, () => peersFor(lab, id));
+      // an instance reads only the cards its own widgets name in `from`: that's what lets people.ts hide it from anyone
+      // who may not see those
+      const card = async (key: string) => {
+        if (!Object.values(instances.get(id)?.widgets ?? {}).some(w => w.from === key)) throw new Error(`${id} doesn't name ${key} in from`);
+        return cards?.(key);
+      };
+      const ctx = makeContext(id, config.format, { lab: () => peersFor(lab, id), card });
       lab.configs.set(id, parsed.data); lab.contexts.set(id, ctx);
       const inst = inUnits(integration.create(parsed.data, ctx), config.format);
       if (fromPlugins.has(block.type)) guardCards(inst);   // a plugin's cards are checked against the catalog
@@ -134,6 +141,9 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   }
   // and what a wall page's `when` reads (who's home, a camera's event), even when it's on no page
   for (const key of [...wallWidgets(config), ...wallNeeds(config)]) if (has(key)) placed.add(key);
+  problems.push(...fromProblems(instances));
+  // a card made from another (`from`) reads that one's latest card, so that one is polled too
+  for (const key of [...placed]) { const src = sourceOf(instances, key); if (src && has(src) && !src.startsWith('valet.')) placed.add(src); }
   for (const n of config.live?.notify ?? []) if (!placed.has(n.widget)) problems.push(`live.notify: "${n.widget}" isn't placed on the page`);
   const tabs = new Set(config.layout.flatMap(s => s.tab ?? s.title ?? []));
   for (const t of Object.keys(config.appearance.wallpapers)) if (!tabs.has(t)) problems.push(`appearance.wallpapers: no tab "${t}" (the tabs are: ${[...tabs].join(', ')})`);
@@ -163,6 +173,50 @@ export function check(config: Config, registry: Record<string, Integration>, fro
   return { problems, instances, meta, placed, lab };
 }
 
+/** The widget a widget is made from (`from:`), if it is. */
+export const sourceOf = (instances: Map<string, Instance>, key: string) => {
+  const dot = key.indexOf('.');
+  return instances.get(key.slice(0, dot))?.widgets[key.slice(dot + 1)]?.from;
+};
+
+/** `from:` that can't work: a widget that isn't there, one of Valet's own, or another card made from something. A chain
+ *  is refused rather than followed, which also rules out a circle (and with it two cards refreshing each other forever). */
+export function fromProblems(instances: Map<string, Instance>) {
+  const out: string[] = [];
+  for (const [id, inst] of instances) for (const [w, def] of Object.entries(inst.widgets)) {
+    const src = def.from;
+    if (!src) continue;
+    const at = `integrations.${id}.from`, [si, sw] = [src.slice(0, src.indexOf('.')), src.slice(src.indexOf('.') + 1)], other = instances.get(si);
+    if (OWN.has(si)) out.push(`${at}: ${src} is Valet's own; a card can be made from an integration's widget`);
+    else if (!other?.widgets[sw]) out.push(`${at}: no widget "${src}"${other ? ` (${si} has: ${Object.keys(other.widgets).join(', ')})` : ''}`);
+    else if (src === `${id}.${w}`) out.push(`${at}: a card can't be made from itself`);
+    else if (other.widgets[sw].from) {
+      const path = [`${id}.${w}`, src];
+      for (let next = sourceOf(instances, src); next && path.length < 20 && !path.includes(next); next = sourceOf(instances, next)) path.push(next);
+      const round = path.includes(sourceOf(instances, path.at(-1)!) ?? '');
+      out.push(round ? `${at}: ${[...path, sourceOf(instances, path.at(-1)!)].join(' → ')} goes round in a circle; make one of them from a widget that fetches its own data`
+        : `${at}: ${src} is made from ${sourceOf(instances, src)} itself; use from: ${path.at(-1)} directly`);
+    }
+  }
+  return out;
+}
+
+/** The assistant may read a card made from another no more than it may read that other: `assistant.access` (and any
+ *  per-tool key) for the made one is lowered to its source's, so `proxmox: none` can't be read back through it. */
+export function capDerived(a: Config['assistant'], instances: Map<string, Instance>): Config['assistant'] {
+  if (!a) return a;
+  const LEVELS = ['none', 'read', 'write', 'control'] as const, access = { ...a.access };
+  let changed = false;
+  for (const [id, inst] of instances) {
+    const srcs = Object.values(inst.widgets).flatMap(w => w.from ? [w.from.slice(0, w.from.indexOf('.'))] : []);
+    if (!srcs.length) continue;
+    const cap = Math.min(...srcs.map(s => granted(a, s)));
+    if (granted(a, id) > cap) { access[id] = LEVELS[cap]; changed = true; }
+    for (const name of Object.keys(inst.tools ?? {})) if (access[`${id}.${name}`] && rank[access[`${id}.${name}`]!] > cap) { access[`${id}.${name}`] = LEVELS[cap]; changed = true; }
+  }
+  return changed ? { ...a, access } : a;
+}
+
 /** chat.commands that couldn't do what they say: no assistant, a model that isn't a choice, an integration that isn't there
  *  or that the assistant may not use (a command never grants more than assistant.access). */
 function commandProblems(config: Config, instances: Map<string, Instance>) {
@@ -184,15 +238,29 @@ function commandProblems(config: Config, instances: Map<string, Instance>) {
 
 export async function buildSite(config: Config, registry: Record<string, Integration>, fromPlugins: Set<string>, opts: { path: string; rebuild: () => Promise<void> }, previous?: Site): Promise<Site> {
   setHouse(config.format);
-  const { problems, instances, meta, placed, lab } = check(config, registry, fromPlugins);
+  // a card made from another (`from`) reads the hub's latest card of that one; the hub is made below
+  const { problems, instances, meta, placed, lab } = check(config, registry, fromPlugins, key => cardOf(key));
   for (const p of problems) console.error(`config: ${p}`);
+  config = { ...config, assistant: capDerived(config.assistant, instances) };
+  // The latest card of a widget, for `from` here and for the setup tools (a card being tried, `widget_sample`): the
+  // hub's when it's polled, else the widget asked once. Never one that's itself made from another, so two can't feed
+  // each other.
+  const cardOf = async (key: string): Promise<Card | undefined> => {
+    if (sourceOf(instances, key)) throw new Error(`${key} is made from another card; use that one`);
+    if (hub.widget(key)) return hub.latest(key);
+    const dot = key.indexOf('.'), w = instances.get(key.slice(0, dot))?.widgets[key.slice(dot + 1)];
+    return w?.fetch();
+  };
 
   // pinned answers are an integration of their own; setup tools one too, only if the config grants them
   const pins = await loadPins();
   instances.set('pins', pinsInstance(pins, instances, async id => { await savePins((await loadPins()).filter(p => p.id !== id)); await opts.rebuild(); }));
   for (const p of pins) placed.add(`pins.${p.id}`);
   if (!sandbox.on && config.assistant?.access.config && config.assistant.access.config !== 'none') {
-    instances.set('config', { widgets: {}, tools: setupTools(opts.path, registry) });
+    // widget_sample reads what the assistant may read: an integration's widget, under assistant.access (setup is an
+    // owner's, so there's no profile to narrow it further)
+    const may = (key: string) => { const id = key.slice(0, key.indexOf('.')); return !OWN.has(id) && !sourceOf(instances, key) && !!instances.get(id)?.widgets[key.slice(id.length + 1)] && granted(config.assistant, id) >= rank.read; };
+    instances.set('config', { widgets: {}, tools: setupTools(opts.path, registry, { card: cardOf, may }) });
     meta.set('config', { type: 'config', name: 'Setup', integration: { type: 'config', name: 'Setup' } as Integration });
   }
 
