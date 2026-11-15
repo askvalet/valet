@@ -392,6 +392,26 @@ export default ({ z, defineIntegration, fmt: write }) => {
           return { type: 'stats', title: name, icon: 'cpu', note: 'Debian 13', items: [{ label: 'CPU', value: cpu, unit: '%', pct: cpu / 100, trend: past(48, 4, 11, 300_000), sub: `${Math.round(temp)}°C` },
             { label: 'Memory', value: mem, unit: '%', pct: mem / 100 }, { label: 'Disk', value: disk, unit: '%', pct: disk / 100 }, { label: 'Up', value: fmt.span(days * 864e5) }] }; }),
         containers: w('Containers', 30_000, () => ({ ...statusCard('Containers', 'disk', containers()), layout: 'wall' })),
+        // the homelab as `type: network` draws it: each service under the machine its address is on, the containers beside
+        // them, and the weather out on the internet
+        network: w('Network', 15_000, () => {
+          const on = { NAS: ['Immich', 'Paperless', 'Nextcloud', 'Karakeep'], Pi: ['Pi-hole', 'Home Assistant', 'Frigate'] }, ports = { Plex: 32400, Sonarr: 8989, Radarr: 7878, 'Pi-hole': 80, 'Home Assistant': 8123, Immich: 2283 };
+          const machines = [['Server', '10.0.0.20'], ['NAS', '10.0.0.30'], ['Pi', '10.0.0.40'], ["Daniel's Desktop", '10.0.0.50']];
+          const ip = Object.fromEntries(machines), id = (m) => `host:${m.toLowerCase().replace(/[^a-z0-9]+/g, '')}`;
+          const where = (name) => Object.entries(on).find(([, list]) => list.includes(name))?.[0] ?? 'Server';
+          const said = (x) => x.quiet ? 'off' : x.ok ? 'up' : 'down';
+          const svc = services().map(x => ({ id: `svc:${x.name.toLowerCase().replace(/[^a-z0-9]+/g, '')}`, label: x.name, kind: 'service', parent: id(where(x.name)), state: said(x), icon: x.icon, href: x.href,
+            address: `${ip[where(x.name)]}${ports[x.name] ? `:${ports[x.name]}` : ''}`, detail: x.ok ? undefined : x.detail }));
+          const named = new Set(svc.map(n => n.label.toLowerCase().replace(/[^a-z0-9]+/g, '')));
+          const boxes = containers().filter(c => !named.has(c.name.replace(/[^a-z0-9]+/g, ''))).map(c => ({ id: `container:${c.name}`, label: c.name, kind: 'container', parent: id(where(c.name)), state: c.state, icon: c.icon, detail: c.detail }));
+          const nodes = [{ id: 'internet', label: 'Internet', kind: 'internet', state: 'up' }, { id: 'svc:weather', label: 'Weather', kind: 'service', parent: 'internet', state: 'up', address: 'api.open-meteo.com' },
+            { id: 'net:lan', label: 'Local network', kind: 'network', parent: 'internet', detail: '10.0.0.0/24' },
+            ...machines.map(([m, a]) => ({ id: id(m), label: m, kind: 'host', parent: 'net:lan', state: 'up', address: a, detail: m === 'Server' ? 'Valet runs here' : undefined })), ...svc, ...boxes];
+          const down = nodes.filter(n => n.state === 'down');
+          return { type: 'map', title: 'Network', icon: 'wifi', nodes,
+            summary: { label: 'Network', icon: 'wifi', value: `${machines.length} hosts`, sub: down.length ? `${down.length} down: ${down.map(n => n.label).join(', ')}` : 'all answering', tone: down.length ? 'bad' : 'good',
+              marks: machines.map(([m]) => ({ pct: 1, tone: nodes.some(n => n.parent === id(m) && n.state === 'down') ? 'bad' : 'good', label: m })) } };
+        }),
         drives: w('Drives', 300_000, () => ({ type: 'list', layout: 'temps', title: 'Drives', icon: 'disk', items: drives.map(([title, t, age]) => ({ title, subtitle: `Powered on ${fmt.span(age * 36e5, { style: 'long', parts: 1 })}`, meta: `${t}°C`, pct: (t - 20) / 40, tone: t >= HOT ? 'warn' : undefined })),
           summary: { label: 'Drives', icon: 'disk', value: `${hottest[1]}°C`, sub: hottest[1] >= HOT ? `${hottest[0]} is running warm` : `All ${drives.length} healthy`, tone: hottest[1] >= HOT ? 'warn' : 'good', marks: drives.map(([title, t]) => ({ pct: (t - 20) / 40, label: `${title} · ${t}°C` })) } })),
         // the one change to the page the demo can make from chat. The layout places it after Services, and until it's added
