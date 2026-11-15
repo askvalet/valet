@@ -67,13 +67,14 @@ With `assistant.access.config`, the assistant can help set Valet up by talking t
 |---|---|---|
 | `config_read` | `read` | Reads the file. Secrets appear as `${NAME}`. |
 | `config_options` | `read` | Looks up what an integration or a section of the config accepts. |
+| `widget_sample` | `read` | Shows the start of a widget's card as it is now, to [make a card from it](/assistant/cards/) with `from:`. Only widgets the assistant may read. |
 | `config_preview` | `read` | Checks an edit without saving and without contacting anything. Shows the diff and any problems. |
 | `config_try` | `write` | Fetches a new integration once, so you see its real card before saving. Asks first, showing the address, method and which secrets it sends. |
 | `api_sample` | `write` | Fetches a JSON URL you gave it, to write a `type: api` block. Asks first, follows no redirects, and only sends a `${NAME}` to a host the config already sends it to. |
 | `config_apply` | `control` | Saves. Always asks. |
 | `config_undo` | `control` | Puts back the version before the last save. Always asks. |
 
-So `config: read` lets it read and preview, `config: write` adds `config_try` and `api_sample`, and `config: control` lets it save, each with your approval.
+So `config: read` lets it read, sample and preview, `config: write` adds `config_try` and `api_sample`, and `config: control` lets it save, each with your approval.
 
 The limits are in the code, and they apply to saves and previews alike:
 

@@ -1,0 +1,43 @@
+---
+title: Make a card by describing it
+description: Say what you want to see, and the assistant builds the card, shows it to you, and saves it when you say so.
+sidebar: { order: 2.7 }
+---
+
+Say what you want in the chat: "make me a card showing my Proxmox VMs over 80% memory", or "a card of containers that restarted today". The assistant builds it with no code, shows you the real card, and saves it once you approve.
+
+It needs [`assistant.access.config`](/assistant/limits/#editing-the-config) set to `control`, and an owner's account. In ⌘K, **New card…** opens the chat with "Make a card that shows " in the box, ready for you to finish. It's only there when the assistant could save the card.
+
+```yaml title="config.yaml"
+assistant:
+  access: { default: read, config: control }
+```
+
+## What it does
+
+The card it writes is a [`type: api`](/integrations/api/) block, the same one you'd write by hand, so it runs with no model afterwards.
+
+1. **It looks for the data Valet already has.** `config_read` lists every widget, and `widget_sample` shows the start of one's card. If a widget has what you asked about, the new card uses `from:` that widget: no new request, no keys.
+2. **Otherwise it reads the service.** For a service already in your config, it reuses that block's address and `${NAME}`s, which can only go to the host they already go to. `api_sample` fetches the address once, after you approve, and shows it what came back.
+3. **It writes the block.** Paths into the data, an [expression](/integrations/api/#expressions) for anything worked out (`=mem / maxmem|pct`), `where` to keep the rows you asked about and `sort` to put them in order.
+4. **It checks it.** `config_preview` shows the diff and any problems without contacting anything. `config_try` makes the card once, after you approve, so you see it with real data.
+5. **It saves it, and puts it on the page.** `config_apply` asks you first, and adds the card to `layout`. It's told to ask where when that isn't clear.
+
+`config_undo` takes the last save back.
+
+## What stays the same
+
+Building a card changes none of the rules on [what the assistant can and can't do](/assistant/limits/#editing-the-config).
+
+- A secret only goes where it already goes. A new card can't send a `${NAME}` to a new host, and it can't write a secret into the file.
+- Nothing is saved without your yes, and nothing with a problem is saved at all.
+- `widget_sample` reads only widgets the assistant may read. With `proxmox: none` in `assistant.access`, it can't see the Proxmox card, can't try a card made from it, and couldn't read such a card back if you made one by hand.
+- A card made with `from:` is seen only by someone who may see its source. For someone with a [profile](/start/people/), that means the source is on one of their tabs too.
+
+People with a profile can't build cards: the config is the owners'.
+
+## Tips
+
+- Name what you'd see: "VMs over 80% memory, biggest first" is easier than "a memory card".
+- Ask for a change after it shows you the card: "only the stopped ones", "sort by name", "as a table".
+- The block is yours afterwards. Open the config to tweak it, or ask the assistant again.

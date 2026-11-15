@@ -53,7 +53,7 @@ export interface Page {
   hero: { greeting: boolean | string; status: boolean; search: boolean; review: boolean | 'end'; align: 'center' | 'left' | 'right'; scope?: string[] };
   chat: ChatUi & { open: 'center' | 'right' | 'left' | 'bottom' | 'page'; overview: boolean; placeholder?: string; suggestions: 'ai' | 'fixed' | 'off' };
   format: Format; labels: Labels;
-  assistant: { name: string; model: string; models?: { id: string; model: string }[]; discover?: boolean; suggestions: string[]; tools: Record<string, ToolInfo>; external?: boolean; integrations?: { id: string; name: string }[] } | null;
+  assistant: { name: string; model: string; models?: { id: string; model: string }[]; discover?: boolean; suggestions: string[]; tools: Record<string, ToolInfo>; external?: boolean; integrations?: { id: string; name: string }[]; builds?: boolean } | null;
   voice?: VoiceUi;   // voice: whether the chat has a mic and a speaker
   search?: string;
   find?: boolean;
@@ -420,7 +420,7 @@ function Home({ account, who }: { account: boolean; who?: string }) {
     if (recapHere.current) { recapHere.current = false; history.back(); return; }   // it was opened from this page: go back to where that was
     history.replaceState(null, '', location.pathname + location.search); setHash('');
   };
-  const [chat, setChat] = useState<{ text: string; n: number } | null>(null);
+  const [chat, setChat] = useState<{ text: string; n: number; draft?: boolean } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const wide = useWide();
   const phone = useWide('(max-width: 639px)');
@@ -485,6 +485,11 @@ function Home({ account, who }: { account: boolean; who?: string }) {
     play('send');
     setChat({ text: text.trim(), n: Date.now() }); setPalette(false); setDraft('');
     // on the assistant's own tab the answer appears on the page; anywhere else (and always on a phone), in the sheet
+    if (phone || !(chatTab && view === chatTab)) setChatOpen(true);
+  }, [chatTab, view, phone]);
+  // the chat opened with words in its box, not sent: the person finishes the sentence
+  const start = useCallback((text: string) => {
+    setChat({ text, n: Date.now(), draft: true }); setPalette(false);
     if (phone || !(chatTab && view === chatTab)) setChatOpen(true);
   }, [chatTab, view, phone]);
   const warm = () => { void import('./assistant.tsx'); };   // about to be needed: start loading it
@@ -832,6 +837,7 @@ function Home({ account, who }: { account: boolean; who?: string }) {
       {recap && page?.recap !== false && <Suspense fallback={null}><RecapStory onClose={closeRecap} wallpaper={page?.appearance.walls.find(w => w.image)?.image} /></Suspense>}
       {page && palette && (
         <Suspense fallback={null}>{(P => <P palette={palette} setPalette={setPalette} assistantName={page.assistant?.name} placeholder={page.assistant && (page.chat.placeholder || page.hero.scope?.length) ? placeholder : undefined} ui={ui} ask={ask} actions={actions} account={account} who={who} tools={page.assistant?.tools}
+          newCard={page.assistant?.builds ? () => start(label('newCardStart')) : undefined}
           openChat={() => { setPalette(false); if (phone || !(chatTab && view === chatTab)) setChatOpen(true); }}
           runAction={runAction} services={services} SUGGESTIONS={questions} setView={go} nav={nav} sectionIcon={sectionIcon} search={page.search} find={page.find} device={{ sandbox: page.sandbox, canAct: page.canAct !== false, member: !!page.member }} />)(PaletteNow ?? Palette)}</Suspense>
       )}

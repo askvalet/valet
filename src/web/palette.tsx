@@ -1,6 +1,6 @@
 // The ⌘K palette: run a plain command, ask, do a card's action, open a service, jump to a tab. Loaded the first time it opens.
 // Commands come first and need no model: they're matched here as you type and run by the server (src/server/commands.ts).
-import { ArrowUp, Bell, BellOff, CornerDownLeft, Droplet, Globe, LayoutGrid, LogOut, Monitor, Search, Slash, Volume2, VolumeX, Zap } from 'lucide-react';
+import { ArrowUp, Bell, BellOff, CornerDownLeft, Droplet, Globe, LayoutGrid, LogOut, Monitor, Plus, Search, Slash, Volume2, VolumeX, Zap } from 'lucide-react';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { defaultFilter } from 'cmdk';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
@@ -26,6 +26,8 @@ const InlineAnswer = lazy(() => import('./assistant.tsx').then(m => ({ default: 
 
 export interface PaletteProps {
   palette: boolean; setPalette: (open: boolean) => void; assistantName?: string; account: boolean; who?: string; tools?: Record<string, any>; openChat: () => void; ask: (text: string) => void;
+  /** "New card…": opens the chat with a starter in its box. Only given where the chat could save the card (an owner's). */
+  newCard?: () => void;
   actions: { key: string; b: { label: string; action: string; args?: Record<string, unknown> }; card: string }[];
   runAction: (key: string, action: string, args?: Record<string, unknown>) => Promise<void>;
   services: StatusItem[]; SUGGESTIONS: string[]; setView: (v: string) => void;
@@ -64,7 +66,7 @@ const SHELL = '**:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]
 const stop = (e: Event) => e.preventDefault();
 const still = (el: HTMLDivElement | null) => { el?.addEventListener('wheel', stop, { passive: false }); el?.addEventListener('touchmove', stop, { passive: false }); };
 
-export default function Palette({ palette, setPalette, assistantName, ask, actions, runAction, services, SUGGESTIONS, setView, nav, sectionIcon, search, find, account, who, tools, openChat, placeholder, ui, device }: PaletteProps) {
+export default function Palette({ palette, setPalette, assistantName, ask, newCard, actions, runAction, services, SUGGESTIONS, setView, nav, sectionIcon, search, find, account, who, tools, openChat, placeholder, ui, device }: PaletteProps) {
   const [query, setQuery] = useState('');
   // a question is answered right here; approvals too. Only a longer conversation needs the chat.
   const [inline, setInline] = useState<{ text: string; n: number } | null>(null);
@@ -123,6 +125,7 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
   const going = (key: string) => ({ value: `go ${key}`, keywords: [key] });
   const best = (items: { value: string; keywords?: string[] }[]) => query.trim() ? Math.max(0, ...items.map(i => rank(i.value, query, i.keywords))) : 0;
   const pages = [{ key: 'Overview' }, ...nav, { key: label('wall') }];
+  const building = { value: 'new card', keywords: [label('newCard'), 'card', 'widget', 'make', 'build', 'add'] };
   // chat.commands: each answers right here, as if typed in the chat; what's typed after its name is its input
   const slashes = assistantName ? ui?.commands ?? [] : [], typed = query.trim();
   const slashing = (c: { name: string; description?: string }) => ({ value: `slash ${c.name}`, keywords: [`/${c.name}`, c.name, ...(c.description ? [c.description] : []), ...(typed.startsWith(`/${c.name} `) ? [typed] : [])] });
@@ -162,6 +165,10 @@ export default function Palette({ palette, setPalette, assistantName, ask, actio
       {search && <CommandItem value="search web" onSelect={web}><Globe className="text-muted-foreground" />Search the web for “{query}”</CommandItem>}</CommandGroup>],
     [best(SUGGESTIONS.map(value => ({ value }))), SUGGESTIONS.length > 0 && <CommandGroup key="suggest" heading="Suggestions">
       {SUGGESTIONS.map(s => <CommandItem key={s} value={s} onSelect={() => answer(s)}><CornerDownLeft className="text-muted-foreground" />{s}</CommandItem>)}
+    </CommandGroup>],
+    // a card described in words: the chat builds it, previews it and asks before saving
+    [best([building]), newCard && <CommandGroup key="build" heading="Make">
+      <CommandItem {...building} onSelect={() => newCard()}><Plus className="text-muted-foreground" />{label('newCard')}</CommandItem>
     </CommandGroup>],
     [best(slashes.map(slashing)), slashes.length > 0 && <CommandGroup key="slash" heading="Chat commands">
       {slashes.map(c => <CommandItem key={c.name} {...slashing(c)} onSelect={() => {

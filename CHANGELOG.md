@@ -5,6 +5,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- Make a card by describing it. Ask the chat for "a card of my Proxmox VMs over 80% memory" and the assistant writes a `type: api` card, shows it with real data, and saves it when you say so; ⌘K's **New card…** starts the sentence for you. Under it, the `api` card grew what that needs, and you can write it by hand too: expressions (`value: "=mem / maxmem|pct"`, `{=used / total|pct}` in a template, with comparisons, `and`/`or`/`not` and a few functions such as `contains`, `round` and `hours`), `where` and `sort` on lists, status rows and the new `table`, and `from: proxmox.guests` to make a card out of a card Valet already has, with no request and no keys. Expressions are read by Valet, never run as code, and read only the data's own fields. A card made with `from` is seen only by someone who may see its source, and the assistant reads it no more than the source; `config check` names a `from` that points nowhere or at another such card. The assistant's new `widget_sample` shows it a card to build from, only one it may read.
+
 ## [0.7.0] - 2026-11-14
 
 ### Added
