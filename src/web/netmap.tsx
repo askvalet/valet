@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { Empty } from './empty.tsx';
 import type { MapCard, MapKind, MapNode, ServiceState } from '../shared/cards.ts';
+import { stateNow } from '../shared/map.ts';
 
 const GLYPH: Record<MapKind, LucideIcon> = { internet: Globe, network: Network, host: Server, vm: Monitor, container: Box, service: AppWindow, device: Smartphone };
 const DOT: Record<ServiceState, string> = { up: 'dot-good', degraded: 'dot-warn', down: 'dot-bad', off: 'dot-off' };
@@ -49,7 +50,8 @@ function Mark({ n, className }: { n: MapNode; className?: string }) {
 
 /** One node you can point at: what it is and how it is on hover or focus, and its page on a tap. */
 function Node({ n, className, children }: { n: MapNode; className: string; children: ReactNode }) {
-  const said = [n.state ? SAY[n.state] : undefined, n.detail, n.address].filter(Boolean).join(' · ');
+  const st = stateNow(n), also = n.also && `container ${n.also.label}${n.also.state && n.also.state !== 'up' ? `, ${n.also.detail ?? SAY[n.also.state]}` : ''}`;
+  const how = [st ? SAY[st] : undefined, n.detail, also].filter(Boolean).join(' · '), said = [how, n.address].filter(Boolean).join(' · ');
   const label = `${n.label}${said ? `: ${said}` : ''}`;
   const el = n.href
     ? <a href={n.href} target="_blank" rel="noreferrer" className={cn(className, 'nm-link')} aria-label={label} data-id={n.id}>{children}</a>
@@ -60,14 +62,15 @@ function Node({ n, className, children }: { n: MapNode; className: string; child
       <TooltipTrigger asChild>{el}</TooltipTrigger>
       <TooltipContent side="top" sideOffset={6} className="max-w-72 text-left">
         <div className="font-medium">{n.label}</div>
-        {[n.state ? SAY[n.state] : undefined, n.detail].filter(Boolean).length > 0 && <div className="opacity-80">{[n.state ? SAY[n.state] : undefined, n.detail].filter(Boolean).join(' · ')}</div>}
+        {how && <div className="opacity-80">{how}</div>}
         {n.address && <div className="font-mono opacity-70">{n.address}</div>}
       </TooltipContent>
     </Tooltip>
   );
 }
 
-const Dot = ({ s }: { s?: ServiceState }) => s ? <span className={cn('dot', DOT[s])} /> : null;
+const nodeState = (n?: MapNode) => n && stateNow(n);
+const Dot = ({ n }: { n: MapNode }) => { const s = stateNow(n); return s ? <span className={cn('dot', DOT[s])} /> : null; };
 
 function Machine({ host, under, limit }: { host: MapNode; under: MapNode[]; limit: number }) {
   const [open, setOpen] = useState(false);
@@ -80,7 +83,7 @@ function Machine({ host, under, limit }: { host: MapNode; under: MapNode[]; limi
           <span className="block truncate text-item font-medium">{host.label}</span>
           {host.address && host.address !== host.label && <span className="block truncate text-meta tabular text-muted-foreground">{host.address}</span>}
         </span>
-        <Dot s={host.state} />
+        <Dot n={host} />
       </Node>
       {under.length > 0 && (
         <ul className="nm-spine">
@@ -89,7 +92,7 @@ function Machine({ host, under, limit }: { host: MapNode; under: MapNode[]; limi
               <Node n={n} className="nm-leaf">
                 <Mark n={n} />
                 <span className="min-w-0 flex-1 truncate text-body">{n.label}</span>
-                <Dot s={n.state} />
+                <Dot n={n} />
               </Node>
             </li>
           ))}
@@ -111,7 +114,7 @@ function Net({ net, tree, limit }: { net: MapNode; tree: Tree; limit: number }) 
       <Node n={net} className="nm-pill nm-net-pill">
         <Mark n={net} /><span className="truncate">{net.label}</span>
         {net.detail && <span className="nm-pill-note tabular">{net.detail}</span>}
-        <Dot s={net.state} />
+        <Dot n={net} />
       </Node>
       <div className="nm-hosts">
         {hosts.map(h => <Machine key={h.id} host={h} under={tree.kids.get(h.id) ?? []} limit={limit} />)}
@@ -155,8 +158,8 @@ export function NetMap({ card, dense = false, large = false }: { card: MapCard; 
     const top = el.querySelector('.nm-internet');
     for (const s of el.querySelectorAll<HTMLElement>('.nm-net')) {
       const pill = s.querySelector('.nm-net-pill'), heads = [...s.querySelectorAll('.nm-host')];
-      if (top && pill) next.push({ d: link(top, pill), tone: tree.byId.get(pill.getAttribute('data-id') ?? '')?.state });
-      if (pill) for (const h of heads) next.push({ d: link(pill, h), tone: tree.byId.get(h.getAttribute('data-id') ?? '')?.state });
+      if (top && pill) next.push({ d: link(top, pill), tone: nodeState(tree.byId.get(pill.getAttribute('data-id') ?? '')) });
+      if (pill) for (const h of heads) next.push({ d: link(pill, h), tone: nodeState(tree.byId.get(h.getAttribute('data-id') ?? '')) });
     }
     setLinks(l => JSON.stringify(l) === JSON.stringify(next) ? l : next);
   };
@@ -174,10 +177,10 @@ export function NetMap({ card, dense = false, large = false }: { card: MapCard; 
       {!wrapped && <svg className="nm-links" aria-hidden>{[...links].sort((a, b) => Number(b.tone === 'down') - Number(a.tone === 'down')).map((l, i) => <path key={i} d={l.d} className={cn(l.tone === 'down' && 'is-down')} />)}</svg>}
       {internet && (
         <div className="nm-top">
-          <Node n={internet} className="nm-pill nm-internet"><Mark n={internet} /><span>{internet.label}</span><Dot s={internet.state} /></Node>
+          <Node n={internet} className="nm-pill nm-internet"><Mark n={internet} /><span>{internet.label}</span><Dot n={internet} /></Node>
           {out.length > 0 && (
             <ul className="nm-out" aria-label="Out on the internet">
-              {out.map(n => <li key={n.id}><Node n={n} className="nm-chip"><Mark n={n} /><span className="truncate">{n.label}</span><Dot s={n.state} /></Node></li>)}
+              {out.map(n => <li key={n.id}><Node n={n} className="nm-chip"><Mark n={n} /><span className="truncate">{n.label}</span><Dot n={n} /></Node></li>)}
             </ul>
           )}
         </div>

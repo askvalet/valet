@@ -64,6 +64,9 @@ https://askvalet.dev.
   It gets every other integration's host and port (from its url options, or the one or two hosts an integration with none was
   seen to call), never a path, query, user or anything a secret covers, and what each widget last said from the hub. It asks
   no service anything; reading a widget that isn't on the page is `read()`, and the map does that at most once a minute.
+  Its nodes carry `from` (their integration), so the hub keeps one map and a profile gets it narrowed (`mapFor` in
+  `shared/map.ts`, by `View.knows`): in the event stream in main.ts, and through `scoped` in people.ts for `show` and the
+  tool, whose `run(args, who)` gets the viewer.
 - **Visuals are lazy**: registered in `VISUALS` in `cards.tsx` with `lazy(() => import(...))`, so a page without them
   never downloads them. A showcase card with no `items` hands the whole card to its visual.
 - **Backups are one shape** (`BackupJob` in `core.ts`, `src/server/backups.ts`). An integration reports its jobs through

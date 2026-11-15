@@ -54,7 +54,7 @@ export interface Tool<A = any> {
   input: z.ZodType<A>;
   /** `data` goes to the model (keep it compact); `card` is what the person sees in chat. `open`: an https link the answer
    *  is about, which a ⌘K command with `open` goes to (a meeting's join link). */
-  run(args: A): Promise<{ data: unknown; card?: Card; open?: string }>;
+  run(args: A, who?: Viewer): Promise<{ data: unknown; card?: Card; open?: string }>;
 }
 
 /** A plain command for ⌘K ("pause downloads", "pause ads {minutes} min"): it runs one of this instance's actions or tools
@@ -162,6 +162,10 @@ export interface Context {
    *  fetches a widget that isn't on the page. Undefined until the site is built, and in tests that don't set it. */
   lab?(): Peer[];
 }
+
+/** Who a tool answers, when it's someone with a profile (people.ts): only a tool about the homelab itself needs it, to
+ *  leave out the integrations they may not see. Left out, it's an owner, a rule or an MCP client: everything. */
+export interface Viewer { sees(integration: string): boolean }
 
 /** One other integration, as `ctx.lab()` sees it. */
 export interface Peer {

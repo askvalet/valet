@@ -311,7 +311,9 @@ export interface HeatmapCard extends Base { type: 'heatmap'; from: string; days:
  *  node's `id`; a node whose parent isn't there hangs from the top. `state` colours its dot as a status item's does (left out:
  *  not known, so no dot). `detail` is said on hover and focus, `address` is host:port only, never a path or a key. */
 export type MapKind = 'internet' | 'network' | 'host' | 'vm' | 'container' | 'service' | 'device';
-export interface MapNode { id: string; label: string; kind: MapKind; parent?: string; state?: ServiceState; detail?: string; address?: string; href?: string; icon?: string }
+export interface MapNode { id: string; label: string; kind: MapKind; parent?: string; state?: ServiceState; detail?: string; address?: string; href?: string; icon?: string; from?: string; also?: MapAlso }   // from: the integration it came from (its key), so a map can be narrowed to what someone may see; a machine without one is only known by what's on it
+/** A container that is the service it's folded into, said beside it, from its own integration. */
+export interface MapAlso { label: string; from?: string; state?: ServiceState; detail?: string }
 export interface MapCard extends Base { type: 'map'; nodes: MapNode[]; empty?: string }
 
 export type Card = MapCard | RaceCard | HeatmapCard | CamerasCard | ThermostatCard | CalendarCard | EmbedCard | RankedCard | CodeCard | TableCard | LinksCard | ArticleCard | ScheduleCard | PhotosCard | ForecastCard | ShowcaseCard | StatsCard | ListCard | MediaCard | ShelfCard | StatusCard | ChartCard | ControlsCard | KVCard | TextCard | GroupCard;

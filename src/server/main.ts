@@ -9,6 +9,7 @@ import { streamSSE } from 'hono/streaming';
 import { bodyLimit } from 'hono/body-limit';
 import { accounts, clientIp, sameOrigin, setupAuth, setupWall, userCommand } from './auth.ts';
 import { noOwner, viaOwner, viewOf, type View } from './people.ts';
+import { narrowMaps } from '../shared/map.ts';
 import { judge, Presses, viewsFor, wallMayPress, wallReads, wallTokens, wallView, widgetsOf, type Mind, type WallView } from './wall.ts';
 import type { WidgetState } from '../shared/cards.ts';
 import { loadConfig, startConfig, validZone, type Config } from './config.ts';
@@ -371,6 +372,8 @@ app.get('/api/events', c => isWall(c) && !screenOf(c) ? c.json({ error: 'not sig
   const wall = isWall(c), config = site.config, v = wall ? viewOf(site) : viewFor(c), view = wall || c.req.query('wall') !== undefined ? screenOf(c) : undefined;
   const heard = (s: WidgetState) => wall ? wallReads(config, s, view) : v.sees(s.key);
   const told = (n: { key?: string; owner?: true }) => !wall && (v.owner || (!n.owner && !!n.key && v.sees(n.key)));
+  // the hub keeps one map for everyone; someone with a profile is sent it narrowed to the integrations on their tabs
+  const theirs = (s: WidgetState): WidgetState => v.owner || wall || s.card?.type !== 'map' ? s : { ...s, card: narrowMaps(s.card, v.knows) };
   // a wall whose pages wait on a `when` is told which may show, as that changes: on any card's news, and every few
   // seconds for the clock and for what has to last before it counts. Which pages, never why.
   let look = !!view?.pages.some(p => p.when), shown = '', last = Date.now();
@@ -380,8 +383,8 @@ app.get('/api/events', c => isWall(c) && !screenOf(c) ? c.json({ error: 'not sig
   const queue = new Map<string, string>();
   let wake: (() => void) | null = null, reloaded = false;
   const notices: string[] = recent.filter(n => told(n) && Date.now() - n.at < 60_000).map(n => redact(JSON.stringify(n)));
-  const off = hub.subscribe(s => { if (judged) { look = true; wake?.(); } if (!heard(s)) return; queue.delete(s.key); queue.set(s.key, redact(JSON.stringify(s))); wake?.(); });
-  for (const s of hub.snapshot()) if (heard(s) && !queue.has(s.key)) queue.set(s.key, redact(JSON.stringify(s)));
+  const off = hub.subscribe(s => { if (judged) { look = true; wake?.(); } if (!heard(s)) return; queue.delete(s.key); queue.set(s.key, redact(JSON.stringify(theirs(s)))); wake?.(); });
+  for (const s of hub.snapshot()) if (heard(s) && !queue.has(s.key)) queue.set(s.key, redact(JSON.stringify(theirs(s))));
   // a page too slow to take them keeps the newest few, like its widgets: a busy hook can't grow its queue
   const tell = (n: { at: number; key?: string; owner?: true }) => { if (!told(n)) return; notices.push(redact(JSON.stringify(n))); if (notices.length > 20) notices.shift(); wake?.(); };
   const onReload = () => { reloaded = true; wake?.(); };

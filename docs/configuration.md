@@ -1106,8 +1106,10 @@ query, a user or a key, and an address from a secret is left out.
 
 Widget: `network.map`, as a tile "3 hosts" with what's down under it. On a phone, or wherever its machines don't fit side by
 side, each network becomes a heading over a grid of them; a long list folds into "+12 containers". The assistant gets
-`network_map` (read): "what runs on the server?". Anyone who can see the map sees every machine and service on it, so leave
-it off a profile's page if they shouldn't.
+`network_map` (read): "what runs on the server?". Someone with a [profile](#profiles-and-users) gets the map, its tile and the tool's
+answer narrowed to the integrations on their tabs: their services, the containers and VMs of a `docker`, `machines`, `host` or
+`proxmox` they can see, and only the machines and networks those are on. A machine's dot and the headline are worked out
+again from what's left, so nothing they can't see shows through. Owners, and a Valet with no sign-in, see everything.
 
 ### Any JSON API: `type: api`
 

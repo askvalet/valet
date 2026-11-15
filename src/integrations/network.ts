@@ -4,7 +4,8 @@
 // machine's own services come from the docker, machines, host and Proxmox integrations where there are some.
 import { z } from 'zod';
 import { defineIntegration, type Address, type Peer } from '../server/core.ts';
-import { stateOf, type Card, type ListItem, type MapCard, type MapKind, type MapNode, type ServiceState, type StatusItem, type Summary, type Tone } from '../shared/cards.ts';
+import { stateOf, type Card, type ListItem, type MapCard, type MapKind, type MapNode, type ServiceState, type StatusItem } from '../shared/cards.ts';
+import { mapFor, settle, stateNow } from '../shared/map.ts';
 
 export interface NetworkOptions { title: string; names: Record<string, string>; containers: boolean; hide: string[] }
 
@@ -40,7 +41,7 @@ const short = (host: string) => ipv4(host) || host.includes(':') ? host : host.r
 const before = (s: string) => s.split(' · ')[0];
 const SOURCES = new Set(['docker', 'machines', 'host', 'proxmox']);
 
-interface HostRec { id: string; label: string; net: string; addresses: Set<string>; here: boolean; state?: ServiceState; detail?: string; icon?: string; machine?: boolean }
+interface HostRec { id: string; label: string; net: string; addresses: Set<string>; here: boolean; state?: ServiceState; detail?: string; icon?: string; machine?: boolean; from?: string }
 
 /** The map, from the other integrations as `ctx.lab()` sees them. Pure: the cards it reads are handed in with the peers. */
 export function mapFrom(peers: Peer[], o: NetworkOptions, cards: (p: Peer, widget: string) => Card | undefined = (p, w) => p.widgets.find(x => x.name === w)?.card): MapCard {
@@ -49,12 +50,12 @@ export function mapFrom(peers: Peer[], o: NetworkOptions, cards: (p: Peer, widge
   const names = new Map(Object.entries(o.names).map(([k, v]) => [k.toLowerCase(), v]));
 
   // machines knows its machines by name: an address of theirs is that machine
-  const machineAt = new Map<string, { name: string; state?: ServiceState; detail?: string; icon?: string }>();
+  const machineAt = new Map<string, { name: string; state?: ServiceState; detail?: string; icon?: string; from: string }>();
   for (const p of live.filter(p => p.type === 'machines')) {
     const fleet = cards(p, 'fleet');
     for (const a of p.addresses.filter(a => /^hosts\.[^.]+\.url$/.test(a.field))) {
       const name = a.label ?? a.field.split('.')[1], item = fleet?.type === 'status' ? fleet.items.find(i => i.name === name) : undefined;
-      machineAt.set(HERE.test(a.host) ? 'here' : a.host, { name, state: item ? stateOf(item) : undefined, detail: item?.detail, icon: item?.icon });
+      machineAt.set(HERE.test(a.host) ? 'here' : a.host, { name, state: item ? stateOf(item) : undefined, detail: item?.detail, icon: item?.icon, from: p.id });
     }
   }
   // the machine Valet runs on by any of its names; a bare name is a container beside it unless something calls it a machine
@@ -84,7 +85,7 @@ export function mapFrom(peers: Peer[], o: NetworkOptions, cards: (p: Peer, widge
     if (key === 'here') h.here = true;
     // not 172.17.0.1 or a container's name: those are only how Valet's containers reach it
     if (key !== 'here' && (ipv4(a.host) || /[.:]/.test(a.host))) h.addresses.add(a.host);
-    if (m) { h.machine = true; h.state = m.state; h.detail = m.detail; h.icon = m.icon; }
+    if (m) { h.machine = true; h.state = m.state; h.detail = m.detail; h.icon = m.icon; h.from = m.from; }
     return h;
   }
 
@@ -106,16 +107,16 @@ export function mapFrom(peers: Peer[], o: NetworkOptions, cards: (p: Peer, widge
       for (const a of each) {
         const item = status.find(i => i.name === a.label);
         if (!shown(a.label)) continue;
-        leaf({ id: `svc:${p.id}:${slug(a.label!)}`, label: a.label!, kind: 'service', address: at(a), icon: item?.icon ?? icon, href: item?.href && /^https?:/.test(item.href) ? item.href : undefined,
+        leaf({ id: `svc:${p.id}:${slug(a.label!)}`, label: a.label!, kind: 'service', from: p.id, address: at(a), icon: item?.icon ?? icon, href: item?.href && /^https?:/.test(item.href) ? item.href : undefined,
           state: item ? stateOf(item) : failing ? 'down' : undefined, detail: item?.detail ?? (failing ? `can't be reached: ${failing.error}` : undefined) }, hostOf(a));
       }
       continue;
     }
     const h = hostOf(first);
     // the machine's own agent: its services hang from the machine below, and when it can't be reached nor can the machine
-    if (p.type === 'host') { if (h && failing) { h.state = 'down'; h.detail = `its agent can't be reached: ${failing.error}`; } continue; }
+    if (p.type === 'host') { if (h) { h.from = p.id; if (failing) { h.state = 'down'; h.detail = `its agent can't be reached: ${failing.error}`; } } continue; }
     // a custom API is called what its card is called; two of one kind by their keys
-    leaf({ id: `svc:${p.id}`, label: p.type === 'api' ? [card?.title, p.widgets[0]?.title].find(t => t && t !== 'API') ?? p.id : sameType(live, p) ? p.id : p.name, kind: 'service', address: first.seen ? first.host : at(first), icon, href, state,
+    leaf({ id: `svc:${p.id}`, label: p.type === 'api' ? [card?.title, p.widgets[0]?.title].find(t => t && t !== 'API') ?? p.id : sameType(live, p) ? p.id : p.name, kind: 'service', from: p.id, address: first.seen ? first.host : at(first), icon, href, state,
       detail: failing ? `can't be reached: ${failing.error}` : !placed.length ? 'not on the page, so not checked' : undefined }, h);
   }
 
@@ -127,7 +128,7 @@ export function mapFrom(peers: Peer[], o: NetworkOptions, cards: (p: Peer, widge
       for (const i of items) {
         const h = where(i), name = before(i.name);
         if (!h || !shown(name)) continue;
-        leaves.push({ id: `${kind}:${h.id}:${tag}:${slug(name)}`, label: name, kind, parent: h.id, state: stateOf(i), detail: i.detail, icon: i.icon });
+        leaves.push({ id: `${kind}:${h.id}:${tag}:${slug(name)}`, label: name, kind, parent: h.id, from: p.id, state: stateOf(i), detail: i.detail, icon: i.icon });
       }
     };
     const status = (w: string) => { const c = cards(p, w); return c?.type === 'status' ? c.items : []; };
@@ -139,7 +140,7 @@ export function mapFrom(peers: Peer[], o: NetworkOptions, cards: (p: Peer, widge
       for (const r of g?.type === 'list' ? g.items : []) {
         const kind = r.id?.startsWith('qemu/') ? 'vm' : r.id?.startsWith('lxc/') ? 'container' : undefined;
         if (!kind || !shown(r.title)) continue;
-        leaves.push({ id: `${kind}:${home.id}:${r.id}`, label: r.title, kind, parent: home.id, state: guestState(r), detail: [r.subtitle, r.section && `on ${r.section}`].filter(Boolean).join(' · ') || undefined });
+        leaves.push({ id: `${kind}:${home.id}:${r.id}`, label: r.title, kind, parent: home.id, from: p.id, state: guestState(r), detail: [r.subtitle, r.section && `on ${r.section}`].filter(Boolean).join(' · ') || undefined });
       }
     }
   }
@@ -148,57 +149,39 @@ export function mapFrom(peers: Peer[], o: NetworkOptions, cards: (p: Peer, widge
   const kept: MapNode[] = [];
   for (const n of leaves) {
     const twin = n.kind === 'container' && leaves.find(s => s.kind === 'service' && s.parent === n.parent && s.id.startsWith('svc:') && [slug(s.label), slug(s.id.split(':')[1])].some(k => k === slug(n.label.replace(/[-_](server|app|web)$/i, ''))));
-    if (twin) { twin.detail = [twin.detail, `container ${n.label}${n.state && n.state !== 'up' ? `, ${n.detail ?? n.state}` : ''}`].filter(Boolean).join(' · '); if (n.state === 'down' && twin.state === 'up') twin.state = 'degraded'; continue; }
+    // kept beside it rather than mixed in, so someone who may not see where the container came from doesn't learn it
+    if (twin) { twin.also = { label: n.label, from: n.from, state: n.state, detail: n.detail }; continue; }
     if (!kept.some(k => k.id === n.id)) kept.push(n);
-  }
-
-  // a machine nothing on answers is down, as far as Valet can tell; one with something answering is up
-  for (const h of hosts.values()) {
-    const under = kept.filter(n => n.parent === h.id && n.state && n.state !== 'off');
-    if (!h.state && under.length) h.state = under.every(n => n.state === 'down') ? 'down' : 'up';
-    if (!h.detail && h.state === 'down' && !h.machine) h.detail = 'nothing on it answers';
   }
 
   const netIds = [...new Set([...hosts.values()].map(h => h.net))];
   const lans = netIds.filter(n => n !== 'tailnet');
   const netNode = (n: string): MapNode => n === 'tailnet' ? { id: 'net:tailnet', label: names.get('tailnet') ?? 'Tailscale', kind: 'network', parent: 'internet', icon: '/api/icon/tailscale' }
     : { id: `net:${n}`, label: names.get(`${n}.0/24`) ?? (lans.length > 1 && n !== 'lan' ? `${n}.0/24` : 'Local network'), kind: 'network', parent: 'internet', detail: n === 'lan' ? undefined : `${n}.0/24` };
-  const answered = publics.filter(n => n.state === 'up').length;
-  nodes.push({ id: 'internet', label: 'Internet', kind: 'internet', state: publics.some(n => n.state) ? answered ? 'up' : 'down' : undefined, detail: publics.length ? `${publics.length} service${publics.length === 1 ? '' : 's'} out there` : undefined });
+  nodes.push({ id: 'internet', label: 'Internet', kind: 'internet' });
   for (const n of netIds.sort((a, b) => Number(a === 'tailnet') - Number(b === 'tailnet') || a.localeCompare(b, undefined, { numeric: true }))) nodes.push(netNode(n));
   const order = [...hosts.values()].sort((a, b) => Number(b.here) - Number(a.here) || kept.filter(n => n.parent === b.id).length - kept.filter(n => n.parent === a.id).length || a.label.localeCompare(b.label));
-  for (const h of order) nodes.push({ id: h.id, label: h.label, kind: 'host', parent: `net:${h.net}`, state: h.state, icon: h.icon,
+  for (const h of order) nodes.push({ id: h.id, label: h.label, kind: 'host', parent: `net:${h.net}`, from: h.from, state: h.state, icon: h.icon,
     detail: [h.here ? 'Valet runs here' : undefined, h.detail].filter(Boolean).join(' · ') || undefined, address: [...h.addresses].slice(0, 3).join(', ') || undefined });
-  const rank = (n: MapNode) => (n.state === 'down' ? 0 : n.state === 'degraded' ? 1 : 2) * 10 + ({ service: 0, vm: 1, container: 2, device: 3 } as Record<string, number>)[n.kind];
+  const rank = (n: MapNode) => (stateNow(n) === 'down' ? 0 : stateNow(n) === 'degraded' ? 1 : 2) * 10 + ({ service: 0, vm: 1, container: 2, device: 3 } as Record<string, number>)[n.kind];
   nodes.push(...publics, ...kept.sort((a, b) => rank(a) - rank(b) || a.label.localeCompare(b.label)));
 
-  return { type: 'map', title: o.title, icon: 'wifi', nodes, empty: 'No integration here names an address yet', summary: summaryOf(o.title, nodes) };
+  // the machines' and the internet's own dots, and the headline, are worked out from what's on them: again after narrowing
+  return settle({ type: 'map', title: o.title, icon: 'wifi', nodes, empty: 'No integration here names an address yet' });
 }
 
 const sameType = (peers: Peer[], p: Peer) => peers.filter(x => x.type === p.type).length > 1;
 const guestState = (r: ListItem): ServiceState => r.dot === 'bad' ? 'down' : r.dot === 'warn' ? 'degraded' : /stopped/.test(r.subtitle ?? '') ? 'off' : 'up';
 
-/** "3 hosts", and what's down under it. A tile has a bar for each machine, coloured by the worst thing on it. */
-export function summaryOf(label: string, nodes: MapNode[]): Summary {
-  // a machine that's down because everything on it is says nothing new: what's on it is already counted
-  const hosts = nodes.filter(n => n.kind === 'host'), down = nodes.filter(n => n.state === 'down' && n.kind !== 'network' && n.kind !== 'internet' && !(n.kind === 'host' && nodes.some(c => c.parent === n.id && c.state === 'down')));
-  const worst = (h: MapNode): Tone | undefined => {
-    const under = [h, ...nodes.filter(n => n.parent === h.id)];
-    return under.some(n => n.state === 'down') ? 'bad' : under.some(n => n.state === 'degraded') ? 'warn' : under.some(n => n.state === 'up') ? 'good' : undefined;
-  };
-  return { label, icon: 'wifi', value: `${hosts.length} host${hosts.length === 1 ? '' : 's'}`,
-    sub: down.length ? `${down.length} down: ${down.slice(0, 3).map(n => n.label).join(', ')}` : nodes.some(n => n.state) ? 'all answering' : undefined,
-    tone: down.length ? 'bad' : 'good', marks: hosts.slice(0, 12).map(h => ({ pct: 1, tone: worst(h), label: h.label })) };
-}
-
 /** The map in a few lines for the model: each machine, where it is, and what runs on it, trouble said in words. */
 export function told(card: MapCard, only?: string) {
   const kids = (id: string) => card.nodes.filter(n => n.parent === id);
-  const say = (n: MapNode) => [n.label, n.kind === 'service' ? undefined : n.kind, n.address, n.state && n.state !== 'up' ? `${n.state}${n.detail ? `: ${n.detail}` : ''}` : undefined].filter(Boolean).join(', ');
+  const say = (n: MapNode) => { const st = stateNow(n); return [n.label, n.kind === 'service' ? undefined : n.kind, n.address, st && st !== 'up' ? `${st}${n.detail ? `: ${n.detail}` : ''}` : undefined,
+    n.also ? `container ${n.also.label}${n.also.state && n.also.state !== 'up' ? ` ${n.also.state}` : ''}` : undefined].filter(Boolean).join(', '); };
   const q = only?.toLowerCase();
   const hosts = card.nodes.filter(n => n.kind === 'host' && (!q || n.label.toLowerCase().includes(q) || n.address?.toLowerCase().includes(q) || kids(n.id).some(k => k.label.toLowerCase().includes(q))));
   return {
-    machines: hosts.map(h => ({ machine: h.label, network: card.nodes.find(n => n.id === h.parent)?.label, address: h.address, state: h.state ?? 'not known', note: h.detail, runs: kids(h.id).map(say) })),
+    machines: hosts.map(h => ({ machine: h.label, network: card.nodes.find(n => n.id === h.parent)?.label, address: h.address, state: stateNow(h) ?? 'not known', note: h.detail, runs: kids(h.id).map(say) })),
     ...(q ? {} : { internet: kids('internet').filter(n => n.kind !== 'network').map(say) }),
   };
 }
@@ -233,8 +216,9 @@ export default defineIntegration({
           label: 'Looked at the network', access: 'read', followUps: ['Is anything down?'],
           description: 'What runs where in the homelab: each machine, its network and address, and the services, containers and VMs on it, with whether each is answering. Use for "what runs on the server?", "where is Sonarr?", "what\'s on 192.168.1.20?". Only host and port are known, never paths or keys.',
           input: z.object({ host: z.string().max(100).optional().describe('one machine, by name or address, or something that runs on it') }),
-          async run({ host }) {
-            const card = await build(), data = told(card, host);
+          // someone with a profile is told only of the integrations on their tabs, as their page shows them
+          async run({ host }, who) {
+            const all = await build(), card = who ? mapFor(all, who.sees) : all, data = told(card, host);
             // asked about one machine, the card shows that one, on its network, with what runs on it
             const picked = card.nodes.filter(n => n.kind === 'host' && data.machines.some(m => m.machine === n.label));
             const ids = new Set(picked.map(h => h.id)), nets = new Set(picked.map(h => h.parent));

@@ -2,7 +2,8 @@
 // containers and VMs under the machine they're on, and nothing of a URL but its host and port ever reaching the card.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import network, { mapFrom, summaryOf, told, whereIs } from '../src/integrations/network.ts';
+import network, { mapFrom, told, whereIs } from '../src/integrations/network.ts';
+import { mapFor, summaryOf } from '../src/shared/map.ts';
 import { addressesOf, addressOf } from '../src/server/lab.ts';
 import { session, type Peer, type PeerWidget } from '../src/server/core.ts';
 import { redactor } from '../src/server/security.ts';
@@ -138,7 +139,8 @@ test('containers and VMs hang from the machine they run on, and a container that
   assert.equal(node(card, 'redis')?.state, 'down');
   // plex the container is Plex the service: one node, which says so
   assert.equal(card.nodes.filter(n => n.label.toLowerCase() === 'plex').length, 1);
-  assert.match(node(card, 'Plex')!.detail!, /container plex/);
+  assert.equal(node(card, 'Plex')!.also?.label, 'plex');
+  assert.equal(node(card, 'Plex')!.also?.from, 'docker');
   // a machine's containers are under that machine, which is down because its agent says so
   assert.equal(parentOf(card, 'immich')?.label, 'nas');
   assert.equal(parentOf(card, 'paperless')?.label, 'nas');
@@ -201,4 +203,76 @@ test('the map card: its schema refuses a repeated id or an unknown kind', () => 
   assert.equal(checkCard({ type: 'map', nodes }).success, false);
   assert.equal(checkCard({ type: 'map', nodes: [{ id: 'a', label: 'A', kind: 'router' }] }).success, false);
   assert.equal(checkCard({ type: 'map', nodes: [{ id: 'a', label: 'A', kind: 'host', state: 'up', address: '10.0.0.1' }] }).success, true);
+});
+
+// ── per person: a profile gets only the integrations on its tabs, from the one card the hub keeps
+
+const lab = () => {
+  const status = (items: { name: string; ok: boolean; group?: string; detail?: string }[]): Card => ({ type: 'status', items });
+  return [
+    peer('plex', 'plex', 'http://192.168.9.20:32400', [widget('now', { error: 'timed out' })], 'Plex'),
+    peer('sonarr', 'sonarr', 'http://192.168.9.20:8989', undefined, 'Sonarr'),
+    peer('ha', 'homeassistant', 'http://192.168.9.40:8123', undefined, 'Home Assistant'),
+    peer('weather', 'weather', 'https://api.weather.example', undefined, 'Weather'),
+    peer('docker', 'docker', 'http://192.168.9.20:2375', [widget('containers', { card: status([{ name: 'sonarr', ok: false, detail: 'exited (1)' }, { name: 'redis', ok: true }]) })], 'Docker'),
+    { ...peer('boxes', 'machines', [], [widget('fleet', { card: { type: 'status', items: [{ name: 'Pi', ok: true }] } })], 'Machines'), addresses: [{ host: '192.168.9.40', port: 7576, field: 'hosts.pi.url', label: 'Pi' }] },
+    peer('vpn', 'tailscale', 'http://100.100.1.2:80', undefined, 'Tailscale box'),
+  ];
+};
+
+test('a profile that sees one service gets that service, its machine and network, and nothing that names the rest', () => {
+  const all = mapFrom(lab(), opts({ names: { '192.168.9.20': 'Server' } }));
+  const theirs = mapFor(all, id => id === 'sonarr');
+  valid(theirs);
+  const text = JSON.stringify(theirs);
+  for (const gone of ['Plex', '32400', 'Home Assistant', '8123', 'Weather', 'redis', 'Pi', '192.168.9.40', 'Tailscale', 'docker', 'out there', 'timed out']) assert.ok(!text.includes(gone), `leaked ${gone}`);
+  assert.deepEqual(theirs.nodes.map(n => n.label), ['Internet', 'Local network', 'Server', 'Sonarr']);
+  // the container sonarr is Docker's, which they can't see: Sonarr's own dot, with no word of it
+  assert.equal(node(theirs, 'Sonarr')?.also, undefined);
+  assert.equal(node(theirs, 'Sonarr')?.state, 'up');
+  // the machine is worked out again from what's left: up, because Sonarr answers, though Plex on it doesn't
+  assert.equal(node(theirs, 'Server')?.state, 'up');
+  assert.equal(node(theirs, 'Internet')?.state, undefined);
+  assert.deepEqual([theirs.summary?.value, theirs.summary?.sub, theirs.summary?.tone], ['1 host', 'all answering', 'good']);
+  // the owner's is the whole map: Plex down, Sonarr unwell for its container
+  assert.equal(all.summary?.tone, 'bad');
+  assert.equal(node(all, 'Sonarr')?.also?.state, 'down');
+  // a machine they may see the source of stays even with nothing of theirs on it, with its own state
+  const pi = mapFor(all, id => id === 'boxes');
+  assert.deepEqual(pi.nodes.filter(n => n.kind === 'host').map(h => [h.label, h.state]), [['Pi', 'up']]);
+  // an owner (and an install with no sign-in) sees it all
+  assert.deepEqual(mapFor(all, () => true).nodes.map(n => n.id), all.nodes.map(n => n.id));
+});
+
+test('the view: an owner knows every integration, a profile only those with a widget on its tabs', async () => {
+  const { viewOf } = await import('../src/server/people.ts');
+  const config = parseConfig(`
+integrations:
+  sonarr: { type: api, url: "http://192.168.9.20:8989/q", title: Sonarr, stats: [{ label: Queue, value: total }] }
+  plex: { type: api, url: "http://192.168.9.20:32400/q", title: Plex, stats: [{ label: Streams, value: total }] }
+  net: { type: network }
+assistant: { model: m, access: { default: read } }
+profiles:
+  kid: { tabs: [Kid], assistant: { access: { default: read, net: read } } }
+users: { sam: kid }
+layout:
+  - title: Kid
+    widgets: [sonarr.data, net.map]
+  - title: Grown-ups
+    widgets: [plex.data, net.map]
+`);
+  const { instances, placed, lab: parts } = check(config, registry);
+  const site = { config, instances, placed };
+  parts.hub = { snapshot: () => [{ key: 'sonarr.data', card: { type: 'text', text: 'x' }, at: 1 }, { key: 'plex.data', error: 'timed out', at: 1 }], widget: (k: string) => ['sonarr.data', 'plex.data', 'net.map'].includes(k) || undefined };
+  const owner = viewOf(site), kid = viewOf(site, 'sam');
+  assert.ok(owner.knows('plex') && kid.knows('sonarr') && kid.knows('net') && !kid.knows('plex'));
+  // the widget, as the chat's `show` draws it for them, and the tool, words and card alike
+  const shown = await kid.instances.get('net')!.widgets.map.fetch() as MapCard;
+  assert.ok(node(shown, 'Sonarr') && !node(shown, 'Plex'));
+  const out = await kid.instances.get('net')!.tools!.network_map.run({});
+  assert.ok(!JSON.stringify(out).includes('Plex') && !JSON.stringify(out).includes('32400'), 'the tool told them of Plex');
+  assert.ok(JSON.stringify(out.data).includes('Sonarr'));
+  const full = await owner.instances.get('net')!.tools!.network_map.run({});
+  assert.ok(JSON.stringify(full.data).includes('Plex'));
+  assert.equal(node(full.card as MapCard, 'Plex')?.state, 'down');
 });

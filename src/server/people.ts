@@ -7,7 +7,8 @@
 import type { Activity } from './activity.ts';
 import { type Asks, hashOf } from './asks.ts';
 import type { Config } from './config.ts';
-import type { Instance, Tool } from './core.ts';
+import type { Instance, Tool, Viewer } from './core.ts';
+import { narrowMaps } from '../shared/map.ts';
 import type { Message } from './notify.ts';
 import { accessOf, rank, toolAccess } from './run.ts';
 
@@ -26,6 +27,8 @@ export interface View {
   name?: string; profile?: string;
   /** a widget, by key */
   sees(key: string): boolean;
+  /** an integration, by its key: one with a widget they see. A map of the homelab shows them only these (shared/map.ts) */
+  knows(integration: string): boolean;
   /** a tab, by name as in layout */
   tab(name?: string): boolean;
   /** a page action */
@@ -65,12 +68,25 @@ function narrowed(a: NonNullable<Config['assistant']>, mine: Record<string, Leve
   return out;
 }
 
+/** An integration that draws the homelab itself (a widget that's a map), as someone with a profile gets it: its maps
+ *  narrowed to the integrations on their tabs, and its tools told who's asking so their words are narrowed too. Anything
+ *  else is handed over as it is. The hub's card stays one, shared; main.ts narrows it on the way to each page. */
+function scoped(inst: Instance, who: Viewer): Instance {
+  if (!Object.values(inst.widgets).some(w => w.card === 'map')) return inst;
+  const may = (id: string) => who.sees(id);
+  return {
+    ...inst,
+    widgets: Object.fromEntries(Object.entries(inst.widgets).map(([k, w]) => [k, { ...w, fetch: async () => narrowMaps(await w.fetch(), may)! }])),
+    tools: inst.tools && Object.fromEntries(Object.entries(inst.tools).map(([k, t]) => [k, { ...t, run: async (args: unknown) => { const out = await t.run(args, who); return { ...out, card: narrowMaps(out.card, may) }; } } as Tool])),
+  };
+}
+
 const built = new WeakMap<Map<string, Instance>, Map<string, View>>();
 
 /** The view for one account on one site. Asked on every request; a profile's is built once per site. */
 export function viewOf(site: SiteLike, name?: string): View {
   const id = profileOf(site.config, name);
-  if (id === undefined) return { owner: true, name, sees: () => true, tab: () => true, presses: () => true, config: site.config, instances: site.instances, approve: 'self' };
+  if (id === undefined) return { owner: true, name, sees: () => true, knows: () => true, tab: () => true, presses: () => true, config: site.config, instances: site.instances, approve: 'self' };
   let views = built.get(site.instances);
   if (!views) built.set(site.instances, views = new Map());
   let view = views.get(id);
@@ -89,11 +105,11 @@ function member({ config, instances, placed }: SiteLike, id: string): View {
   const assistant = a && mine ? { ...a, access: narrowed(a, mine.access, instances, onTabs), suggestions: mine.suggestions, models: [], agent: undefined, telegram: undefined,
     instructions: [a.instructions, mine.instructions].filter(Boolean).join('\n') || undefined } : undefined;
   return {
-    owner: false, profile: id, sees, tab,
+    owner: false, profile: id, sees, knows: onTabs, tab,
     presses: (inst, action) => !OWN.has(inst) && acts.has(`${inst}.${action}`),
     // no assistant: nothing of the chat's is theirs, so nothing is searched either; an owner's commands and MCP servers stay the owner's
     config: { ...config, assistant, find: assistant ? config.find : false, chat: { ...config.chat, commands: {} }, mcp: {} },
-    instances: new Map([...instances].filter(([i]) => i !== 'config' && i !== 'pins')),
+    instances: new Map([...instances].filter(([i]) => i !== 'config' && i !== 'pins').map(([i, inst]) => [i, scoped(inst, { sees: onTabs })])),
     approve: mine?.approve ?? 'owner',
   };
 }
