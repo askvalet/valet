@@ -169,7 +169,7 @@ commands: [
 
 Matching ignores case, punctuation, word order, plurals and filler words ("the", "all", "please", "turn"), and a few words mean the same: off and disable, on and enable, pause and stop, resume, start and continue, min and minutes. Nothing else is guessed, so write the variants out. Two commands with the same words are both shown, and neither runs until one is picked.
 
-`{text}` takes whatever is typed in its place, as it was typed, and goes into the input as `text`. In a phrase with `{text}` the words before it must come first and the words after it last ("add {text} to {name}"), the phrase needs words before it so a sentence that's only text is never a command, and there are no number slots. While someone is still typing, the palette offers the command with the words so far, and Enter runs it only once it's said in full. Point it at an action whose schema limits the words, as the add line does.
+`{text}` takes whatever is typed in its place, as it was typed, and goes into the input as `text`. In a phrase with `{text}` the words before it must come first and the words after it last (`add {text} to {name}`), the phrase needs words before it so a sentence that's only text is never a command, and there are no number slots. While someone is still typing, the palette offers the command with the words so far, and Enter runs it only once it's said in full. Point it at an action whose schema limits the words, as the add line does.
 
 `commands` can be a function, asked each time the palette opens. Home Assistant uses that to name every light it may control.
 
