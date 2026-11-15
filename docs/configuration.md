@@ -1105,7 +1105,7 @@ says which machine it's on, and the dots are what the page's widgets last said, 
 integrations:
   network:
     type: network
-    names: { 192.168.1.20: Server, localhost: Server, 192.168.1.40: Pi, example.com: Server }   # two addresses with one name are one machine
+    names: { 10.0.0.20: Server, localhost: Server, 10.0.0.40: Pi, example.com: Server }   # two addresses with one name are one machine
     hide: [printer]
 ```
 

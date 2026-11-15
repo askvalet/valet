@@ -4,6 +4,8 @@ import starlight from '@astrojs/starlight';
 import { defineConfig } from 'astro/config';
 import { existsSync, readFileSync } from 'node:fs';
 import starlightLinksValidator from 'starlight-links-validator';
+import starlightLlmsTxt from 'starlight-llms-txt';
+import starlightPageActions from 'starlight-page-actions';
 import { fileURLToPath } from 'node:url';
 
 const base = process.env.BASE_PATH ?? '/';
@@ -36,7 +38,13 @@ export default defineConfig({
     expressiveCode: { themes: ['github-dark-default', 'github-light-default'], styleOverrides: { borderRadius: '0.75rem', frames: { shadowColor: 'transparent', editorActiveTabIndicatorTopColor: 'transparent', terminalTitlebarDotsOpacity: '0.4' } } },
     pagination: true,
     tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
-    plugins: process.env.NO_LINK_CHECK ? [] : [starlightLinksValidator({ errorOnRelativeLinks: false, errorOnFallbackPages: false, errorOnInvalidHashes: true })],
+    // for agents: /llms.txt, /llms-full.txt and /llms-small.txt, and on every page a Markdown copy (page.md) with a button
+    // to copy it or open it in a chat. No share menu, and llms.txt comes from the plugin made for it.
+    plugins: [
+      starlightLlmsTxt({ projectName: 'Valet', description: 'Valet is a self-hosted, open-source, AI-native homepage for a homelab: live cards for its services, an assistant that can act on them with approval, and a wall display. Configured in one config.yaml; runs in Docker.' }),
+      starlightPageActions({ actions: { chatgpt: true, claude: true, markdown: true }, share: false }),
+      ...(process.env.NO_LINK_CHECK ? [] : [starlightLinksValidator({ errorOnRelativeLinks: false, errorOnFallbackPages: false, errorOnInvalidHashes: true })]),
+    ],
     sidebar: [
       { label: 'Get started', items: [{ label: 'Introduction', link: '/' }, { autogenerate: { directory: 'start' } }] },
       { label: 'Concepts', items: [{ autogenerate: { directory: 'concepts' } }] },

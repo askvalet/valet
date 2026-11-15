@@ -190,7 +190,7 @@ export default defineIntegration({
   name: 'Network',
   config: z.object({
     title: z.string().default('Network'),                  // the card's title
-    names: z.record(z.string(), z.string()).default({}),   // what to call a machine, by its address: { 192.168.1.20: Server }. Two addresses given one name are one machine; localhost names the one Valet runs on, and a domain its subdomains (example.com: Desktop for the services behind its reverse proxy)
+    names: z.record(z.string(), z.string()).default({}),   // what to call a machine, by its address: { 10.0.0.20: Server }. Two addresses given one name are one machine; localhost names the one Valet runs on, and a domain its subdomains (example.com: Desktop for the services behind its reverse proxy)
     containers: z.boolean().default(true),                 // containers, VMs and machines' own services, from docker, machines, host and proxmox
     hide: z.array(z.string()).default([]),                 // integrations (by their key), machines or containers (by name) to leave off
   }),
@@ -213,7 +213,7 @@ export default defineIntegration({
       tools: {
         network_map: {
           label: 'Looked at the network', access: 'read', followUps: ['Is anything down?'],
-          description: 'What runs where in the homelab: each machine, its network and address, and the services, containers and VMs on it, with whether each is answering. Use for "what runs on the server?", "where is Sonarr?", "what\'s on 192.168.1.20?". Only host and port are known, never paths or keys.',
+          description: 'What runs where in the homelab: each machine, its network and address, and the services, containers and VMs on it, with whether each is answering. Use for "what runs on the server?", "where is Sonarr?", "what\'s on 10.0.0.20?". Only host and port are known, never paths or keys.',
           input: z.object({ host: z.string().max(100).optional().describe('one machine, by name or address, or something that runs on it') }),
           // someone with a profile is told only of the integrations on their tabs, as their page shows them
           async run({ host }, who) {

@@ -23,6 +23,7 @@ const steps = {
   shots: () => { steps.catalog(); steps.harness(); steps.valet(); run('node', ['scripts/shots.ts']); },
   pages: () => run('node', ['scripts/pages.ts']),
   check: () => run('node', ['scripts/check.ts']),
-  build: () => { steps.pages(); run(resolve(here, 'node_modules/.bin/astro'), ['build']); steps.check(); },
+  markdown: () => run('node', ['scripts/markdown.ts']),
+  build: () => { steps.pages(); run(resolve(here, 'node_modules/.bin/astro'), ['build']); steps.markdown(); steps.check(); },
 };
 for (const s of process.argv.slice(2)) steps[s]();

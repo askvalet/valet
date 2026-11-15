@@ -189,7 +189,7 @@ export default [
       return [{ label: 'CPU', value: percent(cpu), pct: cpu / 100 }, { label: 'Memory', value: used == null ? undefined : fmt.pct(used), pct: used },
         { label: 'Uptime', value: s?.uptime }, ...(d.leases ? [{ label: 'DHCP leases', value: d.leases.length }] : [])];
     },
-    sample: { system: { uptime: '2w3d4h5m6s', 'cpu-load': '7', 'free-memory': '805306368', 'total-memory': '1073741824' }, leases: [{ '.id': '*1', address: '192.168.88.10' }, { '.id': '*2', address: '192.168.88.11' }] },
+    sample: { system: { uptime: '2w3d4h5m6s', 'cpu-load': '7', 'free-memory': '805306368', 'total-memory': '1073741824' }, leases: [{ '.id': '*1', address: '10.0.88.10' }, { '.id': '*2', address: '10.0.88.11' }] },
     expect: { CPU: '7%', Memory: '25%', Uptime: '2w3d4h5m6s', 'DHCP leases': 2 },
   }),
   service<{ wan: string }>({
@@ -216,7 +216,7 @@ export default [
         { label: 'Load', value: s?.cpu_load_avg?.[0] }, { label: 'Memory', value: percent(s?.mem_usage) }, { label: 'Disk', value: percent(s?.disk_usage) },
         { label: 'Temperature', value: s?.temp_c == null ? undefined : `${Math.round(s.temp_c)}°C` }];
     },
-    sample: { system: { code: 200, status: 'ok', data: { cpu_load_avg: [0.32, 0.28, 0.25], mem_usage: 18.4, disk_usage: 6.1, temp_c: 47.2 } }, interfaces: { code: 200, status: 'ok', data: [{ name: 'wan', hwif: 'igb0', status: 'up', ipaddr: '203.0.113.5' }, { name: 'lan', hwif: 'igb1', status: 'up', ipaddr: '192.168.1.1' }] } },
+    sample: { system: { code: 200, status: 'ok', data: { cpu_load_avg: [0.32, 0.28, 0.25], mem_usage: 18.4, disk_usage: 6.1, temp_c: 47.2 } }, interfaces: { code: 200, status: 'ok', data: [{ name: 'wan', hwif: 'igb0', status: 'up', ipaddr: '203.0.113.5' }, { name: 'lan', hwif: 'igb1', status: 'up', ipaddr: '10.0.1.1' }] } },
     expect: { WAN: 'Up', Load: 0.32, Memory: '18%', Disk: '6%', Temperature: '47°C' },
   }),
   service<{ site: string }>({

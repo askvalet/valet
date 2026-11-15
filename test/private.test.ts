@@ -8,7 +8,8 @@ import { join, relative } from 'node:path';
 import { test } from 'node:test';
 
 const root = join(import.meta.dirname, '..');
-const SOURCES = ['src/web/samples.ts', 'website/samples', 'demo/config.yaml', 'demo/integrations'];
+// integrations' option notes and tool descriptions become their docs pages, so they count too
+const SOURCES = ['src/web/samples.ts', 'website/samples', 'demo/config.yaml', 'demo/integrations', 'src/integrations'];
 const forbidden = new RegExp(['192\\.168', ...(process.env.PRIVATE_WORDS?.split(',').map(w => w.trim()).filter(Boolean) ?? [])].join('|'), 'i');
 
 function files(path: string): string[] {
