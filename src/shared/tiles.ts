@@ -41,6 +41,9 @@ export function derivedSummary(card: Card): Summary | undefined {
     case 'table': return { label, icon, value: card.rows.length, sub: card.rows[0] ? String(card.rows[0][0] ?? '') : undefined };
     case 'controls': {
       const toggles = card.items.filter(c => c.kind === 'toggle'), on = toggles.filter(c => c.value === true).length;
+      // a checklist counts what's left to do, not what's "on"
+      const checks = card.items.filter(c => c.kind === 'check'), left = checks.filter(c => c.value !== true).length;
+      if (checks.length && !toggles.length) return { label, icon, value: left, sub: left === 1 ? 'thing left' : 'things left', pct: (checks.length - left) / checks.length };
       if (toggles.length) return { label, icon, value: `${on} on`, sub: `of ${toggles.length}`, tone: on ? 'accent' : undefined, pct: on / toggles.length };
       const v = card.items.find(c => c.kind === 'value');
       return v && { label, icon, value: String(v.value ?? '–'), sub: v.label, tone: v.tone };

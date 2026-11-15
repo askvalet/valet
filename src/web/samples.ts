@@ -108,7 +108,7 @@ export const SAMPLES: { name: string; card: Card }[] = [
     { id: 'e', label: 'Temperature', kind: 'value', value: '21.5°C', icon: 'thermometer' }, { id: 'f', label: 'Front door', kind: 'value', value: 'Locked', icon: 'lock', tone: 'good' },
     { id: 'g', label: 'Garage', kind: 'value', value: 'Open', icon: 'garage', tone: 'warn' }] } },
   { name: 'controls · add', card: { type: 'controls', title: 'To do', icon: 'tag', add: { placeholder: 'New task…', action: 'add' }, items: [
-    { id: 't1', label: 'Replace the furnace filter', kind: 'toggle', value: false, action: 'tick' }, { id: 't2', label: 'Renew the domain', kind: 'toggle', value: true, action: 'tick' }] } },
+    { id: 't1', label: 'Replace the furnace filter', kind: 'check', value: false, action: 'tick' }, { id: 't2', label: 'Renew the domain', kind: 'check', value: true, action: 'tick' }] } },
   { name: 'forecast', card: { type: 'forecast', title: 'Weather', icon: 'sun', now: { temp: 16, feels: 14, words: 'Partly cloudy', icon: 'cloud-sun', hi: 18, lo: 9 },
     hours: Array.from({ length: 12 }, (_, i) => ({ time: `${(i + 9) % 12 || 12}${i < 3 ? 'am' : 'pm'}`, temp: 10 + Math.round(6 * Math.sin(i / 4)), icon: i > 6 ? 'rain' : 'cloud', pop: i > 6 ? 60 : 5 })),
     summary: { label: 'Partly cloudy', icon: 'cloud-sun', value: '16°', pct: .7, tone: 'good' } } },

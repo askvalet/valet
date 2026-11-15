@@ -1025,22 +1025,22 @@ function TouchTile({ c, run, hold }: { c: Control; run: RunAction; hold?: boolea
   const [mine, setMine] = useState<Control['value']>(), [said, setSaid] = useState<'done' | 'no' | null>(null), timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => { setMine(undefined); }, [c.value]);
   useEffect(() => () => clearTimeout(timer.current), []);
-  const value = mine ?? c.value, on = c.kind === 'toggle' && !!value;
+  const value = mine ?? c.value, on = (c.kind === 'toggle' || c.kind === 'check') && !!value;
   const send = (extra: Record<string, unknown>, next?: Control['value']) => {
     play('tap'); if (next !== undefined) setMine(next);
     clearTimeout(timer.current);
     void run(c.action!, { ...c.args, ...extra }).then(() => { if (c.kind === 'button') { play('done'); setSaid('done'); } timer.current = setTimeout(() => { setMine(undefined); setSaid(null); }, c.kind === 'button' ? 1600 : 8000); },
       () => { play('no'); setMine(undefined); setSaid('no'); timer.current = setTimeout(() => setSaid(null), 3000); });
   };
-  const press = usePress(() => c.kind === 'toggle' ? send({ value: !on }, !on) : send({}), hold);
+  const press = usePress(() => c.kind === 'toggle' || c.kind === 'check' ? send({ value: !on }, !on) : send({}), hold);
   const mark = c.icon ? <Icon name={c.icon} className="size-icon-lg" /> : c.color !== undefined ? <span className="size-3 rounded-full ring-1 ring-border" style={{ background: c.color ?? 'var(--muted)' }} /> : null;
   const sub = [c.sub, hold && c.kind !== 'value' && label('hold')].filter(Boolean).join(' · ');
   const words = <><span className="truncate text-item font-medium">{c.label}</span>{sub && <span className="truncate text-meta opacity-65">{sub}</span>}</>;
   const state = (text: ReactNode) => <span className="flex min-h-5 items-center justify-between gap-2 text-meta">{mark ?? <span />}<span className={cn('truncate', said === 'no' ? 'text-bad' : 'opacity-65')}>{said === 'no' ? "Couldn't" : text}</span></span>;
   if (c.kind === 'value' || !c.action) return <div className="touch-tile is-still">{state(<span className={cn('tabular', c.tone && c.tone !== 'neutral' && toneText[c.tone])}>{String(c.value ?? '–')}</span>)}<span className="flex min-w-0 flex-col">{words}</span></div>;
-  if (c.kind === 'toggle' || c.kind === 'button') return (
-    <button type="button" aria-pressed={c.kind === 'toggle' ? on : undefined} className={cn('touch-tile press', on && 'is-on')} {...press}>
-      {state(said === 'done' ? <Tick draw className="size-icon-sm text-good" /> : c.kind === 'toggle' ? label(on ? 'on' : 'off') : String(c.value ?? 'Run'))}<span className="flex min-w-0 flex-col">{words}</span>
+  if (c.kind === 'toggle' || c.kind === 'check' || c.kind === 'button') return (
+    <button type="button" aria-pressed={c.kind !== 'button' ? on : undefined} className={cn('touch-tile press', on && 'is-on')} {...press}>
+      {state(said === 'done' ? <Tick draw className="size-icon-sm text-good" /> : c.kind === 'toggle' ? label(on ? 'on' : 'off') : c.kind === 'check' ? (on ? 'Done' : 'To do') : String(c.value ?? 'Run'))}<span className="flex min-w-0 flex-col">{words}</span>
     </button>
   );
   // a level steps by a tenth of its range, a finger's worth; a choice is a row of its options
@@ -1084,6 +1084,33 @@ function RowToggle({ c, run, fire }: { c: Control; run?: RunAction; fire: (c: Co
   }} />;
 }
 
+/** A thing to tick off (a to-do): a box before the words, and the whole row presses it. Ticked, the words are struck
+ *  through and fade, so what's left stands out. It ticks at once and holds, like a switch, until the list agrees. */
+function RowCheck({ c, run, fire }: { c: Control; run?: RunAction; fire: (c: Control, extra: Record<string, unknown>) => Promise<void> | undefined | '' }) {
+  const [mine, setMine] = useState<boolean>(), timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => { setMine(undefined); }, [c.value]);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const done = mine ?? !!c.value;
+  const press = () => {
+    if (!run) return;
+    const v = !done; play('tap'); setMine(v); clearTimeout(timer.current);
+    void Promise.resolve(fire(c, { value: v })).then(() => { timer.current = setTimeout(() => setMine(undefined), 8000); }, () => { play('no'); setMine(undefined); });
+  };
+  return (
+    <button type="button" role="checkbox" aria-checked={done} disabled={!run} onClick={press}
+      className="group/check flex min-h-12 w-full min-w-0 items-center gap-3 py-2 text-left disabled:cursor-default">
+      <span aria-hidden className={cn('grid size-5 shrink-0 place-items-center rounded-[6px] border-[1.5px] transition-[background-color,border-color,color] duration-(--dur-press)',
+        done ? 'border-foreground bg-foreground text-(--card-tint)' : 'border-foreground/30 text-transparent group-hover/check:border-foreground/55')}>
+        <Check className="size-3.5" strokeWidth={3} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={cn('block truncate text-item transition-colors duration-(--dur-press)', done && 'text-muted-foreground line-through decoration-foreground/35')}>{c.label}</span>
+        {c.sub && <span className="block truncate text-meta text-muted-foreground">{c.sub}</span>}
+      </span>
+    </button>
+  );
+}
+
 function ControlRows({ card, run }: { card: ControlsCard; run?: RunAction }) {
   const fire = (c: Control, extra: Record<string, unknown>) => c.action && run?.(c.action, { ...c.args, ...extra });
   // a row someone just cleared away (a to-do that's done) leaves as dust; one that's only gone from the list just goes
@@ -1091,7 +1118,7 @@ function ControlRows({ card, run }: { card: ControlsCard; run?: RunAction }) {
   return (
     <div className="-my-1 divide-y">
       {rows.map(({ key, item: c, state }) => (
-        <RowSlot key={key} state={state === 'out' ? state : undefined} on={!!run} dust={dust}><div className="flex min-h-12 min-w-0 items-center gap-3 py-2">
+        <RowSlot key={key} state={state === 'out' ? state : undefined} on={!!run} dust={dust}>{c.kind === 'check' ? <RowCheck c={c} run={run} fire={fire} /> : <div className="flex min-h-12 min-w-0 items-center gap-3 py-2">
           {c.color !== undefined && <span className="size-2.5 shrink-0 rounded-full ring-1 ring-border" style={{ background: c.color ?? 'var(--muted)' }} />}
           {c.icon && <span className={cn('grid size-8 shrink-0 place-items-center rounded-full bg-foreground/[.06]', c.tone && c.tone !== 'neutral' ? toneText[c.tone] : 'text-muted-foreground')}><Icon name={c.icon} /></span>}
           <div className="min-w-0 flex-1">
@@ -1111,7 +1138,7 @@ function ControlRows({ card, run }: { card: ControlsCard; run?: RunAction }) {
             </Select>
           )}
           {c.kind === 'button' && <Button size="sm" disabled={!run} onClick={() => fire(c, {})}>{String(c.value ?? 'Run')}</Button>}
-        </div></RowSlot>
+        </div>}</RowSlot>
       ))}
     </div>
   );
@@ -1522,7 +1549,7 @@ function WidgetView({ card, run, title, status, compact, columns, minimal, headl
         {card ? <div className={cn(fade, 'flex min-w-0 flex-1 flex-col')}><CardBody card={card} run={run} large={large} fill={fill} columns={columns} minimal={minimal || (compact && card.type === 'status')} /></div> : <CardSkeleton kind={kind} />}
         {/* a line to type into goes where a button would work, never in chat (cards there can't act) */}
         {(card?.type === 'list' || card?.type === 'controls') && card.add && run && !compact && run.may?.(card.add.action) !== false
-          ? <AddLine add={card.add} run={run} ruled={card.items.length > 0} rows={card.items.map(i => 'label' in i ? `${i.id}:${i.label}` : i.id ?? i.title).join('\n')} /> : null}
+          ? <AddLine add={card.add} run={run} ruled={card.items.length > 0} lead={!!card.add.check} rows={card.items.map(i => 'label' in i ? `${i.id}:${i.label}` : i.id ?? i.title).join('\n')} /> : null}
         {card?.buttons?.length && run ? <CardButtons buttons={card.buttons} run={run} /> : null}
       </CardContent>
     </Shell>

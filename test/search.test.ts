@@ -35,6 +35,7 @@ test('hitsOf: every card that lists things gives rows, and one that doesn\'t giv
     [{ title: 'Lease', sub: 'Landlord', image: '/api/image/docs?ref=1', href: 'https://docs.example/1' }]);
   assert.deepEqual(hitsOf({ type: 'list', items: [{ title: 'Dentist', subtitle: 'Tuesday', meta: '3 pm' }] }), [{ title: 'Dentist', sub: 'Tuesday · 3 pm', image: undefined, href: undefined }]);
   assert.equal(hitsOf({ type: 'controls', items: [{ id: 'l', label: 'Lamp', kind: 'toggle', value: true, sub: 'Office' }] })[0].sub, 'Office · On');
+  assert.equal(hitsOf({ type: 'controls', items: [{ id: 't', label: 'Milk', kind: 'check', value: false }] })[0].sub, 'To do');
   assert.equal(hitsOf({ type: 'photos', items: [{ image: '/api/image/p?ref=1', subtitle: 'Lisbon' }] })[0].title, 'Lisbon');
   assert.deepEqual(hitsOf({ type: 'group', cards: [shelf('a'), shelf('b')] }).map(h => h.title), ['a', 'b']);
   assert.deepEqual(hitsOf({ type: 'text', text: 'Nothing matches' }), []);

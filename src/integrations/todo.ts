@@ -26,8 +26,8 @@ export default defineIntegration({
     }));
     const card = async (): Promise<Card> => {
       const l = await load(), open = l.filter(t => !t.done).length;
-      return { type: 'controls', title: cfg.title, icon: 'tag', items: l.map(t => ({ id: t.id, label: t.text, kind: 'toggle' as const, value: t.done, action: 'tick', args: { id: t.id } })),
-        buttons: l.some(t => t.done) ? [{ label: 'Clear finished', action: 'clear' }] : undefined, add: { placeholder: 'New task…', action: 'add' }, summary: { label: cfg.title, icon: 'tag', value: String(open), sub: open === 1 ? 'thing left' : 'things left' } };
+      return { type: 'controls', title: cfg.title, icon: 'tag', items: l.map(t => ({ id: t.id, label: t.text, kind: 'check' as const, value: t.done, action: 'tick', args: { id: t.id } })),
+        buttons: l.some(t => t.done) ? [{ label: 'Clear finished', action: 'clear' }] : undefined, add: { placeholder: 'New task…', action: 'add', check: true }, summary: { label: cfg.title, icon: 'tag', value: String(open), sub: open === 1 ? 'thing left' : 'things left' } };
     };
     // two added in the same millisecond (a quick Enter, Enter) must still be two rows
     let last = 0;

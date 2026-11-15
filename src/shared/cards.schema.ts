@@ -49,9 +49,9 @@ const StatusItem = z.object({ name: z.string(), ok: z.boolean(), ms: z.number().
   icon: z.string().optional(), group: z.string().optional(), quiet: z.boolean().optional(), state: z.enum(['up', 'degraded', 'down', 'off']).optional() }).strict();
 // the words someone types go to one argument of one action; what that action accepts is its own schema's to say
 const AddField = z.object({ placeholder: z.string().min(1).max(60), action: z.string().min(1), arg: z.string().regex(/^[a-z]\w{0,31}$/i, 'not an argument name').optional(),
-  args: z.record(z.string(), z.unknown()).optional(), max: z.number().int().min(1).max(2000).optional() }).strict()
+  args: z.record(z.string(), z.unknown()).optional(), max: z.number().int().min(1).max(2000).optional(), check: z.boolean().optional() }).strict()
   .refine(a => !a.args || !Object.hasOwn(a.args, a.arg ?? 'text'), 'args can\'t also hold the typed words');
-const Control = z.object({ id: z.string(), label: z.string(), kind: z.enum(['toggle', 'slider', 'select', 'button', 'value']),
+const Control = z.object({ id: z.string(), label: z.string(), kind: z.enum(['toggle', 'check', 'slider', 'select', 'button', 'value']),
   value: z.union([z.boolean(), z.number(), z.string()]).optional(), options: z.array(z.string()).optional(), min: z.number().optional(), max: z.number().optional(),
   step: z.number().optional(), color: z.string().optional(), action: z.string().optional(), sub: z.string().optional(), icon: z.string().optional(), tone: Tone.optional(), args: z.record(z.string(), z.unknown()).optional() }).strict();
 

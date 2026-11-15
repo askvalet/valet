@@ -59,3 +59,10 @@ test('a tile opens its own card by default; open: false, or another widget, by c
   assert.equal(Config.parse({ layout: [{ title: 'T', display: 'tiles', open: false, widgets: [] }] }).layout[0]!.open, false);
   for (const open of ['plan', '../x', 'a.b.c', 'home.plan; x']) assert.throws(() => Config.parse({ layout: [{ title: 'T', widgets: [{ widget: 'a.b', open }] }] }), String(open));
 });
+
+test('a checklist tile counts what is left, and its rows are not switches', () => {
+  const todo = { type: 'controls' as const, title: 'To do', items: [{ id: 'a', label: 'Milk', kind: 'check' as const, value: true, action: 'tick' }, { id: 'b', label: 'Bread', kind: 'check' as const, value: false, action: 'tick' }, { id: 'c', label: 'Eggs', kind: 'check' as const, value: false, action: 'tick' }] };
+  const s = derivedSummary(todo)!;
+  assert.equal(s.value, 2); assert.equal(s.sub, 'things left'); assert.equal(Math.round(s.pct! * 3), 1);
+  assert.deepEqual(tileActions(todo), []);
+});
