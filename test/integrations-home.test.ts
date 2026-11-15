@@ -54,6 +54,8 @@ const mealieHttp = (o: { random?: boolean } = {}): Handler => (url, init) => {
   if (url.includes('orderBy=random') && o.random === false) return new Response('{}', { status: 422 });
   if (url.includes('/recipes/green-curry')) return { ...recipe(R1, 'green-curry', 'Green curry'), recipeIngredient: [{ display: '2 tbsp curry paste' }, { quantity: 400, unit: { name: 'ml' }, food: { name: 'coconut milk' } }], recipeInstructions: [{ text: 'Fry the paste.' }, { text: 'Add the milk.' }], nutrition: { calories: '520', fatContent: null } };
   if (url.includes('/recipes')) return { items: [recipe(R1, 'green-curry', 'Green curry'), recipe(R2, 'lentil-soup', 'Lentil soup')] };
+  if (url.includes(`/shopping/lists/${L1}`)) return { id: L1, name: 'Groceries', listItems: [
+    { id: 'i1', note: '2 onions', checked: false }, { id: 'i2', display: '1 l oat milk', note: 'oat milk', checked: false }, { id: 'i3', note: 'bread', checked: true }, { id: 'i4', note: ' ', checked: false }] };
   if (url.includes('/shopping/lists')) return { items: [{ id: L1, name: 'Groceries' }, { id: 'not-a-uuid', name: 'Odd' }] };
   if (url.includes('/shopping/items/create-bulk') && init.method === 'POST') return { createdItems: JSON.parse(init.body) };
   return new Response('{}', { status: 404 });
@@ -104,6 +106,28 @@ test('mealie: adding to a shopping list names the list Mealie has, and asks firs
   const r: any = await t.run({ items: ['2 onions'], list: 'Groceries' }); valid(r.card);
   assert.ok(ctx.calls.includes('POST http://m/api/households/shopping/items/create-bulk'));
   assert.match(String((await t.run({ items: ['milk'], list: 'Hardware' }) as any).data.error), /no shopping list/);
+});
+
+test('mealie: the Shopping card lists what\'s left to buy, and its add line puts one thing on that list', async () => {
+  const sent: unknown[] = [], http = mealieHttp();
+  const ctx = fake((url, init) => { if (init.method === 'POST') sent.push(JSON.parse(init.body)); return http(url, init); }), m = make(mealie, { url: 'http://m', key: 'k', href: 'https://food.example' }, ctx);
+  const c: any = await m.widgets.shopping.fetch(); valid(c);
+  assert.equal(c.title, 'Groceries');
+  assert.deepEqual(c.items.map((i: any) => i.title), ['2 onions', '1 l oat milk']);   // ticked and blank ones aren't to buy
+  assert.equal(c.summary.value, '2');
+  assert.equal(c.href, `https://food.example/shopping-lists/${L1}`);
+  assert.deepEqual(c.add, { placeholder: 'Add to the list…', action: 'shop' });
+  const a = m.actions!.shop;
+  for (const text of ['', '  ', 'x'.repeat(201)]) assert.equal(a.input.safeParse({ text }).success, false, JSON.stringify(text));
+  const r: any = await a.run(a.input.parse({ text: '  basil ' }));
+  assert.equal(r.done, 'Added “basil” to Groceries');
+  assert.ok(ctx.calls.includes('POST http://m/api/households/shopping/items/create-bulk'));
+  assert.deepEqual(sent, [[{ shoppingListId: L1, note: 'basil', quantity: 1, checked: false }]]);
+  // a list named in config that Mealie hasn't: the card says so and offers no line; the action says why
+  const none = make(mealie, { url: 'http://m', key: 'k', list: 'Hardware' }, fake(mealieHttp()));
+  const e: any = await none.widgets.shopping.fetch(); valid(e);
+  assert.equal(e.add, undefined); assert.match(e.empty, /Hardware/);
+  await assert.rejects(Promise.resolve(none.actions!.shop.run({ text: 'nails' })), /no shopping list called “Hardware”/);
 });
 
 test('mealie: the picture proxy takes a recipe id and nothing else', async () => {

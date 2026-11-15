@@ -5,6 +5,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- Add to a list from the page. The To-do card ends with a "New task…" line: type, press Enter (or its + button), and the task joins the list as the words leave the line; if it can't be added, the words stay and the line says why, and Escape clears it. Any `list` or `controls` card can carry one, built-ins and plugins alike, with `add: { placeholder, action, arg, args, max }` in the card, so it's checked against the catalog like everything else. It's a button that takes words: it isn't drawn on a read-only page, for someone whose profile doesn't list its action, in chat, on a tile, or on the wall unless the card is on `wall.touch`; every entry goes through the same action route and into the activity log, and the action's own schema checks the words on the server (the To-do list trims them and takes 1 to 200 characters). On a phone it's 16px, so the page doesn't zoom, and the keyboard stays up while it sends. Also with a line: Home Assistant's to-do lists (`todos:`, a new card that ticks things off, adds and clears what's done), Mealie's shopping list (a new `shopping` card, `list:` picks which) and Karakeep's Recently saved ("Save a link…", a link saved as a link, anything else as a note). And in ⌘K: "add buy stamps to to do", "add milk to shopping list", "save https://… to karakeep" run the same actions, with no model; a command can now take words as well as numbers, `{text}` in its phrase. ([#24](https://github.com/askvalet/valet/issues/24))
+
 ## [0.7.0] - 2026-11-14
 
 ### Added

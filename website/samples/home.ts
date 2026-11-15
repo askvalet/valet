@@ -29,7 +29,9 @@ const states = (extra: ReturnType<typeof entity>[] = []) => [
   climate({}), ...extra,
 ];
 const haConfig = { unit_system: { temperature: '°C' } };
-const haHttp = (list = states()) => route([['/api/states', list], ['/api/config', haConfig]]);
+const SHOPPING = [['Oat milk', 'needs_action'], ['Lemons', 'needs_action'], ['Coffee beans', 'needs_action'], ['Dish soap', 'completed']].map(([summary, status], i) => ({ uid: `s${i}`, summary, status }));
+const haHttp = (list = states()) => route([['/api/services/todo/get_items', { changed_states: [], service_response: { 'todo.shopping_list': { items: SHOPPING } } }],
+  ['/api/states/todo.shopping_list', { entity_id: 'todo.shopping_list', state: '3', attributes: { friendly_name: 'Shopping list' } }], ['/api/states', list], ['/api/config', haConfig]]);
 const withClimate = (...a: Parameters<typeof climate>) => haHttp(states().map(s => s.entity_id === 'climate.hallway' ? climate(...a) : s));
 const withVacuum = (state: string, status: string, error = 'No error') => haHttp(states().map(s => s.entity_id === 'vacuum.robot' ? { ...s, state, attributes: { ...s.attributes, status, error } } : s));
 
@@ -78,6 +80,7 @@ export const home: Record<string, Fixture> = {
       },
       schedules: { buses: { title: 'Bus times', icon: 'clock', soon: 15, entities: [{ id: 'sensor.first_bus', name: 'First bus' }, { id: 'sensor.sunrise', name: 'Sunrise', muted: true }, { id: 'sensor.midday_bus', name: 'Midday bus' }, { id: 'sensor.school_bus', name: 'School bus' }, { id: 'sensor.sunset', name: 'Sunset' }, { id: 'sensor.last_bus', name: 'Last bus' }] } },
       thermostats: { hallway: { entity: 'climate.hallway', title: 'Hallway' } },
+      todos: { shopping: { entity: 'todo.shopping_list' } },
       floorplans: { flat: { title: 'Home', map: 'camera.robot_map', vacuum: 'vacuum.robot', rooms: { 'Living room': ['light.living_room'], Kitchen: ['light.kitchen'], Bedroom: ['light.bedroom'], Bathroom: ['light.bathroom'], Office: ['light.office'] } } },
     },
     http: haHttp(),

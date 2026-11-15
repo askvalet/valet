@@ -59,6 +59,12 @@ export default defineIntegration({
       modes: z.array(z.string()).optional(),
       unit: z.enum(['C', 'F']).optional(),
     })).default({}),
+    // each entry becomes a to-do widget `<instance>.<key>`: one of Home Assistant's to-do lists (todo.*, e.g. the
+    // shopping list), ticked off and added to from the card
+    todos: z.record(z.string(), z.object({
+      entity: z.string().regex(/^todo\.\w+$/, 'a todo entity'),
+      title: z.string().optional(),
+    })).default({}),
     // each entry becomes a 3D floor plan widget `<instance>.<key>`: rooms come from a robot vacuum's map camera
     // (e.g. Dreame's camera.*_map), lit by the lights you list per room; the robot and its dock sit where they are
     floorplans: z.record(z.string(), z.object({
@@ -156,6 +162,31 @@ export default defineIntegration({
           return { type: 'schedule', title: sch.title, icon: sch.icon ?? 'clock', sunset: sch.sunset, items: items.map(({ name, at }) => ({ name, at })), muted: items.filter(x => x.muted).map(x => x.name),
             summary: next && { label: sch.title, icon: sch.icon ?? 'clock', value: next.name, sub: fmt.time(next.t), detail: `in ${left}` },
             activity: next && mins <= sch.soon ? { title: `${next.name} in ${left}`, subtitle: sch.title, icon: sch.icon ?? 'clock', tone: 'good', pct: 1 - mins / Math.max(1, sch.soon) } : undefined };
+        },
+      };
+    }
+
+    // ── to-do lists: what's left first, then what's done, as switches; a line to add to it; a button to clear what's done
+    const lists = new Map(Object.values(cfg.todos).map(t => [t.entity, t]));
+    const nameOfList = (entity_id: string) => lists.get(entity_id)?.title ?? entity_id.split('.')[1].replace(/_/g, ' ');
+    const listed = (entity_id: string) => { if (!lists.has(entity_id)) throw new Error(`${entity_id} isn't one of the to-do lists in todos`); };
+    const todoItems = async (entity_id: string) => {
+      const r = await ctx.http<any>(`${base}/api/services/todo/get_items?return_response`, { method: 'POST', headers, body: JSON.stringify({ entity_id }) });
+      const items = r?.service_response?.[entity_id]?.items;
+      return (Array.isArray(items) ? items : []).filter((i: any) => typeof i?.summary === 'string' && typeof i?.uid === 'string') as { uid: string; summary: string; status: string; due?: string }[];
+    };
+    for (const [key, t] of Object.entries(cfg.todos)) {
+      widgets[key] = {
+        title: t.title ?? 'To do', interval: 30_000, card: 'controls',
+        async fetch() {
+          const [items, e] = await Promise.all([todoItems(t.entity), t.title ? undefined : ctx.http<any>(`${base}/api/states/${t.entity}`, { headers }).catch(() => undefined)]);
+          const title = t.title ?? (e ? nameOf(e) : 'To do'), left = items.filter(i => i.status !== 'completed').length;
+          const order = [...items.filter(i => i.status !== 'completed'), ...items.filter(i => i.status === 'completed')];
+          return { type: 'controls', title, icon: 'tag', href: cfg.href && `${cfg.href.replace(/\/$/, '')}/todo?entity_id=${t.entity}`,
+            items: order.map(i => ({ id: i.uid, label: i.summary, kind: 'toggle' as const, value: i.status === 'completed', action: 'todo_tick', args: { entity_id: t.entity, uid: i.uid } })),
+            buttons: items.some(i => i.status === 'completed') ? [{ label: 'Clear finished', action: 'todo_clear', args: { entity_id: t.entity } }] : undefined,
+            add: { placeholder: 'New item…', action: 'todo_add', args: { entity_id: t.entity }, max: 255 },
+            summary: { label: title, icon: 'tag', value: String(left), sub: left === 1 ? 'thing left' : 'things left' } };
         },
       };
     }
@@ -335,6 +366,11 @@ export default defineIntegration({
             { say: [`${name} dock`, `${name} home`, 'dock vacuum', 'vacuum home', 'send vacuum home'], run: 'action:vacuum', input: { entity_id: id, command: 'dock' }, label: `Send ${name} home` },
             { say: [`${name} pause`, 'pause vacuum'], run: 'action:vacuum', input: { entity_id: id, command: 'pause' }, label: `Pause ${name}` });
         }
+        // "add milk to shopping list": its title, else its name in Home Assistant
+        for (const t of lists.values()) {
+          const name = t.title ?? named(t.entity);
+          out.push({ say: [`add {text} to ${name}`], run: 'action:todo_add', input: { entity_id: t.entity }, label: `Add {text} to ${name}` });
+        }
         return out;
       },
       actions: {
@@ -357,6 +393,12 @@ export default defineIntegration({
             await call('light', on ? 'turn_on' : 'turn_off', { entity_id: list, ...(on && brightness != null ? { brightness_pct: brightness } : {}),
               ...(on && color ? { rgb_color: color } : {}), ...(on && kelvin ? { color_temp_kelvin: kelvin } : {}) });
           } },
+        todo_add: { description: 'Add to a to-do list', input: z.object({ entity_id: z.string(), text: z.string().trim().min(1, 'Type something to add').max(255, 'That\'s over 255 characters') }),
+          async run({ entity_id, text }) { listed(entity_id); await call('todo', 'add_item', { entity_id, item: text }); return { done: `Added “${text}” to ${nameOfList(entity_id)}` }; } },
+        todo_tick: { description: 'Tick something off a to-do list, or back on', input: z.object({ entity_id: z.string(), uid: z.string().min(1).max(200), value: z.boolean() }),
+          async run({ entity_id, uid, value }) { listed(entity_id); await call('todo', 'update_item', { entity_id, item: uid, status: value ? 'completed' : 'needs_action' }); } },
+        todo_clear: { description: 'Clear what is finished on a to-do list', input: z.object({ entity_id: z.string() }),
+          async run({ entity_id }) { listed(entity_id); await call('todo', 'remove_completed_items', { entity_id }); } },
         climate: { description: 'Set a thermostat: target temperature, HVAC mode or preset', input: z.object({ entity_id: z.string(), temperature: z.number().optional(), hvac_mode: z.string().optional(), preset_mode: z.string().optional() }),
           run: ({ entity_id, ...change }) => climate(entity_id, change) },
         vacuum: { description: 'Robot vacuum: start, pause, dock, locate, clean some rooms, or set suction',
