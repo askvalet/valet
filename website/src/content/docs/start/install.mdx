@@ -126,6 +126,19 @@ npm start
 
 `npm start` reads `.env` if there is one.
 
+## With an AI agent
+
+Valet has a skill for coding agents: how to write `config.yaml`, add a service, make a card from any JSON API, write a plugin or a background script, and check the result with `config check` and `doctor`. With it, an agent like Claude Code can set Valet up for you and get it right the first time.
+
+For Claude Code, put it in your skills folder:
+
+```sh
+git clone --depth 1 https://github.com/askvalet/valet /tmp/valet
+mkdir -p ~/.claude/skills && cp -r /tmp/valet/skills/valet ~/.claude/skills/
+```
+
+Then ask it something like "set up Valet for my Docker containers and Plex". Other agents can read the skill's [`SKILL.md`](https://github.com/askvalet/valet/blob/master/skills/valet/SKILL.md) directly, and these docs are also at [`/llms.txt`](/llms.txt) and as Markdown on every page.
+
 ## Next
 
 [Write your first config](/start/first-config/).
