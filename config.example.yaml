@@ -127,6 +127,11 @@ integrations:
     type: karakeep                 # send a link to save it; ask about what you've saved
     url: http://karakeep:3000
     apiKey: ${KARAKEEP_KEY}
+  # library:
+  #   type: kiwix                  # an offline Wikipedia (and more): its books, a random article, and search in ⌘K and chat
+  #   url: http://kiwix:8080
+  #   books: [wikipedia_en_all_maxi, ifixit_en_all]   # only these; every book by default
+  #   random: wikipedia_en_all_maxi  # where the Random article card picks from; Wikipedia if there is one
   # nvr:
   #   type: frigate                # its stats as `nvr.status`, and `nvr.cameras`: a live view with what it has noticed. Port 5000 needs no sign-in
   #   url: http://frigate:5000

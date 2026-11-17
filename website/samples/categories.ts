@@ -9,7 +9,7 @@ export const CATEGORY: Record<string, string> = {
   ...group('Infrastructure', 'docker glances host machines uptimekuma scrutiny apcups minecraft ollama aimonitor proxmox backrest healthchecks'),
   ...group('Home and daily life', 'homeassistant weather calendar camera rgb-control todo clock frigate esphome evcc homebridge opendtu octoprint moonraker spoolman mealie tandoor'),
   ...group('Feeds and web', 'rss hackernews lobsters reddit releases repository markets twitch miniflux'),
-  ...group('Apps', 'changedetection karakeep paperless syncthing'),
+  ...group('Apps', 'changedetection karakeep kiwix paperless syncthing'),
   ...group('Build your own', 'api http iframe links'),
 };
 // docs/services.md's list, and the things people ask for most.

@@ -970,6 +970,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `changedetection` | `url`, `key`, `limit` (8) | `watches`, `status` |
 | `karakeep` | `url`, `apiKey` | `recent`, `digest`, `reading` |
 | `kavita` | `url`, `username` and `password`, or `key` (an auth key) | `reading` (what you're in the middle of), `recent`, `status` |
+| `kiwix` | `url`, `href`, `books` (only these, by name, e.g. `wikipedia_en_all_maxi`; all by default), `random` (the book Random article picks from; Wikipedia if there is one), `headers` (for a server behind basic auth or a proxy) | `library` (the books, with their article counts), `random` (an article's title and first paragraph, a new one each hour) |
 | `komga` | `url`, `username` and `password`, or `key` (an API key, Komga 1.20+) | `reading` (in progress, with how far along), `ondeck` (next in a series you've started), `recent`, `status` |
 | `mealie` | `url`, `key`, `version` (`2`; `1` before households), `list` (the shopping list to show; the first if left out) | `week` (the meal plan from today, its photos landscape), `today` (a recipe of the day), `recent`, `status`, `shopping` (what's left to buy, with a line to add to it) |
 | `miniflux` | `url`, `key` | `unread` (a pile to step through; archiving marks read), `feeds` (unread per feed), `starred`, `status` |

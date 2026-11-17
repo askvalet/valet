@@ -74,6 +74,7 @@ export const ABOUT: Record<string, string> = {
   jellystat: 'Jellystat tracks Jellyfin viewing. This shows plays of films, episodes, songs and other items over 30 days.',
   karakeep: 'Karakeep saves links and notes to read later. This shows what you saved and a pile to read, and lets the assistant search, summarize and save.',
   kavita: 'Kavita is a reading server for books, comics and manga. This shows what you\'re in the middle of with how far along, and what was added lately, with covers, and lets the assistant search the library and say what you\'re reading.',
+  kiwix: 'Kiwix serves offline copies of Wikipedia, Project Gutenberg, iFixit and other books. This shows the books with their article counts and a random article with its first paragraph, a new one each hour, and puts the library in ⌘K\'s search. The assistant can search it and read an article to answer from, with the link to cite.',
   komga: 'Komga is a comics and manga server. This shows what you\'re in the middle of with how far along, the next book in a series you\'ve started, and new series, with covers. The assistant can search the library and say what you\'re reading.',
   komodo: 'Komodo manages servers and containers. This shows servers, stacks, containers and what\'s unhealthy.',
   kopia: 'Kopia is a backup tool. This shows sources, size, the last snapshot, errors and the next run.',

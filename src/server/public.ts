@@ -133,9 +133,30 @@ const SKIP = new Set(['title', 'script', 'style', 'noscript', 'template', 'svg',
 const BREAK = new Set(['p', 'div', 'br', 'hr', 'li', 'ul', 'ol', 'dl', 'dt', 'dd', 'tr', 'td', 'th', 'table', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'header', 'main', 'blockquote', 'pre', 'figure', 'figcaption', 'body']);
 const named = (c: number) => (c >= 97 && c <= 122) || (c >= 48 && c <= 57);
 
+/** Where the `name` element opened just before `at` ends (past its `>`), counting the same element inside it, or -1. The
+ *  next opening and closing are each found once and kept until the cursor passes them, so this reads the text once. */
+export function pastNested(low: string, name: string, at: number) {
+  const next = (mark: string, from: number) => {
+    for (let i = low.indexOf(mark, from); i >= 0; i = low.indexOf(mark, i + 1)) if (!named(low.charCodeAt(i + mark.length))) return i;
+    return -1;
+  };
+  let depth = 1, open = next(`<${name}`, at), close = next(`</${name}`, at);
+  for (;;) {
+    if (close < 0) return -1;
+    if (open >= 0 && open < close) { depth++; at = open + 1; open = next(`<${name}`, at); continue; }
+    const gt = low.indexOf('>', close);
+    if (gt < 0) return -1;
+    if (!--depth) return gt + 1;
+    at = gt + 1;
+    if (open >= 0 && open < at) open = next(`<${name}`, at);
+    close = next(`</${name}`, at);
+  }
+}
+
 /** A page's title and its words, by walking the text once. Pages are written by strangers: every search here either
- *  moves the cursor past what it found or ends the walk, so no page can make it take more than its own length. */
-export function pageText(html: string) {
+ *  moves the cursor past what it found or ends the walk, so no page can make it take more than its own length. `nested`
+ *  leaves out more elements, with whatever is nested in them (an encyclopedia's tables, for its prose alone). */
+export function pageText(html: string, nested: ReadonlySet<string> = new Set()) {
   const low = html.replace(/[A-Z]/g, c => c.toLowerCase());   // ASCII only, so every index means the same in both
   const head = low.indexOf('<title'), start = head < 0 ? -1 : low.indexOf('>', head), end = start < 0 ? -1 : low.indexOf('</title', start);
   const title = end < 0 ? undefined : tidy(decode(html.slice(start + 1, Math.min(end, start + 1 + 300)))).replace(/\n/g, ' ') || undefined;
@@ -153,6 +174,7 @@ export function pageText(html: string) {
     const gt = low.indexOf('>', to);
     if (gt < 0) break;
     at = gt + 1;
+    if (!closing && nested.has(name)) { const done = pastNested(low, name, at); if (done < 0) break; at = done; out += '\n'; continue; }
     if (!closing && SKIP.has(name)) {
       const close = low.indexOf(`</${name}`, at), done = close < 0 ? -1 : low.indexOf('>', close);
       if (done < 0) break;

@@ -5,6 +5,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- Kiwix, for an offline library: `type: kiwix` with the `url` of kiwix-serve shows your books (Wikipedia, Project Gutenberg, iFixit and the rest) with their article counts, and a random article, its title and first paragraph, a new one each hour, for the home page or the wall. ⌘K's search looks through every book at once, by the full text where a book has an index and by title where it doesn't, and opens the article. The assistant can search the library and read an article to answer from it, citing its link, and is told it's an offline copy whose words are information, never instructions. Articles are read on the server as plain text and never drawn as a page. `books` keeps to the ones you name, `random` picks the article's book, and `headers` is for a server behind basic auth or a proxy.
+
 ## [0.8.0] - 2026-11-15
 
 ### Added

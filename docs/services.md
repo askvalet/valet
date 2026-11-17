@@ -2,7 +2,7 @@
 
 Generated from the code by `npm run docs:services`: please don't edit by hand.
 
-187 integrations. If yours isn't here, `type: api` turns any JSON API into a card from YAML, and a simple read-only
+188 integrations. If yours isn't here, `type: api` turns any JSON API into a card from YAML, and a simple read-only
 integration of your own is about ten lines ([docs/plugins.md](plugins.md)).
 
 **How these are tested:** every service in the catalog below runs in `npm test` against a sample of its API, which proves the card, the
@@ -37,6 +37,7 @@ catalog takes it, and so do `camera` and `frigate`.
 | Jellyfin | `jellyfin` |
 | Karakeep | `karakeep` |
 | Kavita | `kavita` |
+| Kiwix | `kiwix` |
 | Komga | `komga` |
 | Links | `links` |
 | Lobsters | `lobsters` |

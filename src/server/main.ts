@@ -548,7 +548,7 @@ const settled = async () => { for (let i = 0; i < 12 && site.hub.snapshot().leng
 // Suggestions are rewritten every half hour while the page is in use, sooner (every ten minutes at most) when what's
 // playing or downloading changes, and at once when what's wrong changes: a chip about what's over is worse than none.
 // Each rewrite takes the GPU for a while, so they're on the daily budget. The assistant's own work must not count as news: its activity would set off the next rewrite.
-const OUTSIDE = new Set(['rss', 'hackernews', 'reddit', 'lobsters', 'changedetection', 'karakeep', 'paperless', 'calendar', 'releases', 'repository', 'twitch', 'iframe', 'http', 'api']);   // written by strangers: see suggestPrompt
+const OUTSIDE = new Set(['rss', 'hackernews', 'reddit', 'lobsters', 'changedetection', 'karakeep', 'paperless', 'kiwix', 'calendar', 'releases', 'repository', 'twitch', 'iframe', 'http', 'api']);   // written by strangers: see suggestPrompt
 let tailored: { at: number; mood: string; wrong: string; names: string[]; list: string[] | null } | undefined, tailoring: Promise<void> | undefined;
 // A fresh install's welcome card: what's running here that Valet could show. Only while that card is on.
 app.get('/api/discover', async c => {
