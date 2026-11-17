@@ -434,7 +434,10 @@ test('feel: a pile: on top nothing is moved or dimmed, behind is smaller, thrown
   assert.equal(out.match(/inert=""/g)?.length, 2, 'only the top card can be reached');
   for (const l of ['Previous', 'Archive', 'Open', 'Next']) assert.match(out, new RegExp(`aria-label="${l}"`));
   assert.doesNotMatch(html({ type: 'article', headline: 'Alone' }), /aria-label="Next"/);
-  assert.match(html({ type: 'article', headline: 'Alone' }), /is-single/);
+  assert.match(html({ type: 'article', headline: 'Alone', image: '/img/a' }), /is-single/);
+  // one with no picture is its words alone: no page-shaped block left empty
+  const bare = html({ type: 'article', headline: 'Alone', blurb: 'Words.', site: 'Wikipedia', link: 'http://x/1' });
+  assert.match(bare, /article-bare/); assert.doesNotMatch(bare, /class="pile|article-page/); assert.match(bare, /Words\./);
 });
 
 test('feel: a row: shelves are Blossom carousels with arrows, and the desk stays a desk', () => {

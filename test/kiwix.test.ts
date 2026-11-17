@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import { session, type Context } from '../src/server/core.ts';
 import { checkCard } from '../src/shared/cards.schema.ts';
 import { hitsOf } from '../src/shared/search.ts';
-import kiwix, { lead, parseCatalog, articleText, unhidden } from '../src/integrations/kiwix.ts';
+import kiwix, { lead, leadImage, parseCatalog, articleText, unhidden } from '../src/integrations/kiwix.ts';
 
 type Handler = (url: string, init: any) => unknown;
 function fake(handler: Handler): Context & { calls: string[] } {
@@ -227,7 +227,7 @@ test('kiwix: headers go with every request, and pictures only by a book\'s id', 
   await k.tools!.kiwix_search.run({ query: 'x', limit: 3 });
   assert.ok(seen.length >= 4 && seen.every(h => h?.Authorization === 'Basic abc'));
   assert.equal(await (await k.image!(W) as Response).text(), 'png');
-  assert.throws(() => k.image!('../../etc/passwd'), /bad image ref/);
+  await assert.rejects(Promise.resolve().then(() => k.image!('../../etc/passwd')), /bad image ref/);
 });
 
 test('kiwix: a server that can\'t be reached is the card\'s error, and tried again next time', async () => {
@@ -250,4 +250,47 @@ test('kiwix: a hostile article takes no longer to read than a normal one', () =>
     for (let i = 0; i < 3 && (!i || took > 10 * usual); i++) { usual = time(normal); took = time(bomb); }
     assert.ok(took < 10 * usual, `${bomb.slice(0, 12)} took ${took.toFixed(0)} ms, a normal page that size ${usual.toFixed(0)} ms`);
   }
+});
+
+const PICTURED = (name: string) => `<html><head><title>${name}</title><link rel="icon" href="./favicon.png"></head><body>
+  <img src="./_assets_/a/OOjs_UI_icon_edit.png" width="20" height="20">
+  <span class="flagicon"><img src="./_assets_/a/Flag_of_Nowhere.png" class="mw-file-element" width="23" height="15"></span>
+  <img src="./_assets_/a/Big_flag_banner.jpg" width="300" height="200" class="thumbborder flagicon">
+  <img src="./_assets_/a/Coast_locator_map.png" width="250" height="250">
+  <img src="./_assets_/a/Formula.svg" width="300" height="120">
+  <img src="../../wikipedia_en_other/_assets_/x/Elsewhere.jpg" width="400" height="300">
+  <img src="https://upload.example.org/Remote.jpg" width="400" height="300">
+  <table class="infobox"><tr><td><img src="./_assets_/a/${name}_at_dusk.jpg" decoding="async" width="250" height="180" class="mw-file-element"></td></tr></table>
+  <p>A <b>${name.toLowerCase()}</b> is a tower that sends out light to help ships at sea find their way and warn them of rocks and dangerous coasts.</p>
+</body></html>`;
+
+test('kiwix: an article\'s picture is its first real one, inside its own book: never an icon, a flag, a map, a formula or something tiny', () => {
+  assert.equal(leadImage(PICTURED('Lighthouse'), '/content/wikipedia_en_all_maxi_2026-09/Lighthouse'), '/content/wikipedia_en_all_maxi_2026-09/_assets_/a/Lighthouse_at_dusk.jpg');
+  assert.equal(leadImage(ARTICLE, '/content/wikipedia_en_all_maxi_2026-09/Lighthouse'), undefined);
+  assert.equal(leadImage('<body><img src="../../images/https/cdn.example.com/igi/Ab12.thumbnail" width="400"></body>', '/content/fixit_en_all_2026-01/Guide/X/1'), undefined);
+  assert.equal(leadImage('<body><img src="data:image/png;base64,AAAA" width="400" height="400"><img src="./Photo.jpg"></body>', '/content/fixit_en_all_2026-01/Guide/X'), '/content/fixit_en_all_2026-01/Guide/Photo.jpg');
+});
+
+test('kiwix: the random article shows its picture through Valet, prefers one with a picture, and never skips one without', async () => {
+  let n = 0;
+  const pictured = make({}, fake(server(url => url.includes('/content/') && !url.includes('_assets_') ? new Response(++n === 2 ? PICTURED('Harbour') : ARTICLE) : undefined)));
+  const card: any = await pictured.widgets.random.fetch();
+  valid(card);
+  assert.equal(n, 2, 'the first had no picture, so a second was tried');
+  assert.equal(card.headline, 'Harbour');
+  assert.equal(card.image, '/img/cwikipedia_en_all_maxi_2026-09/_assets_/a/Harbour_at_dusk.jpg');
+  // none of three has a picture: the first, with no picture at all rather than an empty one
+  const plain: any = await make({}, fake(server())).widgets.random.fetch();
+  assert.equal(plain.headline, 'Lighthouse');
+  assert.equal(plain.image, undefined);
+  assert.match(plain.blurb, /^A lighthouse/);
+});
+
+test('kiwix: a picture is fetched only from a book in this library, by a plain path', async () => {
+  const ctx = fake(server(url => url.includes('_assets_') ? new Response('jpg', { headers: { 'content-type': 'image/jpeg' } }) : undefined));
+  const k = make({ books: ['wikipedia_en_all'] }, ctx);
+  assert.equal(await (await k.image!('cwikipedia_en_all_maxi_2026-09/_assets_/a/Harbour_at_dusk.jpg') as Response).text(), 'jpg');
+  assert.ok(ctx.calls.includes('http://10.0.0.8:8080/content/wikipedia_en_all_maxi_2026-09/_assets_/a/Harbour_at_dusk.jpg'));
+  for (const bad of ['cfixit_en_all_2026-01/_assets_/a/x.jpg', 'cwikipedia_en_all_maxi_2026-09/../../catalog/x.jpg', 'cwikipedia_en_all_maxi_2026-09/%2e%2e/x.jpg', 'cwikipedia_en_all_maxi_2026-09/a/page.html', 'cwikipedia_en_all_maxi_2026-09', 'c/etc/x.jpg', 'xyz'])
+    await assert.rejects(Promise.resolve().then(() => k.image!(bad)), /bad image ref/, bad);
 });

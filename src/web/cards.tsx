@@ -476,6 +476,16 @@ function Article({ card, run }: { card: ArticleCard; run?: RunAction }) {
   const pile = (card.more?.length ? card.more : [card]).filter(a => !a.id || !arch.gone.includes(a.id)), now = Math.min(at, pile.length - 1), a = pile[now];
   if (!a?.headline) return <><Empty icon={BookOpen} text={card.empty ?? 'Nothing saved to read'} height={200} />{(arch.last || arch.slip) && <HeadActions><UndoBar a={arch} /></HeadActions>}</>;
   const n = pile.length, top = a.link ?? card.href;
+  // one article with no picture: its words in the card, with no page behind them and no empty space for one
+  if (n === 1 && !a.image) return <>
+    {top && <HeadActions><a href={top} target="_blank" rel="noreferrer" className={headButton} aria-label="Open" title="Open"><ArrowUpRight className="size-icon" /></a></HeadActions>}
+    <div className="article-bare min-w-0">
+      {a.site && <div className="truncate text-meta font-medium text-muted-foreground">{a.site}</div>}
+      {a.link ? <a href={a.link} target="_blank" rel="noreferrer" className="mt-1 line-clamp-2 text-metric-s leading-tight font-semibold text-pretty hover:underline">{a.headline}</a>
+        : <div className="mt-1 line-clamp-2 text-metric-s leading-tight font-semibold text-pretty">{a.headline}</div>}
+      {a.blurb && <Clamp text={a.blurb} className="mt-1.5 text-item leading-snug text-muted-foreground" />}
+    </div>
+  </>;
   const face = (i: number) => {
     const p = pile[i], link = p.link ?? card.href;
     return (
@@ -1532,7 +1542,7 @@ const KEEPS_HEIGHT = new Set<string>(['list', 'status', 'links', 'code', 'ranked
 
 function WidgetView({ card, run, title, status, compact, columns, minimal, headless, large, fill: stretch, kind, failed }: { card?: CardT; run?: RunAction; title?: string; status?: ReactNode; compact?: boolean; columns?: number; minimal?: boolean; headless?: boolean; large?: boolean; fill?: boolean | 'always'; kind?: string; failed?: string }) {
   // 'always': a bento places cards in blocks that end flush, so even a list takes its cell's height (its foot stays inside the glass)
-  const fill = stretch === 'always' || (!!stretch && !(card && KEEPS_HEIGHT.has(card.type)));
+  const fill = stretch === 'always' || (!!stretch && !(card && (KEEPS_HEIGHT.has(card.type) || (card.type === 'article' && !card.image && !card.more?.length))));
   const fade = useRef(card ? '' : 'fade-in-soft').current;   // up from its skeleton; a tab you come back to is already there
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   // a group is a set of cards, not a card: it has no glass of its own

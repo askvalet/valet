@@ -149,7 +149,7 @@ const zim = (n: number, name: string, flavour: string, date: string, title: stri
   <link rel="http://opds-spec.org/image/thumbnail" href="/catalog/v2/illustration/00000000-0000-4000-8000-00000000010${n}/?size=48" type="image/png"/><link type="text/html" href="/content/${name}${flavour ? `_${flavour}` : ''}_${date}"/>
   <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="/${name}.zim" length="${gb * 1e9}"/></entry>`;
 const shelfOfBooks = `<feed>${[zim(1, 'wikipedia_en_all', 'maxi', '2026-09', 'Wikipedia', 6_912_330, true, 118), zim(2, 'gutenberg_en_all', '', '2026-05', 'Project Gutenberg', 72_410, true, 74), zim(3, 'ifixit_en_all', '', '2026-01', 'iFixit in English', 103_480, false, 3.4), zim(4, 'wikivoyage_en_all', 'maxi', '2026-08', 'Wikivoyage', 32_870, true, 1.1)].join('')}</feed>`;
-const lighthouse = '<html><head><title>Lighthouse</title></head><body><h1>Lighthouse</h1><p>A <b>lighthouse</b> is a tower, building or other structure that sends out light from a system of lamps and lenses, to help ships find their way at sea and warn them of rocks, shoals and dangerous coasts.<sup>[1]</sup> Most are automated now, and many are kept as landmarks.</p></body></html>';
+const lighthouse = '<html><head><title>Lighthouse</title></head><body><h1>Lighthouse</h1><img src="./_assets_/a/Lighthouse_at_dusk.jpg" width="250" height="180"><p>A <b>lighthouse</b> is a tower, building or other structure that sends out light from a system of lamps and lenses, to help ships find their way at sea and warn them of rocks, shoals and dangerous coasts.<sup>[1]</sup> Most are automated now, and many are kept as landmarks.</p></body></html>';
 const kiwixHttp = route([
   ['/catalog/v2/entries', shelfOfBooks],
   ['/content/', lighthouse],
@@ -226,6 +226,7 @@ export const media: Record<string, Fixture> = {
   },
   kiwix: {
     config: { url: 'http://10.0.0.20:8080', href: 'https://library.example.com' },
+    image: ref => ref.startsWith('c') ? '/art/article.jpg' : `book-${ref.slice(-1)}`,
     http: (url, init) => url.includes('/random?') ? new Response(null, { status: 302, headers: { location: '/content/wikipedia_en_all_maxi_2026-09/Lighthouse' } }) : kiwixHttp(url, init),
     states: [{ widget: 'library', state: 'empty', label: 'No books yet', http: over([['/catalog/v2/entries', '<feed></feed>']], kiwixHttp) }],
   },

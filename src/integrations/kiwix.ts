@@ -95,6 +95,32 @@ export function lead(page: string, max = 360): string | undefined {
   return undefined;
 }
 
+// what's never an article's picture: interface icons, flags, maps, formulae, logos, a guide's thumbnails
+const NOT_ART = /icon|flag|(?:^|[^a-z])maps?(?:[^a-z]|$)|locator|math|logo|symbol|commons-|wiki(?:data|media|source|quote|books|tionary)|ambox|question_book|edit-clear|padlock|lock-|thumbnail|\.svg$|\.gif$/i;
+const PICTURE = /\.(?:jpe?g|png|webp)$/i;
+
+/** The address of an article's first real picture, inside its own book (`/content/<book>/…`), or undefined: the first
+ *  `<img>` in the body that's a photo or a drawing, at least 100 px each way where it says, and none of NOT_ART. */
+export function leadImage(html: string, articlePath: string): string | undefined {
+  const low = html.replace(/[A-Z]/g, c => c.toLowerCase()), book = articlePath.split('/').slice(0, 3).join('/') + '/';
+  let at = Math.max(low.indexOf('<body'), 0);
+  for (let n = 0; n < 200; n++) {
+    const i = low.indexOf('<img', at), gt = i < 0 ? -1 : low.indexOf('>', i);
+    if (gt < 0) return undefined;
+    at = gt + 1;
+    const head = html.slice(i, Math.min(gt, i + 4000)), attr = (name: string) => new RegExp(`\\s${name}\\s*=\\s*"([^"]*)"`, 'i').exec(head)?.[1];
+    const src = attr('src'), w = Number(attr('width')), h = Number(attr('height'));
+    if (!src || src.startsWith('data:') || (w && w < 100) || (h && h < 100)) continue;
+    if (NOT_ART.test(`${attr('class') ?? ''} ${attr('typeof') ?? ''}`)) continue;
+    let path: string;
+    try { const u = new URL(decode(src), `http://kiwix${articlePath}`); if (u.host !== 'kiwix') continue; path = u.pathname; } catch { continue; }
+    const file = path.split('/').pop() ?? '';
+    if (!path.startsWith(book) || !PICTURE.test(file) || NOT_ART.test(file)) continue;
+    return path;
+  }
+  return undefined;
+}
+
 /** An article as plain text for the assistant: its prose, without tables, citation marks or anything that isn't words. */
 const PROSE = new Set(['table']);
 export const articleText = (html: string) => { const t = pageText(unhidden(html), PROSE); return { title: t.title, text: clean(t.text) }; };
@@ -198,19 +224,21 @@ export default defineIntegration({
             const books = await library(), book = randomBook(books);
             const card = { type: 'article' as const, title: 'Random article', icon: 'book', href: web, source, empty: cfg.random ? `No book called ${cfg.random}` : 'No books in the library yet' };
             if (!book) return { ...card, headline: '' };
-            // a few tries for one with a paragraph to show: some articles are a list, a picture or a redirect
-            let first: { headline: string; link: string } | undefined;
+            // a few tries for one with a paragraph and a picture: some articles are a list, a picture or a redirect.
+            // The first with a paragraph is kept, so one without a picture still shows if none of the others has both
+            let best: ArticleCard | undefined;
             for (let i = 0; i < 3; i++) {
               const r = await get<Response>(`/random?content=${enc(book.id)}`, { as: 'response', redirect: 'manual' });
               await r.body?.cancel();
               const to = r.headers.get('location'), a = to ? articleOf(to, [book]) : undefined;
               if (!a) throw new Error(`Kiwix answered ${r.status} without an article`);
               const html = await get<string>(a.path, { as: 'text', timeout: 15_000 }), title = pageText(html.slice(0, 20_000)).title ?? decodeURIComponent(a.path.split('/').pop()!).replace(/_/g, ' ');
-              const blurb = lead(html);
-              first ??= { headline: title, link: `${web}${a.path}` };
-              if (blurb) return { ...card, headline: title, blurb, site: book.title, link: `${web}${a.path}` };
+              const blurb = lead(html), picture = leadImage(html, a.path);
+              const pick: ArticleCard = { ...card, headline: title, blurb, site: book.title, link: `${web}${a.path}`, image: picture ? ctx.image(`c${picture.slice('/content/'.length)}`) : undefined };
+              if (blurb && picture) return pick;
+              if (!best || (blurb && !best.blurb)) best = pick;
             }
-            return { ...card, ...first!, site: book.title };
+            return best!;
           },
         },
       },
@@ -272,9 +300,13 @@ export default defineIntegration({
           },
         },
       },
-      image(ref) {
-        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(ref)) throw new Error('bad image ref');
-        return get<Response>(`/catalog/v2/illustration/${ref}/?size=48`, { as: 'response' });
+      // a book's illustration by its id, or `c<book>/<path>`: a picture inside one of this library's books, and nowhere else
+      async image(ref) {
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(ref)) return get<Response>(`/catalog/v2/illustration/${ref}/?size=48`, { as: 'response' });
+        const path = ref.startsWith('c') ? ref.slice(1) : '', parts = path.split('/');
+        if (parts.length < 2 || !/^[\w.~%+\-/!'(),]{1,1000}$/.test(path) || parts.some(p => !p || p === '.' || p === '..' || /%2e|%2f|%5c/i.test(p)) || !PICTURE.test(parts.at(-1)!)) throw new Error('bad image ref');
+        if (!(await library()).some(b => b.id === parts[0])) throw new Error('bad image ref');
+        return get<Response>(`/content/${path}`, { as: 'response', timeout: 15_000 });
       },
     };
   },
