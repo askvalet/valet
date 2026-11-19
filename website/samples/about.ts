@@ -169,7 +169,7 @@ export const ABOUT: Record<string, string> = {
   traefik: 'Traefik is a reverse proxy. This shows routers, services, middlewares, errors and warnings.',
   transmission: 'Transmission is a BitTorrent client. This shows speeds, what\'s active and the number of torrents.',
   trilium: 'Trilium is a notes app. This shows notes, database size and its version.',
-  truenas: 'TrueNAS is a storage system. This shows pool health and use, alerts, load and uptime.',
+  truenas: 'TrueNAS is a storage system. This shows pool health and use, alerts, load and uptime, and puts its cloud sync and replication tasks on the Backups card.\n\nValet talks to TrueNAS over its WebSocket API (JSON-RPC 2.0 at `/api/current`), the only API TrueNAS 26 has: REST is gone there. TrueNAS 24.10, 25.04, 25.10 and 26 all have it. An install from before 24.10, which answers but has no WebSocket, is asked over the old REST API instead, so it keeps working.\n\nUse an `https` url: TrueNAS revokes an API key it sees over plain http. Add `insecure: true` for its self-signed certificate. With `username` (the user the key belongs to), Valet signs in with `auth.login_ex`, which TrueNAS 27 needs; with only `key`, it uses `auth.login_with_api_key`, which TrueNAS 26 is the last to have.',
   'tube-archivist': 'Tube Archivist keeps YouTube videos. This shows videos, channels, playlists and what\'s pending.',
   twitch: 'Shows which of your Twitch channels are live, and the top games.',
   unifi: 'UniFi runs networks. This shows WAN status, Wi-Fi and wired clients, devices and uptime.',

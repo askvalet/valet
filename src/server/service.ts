@@ -66,7 +66,8 @@ export interface ServiceDef<O = Record<string, never>> {
 
 const number = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v.toLocaleString('en', { maximumFractionDigits: 2 }) : v;
 const seconds = (v: string | number | undefined) => { const r = Every.safeParse(v); return r.success ? r.data : undefined; };
-const shown = (s: Stat): StatItem => ({ ...s, value: (number(s.value) ?? '–') as string | number });
+/** A stat as a card shows it: numbers written out, nothing as a dash. */
+export const shown = (s: Stat): StatItem => ({ ...s, value: (number(s.value) ?? '–') as string | number });
 
 /** A number worth a slide in the year in review, or nothing at all when there's none: what most services can say. */
 export const tally = (n: unknown, slide: Omit<RecapSlide, 'value' | 'score'> & { value?: string }): RecapSlide[] => Number(n) > 0 ? [{ value: Number(n).toLocaleString('en'), score: 55, scope: 'Right now', ...slide }] : [];

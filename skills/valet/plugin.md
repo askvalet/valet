@@ -16,7 +16,7 @@ Pick the smallest form that does the job:
 
 ```js
 // data/integrations/my-thing.mjs
-export default ({ z, fmt, defineIntegration, service, checkCard, People }) => /* an integration, or a list of them */;
+export default ({ z, fmt, defineIntegration, service, checkCard, People, jsonrpc }) => /* an integration, or a list of them */;
 ```
 
 - The default export is a function that receives the toolkit. Use only what it hands you: no `import`, no `require`.

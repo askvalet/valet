@@ -15,8 +15,9 @@ import { checkCard } from '../shared/cards.schema.ts';
 import { defineIntegration, fmt, type Instance, type Integration } from './core.ts';
 import { service } from './service.ts';
 import { People } from './config.ts';
+import { jsonrpc } from './jsonrpc.ts';
 
-export const toolkit = { z, fmt, defineIntegration, service, checkCard, People };
+export const toolkit = { z, fmt, defineIntegration, service, checkCard, People, jsonrpc };
 
 async function load(spec: string): Promise<Integration[]> {
   const mod = await import(spec);

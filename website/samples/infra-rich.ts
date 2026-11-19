@@ -1,5 +1,9 @@
-// Proxmox, Speedtest Tracker, Syncthing, Backrest and Healthchecks: the machines, the line and the jobs. Every name and
-// number here is made up.
+// Proxmox, TrueNAS, Speedtest Tracker, Syncthing, Backrest and Healthchecks: the machines, the line and the jobs. Every
+// name and number here is made up.
+import { createHash } from 'node:crypto';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
+import { createServer } from 'node:http';
+import { Frames, frame } from '../../src/server/jsonrpc.ts';
 import { DAY, HOUR, MIN, ago, ahead, route, wave } from './helpers.ts';
 import type { Fixture } from './types.ts';
 
@@ -91,7 +95,47 @@ const CHECKS = [
 ];
 const hcRoutes = (list: unknown[]) => route([['/api/v3/checks/', { checks: list }], [/\/(pause|resume)$/, { status: 'paused' }]]);
 
+// ── TrueNAS: two pools, a warning, cloud sync and replication. It speaks JSON-RPC over a WebSocket, not ctx.http, so a
+// made-up TrueNAS listens on localhost and node:tls's connect is pointed at it, plain, for the hosts it plays: 10.0.0.5
+// is well, 10.0.0.6 has a degraded pool. Any other host is refused, as one that isn't there.
+const T = 2 ** 40;
+const nasAnswers = (trouble: boolean): Record<string, unknown> => ({
+  'auth.login_ex': { response_type: 'SUCCESS', user_info: null },
+  'system.info': { hostname: 'nas', version: 'TrueNAS-25.10.1', loadavg: [0.38, 0.41, 0.4], uptime_seconds: 41 * 86400 },
+  'alert.list': trouble ? [{ level: 'CRITICAL', dismissed: false }, { level: 'WARNING', dismissed: false }] : [{ level: 'WARNING', dismissed: false }, { level: 'INFO', dismissed: true }],
+  'pool.query': [{ name: 'tank', healthy: !trouble, status: trouble ? 'DEGRADED' : 'ONLINE', size: 36 * T, allocated: 21.4 * T }, { name: 'fast', healthy: true, status: 'ONLINE', size: 1.8 * T, allocated: 0.6 * T }],
+  'cloudsync.query': [{ id: 1, description: 'Photos to B2', enabled: true, job: { state: 'SUCCESS', time_started: { $date: Date.now() - 7 * HOUR }, time_finished: { $date: Date.now() - 6 * HOUR } } }],
+  'replication.query': [{ id: 1, name: 'tank to backup box', enabled: true, state: { state: 'FINISHED', datetime: { $date: Date.now() - 3 * HOUR } }, job: null }],
+});
+const NAS_HOSTS: Record<string, boolean> = { '10.0.0.5': false, '10.0.0.6': true };
+const fakeTrueNAS = async () => {
+  const server = createServer((_, res) => res.writeHead(404).end());
+  server.on('upgrade', (req, sock) => {
+    const answers = nasAnswers(NAS_HOSTS[String(req.headers.host)] ?? false), frames = new Frames(2 ** 20, true);
+    sock.write(`HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${createHash('sha1').update(`${req.headers['sec-websocket-key']}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`).digest('base64')}\r\n\r\n`);
+    sock.on('error', () => {});
+    sock.on('data', (chunk: Buffer) => { for (const f of frames.push(chunk)) {
+      if (f.opcode === 8) { sock.end(frame(8, Buffer.alloc(0), false)); return; }
+      const m = JSON.parse(f.data.toString());
+      sock.write(frame(1, Buffer.from(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: answers[m.method] ?? null })), false));
+    } });
+  });
+  await new Promise<void>(ok => server.listen(0, '127.0.0.1', () => ok()));
+  const port = (server.address() as { port: number }).port, require = createRequire(import.meta.url), tls = require('node:tls'), net = require('node:net'), real = tls.connect;
+  tls.connect = (o: { host: string }) => { const s = net.connect({ host: '127.0.0.1', port: o.host in NAS_HOSTS ? port : 1 }); s.once('connect', () => s.emit('secureConnect')); return s; };
+  syncBuiltinESMExports();
+  return () => { tls.connect = real; syncBuiltinESMExports(); server.close(); };
+};
+
 export const infraRich: Record<string, Fixture> = {
+  truenas: {
+    config: { url: 'https://10.0.0.5', key: 'x', username: 'valet', insecure: true },
+    before: fakeTrueNAS,
+    states: [
+      { widget: 'status', state: 'trouble', label: 'A pool degraded', config: { url: 'https://10.0.0.6' } },
+      { widget: 'status', state: 'down', label: 'Can\'t reach it', config: { url: 'https://10.0.0.99' } },
+    ],
+  },
   proxmox: {
     config: { url: 'https://pve1.example:8006', key: 'valet@pve!dash=x', insecure: true },
     http: pveRoutes(LAB),

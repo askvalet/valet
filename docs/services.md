@@ -68,6 +68,7 @@ catalog takes it, and so do `camera` and `frigate`.
 | Syncthing | `syncthing` |
 | Tandoor | `tandoor` |
 | To-do list | `todo` |
+| TrueNAS | `truenas` |
 | Twitch | `twitch` |
 | Uptime Kuma | `uptimekuma` |
 | Weather | `weather` |
@@ -195,7 +196,6 @@ Each needs `url:` plus what's listed, and gives a card, a tile and a read-only t
 | Traefik | `traefik` | none |
 | Transmission | `transmission` | username, password (optional) |
 | Trilium | `trilium` | key |
-| TrueNAS | `truenas` | key |
 | Tube Archivist | `tube-archivist` | key |
 | UniFi | `unifi` | key |
 | UniFi Drive | `unifi-drive` | username, password |

@@ -16,7 +16,7 @@ const alarm = (label: string, n: number) => ({ label, value: n, tone: n ? 'bad' 
 const of = (some = 0, all = 0) => `${some} / ${all}`;
 const sum = <T>(items: T[], pick: (i: T) => unknown) => items.reduce((n, i) => n + (Number(pick(i)) || 0), 0);
 const list = (v: unknown): any[] => Array.isArray(v) ? v : [];
-// backups: a time as ms, from seconds, ms, an ISO date or TrueNAS's { $date }
+// backups: a time as ms, from seconds, ms, an ISO date or a { $date }
 const at = (v: any): number | undefined => { const t = v?.$date ?? v; const n = typeof t === 'number' ? (t < 1e11 ? t * 1000 : t) : t ? new Date(String(t)).getTime() : NaN; return Number.isFinite(n) && n > 0 ? n : undefined; };
 const bytes = (v: unknown) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : undefined; };
 // Duplicati's schedule: "1D", "12h", "1W"
@@ -152,37 +152,7 @@ export default [
     expect: { Apps: 3, Synced: 2, 'Out of sync': 1, Healthy: 2, Degraded: 1 },
   }),
 
-  // NAS
-  service({
-    type: 'truenas', name: 'TrueNAS', icon: 'disk', auth: 'bearer',
-    get: { info: '/api/v2.0/system/info', alerts: '/api/v2.0/alert/list', pools: { path: '/api/v2.0/pool', optional: true } },
-    stats: d => {
-      const pools = list(d.pools), healthy = pools.filter(p => p.healthy).length, used = sum(pools, p => p.allocated), total = sum(pools, p => p.size);
-      return [{ label: 'Pools healthy', value: of(healthy, pools.length), tone: healthy < pools.length ? 'bad' : 'good' }, meter('Pools used', used, total, `of ${fmt.bytes(total)}`),
-        alarm('Alerts', list(d.alerts).filter(a => !a.dismissed).length), { label: 'Load', value: d.info?.loadavg?.[0] ?? 0 }, { label: 'Uptime', value: uptime(d.info?.uptime_seconds) }];
-    },
-    sample: { info: { hostname: 'nas', version: 'TrueNAS-SCALE-24.10.2', loadavg: [0.42, 0.5, 0.48], uptime_seconds: 864000.5 },
-      alerts: [{ level: 'WARNING', dismissed: false }, { level: 'INFO', dismissed: true }],
-      pools: [{ name: 'tank', healthy: true, status: 'ONLINE', size: 8000000000000, allocated: 2000000000000, free: 6000000000000 }, { name: 'fast', healthy: true, status: 'ONLINE', size: 2000000000000, allocated: 500000000000, free: 1500000000000 }],
-      cloudsync: [{ id: 1, description: 'Photos to B2', enabled: true, job: { state: 'SUCCESS', time_started: { $date: 1793390000000 }, time_finished: { $date: 1793393600000 } } },
-        { id: 2, description: 'Documents to S3', enabled: true, job: { state: 'FAILED', time_finished: { $date: 1793395000000 }, error: 'Access denied' } }, { id: 3, description: 'Old', enabled: false }],
-      replication: [{ id: 1, name: 'tank to backup box', enabled: true, state: { state: 'FINISHED', datetime: { $date: 1793380000000 } } }] },
-    // cloud sync and replication tasks; switched-off ones aren't expected to run
-    backupGet: () => ({ cloudsync: { path: '/api/v2.0/cloudsync', optional: true }, replication: { path: '/api/v2.0/replication', optional: true } }),
-    backups: d => [
-      ...list(d.cloudsync).filter(t => t.enabled !== false).map(t => {
-        const j = t.job ?? {}, state = String(j.state ?? '');
-        return { name: t.description || `Cloud sync ${t.id}`, source: 'TrueNAS cloud sync', lastRun: at(j.time_finished ?? j.time_started),
-          ...(state === 'SUCCESS' ? { lastSuccess: at(j.time_finished), result: 'ok' as const } : state === 'RUNNING' ? { result: 'running' as const } : state === 'FAILED' || state === 'ABORTED' ? { result: 'failed' as const, error: j.error ? String(j.error) : undefined } : {}) };
-      }),
-      ...list(d.replication).filter(t => t.enabled !== false).map(t => {
-        const st = t.state ?? {}, state = String(st.state ?? ''), when = at(st.datetime);
-        return { name: t.name || `Replication ${t.id}`, source: 'TrueNAS replication', lastRun: when,
-          ...(state === 'FINISHED' ? { lastSuccess: when, result: 'ok' as const } : state === 'RUNNING' ? { result: 'running' as const } : state === 'ERROR' ? { result: 'failed' as const, error: st.error ? String(st.error) : undefined } : {}) };
-      }),
-    ],
-    expect: { 'Pools healthy': '2 / 2', 'Pools used': '25%', Alerts: 1, Load: 0.42, Uptime: '10d' },
-  }),
+  // NAS (TrueNAS is a full integration: truenas.ts)
   service({
     type: 'unraid', name: 'Unraid', icon: 'disk', auth: { header: 'X-API-Key' },
     get: { api: { path: '/graphql', method: 'POST', body: { query: `{

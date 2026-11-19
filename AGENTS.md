@@ -422,6 +422,9 @@ literal; a new size or corner is a new token with a role, argued for here.
   once writes to a dying socket, and QoS 0 is gone, as MQTT means it to be: wait for the client to say it lost the
   connection. And `destroy()` throws away what was just written; a fake that answers and hangs up uses `end(answer)`.
 - **The static demo's voice is recorded.** Its read-aloud clips (`demo/voices/`) are named by a hash of the speakable words, so changing an answer in `demo/mock-model.mjs` or `speakable()` needs `npm run demo:voices` (the demo README says how); `test/demo-voice.test.tsx` names what's missing.
+- **Node's own `WebSocket` takes no TLS options**, so it can't trust one service's self-signed certificate: a service that speaks JSON-RPC over a
+  WebSocket goes through `jsonrpc.ts` (node:net and node:tls, one short conversation, all within a timeout), as TrueNAS does. TrueNAS revokes an
+  API key it sees over plain `http` or `ws`, so its examples are `https`.
 - **A screenshot beyond the viewport closes menus.** `captureBeyondViewport` lays the page out again, and Radix closes an open select or popover on that resize; the scenes capture beyond only when the box is.
 
 - **Three things restyle every element on the page, each about a frame on a big page** (found opening ⌘K, which went from

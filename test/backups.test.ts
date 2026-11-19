@@ -132,7 +132,7 @@ test('backups: Backrest, Proxmox, Home Assistant and Healthchecks', async () => 
   assert.equal(hc[1].every, 25 * H);
 });
 
-test('backups: Kopia, Duplicati, Proxmox Backup Server and TrueNAS from their samples', async () => {
+test('backups: Kopia, Duplicati and Proxmox Backup Server from their samples (TrueNAS: truenas.test.ts)', async () => {
   const of = async (type: string) => { const s = registry[type] as any; return s.create(s.config.parse(sampleConfig(s.def)), fakeContext(s.def)).backups!(); };
   const kopia = await of('kopia');
   assert.deepEqual(kopia.map((j: any) => [j.name, j.result]), [['nas:/data', 'ok'], ['nas:/home', 'warning'], ['nas:/new', undefined]]);
@@ -140,6 +140,4 @@ test('backups: Kopia, Duplicati, Proxmox Backup Server and TrueNAS from their sa
   assert.deepEqual(dup.map((j: any) => [j.name, j.result, j.every]), [['Photos', 'failed', 864e5], ['Job 2', 'running', undefined]]);
   const pbs = await of('proxmox-backup');
   assert.deepEqual(pbs.map((j: any) => [j.name, j.result]), [['homeassistant (vm/100)', undefined], ['vm/101', 'failed'], ['ct/200', undefined]]);
-  const nas = await of('truenas');
-  assert.deepEqual(nas.map((j: any) => [j.name, j.result]), [['Photos to B2', 'ok'], ['Documents to S3', 'failed'], ['tank to backup box', 'ok']]);
 });

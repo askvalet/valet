@@ -992,6 +992,7 @@ Each entry under `integrations:` has an id (what you use in widget keys and `ass
 | `syncthing` | `url`, `key` (its API key), `insecure` | `sync`, `status` |
 | `tautulli` | `url`, `apiKey`, `people` (each person's own activity, `{ sam: samantha }`: see `profiles` and `users`) | `streams`, `recent`, `top`, `people`, `library`, `plays` (a stream of 30 days), `race` (the year's titles overtaking each other; refreshes every few hours), `viewing` (a year of days) |
 | `todo` | `title` | `list` (tick things off; its last line adds a task) |
+| `truenas` | `url` (`https`: TrueNAS revokes a key it sees over plain http), `key` (an API key), `username` (the key's user: signs in with `auth.login_ex`, which TrueNAS 27 needs), `insecure`. Talks to the WebSocket API at `/api/current` (24.10 and later, and the only API in TrueNAS 26); an older install without it is asked over REST | `status` (pools, alerts, load, uptime); its cloud sync and replication tasks join the Backups card |
 | `twitch` | `clientId`, `clientSecret`, `channels`, `limit` (8) | `channels`, `games` |
 | `uptimekuma` | `url`, `username` (empty with an API key), `password` (or the key), `certWarnDays` (14) | `monitors` |
 | `weather` | `latitude`, `longitude`, `units` (from `format.temperature`, else `metric`), `interval` (600000 ms) | `now` |

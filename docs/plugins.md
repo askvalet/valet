@@ -54,8 +54,9 @@ For controls, write tools or several widgets: use the full form below (`new-inte
 ## Write one
 
 A plugin's default export is either an integration object, or a function that receives Valet's toolkit
-(`{ z, fmt, defineIntegration, service, checkCard, People }`) and returns one, or a list of them. The function form needs no
-imports and no build step:
+(`{ z, fmt, defineIntegration, service, checkCard, People, jsonrpc }`) and returns one, or a list of them. The function form needs no
+imports and no build step. `jsonrpc(url, { timeout, insecure }, async c => …)` is for a service that answers JSON-RPC 2.0 over a
+WebSocket (TrueNAS does): it connects, lets you `await c.call(method, params)` as many times as you like, and closes.
 
 ```js
 // data/integrations/hello.mjs
