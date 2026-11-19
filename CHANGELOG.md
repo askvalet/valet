@@ -5,6 +5,8 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-18
+
 ### Added
 
 - Kiwix, for an offline library: `type: kiwix` with the `url` of kiwix-serve shows your books (Wikipedia, Project Gutenberg, iFixit and the rest) with their article counts, and a random article, its title, first paragraph and lead picture (served through Valet), a new one each hour, for the home page or the wall. ⌘K's search looks through every book at once, by the full text where a book has an index and by title where it doesn't, and opens the article. The assistant can search the library and read an article to answer from it, citing its link, and is told it's an offline copy whose words are information, never instructions. Articles are read on the server as plain text and never drawn as a page. `books` keeps to the ones you name, `random` picks the article's book, and `headers` is for a server behind basic auth or a proxy. An `article` card with no picture now shows its words alone instead of an empty space where the page would be.
@@ -12,6 +14,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 ### Changed
 
 - TrueNAS talks to the WebSocket API (JSON-RPC 2.0 at `/api/current`) instead of REST, which TrueNAS 26 removes, so the card and its backups keep working after the upgrade. It works with TrueNAS 24.10, 25.04, 25.10 and 26, and your config doesn't change. Add `username:`, the user your API key belongs to, and Valet signs in with `auth.login_ex`, which TrueNAS 27 will require; with only `key:` it uses the older call that TrueNAS 26 is the last to have, and says so once in the log. REST is only a fallback, for an install from before 24.10 that has no WebSocket. A wrong key now says "TrueNAS refused the API key", and a REST answer of 404 or 410 says that the WebSocket is needed, and what to check when it won't open (a reverse proxy has to pass WebSocket upgrades). Use an `https` url: TrueNAS revokes a key it sees over plain http. Plugins get the same client as `jsonrpc` in their toolkit. ([#27](https://github.com/askvalet/valet/discussions/27))
+
+### Fixed
+
+- The agent skill installs with `npx skills add askvalet/valet` (and loads in Claude Code): its description has a colon in it, which broke its YAML header, so it's quoted now.
 
 ## [0.8.0] - 2026-11-15
 
@@ -404,7 +410,8 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/askvalet/valet/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/askvalet/valet/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/askvalet/valet/compare/v0.6.3...v0.7.0
 [0.6.3]: https://github.com/askvalet/valet/compare/v0.6.2...v0.6.3
