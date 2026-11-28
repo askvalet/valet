@@ -5,9 +5,15 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-11-28
+
 ### Fixed
 
 - The Arcane card works with Arcane 3, which moved its API from `/api/environments/{id}` to `/api/agents/{id}` (and the update summary to `images/updates/summary`), so it answered 404. Arcane 2.x keeps working: the card follows whichever answers. ([#32](https://github.com/askvalet/valet/issues/32))
+
+### Changed
+
+- Dependency updates: Motion 14.14, the Vite React plugin 6.3, the AI SDK's MCP and OpenAI-compatible providers, and Blossom Carousel 1.8.
 
 ## [0.8.1] - 2026-11-18
 
@@ -414,7 +420,8 @@ From an audit before the first release. Everyone signed in has to sign in once m
 - 3D models of the home and the PC, cameras, a thermostat and a calendar.
 - MCP servers as assistant tools, and single-file community integrations.
 
-[Unreleased]: https://github.com/askvalet/valet/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/askvalet/valet/compare/v0.8.2...HEAD
+[0.8.2]: https://github.com/askvalet/valet/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/askvalet/valet/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/askvalet/valet/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/askvalet/valet/compare/v0.6.3...v0.7.0
