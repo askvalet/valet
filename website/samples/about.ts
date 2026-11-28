@@ -4,7 +4,7 @@ export const ABOUT: Record<string, string> = {
   aimonitor: 'Shows your local AI: the GPU\'s load, power and VRAM, which model is loaded, and today\'s requests, tokens and electricity cost. It reads a small JSON endpoint you run, described below, and there\'s a ready-made one for nvidia-smi and Ollama.',
   apcups: 'apcupsd looks after an APC UPS. This shows its status, charge, time left and load, over apcupsd\'s network port.',
   api: 'Turns any JSON API into a card, from YAML alone, with no code. Name a URL, or a card Valet already shows, and say where the numbers are. It can draw stats, a list, a table, rows or status rows, filtered and sorted with small expressions.',
-  arcane: 'Arcane is a Docker manager. This shows running and stopped containers, images and updates for one environment.',
+  arcane: 'Arcane is a Docker manager. This shows running and stopped containers, images and updates for one environment. It works with Arcane 3 and with 2.x, whose API used other paths.',
   argocd: 'Argo CD deploys to Kubernetes from Git. This shows how many apps are synced, out of sync, healthy and degraded.',
   arr: 'Sonarr and Radarr manage TV and films. This shows what\'s coming as posters with the day on them, says if each is already downloaded, and lets the assistant look up the library and start a search.',
   atsumeru: 'Atsumeru is a manga and comics server. This shows series, archives, chapters and categories.',

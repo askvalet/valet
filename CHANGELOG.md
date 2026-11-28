@@ -5,6 +5,10 @@ Notable changes to Valet. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Fixed
+
+- The Arcane card works with Arcane 3, which moved its API from `/api/environments/{id}` to `/api/agents/{id}` (and the update summary to `images/updates/summary`), so it answered 404. Arcane 2.x keeps working: the card follows whichever answers. ([#32](https://github.com/askvalet/valet/issues/32))
+
 ## [0.8.1] - 2026-11-18
 
 ### Added

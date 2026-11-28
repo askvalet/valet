@@ -94,11 +94,18 @@ export default [
   }),
   service<{ env: number | string }>({
     type: 'arcane', name: 'Arcane', icon: 'cpu', auth: { header: 'X-API-Key' }, options: env,
-    get: o => ({ containers: `/api/environments/${o.env}/containers/counts`, images: `/api/environments/${o.env}/images/counts`, updates: `/api/environments/${o.env}/image-updates/summary` }),
-    stats: d => [{ label: 'Running', value: d.containers?.data?.runningContainers ?? 0 }, { label: 'Stopped', value: d.containers?.data?.stoppedContainers ?? 0 },
+    // Arcane 3.0 (2026-11-14) moved its API from /api/environments/{id} to /api/agents/{id}, and image-updates/summary to
+    // images/updates/summary (issue #32). Both are asked for the container counts; whichever answers decides where the rest is.
+    get: o => ({ agents: { path: `/api/agents/${o.env}/containers/counts`, optional: true }, environments: { path: `/api/environments/${o.env}/containers/counts`, optional: true } }),
+    then: (d, o) => {
+      if (d.agents) return { images: `/api/agents/${o.env}/images/counts`, updates: { path: `/api/agents/${o.env}/images/updates/summary`, optional: true } };
+      if (d.environments) return { images: `/api/environments/${o.env}/images/counts`, updates: { path: `/api/environments/${o.env}/image-updates/summary`, optional: true } };
+      throw new Error(`Arcane didn't answer at /api/agents/${o.env} (3.x) or /api/environments/${o.env} (2.x): check url, key and env`);
+    },
+    stats: d => [{ label: 'Running', value: (d.agents ?? d.environments)?.data?.runningContainers ?? 0 }, { label: 'Stopped', value: (d.agents ?? d.environments)?.data?.stoppedContainers ?? 0 },
       { label: 'Images', value: d.images?.data?.totalImages ?? 0 }, { label: 'Updates', value: d.updates?.data?.imagesWithUpdates ?? 0 }],
     sampleOptions: { env: '0' },
-    sample: { containers: { success: true, data: { runningContainers: 18, stoppedContainers: 2, totalContainers: 20 } }, images: { success: true, data: { totalImages: 41, imagesInuse: 20, imagesUnused: 21 } },
+    sample: { agents: { success: true, data: { runningContainers: 18, stoppedContainers: 2, totalContainers: 20 } }, images: { success: true, data: { totalImages: 41, imagesInuse: 20, imagesUnused: 21 } },
       updates: { success: true, data: { imagesWithUpdates: 3 } } },
     expect: { Running: 18, Stopped: 2, Images: 41, Updates: 3 },
   }),
